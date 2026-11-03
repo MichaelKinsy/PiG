@@ -1291,12 +1291,23 @@ id = "coding-agent/session-selector/list-input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
 family = "session"
 kind = "state-machine"
-claim = "while a delete confirmation is pending only confirm and cancel act; otherwise tab, sort, named, path, delete, rename and noninvasive delete are checked in that order before the list actions up, down, page up, page down, confirm, cancel; anything else edits the search Input, whose own submit selects the highlighted session"
+claim = "while a delete confirmation is pending only confirm (delete, then report the trash or unlink outcome or the failure) and cancel act and every other key is swallowed; otherwise tab (scope), sort, named filter (the component's own manager), path, delete (refused for the active session), rename and noninvasive delete (a delete confirmation when the query is empty, otherwise a search edit) are checked in that order and return before the list actions; then up and down clamp at the ends without wrapping, page up and page down move by ten rows, confirm and cancel report the highlighted path or the cancellation, and anything else edits the search Input, whose own submit selects the highlighted session"
 status = "ported"
-pig_targets = ["internal/codingagent/session_selector.go#HandleInput"]
+pig_targets = [
+  "internal/codingagent/session_selector.go#HandleInput",
+  "internal/codingagent/session_selector.go#move",
+  "internal/codingagent/session_selector.go#selectHighlighted",
+  "internal/codingagent/session_selector.go#startDeleteConfirmation",
+  "internal/codingagent/session_selector.go#toggleSortMode",
+  "internal/codingagent/session_selector.go#toggleNameFilter",
+  "internal/codingagent/session_selector_load.go#toggleScope",
+]
 evidence = [
+  "internal/codingagent/session_selector_contract_test.go#TestSessionListHandleInputContractsMatchPi",
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorDeleteOutcomeReportsInTheHeader",
   "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
   "test/parity/scenarios/session/20-session-selector-search.toml",
+  "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
 ]
 
 [contract.upstream]
@@ -1307,16 +1318,76 @@ sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
 keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
+id = "coding-agent/session-selector/list-input-boundaries"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+family = "session"
+kind = "boundary-transition"
+claim = "the session list's boundaries: up and down clamp at the first and last row without wrapping, page keys clamp at both ends, a single session and an empty list (down moves the index to -1, confirm selects nothing, delete and rename do nothing), the scope switch restarting an untouched selection and following a touched session into a loaded scope but losing it into a scope that is still loading, progressive snapshots keeping a touched selection, sort and named filters keeping the index, the search surviving scope and rename round trips, the delete confirmation and cancellation ordering, the active session being refused, and the delete outcome reports"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/session_selector.go#HandleInput",
+  "internal/codingagent/session_selector.go#move",
+  "internal/codingagent/session_selector.go#refilter",
+  "internal/codingagent/session_selector_load.go#refilterLoadedSessions",
+  "internal/codingagent/session_selector_load.go#toggleScope",
+]
+evidence = [
+  "internal/codingagent/session_selector_contract_test.go#TestSessionListHandleInputContractsMatchPi",
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorComponentHandleInputContractsMatchPi",
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorDeleteOutcomeReportsInTheHeader",
+  "test/parity/scenarios/session/20-session-selector-search.toml",
+  "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "}\n\ntype SessionsLoader"
+sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
+keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/session-selector/list-input-keybinding-sources"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+family = "session"
+kind = "boundary-transition"
+claim = "the session selector reads the process-wide keybindings for tab, sort, path, delete, rename, noninvasive delete, the list actions and every hint, and the manager passed to the component only for the named filter; each tui key acts on its rebound key and no longer on its default"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/session_selector.go#HandleInput",
+  "internal/codingagent/session_selector.go#sessionKeyText",
+]
+evidence = [
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorKeybindingSourcesMatchPi",
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorSharedKeysFollowRebinding",
+  "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "}\n\ntype SessionsLoader"
+sha256 = "89815070a78a87e85565931cdcff60bda1908a3330e79acf0f2667b718c2387d"
+keybindings = ["app.session.delete", "app.session.deleteNoninvasive", "app.session.rename", "app.session.toggleNamedFilter", "app.session.togglePath", "app.session.toggleSort", "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+[[contract]]
 id = "coding-agent/session-selector/rename-mode-input"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput"
 family = "session"
 kind = "state-machine"
-claim = "in rename mode the cancel binding leaves rename mode and every other key edits the rename Input; in list mode every key goes to the session list"
+claim = "in rename mode the cancel binding leaves rename mode without cancelling the selector, enter saves the trimmed name (a blank name keeps the panel open) and every other key edits the rename Input and none reaches the list; in list mode every key goes to the session list; renaming is refused while the scope loads, without a rename function and over an empty list; leaving rename mode keeps the search text and the selection; a load that is still running shows its progress and partial rows and keeps a touched selection"
 status = "ported"
-pig_targets = ["internal/codingagent/session_selector.go#HandleInput"]
+pig_targets = [
+  "internal/codingagent/session_selector.go#HandleInput",
+  "internal/codingagent/session_selector.go#enterRenameMode",
+  "internal/codingagent/session_selector.go#confirmRename",
+  "internal/codingagent/session_selector.go#exitRenameMode",
+  "internal/codingagent/session_selector.go#CapturesViewportInput",
+]
 evidence = [
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorComponentHandleInputContractsMatchPi",
   "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
-  "test/parity/scenarios/session/20-session-selector-search.toml",
+  "test/parity/scenarios/session/10-session-selector-rename.toml",
+  "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
 ]
 
 [contract.upstream]
@@ -1325,19 +1396,26 @@ start = "\thandleInput(data: string): void {\n\t\tif (this.mode === \"rename\") 
 end = "\tprivate canRename = true;"
 sha256 = "443241b1075d5ae38804fa447b634970c288f23a0952bd9a18cf61930d9eb344"
 keybindings = ["tui.select.cancel"]
-
 [[contract]]
 id = "coding-agent/tree-selector/list-input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
 family = "tree"
 kind = "state-machine"
-claim = "up/down wrap; fold and branch jumps; page moves; confirm selects; copy; cancel clears a search before cancelling; the filter keys set, toggle and cycle modes and clear folds; backspace trims the search; edit-label opens the label input; the timestamp key toggles; any other printable key appends to the search; each action is checked in Pi's order"
+claim = "the TreeList checks its actions in Pi's order: tui.select.up wraps first to last and tui.select.down last to first (an empty list moves to index -1 and back); app.tree.foldOrUp folds a foldable row (a root or a branch-segment start with visible children, never a folded one) and otherwise jumps up to the enclosing branch-segment start; app.tree.unfoldOrDown unfolds a folded row and otherwise jumps down to the first child of the next branch point or to the leaf; tui.editor.cursorLeft or tui.select.pageUp and tui.editor.cursorRight or tui.select.pageDown move by the window (max(5, height/2) rows) and clamp at both ends; tui.select.confirm reports the highlighted id and nothing for an empty list; app.message.copy reports the highlighted entry's full text or none; tui.select.cancel clears a non-empty search and the folds before it cancels; app.tree.filter.default sets the default mode, noTools, userOnly, labeledOnly and all toggle against default, cycleBackward and cycleForward step default, no-tools, user-only, labeled-only, all and wrap, and every filter action clears the folds; tui.editor.deleteCharBackward trims one UTF-16 unit from a non-empty query and clears the folds, while an empty query changes nothing and keeps them; app.tree.editLabel opens the label input prefilled with the highlighted entry's label (nothing for an empty list); app.tree.toggleLabelTimestamp toggles the label times; any other chunk without a C0, DEL or C1 control code is appended to the query and clears the folds, and an empty chunk is ignored"
 status = "ported"
-pig_targets = ["tui/tree_select.go#HandleInput"]
+pig_targets = [
+  "tui/tree_select.go#HandleInput",
+  "tui/tree_select.go#findBranchSegmentStart",
+  "tui/tree_select.go#cycleFilterMode",
+  "tui/tree_select.go#setFilterMode",
+]
 evidence = [
+  "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "tui/tree_select_contract_test.go#TestTreeFoldedRowIsNotFoldable",
   "test/parity/scenarios/tree/07-tree-fold-root.toml",
   "test/parity/scenarios/tree/12-tree-digit-search.toml",
+  "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
 ]
 
 [contract.upstream]
@@ -1348,17 +1426,71 @@ sha256 = "6a8545e87892e819d1f92bfd30b1a9856625ec20829d816e54be2377701e9519"
 keybindings = ["app.message.copy", "app.tree.editLabel", "app.tree.filter.all", "app.tree.filter.cycleBackward", "app.tree.filter.cycleForward", "app.tree.filter.default", "app.tree.filter.labeledOnly", "app.tree.filter.noTools", "app.tree.filter.userOnly", "app.tree.foldOrUp", "app.tree.toggleLabelTimestamp", "app.tree.unfoldOrDown", "tui.editor.cursorLeft", "tui.editor.cursorRight", "tui.editor.deleteCharBackward", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
 
 [[contract]]
+id = "coding-agent/tree-selector/list-input-boundaries"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+family = "tree"
+kind = "boundary-transition"
+claim = "the tree list's boundaries: wraparound from the first to the last row and back, an empty list (the cursor goes to -1 and back, and confirm, copy-text, fold, unfold, paging and label edit do nothing), a single row (every move stays, a root without children is not foldable), page clamps at both ends, fold and unfold at a root, a segment start and a leaf, a folded row never being foldable again, cancel clearing a search before cancelling and clearing folds, filter cycling in both directions, direct filter keys toggling back to default, backspace on an empty query keeping folds, the persistence of search, filter mode, folds and label times across cursor moves and other actions, and the action priority when bindings collide"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#HandleInput",
+  "tui/tree_select.go#findBranchSegmentStart",
+  "tui/tree_select.go#fixScroll",
+]
+evidence = [
+  "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
+  "tui/tree_select_contract_test.go#TestTreeFoldedRowIsNotFoldable",
+  "test/parity/scenarios/tree/07-tree-fold-root.toml",
+  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+  "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings();\n\t\tif (kb.matches(keyData, \"tui.select.up\"))"
+end = "\n\t/**\n\t * Whether a node can be folded."
+sha256 = "6a8545e87892e819d1f92bfd30b1a9856625ec20829d816e54be2377701e9519"
+keybindings = ["app.message.copy", "app.tree.editLabel", "app.tree.filter.all", "app.tree.filter.cycleBackward", "app.tree.filter.cycleForward", "app.tree.filter.default", "app.tree.filter.labeledOnly", "app.tree.filter.noTools", "app.tree.filter.userOnly", "app.tree.foldOrUp", "app.tree.toggleLabelTimestamp", "app.tree.unfoldOrDown", "tui.editor.cursorLeft", "tui.editor.cursorRight", "tui.editor.deleteCharBackward", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/tree-selector/list-input-rebound-keys"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+family = "tree"
+kind = "boundary-transition"
+claim = "each of the tree list's twenty-one keybinding ids acts on its rebound key and no longer on its default key, and the help rows show the rebound keys"
+status = "ported"
+pig_targets = [
+  "tui/tree_select.go#HandleInput",
+]
+evidence = [
+  "internal/codingagent/tree_selector_contract_test.go#TestTreeListRemappedKeysMatchPi",
+  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+  "test/parity/scenarios/tree/09-tree-filter-user-only.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+start = "\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings();\n\t\tif (kb.matches(keyData, \"tui.select.up\"))"
+end = "\n\t/**\n\t * Whether a node can be folded."
+sha256 = "6a8545e87892e819d1f92bfd30b1a9856625ec20829d816e54be2377701e9519"
+keybindings = ["app.message.copy", "app.tree.editLabel", "app.tree.filter.all", "app.tree.filter.cycleBackward", "app.tree.filter.cycleForward", "app.tree.filter.default", "app.tree.filter.labeledOnly", "app.tree.filter.noTools", "app.tree.filter.userOnly", "app.tree.foldOrUp", "app.tree.toggleLabelTimestamp", "app.tree.unfoldOrDown", "tui.editor.cursorLeft", "tui.editor.cursorRight", "tui.editor.deleteCharBackward", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+[[contract]]
 id = "coding-agent/tree-selector/label-input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput"
 family = "tree"
 kind = "state-machine"
-claim = "confirm saves the trimmed label (empty removes it) and hides the input, cancel hides it, every other key edits the label Input"
+claim = "in the label input tui.select.confirm saves the label trimmed with JavaScript whitespace rules (a blank label removes it, an unchanged prefill saves again), stamps a saved label with the save time and clears the stamp when it is removed, reports the id and label to the label callback and returns to the list on the same row without refiltering it; tui.select.cancel returns to the list without saving; every other key edits the label input (cursor movement, deletion, kill ring, paste) and none reaches the list or the search"
 status = "ported"
-pig_targets = ["tui/tree_select.go#handleLabelInput"]
+pig_targets = [
+  "tui/tree_select.go#handleLabelInput",
+  "tui/tree_select.go#HandleInput",
+]
 evidence = [
+  "internal/codingagent/tree_selector_label_contract_test.go#TestTreeLabelInputAndRoutingContractsMatchPi",
+  "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/07-tree-fold-root.toml",
-  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+  "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+  "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
 ]
 
 [contract.upstream]
@@ -1367,19 +1499,22 @@ start = "\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings()
 end = "}\n\n/**\n * Component that renders a session tree selector"
 sha256 = "ad024e4e17023018a0d606f28397bbce7e32b6f269565f7330a6f1b68c97f5d4"
 keybindings = ["tui.select.cancel", "tui.select.confirm"]
-
 [[contract]]
 id = "coding-agent/tree-selector/component-input-routing"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeSelectorComponent.handleInput"
 family = "tree"
 kind = "state-machine"
-claim = "while the label input is open every key goes to it, otherwise to the tree list"
+claim = "while the label input is open every key goes to it and none to the tree list, otherwise every key goes to the tree list; the component captures fullscreen viewport keys exactly while no label input is open; the list is shown again after a save or a cancel"
 status = "ported"
-pig_targets = ["tui/tree_select.go#HandleInput"]
+pig_targets = [
+  "tui/tree_select.go#HandleInput",
+  "tui/tree_select.go#CapturesViewportInput",
+]
 evidence = [
-  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/07-tree-fold-root.toml",
-  "test/parity/scenarios/tree/12-tree-digit-search.toml",
+  "internal/codingagent/tree_selector_label_contract_test.go#TestTreeLabelInputAndRoutingContractsMatchPi",
+  "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSelectorCapturesViewportInputExceptWhileLabelling",
+  "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+  "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
 ]
 
 [contract.upstream]
@@ -1388,18 +1523,20 @@ start = "\thandleInput(keyData: string): void {\n\t\tif (this.labelInput) {"
 end = "\tgetTreeList(): TreeList {"
 sha256 = "fdf968cae330f7f9381e145771626bb9ecbdb31214bc0c2e1956218bdf94b2f9"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/tree-selector/search-line-ignores-input"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.handleInput"
 family = "tree"
 kind = "state-machine"
-claim = "the search line accepts and ignores every key; the query changes only through the tree list"
+claim = "the search line takes no input: no child of the tree selector handles keys, and the query changes only through the tree list, which the search row then shows"
 status = "ported"
-pig_targets = ["tui/tree_select.go#renderSearchLine"]
+pig_targets = [
+  "tui/tree_select.go#treeSection",
+  "tui/tree_select.go#renderSearchLine",
+]
 evidence = [
-  "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/07-tree-fold-root.toml",
+  "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSearchLineTakesNoInput",
+  "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
   "test/parity/scenarios/tree/12-tree-digit-search.toml",
 ]
 
@@ -1409,7 +1546,6 @@ start = "\thandleInput(_keyData: string): void {}"
 end = "}\n\n/** Component that renders tree help"
 sha256 = "94160f07161306f41b5a6c395b16fcba4598135fcb0c57055d175886f993c94d"
 keybindings = []
-
 [[contract]]
 id = "tui/editor/input-state-machine"
 upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
@@ -3297,14 +3433,16 @@ id = "coding-agent/tree-selector/horizontal-viewport"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#<module>.renderHorizontalViewport"
 family = "tree"
 kind = "render-layout"
-claim = "a deep tree keeps the two-column cursor gutter and pans the body so the selected row's anchor stays visible, closing the clipped body with SGR 0 and cutting each row to the width without an ellipsis or padding, byte for byte at widths 24, 38, 64 and 100"
+claim = "a deep tree keeps the two-column cursor gutter and pans the body so the selected row's anchor stays visible, closing the clipped body with SGR 0 and cutting each row to the width without an ellipsis or padding; the pan threshold (a third of the viewport clamped to 4..20 cells), the anchor context (a quarter clamped to 2..12 cells) and the cut are byte for byte equal to Pi at every width from 0 to 140 for eight highlighted rows of a twelve-level tree and while the highlight walks"
 status = "ported"
 pig_targets = [
-  "tui/tree_select.go#Render"
+  "tui/tree_select.go#renderTreeHorizontalViewport",
+  "tui/tree_select.go#renderTreeList",
 ]
 evidence = [
+  "internal/codingagent/tree_selector_render_contract_test.go#TestTreeHorizontalViewportMatchesPiAtEveryWidth",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/10-tree-scroll-cursor-visible.toml"
+  "test/parity/scenarios/tree/10-tree-scroll-cursor-visible.toml",
 ]
 
 [contract.upstream]
@@ -3313,20 +3451,25 @@ start = "function renderHorizontalViewport(rows: HorizontalViewportRow[], width:
 end = "\t\treturn truncateToWidth(line, width, \"\");\n\t});\n}"
 sha256 = "7fe8a6725a07e7e82ee2d9bdda20ca4a8e4d1c1a8868be0ff7de4d428a1c228a"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/tree-selector/list-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.render"
 family = "tree"
 kind = "render-layout"
-claim = "the tree list shows the empty message or the window of rows (accent cursor, dim prefix with fold markers, accent path marker, warning branch label, muted label time, bold selected content on the selectedBg highlight spanning only its text) and the muted (n/total) line, truncated without padding, byte for byte"
+claim = "the tree list shows the empty message with its status labels or the window of rows (accent cursor, dim prefix with fold markers, accent path marker, warning branch label, muted label time, bold selected content on the selectedBg highlight spanning only its text) centred on the highlight and clamped at both ends, and the muted (n/total) line with the filter and label-time status, truncated without padding, byte for byte over twelve trees, every filter mode, folds, label times, window heights 4 to 16, widths 1 to 100 and both themes"
 status = "ported"
 pig_targets = [
-  "tui/tree_select.go#Render"
+  "tui/tree_select.go#renderTreeList",
+  "tui/tree_select.go#fixScroll",
+  "tui/tree_select.go#swapConnectorMiddle",
+  "tui/tree_select.go#getStatusLabels",
 ]
 evidence = [
+  "internal/codingagent/tree_selector_render_contract_test.go#TestTreeListRenderMatchesPi",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml"
+  "tui/tree_label_timestamp_oracle_test.go#TestFormatLabelTimestampMatchesPi",
+  "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml",
+  "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
 ]
 
 [contract.upstream]
@@ -3335,20 +3478,20 @@ start = "\t}\n\n\trender(width: number): string[] {\n\t\tconst lines: string[] =
 end = "\t\treturn lines;\n\t}\n\n\tprivate getEntryDisplayText("
 sha256 = "c8546f080068f14ccd45787c6ac3c16fd9b7aa76431be72be6e92a588373fd09"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/tree-selector/search-line-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render"
 family = "tree"
 kind = "render-layout"
-claim = "the search row shows the muted \"Type to search:\" prompt and, when a query exists, the accent query, cut to the width without padding, byte for byte"
+claim = "the search row shows the muted \"Type to search:\" prompt and, when a query exists, the accent query after one space, cut to the width without padding, byte for byte for ASCII, wide, emoji, combining and long queries at every width from 0 to 70 in both themes"
 status = "ported"
 pig_targets = [
-  "tui/tree_select.go#Render"
+  "tui/tree_select.go#renderSearchLine",
 ]
 evidence = [
+  "internal/codingagent/tree_selector_render_contract_test.go#TestTreeSearchLineRenderMatchesPi",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/12-tree-digit-search.toml"
+  "test/parity/scenarios/tree/12-tree-digit-search.toml",
 ]
 
 [contract.upstream]
@@ -3357,20 +3500,23 @@ start = "class SearchLine implements Component {"
 end = "\thandleInput(_keyData: string): void {}"
 sha256 = "46410df91d4e9637966958a9ae1accc0cd8f558560ab32ee27c221f4bb244cff"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/tree-selector/help-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeHelp.render"
 family = "tree"
 kind = "render-layout"
-claim = "the help rows show the key hints wrapped by chunk to the width, in the muted key and dim label styles, without padding, byte for byte at widths 24, 38, 64 and 100 and with rebound keys"
+claim = "the help rows show the key hints wrapped by chunk to the width, in the muted style and without padding or truncation (a zero-width terminal wraps to one cell), joined by \" · \" behind a two-space indent; each item shows the first key of every bound action, compacted under a shared modifier prefix, with arrow and page names drawn as glyphs, and shows only its label when no action of the item is bound; byte for byte for default, partly unbound, compacted, glyph-substituted and rebound keys at every width from 0 to 140"
 status = "ported"
 pig_targets = [
-  "tui/tree_select.go#Render"
+  "tui/tree_select.go#treeHelpLines",
+  "tui/tree_select.go#formatTreeHelpKeys",
+  "tui/tree_select.go#compactTreeHelpKeys",
+  "tui/tree_select.go#renderHelp",
 ]
 evidence = [
+  "internal/codingagent/tree_selector_render_contract_test.go#TestTreeHelpRenderMatchesPi",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/06-tree-header-spacing.toml"
+  "test/parity/scenarios/tree/06-tree-header-spacing.toml",
 ]
 
 [contract.upstream]
@@ -3379,20 +3525,20 @@ start = "class TreeHelp implements Component {"
 end = "function formatHelpKeys"
 sha256 = "5c7cb8aa51861500e6db8b9dbae8c49cbb511302db69a7c67de76c64302dbd77"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/tree-selector/label-input-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.render"
 family = "tree"
 kind = "render-layout"
-claim = "the label editor shows the muted prompt, the input rows indented by two and the save and cancel key hints, each truncated to the width, byte for byte at widths 24, 38, 64 and 100"
+claim = "the label editor shows the muted prompt, the input rows indented by two and the save and cancel key hints with the configured keys, each truncated to the width, byte for byte for empty, short, long, wide, emoji, mid-cursor and prefilled labels at every width from 0 to 80, with default and rebound hint keys and in both themes"
 status = "ported"
 pig_targets = [
-  "tui/tree_select.go#Render"
+  "tui/tree_select.go#renderLabelInput",
 ]
 evidence = [
+  "internal/codingagent/tree_selector_render_contract_test.go#TestTreeLabelInputRenderMatchesPi",
   "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-  "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml"
+  "test/parity/scenarios/tree/14-tree-label-input-render.toml",
 ]
 
 [contract.upstream]
@@ -3401,7 +3547,6 @@ start = "class LabelInput implements Component, Focusable {"
 end = "\t\treturn lines;\n\t}\n\n\thandleInput(keyData: string): void {\n\t\tconst kb = getKeybindings();\n\t\tif (kb.matches(keyData, \"tui.select.confirm\")) {\n\t\t\tconst value"
 sha256 = "ecc6621020a8e6660b23b90c6bae84a6137c424f13da702cdd80088d7bed7838"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/program-status-reporter/handle-event"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/program-status-reporter.ts#ProgramStatusReporter.handleEvent"
@@ -4211,14 +4356,19 @@ id = "coding-agent/session-selector/header-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorHeader.render"
 family = "session"
 kind = "render-layout"
-claim = "the header shows the bold scope title with the right-aligned scope, name filter and sort texts (muted label, accent value), then the delete confirmation or the two key-hint rows truncated with \"…\"; the loading progress and status-message rows are not in the corpus, byte for byte in both themes at widths 20, 40, 72 and 100"
+claim = "the header shows the bold scope title with the right-aligned scope (or the loading progress), name filter and sort texts (muted label, accent value), then the delete confirmation, the status message or the two key-hint rows (the rename hint only with a rename function) truncated with \"…\"; the hint keys come from the process-wide keybindings; byte for byte in both themes at every width from 0 to 140 for every scope, filter, sort, path state, confirmation, status and loading state with default and rebound keys"
 status = "ported"
 pig_targets = [
-  "internal/codingagent/session_selector.go#sessionSelectorHeader"
+  "internal/codingagent/session_selector.go#sessionSelectorHeader",
+  "internal/codingagent/session_selector.go#sessionKeyHint",
+  "internal/codingagent/session_selector.go#sessionKeyText",
 ]
 evidence = [
+  "internal/codingagent/session_selector_render_contract_test.go#TestSessionHeaderRenderMatchesPi",
+  "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorKeybindingSourcesMatchPi",
   "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
-  "test/parity/scenarios/session/01-session-selector.toml"
+  "test/parity/scenarios/session/01-session-selector.toml",
+  "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
 ]
 
 [contract.upstream]
@@ -4227,20 +4377,25 @@ start = "\trender(width: number): string[] {\n\t\tconst title = this.scope === \
 end = "\t\treturn [`${left}${\" \".repeat(spacing)}${rightText}`, hintLine1, hintLine2];"
 sha256 = "eb633e625f739429bfd12761d06083bd1b99aa9171a52e308e415af47907104c"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/session-selector/list-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.render"
 family = "session"
 kind = "render-layout"
-claim = "the list shows the search input, the empty message or the window of rows (cursor, tree prefix, bold selected message, muted cwd and age, selected background, delete-confirm colours, named and path display) truncated with the default \"...\" ellipsis, and the muted (n/total) line, byte for byte in both themes at widths 20, 40, 72 and 100"
+claim = "the list shows the search input, the empty message for each scope and name filter or the window of rows (cursor, tree prefix, bold selected message, muted cwd and age, selected background, delete-confirm and active-session colours, named and path display, control characters replaced, ages from now to years) truncated with the default \"...\" ellipsis, and the muted (n/total) line only while rows are clipped; byte for byte in both themes at widths from 1 to 100 over nine fixtures and every key script"
 status = "ported"
 pig_targets = [
-  "internal/codingagent/session_selector.go#renderList"
+  "internal/codingagent/session_selector.go#renderList",
+  "internal/codingagent/session_selector.go#renderNode",
+  "internal/codingagent/session_selector.go#buildTreePrefix",
+  "internal/codingagent/session_selector.go#sessionBold",
 ]
 evidence = [
+  "internal/codingagent/session_selector_render_contract_test.go#TestSessionListRenderMatchesPi",
   "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
-  "test/parity/scenarios/session/20-session-selector-search.toml"
+  "test/parity/scenarios/session/20-session-selector-search.toml",
+  "test/parity/scenarios/session/21-session-search-resume-picker.toml",
+  "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
 ]
 
 [contract.upstream]
@@ -4249,7 +4404,6 @@ start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];\n\
 end = "\tprivate buildTreePrefix("
 sha256 = "47399d2abfd865df759c097d8487fd22807725801a2303db97fdb6cb172e2175"
 keybindings = []
-
 [[contract]]
 id = "coding-agent/footer/render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/footer.ts#FooterComponent.render"

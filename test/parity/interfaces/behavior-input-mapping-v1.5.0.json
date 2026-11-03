@@ -404,20 +404,57 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
       "ownerFamily": "session",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/session_selector.go#HandleInput",
+        "internal/codingagent/session_selector.go#move",
+        "internal/codingagent/session_selector.go#refilter",
+        "internal/codingagent/session_selector.go#selectHighlighted",
+        "internal/codingagent/session_selector.go#sessionKeyText",
+        "internal/codingagent/session_selector.go#startDeleteConfirmation",
+        "internal/codingagent/session_selector.go#toggleNameFilter",
+        "internal/codingagent/session_selector.go#toggleSortMode",
+        "internal/codingagent/session_selector_load.go#refilterLoadedSessions",
+        "internal/codingagent/session_selector_load.go#toggleScope"
+      ],
+      "evidence": [
+        "internal/codingagent/session_selector_contract_test.go#TestSessionListHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorComponentHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorDeleteOutcomeReportsInTheHeader",
+        "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorKeybindingSourcesMatchPi",
+        "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorSharedKeysFollowRebinding",
+        "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+        "test/parity/scenarios/session/20-session-selector-search.toml",
+        "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml"
+      ],
+      "contracts": [
+        "coding-agent/session-selector/list-input-boundaries",
+        "coding-agent/session-selector/list-input-keybinding-sources",
+        "coding-agent/session-selector/list-input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput",
       "ownerFamily": "session",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/session_selector.go#CapturesViewportInput",
+        "internal/codingagent/session_selector.go#HandleInput",
+        "internal/codingagent/session_selector.go#confirmRename",
+        "internal/codingagent/session_selector.go#enterRenameMode",
+        "internal/codingagent/session_selector.go#exitRenameMode"
+      ],
+      "evidence": [
+        "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorComponentHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+        "test/parity/scenarios/session/10-session-selector-rename.toml",
+        "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml"
+      ],
+      "contracts": [
+        "coding-agent/session-selector/rename-mode-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -493,40 +530,89 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#HandleInput",
+        "tui/tree_select.go#handleLabelInput"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeLabelInputAndRoutingContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt",
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/label-input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderSearchLine",
+        "tui/tree_select.go#treeSection"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSearchLineTakesNoInput",
+        "test/parity/scenarios/tree/12-tree-digit-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/search-line-ignores-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#HandleInput",
+        "tui/tree_select.go#cycleFilterMode",
+        "tui/tree_select.go#findBranchSegmentStart",
+        "tui/tree_select.go#fixScroll",
+        "tui/tree_select.go#setFilterMode"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi",
+        "internal/codingagent/tree_selector_contract_test.go#TestTreeListRemappedKeysMatchPi",
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "test/parity/scenarios/tree/07-tree-fold-root.toml",
+        "test/parity/scenarios/tree/09-tree-filter-user-only.toml",
+        "test/parity/scenarios/tree/12-tree-digit-search.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+        "tui/tree_select_contract_test.go#TestTreeFoldedRowIsNotFoldable"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/list-input-boundaries",
+        "coding-agent/tree-selector/list-input-rebound-keys",
+        "coding-agent/tree-selector/list-input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeSelectorComponent.handleInput",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#CapturesViewportInput",
+        "tui/tree_select.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeLabelInputAndRoutingContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go#TestTreeSelectorCapturesViewportInputExceptWhileLabelling",
+        "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/component-input-routing"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2172,20 +2258,45 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.render",
       "ownerFamily": "session",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/session_selector.go#buildTreePrefix",
+        "internal/codingagent/session_selector.go#renderList",
+        "internal/codingagent/session_selector.go#renderNode",
+        "internal/codingagent/session_selector.go#sessionBold"
+      ],
+      "evidence": [
+        "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+        "internal/codingagent/session_selector_render_contract_test.go#TestSessionListRenderMatchesPi",
+        "test/parity/scenarios/session/20-session-selector-search.toml",
+        "test/parity/scenarios/session/21-session-search-resume-picker.toml",
+        "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml"
+      ],
+      "contracts": [
+        "coding-agent/session-selector/list-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorHeader.render",
       "ownerFamily": "session",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/session_selector.go#sessionKeyHint",
+        "internal/codingagent/session_selector.go#sessionKeyText",
+        "internal/codingagent/session_selector.go#sessionSelectorHeader"
+      ],
+      "evidence": [
+        "internal/codingagent/session_selector_contract_test.go#TestSessionSelectorKeybindingSourcesMatchPi",
+        "internal/codingagent/session_selector_oracle_test.go#TestSessionSelectorInputMatchesPi",
+        "internal/codingagent/session_selector_render_contract_test.go#TestSessionHeaderRenderMatchesPi",
+        "test/parity/scenarios/session/01-session-selector.toml",
+        "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml"
+      ],
+      "contracts": [
+        "coding-agent/session-selector/header-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2287,50 +2398,99 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#<module>.renderHorizontalViewport",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderTreeHorizontalViewport",
+        "tui/tree_select.go#renderTreeList"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeHorizontalViewportMatchesPiAtEveryWidth",
+        "test/parity/scenarios/tree/10-tree-scroll-cursor-visible.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/horizontal-viewport"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderLabelInput"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeLabelInputRenderMatchesPi",
+        "test/parity/scenarios/tree/14-tree-label-input-render.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/label-input-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#renderSearchLine"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeSearchLineRenderMatchesPi",
+        "test/parity/scenarios/tree/12-tree-digit-search.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/search-line-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeHelp.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#compactTreeHelpKeys",
+        "tui/tree_select.go#formatTreeHelpKeys",
+        "tui/tree_select.go#renderHelp",
+        "tui/tree_select.go#treeHelpLines"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeHelpRenderMatchesPi",
+        "test/parity/scenarios/tree/06-tree-header-spacing.toml"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/help-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.render",
       "ownerFamily": "tree",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tree_select.go#fixScroll",
+        "tui/tree_select.go#getStatusLabels",
+        "tui/tree_select.go#renderTreeList",
+        "tui/tree_select.go#swapConnectorMiddle"
+      ],
+      "evidence": [
+        "internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go#TestTreeListRenderMatchesPi",
+        "test/parity/scenarios/tree/05-tree-nonempty-overlay.toml",
+        "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+        "tui/tree_label_timestamp_oracle_test.go#TestFormatLabelTimestampMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/tree-selector/list-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
