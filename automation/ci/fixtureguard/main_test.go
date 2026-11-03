@@ -104,6 +104,7 @@ func TestScanTextAcceptsSyntheticFixtures(t *testing.T) {
 		"short request id":               `{"x-request-id":"r1"}`,
 		"synthetic ids":                  `{"id":"msg_1","call":"call_1","resp":"resp_abc"}`,
 		"round created epoch":            `{"created":1700000000}`,
+		"letter-run tool and message id": `data: {"id":"msg_synthetic","created":1700000000,"tool_calls":[{"id":"toolu_01AAAA"}]}`,
 		"round created timestamp":        `{"created_at":"2026-01-01T00:00:00.000Z"}`,
 		"placeholder accounts":           `/Users/me/a /home/user/b /home/you/c C:\\Users\\me\\d /home/u/e`,
 		"repeated one-word deltas":       repeated,
