@@ -35,8 +35,18 @@ func (e *sseTooLargeError) Error() string {
 }
 
 // ConsumeSSEStream reads a server-sent event stream to its end. It fails as
-// soon as an event grows past the limit, before the stream ends.
-func ConsumeSSEStream(r io.Reader, options ConsumeSSEOptions) error {
+// soon as an event grows past the limit, before the stream ends. When it
+// fails and r is an [io.Closer] it closes r, as upstream cancels the reader:
+// the response must not stay open, and a failing close does not replace the
+// error.
+func ConsumeSSEStream(r io.Reader, options ConsumeSSEOptions) (err error) {
+	if closer, ok := r.(io.Closer); ok {
+		defer func() {
+			if err != nil {
+				_ = closer.Close()
+			}
+		}()
+	}
 	maxEventBytes := options.MaxEventBytes
 	if maxEventBytes == 0 {
 		maxEventBytes = DefaultMaxMessageBytes

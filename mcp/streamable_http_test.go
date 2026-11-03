@@ -197,6 +197,38 @@ func TestConsumeSSEStreamRejectsEventsWhoseDataLinesExceedTheLimitWithoutABlankL
 	}
 }
 
+// closeTrackingReader is a stream that stays open after its oversized event: reading past it would block, so only a close ends it.
+type closeTrackingReader struct {
+	data   []byte
+	closed atomic.Bool
+}
+
+func (r *closeTrackingReader) Read(p []byte) (int, error) {
+	if len(r.data) == 0 {
+		return 0, io.ErrNoProgress
+	}
+	n := copy(p, r.data)
+	r.data = r.data[n:]
+	return n, nil
+}
+
+func (r *closeTrackingReader) Close() error {
+	r.closed.Store(true)
+	return nil
+}
+
+// Ports packages/mcp/test/streamable-http.test.ts "cancels the stream when an event exceeds the limit" (#11729).
+func TestConsumeSSEStreamClosesTheStreamWhenAnEventExceedsTheLimit(t *testing.T) {
+	stream := &closeTrackingReader{data: []byte("data: " + strings.Repeat("x", 512) + "\n\n")}
+	err := mcp.ConsumeSSEStream(stream, mcp.ConsumeSSEOptions{MaxEventBytes: 128, OnEvent: func(mcp.SSEEvent) {}})
+	if err == nil || err.Error() != "MCP SSE event exceeds 128 bytes" {
+		t.Fatalf("err = %v", err)
+	}
+	if !stream.closed.Load() {
+		t.Fatal("stream was not closed")
+	}
+}
+
 // mutation-checked: negating the condition `version != ""` at streamable_http.go:457 fails it.
 func TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders(t *testing.T) {
 	url, requests := startServer(t, plainProtocol)
