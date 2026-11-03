@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -77,6 +78,8 @@ type Part struct {
 	// gate is closed once it is published or never will be; it never carries an error.
 	gate     chan struct{}
 	gateOnce sync.Once
+	// touches counts the jobs that took the part's gate (Gate) while it was unpublished.
+	touches atomic.Int64
 }
 
 // Wait blocks until the part is published, which returns nil, or will never be: the error it rejects with. A part rejects
@@ -202,9 +205,21 @@ func (writer *Writer) Gate(key string) <-chan struct{} {
 	writer.mu.Lock()
 	defer writer.mu.Unlock()
 	if part := writer.unpublished[key]; part != nil {
+		part.touches.Add(1)
 		return part.gate
 	}
 	return nil
+}
+
+// Touches is the number of times the gate of the newest unpublished writer of key was taken, for tests that wait until a job
+// reached the wait for that publication; 0 when key has no unpublished writer.
+func (writer *Writer) Touches(key string) int {
+	writer.mu.Lock()
+	defer writer.mu.Unlock()
+	if part := writer.unpublished[key]; part != nil {
+		return int(part.touches.Load())
+	}
+	return 0
 }
 
 // Drained returns a channel closed once every part admitted so far is published or never will be; nil when there is none.
