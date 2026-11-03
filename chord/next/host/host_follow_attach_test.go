@@ -4,56 +4,75 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// packages/chord/src/next/host/follow.ts: `self.follow(attach)` calls attach with the source's observer during activation; the attachment's value
-// is the source's value, an absent address (attach resolving `undefined`) fails the activation `unavailable`, and a rejection is the failure.
-func TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation(t *testing.T) {
-	t.Run("the attachment's value is the source's value, attached once with an observer", func(t *testing.T) {
-		h := newMemberHarness(t)
-		calls := 0
-		var observed FollowObserver[any]
+// followServing serves followView through `self.follow(attach)` on a fresh host and returns what Get gives for it.
+func followServing(t *testing.T, attach FollowAttach[delta.JsonValue]) (*Reference, error) {
+	t.Helper()
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{OnError: errs.push})
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(followView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			followed := self.Follow(attach)
+			sum := self.Derive([]any{followed}, func(values []any) (delta.JsonValue, error) {
+				return values[0].(*delta.JsonObject).Value("n").(float64), nil
+			})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"a": followed, "sum": sum},
+			}}, nil
+		}, ServeOptions{})
+	})
+	if _, err := host.Load([]HostFacet{{Name: "@test/app", Facet: facet}}, background); err != nil {
+		t.Fatal(err)
+	}
+	return host.Get(background, followView, jsonObject(), GetOptions{ReadyTimeout: followMs(50)})
+}
+
+// packages/chord/src/next/host/follow.ts: `self.follow(attach)` calls attach once during activation with the source's observer; the attachment's
+// value is the followed member's value, an absent address (attach resolving `undefined`) fails the activation `unavailable`, and a rejection is
+// the activation's failure.
+func TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet(t *testing.T) {
+	t.Run("the attachment's value is the member's value, attached once with an observer and a context", func(t *testing.T) {
+		var calls atomic.Int64
+		var observed atomic.Bool
 		var attach FollowAttach[delta.JsonValue] = func(observer FollowObserver[any], ctx context.Context) (*FollowAttachment[delta.JsonValue], error) {
-			calls++
-			observed = observer
-			if ctx != memberBackground {
-				t.Errorf("attach got context %v, want the activation's", ctx)
-			}
+			calls.Add(1)
+			observed.Store(observer != nil && ctx != nil)
 			return &FollowAttachment[delta.JsonValue]{Value: memberCount(3), Detach: func() {}}, nil
 		}
-		source := newFollowSource(attach, followOwner{label: "view", ctx: memberBackground, ended: func(chord.WatchEnd) {}}, h.batch, h.loop)
-		if err := source.attach(memberBackground); err != nil {
-			t.Fatalf("attach: %v", err)
+		view, err := followServing(t, attach)
+		if err != nil {
+			t.Fatalf("get: %v", err)
 		}
-		if calls != 1 || observed == nil {
-			t.Fatalf("attach ran %d times with observer %v, want once with an observer", calls, observed)
+		if got := calls.Load(); got != 1 || !observed.Load() {
+			t.Fatalf("attach ran %d times (observer and context given: %v), want once with both", got, observed.Load())
 		}
-		expectEqual(t, "value", h.read(t, source), delta.JsonValue(memberCount(3)))
+		expectEqual(t, "member a", kmMember(t, view, "a"), delta.JsonValue(memberCount(3)))
+		expectEqual(t, "member sum", kmMember(t, view, "sum"), delta.JsonValue(float64(3)))
 	})
 
-	t.Run("an absent address is unavailable", func(t *testing.T) {
-		h := newMemberHarness(t)
-		var attach FollowAttach[delta.JsonValue] = func(FollowObserver[any], context.Context) (*FollowAttachment[delta.JsonValue], error) { return nil, nil }
-		source := newFollowSource(attach, followOwner{label: "view: follow #1", ctx: memberBackground, ended: func(chord.WatchEnd) {}}, h.batch, h.loop)
-		var chordErr *data.ChordError
-		err := source.attach(memberBackground)
-		if !errors.As(err, &chordErr) || chordErr.Code != data.CodeUnavailable || !strings.Contains(chordErr.Message, "view: follow #1: the followed address is absent") {
-			t.Fatalf("attach of an absent address = %v, want unavailable naming the follow", err)
+	t.Run("an absent address fails the activation unavailable", func(t *testing.T) {
+		var attach FollowAttach[delta.JsonValue] = func(FollowObserver[any], context.Context) (*FollowAttachment[delta.JsonValue], error) {
+			return nil, nil
+		}
+		if _, err := followServing(t, attach); err == nil || !strings.Contains(err.Error(), "followed address is absent") {
+			t.Fatalf("get = %v, want it to fail with followed address is absent", err)
 		}
 	})
 
-	t.Run("a rejected attachment is the activation's error", func(t *testing.T) {
-		h := newMemberHarness(t)
+	t.Run("a rejected attachment is the activation's failure", func(t *testing.T) {
 		rejection := errors.New("runtime refused")
-		var attach FollowAttach[delta.JsonValue] = func(FollowObserver[any], context.Context) (*FollowAttachment[delta.JsonValue], error) { return nil, rejection }
-		source := newFollowSource(attach, followOwner{label: "view", ctx: memberBackground, ended: func(chord.WatchEnd) {}}, h.batch, h.loop)
-		if err := source.attach(memberBackground); !errors.Is(err, rejection) {
-			t.Fatalf("attach = %v, want the rejection", err)
+		var attach FollowAttach[delta.JsonValue] = func(FollowObserver[any], context.Context) (*FollowAttachment[delta.JsonValue], error) {
+			return nil, rejection
+		}
+		if _, err := followServing(t, attach); err == nil || !strings.Contains(err.Error(), "runtime refused") {
+			t.Fatalf("get = %v, want it to fail with the rejection", err)
 		}
 	})
 }

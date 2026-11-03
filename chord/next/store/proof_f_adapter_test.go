@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -65,10 +66,14 @@ func TestProofFStoreOwnerTablesDeclareClaimAndPrepareEachTable(t *testing.T) {
 
 func TestProofFOwnerTableWritesStampedRowsAndReadsThemBack(t *testing.T) {
 	store, table := storeBPrepared(t)
-	var owner *OwnerTable = table
-	if owner.Definition.Name != "entries" || owner.Sql.Table != "dur:entries" {
-		t.Fatalf("table = %q/%q", owner.Definition.Name, owner.Sql.Table)
+	owner := table
+	named := func(owned *OwnerTable, name, sqlName string) {
+		t.Helper()
+		if owned.Definition.Name != name || owned.Sql.Table != sqlName {
+			t.Fatalf("table = %q/%q, want %q/%q", owned.Definition.Name, owned.Sql.Table, name, sqlName)
+		}
 	}
+	named(owner, "entries", "dur:entries")
 	encoded, err := owner.Encode(Row{"id": "k", "seq": int64(0), "text": "v"})
 	must(t, err)
 	before := encoded.Row.Value("seq")
@@ -130,8 +135,11 @@ func TestProofFOwnerTableWritesStampedRowsAndReadsThemBack(t *testing.T) {
 
 func TestProofFNewOwnerTableBuildsItsSqlFromTheDefinition(t *testing.T) {
 	definition := storeBEntries(t)
-	var table *OwnerTable = NewOwnerTable(definition, "x:entries")
-	if table.Definition != definition || table.Sql.Table != "x:entries" {
+	table := NewOwnerTable(definition, "x:entries")
+	builtFrom := func(owned *OwnerTable, from *TableDefinition, sqlName string) bool {
+		return owned.Definition == from && owned.Sql.Table == sqlName
+	}
+	if !builtFrom(table, definition, "x:entries") {
 		t.Fatalf("table = %+v", table)
 	}
 	qEqual(t, table.PrepareGet([]string{"text"}), `SELECT "text" FROM "x:entries" WHERE "id" = ?`)
@@ -160,7 +168,7 @@ func TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns(t *testing.T) {
 		}
 		return ids
 	}
-	var base *Query = NewQuery(table.Definition)
+	base := NewQuery(table.Definition)
 	if got := strings.Join(run(base), ","); got != "a,b,c" {
 		t.Fatalf("unfiltered query = %s, want the rows in key order", got)
 	}
@@ -191,7 +199,7 @@ func TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns(t *testing.T) {
 	refused := atLeastB.OrderBy(func(row ColumnRefs) *ColumnRef { return row["text"] }, "")
 	_ = rejected(t, refused.Err(), data.CodeInvalid, data.ReasonArgs)
 	again := refused.Where(func(row ColumnRefs) Condition { return Eq(row["id"], "a") })
-	if again.Err() == nil || again.Err() != refused.Err() {
+	if again.Err() == nil || !errors.Is(again.Err(), refused.Err()) {
 		t.Fatalf("a call on a failed query = %v, want the first error %v", again.Err(), refused.Err())
 	}
 }
@@ -199,7 +207,7 @@ func TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns(t *testing.T) {
 func TestProofFExpressionCompilesIntoDataForEveryOperation(t *testing.T) {
 	table := exprTable(t)
 	refs := table.Refs
-	var ref *Expression = refs["n"]
+	ref := refs["n"]
 	if column, ok := ref.isRef(); !ok || column != "n" || ref.Op != ExprCol {
 		t.Fatalf("column ref = %+v", ref)
 	}

@@ -174,7 +174,7 @@ func TestProofFReplayRefusalRollsBackAndMarksDivergence(t *testing.T) {
 	}
 
 	// A divergence marks the store: no batch applies any more (`invalid/args`), and apply is not called again.
-	err = store.Replay(apply, func(got error) bool { return got == refusal })
+	err = store.Replay(apply, func(got error) bool { return errors.Is(got, refusal) })
 	if !errors.Is(err, refusal) {
 		t.Fatalf("diverging Replay = %v, want the apply error", err)
 	}

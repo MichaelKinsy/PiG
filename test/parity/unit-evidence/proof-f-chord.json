@@ -419,10 +419,10 @@
   "upstream": "packages/chord/src/loader.ts",
   "package": "./chord/host",
   "tests": [
-   "TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne"
+   "TestNodeLoaderIsAFacetLoaderThatNamesFacetsByURLLoadsNothingForNoModulesAndFailsForAMissingModule"
   ],
   "upstream_reference": "packages/chord/src/loader.ts (NodeLoader)",
-  "mutation": "chord/host/loader.go: replace `{ return defaultNodeLoader.Load(modules) }` with `{ return defaultNodeLoader.Load(modules[:0]) }`; the unmutated -run set passes and the mutant compiles; FAIL: TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne."
+  "mutation": "chord/host/loader.go: replace `{ return defaultNodeLoader.Load(modules) }` with `{ return defaultNodeLoader.Load(modules[:0]) }`; the unmutated -run set passes and the mutant compiles; FAIL: TestNodeLoaderIsAFacetLoaderThatNamesFacetsByURLLoadsNothingForNoModulesAndFailsForAMissingModule."
  },
  {
   "upstream": "packages/chord/src/next/contracts/schema.ts",
@@ -437,28 +437,28 @@
   "upstream": "packages/chord/src/next/host/follow.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation"
+   "TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet"
   ],
   "upstream_reference": "packages/chord/src/next/host/follow.ts (FollowAttach)",
-  "mutation": "chord/next/host/host_follow.go: replace `s.value, s.hasValue = attached.Value, true` with `s.value, s.hasValue = delta.JsonValue(nil), true`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation."
+  "mutation": "chord/next/host/host_follow.go: replace `s.value, s.hasValue = attached.Value, true` with `s.value, s.hasValue = attached.Value, false`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet."
  },
  {
   "upstream": "packages/chord/src/next/host/follow.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation"
+   "TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet"
   ],
   "upstream_reference": "packages/chord/src/next/host/follow.ts (FollowAttach)",
-  "mutation": "chord/next/host/host_follow.go: replace `Code:    data.CodeUnavailable, Message: s.owner.label + \": the followed address is absent\",` with `Code:    data.CodeNotReady, Message: s.owner.label + \": the followed address is absent\",`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation."
+  "mutation": "chord/next/host/host_follow.go: replace `s.owner.label + \": the followed address is absent\"` with `s.owner.label + \": the followed address is here\"`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet."
  },
  {
   "upstream": "packages/chord/src/next/host/follow.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation"
+   "TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet"
   ],
   "upstream_reference": "packages/chord/src/next/host/follow.ts (FollowAttach)",
-  "mutation": "chord/next/host/host_follow.go: replace `attached, err := s.attachFn(followObserverOf{source: s}, ctx) if err != nil { return err }` with `attached, err := s.attachFn(followObserverOf{source: s}, ctx) if err != nil { return nil }`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation."
+  "mutation": "chord/next/host/host_follow.go: replace `attached, err := s.attachFn(followObserverOf{source: s}, ctx) if err != nil { return err }` with `attached, err := s.attachFn(followObserverOf{source: s}, ctx) if err != nil { return nil }`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet."
  },
  {
   "upstream": "packages/chord/src/next/link/websocket.ts",

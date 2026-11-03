@@ -103948,7 +103948,7 @@
       ],
       "evidence": [
         "test:chord/host/pi_members_test.go#TestFacetLoaderLoadsModuleRefs",
-        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne",
+        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatNamesFacetsByURLLoadsNothingForNoModulesAndFailsForAMissingModule",
         "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOnceItsCallsUpAreAdmittedSpec9"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -103971,7 +103971,7 @@
       ],
       "evidence": [
         "test:chord/host/pi_members_test.go#TestFacetLoaderLoadsModuleRefs",
-        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne",
+        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatNamesFacetsByURLLoadsNothingForNoModulesAndFailsForAMissingModule",
         "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAChildBehindWhoseHelloWaitsForARunningReloadIsFencedAtOnceItsCallsUpAreAdmittedSpec9"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -117757,7 +117757,7 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation",
+        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet",
         "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -117779,7 +117779,7 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation",
+        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet",
         "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -117801,7 +117801,7 @@
         "call:chord/next/host/host_follow.go#followSource.attach"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation",
+        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
@@ -117823,7 +117823,7 @@
         "public-api:chord/next/host/host_follow.go#FollowObserver"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation",
+        "test:chord/next/host/host_follow_attach_test.go#TestFollowAttachServedThroughSelfFollowGivesTheMemberItsValueAndAnAbsentOrRejectedAttachmentFailsTheGet",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
@@ -130520,7 +130520,7 @@
         "call:chord/host/loader.go#NodeLoader"
       ],
       "evidence": [
-        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne"
+        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatNamesFacetsByURLLoadsNothingForNoModulesAndFailsForAMissingModule"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130541,7 +130541,7 @@
         "call:chord/host/loader.go#NodeLoader"
       ],
       "evidence": [
-        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne"
+        "test:chord/host/loader_default_test.go#TestNodeLoaderIsAFacetLoaderThatNamesFacetsByURLLoadsNothingForNoModulesAndFailsForAMissingModule"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
