@@ -65,10 +65,11 @@ func abortedBy(signal context.Context) error {
 // flush is session-support.ts flush(): let pending work run for one scheduling turn.
 func flush() { time.Sleep(time.Millisecond) }
 
-// eventually is task-support.ts eventually: it checks, then flushes a turn, up to 200 times. A turn is awaitQuiescent, the barrier
-// that stands for `await flush()`: it returns once every other goroutine has run up to a wait, so the work a check waits for
-// (a reopen, a resume, a delivery) has finished or is parked before the next attempt, however slowly the scheduler runs it. The
-// bound counts turns of the work, never a duration, so a starved scheduler cannot exhaust it while the work is still pending.
+// eventually is task-support.ts eventually: check, then await flush(), up to 200 times. A turn is awaitQuiescent, then flush().
+// The barrier returns once every other goroutine has run up to a wait, so the work a check waits for (a reopen, a resume, a
+// delivery) has finished or is parked before the next attempt, however slowly a starved scheduler runs it. A goroutine parked
+// on a timer counts as idle to the barrier, so flush() keeps what a Pi turn also is, a macrotask (setTimeout) of wall time: a
+// handover that sleeps 10 ms after its commit still gets the turn spacing Pi gives it.
 func eventually(t *testing.T, check func() bool) {
 	t.Helper()
 	for range 200 {
@@ -76,6 +77,7 @@ func eventually(t *testing.T, check func() bool) {
 			return
 		}
 		awaitQuiescent(t)
+		flush()
 	}
 	t.Fatal("Condition was not reached")
 }
