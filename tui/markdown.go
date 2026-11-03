@@ -355,8 +355,9 @@ var renderInline = (*Markdown).renderInlineMarkdown
 
 //perf:hot
 func (m *Markdown) Render(width int) []string {
-	if width < 1 {
-		width = 1
+	// Pi throws a RangeError for a negative width (" ".repeat(width)); a negative width renders as width 0 here.
+	if width < 0 {
+		width = 0
 	}
 	transformState := ""
 	if m.TransformState != nil {

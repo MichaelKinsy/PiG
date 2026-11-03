@@ -3321,7 +3321,10 @@
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
         "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
         "tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi",
-        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
       ],
       "contracts": [
         "tui/markdown/render"
@@ -3342,7 +3345,10 @@
         "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
-        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi"
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
       ],
       "contracts": [
         "tui/markdown/render-block"
@@ -3365,7 +3371,10 @@
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
         "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
-        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
       ],
       "contracts": [
         "tui/markdown/render-inline-tokens"
@@ -3387,7 +3396,10 @@
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
         "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
-        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
       ],
       "contracts": [
         "tui/markdown/render-list"
@@ -3409,7 +3421,10 @@
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
         "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
-        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
       ],
       "contracts": [
         "tui/markdown/render-table"
@@ -3435,6 +3450,9 @@
         "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
         "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
         "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
         "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding"
       ],
       "contracts": [
