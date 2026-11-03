@@ -584,15 +584,40 @@ func createSessionFile(path string, lines [][]byte) error {
 }
 
 func writeSessionFile(path string, lines [][]byte, mode int) error {
+	return writeSessionRecords(path, mode, sessionWriteBufferFor(lines), func(emit func(...[]byte) error) error {
+		for _, line := range lines {
+			if err := emit(line); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// writeSessionRecords opens path as writeSessionFile does and passes fill an emit that writes one record, the concatenation of its parts, and
+// its newline through a buffer of bufferSize bytes. fill's error ends the write and is returned as it is; the file stays as written so far.
+func writeSessionRecords(path string, mode, bufferSize int, fill func(emit func(parts ...[]byte) error) error) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|mode, 0o644)
 	if err != nil {
 		return sessionPersistenceError(err, "open", path)
 	}
 	defer func() { _ = f.Close() }()
-	w := bufio.NewWriterSize(f, sessionWriteBufferFor(lines))
-	for _, line := range lines {
-		_, _ = w.Write(line)
-		_ = w.WriteByte('\n')
+	w := bufio.NewWriterSize(f, bufferSize)
+	err = fill(func(parts ...[]byte) error {
+		for _, part := range parts {
+			if _, err := w.Write(part); err != nil {
+				return sessionPersistenceError(err, "write", "")
+			}
+		}
+		if err := w.WriteByte('\n'); err != nil {
+			return sessionPersistenceError(err, "write", "")
+		}
+		return nil
+	})
+	if err != nil {
+		// Pi writes each record as it goes (session-manager.ts _rewriteFile), so the file holds every record emitted before the error.
+		_ = w.Flush()
+		return err
 	}
 	if err := w.Flush(); err != nil {
 		return sessionPersistenceError(err, "write", "")

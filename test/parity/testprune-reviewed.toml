@@ -824,6 +824,13 @@ cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
 reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
 
 [[entry]]
+path = "internal/codingagent/session_clone_export_alloc_test.go"
+commit = "761f5a208c95d475896b10bb47f8ed0cb04d2563"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The changed literal is the failure message of an allocation ceiling, not an expectation: the ceiling (6.0 allocated bytes per source byte of the branch) and the assertion are unchanged. Pi holds every entry decoded and has no such test. The commit makes SessionManager.Clone stream each record from the source to the clone's file and open that file as a resume does, instead of rewriting every record member by member, canonicalizing it and decoding it again, so the message no longer names the cost that exceeded the ceiling."
+
+[[entry]]
 path = "durable/core/driver/harness_provider_request_core_test.go"
 commit = "e6e85cd392"
 class = "NOBEHAVIOR"
