@@ -1,6 +1,6 @@
 package sdk
 
-// Ports pi-ai's pure text and transcript helpers (packages/ai/src/utils/text.ts and transcript.ts at the Pi pin) and StringEnum (utils/typebox-helpers.ts). A message, a context
+// Ports pi-ai's pure text and transcript helpers (packages/ai/src/utils/text.ts and transcript.ts at the Pi pin) and StringEnum (utils/string-enum.ts). A message, a context
 // and a tool are the flat JSON objects the wire carries. The transcript helpers read and write them as raw JSON because their result depends on the order of an object's keys (a
 // system message's `sections`, Pi's Map and Object.entries order) which a decoded Go map cannot give, as in [SerializeConversation]. A value that Pi's TypeScript types rule out
 // but that Pi tolerates (a missing optional field) is read as Pi reads it; one Pi throws a TypeError on (content that is neither a string nor an array) is an error.

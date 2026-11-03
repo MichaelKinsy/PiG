@@ -54,6 +54,9 @@ type BedrockProvider struct {
 	converseStream func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error)
 }
 
+// Ports packages/ai/src/bedrock-provider.ts (bedrockProviderModule: the module bundles the converse stream and streamSimple
+// entry points that BedrockProvider.Stream serves; Go links the provider statically).
+//
 // NewBedrockProvider constructs a Bedrock provider for the given model
 // id. The model id is forwarded verbatim to the ConverseStream call,
 // supporting both base model ids (e.g. "anthropic.claude-3-5-haiku-v1")

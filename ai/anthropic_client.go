@@ -5,6 +5,8 @@ package ai
 // Anthropic subscription (OAuth) tokens, plus the ANTHROPIC_AUTH_TOKEN bearer
 // branch of providers/anthropic.ts anthropicApiKeyAuth().resolve.
 
+// Ports packages/ai/src/api/anthropic-messages.ts (createClient, getBetaFeatures, isOAuthToken and the Claude Code tool-name mapping).
+
 import (
 	"context"
 	"encoding/json"

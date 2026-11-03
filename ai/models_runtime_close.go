@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/models.ts (Models.close and the refresh controllers a provider refresh registers).
+
 import "context"
 
 // Close cancels active refreshes and joins collection-owned operations. Completed refresh signals keep their existing lifetime semantics.

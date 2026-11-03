@@ -3816,5 +3816,563 @@
    "old": "var retryableStatusCodes = map[int]bool{408: true, 425: true, 429: true, 500: true, 502: true, 503: true, 504: true}",
    "new": "var retryableStatusCodes = map[int]bool{408: true, 425: true, 429: true, 500: true, 502: true, 504: true}"
   }
+ ],
+ "packages/agent/src/agent.ts": [
+  {
+   "file": "agent/queue.go",
+   "old": "\tif q.mode == QueueModeAll {\n",
+   "new": "\tif q.mode != QueueModeAll {\n"
+  }
+ ],
+ "packages/ai/src/models.generated.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "generatedRows[ref.row].Headers = generatedHeaders[ref.element]",
+   "new": "generatedRows[ref.row].Headers = nil"
+  }
+ ],
+ "packages/ai/src/models-store.ts": [
+  {
+   "file": "ai/models_store.go",
+   "old": "s.entries[providerID] = entry.Clone()",
+   "new": "s.entries[providerID] = entry"
+  }
+ ],
+ "packages/ai/src/model-catalog.ts": [
+  {
+   "file": "ai/model_catalog.go",
+   "old": "if _, ok := c.models[id]; !ok {",
+   "new": "if _, ok := c.models[id]; ok {"
+  }
+ ],
+ "packages/ai/src/api/anthropic-messages.ts": [
+  {
+   "file": "ai/anthropic_client.go",
+   "old": "strings.Contains(apiKey, \"sk-ant-oat\")",
+   "new": "strings.Contains(apiKey, \"sk-ant-oaz\")"
+  },
+  {
+   "file": "ai/anthropic.go",
+   "old": "r == '_' || r == '-'",
+   "new": "r == '_'"
+  }
+ ],
+ "packages/ai/src/api/constrained-sampling.ts": [
+  {
+   "file": "ai/constrained_sampling.go",
+   "old": "\t\"Too many strict tools (\",\n",
+   "new": "\t\"Too many strict toolz (\",\n"
+  }
+ ],
+ "packages/ai/src/api/mistral-conversations.ts": [
+  {
+   "file": "ai/mistral.go",
+   "old": "req.ReasoningEffort = \"high\"",
+   "new": "req.ReasoningEffort = \"low\""
+  }
+ ],
+ "packages/ai/src/auth/context.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "if !ok || trimJSWhitespace(value) == \"\" {",
+   "new": "if !ok {"
+  },
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "path = home + path[1:]",
+   "new": "path = home + path"
+  }
+ ],
+ "packages/ai/src/auth/helpers.ts": [
+  {
+   "file": "ai/auth_lazy.go",
+   "old": "l.once.Do(func() { l.loaded, l.err = l.load() })",
+   "new": "l.loaded, l.err = l.load()"
+  }
+ ],
+ "packages/ai/src/auth/resolve.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "defaultOAuthMinimumValidityMs = float64(5 * 60 * 1000)",
+   "new": "defaultOAuthMinimumValidityMs = float64(1)"
+  }
+ ],
+ "packages/ai/src/auth/types.ts": [
+  {
+   "file": "ai/auth.go",
+   "old": "json.Indent(&out, canonical, \"\", \"  \")",
+   "new": "json.Indent(&out, canonical, \"\", \"   \")"
+  }
+ ],
+ "packages/ai/src/auth/oauth/anthropic.ts": [
+  {
+   "file": "ai/oauth_anthropic.go",
+   "old": "\t\t\"refresh_token\": refreshToken,\n",
+   "new": "\t\t\"refresh_token\": refreshToken,\n\t\t\"scope\":         anthropicScopes,\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/device-code.ts": [
+  {
+   "file": "ai/oauth_device_code.go",
+   "old": "\t\t\tslowDownResponses++\n",
+   "new": "\t\t\tslowDownResponses += 0\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/github-copilot.ts": [
+  {
+   "file": "ai/copilot_verification_uri.go",
+   "old": "\"Untrusted verification_uri in device code response\"",
+   "new": "\"Untrusted verification_uri in device code respons\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/load.ts": [
+  {
+   "file": "ai/oauth_registry.go",
+   "old": "\t\"xai\":            newXaiOAuthProvider(),\n",
+   "new": "\t\"xai-\":           newXaiOAuthProvider(),\n"
+  },
+  {
+   "file": "ai/oauth_registry.go",
+   "old": "\t\"meta\":           newMetaOAuthProvider(),\n",
+   "new": "\t\"meta-\":          newMetaOAuthProvider(),\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/kimi-coding.ts": [
+  {
+   "file": "ai/oauth_kimi.go",
+   "old": "\tcase \"slow_down\":\n",
+   "new": "\tcase \"slow_dowZ\":\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/openrouter.ts": [
+  {
+   "file": "ai/oauth_openrouter.go",
+   "old": "1<<53 - 1",
+   "new": "1<<53 - 2"
+  },
+  {
+   "file": "ai/oauth_openrouter.go",
+   "old": "\"S256\",\n\t})",
+   "new": "\"plain\",\n\t})"
+  }
+ ],
+ "packages/ai/src/auth/oauth/openai-codex.ts": [
+  {
+   "file": "ai/oauth_openai_codex.go",
+   "old": "float64(jsnumber.FromJSON(tok.ExpiresIn)*1000))",
+   "new": "float64(jsnumber.FromJSON(tok.ExpiresIn)*999))"
+  },
+  {
+   "file": "ai/oauth_openai_codex.go",
+   "old": "!accessOK || !refreshOK || !jsonNumberToken(tok.ExpiresIn)",
+   "new": "!accessOK || refreshOK || !jsonNumberToken(tok.ExpiresIn)"
+  }
+ ],
+ "packages/ai/src/auth/oauth/pkce.ts": [
+  {
+   "file": "ai/pkce.go",
+   "old": "make([]byte, 32)",
+   "new": "make([]byte, 31)"
+  }
+ ],
+ "packages/ai/src/auth/oauth/radius.ts": [
+  {
+   "file": "ai/oauth_radius.go",
+   "old": "\"gateway offline_access\"",
+   "new": "\"gateway\""
+  },
+  {
+   "file": "ai/oauth_radius.go",
+   "old": "= \"pi-gateway\"",
+   "new": "= \"pi-gatewayx\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/xai.ts": [
+  {
+   "file": "ai/oauth_xai.go",
+   "old": "\"b1a00492-073a-47ea-816f-4c329264a828\"",
+   "new": "\"b1a00492-073a-47ea-816f-4c329264a829\""
+  },
+  {
+   "file": "ai/oauth_xai.go",
+   "old": "\"openid profile email offline_access grok-cli:access api:access\"",
+   "new": "\"openid profile email offline_access\""
+  }
+ ],
+ "packages/ai/src/compat/extension-oauth-types.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"clientId\", \"scopes\")",
+   "new": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"scopes\", \"clientId\")"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "accessFirstCredentialMembers  = []string{\"type\", \"access\", \"refresh\", \"expires\"}",
+   "new": "accessFirstCredentialMembers  = []string{\"type\", \"refresh\", \"access\", \"expires\"}"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "Access  string                     `json:\"access\"`",
+   "new": "Access  string                     `json:\"accessToken\"`"
+  }
+ ],
+ "packages/ai/src/utils/error-body.ts": [
+  {
+   "file": "ai/errors.go",
+   "old": "length-maxChars)\n",
+   "new": "length-maxChars+1)\n"
+  },
+  {
+   "file": "ai/errors.go",
+   "old": "return fmt.Sprintf(\"%d: %s\", *norm.Status, message)",
+   "new": "return fmt.Sprintf(\"%d %s\", *norm.Status, message)"
+  },
+  {
+   "file": "ai/errors.go",
+   "old": "const MaxProviderErrorBodyChars = 4000",
+   "new": "const MaxProviderErrorBodyChars = 3999"
+  }
+ ],
+ "packages/ai/src/utils/estimate.ts": [
+  {
+   "file": "ai/estimate.go",
+   "old": "charsPerToken       = 3.5",
+   "new": "charsPerToken       = 3.0"
+  },
+  {
+   "file": "ai/estimate.go",
+   "old": "estimatedImageChars = 4800",
+   "new": "estimatedImageChars = 4801"
+  }
+ ],
+ "packages/ai/src/api/lazy.ts": [
+  {
+   "file": "ai/provider_streams.go",
+   "old": "\tobservation.onEvent(event)\n\tobservation.onResult(message)\n",
+   "new": "\tobservation.onEvent(event)\n"
+  }
+ ],
+ "packages/agent/src/stream-fn.ts": [
+  {
+   "file": "agent/stream_fn.go",
+   "old": "\tdefaultStream.fn = fn\n",
+   "new": "\tdefaultStream.fn = nil\n"
+  }
+ ],
+ "packages/ai/src/session-resources.ts": [
+  {
+   "file": "ai/session_resources.go",
+   "old": "if len(errs) > 0 {",
+   "new": "if len(errs) > 1 {"
+  }
+ ],
+ "packages/ai/src/oauth.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "return ok && subscription.IsSubscription()",
+   "new": "return !ok || subscription.IsSubscription()"
+  }
+ ],
+ "packages/ai/src/cli.ts": [
+  {
+   "file": "coding/cli/auth_commands.go",
+   "old": "fmt.Printf(\"\\nCredentials saved to %s\\n\", credentialPath)",
+   "new": "fmt.Printf(\"\\nCredentials saved to %s.\\n\", credentialPath)"
+  }
+ ],
+ "packages/ai/src/bedrock-provider.ts": [
+  {
+   "file": "ai/providers/bedrock/bedrock.go",
+   "old": "if isReservedBedrockHeader(name) {",
+   "new": "if !isReservedBedrockHeader(name) {"
+  }
+ ],
+ "packages/ai/src/api/openai-completions.ts": [
+  {
+   "file": "ai/openai.go",
+   "old": "req.PromptCacheRetention = new(\"24h\")",
+   "new": "req.PromptCacheRetention = new(\"1h\")"
+  }
+ ],
+ "packages/ai/src/api/openai-responses-shared.ts": [
+  {
+   "file": "ai/openai_responses.go",
+   "old": "Type: \"additional_tools\", Role: \"developer\"",
+   "new": "Type: \"additional_tools\", Role: \"user\""
+  }
+ ],
+ "packages/ai/src/api/openai-codex-responses.ts": [
+  {
+   "file": "ai/openai_codex_responses.go",
+   "old": "return raw + \"/codex/responses\"",
+   "new": "return raw + \"/codex/response\""
+  }
+ ],
+ "packages/ai/src/api/cloudflare.ts": [
+  {
+   "file": "ai/cloudflare.go",
+   "old": "{CLOUDFLARE_ACCOUNT_ID}/ai\"",
+   "new": "{CLOUDFLARE_ACCOUNT_ID}/ai/\""
+  }
+ ],
+ "packages/ai/src/api/transform-messages.ts": [
+  {
+   "file": "ai/tool_flow.go",
+   "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
+   "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
+  }
+ ],
+ "packages/ai/src/api/openrouter-images.ts": [
+  {
+   "file": "ai/openrouter_images.go",
+   "old": "modalities = []string{\"image\", \"text\"}",
+   "new": "modalities = []string{\"image\"}"
+  }
+ ],
+ "packages/ai/src/images-api-registry.ts": [
+  {
+   "file": "ai/images.go",
+   "old": "imagesAPIProviderRegistry[provider.API] = entry",
+   "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
+  }
+ ],
+ "packages/ai/src/utils/hash.ts": [
+  {
+   "file": "ai/openai.go",
+   "old": "h1 = (h1 ^ ch) * 2654435761",
+   "new": "h1 = (h1 ^ ch) * 2654435760"
+  }
+ ],
+ "packages/ai/src/utils/headers.ts": [
+  {
+   "file": "ai/provider_response.go",
+   "old": "out[key] = strings.Join(values, \", \")",
+   "new": "out[key] = strings.Join(values, \",\")"
+  },
+  {
+   "file": "ai/provider_response.go",
+   "old": "out[key] = values[len(values)-1]",
+   "new": "out[key] = values[0]"
+  },
+  {
+   "file": "ai/classifier_http.go",
+   "old": "\t\t\tdelete(merged, normalized)\n",
+   "new": "\t\t\t_ = normalized\n"
+  }
+ ],
+ "packages/ai/src/utils/node-http-proxy.ts": [
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "case \"https\", \"wss\":\n\t\treturn 443",
+   "new": "case \"https\", \"wss\":\n\t\treturn 444"
+  },
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "hostname == host || strings.HasSuffix(hostname, \".\"+host)",
+   "new": "hostname == host"
+  },
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "if noProxy == \"*\" {",
+   "new": "if noProxy == \"-\" {"
+  }
+ ],
+ "packages/ai/src/utils/text.ts": [
+  {
+   "file": "ai/text.go",
+   "old": "\tsep := \"\\n\"\n",
+   "new": "\tsep := \" \"\n"
+  },
+  {
+   "file": "ai/transcript.go",
+   "old": "Removed system prompt section \\\"%s\\\"",
+   "new": "Removed prompt section \\\"%s\\\""
+  },
+  {
+   "file": "ai/estimate.go",
+   "old": "parts = append(parts, strings.Join(texts, \"\\n\"))",
+   "new": "parts = append(parts, strings.Join(texts, \"\\n\\n\"))"
+  }
+ ],
+ "packages/ai/src/utils/string-enum.ts": [
+  {
+   "file": "ai/string_enum.go",
+   "old": "\"type\": \"string\", \"enum\"",
+   "new": "\"type\": \"mutant\", \"enum\""
+  }
+ ],
+ "packages/ai/src/api/cloudflare-ai-binding.ts": [
+  {
+   "file": "ai/cloudflare_ai_binding.go",
+   "old": "the AI binding does not expose fetch()\"",
+   "new": "the AI binding does not expose fetch\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/meta.ts": [
+  {
+   "file": "ai/oauth_meta.go",
+   "old": "\"1031625952748946\"",
+   "new": "\"1031625952748947\""
+  },
+  {
+   "file": "ai/oauth_meta.go",
+   "old": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli(),",
+   "new": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli() + 1,"
+  }
+ ],
+ "packages/ai/src/utils/sleep.ts": [
+  {
+   "file": "ai/abort_utils.go",
+   "old": "\tcase <-ctx.Done():\n\t\treturn context.Cause(ctx)\n\t}\n}\n\n// AbortReason",
+   "new": "\tcase <-ctx.Done():\n\t\treturn ctx.Err()\n\t}\n}\n\n// AbortReason"
+  },
+  {
+   "file": "ai/abort_utils.go",
+   "old": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs",
+   "new": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs*2"
+  }
+ ],
+ "packages/ai/src/auth/oauth/callback-server.ts": [
+  {
+   "file": "ai/oauth_callback_server.go",
+   "old": "http.StatusNotFound, OAuthErrorHTML(\"Callback route not found.\"",
+   "new": "http.StatusBadRequest, OAuthErrorHTML(\"Callback route not found.\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/openai-chatgpt.ts": [
+  {
+   "file": "ai/oauth_openai_chatgpt.go",
+   "old": "\"chatgpt.tokens.use.direct\"",
+   "new": "\"chatgpt.tokens.use.indirect\""
+  },
+  {
+   "file": "ai/oauth_openai_chatgpt.go",
+   "old": "\"code_challenge_method\", \"S256\", \"nonce\"",
+   "new": "\"code_challenge_method\", \"plain\", \"nonce\""
+  }
+ ],
+ "packages/agent/src/agent-loop.ts": [
+  {
+   "file": "agent/tool_execution.go",
+   "old": "\tif len(finalized) == 0 {\n\t\treturn false\n\t}\n\tfor _, f := range finalized {\n\t\tif !f.result.Terminate {",
+   "new": "\tif len(finalized) == 0 {\n\t\treturn true\n\t}\n\tfor _, f := range finalized {\n\t\tif !f.result.Terminate {"
+  },
+  {
+   "file": "agent/tool_execution.go",
+   "old": "if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {",
+   "new": "if r.h.cfg.ToolExecution == ToolModeSequential && r.hasSequentialToolCall(calls) {"
+  },
+  {
+   "file": "agent/tool_execution.go",
+   "old": "result.Terminate = hookResult.Terminate\n",
+   "new": "result.Terminate = !hookResult.Terminate\n"
+  },
+  {
+   "file": "agent/agent_loop.go",
+   "old": "assistant.StopReason == ai.StopReasonLength",
+   "new": "assistant.StopReason == ai.StopReasonStop"
+  }
+ ],
+ "packages/agent/src/types.ts": [
+  {
+   "file": "agent/queue.go",
+   "old": "\tif q.mode == QueueModeAll {\n",
+   "new": "\tif q.mode != QueueModeAll {\n"
+  },
+  {
+   "file": "agent/queue.go",
+   "old": "\t\tif message.User != nil {\n",
+   "new": "\t\tif message.User == nil {\n"
+  },
+  {
+   "file": "agent/queue.go",
+   "old": "\tq.messages = q.messages[len(drained):]\n",
+   "new": "\tq.messages = q.messages[:0]\n"
+  }
+ ],
+ "packages/ai/src/types.ts": [
+  {
+   "file": "ai/model_utils.go",
+   "old": "\tThinkingMedium,\n\tThinkingHigh,\n",
+   "new": "\tThinkingHigh,\n\tThinkingMedium,\n"
+  },
+  {
+   "file": "ai/model_utils.go",
+   "old": "\treturn []ModelThinkingLevel{ThinkingOff}\n",
+   "new": "\treturn []ModelThinkingLevel{ThinkingLow}\n"
+  },
+  {
+   "file": "ai/model_utils.go",
+   "old": "CacheRead:  c.CacheReadCostPer1M,",
+   "new": "CacheRead:  c.CacheWriteCostPer1M,"
+  }
+ ],
+ "packages/ai/src/models.ts": [
+  {
+   "file": "ai/model_utils.go",
+   "old": "input*2*float64(longWrite)",
+   "new": "input*3*float64(longWrite)"
+  },
+  {
+   "file": "ai/models_runtime_stream.go",
+   "old": "\"Provider is not configured: \"",
+   "new": "\"Provider not configured: \""
+  },
+  {
+   "file": "ai/models_runtime_auth.go",
+   "old": "\"Credential store delete failed for \"",
+   "new": "\"Credential store remove failed for \""
+  }
+ ],
+ "packages/ai/src/compat.ts": [
+  {
+   "file": "ai/compat.go",
+   "old": "\tif hasExplicitAPIKey(options.APIKey) {\n\t\treturn options\n\t}\n\tapiKey :=",
+   "new": "\tif !hasExplicitAPIKey(options.APIKey) {\n\t\treturn options\n\t}\n\tapiKey :="
+  },
+  {
+   "file": "ai/compat.go",
+   "old": "apiKey == \"\" || apiKey == envAuthenticated",
+   "new": "apiKey == \"\" || apiKey != envAuthenticated"
+  },
+  {
+   "file": "ai/compat.go",
+   "old": "strings.HasPrefix(modelProviderID(model), \"cloudflare-\")",
+   "new": "strings.HasPrefix(modelProviderID(model), \"cloudflare_\")"
+  }
+ ],
+ "packages/ai/src/utils/event-stream.ts": [
+  {
+   "file": "ai/event_stream_generic.go",
+   "old": "\tif s.done {\n\t\treturn\n\t}\n\tif s.isComplete(event) {",
+   "new": "\tif s.done && false {\n\t\treturn\n\t}\n\tif s.isComplete(event) {"
+  },
+  {
+   "file": "ai/event_stream.go",
+   "old": "value.Reason != StopReasonError && value.Reason != StopReasonAborted {",
+   "new": "value.Reason != StopReasonError {"
+  }
+ ],
+ "packages/ai/src/utils/validation.ts": [
+  {
+   "file": "ai/validate.go",
+   "old": "strings.ReplaceAll(segment, \"~1\", \"/\")",
+   "new": "strings.ReplaceAll(segment, \"~1\", \".\")"
+  },
+  {
+   "file": "ai/validate.go",
+   "old": "\t\tmessage.WriteString(\"  - \")\n",
+   "new": "\t\tmessage.WriteString(\"  * \")\n"
+  },
+  {
+   "file": "ai/validate.go",
+   "old": "\t\treturn \"root\"\n",
+   "new": "\t\treturn \"$\"\n"
+  },
+  {
+   "file": "ai/validate_arguments.go",
+   "old": "fmt.Errorf(\"Tool \\\"%s\\\" not found\", call.Name)",
+   "new": "fmt.Errorf(\"Tool %s not found\", call.Name)"
+  }
  ]
 }

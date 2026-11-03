@@ -3614,6 +3614,32 @@
       ]
     },
     {
+      "id": "BF-1f2f940",
+      "title": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the…",
+      "symptom": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does. A response that sent the lifetime as a string such as `\"0x10\"`, `\"0b11\"` or `[5]` was rejected as missing required fields although `Number()` accepts it, and one such as `\"1_0\"`, `\"inf\"` or `\"0x1p3\"` was accepted as a finite lifetime although `Number()` yields NaN and Pi rejects the response.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1f2f94065d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_federation_number_oracle_test.go::TestFederationExpiresInNumberMatchesJS",
+        "ai/auth_context_oracle_test.go::TestDefaultProviderAuthContextMatchesPi",
+        "ai/cloudflare_stream_upstream_test.go::TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
+        "ai/oauth_credential_order_test.go::TestOAuthCredentialMembersFollowPiFlowLiterals",
+        "ai/oauth_load_oracle_test.go::TestOAuthFlowLoadersMatchPi"
+      ]
+    },
+    {
       "id": "BF-1f7fa2f",
       "title": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx…",
       "symptom": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx when a later extension's handler awaits a timer or I/O.",
@@ -21812,6 +21838,28 @@
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml",
         "test/parity/scenarios/rpc/59-rpc-prompt-wrong-typed-system-replay.toml"
+      ]
+    },
+    {
+      "id": "BF-85c4c8f",
+      "title": "`pig login \u003cprovider\u003e` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private",
+      "symptom": "`pig login \u003cprovider\u003e` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private.",
+      "rootCause": "pig login printed a blank line after every authorization URL, listed select options as \"1) label\" and read the default option on an empty answer, prefixed \"Error:\" to every login failure except an unknown provider, and left an existing auth.json at its old permissions while it stored OAuth tokens in it. Pi's packages/ai/src/cli.ts prints neither the blank line nor \"1)\", asks \"Enter number (1-N): \" and fails an answer that is not a listed number with \"Invalid selection\", prefixes every failure with \"Error:\", and chmods an existing auth.json to 0600 before it saves.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig login \u003cprovider\u003e` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private. It left a blank line after every authorization URL, listed a provider's select options as `1) label` and took the first option for an empty answer, and printed an unknown provider without the `Error:` prefix that every other login failure has. Pi asks `Enter number (1-N): ` for a select option, lists `1. label`, and fails an answer that is not a listed number with `Invalid selection`. An existing `auth.json` keeps the permissions an older version gave it while the new OAuth tokens are written into it; login now sets it to owner-only (`0600`) before it saves, as `cli.ts` does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "85c4c8f1e4",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/cli/ai_cli_pi_oracle_test.go::TestAICLILoginMatchesPi"
       ]
     },
     {

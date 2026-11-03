@@ -141,6 +141,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-1f2f940](#bf-1f2f940) | The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1f7fa2f](#bf-1f7fa2f) | In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1fabd48](#bf-1fabd48) | `pig -e npm:<pkg>` no longer stays on the version from the first download | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-1fbdabb](#bf-1fbdabb) | A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -777,6 +778,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-85618d9](#bf-85618d9) | fix(rpc): a failed switch_session answers before the replacement ahead of it; prompt compaction checks… | PiG's own defect | All platforms | Unreleased |
 | [BF-85908ae](#bf-85908ae) | A `/tree` branch summary the provider refuses as too long is retried with the newest half of the request… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-85a7b01](#bf-85a7b01) | A prompt now fails with Pi's error when the Session's history holds a system message whose `content` is a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-85c4c8f](#bf-85c4c8f) | `pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private | PiG's own defect | All platforms | Unreleased |
 | [BF-85c98be](#bf-85c98be) | `durable/interop/bench.mjs` and `sqlhost-bench seed\|sample` report the process's own peak RSS on Linux… | PiG's own defect | Linux | 0.5.0 |
 | [BF-85ca0f5](#bf-85ca0f5) | Rebuilding the transcript (resume, `/tree`, display settings) now places cache-miss notices as Pi does in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-85f21a9](#bf-85f21a9) | In fullscreen mode a focused selection list takes every viewport key, not only the page keys, so `Ctrl+Home`… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -3220,6 +3222,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `0b4e1e3376` (2026-10-09), `15a5c0b670` (2026-10-09), `1ee7dea3e4` (2026-10-09), `23aa78b173` (2026-10-09), `66b0fc0539` (2026-10-09), `7c4d874438` (2026-10-09), `a739b6dcf2` (2026-10-09), `c4d51d5c1a` (2026-10-09), `d80c1cd150` (2026-10-09), `da8a8704c6` (2026-10-09)
 - **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode` and 1 more in docs/bug-ledger.json
 - **Release note:** The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects (for example a port above 65535) follows Pi's `new URL`: it fails where Pi throws and keeps the base path where Pi does.
+
+### BF-1f2f940
+
+**The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1f2f94065d` (2026-11-02)
+- **Tests:** `ai/anthropic_federation_number_oracle_test.go::TestFederationExpiresInNumberMatchesJS`, `ai/auth_context_oracle_test.go::TestDefaultProviderAuthContextMatchesPi`, `ai/cloudflare_stream_upstream_test.go::TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs`, `ai/oauth_credential_order_test.go::TestOAuthCredentialMembersFollowPiFlowLiterals`, `ai/oauth_load_oracle_test.go::TestOAuthFlowLoadersMatchPi`
+- **Release note:** The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does. A response that sent the lifetime as a string such as `"0x10"`, `"0b11"` or `[5]` was rejected as missing required fields although `Number()` accepts it, and one such as `"1_0"`, `"inf"` or `"0x1p3"` was accepted as a finite lifetime although `Number()` yields NaN and Pi rejects the response.
 
 ### BF-1f7fa2f
 
@@ -12014,6 +12030,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `85a7b010a8` (2026-10-10)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `agent/system_replay_error_test.go::TestCurrentSystemMessageErrorMatchesPi`, `internal/codingagent/interactive_prompt_validation_test.go::TestInteractivePromptValidationPrecedesBeforeAgentStart`, `internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain` and 3 more in docs/bug-ledger.json
 - **Release note:** A prompt now fails with Pi's error when the Session's history holds a system message whose `content` is a number, a boolean or an object (`content.filter is not a function`), whose content array holds `null`, or whose `toolsAdded` or `toolsRemoved` is a number, a boolean, an object or an array that holds `null` (for example `number 5 is not iterable (cannot read property Symbol(Symbol.iterator))`). Before, PiG read such a member as absent and sent the request. In RPC mode the prompt response reports the error, and in interactive mode the error is shown; no run starts.
+
+### BF-85c4c8f
+
+**`pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private.
+- **Root cause:** pig login printed a blank line after every authorization URL, listed select options as "1) label" and read the default option on an empty answer, prefixed "Error:" to every login failure except an unknown provider, and left an existing auth.json at its old permissions while it stored OAuth tokens in it. Pi's packages/ai/src/cli.ts prints neither the blank line nor "1)", asks "Enter number (1-N): " and fails an answer that is not a listed number with "Invalid selection", prefixes every failure with "Error:", and chmods an existing auth.json to 0600 before it saves.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `85c4c8f1e4` (2026-11-02)
+- **Tests:** `coding/cli/ai_cli_pi_oracle_test.go::TestAICLILoginMatchesPi`
+- **Release note:** `pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private. It left a blank line after every authorization URL, listed a provider's select options as `1) label` and took the first option for an empty answer, and printed an unknown provider without the `Error:` prefix that every other login failure has. Pi asks `Enter number (1-N): ` for a select option, lists `1. label`, and fails an answer that is not a listed number with `Invalid selection`. An existing `auth.json` keeps the permissions an older version gave it while the new OAuth tokens are written into it; login now sets it to owner-only (`0600`) before it saves, as `cli.ts` does.
 
 ### BF-85c98be
 

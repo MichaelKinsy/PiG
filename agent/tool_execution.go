@@ -18,8 +18,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
-// Tool-call execution for one assistant message. Mirrors upstream
-// packages/agent/src/agent-loop.ts executeToolCalls and its helpers.
+// Tool-call execution for one assistant message.
+// Ports packages/agent/src/agent-loop.ts (executeToolCalls and its helpers).
 
 // executedToolCallBatch is the outcome of one assistant message's tool calls.
 type executedToolCallBatch struct {
@@ -642,6 +642,7 @@ func (f finalizedToolCall) durationMs() *int64 {
 	if !f.executed {
 		return nil
 	}
+	//portlint:allow numbers agent-loop.ts:826-852 Math.round(durationMs): a time.Duration is a finite non-negative nanosecond count, so the quotient is finite and in int64 range, and math.Round equals Math.round off negative halves
 	return new(int64(math.Round(float64(f.duration) / float64(time.Millisecond))))
 }
 

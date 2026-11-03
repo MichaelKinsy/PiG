@@ -11270,9 +11270,9 @@
         "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -17975,9 +17975,9 @@
         "call:ai/model_types.go#ImageModel.ProviderID"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/model_operations_upstream_test.go#TestModelOperationsUpstream"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -24474,7 +24474,7 @@
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
         "test:ai/oauth_auth_upstream_test.go#TestOAuthAuthAdaptersUpstream",
-        "test:coding/model_runtime_auth_options_upstream_test.go#TestExtensionOAuthOnlyProviderHasNoAPIKeyMethodUpstream"
+        "test:ai/oauth_load_oracle_test.go#TestOAuthFlowLoadersMatchPi"
       ]
     },
     {
@@ -30109,8 +30109,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
-        "test:ai/anthropic_federation_sdk_upstream_test.go#TestAnthropicFederationExchangeErrors"
+        "test:ai/cloudflare_stream_upstream_test.go#TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi"
       ]
     },
     {
@@ -54676,9 +54676,9 @@
         "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -60265,9 +60265,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -60287,9 +60287,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -62163,9 +62163,9 @@
         "call:ai/model_types.go#ImageModel.ProviderID"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/model_operations_upstream_test.go#TestModelOperationsUpstream"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -68879,7 +68879,7 @@
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
         "test:ai/oauth_auth_upstream_test.go#TestOAuthAuthAdaptersUpstream",
-        "test:coding/model_runtime_auth_options_upstream_test.go#TestExtensionOAuthOnlyProviderHasNoAPIKeyMethodUpstream"
+        "test:ai/oauth_load_oracle_test.go#TestOAuthFlowLoadersMatchPi"
       ]
     },
     {
@@ -74690,8 +74690,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
-        "test:ai/anthropic_federation_sdk_upstream_test.go#TestAnthropicFederationExchangeErrors"
+        "test:ai/cloudflare_stream_upstream_test.go#TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi"
       ]
     },
     {
@@ -86288,9 +86288,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -86310,9 +86310,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {

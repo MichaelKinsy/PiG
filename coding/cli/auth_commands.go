@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 type loginCommand string
@@ -105,7 +106,7 @@ func runLoginCommand(args []string) int {
 	case authLogin:
 		provider, err := resolveLoginProvider(opts.provider, &contributions)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, "Error:", err)
 			return 1
 		}
 		// Pi passes the installation's device ID to every login (interactive-mode.ts:6297).
@@ -120,6 +121,13 @@ func runLoginCommand(args []string) int {
 		if credentialStore, ok := provider.(ai.OAuthCredentialStore); ok {
 			credentialPath, err = credentialStore.StoreOAuthCredentials(cred)
 		} else {
+			// cli.ts saveAuth keeps OAuth tokens readable by their owner only: chmod covers a file an older version created.
+			if _, statErr := os.Stat(authPath); statErr == nil {
+				if err = os.Chmod(authPath, 0o600); err != nil {
+					fmt.Fprintln(os.Stderr, "Error:", err)
+					return 1
+				}
+			}
 			store, openErr := ai.NewAuthStorage(authPath)
 			if openErr != nil {
 				printCLIError("%v", openErr)
@@ -332,7 +340,6 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 			if info.Instructions != "" {
 				fmt.Println(info.Instructions)
 			}
-			fmt.Println()
 		},
 		OnPrompt: func(prompt ai.OAuthPrompt) (string, error) {
 			if noInput {
@@ -367,24 +374,21 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 			if noInput {
 				return "", fmt.Errorf("provider %s requires a selection; rerun without --no-input", provider.ID())
 			}
-			fmt.Println(prompt.Message)
+			fmt.Printf("\n%s\n", prompt.Message)
 			for i, opt := range prompt.Options {
-				fmt.Printf("  %d) %s\n", i+1, opt.Label)
+				fmt.Printf("  %d. %s\n", i+1, opt.Label)
 			}
-			fmt.Print("Choice [1]: ")
+			fmt.Printf("Enter number (1-%d): ", len(prompt.Options))
 			line, err := readLine(os.Stdin)
 			if err != nil {
 				return "", err
 			}
-			line = strings.TrimSpace(line)
-			if line == "" {
-				return prompt.Options[0].ID, nil
+			// cli.ts answerPrompt: Number.parseInt(answer, 10) - 1 indexes the options; anything else is "Invalid selection".
+			n := jsnumber.ParseInt(line)
+			if !(n >= 1 && n <= float64(len(prompt.Options))) { // NaN fails both comparisons
+				return "", fmt.Errorf("Invalid selection")
 			}
-			n, convErr := strconv.Atoi(line)
-			if convErr != nil || n < 1 || n > len(prompt.Options) {
-				return "", fmt.Errorf("invalid choice %q", line)
-			}
-			return prompt.Options[n-1].ID, nil
+			return prompt.Options[int(n)-1].ID, nil
 		},
 	}
 	if parityHarnessEnabled() {

@@ -1,5 +1,6 @@
 package ai
 
+// pi: packages/ai/src/models.generated.ts
 // pi: packages/ai/src/providers/amazon-bedrock.models.ts
 // pi: packages/ai/src/providers/ant-ling.models.ts
 // pi: packages/ai/src/providers/anthropic.models.ts
@@ -246,4 +247,87 @@ func checkClassifierCatalog(t *testing.T, provider string, want map[string]map[s
 			t.Errorf("%s/%s: classifier differs: %+v vs %v", provider, model.ID, model, upstream)
 		}
 	}
+}
+
+// barrelRecordKeys returns the provider keys, in source order, of the `export const <name>` record of the pinned catalog barrel
+// (models.generated.ts), with the shard identifier each key is bound to.
+func barrelRecordKeys(t *testing.T, source, name string) (keys, shards []string) {
+	t.Helper()
+	_, rest, ok := strings.Cut(source, "export const "+name+": {")
+	if !ok {
+		t.Fatalf("models.generated.ts: no export %s", name)
+	}
+	_, rest, ok = strings.Cut(rest, "} = {\n")
+	if !ok {
+		t.Fatalf("models.generated.ts: %s has no value", name)
+	}
+	body, _, ok := strings.Cut(rest, "\n};")
+	if !ok {
+		t.Fatalf("models.generated.ts: %s value is unterminated", name)
+	}
+	for _, match := range regexp.MustCompile(`(?m)^\t"([^"]+)": ([A-Z0-9_]+),$`).FindAllStringSubmatch(body, -1) {
+		keys, shards = append(keys, match[1]), append(shards, match[2])
+	}
+	return keys, shards
+}
+
+// The pinned models.generated.ts is the catalog barrel: MODELS, IMAGE_MODELS and CLASSIFIER_MODELS each bind every provider id to that
+// provider's `<ID>_MODELS`, `<ID>_IMAGE_MODELS` or `<ID>_CLASSIFIER_MODELS` shard in one shared key order. The Go catalog must list the
+// same providers and keep each type's records grouped by provider in that order.
+func TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder(t *testing.T) {
+	raw, err := os.ReadFile("../.upstream/current/packages/ai/src/models.generated.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(raw)
+	chatKeys, chatShards := barrelRecordKeys(t, source, "MODELS")
+	imageKeys, imageShards := barrelRecordKeys(t, source, "IMAGE_MODELS")
+	classifierKeys, classifierShards := barrelRecordKeys(t, source, "CLASSIFIER_MODELS")
+	if len(chatKeys) == 0 || !slices.Equal(chatKeys, imageKeys) || !slices.Equal(chatKeys, classifierKeys) {
+		t.Fatalf("barrel records disagree: MODELS %v, IMAGE_MODELS %v, CLASSIFIER_MODELS %v", chatKeys, imageKeys, classifierKeys)
+	}
+	for i, provider := range chatKeys {
+		id := strings.ToUpper(strings.ReplaceAll(provider, "-", "_"))
+		if chatShards[i] != id+"_MODELS" || imageShards[i] != id+"_IMAGE_MODELS" || classifierShards[i] != id+"_CLASSIFIER_MODELS" {
+			t.Errorf("%s is bound to %s, %s, %s", provider, chatShards[i], imageShards[i], classifierShards[i])
+		}
+	}
+	if got := ListProviders(); !slices.Equal(got, chatKeys) {
+		t.Fatalf("providers = %v, barrel %v", got, chatKeys)
+	}
+	position := map[string]int{}
+	for i, provider := range chatKeys {
+		position[provider] = i
+	}
+	// grouped checks that the records of each provider are contiguous and the providers appear in barrel order.
+	grouped := func(kind string, providers []string) {
+		t.Helper()
+		last := -1
+		for i, provider := range providers {
+			at, ok := position[provider]
+			if !ok {
+				t.Fatalf("%s: record of %q, a provider the barrel does not list", kind, provider)
+			}
+			if i > 0 && provider == providers[i-1] {
+				continue
+			}
+			if at <= last {
+				t.Errorf("%s: provider %q appears out of barrel order or again after its group", kind, provider)
+			}
+			last = at
+		}
+	}
+	var chat, image, classifier []string
+	for _, model := range piListedModels(GeneratedModels) {
+		chat = append(chat, model.Provider)
+	}
+	for _, model := range GeneratedImageModels {
+		image = append(image, model.Provider)
+	}
+	for _, model := range GeneratedClassifierModels {
+		classifier = append(classifier, model.Provider)
+	}
+	grouped("MODELS", chat)
+	grouped("IMAGE_MODELS", image)
+	grouped("CLASSIFIER_MODELS", classifier)
 }
