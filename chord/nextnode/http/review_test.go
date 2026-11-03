@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Go-only regression tests of the lane review: each fails on the code before its
@@ -512,4 +514,93 @@ func TestReviewOriginsAreWhatTheURLParserSerializes(t *testing.T) {
 			t.Fatalf("isOrigin(%q) = %v, want %v", text, got, want)
 		}
 	}
+}
+
+// Pi's `socket.once("close", fn)` (Node's EventEmitter `once`) registers and arms its wrapper in one step: a close cannot
+// reach the wrapper before it can remove itself. A close on another goroutine between the registration and the hand-back of
+// the removal called a nil `removed` (and read it unsynchronised). The hook forces that interleaving.
+func TestReviewAOnceListenerWhoseSocketClosesRightAfterItsRegistrationFiresOnceAndIsRemoved(t *testing.T) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(*nethttp.Request) bool { return true }}
+	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		if _, err := upgrader.Upgrade(w, r, nil); err != nil {
+			return
+		}
+	}))
+	t.Cleanup(server.Close)
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	socket := newWebSocket(conn)
+	var calls atomic.Int32
+	socket.attached = func() {
+		socket.attached = nil
+		panicked := make(chan any, 1)
+		go func() {
+			defer func() { panicked <- recover() }()
+			socket.closed(CloseEvent{Code: 1006})
+		}()
+		if got := receive(t, panicked, "the close"); got != nil {
+			t.Errorf("the close that raced the registration panicked: %v", got)
+		}
+	}
+	remove := socket.OnceClose(func(CloseEvent) { calls.Add(1) })
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("the once listener ran %d times, want 1", got)
+	}
+	socket.mu.Lock()
+	left := len(socket.listeners)
+	socket.mu.Unlock()
+	if left != 0 {
+		t.Fatalf("%d listeners left, want the once listener removed", left)
+	}
+	remove()
+	socket.emit(link.WebSocketClose, CloseEvent{Code: 1006})
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("the once listener ran %d times after a second close, want 1", got)
+	}
+}
+
+// In Pi the hand-out of an upgrade and the keeping of its connection are one synchronous step, so a router change reaches every
+// connection admitted by the router before it (`revoke` sees it). Here a change that ran while the upgrade was between its
+// router check and its keep missed the connection: the server never ended it (soak F7's 30 s hang, `the server never ended the
+// connection`).
+func TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection(t *testing.T) {
+	entered := newGate()
+	release := newGate()
+	t.Cleanup(release.resolve)
+	revoked := make(chan struct{}, 8)
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{tunnel}, servedOptions{
+		revokeHook: func(router *Router) {
+			if !router.Hosts.Has("t.example") {
+				revoked <- struct{}{}
+			}
+		},
+		links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+			// After the checks against the router, before the socket is kept.
+			entered.resolve()
+			<-release.done()
+			return LinkOptions{}, nil
+		}},
+	})
+	type dialed struct {
+		socket *clientSocket
+		err    error
+	}
+	opening := httpAsync(func() dialed {
+		socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
+		return dialed{socket, err}
+	})
+	receive(t, entered.done(), "the links options hook")
+	server.reload(t)
+	receive(t, revoked, "the revocation against the router without the host")
+	server.http.revokeTasks.Wait()
+	release.resolve()
+	got := receive(t, opening, "the upgrade")
+	if got.err != nil {
+		t.Fatalf("the upgrade failed with %v", got.err)
+	}
+	receive(t, got.socket.closed, "the server ending the connection its host left")
 }

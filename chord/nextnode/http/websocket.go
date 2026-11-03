@@ -94,6 +94,10 @@ type WebSocket struct {
 	deliverMu sync.Mutex
 	holding   bool
 	held      []Message
+
+	// attached sees each listener right after it was registered, before its attaching call goes on (a test's: the close that
+	// races a registration, forced).
+	attached func()
 }
 
 // newWebSocket is the socket over conn (an upgraded server connection).
@@ -140,6 +144,9 @@ func (s *WebSocket) on(event link.WebSocketEvent, fn func(data any)) (remove fun
 	s.mu.Lock()
 	s.listeners = append(s.listeners, listener)
 	s.mu.Unlock()
+	if s.attached != nil {
+		s.attached()
+	}
 	return func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
