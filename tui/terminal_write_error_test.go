@@ -52,3 +52,16 @@ func TestFailedRawWriteReachesTheWriteErrorHandler(t *testing.T) {
 		t.Fatalf("handler saw %v, want the failed raw write with EIO", got)
 	}
 }
+
+// HideCursor, ShowCursor and the renderer's other writes are process.stdout.write in Pi, so a failure reaches the same listener.
+func TestFailedCursorWriteReachesTheWriteErrorHandler(t *testing.T) {
+	var got []error
+	remove := OnTerminalWriteError(func(err error) { got = append(got, err) })
+	t.Cleanup(remove)
+	screen := NewWithOutput(failingWriter{syscall.EIO}, 80, 24)
+	screen.HideCursor()
+	screen.ShowCursor()
+	if len(got) != 2 || !errors.Is(got[0], syscall.EIO) || !errors.Is(got[1], syscall.EIO) {
+		t.Fatalf("handler saw %v, want both failed cursor writes with EIO", got)
+	}
+}

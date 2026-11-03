@@ -5,6 +5,7 @@ package codingagent
 import (
 	"errors"
 	"os"
+	"io"
 	"os/exec"
 	"strings"
 	"testing"
@@ -59,7 +60,7 @@ const deadRemoteEditorWriteChildEnv = "PIG_DEAD_REMOTE_EDITOR_WRITE_CHILD"
 
 // TestDeadRemoteEditorWriteChild is a remote editor component's terminal.write against a terminal whose master side closed, through the
 // path named by the env var: "stopped" (the TUI already stopped, TerminalWrite writes to stdout) or "between-frames" (writeTerminal with a
-// TUI that has no raw writer).
+// TUI that has no raw writer), "set-title" (ExtUIContext.SetTitle) or "osc52" (the clipboard copier).
 func TestDeadRemoteEditorWriteChild(t *testing.T) {
 	path := os.Getenv(deadRemoteEditorWriteChildEnv)
 	if path == "" {
@@ -79,6 +80,11 @@ func TestDeadRemoteEditorWriteChild(t *testing.T) {
 		(&remoteEditor{m: m}).TerminalWrite("data")
 	case "between-frames":
 		m.writeTerminal("data")
+	case "set-title":
+		m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
+		(&ExtUIContext{m: m}).SetTitle("title")
+	case "osc52":
+		hostClipboardCopier().emitOSC52("text")
 	}
 	_, _ = stdout.WriteString("survived\n")
 	os.Exit(0)
@@ -87,7 +93,7 @@ func TestDeadRemoteEditorWriteChild(t *testing.T) {
 // In Pi an extension component's tui.terminal.write is process.stdout.write, so a write to a hung-up terminal reaches the stdout "error" listener
 // and ends in emergencyTerminalExit (exit 129), wherever the write comes from.
 func TestRemoteEditorTerminalWriteToAHungUpTerminalExits129(t *testing.T) {
-	for _, path := range []string{"stopped", "between-frames"} {
+	for _, path := range []string{"stopped", "between-frames", "set-title", "osc52"} {
 		t.Run(path, func(t *testing.T) {
 			agentDir := t.TempDir()
 			cmd := exec.Command(os.Args[0], "-test.run=^TestDeadRemoteEditorWriteChild$")
