@@ -264,7 +264,7 @@ func TestObserveDoc(t *testing.T) {
 				}
 			}
 		}
-		if len(errs) != 2 || errs[0] == nil || errs[1] == nil || errs[0].Error() != "session closed" || errs[1].Error() != "session closed" || !errors.Is(errs[0], session.ErrSessionClosedEnd) || !errors.Is(errs[1], session.ErrSessionClosedEnd) || errs[0] == errs[1] {
+		if len(errs) != 2 || errs[0] == nil || errs[1] == nil || errs[0].Error() != "session closed" || errs[1].Error() != "session closed" || !errors.Is(errs[0], session.ErrSessionClosedEnd) || !errors.Is(errs[1], session.ErrSessionClosedEnd) || any(errs[0]) == any(errs[1]) { //nolint:errorlint // instance identity, as Pi's not.toBe
 			t.Fatalf("errors %v", errs)
 		}
 	})
