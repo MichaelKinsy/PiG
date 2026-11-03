@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
@@ -15,7 +16,7 @@ import (
 func TestPartialObjectEqualsTheEncodedPartial(t *testing.T) {
 	long := strings.Repeat("streamed text with \"quotes\" and \\ escapes\n\t<&>\u2028é😀", 50)
 	call := func(arguments ai.JsonObject) ai.ToolCall {
-		return ai.ToolCall{ID: "c1", Name: "write", Arguments: arguments, ThoughtSignature: "ts", Namespace: "ns"}
+		return ai.ToolCall{ID: "c1", Name: "write", Arguments: arguments, ThoughtSignature: "ts", Namespace: "ns", ArgumentsError: "e"}
 	}
 	cases := []struct {
 		name    string
@@ -57,6 +58,45 @@ func TestPartialObjectEqualsTheEncodedPartial(t *testing.T) {
 			if !bytes.Equal(gotText, wantText) {
 				t.Fatalf("partial object differs\n got %.300s\nwant %.300s", gotText, wantText)
 			}
+			// json.Marshal writes invalid UTF-8 as U+FFFD on both sides: the strings are compared as they are.
+			wantContent, _ := want.Value("content").([]any)
+			gotContent, _ := got.Value("content").([]any)
+			if len(gotContent) != len(wantContent) {
+				t.Fatalf("%d blocks, want %d", len(gotContent), len(wantContent))
+			}
+			for index := range wantContent {
+				for _, field := range []string{"text", "thinking"} {
+					wantValue, _ := wantContent[index].(*delta.JsonObject).Get(field)
+					gotValue, _ := gotContent[index].(*delta.JsonObject).Get(field)
+					if wantValue != gotValue {
+						t.Fatalf("content[%d].%s = %q, want %q", index, field, gotValue, wantValue)
+					}
+				}
+			}
 		})
+	}
+}
+
+// A commit appends the text a stream grew by where the committed string plus that text has the new string's length, and compares the whole
+// strings otherwise, which costs their length. The operations are the same either way, and a string compare allocates nothing in Go, so the
+// plan BindPartial hands the commit is what shows that the appends are planned.
+func TestBindPartialPlansAnAppendOfTheTextAndThinkingAStreamGrew(t *testing.T) {
+	partial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "Hello"}, ai.ThinkingContent{Thinking: "Hmm"}}, API: "faux", Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonPending}
+	changes := NewPartialChanges()
+	changes.Observe(ai.TextDeltaEvent{ContentIndex: 0, Delta: " world", Partial: partial})
+	changes.Observe(ai.ThinkingDeltaEvent{ContentIndex: 1, Delta: "m", Partial: partial})
+	partial.Content = []ai.AssistantContentBlock{ai.TextContent{Text: "Hello world"}, ai.ThinkingContent{Thinking: "Hmmm"}}
+	_, taken, err := changes.BindPartial(changes.Cut(), partial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []struct {
+		index       int
+		field, text string
+	}{{0, "text", " world"}, {1, "thinking", "m"}} {
+		plan := taken.plan.field("content").field(want.index).field(want.field)
+		if plan == nil || plan.Kind != planAppend || plan.Text != want.text {
+			t.Fatalf("plan of content[%d].%s = %+v, want an append of %q", want.index, want.field, plan, want.text)
+		}
 	}
 }
