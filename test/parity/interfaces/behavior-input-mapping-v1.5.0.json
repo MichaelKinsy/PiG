@@ -870,10 +870,23 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers",
       "ownerFamily": "interactive-input",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_input.go#setupKeyHandlers",
+        "internal/codingagent/interactive_input.go#handleEditorAction",
+        "internal/codingagent/keys.go#resolveOutcome",
+        "internal/codingagent/interactive_models.go#cycleModel"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_key_handlers_test.go#TestSetupKeyHandlersRunsEachAppActionForItsDefaultAndRemappedKey",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersEscapeAndClearBranches",
+        "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings",
+        "test/parity/scenarios/interactive-rendering/59-app-action-keys.toml"
+      ],
+      "contracts": [
+        "coding-agent/interactive/key-handlers",
+        "coding-agent/interactive/model-cycle-actions"
+      ],
       "divergence": "",
       "rationale": ""
     },

@@ -5,6 +5,7 @@ package codingagent
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -315,6 +316,40 @@ func TestSetupKeyHandlersExitRunsOnlyForAnEmptyEditor(t *testing.T) {
 		r.press(t, "\x04")
 		if w := r.snapshot(); w.Exit != c.wantExit || w.Editor != c.wantText {
 			t.Errorf("Ctrl+D over %q: exit %v, editor %q; want %v, %q", c.text, w.Exit, w.Editor, c.wantExit, c.wantText)
+		}
+	}
+}
+
+// onChange (interactive-mode.ts:3103-3109) sets bash mode from `text.trimStart().startsWith("!")` and recolors the editor border when it changes.
+func TestSetupKeyHandlersBashModeFollowsTheEditorText(t *testing.T) {
+	r := newKeyRig(t, nil)
+	border := func() string { return r.m.editor.Render(40)[0] }
+	idle := border()
+	bash := tui.ActiveTheme().GetBashModeBorderColor()(strings.Repeat("─", 40))
+	if idle == bash {
+		t.Fatal("the idle and bash borders are the same")
+	}
+	for _, step := range []struct {
+		key  string
+		text string
+		want string
+	}{
+		{"!", "!", bash},
+		{"x", "!x", bash},
+		{"\x7f", "!", bash},
+		{"\x7f", "", idle},
+		{"a", "a", idle},
+		{"!", "a!", idle},
+	} {
+		r.press(t, step.key)
+		if got := r.m.editor.Text(); got != step.text || border() != step.want {
+			t.Fatalf("after %q: text %q, border %q; want %q, border %q", step.key, got, border(), step.text, step.want)
+		}
+	}
+	for text, want := range map[string]string{" \n\t!ls": bash, "\n\n!": bash, "x\n!": idle, "": idle} {
+		r.m.editor.SetText(text)
+		if border() != want {
+			t.Errorf("text %q: border %q, want %q", text, border(), want)
 		}
 	}
 }
