@@ -18,17 +18,27 @@ func (m *InteractiveMode) ensureManagedTools(ctx context.Context, tm *tools.Tool
 	if len(downloads) == 0 {
 		return
 	}
+	// A quit requested during the setup abandons the downloads, which end with their context.
+	downloadCtx, abandon := context.WithCancel(ctx)
+	defer abandon()
 	statuses := make(chan tools.ToolStatus)
 	var wg sync.WaitGroup
 	for _, download := range downloads {
-		wg.Go(func() { download(ctx, func(status tools.ToolStatus) { statuses <- status }) })
+		wg.Go(func() {
+			download(downloadCtx, func(status tools.ToolStatus) {
+				select {
+				case statuses <- status:
+				case <-downloadCtx.Done():
+				}
+			})
+		})
 	}
 	go func() {
 		wg.Wait()
 		close(statuses)
 	}()
 	readCh := m.inputReadCh
-	for {
+	for !m.requestExit.Load() {
 		status, ok := receiveDuringStartup(m, statuses, &readCh)
 		if !ok {
 			return
@@ -49,6 +59,11 @@ func receiveDuringStartup[T any](m *InteractiveMode, ch <-chan T, readCh *chan i
 				continue
 			}
 			m.handleStartupInput(input, true)
+			// Ctrl-C twice or Ctrl-D on an empty editor quit while the startup still waits (interactive-mode.ts handleCtrlC, handleCtrlD).
+			if m.requestExit.Load() {
+				var none T
+				return none, false
+			}
 		}
 	}
 }

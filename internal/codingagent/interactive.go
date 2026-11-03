@@ -1715,6 +1715,10 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// Pi sets up managed tools after the startup header and before extensions, still under handleStartupSubmit; setupEditorSubmitHandler follows (interactive-mode.ts:1017-1028).
 	m.ensureManagedTools(ctx, tools.NewToolsManager(m.opts.AgentDir))
 	m.endStartupSubmitWindow()
+	// A quit the startup keys requested ends init() here; run() then takes the exit.
+	if m.requestExit.Load() {
+		return nil
+	}
 
 	// Build slash registry up front so any extension's RegisterCommand
 	// can mirror its registration into the registry as it loads.
