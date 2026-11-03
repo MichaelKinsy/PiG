@@ -4374,5 +4374,982 @@
    "old": "fmt.Errorf(\"Tool \\\"%s\\\" not found\", call.Name)",
    "new": "fmt.Errorf(\"Tool %s not found\", call.Name)"
   }
+ ],
+ "packages/coding-agent/src/core/bash-executor.ts": [
+  {
+   "file": "internal/codingagent/tools/bash_executor.go",
+   "old": "\"\\r\", \"\")",
+   "new": "\"\\r\", \" \")"
+  },
+  {
+   "file": "internal/codingagent/tools/bash_executor.go",
+   "old": "\tif cancelled {\n\t\texitCode = nil\n\t}",
+   "new": "\tif !cancelled {\n\t\texitCode = nil\n\t}"
+  },
+  {
+   "file": "internal/codingagent/tools/bash_executor.go",
+   "old": "for outputBytes > maxOutputBytes && len(outputChunks) > 1 {",
+   "new": "for outputBytes > maxOutputBytes*2 && len(outputChunks) > 1 {"
+  }
+ ],
+ "packages/coding-agent/src/core/exec.ts": [
+  {
+   "file": "coding/extension/exec.go",
+   "old": "if value != math.Trunc(value) || value < 0 || value > float64(execMaxStringLength) {",
+   "new": "if value != math.Trunc(value) || value < -1 || value > float64(execMaxStringLength) {"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "if truncated && result.Code == 0 {",
+   "new": "if truncated && result.Code == 7 {"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "chunk = chunk[:max(remaining, 0)]",
+   "new": "chunk = chunk[:max(remaining, 0)/2]"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "\tif !truncated {\n\t\tstdout.WriteString(stdoutDecode.Decode(nil, false))",
+   "new": "\tif truncated {\n\t\tstdout.WriteString(stdoutDecode.Decode(nil, false))"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "result.Code = max(state.ExitCode(), 0)",
+   "new": "result.Code = state.ExitCode()"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/loader.ts": [
+  {
+   "file": "coding/discover_extensions.go",
+   "old": "addPaths(discoverExtensionsInDir(filepath.Join(resolvedAgentDir, \"extensions\")))",
+   "new": "addPaths(discoverExtensionsInDir(filepath.Join(resolvedAgentDir, \"extension\")))"
+  },
+  {
+   "file": "coding/discover_extensions.go",
+   "old": "\t\t\t\tseen[resolved] = true\n",
+   "new": "\t\t\t\tseen[resolved] = false\n"
+  },
+  {
+   "file": "coding/discover_extensions.go",
+   "old": "if entries := resolveExtensionEntries(resolved); entries != nil {",
+   "new": "if entries := resolveExtensionEntries(resolved); entries == nil {"
+  },
+  {
+   "file": "coding/extension/provider_runtime.go",
+   "old": "\tr.mu.Unlock()\n\treturn register(name, config)",
+   "new": "\tr.mu.Unlock()\n\t_ = register\n\treturn nil"
+  },
+  {
+   "file": "coding/extension/provider_runtime.go",
+   "old": "report(&ExtensionError{ExtensionPath: entry.ExtensionPath, Event: \"register_provider\"",
+   "new": "report(&ExtensionError{ExtensionPath: \"\", Event: \"register_provider\""
+  },
+  {
+   "file": "coding/extension/provider_runtime.go",
+   "old": "\tif unregister != nil {\n\t\tunregister(name)\n\t}\n}",
+   "new": "\t_ = unregister\n}"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/types.ts": [
+  {
+   "file": "coding/extension/context.go",
+   "old": "\tif c.actions.IsIdle == nil {\n\t\treturn true, nil",
+   "new": "\tif c.actions.IsIdle == nil {\n\t\treturn false, nil"
+  },
+  {
+   "file": "coding/extension/ui.go",
+   "old": "ExtensionUIDialogOptions) (bool, error) {\n\treturn false, nil\n}\nfunc (*noopUIContext) Input",
+   "new": "ExtensionUIDialogOptions) (bool, error) {\n\treturn true, nil\n}\nfunc (*noopUIContext) Input"
+  },
+  {
+   "file": "coding/extension/runtime_state.go",
+   "old": "\tif r.staleMessage != \"\" {\n\t\treturn errors.New(r.staleMessage)",
+   "new": "\tif r.staleMessage == \"\" {\n\t\treturn errors.New(r.staleMessage)"
+  },
+  {
+   "file": "coding/extension/api.go",
+   "old": "orderedjson.UnmarshalFields(data, (*plain)(p), \"details\")",
+   "new": "orderedjson.UnmarshalFields(data, (*plain)(p), \"detailz\")"
+  },
+  {
+   "file": "coding/extension/opaque_types.go",
+   "old": "orderedjson.UnmarshalFields(data, (*plain)(r), \"details\")",
+   "new": "orderedjson.UnmarshalFields(data, (*plain)(r), \"detailz\")"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/virtual-modules.ts": [
+  {
+   "file": "coding/extension/host/subprocess/node_runtime_on.go",
+   "old": "strings.TrimPrefix(name, \"runtime-node/\")",
+   "new": "strings.TrimPrefix(name, \"runtime-node-x/\")"
+  },
+  {
+   "file": "coding/extension/host/subprocess/node_runtime_cache.go",
+   "old": "\t\tlinks = append(links, link{path, target})\n\t\treturn nil",
+   "new": "\t\tif relative != filepath.Join(\"shims\", \"pi-ai-models.mjs\") {\n\t\t\tlinks = append(links, link{path, target})\n\t\t}\n\t\treturn nil"
+  }
+ ],
+ "packages/coding-agent/src/core/footer-data-provider.ts": [
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "gitWatchDebounce = 500 * time.Millisecond",
+   "new": "gitWatchDebounce = 400 * time.Millisecond"
+  },
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "gitWatchRetry = 5000 * time.Millisecond",
+   "new": "gitWatchRetry = 4000 * time.Millisecond"
+  },
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "\t\tif !ok {\n\t\t\treturn gitPaths{}, false, false\n",
+   "new": "\t\tif !ok {\n\t\t\treturn gitPaths{}, false, true\n"
+  },
+  {
+   "file": "internal/codingagent/status_line.go",
+   "old": "\tif branch == \".invalid\" {",
+   "new": "\tif branch == \".invalidx\" {"
+  },
+  {
+   "file": "internal/codingagent/status_line.go",
+   "old": "\"git\", \"--no-optional-locks\", \"symbolic-ref\", \"--quiet\", \"--short\", \"HEAD\")",
+   "new": "\"git\", \"symbolic-ref\", \"--quiet\", \"--short\", \"HEAD\")"
+  },
+  {
+   "file": "internal/codingagent/footer_data_provider.go",
+   "old": "\td.providerCount = n\n\td.mu.Unlock()",
+   "new": "\td.providerCount = n + 1\n\td.mu.Unlock()"
+  }
+ ],
+ "packages/coding-agent/src/core/nested-tool-calls.ts": [
+  {
+   "file": "coding/nested_tool_calls.go",
+   "old": "MaxArgumentBytesTotal: 32 * 1024",
+   "new": "MaxArgumentBytesTotal: 64 * 1024"
+  },
+  {
+   "file": "coding/nested_tool_calls.go",
+   "old": "id := fmt.Sprintf(\"%s/%d\", callerID, scope.nextID)",
+   "new": "id := fmt.Sprintf(\"%s/%d\", callerID, scope.nextID+1)"
+  },
+  {
+   "file": "coding/nested_tool_calls.go",
+   "old": "exclusive = tool.ExecutionMode() == agent.ToolModeSequential",
+   "new": "exclusive = tool.ExecutionMode() != agent.ToolModeSequential"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/bash.ts": [
+  {
+   "file": "internal/codingagent/tools/bash.go",
+   "old": "commandPrefix:            t.CommandPrefix,",
+   "new": "commandPrefix:            \"\","
+  },
+  {
+   "file": "internal/codingagent/tools/shell_tool.go",
+   "old": "\"Command timed out after \"",
+   "new": "\"Command timed-out after \""
+  },
+  {
+   "file": "internal/codingagent/tools/shell_tool.go",
+   "old": "\"Command exited with code %d\"",
+   "new": "\"Command exit code %d\""
+  },
+  {
+   "file": "internal/codingagent/tools/shell_tool.go",
+   "old": "\"Command aborted\"",
+   "new": "\"Command cancelled\""
+  },
+  {
+   "file": "internal/codingagent/tools/bash_operations.go",
+   "old": "*timeout <= 0 {",
+   "new": "*timeout < 0 {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/edit.ts": [
+  {
+   "file": "internal/codingagent/tools/edit.go",
+   "old": "\"Successfully replaced %d block(s) in %s.\"",
+   "new": "\"Successfully replaced %d blocks in %s.\""
+  },
+  {
+   "file": "internal/codingagent/tools/edit.go",
+   "old": "detail = \"Error code: \" + code",
+   "new": "detail = \"Error: \" + err.Error()"
+  },
+  {
+   "file": "internal/codingagent/tools/edit.go",
+   "old": "normalized := normalizeToLF(content)",
+   "new": "normalized := content"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/grep.ts": [
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "\tif p.IgnoreCase {",
+   "new": "\tif !p.IgnoreCase {"
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "\"No matches found\"",
+   "new": "\"No match found\""
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "effectiveLimit = math.Max(1, effectiveLimit)",
+   "new": "effectiveLimit = math.Max(2, effectiveLimit)"
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "\tif p.Literal {",
+   "new": "\tif !p.Literal {"
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "if float64(run.matchCount) >= limit {",
+   "new": "if float64(run.matchCount) > limit {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/ls.ts": [
+  {
+   "file": "internal/codingagent/tools/ls.go",
+   "old": "if float64(len(results)) >= effectiveLimit {",
+   "new": "if float64(len(results)) > effectiveLimit {"
+  },
+  {
+   "file": "internal/codingagent/tools/ls.go",
+   "old": "\t\t\tentry += \"/\"",
+   "new": "\t\t\tentry += \"\\\\\""
+  },
+  {
+   "file": "internal/codingagent/tools/ls.go",
+   "old": "\"(empty directory)\"",
+   "new": "\"(empty)\""
+  }
+ ],
+ "packages/coding-agent/src/core/tools/output-accumulator.ts": [
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "return errAppendAfterFinish",
+   "new": "return nil"
+  },
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "truncated := a.totalLines > a.maxLines || a.totalDecodedBytes > a.maxBytes",
+   "new": "truncated := a.totalLines >= a.maxLines || a.totalDecodedBytes > a.maxBytes"
+  },
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "return a.totalRawBytes > a.maxBytes || a.totalDecodedBytes > a.maxBytes || a.totalLines > a.maxLines",
+   "new": "return a.totalRawBytes > a.maxBytes || a.totalDecodedBytes > a.maxBytes"
+  },
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "\ta.totalLines = a.completedLines\n\tif a.hasOpenLine {\n\t\ta.totalLines++\n\t}",
+   "new": "\ta.totalLines = a.completedLines"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/path-utils.ts": [
+  {
+   "file": "internal/codingagent/tools/path_utils.go",
+   "old": "\t\treturn s[1:]\n",
+   "new": "\t\treturn s\n"
+  },
+  {
+   "file": "internal/codingagent/tools/path_utils.go",
+   "old": "amPmVariant != resolved && fileExists(amPmVariant)",
+   "new": "amPmVariant == resolved && fileExists(amPmVariant)"
+  },
+  {
+   "file": "internal/codingagent/tools/path_utils.go",
+   "old": "strings.ReplaceAll(filePath, \"'\", \"\\u2019\")",
+   "new": "strings.ReplaceAll(filePath, \"'\", \"\\u2018\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/powershell.ts": [
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "\"-ExecutionPolicy\", \"Bypass\", \"-Command\"",
+   "new": "\"-ExecutionPolicy\", \"RemoteSigned\", \"-Command\""
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "[System.Text.Encoding]::UTF8 }",
+   "new": "[System.Text.Encoding]::ASCII }"
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "shellToolSchema(\"powershell\", \"PowerShell\", !t.HideSessionEnvironment)",
+   "new": "shellToolSchema(\"powershell\", \"PowerShell\", t.HideSessionEnvironment)"
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "tempFilePrefix:           \"pi-powershell\",",
+   "new": "tempFilePrefix:           \"pi-bash\","
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "lookPath(\"pwsh.exe\")",
+   "new": "lookPath(\"pwsh7.exe\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/read.ts": [
+  {
+   "file": "internal/codingagent/tools/read.go",
+   "old": "startLine = math.Max(0, *p.Offset-1)",
+   "new": "startLine = math.Max(0, *p.Offset)"
+  },
+  {
+   "file": "internal/codingagent/tools/read.go",
+   "old": "if tr.TruncatedBy == \"lines\" {",
+   "new": "if tr.TruncatedBy == \"bytes\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts": [
+  {
+   "file": "coding/extension_bridge.go",
+   "old": "trimmed == \"\" || trimmed == \"false\" || trimmed == \"null\"",
+   "new": "trimmed == \"\" || trimmed == \"null\""
+  },
+  {
+   "file": "coding/extension_bridge.go",
+   "old": "return &bridgeTool{def: rt.Definition, declaration",
+   "new": "return &bridgeTool{def: extension.ToolDefinition{Name: rt.Definition.Name, Description: rt.Definition.Description, Parameters: rt.Definition.Parameters}, declaration"
+  },
+  {
+   "file": "coding/extension_bridge.go",
+   "old": "if b.def.ExecutionMode == \"sequential\" {",
+   "new": "if b.def.ExecutionMode != \"sequential\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/truncate.ts": [
+  {
+   "file": "internal/codingagent/tools/truncate.go",
+   "old": "scaled := int64(f*10 + 0.5)",
+   "new": "scaled := int64(f * 10)"
+  },
+  {
+   "file": "internal/codingagent/tools/truncate.go",
+   "old": "if units+n > maxChars {",
+   "new": "if units+n >= maxChars {"
+  },
+  {
+   "file": "internal/codingagent/tools/truncate.go",
+   "old": "\t\tMaxLines:              maxLines,",
+   "new": "\t\tMaxLines:              maxBytes,"
+  },
+  {
+   "file": "internal/truncate/tail.go",
+   "old": "return w.maxBytes + 2",
+   "new": "return w.maxBytes + 1"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/write.ts": [
+  {
+   "file": "internal/codingagent/tools/write.go",
+   "old": "\"Successfully wrote to \" + p.Path",
+   "new": "\"Wrote \" + p.Path"
+  },
+  {
+   "file": "internal/codingagent/tools/write.go",
+   "old": "ops.Mkdir(filepath.Dir(path))",
+   "new": "ops.Mkdir(path)"
+  }
+ ],
+ "packages/coding-agent/src/core/package-manager.ts": [
+  {
+   "file": "internal/packagemanager/package_manager.go",
+   "old": "\t\tif current[index].Source == normalized {\n\t\t\treturn false, nil\n\t\t}",
+   "new": "\t\tif current[index].Source == normalized {\n\t\t\treturn true, nil\n\t\t}"
+  },
+  {
+   "file": "internal/packagemanager/package_manager.go",
+   "old": "\tif len(next) == len(current) {\n\t\treturn false, nil\n\t}",
+   "new": "\tif len(next) == len(current) {\n\t\treturn true, nil\n\t}"
+  },
+  {
+   "file": "internal/packagemanager/resolve.go",
+   "old": "fromPackages.Themes = append(fromPackages.Themes, resource)",
+   "new": "fromPackages.Themes = append(fromPackages.Prompts, resource)"
+  },
+  {
+   "file": "internal/packagemanager/npm_metadata.go",
+   "old": "return versionRange == \"\" || nodesemver.Satisfies(installed, versionRange)",
+   "new": "return versionRange == \"\" || !nodesemver.Satisfies(installed, versionRange)"
+  }
+ ],
+ "packages/coding-agent/src/core/resource-loader.ts": [
+  {
+   "file": "coding/resource_loader.go",
+   "old": "\t\tif source != \"\" {\n\t\t\tappended = append(appended, icodingagent.ResolvePromptInput(source, \"append system prompt\"))",
+   "new": "\t\tif source == \"\" {\n\t\t\tappended = append(appended, icodingagent.ResolvePromptInput(source, \"append system prompt\"))"
+  },
+  {
+   "file": "internal/codingagent/context_files.go",
+   "old": "ancestors = append([]ContextFile{*cf}, ancestors...)",
+   "new": "ancestors = append(ancestors, *cf)"
+  },
+  {
+   "file": "internal/codingagent/prompt_templates.go",
+   "old": "WinnerPath: winner.FilePath, LoserPath: template.FilePath}",
+   "new": "WinnerPath: template.FilePath, LoserPath: winner.FilePath}"
+  },
+  {
+   "file": "coding/resource_loader_extend.go",
+   "old": "\t\tmerged, err := l.mergePaths(l.lastPromptPaths, extensionPathList(promptPaths))",
+   "new": "\t\tmerged, err := l.mergePaths(l.lastPromptPaths, nil)"
+  }
+ ],
+ "packages/coding-agent/src/core/pi-manifest.ts": [
+  {
+   "file": "coding/packagecontent/pi_manifest.go",
+   "old": "bytes.TrimPrefix(data, utf8BOM)",
+   "new": "bytes.TrimPrefix(data, nil)"
+  },
+  {
+   "file": "coding/packagecontent/pi_manifest.go",
+   "old": "\t\tif !ok {\n\t\t\treturn nil, false\n\t\t}\n\t\tentries = append(entries, entry)",
+   "new": "\t\tif !ok {\n\t\t\tcontinue\n\t\t}\n\t\tentries = append(entries, entry)"
+  }
+ ],
+ "packages/coding-agent/src/core/system-prompt.ts": [
+  {
+   "file": "internal/codingagent/prompts/coding.go",
+   "old": "add(\"Be concise in your responses\")",
+   "new": "add(\"Be concise in your response\")"
+  },
+  {
+   "file": "internal/codingagent/prompts/custom_sections.go",
+   "old": "section.Name == \"preamble\"",
+   "new": "section.Name == \"preambles\""
+  }
+ ],
+ "packages/coding-agent/src/core/slash-commands.ts": [
+  {
+   "file": "internal/codingagent/slash_commands.go",
+   "old": "Description: \"Open settings menu\"",
+   "new": "Description: \"Open settings menus\""
+  },
+  {
+   "file": "internal/codingagent/extension_host_info.go",
+   "old": "Name: \"skill:\" + skill.Name,",
+   "new": "Name: skill.Name,"
+  }
+ ],
+ "packages/coding-agent/src/core/defaults.ts": [
+  {
+   "file": "internal/codingagent/defaults.go",
+   "old": "const DefaultThinkingLevel = \"medium\"",
+   "new": "const DefaultThinkingLevel = \"high\""
+  }
+ ],
+ "packages/coding-agent/src/core/experimental.ts": [
+  {
+   "file": "internal/codingagent/experimental.go",
+   "old": "if os.Getenv(\"PI_EXPERIMENTAL\") == \"1\" {",
+   "new": "if os.Getenv(\"PI_EXPERIMENTAL\") != \"1\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/timings.ts": [
+  {
+   "file": "internal/codingagent/timings/timings.go",
+   "old": "if t.ms >= 0 {",
+   "new": "if t.ms > 0 {"
+  }
+ ],
+ "packages/coding-agent/src/core/session-export.ts": [
+  {
+   "file": "internal/codingagent/session_export.go",
+   "old": "Version: CurrentSessionVersion, ID",
+   "new": "Version: CurrentSessionVersion + 1, ID"
+  }
+ ],
+ "packages/coding-agent/src/core/session-cwd.ts": [
+  {
+   "file": "internal/codingagent/session_cwd.go",
+   "old": "if _, err := os.Stat(session.CWD()); err == nil {",
+   "new": "if _, err := os.Stat(session.CWD()); err != nil {"
+  },
+  {
+   "file": "coding/runtime_replacement.go",
+   "old": "AssertSessionCwdExists(options.SessionManager, options.CWD); err != nil {",
+   "new": "AssertSessionCwdExists(options.SessionManager, options.CWD); err == nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/settings-diagnostics.ts": [
+  {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "old": "if settingsError.Path != \"\" {",
+   "new": "if settingsError.Path == \"\" {"
+  },
+  {
+   "file": "coding/cli/cli_runtime_build.go",
+   "old": "build.StartupDiagnostics = codingagent.DeduplicateDiagnostics(append(slices.Clone(b.settingsDiagnostics), codingagent.CollectSettingsDiagnostics(services.SettingsManager())...))",
+   "new": "build.StartupDiagnostics = append(slices.Clone(b.settingsDiagnostics), codingagent.CollectSettingsDiagnostics(services.SettingsManager())...)"
+  }
+ ],
+ "packages/coding-agent/src/core/telemetry.ts": [
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "case \"1\", \"true\", \"yes\":",
+   "new": "case \"1\", \"true\":"
+  },
+  {
+   "file": "internal/codingagent/install_telemetry.go",
+   "old": "return sm != nil && sm.IsInstallTelemetryEnabled()",
+   "new": "return sm != nil"
+  }
+ ],
+ "packages/coding-agent/src/core/settings-manager.ts": [
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "readMerged(sm, func(s *Settings) string { return s.TuiMode }) == string(tui.TuiModeRegular)",
+   "new": "readMerged(sm, func(s *Settings) string { return s.TuiMode }) != string(tui.TuiModeRegular)"
+  },
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "if v == DefaultProjectTrustAlways || v == DefaultProjectTrustNever {",
+   "new": "if v == DefaultProjectTrustAlways {"
+  },
+  {
+   "file": "internal/codingagent/file_lock.go",
+   "old": "return lease.Release, nil",
+   "new": "return func() error { _ = lease; return nil }, nil"
+  }
+ ],
+ "packages/coding-agent/src/core/session-manager.ts": [
+  {
+   "file": "internal/codingagent/session_context.go",
+   "old": "leaf := entries[len(entries)-1]",
+   "new": "leaf := entries[0]"
+  },
+  {
+   "file": "internal/codingagent/session_manager.go",
+   "old": "s = strings.NewReplacer(\"/\", \"-\", `\\`, \"-\", \":\", \"-\").Replace(s)",
+   "new": "s = strings.NewReplacer(\"/\", \"-\", `\\`, \"-\").Replace(s)"
+  }
+ ],
+ "packages/coding-agent/src/core/source-info.ts": [
+  {
+   "file": "internal/codingagent/resource_source_info.go",
+   "old": "\t\treturn \"builtin\"\n",
+   "new": "\t\treturn \"builtins\"\n"
+  },
+  {
+   "file": "internal/codingagent/resource_source_info.go",
+   "old": "return \"temporary\"",
+   "new": "return \"inline\""
+  }
+ ],
+ "packages/coding-agent/src/core/cache-stats.ts": [
+  {
+   "file": "internal/codingagent/cache_stats.go",
+   "old": "if missedTokens <= cacheNoiseFloorTokens {",
+   "new": "if missedTokens < cacheNoiseFloorTokens {"
+  },
+  {
+   "file": "internal/codingagent/cache_stats.go",
+   "old": "missedTokens := min(prev.promptTokens, promptTokens) - usage.CacheRead",
+   "new": "missedTokens := max(prev.promptTokens, promptTokens) - usage.CacheRead"
+  },
+  {
+   "file": "internal/codingagent/session_stats.go",
+   "old": "a.stats.CacheWaste.MissCount++",
+   "new": "a.stats.CacheWaste.MissCount += 2"
+  },
+  {
+   "file": "internal/codingagent/model_cache_price.go",
+   "old": "rate = definition.Cost.CacheRead",
+   "new": "rate = definition.Cost.CacheRead * 2"
+  }
+ ],
+ "packages/coding-agent/src/core/usage-totals.ts": [
+  {
+   "file": "internal/usagetotals/usagetotals.go",
+   "old": "derefBool(first.Cost.TotalFromProvider) && derefBool(second.Cost.TotalFromProvider)",
+   "new": "derefBool(first.Cost.TotalFromProvider) || derefBool(second.Cost.TotalFromProvider)"
+  },
+  {
+   "file": "internal/usagetotals/usagetotals.go",
+   "old": "if first.CacheWrite1h != nil || second.CacheWrite1h != nil {",
+   "new": "if first.CacheWrite1h != nil && second.CacheWrite1h != nil {"
+  },
+  {
+   "file": "internal/codingagent/session_stats.go",
+   "old": "breakdown.Cost += usage.Cost.Total",
+   "new": "breakdown.Cost += usage.Cost.Input"
+  }
+ ],
+ "packages/coding-agent/src/core/agent-session-services.ts": [
+  {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "old": "Invalid %s settings: %v",
+   "new": "Invalid %s setting: %v"
+  },
+  {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "old": "if seen[diagnostic] {",
+   "new": "if !seen[diagnostic] {"
+  },
+  {
+   "file": "coding/create_agent_session.go",
+   "old": "\"Invalid tools option: \"",
+   "new": "\"Invalid tool option: \""
+  },
+  {
+   "file": "coding/services.go",
+   "old": "return slices.Clone(s.diagnostics)",
+   "new": "return nil"
+  },
+  {
+   "file": "coding/services.go",
+   "old": "func (s *AgentSessionServices) CWD() string { return s.cwd }",
+   "new": "func (s *AgentSessionServices) CWD() string { return s.agentDir }"
+  }
+ ],
+ "packages/coding-agent/src/core/agent-session.ts": [
+  {
+   "file": "internal/codingagent/auto_recovery.go",
+   "old": "return !ai.IsContextOverflow(message, contextWindow) && ai.IsRetryableAssistantError(message)",
+   "new": "return ai.IsContextOverflow(message, contextWindow) && ai.IsRetryableAssistantError(message)"
+  },
+  {
+   "file": "coding/session_model_cycle.go",
+   "old": "next := levels[(slices.Index(levels, s.ThinkingLevel())+1)%len(levels)]",
+   "new": "next := levels[(slices.Index(levels, s.ThinkingLevel())+2)%len(levels)]"
+  },
+  {
+   "file": "coding/session_recovery.go",
+   "old": "if attempt > cfg.MaxRetries {",
+   "new": "if attempt >= cfg.MaxRetries {"
+  }
+ ],
+ "packages/coding-agent/src/core/sdk.ts": [
+  {
+   "file": "coding/create_agent_session.go",
+   "old": "fallback = \"Could not restore model \"",
+   "new": "fallback = \"Could not restore models \""
+  },
+  {
+   "file": "coding/create_agent_session.go",
+   "old": "session.runtimeStream = true",
+   "new": "session.runtimeStream = false"
+  },
+  {
+   "file": "coding/runtime.go",
+   "old": "return current.ModelFallbackMessage",
+   "new": "return \"\""
+  }
+ ],
+ "packages/coding-agent/src/core/agent-session-runtime.ts": [
+  {
+   "file": "coding/runtime_replacement.go",
+   "old": "extension.SessionShutdownEvent{Type: \"session_shutdown\", Reason: reason, TargetSessionFile: target}",
+   "new": "extension.SessionShutdownEvent{Type: \"session_shutdown\", Reason: \"quit\", TargetSessionFile: target}"
+  },
+  {
+   "file": "coding/runtime_replacement.go",
+   "old": "if position != \"at\" {",
+   "new": "if position == \"at\" {"
+  },
+  {
+   "file": "coding/runtime.go",
+   "old": "return current.Diagnostics",
+   "new": "return nil"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/bash.ts": [
+  {
+   "file": "tui/shell_renderers.go",
+   "old": "\" (timeout \"+jsTemplateString(timeout)+\"s)\"",
+   "new": "\" (timeout \"+jsTemplateString(timeout)+\"ms)\""
+  },
+  {
+   "file": "tui/shell_renderers.go",
+   "old": "if minutes < 60 {",
+   "new": "if minutes < 61 {"
+  },
+  {
+   "file": "internal/codingagent/tool_render_shell.go",
+   "old": "MaxVisualLines: bashPreviewLines,",
+   "new": "MaxVisualLines: bashPreviewLines + 1,"
+  },
+  {
+   "file": "internal/codingagent/tool_render_shell.go",
+   "old": "\"Truncated: showing \"",
+   "new": "\"Truncated showing \""
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/edit.ts": [
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\tcase previewFailed:\n\t\ttoken = \"toolErrorBg\"\n",
+   "new": "\tcase previewFailed:\n\t\ttoken = \"toolSuccessBg\"\n"
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "|| value.Text() == previewError",
+   "new": "|| value.Text() == previewError+\"x\""
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "toolTitleText(\"edit\")",
+   "new": "toolTitleText(\"edits\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/find.ts": [
+  {
+   "file": "internal/codingagent/tool_render_list.go",
+   "old": "tools.FormatJSNumber(d.ResultLimitReached)+\" results limit\"",
+   "new": "tools.FormatJSNumber(d.ResultLimitReached)+\" result limit\""
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "toolTitleText(\"find\") + \" \" + listPatternText(args[\"pattern\"], false)",
+   "new": "toolTitleText(\"find\") + \" \" + listPatternText(args[\"pattern\"], true)"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/grep.ts": [
+  {
+   "file": "internal/codingagent/tool_render_list.go",
+   "old": "\t\treturn 15\n",
+   "new": "\t\treturn 14\n"
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "\" limit \"+jsTemplateString(limit))",
+   "new": "\" limits \"+jsTemplateString(limit))"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/index.ts": [
+  {
+   "file": "tui/tool_renderers.go",
+   "old": "return \"PS>\", true",
+   "new": "return \"PS$\", true"
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "return FormatLsHeader(args, cwd)",
+   "new": "return FormatFindHeader(args)"
+  },
+  {
+   "file": "internal/codingagent/tool_render.go",
+   "old": "case \"grep\", \"find\", \"ls\":",
+   "new": "case \"grep\", \"find\":"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/ls.ts": [
+  {
+   "file": "internal/codingagent/tool_render_list.go",
+   "old": "tools.FormatJSNumber(d.EntryLimitReached)+\" entries limit\"",
+   "new": "tools.FormatJSNumber(d.EntryLimitReached)+\" entry limit\""
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "header += renderToolPath(\".\", cwd)",
+   "new": "header += renderToolPath(\"..\", cwd)"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/read.ts": [
+  {
+   "file": "tui/compact_read_header.go",
+   "old": "end := start + count - 1",
+   "new": "end := start + count"
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\" line limit)]\"",
+   "new": "\" lines limit)]\""
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "display = lines[:builtInPreviewLines]",
+   "new": "display = lines[:builtInPreviewLines-1]"
+  },
+  {
+   "file": "internal/codingagent/tool_render.go",
+   "old": "return strings.ReplaceAll(s, \"\\t\", \"   \")",
+   "new": "return strings.ReplaceAll(s, \"\\t\", \"  \")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/write.ts": [
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\"[invalid content arg - expected string]\")",
+   "new": "\"[invalid content arg expected string]\")"
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\" more lines, \" + strconv.Itoa(total)",
+   "new": "\" more line, \" + strconv.Itoa(total)"
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "toolTitleText(\"write\")",
+   "new": "toolTitleText(\"writes\")"
+  }
+ ],
+ "packages/coding-agent/src/core/export-html/tool-renderer.ts": [
+  {
+   "file": "internal/codingagent/slash_session_handlers.go",
+   "old": "tools = sc.ToolRenderers()",
+   "new": "tools = nil"
+  },
+  {
+   "file": "internal/codingagent/export/tool_renderer.go",
+   "old": "for end > start && isBlankRenderedLine(lines[end-1]) {",
+   "new": "for end > start && isBlankRenderedLine(lines[end-1]) && false {"
+  },
+  {
+   "file": "internal/codingagent/export/ansi_html.go",
+   "old": "<div class=\"ansi-line\">",
+   "new": "<div class=\"ansi-lines\">"
+  }
+ ],
+ "packages/coding-agent/src/core/export-html/index.ts": [
+  {
+   "file": "internal/codingagent/export/export.go",
+   "old": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", markedCjkFriendly)",
+   "new": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", marked[:0]+markedCjkFriendly[:0])"
+  },
+  {
+   "file": "internal/codingagent/export/export.go",
+   "old": "RenderCustomTools(&sd, getToolRenderers, cwd, 100)",
+   "new": "RenderCustomTools(&sd, nil, cwd, 100)"
+  }
+ ],
+ "packages/coding-agent/src/core/auth-storage.ts": [
+  {
+   "file": "coding/auth_storage.go",
+   "old": "if json.Unmarshal(entry, &credential) != nil {",
+   "new": "if json.Unmarshal(entry, &credential) == nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/http-dispatcher.ts": [
+  {
+   "file": "ai/http_proxy.go",
+   "old": "if _, exists := os.LookupEnv(key); !exists {",
+   "new": "if _, exists := os.LookupEnv(key); exists {"
+  },
+  {
+   "file": "ai/http_transport.go",
+   "old": "dialer.FallbackDelay = 2000 * time.Millisecond",
+   "new": "dialer.FallbackDelay = 250 * time.Millisecond"
+  },
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "jsstring.ToLower(trimmed) == \"disabled\"",
+   "new": "trimmed == \"disabled\""
+  }
+ ],
+ "packages/coding-agent/src/core/model-config.ts": [
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\tif len(errs) > 0 {\n\t\treturn nil, \"Invalid models.json schema:",
+   "new": "\tif len(errs) > 1 {\n\t\treturn nil, \"Invalid models.json schema:"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "strings.Join(errs, \"\\n\")",
+   "new": "strings.Join(errs, \"\\n\\n\")"
+  }
+ ],
+ "packages/coding-agent/src/core/model-resolver.ts": [
+  {
+   "file": "internal/codingagent/model_pattern.go",
+   "old": "return !modelDateSuffix.MatchString(id)",
+   "new": "return modelDateSuffix.MatchString(id)"
+  }
+ ],
+ "packages/coding-agent/src/core/model-runtime.ts": [
+  {
+   "file": "coding/model_runtime_members.go",
+   "old": "return runtime.services.Registry().RemoveRuntimeAPIKeyOperation(ctx, providerID)",
+   "new": "return runtime.services.Registry().RemoveRuntimeAPIKeyOperation(ctx, \"\")"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\tr.runtimeCredentialsLocked().SetRuntimeAPIKey(providerID, apiKey)",
+   "new": "\tr.runtimeCredentialsLocked().SetRuntimeAPIKey(providerID, apiKey+\"!\")"
+  }
+ ],
+ "packages/coding-agent/src/core/models-store.ts": [
+  {
+   "file": "internal/codingagent/radius_models.go",
+   "old": "filepath.Join(agentDir, \"models-store.json\")",
+   "new": "filepath.Join(agentDir, \"models.store.json\")"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\t\tr.modelsStore = defaultModelsStore(r.agentDir)\n\t}\n\tr.load()",
+   "new": "\t\tr.modelsStore = ai.NewInMemoryModelsStore()\n\t}\n\tr.load()"
+  },
+  {
+   "file": "ai/models_store.go",
+   "old": "json.Indent(&indented, canonical, \"\", \"  \")",
+   "new": "json.Indent(&indented, canonical, \"\", \"\\t\")"
+  }
+ ],
+ "packages/coding-agent/src/core/project-trust.ts": [
+  {
+   "file": "coding/cli/project_trust.go",
+   "old": "return decision == nil || *decision, nil",
+   "new": "return decision == nil || !*decision, nil"
+  },
+  {
+   "file": "coding/cli/project_trust.go",
+   "old": "\tif decision != nil {\n\t\treturn *decision, nil\n\t}\n\tswitch opts.Default {",
+   "new": "\tif decision != nil && opts.Default == \"\" {\n\t\treturn *decision, nil\n\t}\n\tswitch opts.Default {"
+  }
+ ],
+ "packages/coding-agent/src/core/provider-composer.ts": [
+  {
+   "file": "internal/codingagent/model_data.go",
+   "old": "\t\te.DisplayName = ovr.Name\n",
+   "new": "\t\te.DisplayName = ovr.Name + \"!\"\n"
+  }
+ ],
+ "packages/coding-agent/src/core/radius.ts": [
+  {
+   "file": "internal/codingagent/radius.go",
+   "old": "\tif !ok {\n\t\tgateway = ai.DefaultRadiusGateway",
+   "new": "\tif !ok || gateway == \"\" {\n\t\tgateway = ai.DefaultRadiusGateway"
+  },
+  {
+   "file": "internal/codingagent/radius.go",
+   "old": "const EnvRadiusGateway = \"PI_RADIUS_GATEWAY\"",
+   "new": "const EnvRadiusGateway = \"PI_RADIUS_GATEWAY_\""
+  }
+ ],
+ "packages/coding-agent/src/core/resolve-config-value.ts": [
+  {
+   "file": "internal/configvalue/configured_shell.go",
+   "old": "return strings.TrimSpace(string(out)), true",
+   "new": "return string(out), true"
+  }
+ ],
+ "packages/coding-agent/src/core/runtime-credentials.ts": [
+  {
+   "file": "ai/runtime_credentials.go",
+   "old": "ok && key != \"\"",
+   "new": "ok && key == \"\""
+  },
+  {
+   "file": "ai/runtime_credentials.go",
+   "old": "entries[providerID] = CredentialInfo{ProviderID: providerID, Type: CredentialAPIKey}",
+   "new": "entries[providerID] = CredentialInfo{ProviderID: providerID, Type: CredentialOAuth}"
+  }
+ ],
+ "packages/coding-agent/src/core/trust-manager.ts": [
+  {
+   "file": "internal/codingagent/trust_manager.go",
+   "old": "entry = &ProjectTrustStoreEntry{Path: key, Decision: *value}",
+   "new": "entry = &ProjectTrustStoreEntry{Path: key, Decision: !*value}"
+  },
+  {
+   "file": "internal/codingagent/trust_manager.go",
+   "old": "if !isUserSkills && probe.Exists() {",
+   "new": "if probe.Exists() {"
+  }
  ]
 }

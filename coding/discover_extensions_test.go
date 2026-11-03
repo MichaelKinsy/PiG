@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/extensions/loader.ts
+
 import (
 	"os"
 	"path/filepath"

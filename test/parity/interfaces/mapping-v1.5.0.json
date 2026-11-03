@@ -152743,9 +152743,9 @@
       "id": "pkg:coding-agent/.#BashToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5b62d191b17d8dc012a8170d2cad133085f48325d642ca13f08a51adc2402bd1",
-      "rationale": "Derived by the interface gap detector: BashToolInput is Go coding/extension/opaque_types.go#BashToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: BashToolInput is Go coding/extension/tool_inputs.go#BashToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#BashToolInput"
+        "coding/extension/tool_inputs.go#BashToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -152753,7 +152753,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#BashToolInput"
+        "public-api:coding/extension/tool_inputs.go#BashToolInput"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -160292,6 +160292,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo",
+        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285SlashExportRendersThemInHTMLExports",
         "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
       ]
     },
@@ -160313,6 +160314,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo",
+        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285SlashExportRendersThemInHTMLExports",
         "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
       ]
     },
@@ -164085,9 +164087,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -164108,9 +164110,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -165531,9 +165533,9 @@
       "id": "pkg:coding-agent/.#EditToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:47e2a8484e62eef82f82a5578cefc0a79aa7805cbfbf8d4fc28fec489f658635",
-      "rationale": "Derived by the interface gap detector: EditToolInput is Go coding/extension/opaque_types.go#EditToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: EditToolInput is Go coding/extension/tool_inputs.go#EditToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#EditToolInput"
+        "coding/extension/tool_inputs.go#EditToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -165541,7 +165543,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#EditToolInput"
+        "public-api:coding/extension/tool_inputs.go#EditToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -166072,9 +166074,9 @@
       "id": "pkg:coding-agent/.#ExecOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b79c39927e8e2a420aca547ff3be4266192b2cf4b1756b50a95567465536fae4",
-      "rationale": "Derived by the interface gap detector: ExecOptions is Go coding/extension/opaque_types.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions is Go coding/extension/exec.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions"
+        "coding/extension/exec.go#ExecOptions"
       ],
       "layers": {
         "behavior": "complete",
@@ -166095,9 +166097,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:cwd",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8917738321feec342fd3ede55652fb9fca4ef44c59ff896107b4cb466dd771f2",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:cwd is Go coding/extension/opaque_types.go#ExecOptions.CWD (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:cwd is Go coding/extension/exec.go#ExecOptions.CWD (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions.CWD"
+        "coding/extension/exec.go#ExecOptions.CWD"
       ],
       "layers": {
         "behavior": "complete",
@@ -166117,9 +166119,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:maxBuffer",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a443be02d6f89e146ee782da4e9d9f74c71f3370cc3460c656023161413eefa9",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:maxBuffer is Go coding/extension/opaque_types.go#ExecOptions.MaxBuffer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:maxBuffer is Go coding/extension/exec.go#ExecOptions.MaxBuffer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions.MaxBuffer"
+        "coding/extension/exec.go#ExecOptions.MaxBuffer"
       ],
       "layers": {
         "behavior": "complete",
@@ -166139,9 +166141,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:signal",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:signal is Go coding/extension/opaque_types.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:signal is Go coding/extension/exec.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions"
+        "coding/extension/exec.go#ExecOptions"
       ],
       "layers": {
         "behavior": "complete",
@@ -166162,9 +166164,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:timeout",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:181c63a8edc1037921e482360ec21d541239f0808377eecb006ae6e27b9e7aea",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:timeout is Go coding/extension/opaque_types.go#ExecOptions.Timeout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:timeout is Go coding/extension/exec.go#ExecOptions.Timeout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions.Timeout"
+        "coding/extension/exec.go#ExecOptions.Timeout"
       ],
       "layers": {
         "behavior": "complete",
@@ -166184,9 +166186,9 @@
       "id": "pkg:coding-agent/.#ExecResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3f930705eeab6b99aa49a8af54bf474e14050cd35499fdef543a071e206bed2a",
-      "rationale": "Derived by the interface gap detector: ExecResult is Go coding/extension/opaque_types.go#ExecResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult is Go coding/extension/exec.go#ExecResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult"
+        "coding/extension/exec.go#ExecResult"
       ],
       "layers": {
         "behavior": "complete",
@@ -166206,9 +166208,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:code",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68a65ce1e6c8f22ebdeb03a2b2a3c394006c4efed559e3b6862b7a10cac956bc",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:code is Go coding/extension/opaque_types.go#ExecResult.Code (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:code is Go coding/extension/exec.go#ExecResult.Code (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Code"
+        "coding/extension/exec.go#ExecResult.Code"
       ],
       "layers": {
         "behavior": "complete",
@@ -166228,9 +166230,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:killed",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e84a11a6784dbac8856a936e1a728fae9e3142ce701247b2c32c7e43882a5380",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:killed is Go coding/extension/opaque_types.go#ExecResult.Killed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:killed is Go coding/extension/exec.go#ExecResult.Killed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Killed"
+        "coding/extension/exec.go#ExecResult.Killed"
       ],
       "layers": {
         "behavior": "complete",
@@ -166250,9 +166252,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:stderr",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:906788dcfef1c4f2b898e90830b2b5659fdc6eb43689f46172dbc54d97f01b5a",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:stderr is Go coding/extension/opaque_types.go#ExecResult.Stderr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:stderr is Go coding/extension/exec.go#ExecResult.Stderr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Stderr"
+        "coding/extension/exec.go#ExecResult.Stderr"
       ],
       "layers": {
         "behavior": "complete",
@@ -166272,9 +166274,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:stdout",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:11552d5606c5b7e647da0da01ca706797c29b535f913e112776eebaf6e941e51",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:stdout is Go coding/extension/opaque_types.go#ExecResult.Stdout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:stdout is Go coding/extension/exec.go#ExecResult.Stdout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Stdout"
+        "coding/extension/exec.go#ExecResult.Stdout"
       ],
       "layers": {
         "behavior": "complete",
@@ -166294,9 +166296,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:truncated",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:921f7b2c3674238a40fd72df904db912b44321eb4b4b9dd035f6bfb89ad661e0",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:truncated is Go coding/extension/opaque_types.go#ExecResult.Truncated (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:truncated is Go coding/extension/exec.go#ExecResult.Truncated (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Truncated"
+        "coding/extension/exec.go#ExecResult.Truncated"
       ],
       "layers": {
         "behavior": "complete",
@@ -172979,9 +172981,9 @@
       "id": "pkg:coding-agent/.#ExtensionEvent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:33338c9cb83a8def17a80d6ac16d3e9d6b4c2b00b89505c88d457b41c20fe2c3",
-      "rationale": "Derived by the interface gap detector: ExtensionEvent is Go coding/extension/extension_event.go#ExtensionEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExtensionEvent is Go coding/extension/events.go#ExtensionEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/extension_event.go#ExtensionEvent"
+        "coding/extension/events.go#ExtensionEvent"
       ],
       "layers": {
         "behavior": "complete",
@@ -181958,9 +181960,9 @@
       "id": "pkg:coding-agent/.#GrepToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:182c3c5944c0832eacbb5af6309b034953fab730d0e3dac7f0629acab353d619",
-      "rationale": "Derived by the interface gap detector: GrepToolInput is Go coding/extension/opaque_types.go#GrepToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: GrepToolInput is Go coding/extension/tool_inputs.go#GrepToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#GrepToolInput"
+        "coding/extension/tool_inputs.go#GrepToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -181968,7 +181970,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#GrepToolInput"
+        "public-api:coding/extension/tool_inputs.go#GrepToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -185958,9 +185960,9 @@
       "id": "pkg:coding-agent/.#LsToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:104e0db7f5a3037fc135527a0e6181ac8fa95aa857367092c3670bd3072b97e6",
-      "rationale": "Derived by the interface gap detector: LsToolInput is Go coding/extension/opaque_types.go#LsToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: LsToolInput is Go coding/extension/tool_inputs.go#LsToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#LsToolInput"
+        "coding/extension/tool_inputs.go#LsToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -185968,7 +185970,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#LsToolInput"
+        "public-api:coding/extension/tool_inputs.go#LsToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputOmitsAbsentOptionalMembers",
@@ -192981,9 +192983,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -193004,9 +193006,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -193836,9 +193838,9 @@
       "id": "pkg:coding-agent/.#PowerShellToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2d0abd99745d83b22e2b41bb56ca01a8e43f20d36e97d18a0476fc28ed4a1bb8",
-      "rationale": "Derived by the interface gap detector: PowerShellToolInput is Go coding/extension/opaque_types.go#PowerShellToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: PowerShellToolInput is Go coding/extension/tool_inputs.go#PowerShellToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#PowerShellToolInput"
+        "coding/extension/tool_inputs.go#PowerShellToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -193846,7 +193848,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#PowerShellToolInput"
+        "public-api:coding/extension/tool_inputs.go#PowerShellToolInput"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -196113,9 +196115,9 @@
       "id": "pkg:coding-agent/.#ReadToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b43217218ee571fc076109bd3bbc87d23544def63c31ad12ea23c06b007082ea",
-      "rationale": "Derived by the interface gap detector: ReadToolInput is Go coding/extension/opaque_types.go#ReadToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ReadToolInput is Go coding/extension/tool_inputs.go#ReadToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ReadToolInput"
+        "coding/extension/tool_inputs.go#ReadToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -196123,7 +196125,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#ReadToolInput"
+        "public-api:coding/extension/tool_inputs.go#ReadToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -197173,9 +197175,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ]
     },
     {
@@ -197239,9 +197241,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers",
-        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowOrderAndKinds"
+        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers"
       ]
     },
     {
@@ -197261,9 +197263,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers",
-        "test:internal/packagemanager/package_filters_test.go#TestPackageFiltersFollowMinimatch"
+        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers"
       ]
     },
     {
@@ -224224,9 +224226,9 @@
       "id": "pkg:coding-agent/.#WriteToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d5dd81c01d3771376b6a36bd87fe914778eb2ac3ed659f7aa0371127f4eacbea",
-      "rationale": "Derived by the interface gap detector: WriteToolInput is Go coding/extension/opaque_types.go#WriteToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: WriteToolInput is Go coding/extension/tool_inputs.go#WriteToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#WriteToolInput"
+        "coding/extension/tool_inputs.go#WriteToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -224234,7 +224236,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#WriteToolInput"
+        "public-api:coding/extension/tool_inputs.go#WriteToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",

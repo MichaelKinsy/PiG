@@ -138,6 +138,7 @@ func ResolveTrimmed(input, baseDir string) (string, error) {
 }
 
 // ResolvePackagePath uses the package manager's HOME || homedir() tilde expansion and trims the input, without changing normalization of baseDir.
+// Ports packages/coding-agent/src/core/package-manager.ts (resolvePath, resolvePathFromBase).
 // Ports packages/coding-agent/src/core/package-manager.ts:221-223,2145-2151.
 func ResolvePackagePath(input, baseDir string) (string, error) {
 	return resolve(Trim(input), baseDir, os.Getenv("HOME"))

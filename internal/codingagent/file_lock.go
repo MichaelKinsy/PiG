@@ -6,6 +6,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
+// Ports packages/coding-agent/src/core/settings-manager.ts
+
 // pathExists is Node's fs.existsSync: whether the path, followed through links, can be read at all.
 func pathExists(path string) bool {
 	_, err := os.Stat(path)

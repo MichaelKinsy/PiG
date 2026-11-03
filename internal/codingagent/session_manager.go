@@ -26,7 +26,9 @@ import (
 // ─── SessionManager ───────────────────────────────────────────────────────────
 
 // SessionManager owns the on-disk sessions directory for a given cwd
-// and tracks the active session.
+// and tracks the active session. It carries the static half of Pi's
+// SessionManager (create, open, forkFrom, getDefaultSessionDir).
+// Ports packages/coding-agent/src/core/session-manager.ts
 type SessionManager struct {
 	cwd        string
 	sessionDir string

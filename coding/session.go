@@ -1,5 +1,8 @@
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (createAgent's initial state, convertToLlm and thinking-level restore).
+// Ports packages/coding-agent/src/core/agent-session-runtime.ts (teardownCurrent's session_shutdown emission).
+
 import (
 	"context"
 	"errors"

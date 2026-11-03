@@ -1730,6 +1730,7 @@ func normalizeJSONC(data []byte) ([]byte, error) {
 }
 
 // Collect expands files or conventional resource directories for kind.
+// Ports packages/coding-agent/src/core/package-manager.ts (collectFiles, collectAutoSkillEntries, collectAutoPromptEntries, collectAutoThemeEntries, collectAutoExtensionEntries, applyPatterns, isEnabledByOverrides).
 func Collect(paths []string, kind Kind) []string {
 	files := make([]string, 0)
 	for _, resourcePath := range paths {
@@ -2021,6 +2022,7 @@ func ApplyConfiguredDelta(kind Kind, relativePaths, basePatterns, deltaPatterns 
 		states[relativePath] = enabled
 	}
 	for _, patternValue := range deltaPatterns {
+		//portlint:allow utf16units PiG-only delta syntax: patternValue[0] must be ASCII + or -, so len < 2 is true exactly when the string is that single unit; a lone non-ASCII character fails the [0] test, so every input takes the same branch as JS length < 2
 		if len(patternValue) < 2 || patternValue[0] != '+' && patternValue[0] != '-' {
 			return nil, fmt.Errorf("%s project Package delta %q must be an exact + or - member path", kind, patternValue)
 		}
@@ -2203,7 +2205,7 @@ func validAgentPluginSkills(paths []string) []string {
 		metadata := frontmatter.Parse(string(data))
 		name := metadata.String("name")
 		description := metadata.String("description")
-		if !agentSkillNamePattern.MatchString(name) || len(description) == 0 || len(description) > 1024 {
+		if !agentSkillNamePattern.MatchString(name) || description == "" || jsstring.Length(description) > 1024 {
 			continue
 		}
 		valid = append(valid, skillDir)

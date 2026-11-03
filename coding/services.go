@@ -6,6 +6,8 @@
 // AgentSession responsibilities while using Go ownership and error semantics.
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (createAgentSession's default settingsManager).
+
 import (
 	"context"
 	"errors"

@@ -1,4 +1,5 @@
 // Ports packages/coding-agent/src/core/resource-loader.ts (the ResourceLoader contract) and the resourceLoader option of packages/coding-agent/src/core/sdk.ts.
+// Ports packages/coding-agent/src/core/sdk.ts (the resourceLoader option).
 
 package coding
 

@@ -1,5 +1,7 @@
 package cli
 
+// pi: packages/coding-agent/src/core/project-trust.ts
+
 import (
 	"context"
 	"os"

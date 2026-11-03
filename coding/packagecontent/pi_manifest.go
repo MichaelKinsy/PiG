@@ -89,6 +89,7 @@ func decodeJSONStringArray(raw []byte) ([]string, bool) {
 // packageRoot, or "" when it has none. The file is the manifest's `pi.changelogPath`, else CHANGELOG.md; an empty manifest value means
 // no changelog, without the fallback. A path that does not exist, is not a regular file, or leaves the package root (once symbolic
 // links are resolved) is ignored.
+// Ports packages/coding-agent/src/core/package-manager.ts (resolvePackageChangelogPath).
 func ResolvePackageChangelogPath(packageRoot string) string {
 	changelogPath := "CHANGELOG.md"
 	if manifest := ReadPiManifest(filepath.Join(packageRoot, "package.json")); manifest != nil && manifest.ChangelogPath != nil {

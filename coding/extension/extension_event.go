@@ -1,9 +1,8 @@
 package extension
 
-// ExtensionEvent is the union of every event an extension handler receives (types.ts:1377 ExtensionEvent). It is a closed union: only the
-// event types of this package implement it, which is what the Pi union lists; the tool_call and tool_result members are the sealed
-// ToolCallEvent and ToolResultEvent unions, whose variants implement it as well.
-type ExtensionEvent interface{ extensionEvent() }
+// Ports packages/coding-agent/src/core/extensions/types.ts
+//
+// The event types below are the members of Pi's closed ExtensionEvent union (types.ts:1377); the union itself is declared in events.go.
 
 func (ProjectTrustEvent) extensionEvent()          {}
 func (ResourcesDiscoverEvent) extensionEvent()     {}

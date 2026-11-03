@@ -1,7 +1,5 @@
 package codingagent
 
-// pi: packages/coding-agent/src/core/telemetry.ts
-
 import (
 	"bytes"
 	"encoding/json"

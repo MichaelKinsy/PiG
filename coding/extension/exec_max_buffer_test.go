@@ -1,6 +1,7 @@
 package extension_test
 
 // pi: packages/coding-agent/test/exec.test.ts (maxBuffer, #11360), exec-runtime-limit.test.ts
+// pi: packages/coding-agent/src/core/exec.ts
 
 import (
 	"context"
