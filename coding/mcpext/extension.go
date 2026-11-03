@@ -304,7 +304,7 @@ func RenderServersSection(servers []McpServerListing) (string, bool) {
 			reach = "codemode"
 		}
 		reaches[reach] = true
-		heads[i] = fmt.Sprintf("- %s (%s)", extension.McpNamespace(server.Entry.Name), reach)
+		heads[i] = fmt.Sprintf("- %s (%s)", mcp.McpNamespace(server.Entry.Name), reach)
 	}
 	intro := serversSectionIntro(reaches)
 	omitted := func(count int) []string {
@@ -474,7 +474,7 @@ func (e *Extension) registeredServers() (registered []*server, overriddenNames [
 	e.mu.Unlock()
 	for _, reg := range e.host.GetMcpServers() {
 		if i := slices.IndexFunc(configured, func(entry McpServerEntry) bool {
-			return extension.McpNamespace(entry.Name) == extension.McpNamespace(reg.Name)
+			return mcp.McpNamespace(entry.Name) == mcp.McpNamespace(reg.Name)
 		}); i >= 0 {
 			overriddenNames = append(overriddenNames, fmt.Sprintf(`"%s" registered by %s is overridden by "%s" in %s`, reg.Name, reg.ExtensionPath, configured[i].Name, configured[i].Source))
 			continue
@@ -551,7 +551,7 @@ func (e *Extension) registerTools(connection *Connection) {
 	name := connection.Entry.Name
 	entry := e.currentEntry(connection)
 	namespace := extension.ToolNamespace{
-		Name: extension.McpNamespace(name),
+		Name: mcp.McpNamespace(name),
 		// `describeNamespace("docs")` finds `mcp__docs` (Pi 1.2.0 extensions/mcp/index.ts:392-394, 24382bed).
 		Aliases:      []string{name},
 		Description:  strings.TrimFunc(entry.Config.Description, isJSWhitespace),
@@ -568,11 +568,11 @@ func (e *Extension) registerTools(connection *Connection) {
 	for _, tool := range connection.Tools() {
 		if !seen[tool.Name] {
 			seen[tool.Name] = true
-			plainCount[CreateMcpToolName(name, tool.Name, nil)]++
+			plainCount[mcp.CreateMcpToolName(name, tool.Name, nil)]++
 		}
 	}
 	assignName := func(tool, owner string) string {
-		toolName := CreateMcpToolName(name, tool, func(candidate string) bool {
+		toolName := mcp.CreateMcpToolName(name, tool, func(candidate string) bool {
 			existing, taken := e.toolOwners[candidate]
 			return (taken && existing != owner) || current.has(candidate) ||
 				plainCount[candidate] > 1
@@ -1695,7 +1695,7 @@ func reachesServer(reach extension.ToolReach, server string) bool {
 	if reach.All {
 		return true
 	}
-	namespace := extension.McpNamespace(server)
+	namespace := mcp.McpNamespace(server)
 	return slices.ContainsFunc(reach.Words, func(word string) bool { return strings.Contains(word, namespace) })
 }
 

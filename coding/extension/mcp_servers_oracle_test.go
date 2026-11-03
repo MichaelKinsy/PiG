@@ -154,28 +154,22 @@ func TestValidateMcpServerConfigKeepsAnIntegralCallbackPortWrittenAsAnyNumberFor
 	}
 }
 
-// TestMcpHelpersMatchPi compares createToolNameMatcher, isMcpToolName, isLoopbackRedirectUri and mcpNamespace with Pi 1.0.4.
+// TestMcpHelpersMatchPi compares createToolNameMatcher and isMcpToolName with Pi 1.0.4.
 func TestMcpHelpersMatchPi(t *testing.T) {
 	entrySets := [][]string{
 		{}, {"read"}, {"*"}, {"mcp__*"}, {"a*b"}, {"a.b", "c+d"}, {"[x]*", "(y)?"}, {"^*$"}, {"*\\*"}, {"a*", "*z"}, {"é*"}, {"a**b"},
 	}
 	names := []string{"", "read", "mcp__s__t", "ab", "a.b", "axb", "a\nb", "a\u2028b", "c+d", "ccd", "[x]1", "x1", "(y)?", "y", "^a$", "\\", "éa", "list_mcp_resources", "read_mcp_resource", "list_mcp_resource_templates", "mcp_", "mcp__"}
-	uris := []string{"", "http://localhost:8080/cb", "http://127.0.0.1/cb", "http://[::1]/cb", "https://localhost/cb", "http://localhost/cb?x", "http://localhost/cb#", "http://localhost/cb#x", "http://LOCALHOST/cb", "http://0x7f.1/", "http://127.1/", "nope", "http://localhost:99999/", "http://user@localhost/"}
-	servers := []string{"a", "a-b", "a-b-c", "-", "a_b"}
 	var want struct {
-		Matches    [][]bool `json:"matches"`
-		IsMcp      []bool   `json:"isMcp"`
-		Loopback   []bool   `json:"loopback"`
-		Namespaces []string `json:"namespaces"`
+		Matches [][]bool `json:"matches"`
+		IsMcp   []bool   `json:"isMcp"`
 	}
 	pioracle.Run(t, `
 const mod = await load("pi-coding-agent/core/mcp-servers.js");
 emit({
 	matches: input.entrySets.map((entries) => { const m = mod.createToolNameMatcher(entries); return input.names.map((n) => m(n)); }),
 	isMcp: input.names.map((n) => mod.isMcpToolName(n)),
-	loopback: input.uris.map((u) => mod.isLoopbackRedirectUri(u)),
-	namespaces: input.servers.map((s) => mod.mcpNamespace(s)),
-});`, map[string]any{"entrySets": entrySets, "names": names, "uris": uris, "servers": servers}, &want)
+});`, map[string]any{"entrySets": entrySets, "names": names}, &want)
 	for i, entries := range entrySets {
 		set := map[string]struct{}{}
 		for _, e := range entries {
@@ -191,16 +185,6 @@ emit({
 	for j, name := range names {
 		if got := IsMcpToolName(name); got != want.IsMcp[j] {
 			t.Errorf("IsMcpToolName(%q) = %v, Pi %v", name, got, want.IsMcp[j])
-		}
-	}
-	for j, uri := range uris {
-		if got := IsLoopbackRedirectURI(uri); got != want.Loopback[j] {
-			t.Errorf("IsLoopbackRedirectURI(%q) = %v, Pi %v", uri, got, want.Loopback[j])
-		}
-	}
-	for j, server := range servers {
-		if got := McpNamespace(server); got != want.Namespaces[j] {
-			t.Errorf("McpNamespace(%q) = %q, Pi %q", server, got, want.Namespaces[j])
 		}
 	}
 }

@@ -1,4 +1,4 @@
-// Drive the installed Pi's truncateHead/Tail/Line/Middle and formatSize, never a translated oracle.
+// Drive the installed Pi's truncateHead/Tail/Line and formatSize, never a translated oracle.
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
@@ -15,7 +15,6 @@ const run = ({ fn, content, maxLines, maxBytes, n }) => {
 		case "head": return t.truncateHead(content, options);
 		case "tail": return t.truncateTail(content, options);
 		case "line": return t.truncateLine(content, n);
-		case "middle": return t.truncateMiddle(content, n);
 		case "size": return t.formatSize(n);
 	}
 };

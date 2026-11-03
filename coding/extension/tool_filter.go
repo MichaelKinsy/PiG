@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // Ports packages/coding-agent/src/core/mcp-servers.ts (createToolNameMatcher, isMcpToolName) and the `--tools` and
@@ -217,7 +219,7 @@ func (s *ToolScope) KindOf(info ToolInfo) (ToolClass, string) {
 		namespace = info.Namespace.Name
 	}
 	switch {
-	case IsMcpResourceTool(info.Name) || strings.HasPrefix(source, McpSourcePrefix) || strings.HasPrefix(namespace, McpNamespace("")):
+	case IsMcpResourceTool(info.Name) || strings.HasPrefix(source, McpSourcePrefix) || strings.HasPrefix(namespace, mcpshared.McpNamespace("")):
 		return ToolClassMCP, McpAdapterEntry
 	case source == "" || source == "builtin":
 		return ToolClassBuiltin, ""
@@ -292,7 +294,7 @@ func (s *ToolScope) McpServerOf(info ToolInfo) string {
 		return server
 	}
 	if info.Namespace != nil {
-		return strings.TrimPrefix(info.Namespace.Name, McpNamespace(""))
+		return strings.TrimPrefix(info.Namespace.Name, mcpshared.McpNamespace(""))
 	}
 	return ""
 }

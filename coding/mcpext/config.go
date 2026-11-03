@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 // Ports packages/coding-agent/src/extensions/mcp/config.ts.
@@ -97,10 +98,16 @@ func isJSONObject(raw json.RawMessage) bool { return len(raw) > 0 && raw[0] == '
 // upstream: packages/coding-agent/src/extensions/mcp/config.ts:OVERRIDE_KEYS
 var overrideKeys = []string{"enabled", "exposure", "toolExposure"}
 
-// isOverride reports whether an entry overrides a server defined elsewhere
-// instead of defining one: it has no `command`, `url`, or `type` member.
+// isOverride is [mcp.IsMcpServerOverride] of an entry held as an ordered object: only the
+// members that rule looks at are passed.
 func isOverride(value *orderedjson.Object) bool {
-	return !value.Has("command") && !value.Has("url") && !value.Has("type")
+	members := map[string]json.RawMessage{}
+	for _, key := range []string{"command", "url", "type"} {
+		if raw, ok := value.Get(key); ok {
+			members[key] = raw
+		}
+	}
+	return mcp.IsMcpServerOverride(members)
 }
 
 func (s *configState) readFile(path, scope string) {
@@ -162,7 +169,7 @@ func (s *configState) readFile(path, scope string) {
 		}
 		// Names that differ only in `-` and `_` would share a namespace.
 		if clash := slices.IndexFunc(s.names, func(other string) bool {
-			return other != name && extension.McpNamespace(other) == extension.McpNamespace(name)
+			return other != name && mcp.McpNamespace(other) == mcp.McpNamespace(name)
 		}); clash >= 0 {
 			s.errors = append(s.errors, fmt.Sprintf(`%s: server "%s" conflicts with "%s"`, path, name, s.names[clash]))
 			continue

@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // PendingVirtualModelRegistration retains a virtual model and its owning extension until the runner binds.
@@ -34,7 +35,7 @@ func (r *ExtensionRuntime) RegisterMcpServer(extensionPath, name string, config 
 	}
 	// Names that differ only in `-` and `_` would share a namespace.
 	for _, server := range r.mcpServers.List() {
-		if server.Name != name && McpNamespace(server.Name) == McpNamespace(name) {
+		if server.Name != name && mcpshared.McpNamespace(server.Name) == mcpshared.McpNamespace(name) {
 			return fmt.Errorf(`MCP server "%s" conflicts with registered server "%s"`, name, server.Name)
 		}
 	}

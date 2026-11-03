@@ -110,25 +110,6 @@ func TestValidateMcpServerConfigMessages(t *testing.T) {
 	}
 }
 
-func TestIsLoopbackRedirectURI(t *testing.T) {
-	for uri, want := range map[string]bool{
-		"http://localhost:8080/cb": true, "http://127.0.0.1/cb": true, "http://[::1]:9/cb": true,
-		"https://localhost/cb": false, "http://example.com/cb": false, "http://localhost/cb?x=1": false,
-		"http://localhost/cb#f": false, "not a url": false,
-		// An empty query or fragment is empty for `url.search` and `url.hash`; the host is case-insensitive.
-		"http://localhost:8080/cb?": true, "http://localhost:8080/cb#": true, "http://LocalHost/cb": true,
-		// `url.hostname` is the WHATWG host: an IPv4 address in any notation is a dotted quad, an IPv6 literal is
-		// compressed, and a domain keeps its trailing dot. Probe of Pi 0.99.2 isLoopbackRedirectUri: true, true, true,
-		// true, false.
-		"http://127.1:8080/cb": true, "http://0x7F.0.0.1/cb": true, "http://127.0.0.1./cb": true,
-		"http://[0:0::1]:8080/cb": true, "http://localhost./cb": false,
-	} {
-		if got := IsLoopbackRedirectURI(uri); got != want {
-			t.Errorf("IsLoopbackRedirectURI(%q) = %v, want %v", uri, got, want)
-		}
-	}
-}
-
 // mcp-servers.ts validateMcpServerConfig checks auth against `new URL(value.url).hostname`, which the WHATWG URL parser lowercases and, for an IPv6 literal, serializes in its compressed bracketed form. Node prints "localhost" for http://LocalHost:8788 and "[::1]" for http://[0:0:0:0:0:0:0:1].
 func TestValidateMcpServerConfigAcceptsProviderAuthOnLoopbackHostsAsTheURLParserNormalizesThem(t *testing.T) {
 	// The WHATWG host parser also serializes an IPv4 address in shorthand, hex, or with a trailing dot as a dotted quad:
@@ -222,16 +203,26 @@ func TestValidateMcpServerConfigParsesTheURLAsTheWHATWGParserDoes(t *testing.T) 
 			t.Errorf("%s: message = %q, want %q", tc.config, message, tc.want)
 		}
 	}
-	for uri, want := range map[string]bool{
-		"http://%6cocalhost:8080/cb": true, "http://%6cocalhost/cb?x=1": false, "http:localhost/cb": true,
-		"https://%6cocalhost/cb": false, "http://exa%20mple.com/": false,
-	} {
-		if got := IsLoopbackRedirectURI(uri); got != want {
-			t.Errorf("IsLoopbackRedirectURI(%q) = %v, want %v", uri, got, want)
-		}
-	}
 	config := json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":"http://%6cocalhost:9000/cb","callbackPort":9001}}`)
 	if _, message := ValidateMcpServerConfig("s", config); message != `server "s": oauth.callbackUrl and oauth.callbackPort name different ports` {
 		t.Errorf("callbackUrl port message = %q", message)
+	}
+}
+
+// Pi 76c040a2a core/mcp-servers.ts validateMcpServerConfig: pi-mcp's shared fields are checked first (enabled, description, timeout, the transport, url, headers, oauth), then pi's `exposure` and `toolExposure`, then `auth`.
+// mutation-checked: checking exposures before the shared fields, or `auth` before the exposures, fails it.
+func TestValidateMcpServerConfigChecksTheSharedFieldsBeforePisOwn(t *testing.T) {
+	for _, tc := range []struct{ name, config, want string }{
+		{"enabled before exposure", `{"command":"x","enabled":1,"exposure":"bogus"}`, `server "s": enabled must be a boolean`},
+		{"url before exposure", `{"url":"ftp://x","exposure":"bogus"}`, `server "s": url must be an http or https URL`},
+		{"oauth before exposure", `{"url":"https://x.example","oauth":"no","exposure":"bogus"}`, `server "s": oauth must be an object`},
+		{"args before toolExposure", `{"command":"x","args":[1],"toolExposure":{"a":"bogus"}}`, `server "s": args must be an array of strings`},
+		{"exposure before auth", `{"url":"http://x.example","exposure":"bogus","auth":{"provider":"p"}}`, `server "s": exposure must be one of "codemode", "deferred", "direct", "hidden"`},
+		{"toolExposure before auth", `{"url":"http://x.example","toolExposure":{"a":"bogus"},"auth":5}`, `server "s": toolExposure "a" must be one of "codemode", "deferred", "direct", "hidden"`},
+		{"auth last", `{"url":"http://x.example","auth":{"provider":"p"}}`, `server "s": auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]`},
+	} {
+		if _, message := ValidateMcpServerConfig("s", json.RawMessage(tc.config)); message != tc.want {
+			t.Errorf("%s: message = %q, want %q", tc.name, message, tc.want)
+		}
 	}
 }

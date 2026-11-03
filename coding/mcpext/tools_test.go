@@ -21,31 +21,6 @@ import (
 
 // Ports packages/coding-agent/test/mcp-extension.test.ts ("MCP tools").
 
-func TestMCPToolsCreatesProviderSafeToolNames(t *testing.T) {
-	if got := mcpext.CreateMcpToolName("docs", "search", nil); got != "mcp__docs__search" {
-		t.Fatalf("got %s", got)
-	}
-	if got := mcpext.CreateMcpToolName("my-server", "get.item/v2", nil); got != "mcp__my_server__get_item_v2" {
-		t.Fatalf("got %s", got)
-	}
-	long := mcpext.CreateMcpToolName("server", strings.Repeat("x", 100), nil)
-	if len(long) != 64 {
-		t.Fatalf("long name has %d chars", len(long))
-	}
-	if !regexp.MustCompile(`^mcp__server__x+_[0-9a-f]{8}$`).MatchString(long) {
-		t.Fatalf("long name = %s", long)
-	}
-	if other := mcpext.CreateMcpToolName("server", strings.Repeat("x", 100)+"y", nil); other == long {
-		t.Fatal("different tools got the same shortened name")
-	}
-	// Names that sanitize to one already taken by another tool get a hash suffix.
-	taken := mcpext.CreateMcpToolName("s", "a_b", nil)
-	second := mcpext.CreateMcpToolName("s", "a-b", func(name string) bool { return name == taken })
-	if !regexp.MustCompile(`^mcp__s__a_b_[0-9a-f]{8}$`).MatchString(second) {
-		t.Fatalf("second = %s", second)
-	}
-}
-
 // Pi 1.2.0 mcp-extension.test.ts "declares the CallToolResult scripts receive, keeping references in the server's output schema".
 func TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheServersOutputSchema(t *testing.T) {
 	content := `content: Array<{ data?: string; mimeType?: string; text?: string; type: "text" | "image" | "audio" | "resource_link" | "resource"; [key: string]: unknown; }>; isError?: boolean;`

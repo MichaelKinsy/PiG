@@ -240,7 +240,7 @@ func storeKeys(name, serverURL string) (key, legacyKey string, err error) {
 	if err != nil {
 		return "", "", err
 	}
-	return extension.McpNamespace(name) + "|" + legacyKey, legacyKey, nil
+	return mcp.McpNamespace(name) + "|" + legacyKey, legacyKey, nil
 }
 
 // truthy is JavaScript truthiness of a stored JSON value.
