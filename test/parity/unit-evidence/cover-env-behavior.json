@@ -1024,5 +1024,59 @@
   ],
   "upstream_reference": "packages/env/daemon/src/sys/windows.rs:648-664 (test quotes_arguments_like_libuv); all seven quote_argument vectors, plus `a\"b`, run through the daemon's exec of an argv with a helper child that reports GetCommandLineW and os.Args; Windows only (windows-latest, throwaway diag run, logs in the PR handoff)",
   "mutation": "internal/nodespawn/cmdline.go: in QuoteCmdArg, return an empty argument as nothing instead of `\"\"`; TestExecDeliversPiQuoteArgumentVectorsThroughTheSpawnPath fail on Windows."
+ },
+ {
+  "upstream": "packages/env/src/process.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenProcessPipesStdinToTheProgramAndItsStdoutAndStderrBackSeparately"
+  ],
+  "upstream_reference": "packages/env/test/process.test.ts:82 (Pi 9c9ce8547 \"pipes stdin to the program and its stdout and stderr back separately\"); ported with the same inputs and expected bytes, run against PiG's daemon and Pi's once the pin has process.rs",
+  "mutation": "env/process.go: replace `if event[\"stream\"] == \"stderr\" {` with `if false {`; TestOpenProcessPipesStdinToTheProgramAndItsStdoutAndStderrBackSeparately fail."
+ },
+ {
+  "upstream": "packages/env/src/process.ts",
+  "package": "./env",
+  "tests": [
+   "TestOpenProcessKillsTheProgramAndWhatItStartedOnClose"
+  ],
+  "upstream_reference": "packages/env/test/process.test.ts:227 (Pi 9c9ce8547 \"kills the program and what it started on close\"); ported with the same Node wrapper program",
+  "mutation": "env/process.go: replace `func (p *RemoteProcess) Close() { p.abort() }` with `func (p *RemoteProcess) Close() {}`; TestOpenProcessKillsTheProgramAndWhatItStartedOnClose fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/process.rs",
+  "package": "./env",
+  "tests": [
+   "TestProcessWriteRefusesInputAfterStdinWasClosedWhileTheProgramKeepsRunning"
+  ],
+  "upstream_reference": "packages/env/test/process.test.ts:179 (Pi 9c9ce8547 \"refuses input after stdin was closed while the program keeps running\"); ported with the same requests and expected EBADF",
+  "mutation": "env/daemon/process.go: delete the `input.close()` of the `if !ok {` branch of the stdin writer; TestProcessWriteRefusesInputAfterStdinWasClosedWhileTheProgramKeepsRunning fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/process.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk"
+  ],
+  "upstream_reference": "packages/env/test/process.test.ts:133 (Pi 9c9ce8547 \"keeps input in order across many writes and writes larger than one frame chunk\"); ported with the same 4000 pieces and 2,500,003 bytes",
+  "mutation": "env/daemon/pty.go: take `q.chunks[len(q.chunks)-1]` instead of `q.chunks[0]` in inputQueue.next; TestOpenProcessKeepsInputInOrderAcrossManyWritesAndWritesLargerThanOneFrameChunk fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/process.rs",
+  "package": "./env",
+  "tests": [
+   "TestOpenProcessKillsWhatTheProgramStartedWhenItExits"
+  ],
+  "upstream_reference": "packages/env/test/process.test.ts:249 (Pi 032656b6c \"kills what the program started when it exits\"); ported with the same Node wrapper program",
+  "mutation": "env/daemon/process_group.go: delete the `p.group.end()` line of waitAndEnd; TestOpenProcessKillsWhatTheProgramStartedWhenItExits fail."
+ },
+ {
+  "upstream": "packages/env/daemon/src/sys/unix.rs",
+  "package": "./env/daemon",
+  "tests": [
+   "TestEndingAGroupKillsWhatTheProgramLeftRunning"
+  ],
+  "upstream_reference": "packages/env/daemon/src/sys/unix.rs tests::ending_a_group_kills_what_the_program_left_running (Pi 032656b6c); ported with the same shell script",
+  "mutation": "env/daemon/process_unix_test.go: delete the `started.group.end()` line; TestEndingAGroupKillsWhatTheProgramLeftRunning fail."
  }
 ]
