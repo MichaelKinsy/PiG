@@ -69,6 +69,7 @@ func TestSetupKeyHandlersEscapeAndClearBranches(t *testing.T) {
 				r.m.isIdle = false
 				r.m.turnActive.Store(true)
 				r.m.retryCountdownStop = func() {}
+				r.m.retryEscapeHandler = true
 				r.m.compactionQueue = []compactionQueuedMessage{{text: "queued", mode: compactionQueueSteer}}
 			},
 			want: escapeWorld{RetryAborted: true, QueuedMessages: 1}},
@@ -76,6 +77,7 @@ func TestSetupKeyHandlersEscapeAndClearBranches(t *testing.T) {
 			setup: func(r *keyRig) {
 				r.m.isIdle = false
 				r.m.retryCountdownStop = func() {}
+				r.m.retryEscapeHandler = true
 				r.m.bashCancel = func() { r.bashCancels++ }
 			},
 			want: escapeWorld{RetryAborted: true}},
