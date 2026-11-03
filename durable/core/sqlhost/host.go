@@ -990,7 +990,7 @@ func (h *Host) setTimer(id uint32, at float64, background bool) {
 	if stop, ok := h.timers[id]; ok {
 		stop()
 	}
-	wait := max(time.Duration((at-h.opts.Clock())*float64(time.Millisecond)), 0)
+	wait := timerDelay(at, h.opts.Clock())
 	if wait > h.opts.TimerLead {
 		wait -= h.opts.TimerLead
 	}
