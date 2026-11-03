@@ -795,20 +795,44 @@
     {
       "id": "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderIncrementalToolsNotice",
       "ownerFamily": "providers-faux-streaming",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/openai_responses.go#renderIncrementalToolsNotice",
+        "ai/openai_responses.go#systemToolAdditions"
+      ],
+      "evidence": [
+        "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain",
+        "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
+      ],
+      "contracts": [
+        "ai/openai-responses/render-incremental-tools-notice"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderToolRemovalNotice",
       "ownerFamily": "providers-faux-streaming",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/openai_responses.go#convertAnchored",
+        "ai/openai_responses.go#renderToolRemovalNotice",
+        "ai/openai_responses.go#systemMessageInstruction"
+      ],
+      "evidence": [
+        "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesRequests",
+        "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesToolSearchItems",
+        "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
+      ],
+      "contracts": [
+        "ai/openai-responses/render-tool-removal-notice",
+        "ai/openai-responses/tool-change-announcements"
+      ],
       "divergence": "",
       "rationale": ""
     },

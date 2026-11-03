@@ -3309,6 +3309,82 @@ sha256 = "af02c94275c6f91a9d03a430397ecd36fffb492836ee4c2d308a7c003bf05cea"
 keybindings = []
 
 [[contract]]
+id = "ai/openai-responses/render-incremental-tools-notice"
+upstream_id = "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderIncrementalToolsNotice"
+family = "providers-faux-streaming"
+kind = "render-layout"
+claim = "every additional_tools item after the first is preceded by an instruction message holding the incremental-tools sentence, followed by a line `Still unavailable: ` with the tools announced as removed and not declared again since, joined by `, ` in announced order and ended by a full stop, only while that list is not empty; the first item has none, and tool search, mid-conversation-only and folded transports send none; a tool declared again (also twice in one message) leaves the list and a later removal puts it at the end, a name already listed is not listed twice, and a removal in the message that loads a tool is listed from the next notice on; byte for byte over 21 hand-written and 400 seeded transcripts under five transports against the installed Pi, with Pi's own payloads supplying the counts of notices, single-name and multi-name lists, and the same transcripts through the provider request path in the scenario"
+status = "ported"
+pig_targets = [
+  "ai/openai_responses.go#renderIncrementalToolsNotice",
+  "ai/openai_responses.go#systemToolAdditions"
+]
+evidence = [
+  "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
+  "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesKeepsPrefixAcrossRemovalAndLoads",
+  "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesStopsListingAToolAsUnavailableOnceDeclaredAgain",
+  "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesDoesNotListAToolAsUnavailableBeforeItsRemovalIsAnnounced",
+  "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
+]
+
+[contract.upstream]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+start = "function renderIncrementalToolsNotice(unavailable: ReadonlySet<string>): string {"
+end = "function renderToolRemovalNotice(names: readonly string[]): string {"
+sha256 = "f77fc368b91679218339b61325dd86a1f0ce0bb656dafe05fdaed5ab52d4ec65"
+keybindings = []
+
+[[contract]]
+id = "ai/openai-responses/render-tool-removal-notice"
+upstream_id = "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderToolRemovalNotice"
+family = "providers-faux-streaming"
+kind = "render-layout"
+claim = "the true removals of a system message that anchors tool changes (names in toolsRemoved that toolsAdded does not name again, in message order, a repeated name repeated) are announced as `The following tools are no longer available. Do not call them:` with one `\\n- name` line per name, appended to the message's update text after a blank line, or alone when the text is empty, for the leading message as for a later one; a redefinition announces nothing, and a message folded into the prompt announces nothing; names with commas, line breaks, spaces and non-ASCII letters are written as they are; byte for byte over 21 hand-written and 400 seeded transcripts under five transports against the installed Pi, and the same transcripts through the provider request path in the scenario"
+status = "ported"
+pig_targets = [
+  "ai/openai_responses.go#renderToolRemovalNotice",
+  "ai/openai_responses.go#systemMessageInstruction"
+]
+evidence = [
+  "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
+  "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesRequests",
+  "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesRedefinitionIsNotARemoval",
+  "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
+]
+
+[contract.upstream]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+start = "function renderToolRemovalNotice(names: readonly string[]): string {"
+end = "export function convertResponsesMessages<TApi extends Api>("
+sha256 = "6a77f05c05b75d877465adedd9a09785a127f6fe514a5473e330b31a7f64d91b"
+keybindings = []
+
+[[contract]]
+id = "ai/openai-responses/tool-change-announcements"
+upstream_id = "render:packages/ai/src/api/openai-responses-shared.ts#<module>.renderToolRemovalNotice"
+family = "providers-faux-streaming"
+kind = "render-layout"
+claim = "the state the two notices read: the unavailable list is cleared of every tool a system message adds before that message is handled, a message that anchors tool changes (its position is at or past the folded count) declares its additions as an additional_tools item, preceded by the incremental notice from the second declaration on, or as a client tool_search_call and tool_search_output pair under tool search, then writes its update text and removal notice as one instruction message with empty parts dropped, and records its true removals only then, so the notice before its own additions never lists them; byte for byte over the same 21 hand-written and 400 seeded transcripts and the scenario's 68 request probes"
+status = "ported"
+pig_targets = [
+  "ai/openai_responses.go#convertAnchored",
+  "ai/openai_responses.go#systemToolAdditions",
+  "ai/openai_responses.go#systemMessageInstruction"
+]
+evidence = [
+  "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
+  "ai/transcript_tool_changes_test.go#TestTranscriptToolChangesOpenAIResponsesToolSearchItems",
+  "test/parity/scenarios/providers-faux-streaming/33-responses-tool-change-notices.toml"
+]
+
+[contract.upstream]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+start = "\t/** Tools announced as removed and not declared again since. */"
+end = "\t\t} else if (msg.role === \"user\") {\n\t\t\tif (typeof msg.content === \"string\") {"
+sha256 = "282caa016bf343e71ce1ea29e887b3f35a374c8039dc08d66f09743bda38d798"
+keybindings = []
+
+[[contract]]
 id = "ai/llama-classify/render-state"
 upstream_id = "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderState"
 family = "providers-registry"
