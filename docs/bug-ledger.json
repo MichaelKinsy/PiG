@@ -6471,6 +6471,26 @@
       ]
     },
     {
+      "id": "BF-331ab59",
+      "title": "`pig status` reports the agent and project directories by the same resolved path before and after a run…",
+      "symptom": "`pig status` reports the agent and project directories by the same resolved path before and after a run creates them.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` reports the agent and project directories by the same resolved path before and after a run creates them. It resolved symbolic links only once a directory existed, so on macOS, where the temporary directory is `/var/...` and resolves to `/private/var/...`, the paths changed between the first run and the next.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "331ab59c12",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-333229c",
       "title": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead…",
       "symptom": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error.",
@@ -41467,6 +41487,26 @@
       ]
     },
     {
+      "id": "BF-eba1115",
+      "title": "Starting a new Session in a working directory that was removed, where the system still reports its path…",
+      "symptom": "Starting a new Session in a working directory that was removed, where the system still reports its path (macOS), ends with Pi's `Stored session working directory does not exist` message and exit 1 in print, JSON and RPC mode, and offers to continue in the current directory in interactive mode, instead of failing later with a `construct session` error.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting a new Session in a working directory that was removed, where the system still reports its path (macOS), ends with Pi's `Stored session working directory does not exist` message and exit 1 in print, JSON and RPC mode, and offers to continue in the current directory in interactive mode, instead of failing later with a `construct session` error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eba1115c50",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ebb4c0e",
       "title": "An `\"m\"` operation whose permutation a Go caller builds as `[]int` validates and applies again, as it did in…",
       "symptom": "`AssertValidOp` reported `m permutation is not an array`.",
@@ -42179,6 +42219,29 @@
         "coding/cli/rpc_model_type_binary_test.go::TestRPCModelObjectsCarryTheRegistryModelType",
         "coding/codemode_session_upstream_test.go::TestUpstreamCodemodeModels",
         "coding/session_boundaries_drafts_upstream_test.go::TestUpstreamSessionBoundariesDrafts"
+      ]
+    },
+    {
+      "id": "BF-eeee29b",
+      "title": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still…",
+      "symptom": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.",
+      "rootCause": "A worker that is shut down, or killed, while its NodeHost is still starting has no host to close: the process ends (os.Exit skips startNode's defer; a kill gives it no chance at all) and its chord-plugins-* socket directory stays in the temp directory. Pi evaluates plugins in-process, so it has no such directory to port; its only temp file, the lock, goes with `process.once(\"exit\")`.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eeee29b9a8",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_workers_test.go::TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory",
+        "chord/nextnode/workers/workers_workers_test.go::TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting"
       ]
     },
     {
