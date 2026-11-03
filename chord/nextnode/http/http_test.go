@@ -518,13 +518,16 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 	// route answered. The Go route blocks on a gate of the test that ignores the scope.
 	stuckGate := newGate()
 	t.Cleanup(stuckGate.resolve)
+	quickEntered, stuckEntered := newGate(), newGate()
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
 		RouteFunc("GET /quick", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			quickEntered.resolve()
 			time.Sleep(30 * time.Millisecond)
 			return htmlOf("done"), nil
 		}),
 		RouteFunc("GET /stuck", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			sealed.add(ctx)
+			stuckEntered.resolve()
 			<-stuckGate.done()
 			return HttpResponse{}, nil
 		}),
@@ -541,7 +544,9 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 	}
 	quick := request("/quick")
 	stuck := request("/stuck")
-	time.Sleep(10 * time.Millisecond)
+	// Both are running when close begins (a request still on its way would be refused 503 instead).
+	receive(t, quickEntered.done(), "the quick route")
+	receive(t, stuckEntered.done(), "the stuck route")
 	closing := httpAsync(func() struct{} {
 		server.http.Close(background)
 		return struct{}{}
