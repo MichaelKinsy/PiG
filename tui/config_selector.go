@@ -281,7 +281,7 @@ func (h configSelectorHeader) Render(width int) []string {
 	sep := t.Muted + " · " + "\x1b[39m"
 	hint := RawKeyHint("space", action) + sep + RawKeyHint("esc", "close")
 	if cs.projectModeAvailable {
-		hint = RawKeyHint("tab", "switch mode") + sep + hint
+		hint = KeyHint(ActionKeyText(KBInputTab), "switch mode") + sep + hint
 	}
 	titleW := widthx.VisibleWidth(title)
 	hintW := widthx.VisibleWidth(hint)
@@ -453,19 +453,20 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 	case data == " " || kb.Matches(data, KBSelectConfirm): // Space or Enter: toggle
 		if cs.cursor >= 0 && cs.cursor < len(cs.filtered) {
 			e := cs.filtered[cs.cursor]
-			if e.entryType == "item" {
+			// config-selector.ts:494: the project scope toggles every item; the global scope only items whose scope is not project.
+			if e.entryType == "item" && (cs.writeScope == "project" || e.item.Scope != "project") {
 				if cs.writeScope == "project" {
 					state := nextProjectOverride(e.item.Override, e.item.InheritedEnabled)
 					if cs.OnOverride == nil || cs.OnOverride(e.item, state) == nil {
 						e.item.Override = state
 						if state == "inherit" {
-							e.item.Enabled = e.item.InheritedEnabled
+							cs.updateItem(e.item, e.item.InheritedEnabled)
 						} else {
-							e.item.Enabled = state == "load"
+							cs.updateItem(e.item, state == "load")
 						}
 					}
 				} else {
-					e.item.Enabled = !e.item.Enabled
+					cs.updateItem(e.item, !e.item.Enabled)
 					if cs.OnToggle != nil {
 						cs.OnToggle(e.item, e.item.Enabled)
 					}
@@ -479,6 +480,22 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 		cs.filterItems()
 	}
 	cs.Invalidate()
+}
+
+// updateItem is ResourceList.updateItem: it sets the item's state and the state of the first item of the current scope's groups with the same path and
+// resource type.
+func (cs *ConfigSelectorComponent) updateItem(item *ResourceItem, enabled bool) {
+	item.Enabled = enabled
+	for _, group := range cs.groups {
+		for _, subgroup := range group.Subgroups {
+			for _, found := range subgroup.Items {
+				if found.Path == item.Path && found.ResourceType == item.ResourceType {
+					found.Enabled = enabled
+					return
+				}
+			}
+		}
+	}
 }
 
 func nextProjectOverride(current string, inheritedEnabled bool) string {

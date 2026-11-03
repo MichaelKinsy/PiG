@@ -1,0 +1,67 @@
+# Behavior family: selectors
+# Surface: `pi config --local` / `pig config --local` project scope through the real TUI (ResourceList.handleInput space/enter, renderCheckbox)
+#
+# config-selector.ts:492-501 toggles the highlighted item in the project scope by cycling its override: an inherited enabled item goes
+# inherit -> unload ([-] "project unload") -> load ([+] "project load") -> inherit. Two Spaces on the first item and one on the second
+# give "[+] project load" on the first row and "[-] project unload" on the second; the remaining rows stay dim and "inherited global".
+# Both binaries run the same keys and the complete rows, colours included, are compared. Each binary writes its own copy of the project.
+name = "18-config-project-toggle"
+description = "Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "sample-skill"
+ready_pattern_pi = "sample-skill"
+ready_timeout_seconds = 15
+capture_start = "Project Local Resources"
+capture_end = "zinc.json"
+cwd = "testdata/empty-project"
+
+[[tmux.steps]]
+keys = ["Space", "Space", "Down", "Space"]
+wait_visible_contains = ["project load", "project unload"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+override_base_args = true
+pig = ["PIG_HOME=testdata/pig-home-full", "HOME=testdata/home-empty"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-full", "HOME=testdata/home-empty"]
+pig_args = ["config", "--local", "--approve"]
+pi_args = ["config", "--local", "--approve"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = ["Project Local Resources", "[+]", "[-]", "project load", "project unload", "inherited global"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: D2 config-root names and isolated snapshot suffixes differ by binary.
+[[assert.normalize_replace]]
+pattern = '~/\.pig/agent/'
+with    = '~/.pi/agent/'
+reason = "D2: the selector subtitle names the host configuration directory."
+
+# normalize-rationale: D2 project config directory names differ by binary.
+[[assert.normalize_replace]]
+pattern = '\.pig/settings\.json'
+with    = '.pi/settings.json'
+reason = "D2: the project scope's subtitle names the host configuration directory."
+
+# normalize-rationale: Replace only a complete allocated agent-root path inside the User label. Never consume its closing parenthesis, trailing text or a wrapped row.
+[[assert.normalize_replace]]
+pattern = '(User \()/[^\n)]*/parity-snap-(?:PIG_HOME-[0-9]+/agent|PI_CODING_AGENT_DIR-[0-9]+)/'
+with = '${1}<agent>/'
+reason = "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."
+
+[[assert.normalize_replace]]
+pattern = '\n {6}\[x\] pig-login[^\n]*'
+with    = ""
+reason = "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."

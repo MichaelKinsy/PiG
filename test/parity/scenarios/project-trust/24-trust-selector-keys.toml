@@ -1,0 +1,62 @@
+# Behavior family: project-trust
+# Surface: TrustSelectorComponent.handleInput through the real TUI (trust-selector.ts:117-133)
+#
+# Escape cancels the startup trust prompt (scenario 09), then `/trust` opens the trust selector. Four Downs move the highlight to the last
+# of its three rows and stop there (no wraparound), "k" (the literal up key) moves it back one row and "j" down again; "x" is ignored.
+# The crop is the selector with its saved decision, current session, rows, highlight and hint line. Both binaries run the same keys and
+# the complete rows, colours included, are compared byte for byte.
+name = "24-trust-selector-keys"
+description = "Both binaries move the /trust selector highlight with Down, k and j, clamp at the last row and ignore other keys."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/trust-selector.ts",
+]
+tags = ["hermetic", "fast", "security", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+pi_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-session"]
+pig_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-session"]
+
+[tmux]
+width = 180
+height = 35
+cwd = "testdata/warning-project"
+ready_pattern_pig = "Trust project folder?"
+ready_pattern_pi = "Trust project folder?"
+ready_timeout_seconds = 30
+capture_start = "Project trust"
+capture_start_last = true
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["This project is not trusted."]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/trust", "Enter"]
+wait_contains = ["Project trust", "Saved decision:"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down", "Down", "Down", "Down", "k", "j", "x"]
+wait_visible_contains = ["Do not trust"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["Project trust", "Saved decision:", "Current session:", "Do not trust"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only the configuration and command identity.
+[[assert.normalize_replace]]
+pattern = '\.pig'
+with = ".pi"
+reason = "D2: the selector's rows and saved-decision text contain only the product-owned configuration name, not user content."

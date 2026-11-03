@@ -5,11 +5,16 @@ id = "coding-agent/extension-input/remapped-confirm"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/extension-input.ts#ExtensionInputComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "select.confirm and literal LF submit before select.cancel; delegated Input submit has no callback and cannot complete the dialog"
+claim = "ExtensionInputComponent.handleInput in upstream order: tui.select.confirm (as resolved by the keybinding manager, so a remapped key works and the default Enter does not) or the literal LF calls onSubmit once with the Input's current text, then tui.select.cancel calls onCancel once, and every other key is delegated to the Input, whose own submit action has no callback and never completes the dialog; confirm wins over cancel when both are bound to one key, LF wins over a cancel bound to ctrl+j, cancel wins over the Input's own editing of that key, an empty Input submits the empty string, and a key that completes the dialog fires exactly one callback"
 status = "ported"
-pig_targets = ["tui/extension_input.go#HandleInput", "internal/codingagent/ext_ui_context.go#Input"]
+pig_targets = [
+  "tui/extension_input.go#HandleInput",
+  "internal/codingagent/ext_ui_context.go#Input",
+]
 evidence = [
   "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
+  "tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi",
+  "tui/extension_dialog_contract_test.go#TestExtensionDialogCallbacksFireOncePerCompletingKey",
   "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
   "test/parity/scenarios/selectors/12-extension-dialog-remapping.toml",
 ]
@@ -26,11 +31,16 @@ id = "coding-agent/extension-selector/empty-and-remapped-actions"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "the manager resolves expansion before clamped navigation before confirm before cancel; empty lists and empty-string choices do not submit; literal j/k/LF remain supported"
+claim = "ExtensionSelectorComponent.handleInput in upstream order: app.tools.expand calls onToggleToolsExpanded, then tui.select.up or the literal k moves the highlight up by one and tui.select.down or the literal j down by one with no wraparound (first row stays first, last row stays last, an empty list stays empty), then tui.select.confirm or the literal LF calls onSelect once with the highlighted option unless the list is empty or the highlighted option is the empty string, then tui.select.cancel calls onCancel once; each earlier branch wins when two actions are bound to one key (expand over up, up over down, down over confirm, confirm over cancel) and the literal k, j and LF win over a cancel bound to them; a key no branch owns changes nothing"
 status = "ported"
-pig_targets = ["tui/extension_selector.go#HandleInput", "internal/codingagent/ext_ui_context.go#Select"]
+pig_targets = [
+  "tui/extension_selector.go#HandleInput",
+  "internal/codingagent/ext_ui_context.go#Select",
+]
 evidence = [
   "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
+  "tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi",
+  "tui/extension_dialog_contract_test.go#TestExtensionDialogCallbacksFireOncePerCompletingKey",
   "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
   "test/parity/scenarios/selectors/12-extension-dialog-remapping.toml",
 ]
@@ -47,14 +57,23 @@ id = "coding-agent/extension-editor/cancel-before-external-editor"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "tui.select.cancel is tested before app.editor.external, so a remapped external key that equals the cancel key cancels; every other key reaches the editor, whose Enter submits and Shift+Enter inserts a newline"
+claim = "ExtensionEditorComponent.handleInput in upstream order: tui.select.cancel (resolved through the process-wide manager) calls onCancel before anything else, so a remapped external key equal to the cancel key cancels; then app.editor.external (resolved through the manager the constructor received) opens the external-editor handoff with the Editor's current text and consumes the key even when no handoff is bound, once per press; every other key reaches the Editor, whose Enter submits and Shift+Enter or Ctrl+J inserts a newline, and the typed text is discarded by cancel"
 status = "ported"
-pig_targets = ["internal/codingagent/extension_editor.go#HandleInput", "internal/codingagent/ext_ui_context.go#Editor"]
+pig_targets = [
+  "internal/codingagent/extension_editor.go#HandleInput",
+  "internal/codingagent/ext_ui_context.go#Editor",
+]
 evidence = [
   "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
   "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputTransitions",
   "internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
   "test/parity/scenarios/selectors/10-extension-editor.toml",
+  "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+  "test/parity/scenarios/selectors/17-extension-editor-cancel.toml",
 ]
 
 [contract.upstream]
@@ -1098,11 +1117,14 @@ id = "coding-agent/thinking-selector/empty-list-and-save"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "the save binding saves the highlighted level only when an onSelectAsDefault handler exists and a level is highlighted; navigation and confirm/cancel keys drive the list before any key edits the search; a query matching no level leaves no item for save or confirm"
+claim = "ThinkingSelectorComponent.handleInput in upstream order: the save binding calls onSelectAsDefault with the highlighted level only when a handler exists (without one the key is typed into the search) and consumes the key, doing nothing when no level is highlighted (no available level, or a query that matches no level); then up, down, confirm and cancel are delegated to the SelectList (wrapping, onSelect once for the highlighted level, onCancel once; nothing on an empty list); every other key, including page, home and end keys, edits the search Input and rebuilds the list around the previously highlighted level; the save binding wins over a navigation action bound to the same key"
 status = "ported"
-pig_targets = ["internal/codingagent/thinking_selector.go#HandleInput"]
+pig_targets = [
+  "internal/codingagent/thinking_selector.go#HandleInput",
+]
 evidence = [
   "internal/codingagent/thinking_selector_oracle_test.go#TestThinkingSelectorInputMatchesPi",
+  "internal/codingagent/thinking_selector_contract_test.go#TestThinkingSelectorBoundariesMatchPi",
   "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorBoundaryTransitions",
   "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorUsesTheConfiguredSaveBinding",
   "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorSearchSelectAndCancel",
@@ -1147,14 +1169,19 @@ id = "coding-agent/oauth-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "oauth"
 kind = "selector-input-state-machine"
-claim = "up and down clamp without wrapping, empty filtered lists ignore arrows and confirm, confirm and the search Input's submit (tui.input.submit or LF) select the highlighted provider, cancel cancels, and every other key edits the fuzzy search and clamps the selection; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
+claim = "OAuthSelectorComponent.handleInput in upstream order: tui.select.up and tui.select.down clamp (no wraparound) and are ignored on an empty filtered list, tui.select.pageUp and tui.select.pageDown move by the eight visible rows clamped to the list bounds and are ignored on an empty list, tui.select.confirm and the search Input's submit (tui.input.submit or LF) call onSelect once for the highlighted provider and nothing when the filtered list is empty, tui.select.cancel calls onCancel once, and every other key edits the fuzzy search and clamps (does not reset) the selection; each earlier branch wins when two actions share a key"
 status = "ported"
-pig_targets = ["tui/oauth_selector.go#HandleInput", "tui/oauth_selector.go#confirm"]
+pig_targets = [
+  "tui/oauth_selector.go#HandleInput",
+  "tui/oauth_selector.go#confirm",
+]
 evidence = [
   "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
   "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
-  "test/parity/scenarios/oauth/17-login-method-search.toml",
+  "tui/oauth_selector_contract_test.go#TestOAuthSelectorBranchOrderAndBoundariesMatchPi",
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
+  "test/parity/scenarios/oauth/17-login-method-search.toml",
+  "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
 ]
 
 [contract.upstream]
@@ -1169,11 +1196,17 @@ id = "coding-agent/thinking-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput"
 family = "settings"
 kind = "selector-input-state-machine"
-claim = "the save binding saves the highlighted level only when a save callback exists, up, down, confirm and cancel drive the list with wraparound and fire onSelect or onCancel once per key, and every other key edits the search Input (whose submit selects) and rebuilds the list around the highlighted level"
+claim = "the save binding saves the highlighted level only when a save callback exists, up, down, confirm and cancel drive the list with wraparound and fire onSelect or onCancel once per key, and every other key edits the search Input (whose submit selects) and rebuilds the list around the highlighted level, with the fuzzy match over each level's value and description and the highlight kept across a filter and a cleared query"
 status = "ported"
-pig_targets = ["internal/codingagent/thinking_selector.go#HandleInput"]
+pig_targets = [
+  "internal/codingagent/thinking_selector.go#HandleInput",
+]
 evidence = [
   "internal/codingagent/thinking_selector_oracle_test.go#TestThinkingSelectorInputMatchesPi",
+  "internal/codingagent/thinking_selector_contract_test.go#TestThinkingSelectorBoundariesMatchPi",
+  "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorBoundaryTransitions",
+  "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorUsesTheConfiguredSaveBinding",
+  "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorSearchSelectAndCancel",
   "test/parity/scenarios/settings/06-thinking-selector-search-editing.toml",
 ]
 
@@ -1210,13 +1243,17 @@ id = "coding-agent/login-dialog/cancel-copy-input"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput"
 family = "oauth"
 kind = "boundary-transition"
-claim = "the configured tui.select.cancel binding cancels on every press (abort, onComplete, rejecting the pending input), app.message.copy copies a shown sign-in URL, tui.select.confirm activates a shown device-code action once while focused with no pending input and no abort (the action is consumed first, so a repeated Enter launches nothing more), every other key edits the prompt Input whose submit resolves the pending value and replaces the field with the submitted text, and a submit after cancel changes nothing"
+claim = "LoginDialogComponent.handleInput in upstream order: the configured tui.select.cancel binding cancels on every press (clears a pending device-code action, aborts, calls onComplete(false, \"Login cancelled\"), rejects the pending input) and wins over the copy and confirm bindings; then app.message.copy copies the shown sign-in URL on every press (also after cancel) and only while a URL is shown; then tui.select.confirm activates a shown device-code action once while the dialog is focused with no pending input (the action is consumed first, so a repeated Enter launches nothing more, and a confirm while an input is pending reaches the input's submit); every other key edits the prompt Input whose submit resolves the pending value and replaces the field with the submitted text; a submit after cancel changes nothing"
 status = "ported"
-pig_targets = ["tui/login_dialog.go#HandleInput", "tui/login_dialog.go#showInput"]
+pig_targets = [
+  "tui/login_dialog.go#HandleInput",
+  "tui/login_dialog.go#showInput",
+]
 evidence = [
   "tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi",
   "tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput",
-  "tui/login_dialog_device_code_test.go",
+  "tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+  "tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensTheVerificationPageAndCopiesTheCodeOnceAfterConfirmation",
   "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
 ]
 
@@ -1381,12 +1418,17 @@ id = "coding-agent/trust-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput"
 family = "project-trust"
 kind = "selector-input-state-machine"
-claim = "up/down and k/j move the highlighted trust option and clamp at both ends, confirm or LF selects its trusted flag and updates, cancel cancels, every other key is ignored, and the saved decision picks the initial row"
+claim = "TrustSelectorComponent.handleInput in upstream order: tui.select.up or k and tui.select.down or j move the highlighted trust option by one and clamp at both ends without wrapping, tui.select.confirm or LF calls onSelect once with the highlighted option's trusted flag and updates (the option list always holds at least Trust and Do not trust, so there is no empty list), tui.select.cancel calls onCancel once, every other key (page, home, tab, text) is ignored; each earlier branch wins when two actions share a key (up over down over confirm over cancel, literal k, j and LF over a cancel bound to them), and the saved decision picks the initial row"
 status = "ported"
-pig_targets = ["internal/codingagent/trust_selector.go#HandleInput"]
+pig_targets = [
+  "internal/codingagent/trust_selector.go#HandleInput",
+]
 evidence = [
   "internal/codingagent/trust_selector_oracle_test.go#TestTrustSelectorInputMatchesPi",
+  "internal/codingagent/trust_selector_lifecycle_test.go#TestTrustSelectorBoundaryAndCancellation",
+  "internal/codingagent/trust_selector_caller_test.go#TestTrustSelectorProductionSavesParentWithoutActivatingIt",
   "test/parity/scenarios/project-trust/09-trust-selector-state.toml",
+  "test/parity/scenarios/project-trust/24-trust-selector-keys.toml",
 ]
 
 [contract.upstream]
@@ -1443,17 +1485,18 @@ id = "coding-agent/oauth-selector/boundary-transitions"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput"
 family = "selectors"
 kind = "boundary-transition"
-claim = "up and down clamp at the first and last provider without wrapping, confirm selects nothing when the filtered list is empty, cancel is checked before the search input, and every other key edits the search and re-filters; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
+claim = "first row, last row, a single provider, no provider, a list shorter and longer than one page, and a search that matches nothing: up and down clamp at the ends, page keys move by one visible page clamped to the bounds, confirm and the Input's submit select nothing on an empty list, cancel is checked before the search input (a cancel key bound to a letter is not typed), and typing narrows the list while the highlighted index is clamped to the filtered length"
 status = "ported"
-pig_targets = ["tui/oauth_selector.go#HandleInput"]
+pig_targets = [
+  "tui/oauth_selector.go#HandleInput",
+]
 evidence = [
-  "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
   "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
-  "tui/oauth_selector_test.go#TestOAuthSelector_Navigation",
-  "tui/oauth_selector_test.go#TestOAuthSelector_LettersEditSearch",
-  "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
-  "test/parity/scenarios/oauth/17-login-method-search.toml",
+  "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+  "tui/oauth_selector_contract_test.go#TestOAuthSelectorBranchOrderAndBoundariesMatchPi",
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
+  "test/parity/scenarios/oauth/17-login-method-search.toml",
+  "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
 ]
 
 [contract.upstream]
@@ -1468,14 +1511,23 @@ id = "coding-agent/extension-editor/cancel-and-external"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput"
 family = "selectors"
 kind = "cancellation-input"
-claim = "tui.select.cancel cancels before any other key, app.editor.external opens the external editor and its result replaces the editor text, and every other key reaches the editor"
+claim = "tui.select.cancel cancels before any other key, app.editor.external opens the external editor with the Editor's text, a completed external edit replaces the editor text without submitting and a failed one shows its message in the warning color on the status row until a later edit completes, and every other key reaches the editor"
 status = "ported"
-pig_targets = ["internal/codingagent/extension_editor.go#HandleInput"]
+pig_targets = [
+  "internal/codingagent/extension_editor.go#HandleInput",
+]
 evidence = [
+  "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
   "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputTransitions",
   "internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
-  "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
   "test/parity/scenarios/selectors/10-extension-editor.toml",
+  "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+  "test/parity/scenarios/selectors/17-extension-editor-cancel.toml",
+  "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow",
 ]
 
 [contract.upstream]
@@ -1571,11 +1623,44 @@ id = "coding-agent/config-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput"
 family = "selectors"
 kind = "selector-input-state-machine"
-claim = "ResourceList.handleInput against pinned Pi: up/down/page keys move only over item rows, tui.select.cancel closes and Ctrl+C exits when cancel is rebound, Tab switches the write scope only when project mode is available, Space/Enter toggle in global scope, and every other key edits the search Input and re-filters (resetting selection to the first item even when the query is unchanged)"
+claim = "ResourceList.handleInput in upstream order: tui.select.up and tui.select.down move to the neighbouring item row (group and subgroup headers are skipped, no wraparound, no move when no item row lies that way), tui.select.pageUp and tui.select.pageDown jump by the visible row count and settle on the nearest item row (pageUp scans forward, pageDown backward, staying put when none), tui.select.cancel calls onCancel before the raw Ctrl+C key calls onExit (so Ctrl+C exits only when cancel is rebound), tui.input.tab switches the write scope only when project mode is available and never reaches the search Input (the selection returns to the first item and the query is re-applied), Space or tui.select.confirm toggle only an item row, and every other key edits the search Input and re-filters (resetting the selection to the first item even when the query is unchanged, and treating a whitespace-only query as empty); empty, single-item and filtered-to-nothing lists ignore every movement and toggle key"
 status = "ported"
-pig_targets = ["tui/config_selector.go#HandleInput"]
+pig_targets = [
+  "tui/config_selector.go#HandleInput",
+  "tui/config_selector.go#findNextItem",
+]
 evidence = [
   "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
+  "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+  "tui/config_selector_callbacks_contract_test.go#TestConfigSelectorToggleCallbacks",
+  "test/parity/scenarios/selectors/14-config-ctrl-c-exits.toml",
+  "test/parity/scenarios/selectors/15-config-escape-exits.toml",
+  "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
+start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();\n\n\t\tif (kb.matches(data, \"tui.select.up\")) {\n\t\t\tthis.selectedIndex = this.findNextItem"
+end = "\t\tthis.filterItems(this.searchInput.getValue());\n\t}\n\n\tprivate toggleResource"
+sha256 = "cb51db9951240d706d20bda6c145fb9c060e01b5204d8aabc1d9c6fc2719b2ba"
+keybindings = ['matchesKey:"ctrl+c"', "tui.input.tab", "tui.select.cancel", "tui.select.confirm", "tui.select.down", "tui.select.pageDown", "tui.select.pageUp", "tui.select.up"]
+
+[[contract]]
+id = "coding-agent/config-selector/toggle-and-scope-transitions"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput"
+family = "selectors"
+kind = "boundary-transition"
+claim = "the Space and tui.select.confirm toggle: in the project scope any item row cycles its override (inherited enabled: inherit, unload, load, inherit; inherited disabled: inherit, load, unload, inherit; an item only the project list holds inherits as enabled) and records the state and enabled flag after the override is saved, a project override that cannot be saved changes nothing; in the global scope only items whose scope is not project flip their enabled flag and report it once through the toggle callback; the first item of the current scope's groups with the same path and resource type takes the new state too; Tab keeps the query and the selection returns to the first item of the new scope"
+status = "ported"
+pig_targets = [
+  "tui/config_selector.go#HandleInput",
+  "tui/config_selector.go#updateItem",
+  "tui/config_selector.go#nextProjectOverride",
+]
+evidence = [
+  "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+  "tui/config_selector_callbacks_contract_test.go#TestConfigSelectorToggleCallbacks",
+  "test/parity/scenarios/selectors/18-config-project-toggle.toml",
   "test/parity/scenarios/selectors/14-config-ctrl-c-exits.toml",
 ]
 
@@ -3041,14 +3126,16 @@ id = "coding-agent/config-selector/header-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ConfigSelectorHeader.render"
 family = "selectors"
 kind = "render-layout"
-claim = "the header shows the bold scope title, the tab, space and escape hints joined by the muted separator (the tab hint only when project mode is available, the space hint naming the scope's action) and the muted settings path line, compared byte for byte"
+claim = "the header shows the bold scope title, the tab, space and escape hints joined by the muted separator (the tab hint names the key bound to tui.input.tab and appears only when project mode is available, the space hint names the scope's action) and the muted settings path line, truncated to the width, compared byte for byte in dark and light themes, 24-bit and 256-color output, with a rebound tab key and at widths from 7 to 100"
 status = "ported"
 pig_targets = [
-  "tui/config_selector.go#Render"
+  "tui/config_selector.go#configSelectorHeader",
 ]
 evidence = [
   "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
-  "test/parity/scenarios/selectors/02-config-resources-list.toml"
+  "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+  "test/parity/scenarios/selectors/02-config-resources-list.toml",
+  "test/parity/scenarios/selectors/18-config-project-toggle.toml",
 ]
 
 [contract.upstream]
@@ -3063,14 +3150,16 @@ id = "coding-agent/config-selector/resource-checkbox"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.renderCheckbox"
 family = "selectors"
 kind = "render-layout"
-claim = "outside the project scope an enabled item shows a green [x] and a disabled one a dim [ ]; in the project scope a load override shows a green [+], an unload override a yellow [-] and every other state a dim [x] or [ ], byte for byte"
+claim = "outside the project scope an enabled item shows a green [x] and a disabled one a dim [ ]; in the project scope a load override shows a green [+], an unload override a yellow [-] and every other state a dim [x] or [ ], after each toggle of the project cycle and of the global toggle, byte for byte in dark and light themes and both color depths"
 status = "ported"
 pig_targets = [
-  "tui/config_selector.go#Render"
+  "tui/config_selector.go#configResourceList",
 ]
 evidence = [
   "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
-  "test/parity/scenarios/selectors/02-config-resources-list.toml"
+  "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+  "test/parity/scenarios/selectors/02-config-resources-list.toml",
+  "test/parity/scenarios/selectors/18-config-project-toggle.toml",
 ]
 
 [contract.upstream]
@@ -3085,8 +3174,8 @@ id = "coding-agent/config-selector/resource-list-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render"
 family = "selectors"
 kind = "render-layout"
-claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message, byte for byte through navigation, search and toggling"
-status = "ported"
+claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message; byte-identical to Pi in every probe of TestConfigSelectorContractMatchesPi except two differences Pi does not have: Pig appends a warning-colored \"  missing\" suffix to a declared Package member whose file is absent (ResourceItem.Health, tui/config_selector.go; Pi renders no such row), and Pig clips \"  No resources found\" and the \"(n/total)\" row to the width where Pi leaves them unclamped (tui/component_width_table_test.go holds the clip); neither has a D-number, so this contract stays pending"
+status = "pending"
 pig_targets = [
   "tui/config_selector.go#Render"
 ]
