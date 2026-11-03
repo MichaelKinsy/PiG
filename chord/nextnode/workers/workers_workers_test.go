@@ -487,6 +487,9 @@ func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsR
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()
 	<-reached
+	// The worker's plugin host is up once the worker is running: Close then stops a loaded worker, which closes its Node
+	// host. Closing while the worker is still starting one ends the process with the host's socket directory left behind.
+	until(t, func() bool { state := f.stateOf("S1"); return state != nil && state.Status == WorkerRunning })
 	ctx, cancel := context.WithTimeout(background, 100*time.Millisecond)
 	defer cancel()
 	done := make(chan error, 1)
