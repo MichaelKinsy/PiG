@@ -95,6 +95,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `check-divergence-consistency.sh` | Every ledger entry has a source marker and every marker has an entry. |
 | `check-divergence-quality.py` | Divergence and additive records are current, enforceable contracts. |
 | `divguard/` | Divergence guard (`make divergence-guard`): syntactic checks for invented limits and timeouts, dropped events, swallowed errors and success on unknown stop reasons, ratcheted by `divguard/baseline.toml`. |
+| `fixtureguard/` | Fixture guard (`make fixture-guard`): refuses test fixtures that look like verbatim provider captures (long encrypted or signature values, billing rows, real-looking ids and timestamps, reasoning text, non-placeholder home paths); reviewed false positives are listed in `fixtureguard/allowlist.go`. Setting `PIG_PRIVATE_TERMS_FILE` to a file outside the repository (one term per line) also fails on any match, printing only file:line and the term's line number. |
 | `portlint/` | Porting anti-pattern analyzers (`make port-lint`): `go/analysis` passes for JS-to-Go semantic drift, goroutine and request lifetime, error identity and test isolation, ratcheted by `portlint/baseline.toml`. |
 | `check-divergence-delta.sh` | A release adds no divergence without its per-entry justification. |
 | `check-coverage-delta.sh`, `check-coverage-drift.py` | Parity coverage did not regress, and `test/parity/coverage.md` and the badge match `docs/parity/PORT_MAP.md`. |
