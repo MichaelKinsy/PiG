@@ -162,6 +162,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2323d94](#bf-2323d94) | `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy… | PiG's own defect | All platforms | Unreleased |
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | Unreleased |
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
@@ -3515,6 +3516,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `234664cc42` (2026-10-30, #11501)
 - **Tests:** `coding/codemode_output_summary_test.go::TestCodemodeSummarizesUnionAndMultiLineOutputTypesInsteadOfInliningThem`, `coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep`
 - **Release note:** With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no longer puts its whole rendered output type, with its comments run together, into every request. The description now lists the field names of each variant of a union of objects (`{ action: "start", process } | { action: "list", processes, truncated? }`), shows the value of `const` fields, and points a longer type to `await describeTool("name")`. Carried forward from Pi f6ee9ce9 (earendil-works/pi#11501), past the 1.4.0+b3a29f11 pin.
+
+### BF-2359a0a
+
+**In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D228)
+- **Symptom:** In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty editor and a queued message now restores the queued messages to the editor and clears the queue, as Option+Up does in other terminals; before, Up recalled history while the message stayed queued and was still sent after the tool, even after you deleted the recalled copy.
+- **Root cause:** Terminal.app's default profile sends Option+Up as plain Up (ESC [ A), so Alt+Up never reached app.message.dequeue: Up recalled history, the queued message stayed queued and was still sent after the tool.
+- **User impact:** Behavior differed from Pi
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi distinguishes or handles plain Up while a message is queued in Terminal.app, or Pi adopts an equivalent fix.
+- **Fix commits:** `2359a0a7b8` (2026-11-02, #402)
+- **Tests:** `internal/codingagent/interactive_queue_hint_test.go::TestQueuedHintAndTipNameTheConfiguredDequeueKey`, `internal/codingagent/interactive_queue_hint_test.go::TestQueuedHistoryRecallTipShowsOnceAndGoesWithTheQueue`, `internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun`, `internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage`, `internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState`, `internal/codingagent/option_up_encodings_test.go::TestOptionUpEncodingsPerTerminalAgainstTheKeyDecoder`
+- **Release note:** In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty editor and a queued message now restores the queued messages to the editor and clears the queue, as Option+Up does in other terminals; before, Up recalled history while the message stayed queued and was still sent after the tool, even after you deleted the recalled copy. The queued-message hint names Up in that state. Elsewhere (tmux, ssh, other terminals), when Up recalls history while a message is queued, PiG shows one dim line under the editor, once per run, saying the text is a copy and which key edits the queue; tmux, ssh and unknown terminals also get the Terminal.app mapping of Option+Up to `\033[1;3A`. Pi 1.5.0 behaves as PiG did before (D228).
 
 ### BF-23ee6e1
 
@@ -22809,6 +22826,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D222 | A plugin input the build cannot read is reported at the import that names it, not at esbuild's library | deliberate difference |
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
 | D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
+| D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 
 ## Fix-titled commits that are not bugs in a release
 
