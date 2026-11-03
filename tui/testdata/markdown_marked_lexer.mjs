@@ -6,7 +6,7 @@
 //
 // The canonical form is the one tui/markdown_marked_lexer_oracle_test.go builds from PiG's tokens: s-expressions of the fields the renderer reads, strings quoted with only \" \\ and
 // \xHH escapes (a lone surrogate is U+FFFD, as UTF-8 encodes it). The inline token lists are not recorded; the source each list was lexed from is: the raw of its tokens joined, which
-// is what Lexer.inlineQueue held for it. A task item's checkbox is the one token PiG does not materialize (it keeps the state in the item): marked adds a checkbox token to the item
+// is what Lexer.inlineQueue held for it (a table cell's own text is not recorded: the task trim of Tokenizer.list may change the queue's source of a cell and leaves the text). A task item's checkbox is the one token PiG does not materialize (it keeps the state in the item): marked adds a checkbox token to the item
 // (or to the inline tokens of its first paragraph, with its raw ahead of that paragraph's raw and text), the form below drops it after checking it is where marked put it.
 import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -77,7 +77,7 @@ function block(t, override = null) {
       return `(list ${q(raw)} ${t.ordered} ${t.ordered ? t.start : 0} ${t.loose} [${t.items.map((i) => item(i, t)).join(" ")}])`;
     }
     case "table": {
-      const cell = (c) => `(cell ${q(c.text)} ${inlineRaw(c.tokens)})`;
+      const cell = (c) => `(cell ${inlineRaw(c.tokens)})`;
       return `(table ${q(raw)} [${t.header.map(cell).join(" ")}] [${t.rows.map((r) => `[${r.map(cell).join(" ")}]`).join(" ")}])`;
     }
   }

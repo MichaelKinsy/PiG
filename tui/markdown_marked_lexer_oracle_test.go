@@ -154,7 +154,6 @@ func writeMarkedBlockForm(b *strings.Builder, token *markedBlock) {
 		cell := func(entry *markedInlineEntry) {
 			b.WriteString("(cell")
 			str(entry.src)
-			str(entry.src)
 			b.WriteByte(')')
 		}
 		b.WriteString(" [")
