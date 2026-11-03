@@ -231552,6 +231552,7 @@
       ],
       "evidence": [
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231595,6 +231596,7 @@
       ],
       "evidence": [
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231853,7 +231855,7 @@
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself"
       ]
     },
     {
@@ -231875,7 +231877,7 @@
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
         "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself"
       ]
     },
     {
