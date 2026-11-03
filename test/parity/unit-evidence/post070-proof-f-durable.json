@@ -1,0 +1,188 @@
+[
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestSubmitInsideTheCallersCommit"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:166,820 (submit(tx, submission)); packages/durable/test/submit-in-commit.test.ts",
+  "mutation": "durable/harness/harness.go: replace 'if err := bound.binding.Signal.Err(); err != nil {\\n\\t\\treturn 0, context.Cause(bound.binding.Signal)\\n\\t}' with '(removed)'; compiling go test -overlay -run exact test -count=1 fails TestSubmitInsideTheCallersCommit."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAfterRun"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:1007 (GenerationHooks.afterRun); packages/durable/src/harness/generation.ts finish",
+  "mutation": "durable/harness/generation.go: replace 'asked, err := hooks.AfterRun(ctx, run, runtime)\\n\\t\\tif err != nil {\\n\\t\\t\\treturn err\\n\\t\\t}' with 'asked, _ := hooks.AfterRun(ctx, run, runtime)'; compiling go test -overlay -run exact test -count=1 fails TestAfterRun (a failing hook must fail the run end). Second mutant: durable/harness/define.go replace \"Input: input\" with \"Input: *new(I)\" fails TestAfterRun."
+ },
+ {
+  "upstream": "packages/durable/src/harness/define.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestAfterRun"
+  ],
+  "upstream_reference": "packages/durable/src/harness/define.ts:43 (runEndTask)",
+  "mutation": "durable/harness/define.go: replace 'Input: input' with 'Input: *new(I)'; compiling go test -overlay -run exact test -count=1 fails TestAfterRun."
+ },
+ {
+  "upstream": "packages/durable/src/harness/registry.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestRegistryReader"
+  ],
+  "upstream_reference": "packages/durable/src/harness/registry-reader.ts:14 (registryReader); the upstream file has no PORT_MAP row of its own, registry.ts is its sibling",
+  "mutation": "durable/harness/registry_reader.go: replace 'call.Kind == chord.WatchCallValue' with 'call.Kind != chord.WatchCallValue'; compiling go test -overlay -run exact test -count=1 fails TestRegistryReader. Second mutant: observation.Detach replaced by a no-op fails TestRegistryReader."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestEntryReadsForHooksAndTasks"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:953,962 (HookApi.entry)",
+  "mutation": "durable/harness/types.go: replace 'return token.As(entry)' with 'return nil, nil'; compiling go test -overlay -run exact test -count=1 fails TestEntryReadsForHooksAndTasks."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:315 (TaskRuntime.ownedTasks)",
+  "mutation": "durable/harness/scheduler.go: replace 'cmp.Compare(a.Id, b.Id)' with 'cmp.Compare(b.Id, a.Id)'; compiling go test -overlay -run exact test -count=1 fails TestOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen. Second mutant: owner check == replaced by != fails the same test."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:315 (TaskRuntime.ownedTasks)",
+  "mutation": "durable/core/driver/taskruntime.go: replace '\"by\": r.task}' with '\"by\": r.task + 1}'; compiling go test -overlay -run exact test -count=1 fails TestCoreOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestSleepingTasks"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:347,360 (TaskRuntime.setTimer, sleepUntil)",
+  "mutation": "durable/core/driver/taskruntime.go: replace '\"checkpoint\": checkpoint}' with '\"checkpoint\": nil}'; compiling go test -overlay -run exact test -count=1 fails TestSleepingTasks. Second mutant: the NaN/Inf guard of SleepUntil replaced by if false fails TestSleepingTasks; the invocation-ended check of the fired timer callback removed fails TestSleepingTasks."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestATimerArmedAsItsInvocationEndsIsDisarmed"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:347 (TaskRuntime.setTimer: the invocation end disarms it)",
+  "mutation": "durable/core/driver/taskruntime.go: replace '\\t\\tr.mu.Unlock()\\n\\t\\tdisarm()\\n\\t\\treturn func() {}' with '\\t\\tr.mu.Unlock()\\n\\t\\treturn func() {}'; compiling go test -overlay -run exact test -count=1 fails TestATimerArmedAsItsInvocationEndsIsDisarmed."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:1141 (DocumentObserver.watchDoc); a watch of an ended invocation is stopped",
+  "mutation": "durable/core/driver/taskruntime.go: replace 'r.onEnded(func() { _, _ = watch.Stop() })' with 'r.onEnded(func() {})'; compiling go test -overlay -run exact test -count=1 fails TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestObserveCommitsEndsAThrowingObserverListenerError"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:1262 (Session.observeCommits); a throwing observer ends with listener_error",
+  "mutation": "durable/core/driver/commits.go: replace 'Kind: durable.WatchListenerError, Error: failure' with 'Kind: durable.WatchEnded'; compiling go test -overlay -run exact test -count=1 fails TestObserveCommitsEndsAThrowingObserverListenerError."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestObserveCommitsEndsEndedAtCloseAndNeverAfterDetach"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:1262 (Session.observeCommits); End gets the Session close",
+  "mutation": "durable/core/driver/commits.go: replace 'end := durable.WatchEnd{Kind: durable.WatchEnded}\\n\\tif fatal' with 'end := durable.WatchEnd{Kind: durable.WatchFailed}\\n\\tif fatal'; compiling go test -overlay -run exact test -count=1 fails TestObserveCommitsEndsEndedAtCloseAndNeverAfterDetach."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestObserveCommitsQueuedPublicationsArriveInCommitOrderBehindASlowObserver",
+   "TestObserveCommitsDetachInsideAdvanceDropsTheQueuedPublications"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:1262 (Session.observeCommits: every observer sees every publication in commit order; no Advance after detach)",
+  "mutation": "durable/core/driver/commits.go: replace 'next := s.commits.queue[0]\\n\\t\\t\\ts.commits.queue = s.commits.queue[1:]' with 'next := s.commits.queue[len(s.commits.queue)-1]\\n\\t\\t\\ts.commits.queue = s.commits.queue[:len(s.commits.queue)-1]'; compiling go test -overlay -run exact test -count=1 fails TestObserveCommitsQueuedPublicationsArriveInCommitOrderBehindASlowObserver, TestObserveCommitsDetachInsideAdvanceDropsTheQueuedPublications. Second mutant: the over check of advanceCommits removed fails TestObserveCommitsDetachInsideAdvanceDropsTheQueuedPublications."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable",
+  "tests": [
+   "TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:1214 (Session.observeDoc); packages/durable/test/session-observers.test.ts",
+  "mutation": "durable/documents.go: replace '\\t\\tobservation.Detach()\\n\\t\\treturn nil, err' with '\\t\\treturn nil, err'; compiling go test -overlay -run exact test -count=1 fails TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder. Further mutants: typedObserver.End made a no-op, and the attachment decode error dropped, each fail the same test."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:290 (ToolExecutionApi.createTask); packages/durable/src/harness/tool.ts:338",
+  "mutation": "durable/tasks.go: replace 'api.CreateTaskErased(ctx, task.Erased(), encoded, options)' with 'api.CreateTaskErased(ctx, task.Erased(), encoded, TaskOptions{})'; compiling go test -overlay -run exact test -count=1 fails TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart. Second mutant: durable/harness/tool.go !api.resumes() replaced by api.resumes() fails the same test."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreANestedCallsStructuredOutput",
+   "TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:327 (ToolExecutionApi.executeTool); packages/durable/src/harness/tool.ts executeTool",
+  "mutation": "durable/harness/tool_nested.go: replace 'return *stored.Result, nil' with 'return durable.NestedToolExecutionResult{TaskId: id}, nil'; compiling go test -overlay -run exact test -count=1 fails TestCoreANestedCallsStructuredOutput. Second mutant: the arguments handed to startNestedCall replaced by an empty map fails TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable/core/driver",
+  "tests": [
+   "TestCoreANestedCallOfAnAbortedCallerRejectsWithTheGateError"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:327 (ToolExecutionApi.executeTool: an aborted caller rejects with the gate error)",
+  "mutation": "durable/harness/tool_nested.go: replace 'err := n.markMade(ctx, caller)\\n\\tif err == nil {' with 'var err error\\n\\tif err == nil {'; compiling go test -overlay -run exact test -count=1 fails TestCoreANestedCallOfAnAbortedCallerRejectsWithTheGateError."
+ },
+ {
+  "upstream": "packages/durable/src/harness/types.ts",
+  "package": "./durable",
+  "tests": [
+   "TestToolExecutionApiNowReadsTheHarnessClockAndThrowsAfterTheCallSettled"
+  ],
+  "upstream_reference": "packages/durable/src/harness/types.ts:261 (ToolExecutionApi.now)",
+  "mutation": "durable/harness/tool.go: replace 'return api.runtime.Now() }' with 'return 0 }'; compiling go test -overlay -run exact test -count=1 fails TestToolExecutionApiNowReadsTheHarnessClockAndThrowsAfterTheCallSettled. Second mutant: the ended-invocation check of taskRuntime.Now removed fails the same test."
+ },
+ {
+  "upstream": "packages/durable/src/types.ts",
+  "package": "./durable",
+  "tests": [
+   "TestHostTimersHandTheHostSetTimerItsCallbackDelayAndKind",
+   "TestHostTimersWithoutAHostSetTimerArmNativeTimersForBothKinds"
+  ],
+  "upstream_reference": "packages/durable/src/types.ts:218 (SetTimer); packages/durable/src/timers.ts hostTimers",
+  "mutation": "durable/timers.go: replace 'return arm(callback, delayMs, background), nil' with 'return arm(callback, delayMs, !background), nil'; compiling go test -overlay -run exact test -count=1 fails TestHostTimersHandTheHostSetTimerItsCallbackDelayAndKind. Second mutant: try(callback, delayMs, true) of Background replaced by false fails the same test; the nil-host NativeTimer default replaced by a declining timer fails TestHostTimersWithoutAHostSetTimerArmNativeTimersForBothKinds."
+ },
+ {
+  "upstream": "packages/durable/src/harness/transcript.ts",
+  "package": "./durable/harness",
+  "tests": [
+   "TestEntryLoaderIsAskedForExactlyTheMissingRange",
+   "TestConversationTranscriptWaitersGiveUpIndependentlyOfTheSharedLoad",
+   "TestConversationTranscriptSharedLoadFailureReachesEveryWaiter",
+   "TestConversationTranscriptIsSafeForConcurrentUse"
+  ],
+  "upstream_reference": "packages/durable/src/harness/transcript.ts:20 (EntryLoader), :51 (ConversationTranscript: #earlier and #filling share one load)",
+  "mutation": "durable/harness/transcript.go: replace 'MinEntryId: new(current.After + 1),' with 'MinEntryId: new(current.After),'; compiling go test -overlay -run exact test -count=1 fails TestEntryLoaderIsAskedForExactlyTheMissingRange. Further mutants: waiter wait returning load.view, load.err on ctx.Done fails TestConversationTranscriptWaitersGiveUpIndependentlyOfTheSharedLoad; loading.err = nil fails TestConversationTranscriptSharedLoadFailureReachesEveryWaiter."
+ }
+]
