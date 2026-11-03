@@ -1662,6 +1662,11 @@ func (session *SessionImpl) LineJobs() int {
 	return session.lineJobs
 }
 
+// GateTouches reports how many Gate calls returned the gate of key's newest unpublished writer, whoever made them (a job's
+// Touch, a retention probe), so a test can wait until the one caller it expects has reached the wait for that publication
+// without sleeping.
+func (session *SessionImpl) GateTouches(key string) int { return session.writer.Touches(key) }
+
 // SubscribeClose registers a listener called synchronously when close begins. It must not panic, block, or call
 // Session operations.
 func (session *SessionImpl) SubscribeClose(listener func()) func() {
