@@ -187,10 +187,6 @@ func testsOfCommit(r repo, idx testIndex, moved movedTests, hash, message string
 			out = append(out, s)
 		}
 	}
-	diff, err := r.git("show", "--format=", "-U0", "--no-renames", hash)
-	if err != nil {
-		return nil, err
-	}
 	var file string
 	touched := map[string]bool{}
 	var addedFiles []string
@@ -198,7 +194,8 @@ func testsOfCommit(r repo, idx testIndex, moved movedTests, hash, message string
 	// hunkTest is the reference of the test function whose body a hunk of a test file edits: git names the nearest preceding function in the hunk header, and the first added line must be indented to count as inside it.
 	hunkTest := ""
 	var edited []string
-	for l := range strings.SplitSeq(diff, "\n") {
+	// The diff is read as git prints it: a commit that adds large generated files is a gigabyte of patch text.
+	err := r.gitLines([]string{"show", "--format=", "-U0", "--no-renames", hash}, func(l string) {
 		switch {
 		case strings.HasPrefix(l, "@@ "):
 			hunkTest = ""
@@ -229,6 +226,9 @@ func testsOfCommit(r repo, idx testIndex, moved movedTests, hash, message string
 				}
 			}
 		}
+	})
+	if err != nil {
+		return nil, err
 	}
 	// A commit that edits many tests in place is a sweep, not a guard for one bug.
 	if len(edited) <= maxEditedTests {
