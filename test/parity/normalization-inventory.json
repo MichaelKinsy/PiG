@@ -936,11 +936,6 @@
       "scenario": "test/parity/scenarios/extensions-runtime/03-tool-call-blocker.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Extension tool_call handler blocks bash tool, faux detects blocked result",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "blocked:parity-blocked",
@@ -2565,11 +2560,6 @@
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
         },
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Handlers that return nothing leave the rows of a tool run between the reply and the editor border as Pi draws them",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Run: expr 20 + 22",
@@ -2903,11 +2893,6 @@
           "reason": "Capture timing selects the spinner phase; preserve the Working label and every border cell."
         },
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Tall in-progress tool output matches Pi without stale or blank transcript rows.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_end": "faux-1"
@@ -2931,11 +2916,6 @@
           "reason": "Completed tool duration varies with scheduling; retain the label, units and surrounding output."
         },
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Tall tool completion collapses to the same settled visible tail as Pi.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "LIVE-TOOL-24",
@@ -2954,11 +2934,6 @@
       "scenario": "test/parity/scenarios/fullscreen/07-main-screen-editor-growth.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: A multi-row editor grows over the same settled transcript rows as Pi.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "LIVE-TOOL-DONE",
@@ -2976,11 +2951,6 @@
     {
       "scenario": "test/parity/scenarios/fullscreen/08-main-screen-editor-shrink.toml",
       "transforms": [
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Shrinking a multi-row editor removes stale rows and restores Pi's transcript viewport.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
         {
           "kind": "terminal_crop",
           "configuration": {
@@ -3192,11 +3162,6 @@
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
         },
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Bash tool result box renders with correct padding, colors, and spacing.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "$ expr 20 + 22",
@@ -3219,11 +3184,6 @@
           "pattern": "Took \\d+\\.\\ds",
           "with": "Took Ns",
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Two tool turns retain separate tool cards and assistant replies in conversation order.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
@@ -3289,11 +3249,6 @@
           "pattern": "Took \\d+\\.\\d+s",
           "with": "Took Ns",
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Bash tool result >5 lines renders visual-truncate hint + last 5 lines (collapsed preview).",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
@@ -4056,11 +4011,6 @@
       "scenario": "test/parity/scenarios/interactive-rendering/47-bash-execution-output-pad-0.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: `!` command output has no horizontal padding when outputPad is 0, including the status row.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "────────────────────────────────────────────────────────────────────────────────",
@@ -4101,11 +4051,6 @@
           "pattern": "Took \\d+\\.\\d+s",
           "with": "Took Ns",
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Bash tool card rows have no horizontal padding when outputPad is 0.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
@@ -10538,6 +10483,78 @@
             "capture_end": "models.json error:"
           },
           "reason": "Owned visible surface: The resumed transcript is painted before the startup notices, as pi orders init() and run().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP CHANGELOG VERSION:",
+            "capture_end_regex": "STARTUP CHANGELOG VERSION:[^\\n]*"
+          },
+          "reason": "Owned visible surface: The changelog version is recorded before session_start handlers run, as pi's init() computes the changelog first.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP CHANGELOG VERSION:",
+            "capture_end_regex": "STARTUP CHANGELOG VERSION:[^\\n]*"
+          },
+          "reason": "Owned visible surface: A resumed session with no messages records the changelog version, as pi tests the message count and not whether the session was resumed.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/22-startup-initial-extension-commands-run-in-order.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "COMMAND HOLD",
+            "capture_end_regex": "COMMAND AFTER:[^\\n]*"
+          },
+          "reason": "Owned visible surface: The positional messages that are extension commands run one after the other, each finishing before the next starts, as pi awaits each prompt().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/23-startup-typed-extension-commands-run-in-order.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "COMMAND HOLD",
+            "capture_end_regex": "COMMAND AFTER:[^\\n]*"
+          },
+          "reason": "Owned visible surface: An extension command typed while another one runs starts only after that one returned, as pi's prompt loop awaits each prompt().",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
