@@ -300823,6 +300823,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeHighlightCode",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeHighlightCode",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(code string, lang string) []string"
+      },
+      "shapeHash": "sha256:bf58dc40e8771514209aaded040eff232fe2f043c3a515f8e788710409196494"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeHighlightLine",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "writeHighlightLine",
