@@ -25,3 +25,24 @@ func TestWait(t *testing.T) {
 		}
 	})
 }
+
+// An awaited promise that resolved yields its value however the awaiting code's signal ended since. Wait never returns the cause
+// of a ctx that ended after done closed: the channel closes before the ctx is cancelled in every round, so an error is the wrong pick
+// of a select whose cases were both ready.
+func TestWaitReturnsNilWhenDoneClosedBeforeTheContextEnded(t *testing.T) {
+	for round := range 20000 {
+		cancelled, cancel := context.WithCancelCause(ctx)
+		done := make(chan struct{})
+		go func() {
+			close(done)
+			cancel(errors.New("the caller gave up"))
+		}()
+		if err := session.Wait(cancelled, done); err != nil {
+			select {
+			case <-done:
+				t.Fatalf("round %d: Wait = %v, want nil: done was closed before the ctx ended", round, err)
+			default:
+			}
+		}
+	}
+}

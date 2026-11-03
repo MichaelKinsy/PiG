@@ -161,3 +161,54 @@ func TestAwaitEnteredEndsWhenItsContextIsCancelledWhileAListenerIsStillAtWork(t 
 	release.Store(true)
 	scheduler.Wait()
 }
+
+// A promise that already resolved yields its value when it is awaited, whatever happened to the awaiting code's signal since: a
+// delivery that entered is entered for a caller whose ctx was cancelled afterwards.
+func TestAwaitEnteredReturnsNilForADeliveryThatEnteredEvenWhenCtxIsCancelled(t *testing.T) {
+	scheduler := NewDeliveryScheduler()
+	gate := make(chan struct{})
+	entered := make(chan struct{})
+	watch := startedWatch(scheduler, func(context.Context) error {
+		DeliveryEntered()
+		close(entered)
+		<-gate
+		return nil
+	})
+	defer func() { close(gate); scheduler.Wait() }()
+	watch.Advance(context.Background(), 1)
+	<-entered
+	cancelled, cancel := context.WithCancelCause(context.Background())
+	cancel(errors.New("the caller gave up"))
+	if err := returns(t, scheduler, cancelled); err != nil {
+		t.Fatalf("AwaitEntered = %v, want nil: the delivery entered before the ctx was cancelled", err)
+	}
+}
+
+// A listener that ends its goroutine (runtime.Goexit, as t.FailNow does) on a frame behind the first leaves no delivery that is
+// never finished, so the code that awaits the deliveries does not wait for ever.
+func TestAwaitEnteredReturnsWhenAListenerEndsItsGoroutineOnALaterFrame(t *testing.T) {
+	scheduler := NewDeliveryScheduler()
+	var calls atomic.Int32
+	firstEntered := make(chan struct{})
+	release := make(chan struct{})
+	watch := startedWatch(scheduler, func(context.Context) error {
+		if calls.Add(1) == 1 {
+			DeliveryEntered()
+			close(firstEntered)
+			<-release
+			return nil
+		}
+		runtime.Goexit()
+		return nil
+	})
+	watch.Advance(context.Background(), 1)
+	<-firstEntered
+	// The second frame is published while the first call runs: its delivery is registered behind the first.
+	watch.Advance(context.Background(), 2)
+	close(release)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := scheduler.AwaitEntered(ctx); err != nil {
+		t.Fatalf("AwaitEntered = %v, want nil: the listener that ended its goroutine finished its delivery", err)
+	}
+}
