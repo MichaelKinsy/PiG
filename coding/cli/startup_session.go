@@ -190,7 +190,8 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 		path = selection.forkPath
 	}
 	if path == "" {
-		return selection, nil
+		err := selection.checkNewSessionCWD(flags, manager, launchCWD)
+		return selection, err
 	}
 	if selection.sessionDir == "" {
 		selection.sessionDir = filepath.Dir(path)
@@ -203,7 +204,8 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 	// header; a new explicit session path keeps the launch cwd. existsSync is
 	// false for any stat failure, so an unreadable path counts as new.
 	if _, err := os.Stat(path); err != nil {
-		return selection, nil
+		err := selection.checkNewSessionCWD(flags, manager, launchCWD)
+		return selection, err
 	}
 
 	sessionCWD, err := readSessionCWD(path)
@@ -227,6 +229,29 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 	}
 	selection.runtimeCWD = sessionCWD
 	return selection, nil
+}
+
+// checkNewSessionCWD is main.ts:707-719 for a Session that has no file yet. SessionManager.create gives a new Session a file and the
+// launch directory as its cwd (session-manager.ts:1079-1082), and getMissingSessionCwdIssue (session-cwd.ts:14-33) reports that cwd
+// as missing when it no longer exists: print, JSON and RPC mode end with the stored-session-cwd error, and interactive mode offers
+// to continue in the current cwd. A launch directory that is gone is possible only where getcwd(3) still names it (macOS); elsewhere
+// processCwd fails first. A Session selected by an explicit path that does not exist yet is such a new Session; the runtime opens
+// it at that path.
+func (s *startupSessionSelection) checkNewSessionCWD(flags Args, manager *codingagent.SessionManager, launchCWD string) error {
+	if _, err := os.Stat(launchCWD); err == nil {
+		return nil
+	}
+	path := s.resumePath
+	if path == "" {
+		created, err := manager.Create(flags.SessionID, "")
+		if err != nil {
+			return err
+		}
+		path = created.Path()
+		s.resumePath = path
+	}
+	s.missingCWD = &missingSessionCWD{sessionFile: path, storedCWD: launchCWD, fallbackCWD: launchCWD}
+	return nil
 }
 
 // canonicalProcessCWD is canonicalStartupDir of process.cwd(). On Unix, getcwd(3) (nodepath.Cwd) already returns the physical
