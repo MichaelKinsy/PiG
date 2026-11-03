@@ -1083,6 +1083,27 @@ jobs:
           ./bin/pig --version
           # The ai package has about 2700 top-level tests and needs more than go test's default 10 minutes here: Linux splits it in two processes (automation/ci/test-grouped.sh) and Windows runs it alone under this timeout.
           go test -timeout 30m ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
+      - name: Test stop and continue on macOS
+        # A stopped and continued process gets EINTR from the termios ioctl on macOS only (#397), so the real-pty tests of the foreground check and raw mode, the suspend and dead-terminal
+        # tests of the interactive mode, and scenario 61 (Ctrl+Z, bg, fg against the pinned Pi in tmux) run here as well.
+        if: matrix.shard == 'native'
+        env:
+          # The PiG binary under test is the one built above; the pinned Pi is the source-built oracle that install-oracle linked into extensions/sdk-ts.
+          PIG_PARITY_PIG_BIN: ${{ github.workspace }}/bin/pig
+          PIG_PARITY_PI_BIN: ${{ github.workspace }}/extensions/sdk-ts/node_modules/.bin/pi
+        run: |
+          set -euo pipefail
+          # The scenario's job-control shell must be a current bash: macOS ships 3.2, whose interactive script shell leaves the job in a background process group, so the program stops at its first terminal call.
+          # Only the bash keg goes on PATH (the Homebrew bin directory also holds the image's default node and npm).
+          brew install tmux bash
+          export PATH="$(brew --prefix bash)/bin:$PATH"
+          go test -count=1 -v -timeout 20m -run 'TestStdinInForeground|TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg|TestEnterRawModeRetriesAnInterruptedTermiosIoctl|TestRestoreTerminalFromSignalRetriesAnInterruptedIoctl' ./tui
+          go test -count=1 -v -timeout 20m -run 'TestSuspend|TestWriteToAHungUpTerminalExits129|TestRemoteEditorTerminalWrite|TestForegroundCheckFailingWithEIOTakesTheDeadTerminalExit' ./internal/codingagent
+          # A failed scenario leaves the pane and the streams of both programs in its artifacts directory: print them, they are the only evidence of a macOS-only failure.
+          go test -tags=parity -count=1 -v -timeout 20m -run '^TestParity$/^61-suspend-background-resume$' ./test/parity/runner -args -pig-parity.results="$RUNNER_TEMP/parity-61.json" || {
+            find test/parity/artifacts -type f | while read -r f; do echo "::group::$f"; head -c 6000 "$f"; echo; echo "::endgroup::"; done
+            exit 1
+          }
       # A unit that fails does not stop the job: every unit of the job runs, and the step fails if any unit failed.
       - name: Test cmd/pig shards ${{ matrix.shard }}
         # Each cli-N unit runs shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own go test process and timeout.
