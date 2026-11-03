@@ -539,7 +539,7 @@ func (t *TuiAltScreen) copyTextToClipboard(text string) bool {
 			return false
 		}
 	} else {
-		_, _ = fmt.Fprintf(t.out, "\x1b]52;c;%s\x07", base64.StdEncoding.EncodeToString([]byte(text)))
+		WriteToTerminal(t.out, fmt.Sprintf("\x1b]52;c;%s\x07", base64.StdEncoding.EncodeToString([]byte(text))))
 	}
 	t.flash("Copied!", altScreenFlashDefaultDurationMS)
 	return true
