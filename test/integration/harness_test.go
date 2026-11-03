@@ -59,15 +59,10 @@ func newHarness(t *testing.T) *harness {
 		}
 		t.Logf("tmux has no extended-keys-format option (tmux 3.5+); using its default key format")
 	}
-	out, err := tmuxCommand("list-panes", "-t", session, "-F", "#{pane_pid}").Output()
+	pane, err := paneSessionID(session)
 	if err != nil {
 		_ = tmuxCommand("kill-session", "-t", session).Run()
-		t.Fatalf("tmux list-panes: %v", err)
-	}
-	pane, err := strconv.Atoi(strings.TrimSpace(string(out)))
-	if err != nil {
-		_ = tmuxCommand("kill-session", "-t", session).Run()
-		t.Fatalf("tmux pane_pid %q: %v", out, err)
+		t.Fatal(err)
 	}
 	h := &harness{t: t, session: session, bin: bin, pane: pane, livePaneProcesses: livePaneProcesses}
 	t.Cleanup(h.kill)
@@ -285,20 +280,53 @@ func (h *harness) expectContains(timeout time.Duration, needles ...string) strin
 // paneExitWait bounds how long kill waits for the session's processes to exit after tmux hangs them up. Pig exits within seconds of a hangup, so a process still running after this is a hung shutdown.
 const paneExitWait = 30 * time.Second
 
-// kill ends the session and returns once every process in it has exited. tmux kill-session returns when its server has dropped the session; it hangs the pane's terminal up and does not wait for anything the pane started. Pig handles the hangup as a termination signal, and before it exits it writes its exit record into the agent directory, so a test that removes its PIG_HOME right after kill-session races that write and fails with "directory not empty".
+// kill ends the session and returns once every process in it has exited; see hangUpSession.
 func (h *harness) kill() {
-	_ = tmuxCommand("kill-session", "-t", h.session).Run()
-	var live []int
+	_ = hangUpSession(h.t, h.session, h.pane, h.livePaneProcesses)
+}
+
+// killSession is kill for a tmux session a test started without the harness. It looks the pane up at the call, so a session that is already gone is only hung up, and it returns the error of tmux kill-session.
+func killSession(t testing.TB, session string) error {
+	t.Helper()
+	pane, err := paneSessionID(session)
+	if err != nil {
+		return tmuxCommand("kill-session", "-t", session).Run()
+	}
+	return hangUpSession(t, session, pane, livePaneProcesses)
+}
+
+// hangUpSession ends the tmux session whose pane shell has process ID pane and returns once every process in it has exited. tmux kill-session returns when its server has dropped the session; it hangs the pane's terminal up and does not wait for anything the pane started. Pig handles the hangup as a termination signal, and before it exits it writes its exit record into the agent directory, so a test that removes its PIG_HOME right after kill-session races that write and fails with "directory not empty". It returns the error of tmux kill-session; a process that does not exit, or a failure to list the processes, fails t.
+func hangUpSession(t testing.TB, session string, pane int, live func(session int) ([]int, error)) error {
+	t.Helper()
+	out, killErr := tmuxCommand("kill-session", "-t", session).CombinedOutput()
+	if killErr != nil {
+		killErr = fmt.Errorf("%w: %s", killErr, bytes.TrimSpace(out))
+	}
+	var alive []int
 	var err error
 	if !waitFor(paneExitWait, func() bool {
-		live, err = h.livePaneProcesses(h.pane)
-		return err != nil || len(live) == 0
+		alive, err = live(pane)
+		return err != nil || len(alive) == 0
 	}) {
-		h.t.Errorf("processes %v of tmux session %s still running %s after kill-session", live, h.session, paneExitWait)
+		t.Errorf("processes %v of tmux session %s still running %s after kill-session", alive, session, paneExitWait)
 	}
 	if err != nil {
-		h.t.Errorf("list processes of tmux session %s: %v", h.session, err)
+		t.Errorf("list processes of tmux session %s: %v", session, err)
 	}
+	return killErr
+}
+
+// paneSessionID returns the ID of the terminal session that the pane shell of tmux session session leads; see harness.pane.
+func paneSessionID(session string) (int, error) {
+	out, err := tmuxCommand("list-panes", "-t", session, "-F", "#{pane_pid}").Output()
+	if err != nil {
+		return 0, fmt.Errorf("tmux list-panes -t %s: %w", session, err)
+	}
+	pane, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return 0, fmt.Errorf("tmux pane_pid %q: %w", out, err)
+	}
+	return pane, nil
 }
 
 // livePaneProcesses lists the processes of terminal session sid that have not exited. A zombie has exited and writes nothing more; it stays in the process table until its parent reaps it, which on a loaded host can lag the exit by seconds, so it does not count.

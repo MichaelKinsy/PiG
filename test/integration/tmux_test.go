@@ -65,7 +65,7 @@ func TestTmuxSessionsHaveSeparateHomes(t *testing.T) {
 		if out, err := tmuxCommand("new-session", "-d", "-s", session, "sleep 30").CombinedOutput(); err != nil {
 			t.Fatalf("create pane: %v: %s", err, out)
 		}
-		t.Cleanup(func() { _ = tmuxCommand("kill-session", "-t", session).Run() })
+		t.Cleanup(func() { _ = killSession(t, session) })
 		for _, key := range []string{"HOME", "PIG_HOME"} {
 			out, err := tmuxCommand("show-environment", "-t", session, key).Output()
 			if err != nil {

@@ -36,7 +36,7 @@ func launchDirect(t *testing.T, name, bin string, args []string, env []string, p
 	if err := tmuxCommand("new-session", "-d", "-s", session, "-x", "120", "-y", "35", cmdStr).Run(); err != nil {
 		t.Fatal(err)
 	}
-	cleanup = func() { _ = tmuxCommand("kill-session", "-t", session).Run() }
+	cleanup = func() { _ = killSession(t, session) }
 
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {

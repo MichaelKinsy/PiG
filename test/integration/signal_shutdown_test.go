@@ -64,7 +64,7 @@ func TestSignalEmitsSessionShutdownToExtensions(t *testing.T) {
 			if out, err := tmuxCommand("new-session", "-d", "-s", session, "-x", "120", "-y", "34", command).CombinedOutput(); err != nil {
 				t.Fatalf("tmux new-session: %v\n%s", err, out)
 			}
-			t.Cleanup(func() { _ = tmuxCommand("kill-session", "-t", session).Run() })
+			t.Cleanup(func() { _ = killSession(t, session) })
 
 			pid := waitForPanePID(t, session)
 			// The footer paints before extension initialization. Wait for this extension's session_start status before sending a termination signal.
@@ -133,7 +133,7 @@ func TestInteractiveSigintTerminatesAndRestoresTerminal(t *testing.T) {
 	if out, err := tmuxCommand("new-session", "-d", "-s", session, "-x", "120", "-y", "34", "bash --noprofile --norc --noediting -i").CombinedOutput(); err != nil {
 		t.Fatalf("tmux new-session: %v\n%s", err, out)
 	}
-	t.Cleanup(func() { _ = tmuxCommand("kill-session", "-t", session).Run() })
+	t.Cleanup(func() { _ = killSession(t, session) })
 
 	// Keep a shell as the pane owner so the pty outlives pig and its terminal
 	// state can be read after the signal.
