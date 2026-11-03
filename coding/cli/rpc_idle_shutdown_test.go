@@ -8,15 +8,20 @@ import (
 
 // Pi 1.5.0 shutdownHandler (rpc-mode.ts) only set a flag that a stdin command or agent_settled checked, so a ctx.shutdown() from a timer on an idle session waited for the next command (Pi #11599, fixed on Pi main by 1708b4788, D231). The process must shut down on its own.
 func TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand(t *testing.T) {
-	p, report := startRPCShutdownFixture(t, "RPC_SHUTDOWN_IDLE_TIMER=100")
-	awaitReady(p)
-	records := drainRPCOutput(p)
-	p.waitForExit("after an idle ctx.shutdown() with stdin open")
-	if !reflect.DeepEqual(records, []rpcRecord{rpcShutdownStartedNotify}) {
-		t.Fatalf("stdout = %v, want the session_shutdown notification", records)
-	}
-	if events := readRPCShutdownReport(t, report); !slices.Equal(events, []string{"session_shutdown"}) {
-		t.Fatalf("extension events = %v, want [session_shutdown]", events)
+	// One extension runs in its own process; two share a packed runtime cell (D20), which must behave alike.
+	for name, extra := range map[string][]string{"isolated": nil, "packed": {rpcShutdownSecondExtension}} {
+		t.Run(name, func(t *testing.T) {
+			p, report := startRPCShutdownFixture(t, append([]string{"RPC_SHUTDOWN_IDLE_TIMER=100"}, extra...)...)
+			awaitReady(p)
+			records := drainRPCOutput(p)
+			p.waitForExit("after an idle ctx.shutdown() with stdin open")
+			if !reflect.DeepEqual(records, []rpcRecord{rpcShutdownStartedNotify}) {
+				t.Fatalf("stdout = %v, want the session_shutdown notification", records)
+			}
+			if events := readRPCShutdownReport(t, report); !slices.Equal(events, []string{"session_shutdown"}) {
+				t.Fatalf("extension events = %v, want [session_shutdown]", events)
+			}
+		})
 	}
 }
 
