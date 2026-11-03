@@ -8506,28 +8506,91 @@
     },
     {
       "path": "packages/durable/test/harness-submissions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8096a5827e609e6e92b4c1c3202894afea55931c8bcd5daff178aa610e99ec75"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8096a5827e609e6e92b4c1c3202894afea55931c8bcd5daff178aa610e99ec75",
+      "evidence": [
+        "durable/harness/harness_submissions_test.go#TestSubmissions"
+      ],
+      "rationale": "All 10 cases ported against durable/harness/submissions.go. The close-race case waits until the Session line registered the waiter, which upstream's synchronous wait() enqueue guarantees. Not red-first: the source landed before the tests; mutation-checked (disabling request-ID deduplication fails 2 cases). Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/harness-submit-in-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:297e66ed43e65f1a1a08f483a3b6ce7e76c4e0e98ea817b43fd1d1df9a496947"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:297e66ed43e65f1a1a08f483a3b6ce7e76c4e0e98ea817b43fd1d1df9a496947",
+      "evidence": [
+        "durable/harness/harness_submit_in_commit_test.go#TestWhenIdleReject",
+        "durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit"
+      ],
+      "rationale": "All 23 cases ported against durable/harness; the case names match upstream's one for one."
     },
     {
       "path": "packages/durable/test/harness-task-graph.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:02b8ded769a06ec04b550b5dd695af309531875c75c30f2e85ec91a5187f2252"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:02b8ded769a06ec04b550b5dd695af309531875c75c30f2e85ec91a5187f2252",
+      "evidence": [
+        "durable/harness/harness_task_graph_test.go#TestTaskGraphView"
+      ],
+      "rationale": "All 5 cases ported against durable/harness/task_graph.go. Red against the task-graph stub; compiling mutations of the no-change skip, the owned-conversation sort and the mount drop fail them. Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/harness-tasks-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:342baf356e3fc84550f133528a381014f59601a270080bcaaf373a119d809fde"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:342baf356e3fc84550f133528a381014f59601a270080bcaaf373a119d809fde",
+      "evidence": [
+        "durable/harness/harness_tasks_recovery_test.go#TestTaskRecovery",
+        "durable/harness/harness_tasks_times_test.go#TestTaskTimes"
+      ],
+      "rationale": "All 24 cases are ported; the 1.1.0 case keeps startedAt across close and reopen and stamps endedAt (#10549). Pi 440a5fcd asserts the report of a failed migration is migration_failed of the task (:735) and each outdated task a task_outdated report with its reason (:759); TestDefinitionHandover asserts both. 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () => false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/harness-tasks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2b3cc4ab1ff948675e4b5269af867008e8ee61e207743cc55b963497bb854915"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2b3cc4ab1ff948675e4b5269af867008e8ee61e207743cc55b963497bb854915",
+      "evidence": [
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocation",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultJoinsAReservationThatSettlesWhileClosingWithoutStartingItsHandler",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultLetsAnAbortMarkWinOverAFaultThatRacesIt",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultNeverStartsPhaseOneWhenTheAbortLandsWhileTheReservationSettles",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultOrdersRuntimeCommitsAgainstTheStep",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultStartsNoAbortHandlerWhoseReservationSettlesWhileClosing",
+        "durable/core/driver/fault_tasks_core_test.go#TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueued",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreAbortingATaskSignalsItsPhaseAndRunsItsAbortHandler",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreRegistrySnapshotToolsPairEachToolWithItsExtensionInInstallOrder",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskAbortSignalsAndJoinsTheRunBeforeReturning",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskAbortsWaitingWorkAndFaultsAbortHandlersThatThrowOrSettleNothing",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskFaultsAPhaseWithoutDurableProgressAndAThrowingPhase",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskKeepsACommittedTerminalOutcomeWhenTheHandlerThrowsAfterwards",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskKeepsOneRegistrySnapshotPerPhase",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsRuntimeOperationsAfterTheInvocationEndsAndStopsItsWatches",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRejectsTheRunsCommitsAndMemoWritesAfterTheMark",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskResolvesTheAgentAtFirstUseKeepsItForThePhaseAndAnewAtTheNext",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskRunsPhasesOfOneInvocationOnOneRuntime",
+        "durable/core/driver/harness_tasks_core_test.go#TestCoreTaskStartsNoFurtherPhaseAfterAMarkDuringAPhaseWithProgress",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskDoesNotSignalARunningAbortHandlerWhenAbortedAgainAndACancelledCallerLeavesTheMarkDurable",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskKeepsATerminalOutcomeCommittedByAnAbortHandlerThatThrowsAfterwards",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskRejectsACancelledWaitWithItsReasonAndPendingWaitsOnClose",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskRejectsUnknownTasksAndReportsTerminalOnes",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskResumesAWaitingTaskOnceEveryTaskInOnIsTerminalWhateverTheOutcome",
+        "durable/core/driver/harness_tasks_more_core_test.go#TestCoreTaskStampsStartedAtAndEndedAtKeepingStartedAtThroughAWait",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreCloseSealsAdmissionBeforeSignallingHandlersAndStopsWatchesBeforeJoiningThem",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreConversationContextDecodesItsMessages",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskCommitsResultsWithEntriesKeepsMemosUntilTerminalAndRetiresDocuments",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskComparesCheckpointsByValueIncludingArrays",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskObservesAFailedAgentResolutionWhoseOnlyCallerStoppedWaiting",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskReadsCommittedDocumentsAndContextThroughTheRuntimeAndForwardsClockAndReports",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskRejectsAnAgentWaitWhoseCallerIsCancelledWithoutAffectingTheResolution",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreTaskScanPagesTheNewestFirst",
+        "durable/core/driver/harness_tasks_port2_core_test.go#TestCoreWaitForIdleCountsBlockedWorkAndIgnoresBackgroundTasks",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskAbort",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskClose",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskCloseSignalsHandlersOnlyAfterEveryCloseListenerRan",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskRuntime",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskScanPagesTheNewestFirst",
+        "durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling",
+        "durable/harness/harness_tasks_test.go#TestTaskPhases"
+      ],
+      "rationale": "38/38 cases ported against 1.2.0; :745/:777 assert the run counts 1 and 2 after reopening. Pi f75b3240ab removes the two TaskRuntime.sleep cases (:691, :711) with the method; the ended-invocation case now calls sleepUntil. The Go ports of the removed cases are removed with them (harness_tasks_scheduling_test.go, harness_tasks_port2_core_test.go); sleeping is covered by harness-sleep.test.ts. Pi 91b33cab: close writes the stopped task back as pending with any abort mark kept, no outcome and no fault (:1148, :1222, :1250, :1288, :1355); the Go close tests assert the extra pending write. 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () => false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/harness-telemetry-options.test.ts",
@@ -8580,33 +8643,71 @@
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bc8a249c58228325d63260884a6cf2a61374f1aaf7a44a687373a190d8594a38"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bc8a249c58228325d63260884a6cf2a61374f1aaf7a44a687373a190d8594a38",
+      "evidence": [
+        "durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsTheCallPhaseDecides",
+        "durable/harness/harness_tool_hooks_test.go#TestAfterToolOnResultsRebuiltFromTheSlot",
+        "durable/harness/harness_tool_hooks_test.go#TestCallsToToolsTheRequestDidNotOffer"
+      ],
+      "rationale": "All 18 cases ported against durable/harness; the case names match upstream's one for one."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6f9275c1ee35d36bb667a64f9e4766f12cc8ad6b494249d0321ef6fcd0e8c73"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6f9275c1ee35d36bb667a64f9e4766f12cc8ad6b494249d0321ef6fcd0e8c73",
+      "evidence": [
+        "durable/harness/harness_coding_tools_test.go#TestToolRecoveryWithBash",
+        "durable/harness/harness_tools_recovery_test.go#TestToolRecovery"
+      ],
+      "rationale": "9/9 cases ported against 1.2.0 (output replaces content). Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/harness-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:89d0a43dd115af1b1c7f61adb1cb350e285a3834656de7ec03efdc1c3fc01b5b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:89d0a43dd115af1b1c7f61adb1cb350e285a3834656de7ec03efdc1c3fc01b5b",
+      "evidence": [
+        "durable/harness/agent_regression_test.go#TestAddToolsEditsTheStoredToolFilter",
+        "durable/harness/agent_regression_test.go#TestResolveAgentDropsTargetOfWrapperReturningNil",
+        "durable/harness/harness_coding_tools_test.go#TestCodingTools",
+        "durable/harness/harness_tools_models_test.go#TestToolResultRecordsHowLongExecuteTook",
+        "durable/harness/harness_tools_models_test.go#TestToolsAndHooksSeeTheHarnessModels",
+        "durable/harness/harness_tools_progress_test.go#TestToolProgressAndLifetime",
+        "durable/harness/harness_tools_test.go#TestGenerationHooks",
+        "durable/harness/harness_tools_test.go#TestToolExecutionApi",
+        "durable/harness/harness_tools_test.go#TestToolResults",
+        "durable/harness/harness_tools_test.go#TestToolRound"
+      ],
+      "rationale": "38/38 cases ported. :263 is ported with Pi's inputs under D177 (the calls of a parallel round start in unspecified order): TestToolRound checks that both calls start before either ends and that the next request carries the results in call order (c1, c2) instead of Pi's exact [\"start a\",\"start b\"]; the sequential and per-tool-sequential parts are Pi's exact assertions. :1019 settle order fixed in output.go settleInOrder (49/50 red, 0/50 green). Pi 6085986e (#10858) adds \"does not terminate on terminate: false\" (:677), ported as TestToolResults/does_not_terminate_on_terminate:_false. Pi bd3c9b82 changes the models cases: tools and hooks share one view of the host's Models that adds the Harness identity (a plain Models is wrapped once, HarnessOptions.WithModelsView); TestToolsAndHooksSeeTheHarnessModels and TestToolRound assert the shared view. Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/harness-turn-limit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fc5c5882f5eccc1cc5a291d8d73bd6560639bc89d77c9ecbd3dfacaaf6a04d25"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fc5c5882f5eccc1cc5a291d8d73bd6560639bc89d77c9ecbd3dfacaaf6a04d25",
+      "evidence": [
+        "durable/harness/harness_turn_limit_test.go#TestTurnLimit"
+      ],
+      "rationale": "All 11 cases ported against durable/harness; the case names match upstream's one for one."
     },
     {
       "path": "packages/durable/test/harness-view-run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:13d25836c0121effd24dfb81fcca400bac578335807293203d6a464438d4678f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:13d25836c0121effd24dfb81fcca400bac578335807293203d6a464438d4678f",
+      "evidence": [
+        "durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt",
+        "durable/harness/harness_view_run_test.go#TestStreamedPartials",
+        "durable/harness/streamed_partials_memory_test.go"
+      ],
+      "rationale": "All 13 cases ported; the two V8 heap measurements are measured on Go's heap in streamed_partials_memory_test.go."
     },
     {
       "path": "packages/durable/test/harness-view.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cccc828f5697f731c878f37ff04b278e79457d1bc9913d29398f2763395c3183"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cccc828f5697f731c878f37ff04b278e79457d1bc9913d29398f2763395c3183",
+      "evidence": [
+        "durable/harness/harness_view_test.go#TestConversationView"
+      ],
+      "rationale": "All 14 upstream cases are ported; each Go case cites its upstream line. Ported against durable/harness/view.go. Frames are replayed with chord/delta ApplyImmutable over the view's JSON form; toBe identity is backing-array or map-pointer identity. drained() is a no-op Session line job plus WaitDeliveries instead of setTimeout(0); a queued acquisition is detected with SessionImpl.LineJobs. Compiling mutations of the head cut, the mount drop and the closed check fail them; ops order between documents and entries and a version mismatch are not asserted upstream. Pi 1.0.2 mounts the pi.provider document between Inbox and Usage. 0.5.2 (Pi 5c1736f8): the file gains `checkpointWhen: () => false` on every definition (checkpointWhen is required); the Go ports gained CheckpointWhen on every definition the same way (a never-checkpoint default in the shared test helpers), with no case added or removed. durable.DefineDoc now rejects a definition with no policy, tested in durable/session/codemode_checkpoints_upstream_test.go (TestDefinitionsRequireACheckpointPolicy; not in Pi). Delta to Pi 1.5.0 (observeCommits observers, watch/observe task graph and view windows, publication at adoption, flagged unoffered-tool tasks, beforeProviderRequest chain): every new or changed upstream case is present in these tests by name, and the packages pass."
     },
     {
       "path": "packages/durable/test/images-wasm-module.test.ts",

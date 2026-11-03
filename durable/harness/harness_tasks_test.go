@@ -910,7 +910,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		{"work after adopt", func() durable.Storage { return newLateResolvingStorage() }, func(s durable.Storage) bool { return s.(*lateResolvingStorage).adopting.Load() }, nil},
 	}
 
-	t.Run("resumes task and idle waits only once subscribeCommits() listeners saw the terminal commit", func(t *testing.T) {
+	t.Run("resumes task and idle waits only once observeCommits() observers saw the terminal commit", func(t *testing.T) {
 		gate := deferred()
 		gated := tkGated("test.wake-gated", gate)
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: newLateResolvingStorage()})
@@ -944,7 +944,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		gate.resolve()
 		for range 3 {
 			if got := <-results; !got.saw {
-				t.Fatalf("%s resumed before the subscribeCommits() listeners saw the terminal commit", got.wait)
+				t.Fatalf("%s resumed before the observeCommits() observers saw the terminal commit", got.wait)
 			}
 		}
 		mustClose(t, opened.harness)

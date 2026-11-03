@@ -493,7 +493,7 @@ func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	t.Run("resumes a wait only once subscribeCommits() listeners saw the commit that settled it", func(t *testing.T) {
+	t.Run("resumes a wait only once observeCommits() observers saw the commit that settled it", func(t *testing.T) {
 		setup := chatSetup(t)
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("hi")})
 		harness, root := openChat(t, newLateResolvingStorage(), setup)
@@ -514,7 +514,7 @@ func TestSubmissionDraftIgnoresTheFieldsOfTheOtherType(t *testing.T) {
 		saw := settled[submission.Id()]
 		mu.Unlock()
 		if !saw {
-			t.Fatal("the wait resumed before the subscribeCommits() listeners saw the settling commit")
+			t.Fatal("the wait resumed before the observeCommits() observers saw the settling commit")
 		}
 		closeHarness(t, harness)
 	})
