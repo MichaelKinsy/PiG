@@ -23,7 +23,7 @@ import (
 // Deferred progress commits (ProgressCommit): the partial answer and tool output reach watches at once and Storage at the next
 // commit that reads or writes pi.live or within settings.progress.persistWithinMs. Crashes are simulated by failing the
 // Harness: from that moment nothing more reaches Storage, as when the process dies; the reopened Harness resumes from what was
-// stored. Ports packages/durable/test/harness-deferred-progress.test.ts (Pi 1.4.0+6c2fd73b).
+// stored. Ports packages/durable/test/harness-deferred-progress.test.ts (Pi v1.5.0).
 
 func longText() string { return strings.Repeat("streamed ", 400) }
 
@@ -245,7 +245,8 @@ func TestDeferredGenerationPartials(t *testing.T) {
 					continue
 				}
 				replicaMu.Lock()
-				if replica == nil || len(change.Ops) == 0 {
+				// A creation carries no ops in Go (DocumentChange.Ops), so its Value is the replica's base; every later change replays its ops.
+				if replica == nil {
 					replica = change.Value
 				} else {
 					replica = must(delta.ApplyImmutable(replica, change.Ops))
@@ -671,30 +672,36 @@ func TestReadingPiLiveInACommitStoresTheHeldPartial(t *testing.T) {
 
 func TestACompactionCutOffByACrashRerunsFromItsCheckpoint(t *testing.T) {
 	storage := newControlledStorage()
-	chat := openCompaction(t, compactionOptions{storage: storage})
-	chat.history(t)
+	setup := chatSetup(t)
+	setup.SetSettings(func(settings *HarnessSettings) { settings.Compaction = manualPolicy() })
 	summarizing := deferred()
-	chat.faux.pushSummary(func(request scriptRequest) (ai.FauxResponse, error) {
-		summarizing.resolve()
-		return ai.FauxResponse{}, abortedBy(request.options.Signal)
+	words := strings.Repeat("word ", 100)
+	setup.Faux.SetResponses([]ai.FauxResponseStep{
+		fauxAnswer("a1 " + words), fauxAnswer("a2 " + words), fauxAnswer("a3 " + words),
+		ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.AssistantMessage, error) {
+			summarizing.resolve()
+			return ai.AssistantMessage{}, abortedBy(options.Signal)
+		}),
 	})
-	id := chat.compact(t, nil)
+	run := openProgress(t, storage, setup)
+	for _, label := range []string{"u1", "u2", "u3"} {
+		must(submitInput(t, run.root, label+" "+words).Wait(testContext))
+	}
+	id := must(run.root.Compact(testContext, nil))
 	<-summarizing.done
-	crash(t, chat.harness)
+	crash(t, run.harness)
 
-	chat.faux.pushSummary(scriptSummary())
-	storage.Reopen()
-	reopened, root := openChat(t, storage, chat.setup)
-	reopened.Resume()
-	record := must(reopened.WaitForTask(testContext, id))
+	setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("SUMMARY")})
+	reopened := openProgress(t, storage, setup)
+	record := must(reopened.harness.WaitForTask(testContext, id))
 	if record.State.Outcome == nil || record.State.Outcome.Status != durable.OutcomeCompleted {
 		t.Fatalf("the compaction ended %+v, want completed", record.State.Outcome)
 	}
-	waitFor(t, func() bool { return slices.Contains(entryKinds(allEntries(t, root)), "pi.compaction") })
-	if live := liveOf(t, reopened, root.Id()); live == nil || !reflect.DeepEqual(*live, LiveState{}) {
+	waitFor(t, func() bool { return slices.Contains(entryKinds(allEntries(t, reopened.root)), "pi.compaction") })
+	if live := liveOf(t, reopened.harness, reopened.root.Id()); live == nil || !reflect.DeepEqual(*live, LiveState{}) {
 		t.Fatalf("pi.live = %+v, want empty", live)
 	}
-	must0(t, reopened.Close(testContext))
+	must0(t, reopened.harness.Close(testContext))
 }
 
 func TestAHeldDeferredPollIsResumedAfterACrash(t *testing.T) {

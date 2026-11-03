@@ -503,8 +503,8 @@ func TestContinue(t *testing.T) {
 		if submitSpan.Name == "" || submitSpan.ParentID != nil || submitSpan.Attributes.Value("result") != "placed" {
 			t.Fatalf("submit span %+v", submitSpan)
 		}
-		if len(submitSpan.Links) != 1 || !reflect.DeepEqual(submitSpan.Links[0].Context, callers[0].Context) {
-			t.Fatalf("submit links %+v, want the caller's context", submitSpan.Links)
+		if len(submitSpan.Links) != 1 || !reflect.DeepEqual(submitSpan.Links[0].Context, callers[0].Context) || len(submitSpan.Links[0].Attributes) != 0 {
+			t.Fatalf("submit links %+v, want exactly the caller's context with no attributes", submitSpan.Links)
 		}
 		if record := must(must(harness.Submission(testContext, id)).Status(testContext)); !reflect.DeepEqual(record.Trace, submitSpan.Context) {
 			t.Fatalf("record trace %v, want %v", record.Trace, submitSpan.Context)
