@@ -196,3 +196,25 @@ func TestHandleEventBashExecutionUpdateChangesNothing(t *testing.T) {
 		t.Fatalf("bash_execution_update changed the screen: chat %q", p.chat())
 	}
 }
+
+// A real run ends with agent_settled through the owner loop: ctx.shutdown() requested while the run streams ends the session only when the run's
+// settled event is handled.
+func TestHandleEventRunSettledEndsASessionAskedToShutDownDuringTheRun(t *testing.T) {
+	m, ctx, _ := newLifecycleMode(t)
+	m.runTurn(ctx, "", func(context.Context) ([]agent.AgentMessage, error) {
+		m.requestExtensionShutdown()
+		return nil, nil
+	})
+	settled := m.turnSettled
+	<-settled
+	if m.requestExit.Load() {
+		t.Fatal("ctx.shutdown() during the run ended the session before the run settled")
+	}
+	for !m.isIdle {
+		(<-m.uiTaskCh)()
+	}
+	m.drainMainLoopOnce()
+	if !m.requestExit.Load() {
+		t.Fatal("the run's agent_settled did not end the session an extension asked to shut down")
+	}
+}
