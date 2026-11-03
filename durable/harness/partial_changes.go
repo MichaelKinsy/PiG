@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -15,8 +16,9 @@ import (
 
 // toolCallChanges is the argument changes of one tracked tool call since the last commit, and its snapshot.
 type toolCallChanges struct {
-	changes  []ai.JSONChange
-	snapshot durable.JsonValue
+	changes []ai.JSONChange
+	// snapshot is the call's arguments as the partial held them, read only when the call falls back to its snapshot.
+	snapshot func() (durable.JsonValue, error)
 }
 
 // PartialCommit is what one partial commit writes besides the partial message itself; from PartialChanges.Bind.
@@ -132,31 +134,102 @@ func (changes *PartialChanges) Cut() *PartialCut {
 	return cut
 }
 
-// Bind binds cut to message, a copy of the partial the cut describes, for a commit. It clears the arguments of tracked tool calls in
-// message: the commit writes them from the changes. Call Restore if the commit fails.
-func (changes *PartialChanges) Bind(cut *PartialCut, message durable.JsonObject) *PartialCommit {
+// BindPartial binds cut to partial, the partial message it describes, for a commit: it returns the JSON object of partial, whose tracked tool
+// calls have no arguments, because the commit writes them from the changes, and what the commit takes. It builds the object without
+// encoding and decoding the text and thinking of the blocks or the arguments of the tracked calls, which grow with the stream: every commit
+// would otherwise cost the length of the message. Call Restore if the commit fails.
+func (changes *PartialChanges) BindPartial(cut *PartialCut, partial *ai.AssistantMessage) (durable.JsonObject, *PartialCommit, error) {
+	owned := partial.Observe()
+	message, err := partialObject(owned, cut.toolCalls)
+	if err != nil {
+		return nil, nil, err
+	}
 	blocks := map[any]*AssignPlan{}
 	for index, pending := range cut.text {
 		blocks[index] = &AssignPlan{Kind: planFields, Fields: map[any]*AssignPlan{pending.field: {Kind: planAppend, Text: string(pending.text)}}}
 	}
 	taken := &PartialCommit{toolCalls: map[int]toolCallChanges{}}
-	content, _ := message.Value("content").([]any)
 	for index, pieces := range cut.toolCalls {
-		var block *delta.JsonObject
-		if index >= 0 && index < len(content) {
-			block, _ = content[index].(*delta.JsonObject)
+		var call ai.ToolCall
+		isCall := false
+		if index >= 0 && index < len(owned.Content) {
+			call, isCall = owned.Content[index].(ai.ToolCall)
 		}
-		if block == nil {
-			// The partial has no such block: the changes wait for a later one.
+		if !isCall {
+			// The partial has no such tool call: the changes wait for a later one.
 			changes.restoreCall(index, pieces)
 			continue
 		}
-		taken.toolCalls[index] = toolCallChanges{changes: pieces, snapshot: block.Value("arguments")}
-		block.Set("arguments", delta.JsonObjectOf())
+		taken.toolCalls[index] = toolCallChanges{changes: pieces, snapshot: snapshotOf(call)}
 		blocks[index] = &AssignPlan{Kind: planFields, Fields: map[any]*AssignPlan{"arguments": {Kind: planKeep}}}
 	}
 	taken.plan = &AssignPlan{Kind: planFields, Fields: map[any]*AssignPlan{"content": {Kind: planFields, Fields: blocks}}}
-	return taken
+	return message, taken, nil
+}
+
+// snapshotOf is the arguments of call as they encode, read when the call falls back to its snapshot.
+func snapshotOf(call ai.ToolCall) func() (durable.JsonValue, error) {
+	return func() (durable.JsonValue, error) {
+		object, err := durable.ToJsonObject(call)
+		if err != nil {
+			return nil, err
+		}
+		arguments, _ := object.Get("arguments")
+		return arguments, nil
+	}
+}
+
+// partialObject is the JSON object of partial, as durable.ToJsonObject(partial) returns it, except that the arguments of the tool calls in
+// tracked are empty. The text and thinking of its blocks are not encoded: they are the strings the partial holds, where the encoding and the
+// decoding copy them, and the commit that appends to them copies nothing. A string that is not valid UTF-8 is encoded, as the encoding
+// writes it.
+func partialObject(partial *ai.AssistantMessage, tracked map[int][]ai.JSONChange) (durable.JsonObject, error) {
+	skeleton := *partial
+	if partial.Content != nil {
+		skeleton.Content = make([]ai.AssistantContentBlock, len(partial.Content))
+	}
+	type grown struct {
+		index int
+		field string
+		text  string
+	}
+	var grownStrings []grown
+	for index, block := range partial.Content {
+		switch block := block.(type) {
+		case ai.TextContent:
+			if utf8.ValidString(block.Text) {
+				grownStrings = append(grownStrings, grown{index, "text", block.Text})
+				block.Text = ""
+			}
+			skeleton.Content[index] = block
+		case ai.ThinkingContent:
+			if utf8.ValidString(block.Thinking) {
+				grownStrings = append(grownStrings, grown{index, "thinking", block.Thinking})
+				block.Thinking = ""
+			}
+			skeleton.Content[index] = block
+		case ai.ToolCall:
+			if _, isTracked := tracked[index]; isTracked {
+				block = ai.ToolCall{ID: block.ID, Name: block.Name, Arguments: ai.JsonObject{}, ThoughtSignature: block.ThoughtSignature, Namespace: block.Namespace, ArgumentsError: block.ArgumentsError}
+			}
+			skeleton.Content[index] = block
+		default:
+			skeleton.Content[index] = block
+		}
+	}
+	message, err := durable.ToJsonObject(&skeleton)
+	if err != nil {
+		return nil, err
+	}
+	content, _ := message.Value("content").([]any)
+	for _, entry := range grownStrings {
+		block, ok := content[entry.index].(*delta.JsonObject)
+		if !ok {
+			return nil, fmt.Errorf("partial content[%d] encodes as %T, not an object", entry.index, content[entry.index])
+		}
+		block.Set(entry.field, entry.text)
+	}
+	return message, nil
 }
 
 // Uncut puts back what cut took, when no commit is made of it: the argument changes wait for the next cut, and the appended text is
@@ -202,7 +275,11 @@ func (changes *PartialChanges) Commit(generation *delta.Object, message durable.
 		if index >= committedBlocks && call.committed {
 			// The earlier changes are not in the committed message: commit the snapshot and stop tracking the call.
 			delete(changes.toolCalls, index)
-			messageContent[index].(*delta.JsonObject).Set("arguments", taken.snapshot)
+			snapshot, err := taken.snapshot()
+			if err != nil {
+				return err
+			}
+			messageContent[index].(*delta.JsonObject).Set("arguments", snapshot)
 			continue
 		}
 		call.committed = true
