@@ -12,7 +12,7 @@ python3 bench/sessionhost/sessionhost.py --pig /tmp/pig-listen --extensions --se
 - `--turns T` runs the first T of the five prompts; `--arms listen rpc` selects the arms.
 - Every process gets its own scratch `PIG_CODING_AGENT_DIR`, `PI_CODING_AGENT_DIR`, `PIG_HOME` and `PI_HOME`, and runs with `--no-session`.
 - Memory is `phys_footprint` (`footprint`) on macOS and PSS (`/proc/<pid>/smaps_rollup`) on Linux, as `private`, beside RSS. The extension process count is the number of descendants of the `pig` processes. The slope is the change of the last point between the smallest and the largest N, per additional session.
-- The script exits 1 if any run has an error: a refused prompt, an errored assistant turn, a closed stream, a timeout, or a model request count other than 2 per turn per session (the self-check; run `--sessions 1 --turns 1` for the minimal case).
+- The script exits 1 if any run has an error: a refused prompt, an errored assistant turn, a closed stream, a timeout, a model request count other than 2 per turn per session, or with `--extensions` a request that did not declare both fixture tools (the self-check; run `--sessions 1 --turns 1` for the minimal case).
 
 ## Workload
 
