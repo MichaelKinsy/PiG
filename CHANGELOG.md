@@ -12,6 +12,10 @@ All notable public changes to PiG will be recorded in this file.
 
 - Package filters, manifest `!`/`+`/`-` overrides, settings resource patterns, model scopes and built-in extension overrides follow minimatch 11.0.3, as in Pi: a path portion is matched by a state machine (`@isaacs/nonrecursive-glob-match`) instead of a regular expression. An empty path portion matches only an empty pattern portion (so `""` no longer matches `*(a)`), `*\.5` matches `gpt-5.5`, case folds one code point at a time with Unicode simple case folding, and a pattern that minimatch 10.2.6 could not compile (a POSIX class beside an escaped `,`, as in `[[:alpha:]]*,md`) now compiles; only a pattern over 65,536 UTF-16 units still fails.
 
+### Fixed
+
+- The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.
+
 ## [0.5.3] - 2026-10-23
 
 ### Upgrading
