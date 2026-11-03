@@ -642,3 +642,86 @@ func TestOpenTerminalFailsWhenTheRequestEndsWithoutStarting(t *testing.T) {
 		t.Fatal("OpenTerminal did not return after the request ended")
 	}
 }
+
+// Pi 1.2.0 packages/env/src/terminal.ts:33 (exited): the promise settles once with how the terminal ended and may be awaited by any number of
+// callers, before and after it settled; input, resize and close after the end reach no program and fail nothing (terminal.ts:#request).
+// mutation-checked: Exited reading the settlement channel on every call instead of latching it (no sync.Once) hangs the second caller.
+func TestRemoteTerminalSettlesOnceForEveryWaiterAndDropsInputAfterTheEnd(t *testing.T) {
+	eachDaemon(t, func(t *testing.T) {
+		connection, cwd := terminalConnection(t)
+		output := newCollector()
+		var terminal *RemoteTerminal
+		terminal, err := OpenTerminal(background, connection, TerminalOptions{
+			Cwd: cwd, Argv: []string{"/bin/sh"}, Env: map[string]string{"PS1": "", "TERM": "dumb"}, Cols: 80, Rows: 24, OnData: output.onData,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		waiters := make(chan [2]any, 3)
+		for range cap(waiters) {
+			go func() {
+				code, err := terminal.Exited()
+				waiters <- [2]any{code, err}
+			}()
+		}
+		terminal.Write("exit 4\n")
+		for range cap(waiters) {
+			select {
+			case settled := <-waiters:
+				if settled[0] != 4 || settled[1] != nil {
+					t.Fatalf("a waiter saw %v, want exit code 4 and no error", settled)
+				}
+			case <-time.After(terminalTestTimeout):
+				t.Fatal("a waiter on Exited was not released")
+			}
+		}
+		if code, err := waitExit(t, terminal); code != 4 || err != nil {
+			t.Fatalf("Exited after the settlement = %d, %v, want 4, nil", code, err)
+		}
+		// Operations on the ended terminal are dropped. The next request on the connection answers after the ones before it were read.
+		terminal.Write("echo WRITTEN-AFTER-THE-END\n")
+		terminal.Resize(10, 5)
+		terminal.Close()
+		if _, err := connection.Request(background, "ptyWrite", Json{"target": 999}, RequestOptions{}); remoteCode(err) != "EBADF" {
+			t.Fatalf("ordering request error = %v", err)
+		}
+		if strings.Contains(string(output.bytes()), "WRITTEN-AFTER-THE-END") {
+			t.Fatalf("input written after the end reached the program: %q", output.bytes())
+		}
+		if code, err := waitExit(t, terminal); code != 4 || err != nil {
+			t.Fatalf("Exited after the dropped operations = %d, %v, want the same settlement", code, err)
+		}
+	})
+}
+
+// Pi 1.2.0 packages/env/src/terminal.ts:69 (close) and :33 (exited): Close aborts the request, and every waiter, whenever it asks, sees the
+// daemon's `aborted` error.
+// mutation-checked: Close not calling the abort it was given leaves the program running, so Exited never settles.
+func TestRemoteTerminalCloseSettlesEveryWaiterWithTheAbortedError(t *testing.T) {
+	eachDaemon(t, func(t *testing.T) {
+		connection, cwd := terminalConnection(t)
+		var terminal *RemoteTerminal
+		terminal, err := OpenTerminal(background, connection, TerminalOptions{Cwd: cwd, Argv: []string{"sleep", "100"}, Cols: 80, Rows: 24, OnData: func([]byte) {}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		before := make(chan error, 1)
+		go func() {
+			_, err := terminal.Exited()
+			before <- err
+		}()
+		terminal.Close()
+		terminal.Close() // closing twice is harmless
+		select {
+		case err := <-before:
+			if remoteCode(err) != "aborted" {
+				t.Fatalf("a waiter that asked before Close saw %v, want aborted", err)
+			}
+		case <-time.After(terminalTestTimeout):
+			t.Fatal("Close did not end the terminal")
+		}
+		if _, err := waitExit(t, terminal); remoteCode(err) != "aborted" {
+			t.Fatalf("a waiter that asked after the end saw %v, want aborted", err)
+		}
+	})
+}

@@ -1,0 +1,135 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/core/tools/bash.ts",
+    "package": "./coding/extension/host/subprocess",
+    "tests": [
+      "TestUserBashOperationsExecAbortsWithTheContext",
+      "TestUserBashOperationsExecReturnsTheExitCodeTheExtensionReported",
+      "TestUserBashOperationsExecSendsTheCommandTimeoutAndEnvironmentToTheExtension",
+      "TestUserBashOperationsExecDeliversStreamedOutputInOrderAndReportsABadChunk",
+      "TestUserBashOperationsExecReportsAbortedOnlyWhenTheContextWasCancelled"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/bash-executor.ts executeBashWithOperations; packages/coding-agent/src/core/tools/bash.ts BashOperations.exec",
+    "mutation": "coding/extension/host/subprocess/user_bash_operations.go remoteBashOperations.Exec, each compiled mutant fails the named tests and the baseline passes: Cwd: cwd -> Cwd: \"\"; Timeout: options.Timeout -> nil; the Env != nil guard -> len(Env) != 0; strings.Cut ok -> ok || name != \"\"; the OnData delivery removed; base64.StdEncoding -> RawStdEncoding; the decode error dropped; the extension error replaced by success; the aborted error -> the connection error; ExitCode: result.ExitCode -> no exit code"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/extensions/types.ts",
+    "package": "./coding/extension",
+    "tests": [
+      "TestKeybindingHintsAnswerFromTheHostRegistryOnEveryCarrier"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts keyText, keyHint",
+    "mutation": "coding/extension/keybinding_hints.go, each of the six methods of ToolRenderContext, MessageRenderOptions and EntryRenderOptions: KeyText -> tui.ActionKeyDisplayText, and KeyHint -> tui.KeyHint(keybinding, description) with the action id as the key text; the compiled tests FAIL for each, the baseline PASSES"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/settings-manager.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestSettingsManagerQueueModeSettersWriteTheirOwnGlobalKey",
+      "TestExtensionChangelogVersionsRoundTripThroughSettings",
+      "TestExtensionChangelogUpdatesUpstream",
+      "TestShareHandlerUploadsToPiGForEveryShareDestination",
+      "TestSettingsManager_SetSessionShareDestinationPersistsGlobally"
+    ],
+    "upstream_reference": "packages/coding-agent/test/settings-manager.test.ts",
+    "mutation": "internal/codingagent/settings.go, compiled mutants fail the named tests and the baseline passes: SetSteeringMode writing FollowUpMode, SetFollowUpMode writing SteeringMode, either setter a no-op; SetSessionShareDestination writing the auto destination; SetExtensionChangelogVersion writing key+\".\" ; GetExtensionChangelogVersion returning \"\" or always ok"
+  },
+  {
+    "upstream": "packages/tui/src/components/editor.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEditor_SlashOpensPopup",
+      "TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses",
+      "TestUpstreamEditorUndo",
+      "TestEditorResetsCustomTriggerCharactersWhenProviderChanges",
+      "TestEditorAutocompleteOpenIsTheBaseEditorsMenuAndTheRemoteOwnsTheHostView"
+    ],
+    "upstream_reference": "packages/tui/test/editor.test.ts; packages/tui/test/tui-alt-screen.test.ts \"gives viewport keys back to the transcript when editor autocomplete closes\"",
+    "mutation": "tui/editor.go Editor.AutocompleteOpen: -> false, len(items) >= 0 and without the forwards() guard; tui/editor_remote.go SetRemote without AutocompleteCancel; each compiled mutant fails the named tests, the baseline passes"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestInteractiveMode_EscapeClosesAutocompleteDuringCompactionWithoutAborting",
+      "TestCustomEditorDispatchPrecedence",
+      "TestCustomEditorEscapeOverAutocompleteGoesToTheEditor",
+      "TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut"
+    ],
+    "upstream_reference": "packages/coding-agent/test/custom-editor-history-keybindings.test.ts; custom-editor.ts handleInput",
+    "mutation": "tui/editor.go Editor.AutocompleteOpen -> false and -> len(items) >= 0; internal/codingagent/custom_editor.go HandleInput: the interrupt branch guard !AutocompleteOpen() inverted, and the page-key branch without AutocompleteOpen(); each compiled mutant fails the named tests, the baseline passes. The tests deliver keys through InteractiveMode.dispatchKey, the runtime path"
+  },
+  {
+    "upstream": "packages/tui/src/terminal.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter",
+      "TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode",
+      "TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
+      "TestTerminalRestoreOnProcessExit"
+    ],
+    "upstream_reference": "packages/tui/test/terminal.test.ts; packages/tui/src/terminal.ts ProcessTerminal.restoreOnExit",
+    "mutation": "tui/terminal_exit_restore.go ProcessTerminal.RestoreOnExit: the bracketed-paste reset dropped, after written in place of before, before dropped, the keyboard protocol pop dropped, the write dropped, exitRestored never set; each compiled mutant fails the named tests, the baseline passes"
+  },
+  {
+    "upstream": "packages/tui/src/keybindings.ts",
+    "package": "./tui",
+    "tests": [
+      "TestGetSelectPageIndex",
+      "TestGetSelectPageIndexMovesAFocusedSelectorThroughTheRuntimeInputPath",
+      "TestGetSelectPageIndexFollowsRemappedPageKeysThroughTheRuntimeInputPath"
+    ],
+    "upstream_reference": "packages/tui/test/select-list.test.ts \"moves by one visible page with selection page keys\"; packages/tui/test/tui-alt-screen.test.ts \"defers viewport keys to a focused list instead of scrolling the transcript\"",
+    "mutation": "tui/selection_navigation.go GetSelectPageIndex: page up and page down directions swapped, the upper clamp dropped, the lower clamp dropped, a non-page key reported as a page key, the page size replaced by one; each compiled mutant fails the named tests, the baseline passes. The two runtime tests deliver keys through the alt-screen input path to a focused SelectList"
+  },
+  {
+    "upstream": "packages/env/src/connection.ts",
+    "package": "./env",
+    "tests": [
+      "TestNodePlatformNamesTheRemoteSystemAsNodeDoes"
+    ],
+    "upstream_reference": "packages/env/src/connection.ts nodePlatform",
+    "mutation": "env/connection.go NodePlatform: windows -> windows kept, macos -> macos kept, x86_64, aarch64 and x86 left in Rust spelling; each compiled mutant fails the test, the baseline passes"
+  },
+  {
+    "upstream": "packages/env/src/terminal.ts",
+    "package": "./env",
+    "tests": [
+      "TestRemoteTerminalSettlesOnceForEveryWaiterAndDropsInputAfterTheEnd",
+      "TestRemoteTerminalCloseSettlesEveryWaiterWithTheAbortedError"
+    ],
+    "upstream_reference": "packages/env/test/terminal.test.ts; packages/env/src/terminal.ts RemoteTerminal.exited, close",
+    "mutation": "env/terminal.go RemoteTerminal: Exited reading the settlement channel on every call (no sync.Once) hangs the second caller; Close not calling its abort; Exited returning exit code 0; each compiled mutant fails the named tests against the pig daemon, the baseline passes"
+  },
+  {
+    "upstream": "packages/env/src/list-files.ts",
+    "package": "./env",
+    "tests": [
+      "TestLocalExecutionEnvConformance"
+    ],
+    "upstream_reference": "packages/env/test/conformance.test.ts:34 (LocalExecutionEnv)",
+    "mutation": "env/list_files.go LocalExecutionEnv: ListFiles passing the unresolved path to the daemon, and an environment built without its Connection; each compiled mutant fails the conformance cases, the baseline passes"
+  },
+  {
+    "upstream": "packages/telemetry/src/memory.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces",
+      "TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes",
+      "TestInMemoryStoreSnapshots"
+    ],
+    "upstream_reference": "packages/telemetry/test/conformance.test.ts; packages/telemetry/src/memory.ts findTraces, getTrace, findMetrics",
+    "mutation": "telemetry/memory.go InMemoryTelemetryContext: 18 compiled mutants of GetTrace (trace filter inverted, nil for unknown dropped), FindTraces (name, StartMin and StartMax boundaries, cursor tie order, errors, attributes, newest-first order, default limit, cursor presence), attributeEqual (number compare inverted) and FindMetrics (name, interval bounds, attributes, count, unit); each fails the named tests, the baseline passes"
+  },
+  {
+    "upstream": "packages/telemetry/src/index.ts",
+    "package": "./telemetry",
+    "tests": [
+      "TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces",
+      "TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes",
+      "TestInMemoryStoreSnapshots"
+    ],
+    "upstream_reference": "packages/telemetry/test/conformance.test.ts; TelemetryStore.findTraces, getTrace, findMetrics",
+    "mutation": "the tests call each method through a telemetry.TelemetryStore value; the mutants of telemetry/memory.go listed for memory.ts fail them through that interface, the baseline passes"
+  }
+]
