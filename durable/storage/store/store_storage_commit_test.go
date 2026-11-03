@@ -10,20 +10,22 @@ package store
 // stored; a failed statement rolls the call back and rejects, the store going on; a failed `COMMIT` stops the store;
 // receipts after `COMMIT`; each commit published in a host batch of its own; other users of the store wait their turn.
 //
-// Not ported here (rows: pending): "publishes each commit of a call in a host batch of its own, after the call's one
-// transaction" (a SessionImpl). Designed out: "refuses a batch whose rows staging cannot encode" (an EntryId is an
-// int64: Go cannot hold the non-integer id 1.5 the case sends) and the GC test (no WeakRef in Go).
+// "publishes each commit of a call in a host batch of its own, after the call's one transaction" needs a Session over this
+// storage and runs in durable/session/store_storage_publication_test.go. "refuses a batch whose rows staging cannot encode"
+// sends the first ID beyond the safe integers where Pi sends 1.5 (an EntryId is an int64). The GC case's WeakRef is a weak.Pointer.
 
 import (
 	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -270,6 +272,28 @@ func TestStoreStorageRefusals(t *testing.T) {
 			must(t, made.store.Close(background))
 		})
 	}
+
+	t.Run("refuses a batch whose rows staging cannot encode, keeping the batches before it", func(t *testing.T) {
+		made := counted(t, ":memory:")
+		entry := mintID[durable.EntryId](t, made.storage)
+		var receipts []int
+		// An EntryId is an int64, so Pi's 1.5 cannot be sent: an ID beyond the safe integers (2^53 - 1) is the integer the
+		// store's int columns refuse at staging, as they refuse 1.5. The Session never sends one (Storage trusts it).
+		unsafe := durable.EntryId(1 << 53)
+		result, err := made.storage.Commit(background, [][]durable.StorageWrite{{entryWrite(entry)}, {entryWrite(unsafe)}},
+			func(index int, _ durable.Seq) { receipts = append(receipts, index) })
+		must(t, err)
+		if result.Stored != 1 || result.Refused == nil || !strings.Contains(result.Refused.Error(), `column "id": 9007199254740992 is not a int value`) {
+			t.Fatalf("result = %+v, want stored 1 refused with the int column's refusal", result)
+		}
+		if !reflect.DeepEqual(receipts, []int{0}) {
+			t.Fatalf("receipts = %v, want [0]", receipts)
+		}
+		if value(made.storage.Entry(background, entry)) == nil {
+			t.Fatal("the entry of the first batch is not stored")
+		}
+		must(t, made.store.Close(background))
+	})
 
 	t.Run("checks a batch against the batches before it in the call: a copy reads their state", func(t *testing.T) {
 		made := counted(t, ":memory:")
@@ -775,6 +799,29 @@ func TestStoreStorageOtherUsersOfTheStore(t *testing.T) {
 		must(t, <-settled)
 		if made.store.LastSeq() != last+1 {
 			t.Fatalf("lastSeq = %d, want %d", made.store.LastSeq(), last+1)
+		}
+		must(t, made.store.Close(background))
+	})
+}
+
+func TestStoreStorageGC(t *testing.T) {
+	t.Run("keeps nothing of a settled call: its batches are collected", func(t *testing.T) {
+		made := counted(t, ":memory:")
+		// Pi's WeakRef of the batches array is a weak pointer to the array of the call's batches; the call's writes are
+		// reached only from it, so a Storage that kept a batch after the call settled would keep it alive.
+		sent := func() weak.Pointer[[]durable.StorageWrite] {
+			batches := [][]durable.StorageWrite{{entryWrite(mintID[durable.EntryId](t, made.storage))}}
+			_, err := made.storage.Commit(background, batches, func(int, durable.Seq) {})
+			must(t, err)
+			return weak.Make(&batches[0])
+		}
+		ref := sent()
+		for round := 0; round < 10 && ref.Value() != nil; round++ {
+			time.Sleep(time.Millisecond)
+			runtime.GC()
+		}
+		if ref.Value() != nil {
+			t.Fatal("the batches of a settled call are still reachable")
 		}
 		must(t, made.store.Close(background))
 	})

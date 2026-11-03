@@ -115175,6 +115175,7 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
+        "test:durable/session/store_storage_publication_test.go#TestStoreStoragePublishesEachCommitOfACallInAHostBatchOfItsOwn",
         "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
       ]
     },
@@ -252023,7 +252024,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252092,7 +252093,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252115,7 +252116,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
