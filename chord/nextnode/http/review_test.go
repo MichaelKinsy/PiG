@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Go-only regression tests of the lane review: each fails on the code before its
@@ -511,5 +514,258 @@ func TestReviewOriginsAreWhatTheURLParserSerializes(t *testing.T) {
 		if got := isOrigin(text); got != want {
 			t.Fatalf("isOrigin(%q) = %v, want %v", text, got, want)
 		}
+	}
+}
+
+// Pi's `socket.once("close", fn)` (Node's EventEmitter `once`) registers and arms its wrapper in one step: a close cannot
+// reach the wrapper before it can remove itself. A close on another goroutine between the registration and the hand-back of
+// the removal called a nil `removed` (and read it unsynchronised). The hook forces that interleaving.
+func TestReviewAOnceListenerWhoseSocketClosesRightAfterItsRegistrationFiresOnceAndIsRemoved(t *testing.T) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(*nethttp.Request) bool { return true }}
+	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		if _, err := upgrader.Upgrade(w, r, nil); err != nil {
+			return
+		}
+	}))
+	t.Cleanup(server.Close)
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	socket := newWebSocket(conn)
+	var calls atomic.Int32
+	socket.attached = func() {
+		socket.attached = nil
+		panicked := make(chan any, 1)
+		go func() {
+			defer func() { panicked <- recover() }()
+			socket.closed(CloseEvent{Code: 1006})
+		}()
+		if got := receive(t, panicked, "the close"); got != nil {
+			t.Errorf("the close that raced the registration panicked: %v", got)
+		}
+	}
+	remove := socket.OnceClose(func(CloseEvent) { calls.Add(1) })
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("the once listener ran %d times, want 1", got)
+	}
+	socket.mu.Lock()
+	left := len(socket.listeners)
+	socket.mu.Unlock()
+	if left != 0 {
+		t.Fatalf("%d listeners left, want the once listener removed", left)
+	}
+	remove()
+	socket.emit(link.WebSocketClose, CloseEvent{Code: 1006})
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("the once listener ran %d times after a second close, want 1", got)
+	}
+}
+
+// In Pi the hand-out of an upgrade and the keeping of its connection are one synchronous step, so a router change reaches every
+// connection admitted by the router before it (`revoke` sees it). Here a change that ran while the upgrade was between its
+// router check and its keep missed the connection: the server never ended it (soak F7's 30 s hang, `the server never ended the
+// connection`).
+func TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection(t *testing.T) {
+	entered := newGate()
+	release := newGate()
+	t.Cleanup(release.resolve)
+	revoked := make(chan struct{}, 8)
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{tunnel}, servedOptions{
+		revokeHook: func(router *Router) {
+			if !router.Hosts.Has("t.example") {
+				revoked <- struct{}{}
+			}
+		},
+		links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+			// After the checks against the router, before the socket is kept.
+			entered.resolve()
+			<-release.done()
+			return LinkOptions{}, nil
+		}},
+	})
+	type dialed struct {
+		socket *clientSocket
+		err    error
+	}
+	opening := httpAsync(func() dialed {
+		socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
+		return dialed{socket, err}
+	})
+	receive(t, entered.done(), "the links options hook")
+	server.reload(t)
+	receive(t, revoked, "the revocation against the router without the host")
+	server.http.revokeTasks.Wait()
+	release.resolve()
+	got := receive(t, opening, "the upgrade")
+	if got.err != nil {
+		t.Fatalf("the upgrade failed with %v", got.err)
+	}
+	receive(t, got.socket.closed, "the server ending the connection its host left")
+}
+
+// Node's `once` under an emission an earlier listener repeats: the wrapper runs once (its `fired` flag), and it left the
+// listeners before its function ran (so the repeated emission finds nothing to run again).
+func TestReviewAOnceListenerRunsOnceUnderAReentrantEmitAndLeavesBeforeItsFunctionRuns(t *testing.T) {
+	socket := &WebSocket{state: WebSocketOpenState}
+	reentered := false
+	socket.on(link.WebSocketClose, func(data any) {
+		if !reentered {
+			reentered = true
+			socket.emit(link.WebSocketClose, data)
+		}
+	})
+	calls, attachedDuringFn := 0, -1
+	socket.OnceClose(func(CloseEvent) {
+		calls++
+		socket.mu.Lock()
+		attachedDuringFn = len(socket.listeners)
+		socket.mu.Unlock()
+	})
+	socket.emit(link.WebSocketClose, CloseEvent{Code: 1006})
+	if calls != 1 || attachedDuringFn != 1 {
+		t.Fatalf("calls = %d (want 1), listeners while fn ran = %d (want 1: the once wrapper removed first)", calls, attachedDuringFn)
+	}
+}
+
+// hijackGate is a response writer whose hijack, the step of an upgrade between its router check and its keep, waits for the
+// test: a plugin socket has no `links.options` to hold it there.
+type hijackGate struct {
+	nethttp.ResponseWriter
+	entered *gate
+	release *gate
+}
+
+func (h hijackGate) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h.entered.resolve()
+	<-h.release.done()
+	return h.ResponseWriter.(nethttp.Hijacker).Hijack()
+}
+
+// The plugin socket path of the test above: the handler of the socket left while the upgrade was between its router check and
+// its keep.
+func TestReviewARouterChangeBetweenAPluginSocketUpgradesCheckAndItsKeepStillEndsTheConnection(t *testing.T) {
+	entered := newGate()
+	release := newGate()
+	t.Cleanup(release.resolve)
+	revoked := make(chan struct{}, 8)
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	server := serving(t, []plugin{sockets}, servedOptions{
+		noListen: true,
+		revokeHook: func(router *Router) {
+			if len(router.SocketHandlers) == 0 {
+				revoked <- struct{}{}
+			}
+		},
+	})
+	listener := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		server.http.Upgrade(hijackGate{ResponseWriter: w, entered: entered, release: release}, r)
+	}))
+	t.Cleanup(listener.Close)
+	port, err := strconv.Atoi(listener.URL[strings.LastIndex(listener.URL, ":")+1:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	type dialed struct {
+		socket *clientSocket
+		err    error
+	}
+	opening := httpAsync(func() dialed {
+		socket, err := socketTo(port, "/echo", owner, 0)
+		return dialed{socket, err}
+	})
+	receive(t, entered.done(), "the handshake")
+	server.reload(t)
+	receive(t, revoked, "the revocation against the router without the handler")
+	server.http.revokeTasks.Wait()
+	release.resolve()
+	got := receive(t, opening, "the upgrade")
+	if got.err != nil {
+		t.Fatalf("the upgrade failed with %v", got.err)
+	}
+	receive(t, got.socket.closed, "the server ending the connection its handler left")
+}
+
+// Pi's revoke runs at the delivery of its router, so a router delivered before an upgrade's check never ends what that check
+// admitted. Here the revoke against V1 (host gone) was still running, and the one against V2 (host back) waiting, when an
+// upgrade checked against V2: the connection stays, whether V1's revoke takes its snapshot before the keep (the recheck must
+// not end it) or after it (the revoke must not end it).
+func TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits(t *testing.T) {
+	for _, afterKeep := range []bool{false, true} {
+		name := "the stale revoke snapshots before the keep"
+		if afterKeep {
+			name = "the stale revoke snapshots after the keep"
+		}
+		t.Run(name, func(t *testing.T) {
+			hookV1, releaseV1 := newGate(), newGate()
+			hookV2, releaseV2 := newGate(), newGate()
+			entered, release := newGate(), newGate()
+			t.Cleanup(releaseV1.resolve)
+			t.Cleanup(releaseV2.resolve)
+			t.Cleanup(release.resolve)
+			var removedSeen atomic.Bool
+			tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+			server := serving(t, []plugin{tunnel}, servedOptions{
+				revokeHook: func(router *Router) {
+					if !router.Hosts.Has("t.example") {
+						removedSeen.Store(true)
+						hookV1.resolve()
+						<-releaseV1.done()
+						return
+					}
+					if removedSeen.Load() {
+						hookV2.resolve()
+						<-releaseV2.done()
+					}
+				},
+				links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+					entered.resolve()
+					<-release.done()
+					return LinkOptions{}, nil
+				}},
+			})
+			handedOut := func() {
+				eventually(t, "the hand-out finished", func() bool {
+					server.http.upgrades.mu.Lock()
+					defer server.http.upgrades.mu.Unlock()
+					return server.http.upgrades.pending == 0
+				})
+			}
+			server.reload(t)
+			receive(t, hookV1.done(), "the revoke against V1 (host gone)")
+			server.reload(t, tunnel)
+			type dialed struct {
+				socket *clientSocket
+				err    error
+			}
+			opening := httpAsync(func() dialed {
+				socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
+				return dialed{socket, err}
+			})
+			receive(t, entered.done(), "the links options hook (checked against V2)")
+			if !afterKeep {
+				releaseV1.resolve()
+				receive(t, hookV2.done(), "the revoke against V2 begins, the one against V1 done")
+			}
+			release.resolve()
+			got := receive(t, opening, "the upgrade")
+			if got.err != nil {
+				t.Fatalf("upgrade: %v", got.err)
+			}
+			if afterKeep {
+				handedOut()
+				releaseV1.resolve()
+				receive(t, hookV2.done(), "the revoke against V2 begins, the one against V1 done")
+			}
+			releaseV2.resolve()
+			server.http.revokeTasks.Wait()
+			handedOut()
+			open := server.http.upgrades.snapshot()
+			if len(open) != 1 || open[0].socket.ReadyState() != WebSocketOpenState {
+				t.Fatalf("the connection the newest router admits was ended: %d kept", len(open))
+			}
+		})
 	}
 }

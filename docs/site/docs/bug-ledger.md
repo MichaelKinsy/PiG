@@ -1060,6 +1060,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
@@ -15996,6 +15997,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3b9c8e7b11` (2026-10-11), `3d751efbda` (2026-10-11), `676874441a` (2026-10-11), `a94455cb5e` (2026-10-12)
 - **Tests:** `durable/codemode/join_text_test.go::TestJoinAdjacentTextEqualsTheQuadraticJoinOnRandomItems`, `durable/codemode/join_text_test.go::TestJoinAdjacentTextIsLinearAtTheItemLimit`, `durable/codemode/models_test.go::TestCodeModeModels`, `durable/codemode/output_test.go::TestFormatResultMatchesPi`, `durable/harness/tool_nested_records_test.go::TestNestedErrorResultsAndStructuredOutput`
 - **Release note:** The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7, [#10678](https://github.com/earendil-works/pi/issues/10678)): 100,000 items took about 3 s because every item read the end of the growing joined text. The coding-agent code mode already joined each run once.
+
+### BF-a967e74
+
+**A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a967e74352` (2026-11-03), `cc090466aa` (2026-11-03), `f75fc15cac` (2026-11-03)
+- **Tests:** `chord/nextnode/http/review_test.go::TestReviewAOnceListenerRunsOnceUnderAReentrantEmitAndLeavesBeforeItsFunctionRuns`, `chord/nextnode/http/review_test.go::TestReviewARouterChangeBetweenAPluginSocketUpgradesCheckAndItsKeepStillEndsTheConnection`, `chord/nextnode/http/review_test.go::TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits`
+- **Release note:** A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs). It is now built whole before it is attached and fires at most once, as Node's `once` does. An upgrade whose router changed between its last check and its keep was also never ended when its host, relay or socket handler had left in that window (the peer's connection stayed open, seen as a 30 s wait in a soak); a revoke now ends only a connection whose upgrade checked before that revoke's router was delivered, and a connection kept after a later delivery is checked against the newest router, so a lagging revoke against an older router no longer ends a connection the newest one admits.
 
 ### BF-a9757c8
 
