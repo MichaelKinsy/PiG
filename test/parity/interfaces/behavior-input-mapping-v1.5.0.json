@@ -2303,10 +2303,18 @@
     {
       "id": "render:packages/tui/src/components/text.ts#Text.render",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/text.go#Render"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/01-text-wrap-long-response.toml",
+        "tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
+        "tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi"
+      ],
+      "contracts": [
+        "tui/text/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2476,10 +2484,18 @@
     {
       "id": "render:packages/tui/src/terminal-image.ts#<module>.renderImage",
       "ownerFamily": "clipboard-images",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/terminal_image.go#RenderImage"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/34-render-image.toml",
+        "tui/render_image_oracle_test.go#TestRenderImageMatchesPi",
+        "tui/render_image_registry_contract_test.go#TestRenderImageRegistersKittyMetadataLikePi"
+      ],
+      "contracts": [
+        "tui/terminal-image/render-image"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2582,30 +2598,55 @@
     {
       "id": "render:packages/tui/src/utils.ts#<module>.breakLongWord",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/widthx/wrap.go#breakLongWord"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+        "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+        "tui/widthx/utils_contract_oracle_test.go#TestBreakLongWordContractMatchesPi"
+      ],
+      "contracts": [
+        "tui/utils/break-long-word"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/utils.ts#<module>.splitIntoTokensWithAnsi",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/widthx/wrap.go#splitIntoTokensWithAnsi"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+        "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+        "tui/widthx/utils_contract_oracle_test.go#TestSplitIntoTokensWithAnsiContractMatchesPi",
+        "tui/widthx/wrap_test.go#TestWrapTextWithAnsi_CJKBreaksWithinRemainingLineWidth"
+      ],
+      "contracts": [
+        "tui/wrap/cjk-token-breaks"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/utils.ts#<module>.truncateToWidth",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/widthx/truncate.go#TruncateToWidth"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+        "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+        "tui/widthx/utils_contract_oracle_test.go#TestTruncateToWidthContractMatchesPi"
+      ],
+      "contracts": [
+        "tui/utils/truncate-to-width"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2629,20 +2670,36 @@
     {
       "id": "render:packages/tui/src/utils.ts#<module>.wrapSingleLine",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/widthx/wrap.go#wrapSingleLine"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+        "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+        "tui/widthx/utils_contract_oracle_test.go#TestWrapSingleLineContractMatchesPi"
+      ],
+      "contracts": [
+        "tui/utils/wrap-single-line"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/utils.ts#<module>.wrapTextWithAnsi",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/widthx/wrap.go#WrapTextWithAnsi"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+        "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
+        "tui/widthx/utils_contract_oracle_test.go#TestWrapTextWithAnsiContractMatchesPi"
+      ],
+      "contracts": [
+        "tui/utils/wrap-text"
+      ],
       "divergence": "",
       "rationale": ""
     }

@@ -219,6 +219,7 @@ evidence = [
   "tui/widthx/wrap_test.go#TestWrapTextWithAnsi_CJKBreaksWithinRemainingLineWidth",
   "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
   "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+  "tui/widthx/utils_contract_oracle_test.go#TestSplitIntoTokensWithAnsiContractMatchesPi",
 ]
 
 [contract.upstream]
@@ -1943,13 +1944,14 @@ id = "tui/text/render"
 upstream_id = "render:packages/tui/src/components/text.ts#Text.render"
 family = "tui-components"
 kind = "render-layout"
-claim = "text wraps ANSI-aware at the content width left after horizontal padding (clamped like Pi when the padding leaves no cell), tabs become three spaces, whitespace-only text renders nothing, every row is padded to the width and passed through the background function, vertical padding rows are background-only, and the cached result is returned for the same text and width until invalidated"
+claim = "a cached frame of the same text and width is returned until the text, the padding, the background function or invalidate changes it; blank text renders nothing; tabs become three spaces; the horizontal padding is clamped to floor((width-1)/2) and the content wraps ANSI-aware at width less twice that, at least one cell; each row gets the margins, is padded to the width and passed through the background function in row order, then the vertical padding rows are background-only and the background function runs once per padding row after the content rows"
 status = "ported"
 pig_targets = [
   "tui/text.go#Render"
 ]
 evidence = [
   "tui/basic_components_oracle_test.go#TestBasicComponentsRenderLikePi",
+  "tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
   "test/parity/scenarios/tui-components/01-text-wrap-long-response.toml"
 ]
 
@@ -2052,14 +2054,15 @@ id = "tui/utils/truncate-to-width"
 upstream_id = "render:packages/tui/src/utils.ts#<module>.truncateToWidth"
 family = "tui-components"
 kind = "text-layout"
-claim = "text longer than the width is cut at a grapheme boundary and ended with the ellipsis and the style resets the cut leaves open, an ellipsis as wide as the width yields only its truncation, fitting text is returned whole, and pad fills to the width"
+claim = "maxWidth at or below zero gives nothing; empty text gives nothing or maxWidth spaces; an ellipsis as wide as the width yields the text when it fits, else the ellipsis clipped to the width by grapheme (ANSI and tabs kept, a clipped wide character leaves the pad to the width) or nothing when no cell fits; printable ASCII is cut at the width less the ellipsis; other text keeps the contiguous graphemes (tabs three cells, pending SGR/OSC codes written only before a kept grapheme) that fit the width less the ellipsis and is returned whole when its width fits; otherwise the kept prefix is closed with an open OSC 8 link close, a reset, the ellipsis and a reset, padded to the width when pad is set"
 status = "ported"
 pig_targets = [
   "tui/widthx/truncate.go#TruncateToWidth"
 ]
 evidence = [
   "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
-  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+  "tui/widthx/utils_contract_oracle_test.go#TestTruncateToWidthContractMatchesPi",
 ]
 
 [contract.upstream]
@@ -2074,14 +2077,15 @@ id = "tui/utils/wrap-text"
 upstream_id = "render:packages/tui/src/utils.ts#<module>.wrapTextWithAnsi"
 family = "tui-components"
 kind = "text-layout"
-claim = "text splits on newlines, each line wraps to the width, and the active SGR and OSC 8 state is closed at each break and reopened on the next row"
+claim = "empty text gives one empty row; text splits on CRLF, CR and LF, each line wraps to the width, and the SGR and OSC 8 state active at the end of a line is carried as a prefix of the next line; widths of zero and below behave as Pi does"
 status = "ported"
 pig_targets = [
   "tui/widthx/wrap.go#WrapTextWithAnsi"
 ]
 evidence = [
   "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
-  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+  "tui/widthx/utils_contract_oracle_test.go#TestWrapTextWithAnsiContractMatchesPi",
 ]
 
 [contract.upstream]
@@ -2096,14 +2100,15 @@ id = "tui/utils/wrap-single-line"
 upstream_id = "render:packages/tui/src/utils.ts#<module>.wrapSingleLine"
 family = "tui-components"
 kind = "text-layout"
-claim = "a line within the width is kept whole; otherwise tokens fill rows at word and CJK boundaries, leading whitespace and trailing spaces are dropped per row, and a token wider than the width is broken by grapheme"
+claim = "an empty line gives one empty row and a line within the width is kept whole; otherwise tokens fill rows: a non-whitespace token wider than the width is broken by grapheme after the row is trimmed and closed; a token that does not fit wraps after the row is trimmed of trailing whitespace, a dropped whitespace token keeps its escape codes on the closed row and starts no row, codes after whitespace wider than an empty row are kept; every row is trimmed with JavaScript trimEnd"
 status = "ported"
 pig_targets = [
   "tui/widthx/wrap.go#wrapSingleLine"
 ]
 evidence = [
   "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
-  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+  "tui/widthx/utils_contract_oracle_test.go#TestWrapSingleLineContractMatchesPi",
 ]
 
 [contract.upstream]
@@ -2118,14 +2123,15 @@ id = "tui/utils/break-long-word"
 upstream_id = "render:packages/tui/src/utils.ts#<module>.breakLongWord"
 family = "tui-components"
 kind = "text-layout"
-claim = "a token wider than the width is cut by grapheme into rows no wider than the width, carrying the active ANSI state across the cuts"
+claim = "a token wider than the width is cut by grapheme into rows no wider than the width, the escape codes before a cut are closed with the tracker's line-end reset and reopened from its active codes on the next row, and the tracker is left in the state of the whole token"
 status = "ported"
 pig_targets = [
   "tui/widthx/wrap.go#breakLongWord"
 ]
 evidence = [
   "tui/widthx/pi_width_diff_test.go#TestPiWidthDifferential",
-  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml"
+  "test/parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+  "tui/widthx/utils_contract_oracle_test.go#TestBreakLongWordContractMatchesPi",
 ]
 
 [contract.upstream]
@@ -4121,13 +4127,14 @@ id = "tui/terminal-image/render-image"
 upstream_id = "render:packages/tui/src/terminal-image.ts#<module>.renderImage"
 family = "clipboard-images"
 kind = "render-layout"
-claim = "renderImage returns nothing without an image protocol; for kitty it sizes the image in cells (default width 80, the width and height limits, cell-aligned correction) and returns the escape sequence with its columns, rows, id and cursor-movement flag, chunked above 4096 payload characters; for iTerm2 it returns the inline sequence with the decoded size and the aspect-ratio flag, byte for byte over three cell sizes, seven aspect ratios and every payload padding"
+claim = "renderImage returns nothing without an image protocol; for kitty it sizes the image in cells (default width 80, the width and height limits, cell-aligned correction) and returns the escape sequence with its columns, rows, id and cursor-movement flag, chunked above 4096 payload characters; for iTerm2 it returns the inline sequence with the decoded size and the aspect-ratio flag, a kitty call with an image id registers the image metadata (columns, rows, pixel size, transmission generation, tallest image) while a call without an id, an iTerm2 call and a call without a protocol register nothing; the Go options struct has no unset value, so a zero MaxWidthCells or MaxHeightCells means unset where Pi reads an explicit zero as one cell, which no Pi caller passes; byte for byte over three cell sizes, seven aspect ratios and every payload padding"
 status = "ported"
 pig_targets = [
   "tui/terminal_image.go#RenderImage"
 ]
 evidence = [
   "tui/render_image_oracle_test.go#TestRenderImageMatchesPi",
+  "tui/render_image_registry_contract_test.go#TestRenderImageRegistersKittyMetadataLikePi",
   "test/parity/scenarios/tui-components/34-render-image.toml"
 ]
 

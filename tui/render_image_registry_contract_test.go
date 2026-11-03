@@ -47,6 +47,7 @@ func renderImageRegistryProbes() []renderImageRegistryProbe {
 	}
 	return []renderImageRegistryProbe{
 		call("kitty", 100, 50, nil, nil, nil),
+		call("kitty", 100, 50, nil, nil, ptr(1)),
 		call("kitty", 100, 50, nil, nil, ptr(7)),
 		call("kitty", 100, 50, nil, nil, ptr(7)),
 		call("kitty", 900, 900, ptr(10), nil, ptr(8)),
