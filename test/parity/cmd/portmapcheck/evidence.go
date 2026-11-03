@@ -33,9 +33,8 @@ var evidenceBuilds, mutantReplays atomic.Int64
 //
 // Each run is `<binary> -test.run ^(names)$`, the same selection and the same coverage profile `go test -run -coverprofile` produced.
 
-// evidenceTimeout bounds one evidence run: every test a row names, in one binary. It was go test's default 10m until the row of
-// packages/coding-agent/src/core/extensions/types.ts named 104 test/extension-conformance tests, whose run passes 10m (the gate
-// timed out at 10m0s on it twice).
+// evidenceTimeout bounds one evidence run: every test a row names, in one binary. The extension-conformance row names 104 tests that
+// run sequentially, 11 to 13 minutes unloaded, so the budget is 30 minutes.
 const evidenceTimeout = "30m0s"
 
 // cachedEntry returns the green record cached under digest, if any.
