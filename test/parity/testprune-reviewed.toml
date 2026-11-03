@@ -989,3 +989,17 @@ commit = "6fe688207d8dee14cd2a64fbc01a4fb8278a2a7a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The one value the lint counts as changed is a length the test computes, not an expectation of behavior: the worst-case socket path of the kept socket directory was written with the literal leaf `e-9999.sock` and is now written with the constant worstRuntimeSocketLeaf, the longest leaf of the new per-generation socket path (`<count>.s`, at most 9 bytes), because newSocketPath replaced the per-name path `e-<counter>.sock` in host.go, packed_go.go, platform.go and retention.go. The path of a socket is a PiG host detail: Pi has no subprocess extension host and makes no sockets, so no Pi line is behind the value and no Pi-derived expectation moved."
+
+[[entry]]
+path = "coding/cli/rpc_listen_test.go"
+commit = "b9fb9a0fcb4dc624a3d2f187fcceb818439cb8fc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The --listen server tests are PiG-original (D205): Pi serves one RPC session per process and has no counterpart, so no Pi line governs them. The commit's review round made the concurrency test count agent_end per connection across its whole traffic and prove overlap with an RPC bash sleep, and narrowed the cross-session text check to the message text; the behavior it tests is the D205 server's own."
+
+[[entry]]
+path = "coding/extension/host/subprocess/node_cell_shared_test.go"
+commit = "eadd21411ece57007499c69eed825ef8fd857574"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The shared-cell Node tests are PiG-original (D205): Pi runs one extension process per session and has no counterpart, so no Pi line governs them. The commit's review round replaced the sleep-based drain observation with the runtime-level drain test and asserted equal non-zero pids for the two Hosts' members; the behavior it tests is the D205 cell registry's own."
