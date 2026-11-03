@@ -89,6 +89,7 @@ func TestTuiSurfaceResumeWithoutChangesSendsNoFrame(t *testing.T) {
 func TestTuiSurfaceStopAndStartStillResendAndSuspendWaitsForStart(t *testing.T) {
 	session := newRecordingSession()
 	surface := NewTuiSurfaceWithSize(session, 60, 20, func(err error) { t.Fatalf("apply: %v", err) })
+	renderOnlyWhenAsked(surface)
 	surface.SetLayout(NewContainer(NewText("a"), NewText("b")), nil)
 	surface.Suspend()
 	surface.Resume()
