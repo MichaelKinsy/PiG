@@ -501,7 +501,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// turn-starting handleSubmit stay single-threaded with editor state.
 		// Retry recovery steers into the imminent Continue turn; other endings
 		// start a new turn from the first queued prompt when idle.
-		m.flushCompactionQueue(m.runCtx, !e.WillRetry)
+		m.flushCompactionQueue(m.runCtx, e.WillRetry)
 		m.tuiInst.Render()
 
 	case agent.AutoRetryStartEvent:

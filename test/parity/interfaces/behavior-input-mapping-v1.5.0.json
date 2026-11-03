@@ -739,10 +739,24 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue",
       "ownerFamily": "compaction",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_events.go#handleAgentEvent",
+        "internal/codingagent/interactive_transcript.go#flushCompactionQueue",
+        "internal/codingagent/interactive_turn.go#queueUserInput",
+        "internal/codingagent/interactive_input_preflight.go#finishPreflight",
+        "internal/codingagent/prompt_rejection.go#rejectPrompt"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueDeliversInOrderToTheActiveRun",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRunsExtensionCommands",
+        "test/parity/scenarios/compaction/06-overflow-retry-flushes-queued-message.toml",
+        "test/parity/scenarios/compaction/08-manual-compaction-flushes-entered-message.toml"
+      ],
+      "contracts": [
+        "coding-agent/compaction/retry-queue-flush"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -759,10 +773,28 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init",
       "ownerFamily": "startup",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive.go#Init",
+        "internal/codingagent/startup_header.go#mountStartupHeader",
+        "internal/codingagent/startup_input.go#beginStartupSubmitWindow",
+        "internal/codingagent/startup_input.go#endStartupSubmitWindow",
+        "internal/codingagent/settings_diagnostics.go#showInitNotices"
+      ],
+      "evidence": [
+        "internal/codingagent/startup_header_test.go#TestVerboseHeaderExpansionAndRestoration",
+        "internal/codingagent/startup_init_contract_test.go#TestInitReturnsWithoutWorkOnceInitialized",
+        "internal/codingagent/startup_visibility_contract_test.go#TestStartupHeaderAndDetailsVisibilityFollowVerboseAndQuietStartup",
+        "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+        "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml"
+      ],
+      "contracts": [
+        "coding-agent/startup/init-header-construction",
+        "coding-agent/startup/init-lifecycle-order",
+        "coding-agent/startup/init-post-header-order",
+        "coding-agent/startup/verbose-header-collapse"
+      ],
       "divergence": "",
       "rationale": ""
     },
