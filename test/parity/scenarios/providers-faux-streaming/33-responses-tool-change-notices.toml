@@ -1,0 +1,27 @@
+# Behavior family: providers-faux-streaming (Responses tool-change notices)
+# Pi 1.5.0 probe: openai-responses-shared.ts renderIncrementalToolsNotice and renderToolRemovalNotice through complete(). Seventeen transcripts
+# (first, second and third additional_tools declarations; single, multiple, duplicate and punctuated removal names; removal then load; two removals in
+# announced order; removal beside a load; a tool declared again leaving the "Still unavailable" list and returning at its end; a redefinition that is no
+# removal; a removal in the leading system message) are sent under four transports: additional_tools with the developer and with the system
+# instruction role, synthetic tool search, and system messages folded into the prompt. The request's input is printed with its keys sorted, one line per
+# probe. Go reads the same fixture through the production session decoder and the Responses provider's request path against a local server. The Go test
+# TestOpenAIResponsesToolChangeNoticesMatchPi compares 2105 further probes against the installed Pi.
+name = "33-responses-tool-change-notices"
+description = "A Responses request announces tool removals and precedes later additional_tools items with the incremental notice, with the same text and unavailable list as Pi."
+covers = ["packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/responses-tool-notices-pig"]
+pi_args = ["node", "./test/parity/testdata/responses-tool-notices-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['This is an incremental tools update.', '\nStill unavailable: b, a.', 'The following tools are no longer available. Do not call them:\n- c\n- a\n- b', '"type":"tool_search_output"']
+runs = 3
