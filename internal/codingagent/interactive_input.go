@@ -115,6 +115,11 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 		}()
 	}
 
+	// submitLoopPrompt is run()'s `await this.session.prompt(userInput)` for the text the resolved getUserInput promise delivered.
+	submitLoopPrompt := func(text string) {
+		userInput = nil
+		m.promptLoopSubmit(ctx, text, nil)
+	}
 	dispatchRead := func(input inputChunk) error {
 		return m.dispatchTerminalRead(ctx, input, &readCh, errCh)
 	}
@@ -135,14 +140,13 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 		if m.requestExit.Load() {
 			return m.finishInteractiveShutdown()
 		}
-		if until == nil && userInput == nil && m.initialMessagesDone == nil && !m.hasActiveAgentTurn() {
+		if until == nil && userInput == nil && m.initialMessagesDone == nil && !m.hasActiveAgentTurn() && !m.promptCommandPending() {
 			userInput = m.getUserInput()
 		}
 		// Pi resumes the resolved getUserInput promise after this read's synchronous sequences, before another terminal-read event.
 		select {
 		case text := <-userInput:
-			userInput = nil
-			m.handleSubmit(ctx, text)
+			submitLoopPrompt(text)
 			continue
 		default:
 		}
@@ -178,8 +182,7 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 		case <-m.initialMessagesDone:
 			m.initialMessagesDone = nil
 		case text := <-userInput:
-			userInput = nil
-			m.handleSubmit(ctx, text)
+			submitLoopPrompt(text)
 		case err := <-errCh:
 			return err
 		case <-until:
@@ -801,22 +804,30 @@ func (m *InteractiveMode) defaultCustomEditor() *CustomEditor {
 	if m.customEditor != nil && m.customEditor.Editor == m.editor && m.customEditor.keybindings == m.keybindings {
 		return m.customEditor
 	}
+	editor := m.newCustomEditor()
+	m.setupKeyHandlers(editor)
+	return editor
+}
+
+// newCustomEditor builds the CustomEditor over the current default editor, as interactive-mode.ts:645-651 constructs it, with no app handler bound.
+func (m *InteractiveMode) newCustomEditor() *CustomEditor {
 	// interactive-mode.ts:645-651 builds the editor from the settings' editorPaddingX and autocompleteMaxVisible.
 	paddingX, autocompleteMaxVisible := m.opts.Settings.GetEditorPaddingX(), m.opts.Settings.GetAutocompleteMaxVisible()
 	options := CustomEditorOptions{PaddingX: &paddingX, AutocompleteMaxVisible: &autocompleteMaxVisible, EmbedWorkingStatus: true}
-	superInput := func(data string) {
-		m.runEditorAction(classifyKeyWithBindings(data, m.keybindings), data)
-	}
 	if m.editor == nil {
 		// interactive-mode.ts:645 `new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {...})`: the default editor is the CustomEditor's own.
 		m.customEditor = NewCustomEditor(m.tuiInst, tui.EditorTheme{}, m.keybindings, options)
-		m.customEditor.superInput = superInput
+		m.customEditor.superInput = m.editorSuperInput
 		m.editor = m.customEditor.Editor
 	} else {
-		m.customEditor = wrapCustomEditor(m.editor, m.keybindings, superInput, options)
+		m.customEditor = wrapCustomEditor(m.editor, m.keybindings, m.editorSuperInput, options)
 	}
-	m.setupKeyHandlers(m.customEditor)
 	return m.customEditor
+}
+
+// editorSuperInput is what the CustomEditor does with a key no app action takes once startup completed.
+func (m *InteractiveMode) editorSuperInput(data string) {
+	m.runEditorAction(classifyKeyWithBindings(data, m.keybindings), data)
 }
 
 // runEditorAction runs the editor handling for one classified key under the key's context and keeps the first error for handleCustomEditorKey.
@@ -1214,12 +1225,7 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 			Name:        cmdName,
 			Description: rc.Description,
 			Handler: func(_ *ExtensionContext, args string) error {
-				baseCtx := m.runCtx
-				if baseCtx == nil {
-					baseCtx = context.Background()
-				}
-				// Use the runner's command context and error channel, as Session command dispatch does. IPC stays off the input loop.
-				go nr.ExecuteCommand(baseCtx, cmdName, args)
+				m.startExtensionCommand(nr, cmdName, args)
 				return nil
 			},
 		})

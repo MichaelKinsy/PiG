@@ -119,7 +119,10 @@ status = "ported"
 pig_targets = [
   "internal/codingagent/interactive.go#Init",
   "internal/codingagent/startup_input.go#beginStartupSubmitWindow",
+  "internal/codingagent/startup_input.go#handleStartupInput",
   "internal/codingagent/startup_input.go#handleStartupSubmit",
+  "internal/codingagent/interactive_changelog.go#getChangelogForDisplay",
+  "internal/codingagent/interactive_changelog.go#getExtensionChangelogUpdates",
   "internal/codingagent/model_scope_line.go#getModelScopeNotice",
 ]
 evidence = [
@@ -127,12 +130,19 @@ evidence = [
   "internal/codingagent/startup_hints_test.go#TestModelScopeLineMatchesPiInit",
   "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader",
   "internal/codingagent/startup_submit_test.go#TestStartupSubmitKeepsTextAndReportsProgress",
+  "internal/codingagent/startup_window_keys_pty_test.go#TestInitBindsOnlyTheClearAndExitKeysDuringStartup",
+  "internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBind",
+  "internal/codingagent/startup_changelog_init_pty_test.go#TestInitRecordsTheChangelogVersionsBeforeAnythingStarts",
+  "internal/codingagent/startup_changelog_init_test.go#TestChangelogForDisplayFollowsTheSessionMessages",
+  "internal/codingagent/startup_changelog_init_test.go#TestExtensionChangelogUpdatesFollowTheSessionMessages",
   "internal/codingagent/startup_query_order_pty_test.go#TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrame",
   "internal/codingagent/startup_color_wait_render_test.go#TestStartupColorWaitPaintsTheRequestedFirstFrameBeforeItReturns",
   "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
   "test/parity/scenarios/startup/17-startup-exit-key-before-session-start-completes.toml",
   "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
   "test/parity/scenarios/startup/10-startup-input-before-session-start-completes.toml",
+  "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
+  "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml",
 ]
 
 [contract.upstream]
@@ -179,12 +189,14 @@ id = "coding-agent/startup/init-post-header-order"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
 family = "startup"
 kind = "startup-lifecycle"
-claim = "after the header init requests a render, ensures fd and rg with their status lines in the chat while the startup submit handler stays bound, then installs the remaining key handlers and the ordinary submit handler, binds the session so extensions start and the loaded resources show before any message, shows the startup changelog notice, renders the initial messages (the resumed transcript, the project-trust warning, the compaction count), and run then shows the startup diagnostics, migrated credentials, models.json error, model fallback message and crash notice after them; init finishes by watching theme and git branch changes, updating the provider count, flushing a frame and loading the remaining syntax grammars"
+claim = "after the header init requests a render, ensures fd and rg with their status lines in the chat while the startup submit handler stays bound, then installs the remaining key handlers and the ordinary submit handler, binds the session so extensions start and the loaded resources show before any message, shows the startup changelog notice, renders the initial messages (the resumed transcript, the project-trust warning, the compaction count), and run then shows the startup diagnostics, migrated credentials, models.json error, model fallback message and crash notice after them; init finishes by watching theme and git branch changes, updating the provider count, flushing a frame and loading the remaining syntax grammars; run then submits the initial message, each positional message and every typed prompt one at a time, and a prompt that is an extension command holds the next one until its handler returned"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive.go#Init",
   "internal/codingagent/interactive_tools_status.go#ensureManagedTools",
   "internal/codingagent/startup_input.go#endStartupSubmitWindow",
+  "internal/codingagent/interactive_turn.go#promptLoopSubmit",
+  "internal/codingagent/interactive_turn.go#startExtensionCommand",
   "internal/codingagent/interactive_transcript.go#renderInitialMessages",
   "internal/codingagent/settings_diagnostics.go#showInitNotices",
 ]
@@ -195,7 +207,11 @@ evidence = [
   "internal/codingagent/loaded_resources_oracle_test.go#TestLoadedResourcesFormattingMatchesPi",
   "internal/codingagent/interactive_changelog_test.go#TestStartupChangelogFollowsPi",
   "test/parity/scenarios/startup/05-startup-loaded-resources.toml",
+  "internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder",
+  "internal/codingagent/startup_prompt_commands_test.go#TestTypedExtensionCommandHoldsTheNextPrompt",
   "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml",
+  "test/parity/scenarios/startup/22-startup-initial-extension-commands-run-in-order.toml",
+  "test/parity/scenarios/startup/23-startup-typed-extension-commands-run-in-order.toml",
 ]
 
 [contract.upstream]
@@ -531,12 +547,14 @@ id = "coding-agent/compaction/retry-queue-flush"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue"
 family = "compaction"
 kind = "async-queue-lifecycle"
-claim = "flushCompactionQueue empties the compaction queue first and refreshes the pending display; a rejection (an input-handler failure, a rejected before_agent_start stage, no model or auth) restores the whole queue, clears the Session queues and shows `Failed to send queued message(s): <error>` instead of the error itself, stopping the flush at the failed message. With willRetry an extension command runs and every other message is queued through the input handlers and prompt expansion as a steer or follow-up whether or not a run is active; otherwise a settling run receives each message through its queued mode, and an idle agent runs the leading extension commands, starts a turn from the first message that is not one under a live abort context, and sends the rest through their queued modes with later extension commands running at once. The flush never moves pending bash components into the chat, and no later submission drains a restored queue"
+claim = "flushCompactionQueue empties the compaction queue first and refreshes the pending display; a rejection (an input-handler failure, a rejected before_agent_start stage, no model or auth) restores the whole queue, clears the Session queues and shows `Failed to send queued message(s): <error>` instead of the error itself, stopping the flush at the failed message. With willRetry an extension command runs and every other message is queued through the input handlers and prompt expansion as a steer or follow-up whether or not a run is active; otherwise a settling run receives each message through its queued mode, and an idle agent runs the leading extension commands, starts a turn from the first message that is not one under a live abort context, and sends the rest through their queued modes with later extension commands running at once. Each message is awaited like Pi's `await session.prompt(...)`: an extension command's handler returns before the next message is handled, so the first prompt joins a run an earlier command started with its queued mode. The flush never moves pending bash components into the chat, and no later submission drains a restored queue"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_events.go#handleAgentEvent",
   "coding/session.go#RunAgentPrompt",
   "internal/codingagent/interactive_transcript.go#flushCompactionQueue",
+  "internal/codingagent/interactive_transcript.go#runFlushSteps",
+  "internal/codingagent/interactive_turn.go#dispatchExtensionCommand",
   "internal/codingagent/interactive_turn.go#queueUserInput",
   "internal/codingagent/interactive_input_preflight.go#finishPreflight",
   "internal/codingagent/prompt_rejection.go#rejectPrompt",
@@ -558,6 +576,8 @@ evidence = [
   "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestSubmitDoesNotDrainRestoredCompactionQueue",
   "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueStartsTheTurnUnderALiveAbortContext",
   "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueIntoASettlingRunKeepsItsAbortContext",
+  "internal/codingagent/interactive_flush_compaction_queue_order_test.go#TestFlushCompactionQueueAwaitsEachExtensionCommand",
+  "internal/codingagent/interactive_flush_compaction_queue_order_test.go#TestFlushCompactionQueueFirstPromptJoinsTheRunACommandStarted",
   "test/parity/scenarios/compaction/06-overflow-retry-flushes-queued-message.toml",
   "test/parity/scenarios/compaction/08-manual-compaction-flushes-entered-message.toml",
 ]

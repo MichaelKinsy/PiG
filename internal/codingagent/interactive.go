@@ -224,6 +224,12 @@ type InteractiveMode struct {
 	// turnSettled is closed when the active run settles; waitForIdle waits
 	// on it. Guarded by queueMu; nil while no run is active.
 	turnSettled chan struct{}
+	// promptCommand is closed when the extension command the prompt loop submitted returns: Pi's run() awaits `session.prompt(text)`, and prompt()
+	// awaits an extension command's handler, so the loop takes no further prompt until then. Guarded by queueMu; nil until the loop submits a command.
+	promptCommand <-chan struct{}
+	// startedCommand is closed when the extension command that startExtensionCommand started last returns; the caller that awaits the command takes it
+	// (takeStartedCommand). Guarded by queueMu.
+	startedCommand chan struct{}
 
 	// agent_settled handlers finish as one awaited dispatch before an action
 	// they start may begin another run. The mutex covers subprocess host-call
@@ -1629,8 +1635,6 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	editorPaddingX, autocompleteMaxVisible := m.opts.Settings.GetEditorPaddingX(), m.opts.Settings.GetAutocompleteMaxVisible()
 	m.editor = NewEditorWithOptions(CustomEditorOptions{UI: m.tuiInst, PaddingX: &editorPaddingX, AutocompleteMaxVisible: &autocompleteMaxVisible, EmbedWorkingStatus: true})
 	m.bindEditorSnapshot()
-	m.defaultCustomEditor()
-	m.bindEditorSnapshot()
 	m.onStop(func() error { m.clearStatusIndicator(""); return nil })
 	m.editorContainer = tui.NewContainer()
 	m.editorContainer.Add(m.editor)
@@ -1845,6 +1849,23 @@ func startupChangelog(sm *SettingsManager, appVersion string) []ChangelogEntry {
 	return recordChangelogVersionAndMaybeReportInstall(sm, appVersion, allEntries)
 }
 
+// startInitialMessages is run()'s processing of the initial message and initialMessages once the TUI is up: the message is fed through the same handleSubmit
+// path the user's keystrokes hit, so transcript rendering, session writes and extension hooks all see it identically, and the positional messages follow it
+// one prompt at a time (cli/initial-message.ts; interactive-mode.ts run()).
+func (m *InteractiveMode) startInitialMessages(ctx context.Context) {
+	if strings.TrimSpace(m.opts.InitialMessage) != "" || len(m.opts.InitialImages) > 0 {
+		m.promptLoopSubmit(ctx, m.opts.InitialMessage, m.opts.InitialImages)
+	}
+	if len(m.opts.InitialMessages) > 0 {
+		done := make(chan struct{})
+		m.initialMessagesDone = done
+		m.backgroundTasks.Go(func() {
+			defer close(done)
+			m.submitInitialMessages(ctx, m.opts.InitialMessages)
+		})
+	}
+}
+
 // run is upstream's run() after init(): the startup checks, the background refreshes, the signal and resize handlers, the initial messages and
 // the input loop.
 func (m *InteractiveMode) run(ctx context.Context) error {
@@ -1924,23 +1945,7 @@ func (m *InteractiveMode) run(ctx context.Context) error {
 	stopResize := m.installResizeHandler(ctx)
 	m.onStop(func() error { stopResize(); return nil })
 
-	// Auto-submit initial message (positional arg / piped
-	// stdin) once the TUI is up. Mirrors upstream's initial-message
-	// dispatch in coding-agent/cli/initial-message.ts: the message
-	// is fed through the same handleSubmit path the user's keystrokes
-	// hit, so transcript rendering / session writes / extension
-	// hooks all see it identically.
-	if strings.TrimSpace(m.opts.InitialMessage) != "" || len(m.opts.InitialImages) > 0 {
-		m.handleSubmitWithImages(ctx, m.opts.InitialMessage, m.opts.InitialImages)
-	}
-	if len(m.opts.InitialMessages) > 0 {
-		done := make(chan struct{})
-		m.initialMessagesDone = done
-		m.backgroundTasks.Go(func() {
-			defer close(done)
-			m.submitInitialMessages(ctx, m.opts.InitialMessages)
-		})
-	}
+	m.startInitialMessages(ctx)
 	mark("interactive-ready")
 	m.frontendInputReady()
 	return m.inputLoop(ctx, os.Stdin)
