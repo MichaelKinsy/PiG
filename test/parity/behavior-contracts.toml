@@ -2251,6 +2251,9 @@ evidence = [
   "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
   "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
   "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
@@ -2279,6 +2282,9 @@ evidence = [
   "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
   "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
   "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
 
@@ -2305,6 +2311,9 @@ evidence = [
   "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
   "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
   "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
@@ -2337,6 +2346,9 @@ evidence = [
   "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
   "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
   "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2364,6 +2376,9 @@ evidence = [
   "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
   "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
   "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2391,6 +2406,9 @@ evidence = [
   "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
   "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
   "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
