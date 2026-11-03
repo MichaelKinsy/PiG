@@ -1,7 +1,7 @@
 # Behavior family: tools (interactive codemode card)
 # Pi 1.1.0 probe: ToolExecutionComponent with codemodeRenderers (extensions/codemode/renderer.ts), pending code previews (short, long, tabs and
 # CR, empty, missing, non-string), results (ok, failed, no header, long and single-line output, full-output path), nested call rows in every
-# status, many calls, model-call costs, collapsed and expanded at widths 80 and 28; every row is compared byte for byte. The Go test
+# status, many calls, model-call costs (0.01 boundary, zero and negative costs in the total), call args at the 80 unit cut, partial results with content, image content with images shown and hidden, collapsed and expanded at widths 80 and 28; every row is compared byte for byte. The Go test
 # TestCodemodeCardsMatchPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
 name = "25-codemode-cards"
 description = "The codemode tool card renders the same rows as Pi."

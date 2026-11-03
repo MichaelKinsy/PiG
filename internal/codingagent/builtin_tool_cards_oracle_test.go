@@ -41,6 +41,8 @@ type toolCardProbe struct {
 	Result   *toolCardResult `json:"result"`
 	Partial  bool            `json:"partial"`
 	NoImages bool            `json:"noImages"`
+	// Images is the terminal image protocol the card sees ("" shows image fallback text only).
+	Images string `json:"images,omitempty"`
 	Expanded bool            `json:"expanded"`
 	Width    int             `json:"width"`
 	Theme    string          `json:"theme"`

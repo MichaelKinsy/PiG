@@ -3969,7 +3969,7 @@ id = "coding-agent/codemode-renderer/result"
 upstream_id = "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderResult"
 family = "tools"
 kind = "render-layout"
-claim = "the codemode result card shows the nested call rows (status icon, name, args, duration, cost, error), the earlier-calls hint, the model-call cost total and the script output in the success or error colour, collapsed to a visual-line preview with the full-output path or expanded, byte for byte at widths 80 and 28"
+claim = "the codemode result card shows the nested call rows (status icon, name, args, duration, cost, error), the earlier-calls hint, the model-call cost total and the script output in the success or error colour, collapsed to a visual-line preview with the full-output path or expanded; cost 0.01 prints with two decimals and smaller costs with two significant digits, a zero cost is neither shown nor counted in the total, call args over 80 UTF-16 units are cut to 77 units and \"...\" when collapsed, a partial result shows no output, and image content becomes fallback lines unless the terminal shows images and they are enabled, byte for byte at widths 80 and 28"
 status = "ported"
 pig_targets = [
   "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
