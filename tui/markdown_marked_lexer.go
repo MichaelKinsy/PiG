@@ -375,14 +375,27 @@ func markedCode(src []rune) (*markedBlock, int) {
 		return nil, 0
 	}
 	raw := markedTrimTrailingBlankLines(match.String())
-	lines := strings.Split(raw, "\n")
-	for i, line := range lines {
-		// codeRemoveIndent, /^(?: {1,4}| {0,3}\t)/gm: the space alternative wins whenever a line starts with a space.
-		if spaces := len(line) - len(strings.TrimLeft(line, " ")); spaces > 0 {
-			lines[i] = line[min(spaces, 4):]
+	// codeRemoveIndent, /^(?: {1,4}| {0,3}\t)/gm: the space alternative wins whenever a line starts with a space, and a line starts after "\n", "\r", U+2028 and U+2029.
+	var text strings.Builder
+	text.Grow(len(raw))
+	atLineStart := true
+	for i := 0; i < len(raw); {
+		if atLineStart {
+			spaces := 0
+			for spaces < 4 && i+spaces < len(raw) && raw[i+spaces] == ' ' {
+				spaces++
+			}
+			i += spaces
+			if i == len(raw) {
+				break
+			}
 		}
+		r, size := utf8.DecodeRuneInString(raw[i:])
+		text.WriteString(raw[i : i+size])
+		i += size
+		atLineStart = r == '\n' || r == '\r' || r == '\u2028' || r == '\u2029'
 	}
-	return &markedBlock{kind: "code", raw: raw, text: strings.Join(lines, "\n")}, markedRuneCount(raw)
+	return &markedBlock{kind: "code", raw: raw, text: text.String()}, markedRuneCount(raw)
 }
 
 // markedFence is Tokenizer.fences.
