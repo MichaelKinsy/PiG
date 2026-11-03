@@ -1970,10 +1970,6 @@ func (session *SessionImpl) endPublication() {
 func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes []durable.StorageWrite, documents adoptedDocuments) error {
 	// The watches the observers advance deliver once, for all the frames of this commit: upstream queues one microtask.
 	defer session.scheduler.Hold()()
-	// One synchronous turn, as Pi's publication is: the followed views (chord follow.ts) that observers of this commit
-	// advance are told together, when the loop below ends, and reach their host as one batch.
-	ctx, endStep := chordctx.WithStep(ctx)
-	defer endStep()
 	session.mu.Lock()
 	internal := append([]*internalListener(nil), session.internalOrder...)
 	hosts := len(session.commitOrder) > 0
@@ -2033,13 +2029,19 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 	}
 	// The commit is durable: a failing observer neither fails the commit nor skips the others.
 	var failure error
+	// One synchronous turn, as Pi's publication is: the followed views (chord follow.ts) the observers advance are told
+	// together, when the loop ends, and reach their host as one batch. Only the Session's own observers get the step's
+	// context; a host listener (notifyHosts) gets the commit's own.
+	stepCtx, endStep := chordctx.WithStep(ctx)
+	defer endStep()
 	for _, listener := range internal {
-		contained(func() { listener.listener(ctx, commit) }, func(err error) {
+		contained(func() { listener.listener(stepCtx, commit) }, func(err error) {
 			if failure == nil {
 				failure = err
 			}
 		})
 	}
+	endStep()
 	return failure
 }
 

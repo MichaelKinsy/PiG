@@ -7,6 +7,7 @@ package harness
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -452,12 +453,7 @@ func rrKinds(t *testing.T, viewer *chordhost.Reference) []string {
 
 func rrHasKind(t *testing.T, viewer *chordhost.Reference, kind string) bool {
 	t.Helper()
-	for _, each := range rrKinds(t, viewer) {
-		if each == kind {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(rrKinds(t, viewer), kind)
 }
 
 func TestDurablesViewsFromOtherObjects(t *testing.T) {
