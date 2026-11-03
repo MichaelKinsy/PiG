@@ -6,22 +6,35 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 )
 
-// socketDirPrefix starts the name of every socket directory the process pid made: a parent that reaps a dead worker's
-// directories (RemoveSocketDirsOf) names them by its pid.
-func socketDirPrefix(pid int) string { return "chord-plugins-" + strconv.Itoa(pid) + "-" }
+// socketDirPrefix starts the name of every socket directory this process makes: "chord-plugins-", then the owner the
+// process was started as (SocketOwnerEnv) when it has one, so the parent that started it can find them.
+func socketDirPrefix(owner string) string {
+	if owner == "" {
+		return "chord-plugins-"
+	}
+	return "chord-plugins-" + owner + "-"
+}
 
-// RemoveSocketDirsOf removes the socket directories left in tempDir by the process pid, which is gone. A process killed, or
-// exiting, while its NodeHost was still starting cannot clean up after itself (no one closes that host): its parent does.
-func RemoveSocketDirsOf(tempDir string, pid int) {
-	left, err := filepath.Glob(filepath.Join(tempDir, socketDirPrefix(pid)+"*"))
+// RemoveSocketDirsOf removes the socket directories in tempDir that a process started with SocketOwnerEnv=owner left behind,
+// once that process has ended. A process killed, or exiting, while its NodeHost was still starting cannot clean up after
+// itself (no one closes that host): its parent does. The owner is unique to one start, so a directory of another process
+// (one that shares the temporary directory from another pid namespace) is never named.
+func RemoveSocketDirsOf(tempDir, owner string) {
+	if owner == "" {
+		return
+	}
+	entries, err := os.ReadDir(tempDir)
 	if err != nil {
 		return
 	}
-	for _, dir := range left {
-		_ = os.RemoveAll(dir)
+	prefix := socketDirPrefix(owner)
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), prefix) {
+			_ = os.RemoveAll(filepath.Join(tempDir, entry.Name()))
+		}
 	}
 }
 
@@ -29,7 +42,12 @@ func RemoveSocketDirsOf(tempDir string, pid int) {
 // directory of its own, which only the current user can enter. The process makes the channel's connection, and later (when
 // the host needs synchronous callbacks) one more from a worker thread. cleanup removes the directory.
 func listenNode() (listener net.Listener, address string, cleanup func(), err error) {
-	dir, err := os.MkdirTemp("", socketDirPrefix(os.Getpid()))
+	return listenNodeIn("")
+}
+
+// listenNodeIn is listenNode with its directory made in tempDir ("" is the process's).
+func listenNodeIn(tempDir string) (listener net.Listener, address string, cleanup func(), err error) {
+	dir, err := os.MkdirTemp(tempDir, socketDirPrefix(os.Getenv(SocketOwnerEnv)))
 	if err != nil {
 		return nil, "", nil, err
 	}

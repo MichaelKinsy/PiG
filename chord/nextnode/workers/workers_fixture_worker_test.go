@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -123,6 +125,9 @@ type workerBehaviour struct {
 	CloseMs int
 	// LateCloseMs is how long a closer takes that the app registers after the plugins load (`late` in the log).
 	LateCloseMs int
+	// HoldNodeStart: the NodeHost's Node subprocess is not started until this file exists (or 20 s passed), so the worker is
+	// in the middle of starting its host, its socket directory made and nothing connected, for as long as the test wants.
+	HoldNodeStart string
 	// BlockNode: 300 ms after its load, blocks the NodeHost's event loop until this file exists (`node blocked` on stdout).
 	BlockNode string
 	// ShutdownDuringReload: shuts down the moment a reload of the server's is being applied (taken off the queue, in flight).
@@ -163,6 +168,9 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	}
 	if b.BlockNode != "" {
 		object.Set("blockNode", b.BlockNode)
+	}
+	if b.HoldNodeStart != "" {
+		object.Set("holdNodeStart", b.HoldNodeStart)
 	}
 	if b.ShutdownDuringReload {
 		object.Set("shutdownDuringReload", true)
@@ -206,6 +214,7 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 		b.LateCloseMs = int(ms)
 	}
 	b.BlockNode, _ = object.Value("blockNode").(string)
+	b.HoldNodeStart, _ = object.Value("holdNodeStart").(string)
 	b.ShutdownDuringReload, _ = object.Value("shutdownDuringReload").(bool)
 	b.DisconnectAndBlock, _ = object.Value("disconnectAndBlock").(bool)
 	if calls, ok := object.Value("localCalls").(float64); ok {
@@ -307,6 +316,20 @@ func fixtureOutput(port *countingPort) func(stream plugins.NodeStream, chunk []b
 	}
 }
 
+// holdNodeGate is the file HoldNodeStart names, once the worker knows its behaviour.
+var holdNodeGate atomic.Pointer[string]
+
+// holdNodeStart is the plugins' Command in the worker: the Node subprocess of the NodeHost (the one that runs host.mjs, not the
+// version check) waits for holdNodeGate to exist first.
+func holdNodeStart(ctx context.Context, name string, args ...string) *exec.Cmd {
+	gate := holdNodeGate.Load()
+	if gate == nil || !slices.ContainsFunc(args, func(arg string) bool { return strings.HasSuffix(arg, "host.mjs") }) {
+		return exec.CommandContext(ctx, name, args...)
+	}
+	const wait = `gate=$1; shift; i=0; while [ ! -e "$gate" ] && [ $i -lt 400 ]; do i=$((i+1)); sleep 0.05; done; exec "$@"`
+	return exec.CommandContext(ctx, "/bin/sh", append([]string{"-c", wait, "sh", *gate, name}, args...)...)
+}
+
 // onErrorThrew is whether the fixture's OnError threw already.
 var onErrorThrew atomic.Bool
 
@@ -315,6 +338,9 @@ func runWorkerFixture() {
 	var worker host.Host
 	serve(port, func(start WorkerStart, ctx context.Context) (*WorkerResult, error) {
 		behaviour := behaviourOf(start.Start)
+		if behaviour.HoldNodeStart != "" {
+			holdNodeGate.Store(&behaviour.HoldNodeStart)
+		}
 		if behaviour.Exit != nil {
 			exitProcess(*behaviour.Exit)
 		}
@@ -433,7 +459,7 @@ func runWorkerFixture() {
 		}
 		return &WorkerResult{Busy: busy.Member("counts")}, nil
 	}, WorkerMainOptions{
-		Node: plugins.NodeOptions{OnOutput: fixtureOutput(port)},
+		Node: plugins.NodeOptions{OnOutput: fixtureOutput(port), Command: holdNodeStart},
 		Redact: func(err any) CrossedError {
 			message := fmt.Sprint(err)
 			if typed, ok := err.(error); ok {

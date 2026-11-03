@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"crypto/rand"
 	"os"
 	"os/exec"
 	"slices"
@@ -84,7 +85,9 @@ type WorkerProcess struct {
 func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess, error) {
 	//nolint:gosec // G204 (class b): the program is the app's own worker entry and its arguments, with no shell.
 	cmd := exec.Command(options.Entry, options.ExecArgv...)
-	cmd.Env = environment(options.Env)
+	// Unique to this start: what the worker's NodeHosts leave of their socket directories is named by it (SocketOwnerEnv).
+	owner := rand.Text()
+	cmd.Env = append(environment(options.Env), plugins.SocketOwnerEnv+"="+owner)
 	detach(cmd)
 	parent, afterStart, fail, err := prepareChannel(cmd)
 	if err != nil {
@@ -143,7 +146,7 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 		// The worker's NodeHost, if it was still starting when the worker ended, left its socket directory behind: Pi evaluates
 		// plugins in-process and has no such directory, so there is nothing to port, only to clean up (a kill gives the worker
 		// no chance to).
-		plugins.RemoveSocketDirsOf(tempDirOf(cmd.Env), process.Pid)
+		plugins.RemoveSocketDirsOf(tempDirOf(cmd.Env), owner)
 		process.ended(exitOf(state), events)
 	}()
 	return process, nil

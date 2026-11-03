@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -501,35 +502,58 @@ func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsR
 	}
 }
 
-// socketDirsIn is a worker's TMPDIR for a test and a lister of the NodeHost socket directories left in it. The directory is
-// short: the socket's path inside it must fit a unix address (t.TempDir's does not).
-func socketDirsIn(t *testing.T) func() []string {
+// workerTmp is a temporary directory for the workers of a test, which is not the server's (the test process's) own, and
+// a lister of the NodeHost socket directories left in it. It is short: the socket's path in it must fit a unix address.
+func workerTmp(t *testing.T) (env map[string]string, socketDirs func() []string) {
 	t.Helper()
 	scratch, err := os.MkdirTemp("", "w")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(scratch) })
-	t.Setenv("TMPDIR", scratch)
-	return func() []string {
-		found, err := filepath.Glob(filepath.Join(scratch, "chord-plugins-*"))
+	return map[string]string{"TMPDIR": scratch}, func() []string {
+		entries, err := os.ReadDir(scratch)
 		if err != nil {
 			t.Fatal(err)
+		}
+		var found []string
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "chord-plugins-") {
+				found = append(found, entry.Name())
+			}
 		}
 		return found
 	}
 }
 
-// Not upstream's: Pi evaluates plugins in-process, so it has no socket directory to leave behind. PiG's NodeHost listens on a
-// socket in a directory of its own, and a worker that ends while that host is still starting (stopped by Close here) has no
-// host to close it: the directory must not outlive the worker. Close comes once the directory exists, which the NodeHost's
-// start (Node booting, connecting) outlasts.
-func TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting(t *testing.T) {
-	socketDirs := socketDirsIn(t)
-	f := newFleet(t, fleetOptions{})
+// startingWorker is a fleet whose worker S1 is in the middle of starting its NodeHost: the host's socket directory is made
+// (in the worker's own TMPDIR) and its Node subprocess is held back, until the test is over.
+func startingWorker(t *testing.T) (f *fleet, socketDirs func() []string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("a named pipe leaves no directory")
+	}
+	env, socketDirs := workerTmp(t)
+	f = newFleet(t, fleetOptions{env: env})
+	gate := filepath.Join(t.TempDir(), "node-may-start")
+	f.behaviours.set("S1", workerBehaviour{HoldNodeStart: gate})
+	// Whatever the test left running goes on to start its Node host and end.
+	t.Cleanup(func() { _ = os.WriteFile(gate, nil, 0o600) })
 	notes := f.hold(fixtureNotes, "S1")
-	defer notes.Release()
+	t.Cleanup(notes.Release)
 	until(t, func() bool { return len(socketDirs()) > 0 })
+	if state := f.stateOf("S1"); state == nil || state.Status != WorkerStarting {
+		t.Fatalf("worker = %+v, want one starting its host", state)
+	}
+	return f, socketDirs
+}
+
+// Not upstream's: Pi evaluates plugins in-process, so it has no socket directory to leave behind. PiG's NodeHost listens on a
+// socket in a directory of its own, and a worker that ends while that host is still starting (stopped by Close here, which
+// asks it to shut down) has no host to close it: the directory must not outlive the worker, whichever temporary directory
+// the worker has.
+func TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting(t *testing.T) {
+	f, socketDirs := startingWorker(t)
 	if err := f.workers.Close(background); err != nil {
 		t.Fatal(err)
 	}
@@ -541,16 +565,8 @@ func TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting(t *t
 // The same for a worker that is killed (Pi's `child.process.kill()` of a failed start, a crash, the start timeout), which has no
 // chance to clean up at all: the server removes what its process left, once it is gone.
 func TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory(t *testing.T) {
-	socketDirs := socketDirsIn(t)
-	f := newFleet(t, fleetOptions{})
-	notes := f.hold(fixtureNotes, "S1")
-	defer notes.Release()
-	until(t, func() bool { return len(socketDirs()) > 0 })
-	state := f.stateOf("S1")
-	if state == nil {
-		t.Fatal("no worker")
-	}
-	process, err := os.FindProcess(state.Pid)
+	f, socketDirs := startingWorker(t)
+	process, err := os.FindProcess(f.stateOf("S1").Pid)
 	if err != nil {
 		t.Fatal(err)
 	}
