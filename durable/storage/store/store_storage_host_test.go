@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
@@ -271,6 +272,9 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 					State: map[string]chord.Watchable[delta.JsonValue]{"entries": entries},
 					Methods: map[string]contracts.MethodFunction{
 						"note": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+							// The handler waits for the Harness, whose commits call the host observers from its own goroutines: it gives the
+							// section back first.
+							chordctx.Suspend(ctx)
 							kind := args.(*delta.JsonObject).Value("kind").(string)
 							root, err := current().Conversation(ctx, durable.ROOT_CONVERSATION_ID)
 							if err != nil {
@@ -351,6 +355,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 					Methods: map[string]contracts.MethodFunction{
 						"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+							chordctx.Suspend(ctx)
 							root, err := current().Conversation(ctx, durable.ROOT_CONVERSATION_ID)
 							if err != nil {
 								return nil, err
