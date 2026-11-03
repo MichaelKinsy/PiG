@@ -103,11 +103,23 @@ func rrServe(done durable.AnyTask) func(chordhost.FacetHost, chordhost.FacetSelf
 // rrOpenHost is `createHost({ onError })` loaded with one facet.
 func rrOpenHost(t *testing.T, setup func(chordhost.FacetHost, chordhost.FacetSelf) error) chordhost.Host {
 	t.Helper()
+	host := rrCreateHost(t)
+	rrLoad(t, host, setup)
+	return host
+}
+
+func rrCreateHost(t *testing.T) chordhost.Host {
+	t.Helper()
 	host, err := chordhost.CreateHost(chordhost.HostOptions{OnError: func(chordhost.HostError) {}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { rrBounded(t, "closing the host", func() { _ = host.Close(testContext) }) })
+	return host
+}
+
+func rrLoad(t *testing.T, host chordhost.Host, setup func(chordhost.FacetHost, chordhost.FacetSelf) error) {
+	t.Helper()
 	report, err := host.Load([]chordhost.HostFacet{{Name: "@app/core", Facet: chordhost.DefineFacet(setup)}}, testContext)
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +127,6 @@ func rrOpenHost(t *testing.T, setup func(chordhost.FacetHost, chordhost.FacetSel
 	for _, failed := range report.Failed {
 		t.Fatalf("plugin %q was left out: %v", failed.Plugin, failed.Error)
 	}
-	return host
 }
 
 func rrReference(t *testing.T, host chordhost.Host, typ *contracts.Contract) *chordhost.Reference {

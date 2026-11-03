@@ -108,7 +108,8 @@ type Self interface {
 	// Follow is a source following another runtime's synchronous observer (Durable's views, slice 6b §3): attach runs
 	// during activation once the natives opened (an error or no attachment fails the activation `transient`), and the
 	// observer is detached when the attempt ends. Its runtime failing fails this object `transient`; its `ended` is final,
-	// the source keeping its last value. A state member, a derive source, an `On` source.
+	// the source keeping its last value. A state member, a derive source, an `On` source. A method handler that waits for the
+	// followed runtime calls chordctx.Suspend first (see FollowObserver).
 	Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue]
 	// Job is this object's job definition (§15), once per job name: Run runs each started run outside transactions, Finish
 	// records its outcome in one. Starts are taken once the object is live.

@@ -230,6 +230,13 @@ type Host interface {
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
 	// at once. `host.Close` seals the open ones; after it, Root returns `released`.
 	Root(fn func(ctx Ctx) (any, error), ctx context.Context, options RootOptions) (any, error)
+	// Section runs run as one synchronous section of the host's loop, inline when the caller is in one: Go's stand-in for
+	// the one thread Pi's host and the runtimes it follows share. A followed runtime (Durable) that publishes one commit to
+	// several observers from its own goroutine runs that whole publication in a section (Durable's `Storage.publishing`
+	// scope), so its calls reach the host as one batch and a derive over two views of the commit computes once. It blocks
+	// until the loop is free: a method handler that holds the section while it waits for such a runtime calls
+	// chordctx.Suspend first.
+	Section(run func())
 	// Close closes its links, seals its root scopes, then ends every object at once, then drains and closes them one by one,
 	// the last to go live first (reason `close`). It returns an error joining the closes that failed.
 	Close(ctx context.Context) error
@@ -495,6 +502,9 @@ func (h *chordHost) enter(work func()) {
 		work()
 	})
 }
+
+// Section implements Host.
+func (h *chordHost) Section(run func()) { h.enter(run) }
 
 // Incarnation is this run of the host (R20).
 func (h *chordHost) Incarnation() string { return h.incarnation }

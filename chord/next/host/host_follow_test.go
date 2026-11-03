@@ -270,8 +270,6 @@ func TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingW
 	h.loop.Run(source.detach)
 }
 
-// Own test, mirrors follow.test.ts › types › infers the value type from the attachment, without a type argument: a
-// runtime's own observe is typed by its value, and FollowAttach carries only that type.
 // The calls of a runtime on a goroutine of its own (a Durable Harness closing) enter a section of the host's loop themselves:
 // the owner is told of the end inside one, as it is when the call comes from a section.
 func TestFollowObserverCallsFromAnotherGoroutineEnterASectionOfTheLoop(t *testing.T) {
@@ -300,6 +298,8 @@ func TestFollowObserverCallsFromAnotherGoroutineEnterASectionOfTheLoop(t *testin
 	}
 }
 
+// Own test, mirrors follow.test.ts › types › infers the value type from the attachment, without a type argument: a
+// runtime's own observe is typed by its value, and FollowAttach carries only that type.
 func TestFollowAttachIsTypedByItsAttachment(t *testing.T) {
 	var attach FollowAttach[*delta.JsonObject] = func(FollowObserver[any], context.Context) (*FollowAttachment[*delta.JsonObject], error) {
 		return &FollowAttachment[*delta.JsonObject]{Value: memberCount(1), Detach: func() {}}, nil

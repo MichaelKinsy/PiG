@@ -19,7 +19,13 @@ import (
 
 // FollowObserver is the observer a followed runtime is given: Chord's watch shapes (Durable's `Observer`). Both calls
 // may come from any goroutine: each enters a section of the host's loop, inline when the caller is in one (the runtime's
-// commit step is).
+// commit step is). Calls from outside a section are one batch each; to have the calls one commit makes to several
+// followed sources reach a derive as one batch, the runtime publishes the commit inside one section (Host.Section, from
+// Durable's `Storage.publishing` scope).
+//
+// A method handler that waits for the followed runtime, directly or for any work that commits to it, calls
+// chordctx.Suspend(ctx) first: otherwise the runtime's calls wait for the section the handler holds, and both block
+// forever.
 type FollowObserver[T any] interface {
 	// Advance is one change, synchronously and quickly: Chord only records it.
 	Advance(call chord.WatchCall[T], ctx context.Context)
