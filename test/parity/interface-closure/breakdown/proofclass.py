@@ -168,6 +168,9 @@ def proven(c, i, r):
         survive = re.compile(r'Registration|Surviv|RoundTrip|Keep')
         # Beside the type, the test must name both the field and the type: a field name such as DefaultKeys alone matches unrelated tests.
         fields = {n for n in names if n != top}
+        # A constructor row has no field: its member is the constructor itself, named by the test.
+        if not fields and split(i)[2].startswith('::construct'):
+            fields = {top}
         own = set(asserting({tdir}, fields, survive)) & set(asserting({tdir}, {top, ptop, tgt.partition('#')[2].partition('.')[0]} - {''}, survive))
         return '' if asserting(None, names, survive, EXT_DIRS) or own else 'no field-survival test names the member'
     if c == 'U':

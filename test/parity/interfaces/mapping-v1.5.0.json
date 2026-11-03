@@ -102850,7 +102850,7 @@
       "evidence": [
         "test:chord/host/errors_test.go#TestChordErrorCarriesPiFields",
         "test:chord/host/errors_test.go#TestForbiddenDefaultsOnlyAnOmittedMessage",
-        "test:chord/host/errors_pi_oracle_test.go#TestAsChordErrorMatchesPi"
+        "test:chord/host/errors_union_test.go#TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedOnTheWireAndDecided"
       ]
     },
     {
@@ -103616,7 +103616,8 @@
         "call:chord/host/host.go#DefineFacet"
       ],
       "evidence": [
-        "test:chord/host/host_test.go#TestDefineFacetKeepsSetupAndUses"
+        "test:chord/host/host_test.go#TestDefineFacetKeepsSetupAndUses",
+        "test:chord/host/registration_survival_test.go#TestFacetDefinitionRegistrationKeepsUsesSetupAndName"
       ]
     },
     {
@@ -103926,7 +103927,8 @@
         "call:chord/host/host.go#DefineFacet"
       ],
       "evidence": [
-        "test:chord/host/host_test.go#TestDefineFacetKeepsSetupAndUses"
+        "test:chord/host/host_test.go#TestDefineFacetKeepsSetupAndUses",
+        "test:chord/host/registration_survival_test.go#TestFacetDefinitionRegistrationKeepsUsesSetupAndName"
       ]
     },
     {
@@ -109373,7 +109375,7 @@
       "evidence": [
         "test:chord/host/review_upstream_test.go#TestReviewAnExclusiveResourceWhoseCloseFailedIsRestoredOnRollbackOrMarkedUnavailable",
         "test:chord/host/declare_test.go#TestResourceDeclarationReadTypeErased",
-        "test:chord/host/reload_upstream_test.go#TestReloadExclusiveResourcesAreReplacedAtTheGateNonExclusiveOnesAtPrepareAndClosedAtRetirement"
+        "test:chord/host/registration_survival_test.go#TestResourceDeclarationRegistrationKeepsVersionDepsExclusiveOpenAndClose"
       ]
     },
     {
@@ -114625,9 +114627,9 @@
         "call:chord/next/data/args.go#CheckArgs"
       ],
       "evidence": [
+        "test:chord/next/data/errors_union_test.go#TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedKnownAndDecoded",
         "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
-        "test:chord/next/contracts/derived_runtime_test.go#TestHostAddressParams",
-        "test:chord/next/contracts/host_kind_test.go#TestHostKinds"
+        "test:chord/next/contracts/derived_runtime_test.go#TestHostAddressParams"
       ]
     },
     {
@@ -115800,7 +115802,7 @@
       "id": "pkg:chord/next#ColumnRef::property:args",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:383135d2051a743e6af41cd19daf1789a2579e289eb1b8614f6d80145c95ffa1",
-      "rationale": "Derived by the interface gap detector: ColumnRef::property:args is Go chord/next/store/expression.go#Expression.Args (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ColumnRef::property:args is Go chord/next/store/expression.go#Expression.Args (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression.Args"
       ],
@@ -115813,7 +115815,7 @@
         "call:chord/next/store/expression.go#Expression.isRef"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Expression.isRef"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
@@ -115830,7 +115832,7 @@
       "id": "pkg:chord/next#ColumnRef::property:op",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6ffe77fdf8569f356cd363699b286c1fc5aa8cf3d27aa41a8a09fc4b559b46f3",
-      "rationale": "Derived by the interface gap detector: ColumnRef::property:op is Go chord/next/store/expression.go#Expression.Op (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ColumnRef::property:op is Go chord/next/store/expression.go#Expression.Op (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression.Op"
       ],
@@ -115843,7 +115845,7 @@
         "call:chord/next/store/expression.go#Expression.isRef"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Expression.isRef"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
@@ -117298,7 +117300,7 @@
       "id": "pkg:chord/next#Expression",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4354d6dd4002f71e01cdfdb6912542704ac334a977e2ccc809f4a3844226105b",
-      "rationale": "Derived by the interface gap detector: Expression is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Expression is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression"
       ],
@@ -117311,14 +117313,14 @@
         "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Add"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
       "id": "pkg:chord/next#Expression::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fac5c64ffc385336374692b58c5d521b8bca5caff3d696ed8d058a96e9dd80f0",
-      "rationale": "Derived by the interface gap detector: Expression::construct:0 is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Expression::construct:0 is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression"
       ],
@@ -117331,7 +117333,7 @@
         "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Add"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
@@ -117356,7 +117358,7 @@
       "id": "pkg:chord/next#Expression::property:args",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:383135d2051a743e6af41cd19daf1789a2579e289eb1b8614f6d80145c95ffa1",
-      "rationale": "Derived by the interface gap detector: Expression::property:args is Go chord/next/store/expression.go#Expression.Args (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Expression::property:args is Go chord/next/store/expression.go#Expression.Args (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression.Args"
       ],
@@ -117369,14 +117371,14 @@
         "call:chord/next/store/expression.go#Expression.isRef"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Expression.isRef"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
       "id": "pkg:chord/next#Expression::property:op",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6ffe77fdf8569f356cd363699b286c1fc5aa8cf3d27aa41a8a09fc4b559b46f3",
-      "rationale": "Derived by the interface gap detector: Expression::property:op is Go chord/next/store/expression.go#Expression.Op (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Expression::property:op is Go chord/next/store/expression.go#Expression.Op (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression.Op"
       ],
@@ -117389,7 +117391,7 @@
         "call:chord/next/store/expression.go#Expression.isRef"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Expression.isRef"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
@@ -119160,8 +119162,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_34_test.go#TestExample34Versions",
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobChecksAcceptsAtDeclaration",
-        "test:chord/next/host/jobs_records_test.go#TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgsNotTheNewVersionsMappingSol"
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobChecksAcceptsAtDeclaration"
       ]
     },
     {
@@ -119191,8 +119193,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_34_test.go#TestExample34Versions",
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobFingerprintsArgsResultAndState",
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobFingerprintsArgsResultAndState"
       ]
     },
     {
@@ -119213,8 +119215,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_34_test.go#TestExample34Versions",
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobFingerprintsArgsResultAndState",
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobFingerprintsArgsResultAndState"
       ]
     },
     {
@@ -119243,6 +119245,7 @@
         "call:chord/next/host/jobs_definition.go#DefineJob"
       ],
       "evidence": [
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
       ]
     },
@@ -119283,6 +119286,7 @@
         "call:chord/next/host/jobs_definition.go#DefineJob"
       ],
       "evidence": [
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
       ]
     },
@@ -119303,6 +119307,7 @@
         "call:chord/next/host/jobs_definition.go#DefineJob"
       ],
       "evidence": [
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobFingerprintsArgsResultAndState",
         "test:chord/next/host/schema_switch_test.go#TestSchemaSwitchFingerprints"
       ]
@@ -119324,6 +119329,7 @@
         "call:chord/next/host/host_attempt.go#attempt.Job"
       ],
       "evidence": [
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobTakesARestrictedNameOnly"
       ]
@@ -119345,6 +119351,7 @@
         "call:chord/next/host/host_attempt.go#attempt.Job"
       ],
       "evidence": [
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobTakesPersistWithAResumeRuleAPersistedStateAndAJSONOnlyResult"
       ]
     },
@@ -119385,6 +119392,7 @@
         "call:chord/next/host/jobs_definition.go#DefineJob"
       ],
       "evidence": [
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
         "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
       ]
     },
@@ -119406,8 +119414,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_34_test.go#TestExample34Versions",
-        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency",
-        "test:chord/next/host/jobs_records_test.go#TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVersionDeclaredAgainTheyGoOn"
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob",
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobKeepsItsNameVersionChordsCopiesOfItsSchemasItsStateAndConcurrency"
       ]
     },
     {
@@ -125176,7 +125184,7 @@
       "evidence": [
         "test:chord/next/host/host_example_19_test.go#TestExample19Jobs",
         "test:chord/next/host/host_example_34_test.go#TestExample34Versions",
-        "test:chord/next/host/jobs_job_runs_test.go#TestRunMayStartTheSameJobAgainFromRunRecursionANewRun"
+        "test:chord/next/host/jobs_definition_survival_test.go#TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob"
       ]
     },
     {
@@ -125196,9 +125204,9 @@
         "call:chord/next/documents/definition.go#DefineState"
       ],
       "evidence": [
-        "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
-        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
-        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsAbsentCheckpointWhenAndMigrateAbsent",
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
+        "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed"
       ]
     },
     {
@@ -125227,6 +125235,7 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
         "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed"
       ]
     },
@@ -125234,7 +125243,7 @@
       "id": "pkg:chord/next#StateDefinition::property:~persist",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:847d349e36030b67f92cd7287f4153470ef24c89ef109c3da54757d6ced62dae",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:~persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:~persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.Persist"
       ],
@@ -125247,14 +125256,14 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#newStateDefinition"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption"
       ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:checkpointWhen",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:142671ab9c8cd97e457ec95f3847e758254943fe20f38e501efb9b6471996b48",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
@@ -125267,14 +125276,15 @@
         "call:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsAbsentCheckpointWhenAndMigrateAbsent",
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption"
       ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:checkpointWhen::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:941d9d8a74214b4dcb6294a770413d5704fbec927d6e5c0655f76114e6f28e4a",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen::call:0 is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:checkpointWhen::call:0 is Go chord/next/documents/definition.go#StateDefinition.CheckpointWhen (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
@@ -125287,7 +125297,8 @@
         "call:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#StateDefinition.CheckpointWhen"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsAbsentCheckpointWhenAndMigrateAbsent",
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption"
       ]
     },
     {
@@ -125307,6 +125318,7 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
         "test:chord/next/documents/definition_test.go#TestFingerprintsAreComputedOnceFromTheSchemasStructure",
         "test:chord/next/host/schema_switch_test.go#TestSchemaSwitchFingerprints"
       ]
@@ -125328,9 +125340,9 @@
         "call:chord/next/documents/definition.go#StateDefinition.Initial"
       ],
       "evidence": [
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
         "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
-        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
-        "test:chord/next/documents/definition_test.go#TestStateDefinitionInitialIsSafeToShareBetweenHosts"
+        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes"
       ]
     },
     {
@@ -125350,9 +125362,9 @@
         "call:chord/next/documents/definition.go#StateDefinition.Initial"
       ],
       "evidence": [
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
         "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
-        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
-        "test:chord/next/documents/definition_test.go#TestStateDefinitionInitialIsSafeToShareBetweenHosts"
+        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes"
       ]
     },
     {
@@ -125372,6 +125384,7 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
         "test:chord/next/documents/definition_test.go#TestDefineStateTypesTheValueAndWhetherItIsKeyed"
       ]
     },
@@ -125392,8 +125405,9 @@
         "call:chord/next/documents/definition.go#StateDefinition.Migrate"
       ],
       "evidence": [
-        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne",
-        "test:chord/next/documents/definition_test.go#TestMigrateRefusesAnOlderValueWithoutAMigrate"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsAbsentCheckpointWhenAndMigrateAbsent",
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
+        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
       ]
     },
     {
@@ -125413,8 +125427,9 @@
         "call:chord/next/documents/definition.go#StateDefinition.Migrate"
       ],
       "evidence": [
-        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne",
-        "test:chord/next/documents/definition_test.go#TestMigrateRefusesAnOlderValueWithoutAMigrate"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsAbsentCheckpointWhenAndMigrateAbsent",
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
+        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
       ]
     },
     {
@@ -125434,16 +125449,16 @@
         "call:chord/next/documents/definition.go#StateDefinition.Migrate"
       ],
       "evidence": [
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption",
         "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
-        "test:chord/next/documents/documents_test.go#TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing",
-        "test:chord/next/documents/documents_test.go#TestKeyedDocumentsAreAbsentUntilWrittenGetKeysAndRetireByKey"
+        "test:chord/next/documents/documents_test.go#TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing"
       ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:persist",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c3d2c0592018b80a5dcbcbac08468a79bac2966be3769ebfbd10cee0f34a8713",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:persist is Go chord/next/documents/definition.go#StateDefinition.Persist (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.Persist"
       ],
@@ -125456,7 +125471,7 @@
         "call:chord/next/documents/definition.go#newStateDefinition"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#newStateDefinition"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption"
       ]
     },
     {
@@ -125472,7 +125487,7 @@
       "id": "pkg:chord/next#StateDefinition::property:version",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:da68e62a64d2e5515b8a36f6918bac87c432ec33096eda7a586388ae4268cbca",
-      "rationale": "Derived by the interface gap detector: StateDefinition::property:version is Go chord/next/documents/definition.go#StateDefinition.Version (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:version is Go chord/next/documents/definition.go#StateDefinition.Version (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/documents/definition.go#StateDefinition.Version"
       ],
@@ -125485,7 +125500,7 @@
         "call:chord/next/documents/definition.go#StateDefinition.Migrate"
       ],
       "evidence": [
-        "reach:chord/next/documents/definition.go#StateDefinition.Migrate"
+        "test:chord/next/documents/definition_survival_test.go#TestStateDefinitionRegistrationKeepsEveryOption"
       ]
     },
     {
@@ -127174,14 +127189,14 @@
       "evidence": [
         "test:chord/next/store/sql_test.go#TestSqlDDL",
         "test:chord/next/store/sql_test.go#TestSqlStatements",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptTablesFailTheActivationBroken"
+        "test:chord/next/store/table_survival_test.go#TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven"
       ]
     },
     {
       "id": "pkg:chord/next#TableDefinition::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:32f2651b2b978ac30c065348dd33579a6e5b6d0add3b547463cd696dd221e77b",
-      "rationale": "Derived by the interface gap detector: TableDefinition::construct:0 is Go chord/next/store/table.go#NewTableDefinition (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::construct:0 is Go chord/next/store/table.go#NewTableDefinition (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#NewTableDefinition"
       ],
@@ -127194,7 +127209,7 @@
         "call:chord/next/store/table.go#NewTableDefinition"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#NewTableDefinition"
+        "test:chord/next/store/table_survival_test.go#TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven"
       ]
     },
     {
@@ -127214,6 +127229,7 @@
         "call:chord/next/store/adapter.go#NewOwnerTable"
       ],
       "evidence": [
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution",
         "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
       ]
     },
@@ -127257,14 +127273,15 @@
       ],
       "evidence": [
         "test:chord/next/store/table_evolve_test.go#TestEvolveChecks",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
       "id": "pkg:chord/next#TableDefinition::property:column",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4dc3a416ed23f953a48c7b20a182501dbce39f4bd160173f07465d937bf4f4c8",
-      "rationale": "Derived by the interface gap detector: TableDefinition::property:column is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::property:column is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#TableDefinition.Column"
       ],
@@ -127277,14 +127294,14 @@
         "call:chord/next/store/table.go#TableDefinition.Column"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#TableDefinition.Column"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
       "id": "pkg:chord/next#TableDefinition::property:column::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c01c8c590d8b10fc25ef2e72a67488a74d086b1dc0d1bdf0b5518c69a85a0bc",
-      "rationale": "Derived by the interface gap detector: TableDefinition::property:column::call:0 is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::property:column::call:0 is Go chord/next/store/table.go#TableDefinition.Column (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#TableDefinition.Column"
       ],
@@ -127297,7 +127314,7 @@
         "call:chord/next/store/table.go#TableDefinition.Column"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#TableDefinition.Column"
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
@@ -127317,6 +127334,7 @@
         "call:chord/next/store/adapter.go#NewOwnerTable"
       ],
       "evidence": [
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution",
         "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
       ]
     },
@@ -127338,7 +127356,8 @@
       ],
       "evidence": [
         "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveVersions"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveVersions",
+        "test:chord/next/store/table_survival_test.go#TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven"
       ]
     },
     {
@@ -127382,7 +127401,7 @@
       "evidence": [
         "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
         "test:chord/next/store/table_evolve_test.go#TestEvolveVersions",
-        "test:chord/next/store/table_test.go#TestDefineTable"
+        "test:chord/next/store/table_survival_test.go#TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven"
       ]
     },
     {
@@ -127424,9 +127443,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.notJson"
       ],
       "evidence": [
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution",
         "test:chord/next/store/table_test.go#TestDefineTable",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/catalog_test.go#TestCatalog"
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
       ]
     },
     {
@@ -127499,7 +127518,7 @@
       "id": "pkg:chord/next#TableDefinition::property:schemas",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4f60ea6383a290f4ea4127fa2f95d966b9d2d61f69ea8842d9c904928b7b53f8",
-      "rationale": "Derived by the interface gap detector: TableDefinition::property:schemas is Go chord/next/store/table.go#TableDefinition.Schemas (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TableDefinition::property:schemas is Go chord/next/store/table.go#TableDefinition.Schemas (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/table.go#TableDefinition.Schemas"
       ],
@@ -127512,7 +127531,8 @@
         "call:chord/next/store/table.go#NewTableDefinition"
       ],
       "evidence": [
-        "reach:chord/next/store/table.go#NewTableDefinition"
+        "test:chord/next/store/table_survival_test.go#TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven",
+        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution"
       ]
     },
     {
@@ -274266,7 +274286,8 @@
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -276608,7 +276629,8 @@
       ],
       "evidence": [
         "test:telemetry/attribute_metadata_test.go#TestTelemetryAttributeMetadataCardinalityJSON",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -277067,7 +277089,8 @@
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -277381,7 +277404,8 @@
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -278357,7 +278381,8 @@
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -278378,7 +278403,8 @@
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -278399,7 +278425,8 @@
       ],
       "evidence": [
         "test:telemetry/metrics_upstream_test.go#TestCreateTypedMetricsReadsSchemaMetadataForDeclaredNamesOnly",
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {

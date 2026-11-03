@@ -1,0 +1,84 @@
+[
+ {
+  "upstream": "packages/chord/src/host.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestFacetDefinitionRegistrationKeepsUsesSetupAndName"
+  ],
+  "upstream_reference": "packages/chord/src/host.ts",
+  "mutation": "chord/host/host.go: replace 'return FacetDefinition{Setup: setup, Uses: options.Uses}' with 'return FacetDefinition{Setup: setup}', and replace 'host.facets.Set(facet.Name, facet)' with a Facet that drops Uses; compiling go test -run exact test -count=1 fails TestFacetDefinitionRegistrationKeepsUsesSetupAndName in both."
+ },
+ {
+  "upstream": "packages/chord/src/declare.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestResourceDeclarationRegistrationKeepsVersionDepsExclusiveOpenAndClose"
+  ],
+  "upstream_reference": "packages/chord/src/declare.ts",
+  "mutation": "chord/host/declare.go: drop Exclusive, Deps, or Version from the erased ResourceDeclaration, or skip the Close copy; compiling go test -run exact test -count=1 fails TestResourceDeclarationRegistrationKeepsVersionDepsExclusiveOpenAndClose for each."
+ },
+ {
+  "upstream": "packages/chord/src/wire.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestFrameUnionExhaustiveEveryVariantEncodesAndDecodesUnderItsOwnDiscriminant"
+  ],
+  "upstream_reference": "packages/chord/src/wire.ts",
+  "mutation": "chord/host/wire.go: rename the frameOf case \"abort\" to \"abortx\", or add a Frame variant type with a T method and no sample; compiling go test -run exact test -count=1 fails TestFrameUnionExhaustiveEveryVariantEncodesAndDecodesUnderItsOwnDiscriminant."
+ },
+ {
+  "upstream": "packages/chord/src/errors.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedOnTheWireAndDecided"
+  ],
+  "upstream_reference": "packages/chord/src/errors.ts",
+  "mutation": "chord/host/errors.go: declare a ChordErrorCode constant that chordErrorCodes does not list; compiling go test -run exact test -count=1 fails TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedOnTheWireAndDecided."
+ },
+ {
+  "upstream": "packages/chord/src/next/data/errors.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedKnownAndDecoded"
+  ],
+  "upstream_reference": "packages/chord/src/next/data/errors.ts",
+  "mutation": "chord/next/data/errors.go: declare a ChordErrorCode constant ChordErrorCodes does not list, or remove CodeAborted from the known cases of ChordErrorReasons; compiling go test -run exact test -count=1 fails TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedKnownAndDecoded for each."
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/definition.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestStateDefinitionRegistrationKeepsEveryOption"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/definition.ts",
+  "mutation": "chord/next/documents/definition.go: drop Keyed, Persist, migrate or the CheckpointWhen rule from newStateDefinition; compiling go test -run exact test -count=1 fails TestStateDefinitionRegistrationKeepsEveryOption for each."
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/definition.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob"
+  ],
+  "upstream_reference": "packages/chord/src/next/jobs/definition.ts",
+  "mutation": "chord/next/host/jobs_definition.go: drop Concurrency, Accepts, Persist, State or Args from the JobDefinition DefineJob returns; compiling go test -run exact test -count=1 fails TestJobDefinitionRegistrationKeepsEveryOptionThroughSelfJob for each."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/table.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution",
+   "TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/table.ts",
+  "mutation": "chord/next/store/table.go: drop Schemas, ByName, Indexes, Refs or Evolution from NewTableDefinition's result, or look Column up under another name; compiling go test -run exact test -count=1 fails TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution (Indexes and Evolution also fail TestNewTableDefinitionRegistrationKeepsTheEvolutionItIsGiven)."
+ },
+ {
+  "upstream": "packages/telemetry/src/index.ts",
+  "package": "./telemetry",
+  "tests": [
+   "TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
+  ],
+  "upstream_reference": "packages/telemetry/src/index.ts",
+  "mutation": "telemetry/schema.go: change the Metrics tag `json:\"metrics,omitzero\"` to `json:\"-\"`; compiling go test -run exact test -count=1 fails TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip."
+ }
+]
