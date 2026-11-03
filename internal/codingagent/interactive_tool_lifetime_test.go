@@ -98,7 +98,9 @@ func TestInteractivePendingToolLifetime(t *testing.T) {
 		t.Run(boundary.name, func(t *testing.T) {
 			m, _ := newTickRenderProbe(t, "regular")
 			call := ai.ToolCall{ID: "pending", Name: "read"}
-			m.handleAgentEvent(agent.MessageUpdateEvent{AssistantMessageEvent: ai.ToolCallEndEvent{ContentIndex: 0, ToolCall: call}})
+			streaming := assistantMsg("", call)
+			m.handleAgentEvent(agent.MessageStartEvent{Message: streaming})
+			m.handleAgentEvent(agent.MessageUpdateEvent{Message: streaming, AssistantMessageEvent: ai.ToolCallEndEvent{ContentIndex: 0, ToolCall: call}})
 			card := m.toolByID[call.ID]
 			if card == nil {
 				t.Fatal("missing streaming card")

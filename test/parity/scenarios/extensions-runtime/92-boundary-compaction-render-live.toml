@@ -1,0 +1,51 @@
+# Behavior family: extensions-runtime
+# Surface: entry_appended of InteractiveMode.handleEvent (interactive-mode.ts 3524-3547), the compaction branch.
+#
+# A turn_end handler returns a compaction draft that keeps the assistant message (firstKeptEntryId: messageEntryId) and a displayed custom message
+# after it. Pi commits both drafts, then emits one entry_appended per entry. The compaction event rebuilds the transcript: the kept entries, the
+# compaction summary, then the entries after the compaction; the custom message's own event is skipped (entriesRenderedByBoundaryCompaction), so it
+# is drawn once. PiG ignored the compaction entry, so the summary appeared only after a resume.
+#
+# Upstream evidence (Pi 1.5.0 oracle, parity harness, 2026-11-03, 100x35 tmux, test-faux): the transcript after the turn shows the reply,
+# the compaction summary line and the custom message once.
+name = "92-boundary-compaction-render-live"
+description = "A compaction an extension appends at a turn boundary rebuilds the transcript around its summary and draws each later entry once"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "BOUNDARY_KIND=compaction"]
+pi = ["PI_SKIP_VERSION_CHECK=1", "BOUNDARY_KIND=compaction"]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/boundary-entries.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/boundary-entries.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = " 42"
+capture_end = "AFTER-COMPACTION"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["AFTER-COMPACTION"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["AFTER-COMPACTION", "Compacted from"]
+both_not_contain = ["panic:", "goroutine "]
+output_equal = true
+runs = 3
