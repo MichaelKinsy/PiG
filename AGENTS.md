@@ -323,12 +323,12 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
 | `rpc` | 93 | 93 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
-| `session` | 43 | 43 | 0 | 0 | 0 | 19 | not run |
+| `session` | 44 | 44 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
 | `startup` | 19 | 18 | 1 | 0 | 0 | 10 | not run |
 | `tools` | 32 | 32 | 0 | 0 | 0 | 35 | not run |
-| `tree` | 9 | 8 | 1 | 0 | 0 | 9 | not run |
+| `tree` | 11 | 10 | 1 | 0 | 0 | 9 | not run |
 | `tui-components` | 39 | 39 | 0 | 0 | 0 | 36 | not run |
 
 Full per-file detail: `test/parity/coverage.md`.
