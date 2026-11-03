@@ -121,7 +121,7 @@ func runLoginCommand(args []string) int {
 			credentialPath, err = credentialStore.StoreOAuthCredentials(cred)
 		} else {
 			// cli.ts saveAuth keeps OAuth tokens readable by their owner only: chmod covers a file an older version created.
-			if _, statErr := os.Stat(authPath); statErr == nil {
+			if _, statErr := os.Stat(authPath); statErr == nil { //perf:ok once per interactive `pig login`, which waits on a browser or a pasted code
 				if err = os.Chmod(authPath, 0o600); err != nil {
 					fmt.Fprintln(os.Stderr, "Error:", err)
 					return 1

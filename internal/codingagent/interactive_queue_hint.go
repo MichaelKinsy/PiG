@@ -23,16 +23,16 @@ const (
 
 // termProgramIs reports whether TERM_PROGRAM names program.
 func termProgramIs(program string) bool {
-	return os.Getenv("TERM_PROGRAM") == program
+	return os.Getenv("TERM_PROGRAM") == program //perf:ok read when the user presses Up with a queued message and once per tip decision, not per frame; the environment is the terminal's answer and Pi's test sets it per case
 }
 
 // sendsModifiedArrows reports whether the terminal is known to send Option+Up as a modified arrow (CSI 1;3A), so its users need no mapping.
 func sendsModifiedArrows() bool {
-	switch os.Getenv("TERM_PROGRAM") {
+	switch os.Getenv("TERM_PROGRAM") { //perf:ok same cold decision as termProgramIs: evaluated once per queued-message hint
 	case "ghostty", "iTerm.app", "WezTerm", "kitty":
 		return true
 	}
-	return os.Getenv("TERM") == "xterm-kitty"
+	return os.Getenv("TERM") == "xterm-kitty" //perf:ok same cold decision as termProgramIs
 }
 
 // dequeueKeys are the keys bound to app.message.dequeue, in the registry's text form ("alt+up").

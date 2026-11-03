@@ -143,7 +143,7 @@ func recordCell(value any) (any, error) {
 		}
 		return nil, err
 	}
-	tree, err := chordjson.DecodeUnquoting(text, unquoteJS)
+	tree, err := chordjson.DecodeUnquoting(text, unquoteJS) //perf:ok one per record the store writes; the cell carries both the text and the tree its columns check, and no encoder yields both
 	if err != nil {
 		return nil, err
 	}
