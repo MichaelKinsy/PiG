@@ -55,6 +55,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08bf076](#bf-08bf076) | An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | Unreleased |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -298,6 +299,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ee123c](#bf-3ee123c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | 0.5.2 |
 | [BF-3f46dee](#bf-3f46dee) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-3f82770](#bf-3f82770) | A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no… | PiG's own defect | All platforms | Unreleased |
+| [BF-3f82770-2](#bf-3f82770-2) | On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and… | PiG's own defect | Windows | Unreleased |
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | Unreleased |
@@ -1473,6 +1476,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f288d69-4](#bf-f288d69-4) | Crash attribution reads Go goroutine traces as well as JavaScript stacks, so a crash in the PiG process… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f29e906](#bf-f29e906) | OpenAI Completions, OpenAI Responses and Codex request bodies list their fields in the order Pi writes them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f2a2b34](#bf-f2a2b34) | An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f2aed24](#bf-f2aed24) | A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or… | PiG's own defect | All platforms | Unreleased |
+| [BF-f2aed24-2](#bf-f2aed24-2) | An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title… | PiG's own defect | All platforms | Unreleased |
 | [BF-f2c00f9](#bf-f2c00f9) | A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-2](#bf-f2c00f9-2) | Extensions' `ui_prompt_start` and `ui_prompt_end` notifications are recorded in order when the host is slow… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-3](#bf-f2c00f9-3) | A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer… | PiG's own defect | Windows | 0.5.3 |
@@ -2075,6 +2080,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `08bf0761c9` (2026-10-09, #201), `26d302a2d7` (2026-10-09, #201), `da99854d1b` (2026-10-09)
 - **Tests:** `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks`, `coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt` and 3 more in docs/bug-ledger.json
 - **Release note:** An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason other than the user's cancel now reports that error to the flow. Before, every failure reached the flow as a cancel.
+
+### BF-08edd46
+
+**A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `08edd46dfc` (2026-11-03, #397), `3cc0c71d33` (2026-11-03, #397)
+- **Tests:** None recorded.
+- **Release note:** A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
 
 ### BF-093cf5c
 
@@ -5420,6 +5439,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2d23f814c2` (2026-10-28), `3f46dee992` (2026-10-28)
 - **Tests:** `internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404`, `internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap`, `internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope`
 - **Release note:** `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404. PiG now recognises llama-swap (its error envelope, or a `GET /running` that answers like it) and says to add it to `models.json` as an `openai-completions` provider and pick models with `/model`; a 404 from a real llama.cpp router keeps Pi's text (D212). The llama.cpp docs page has a new llama-swap section with the `models.json` setup.
+
+### BF-3f82770
+
+**A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3f8277020b` (2026-11-03)
+- **Tests:** `tui/signal_restore_write_error_test.go::TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock`
+- **Release note:** A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).
+
+### BF-3f82770-2
+
+**On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and `ERROR_NOT_CONNECTED` on the terminal now exit 129 as Pi does, instead of a crash report and exit 1 (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `3f8277020b` (2026-11-03)
+- **Tests:** `tui/signal_restore_write_error_test.go::TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock`
+- **Release note:** On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and `ERROR_NOT_CONNECTED` on the terminal now exit 129 as Pi does, instead of a crash report and exit 1 (#397).
 
 ### BF-3fa6e63
 
@@ -21702,6 +21749,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `f2a2b3409b` (2026-10-07)
 - **Tests:** `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`
 - **Release note:** An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of `[tool]`.
+
+### BF-f2aed24
+
+**A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or `ENOTTY`) now restores the terminal, records a crash and exits 1 as Pi's uncaught-exception handler does, instead of being dropped (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f2aed24c0d` (2026-11-03, #397)
+- **Tests:** None recorded.
+- **Release note:** A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or `ENOTTY`) now restores the terminal, records a crash and exits 1 as Pi's uncaught-exception handler does, instead of being dropped (#397).
+
+### BF-f2aed24-2
+
+**An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f2aed24c0d` (2026-11-03, #397)
+- **Tests:** None recorded.
+- **Release note:** An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).
 
 ### BF-f2c00f9
 

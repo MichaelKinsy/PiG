@@ -529,14 +529,24 @@ func (t *ProcessTerminal) disableModifyOtherKeys() {
 //
 // Each protocol has its own write. The output lock keeps teardown writes adjacent to other control writes on this terminal.
 func (t *ProcessTerminal) disableKeyboardProtocol() {
+	t.disableKeyboardProtocolLocked(true)
+}
+
+// disableKeyboardProtocolLocked is disableKeyboardProtocol. With wait false it writes without the output lock when another goroutine holds it, as
+// RestoreOnExit does: the goroutine that holds it may be the one calling this, from a write-error handler that runs inside its own failed write.
+func (t *ProcessTerminal) disableKeyboardProtocolLocked(wait bool) {
 	popKitty := keyboardProtocolPushed.Swap(false)
 	disableModify := modifyOtherKeysActive.Swap(false)
 	if !popKitty && !disableModify {
 		return
 	}
 	kittyProtocolActive.Store(false)
-	t.outMu.Lock()
-	defer t.outMu.Unlock()
+	if wait {
+		t.outMu.Lock()
+		defer t.outMu.Unlock()
+	} else if t.outMu.TryLock() {
+		defer t.outMu.Unlock()
+	}
 	if popKitty {
 		t.write(keyboardProtocolPop)
 	}
@@ -768,8 +778,9 @@ func (t *ProcessTerminal) writeUnlogged(data string) {
 // process.stderr that InteractiveMode.registerSignalHandlers adds are in Pi (interactive-mode.ts terminalErrorHandler).
 var terminalWriteErrorHandler atomic.Pointer[func(error)]
 
-// OnTerminalWriteError installs handler for every failed write to a ProcessTerminal's output and returns the call that removes it. The handler
-// runs on the writing goroutine with the output lock held and may end the process. It replaces an earlier handler.
+// OnTerminalWriteError installs handler for every failed terminal write that goes through WriteToTerminal (a ProcessTerminal's own output, the
+// renderer's raw and cursor writes, and the interactive mode's direct stdout writes) and returns the call that removes it. The handler runs on
+// the writing goroutine, with the output lock held for a ProcessTerminal write, and may end the process. It replaces an earlier handler.
 func OnTerminalWriteError(handler func(error)) (remove func()) {
 	registered := &handler
 	terminalWriteErrorHandler.Store(registered)
@@ -780,7 +791,13 @@ func (t *ProcessTerminal) write(data string) {
 	if t.out == nil || t.exitRestored.Load() {
 		return
 	}
-	if _, err := io.WriteString(t.out, data); err != nil {
+	WriteToTerminal(t.out, data)
+}
+
+// WriteToTerminal writes data to out and hands a failed write to the handler OnTerminalWriteError installed, as a failed process.stdout.write
+// reaches the "error" listener in Pi. Every write to the user's terminal that is not a ProcessTerminal's own goes through it.
+func WriteToTerminal(out io.Writer, data string) {
+	if _, err := io.WriteString(out, data); err != nil {
 		if handler := terminalWriteErrorHandler.Load(); handler != nil {
 			(*handler)(err)
 		}
