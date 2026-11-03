@@ -46,7 +46,9 @@ type shortcutOracleResult struct {
 
 func shortcutOracleProbes() []shortcutOracleProbe {
 	ok := shortcutOracleBehavior{Kind: "ok"}
-	reject := func(message string) shortcutOracleBehavior { return shortcutOracleBehavior{Kind: "reject", Message: message} }
+	reject := func(message string) shortcutOracleBehavior {
+		return shortcutOracleBehavior{Kind: "reject", Message: message}
+	}
 	thrownValue := shortcutOracleBehavior{Kind: "rejectValue", Message: "a thrown string, not an Error"}
 	return []shortcutOracleProbe{
 		// Two registered keys that match one input: the first registered runs, the second never does.
