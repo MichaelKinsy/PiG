@@ -5504,5 +5504,12 @@
    "old": "if !isUserSkills && probe.Exists() {",
    "new": "if probe.Exists() {"
   }
+ ],
+ "packages/evals/evals/documentation-audit.eval.ts": [
+  {
+   "file": "internal/evals/evalsuites/audit.go",
+   "old": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")",
+   "new": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")"
+  }
  ]
 }

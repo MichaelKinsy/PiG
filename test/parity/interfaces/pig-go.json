@@ -23717,9 +23717,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(values []string, options *StringEnumOptions) map[string]any"
+        "type": "func(values []string, options *StringEnumOptions) github.com/MichaelKinsy/PiG/schema.Schema"
       },
-      "shapeHash": "sha256:bb9c181464e981a338e51111dc290f51df1886c2e9e9a76bfe33007068f8528b"
+      "shapeHash": "sha256:143c9fd8e6e7ed4d6786ccc9ff71434065374575b748a5acdae1ae6d8cbe7a98"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#StringEnumOptions",

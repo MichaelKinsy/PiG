@@ -1,0 +1,11 @@
+[
+ {
+  "upstream": "packages/evals/evals/documentation-audit.eval.ts",
+  "package": "./internal/evals/evalsuites",
+  "tests": [
+   "TestSubmitAuditParametersKeepTheirAuthoredOrder"
+  ],
+  "upstream_reference": "packages/evals/evals/documentation-audit.eval.ts",
+  "mutation": "internal/evals/evalsuites/audit.go: replace 'chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")' with 'chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")'; compiling go test -overlay -run exact test -count=1 fails TestSubmitAuditParametersKeepTheirAuthoredOrder."
+ }
+]
