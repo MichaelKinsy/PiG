@@ -43,7 +43,7 @@ wait_timeout_seconds = 15
 both_reach_ready = true
 both_contain = ["LIVE-TOOL-08", "Elapsed", "Working ─"]
 both_not_contain = ["LIVE-TOOL-09", "LIVE-TOOL-DONE", "panic:", "goroutine "]
-escaped_output_equal = true
+output_normalized_equal = true
 runtime_ratio_max = 2.0
 runs = 3
 

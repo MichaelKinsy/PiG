@@ -2912,6 +2912,11 @@
           "reason": "Capture timing selects the spinner phase; preserve the Working label and every border cell."
         },
         {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Tall in-progress tool output matches Pi without stale or blank transcript rows.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_end": "faux-1"
