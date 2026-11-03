@@ -175,9 +175,10 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				endsEmpty := firstBlank && j == i+1 && body == ""
 				if nested && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
 					// Tokenizer.ts:372-374: the blank lines stay in the item's text; only the last item's text is trimmed, so an indented code block keeps one trailing blank line.
-					for range k - j {
+					for n := j; n < k; n++ {
 						if len(pending) > 0 {
-							pending = append(pending, "")
+							// A line of spaces keeps what is left of it after the content indent, which makes a space token of its own when it is not empty.
+							pending = append(pending, jsstring.Slice(strings.ReplaceAll(lines[n], "\t", "    "), contentIndent))
 						}
 					}
 					list.loose = true
@@ -195,7 +196,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 			}
 			ni, _, _, nested := parseMarkdownListItem(line)
 			// A bullet four or more spaces past the content indent is indented code, not a nested list. A line the hr rule matches ('- - -') starts no list (Tokenizer.list stops at it), so it stays item content and lexes as a rule.
-			if nested && len(ni) >= contentIndent && len(ni)-contentIndent <= 3 && !isMarkedHr(line[contentIndent:]) && !(strings.TrimRight(line, " \t") == ni+"-" && !afterBlank && widthx.JSTrim(previous) != "" && markdownIsTextLine(previous, beforeLast(pending))) {
+			if nested && len(ni) >= contentIndent && len(ni)-contentIndent <= 3 && !isMarkedHr(line[contentIndent:]) && (strings.TrimRight(line, " \t") != ni+"-" || afterBlank || widthx.JSTrim(previous) == "" || !markdownIsTextLine(previous, beforeLast(pending))) {
 				endRun(false)
 				flush()
 				child, next := parseMarkdownList(lines, j, append(slices.Clone(outer), contentIndent))
@@ -251,11 +252,20 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				afterBlank = false
 				continue
 			}
-			if (!firstBlank || j != i+1) && !afterBlank && !nested && widthx.JSTrim(line) != "" && !markedListInterrupts(line, contentIndent) && markdownLazyLineMayContinue(previous, contentIndent) && markdownOuterMayContinue(line, lines[j-1], outer) {
+			if (!firstBlank || j != i+1) && !afterBlank && (!nested || len(ni)-markdownInnermostOuter(outer) > 3) && widthx.JSTrim(line) != "" && !markedListInterrupts(line, contentIndent) && markdownLazyLineMayContinue(previous, contentIndent) && markdownOuterMayContinue(line, lines[j-1], outer) {
 				// Tokenizer.ts list: a lazy line joins the item's text as written, indentation included, after the item that holds this list took the indent of its own content off every line that reaches it.
-				endRun(true)
 				stripped := markdownStripOuterIndent(line, outer)
-				pending = append(pending, stripped)
+				// A lazy line indented four spaces or more is an indented code chunk that marked's code tokenizer merges into the text before it, with up to four spaces removed.
+				value := stripped
+				isMerged := markdownIndent(value) >= 4 && (mergedRun || widthx.JSTrim(previous) != "" && markdownIndent(previous) < 4 && markdownIsTextLine(previous, beforeLast(pending)))
+				if isMerged {
+					value = value[min(markdownIndent(value), 4):]
+					merged = append(merged, len(pending))
+				} else {
+					endRun(true)
+				}
+				mergedRun = isMerged
+				pending = append(pending, value)
 				// marked slices the line in UTF-16 units, not bytes, at the item's content indent in the text of the item that holds this list: that text is the line as the enclosing item left it, so the indent is relative to the enclosing item's content.
 				previous = jsstring.Slice(stripped, contentIndent-markdownInnermostOuter(outer))
 				j++
@@ -361,6 +371,9 @@ func markdownLazyLineMayContinue(previous string, contentIndent int) bool {
 	return !isMarkedHr(previous)
 }
 
+// markdownTaskSentinel stands in front of the first line of a task item, which marked lexes as text because the checkbox precedes it.
+const markdownTaskSentinel = "\u00a7"
+
 func (m *Markdown) renderList(list *markdownList, depth, width int) []string {
 	theme := m.markdownTheme()
 	indent := strings.Repeat("    ", depth)
@@ -429,16 +442,25 @@ func (m *Markdown) renderList(list *markdownList, depth, width int) []string {
 			text := block.text
 			sentinel := firstLineText && blockIndex == 0
 			if sentinel {
-				// A control character in front keeps every block rule from matching the first line; only that one is removed from the rendered rows, because a NUL in the source is rendered as written.
-				text = "\x00" + text
+				// A punctuation character in front keeps every block rule from matching the first line and, as the start of the text does in marked's emphasis rules, lets a delimiter run followed by punctuation open. Only the first one is removed from the rendered rows.
+				text = markdownTaskSentinel + text
 			}
 			child := m.childMarkdown(text)
 			child.suppressBlockSpacing = true
 			child.lazyIndented, child.lazyUnderlines, child.lazyLines = block.merged, block.merged, block.merged
 			child.keepPartialFence = notLast
+			// A first inline token that is not text (emphasis, a code span, a link) leaves the sentinel a text token of its own, which the text style wraps: it goes with its style codes.
+			styledSentinel := ""
+			if sentinel {
+				styledSentinel = child.defaultInlineStyleContext().applyText(markdownTaskSentinel)
+			}
 			for _, line := range child.renderContent(text, itemWidth) {
-				if sentinel && strings.Contains(line, "\x00") {
-					line = strings.Replace(line, "\x00", "", 1)
+				if sentinel && strings.Contains(line, markdownTaskSentinel) {
+					if strings.Contains(line, styledSentinel) {
+						line = strings.Replace(line, styledSentinel, "", 1)
+					} else {
+						line = strings.Replace(line, markdownTaskSentinel, "", 1)
+					}
 					sentinel = false
 				}
 				for _, wrapped := range widthx.WrapTextWithAnsi(line, itemWidth) {

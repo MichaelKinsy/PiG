@@ -2914,13 +2914,23 @@ id = "tui/markdown/render"
 upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.render"
 family = "tui-components"
 kind = "markdown-render"
-claim = "the markdown text is parsed into blocks and rendered at the content width, every row is wrapped to it, padded with the horizontal margins and the background function, and framed by the vertical padding rows; empty text renders nothing, and a text that ends in a blank line shows the trailing space row"
-status = "ported"
+claim = "a cached frame of the same text and width is returned until the text changes; the transform runs on the text at the content width (width less twice the horizontal padding, at least one cell); blank text renders nothing and clears the blocks; tabs become three spaces; the text is lexed (the lexed tokens are reused for the same source) and each top-level block renders at the width with the type of the next block, a block is rendered again when its width or next block type changes; the rows are framed by the vertical padding rows, which are the background function applied to a blank row when one is set, and an empty result is one empty row. Divergence D220: PiG renders every block with the inline lexer state at its position instead of reusing the rows of an earlier block of the same source"
+status = "divergence"
 pig_targets = [
-  "tui/markdown.go#Render"
+  "tui/markdown.go#Render",
+  "tui/markdown.go#renderBlocks"
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+  "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
@@ -2929,8 +2939,38 @@ evidence = [
 [contract.upstream]
 path = "packages/tui/src/components/markdown.ts"
 start = "\trender(width: number): string[] {"
-end = "\n\tprivate applyDefaultStyle("
-sha256 = "24b3cb6ccdfd0164e6512a5cc1f07d5c1695c5b52090877acb14a4c366bd53af"
+end = "\n\t/** Render one top-level block to output lines"
+sha256 = "226162d7638a5c3b887935dcdb086e6e481a837df2b99a2c6bf2f02668a7d91b"
+keybindings = []
+
+[[contract]]
+id = "tui/markdown/render-block"
+upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderBlock"
+family = "tui-components"
+kind = "markdown-render"
+claim = "one top-level block renders through renderToken at the content width; an image row is kept as it is; every other row is wrapped ANSI-aware to the content width, framed by the horizontal margins and either given the background function over the full width or padded with spaces to the width; the background function runs once per wrapped row, in row order"
+status = "ported"
+pig_targets = [
+  "tui/markdown.go#renderDocument",
+  "tui/markdown.go#applyMarkdownBackground"
+]
+evidence = [
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+  "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/markdown.ts"
+start = "\tprivate renderBlock("
+end = "\n\t/**\n\t * Apply default text style to a string."
+sha256 = "25f22ec339b88cf45a3379d352740f058109575a71d5579dcb7b4314a9cb5d57"
 keybindings = []
 
 [[contract]]
@@ -2945,6 +2985,14 @@ pig_targets = [
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+  "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
@@ -2973,6 +3021,14 @@ pig_targets = [
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+  "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2996,6 +3052,14 @@ pig_targets = [
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+  "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -3012,13 +3076,21 @@ id = "tui/markdown/render-table"
 upstream_id = "render:packages/tui/src/components/markdown.ts#Markdown.renderTable"
 family = "tui-components"
 kind = "markdown-render"
-claim = "a table renders with box-drawing borders, bold header cells, column alignment, widths shrunk to the available width with wrapped cells (CJK and emoji widths), and the raw text when it cannot fit, as Pi does"
+claim = "a table with no header cells renders nothing; a table whose width leaves fewer cells than columns after the borders (3n+1) renders its raw text wrapped to the width, followed by a blank row when another non-space block follows; otherwise it renders with box-drawing borders and no column alignment (cells are left-aligned whatever the delimiter row says), natural column widths when they fit, else minimum widths from the longest word of each column (at most 30 cells, shrunk by weight when they do not fit) grown by the remaining natural width with the rounding remainder given to the first columns that can grow; header cells are wrapped, padded and bold, a separator row follows the header and each body row but the last, cells wrap with a style reset after every row but the last and the enclosing style restored before padding, and a blank row follows when another non-space block follows"
 status = "ported"
 pig_targets = [
   "tui/markdown.go#renderMarkdownTable",
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+  "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+  "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
+  "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]

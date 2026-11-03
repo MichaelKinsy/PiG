@@ -48,15 +48,13 @@ func contractCorpus() []string {
 		out = append(out, b.String())
 	}
 	// Prose around styled words, links and long unbroken runs, so wrapping happens between words as well as inside them.
-	for _, s := range []string{
+	out = append(out, []string{
 		"aaaa \x1b[1mbold\x1b[22m next word", "aaaa \x1b[31mred\x1b[39m  next", "\x1b[41m" + strings.Repeat(" ", 20) + "\x1b[0m",
 		"ab\x1b[41m" + strings.Repeat(" ", 20) + "\x1b[49mcd", "aaa\x1b[9m    abcdefghij\x1b[29m", "\x1b[41;9mstrike me\x1b[0m",
 		"see \x1b]8;;http://example.com\x07the link text\x1b]8;;\x07 and more words after it", strings.Repeat("abcdefghij", 5),
 		strings.Repeat("日本語", 9), strings.Repeat("a ", 30), "  leading spaces and trailing spaces  ", "\x1b[4munderlined words that wrap around\x1b[24m done",
 		"first line\n\x1b[31mred second line that is long\nthird\x1b[39m line", "x\x1b[0m   \x1b[0m y", "ab \x1b[22m cd", "ab\x1b[22m  cd",
-	} {
-		out = append(out, s)
-	}
+	}...)
 	return out
 }
 
