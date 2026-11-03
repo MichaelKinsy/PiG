@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -21,7 +22,14 @@ const deletedCwdMessage = "Error: The current working directory no longer exists
 // Ports packages/coding-agent/test/deleted-cwd.test.ts: a deleted working directory is reported in one line with exit code 1, for
 // --version and --help too, where Pi (and pig) used to crash or carry on without a directory. The child removes its own working directory
 // and runs the real command line.
+//
+// macOS is left out: getcwd(3) there still returns the path of a removed working directory (the kernel keeps the name of the vnode),
+// so Node's process.cwd(), which main.ts:594-605 reads, and processCwd do not fail with ENOENT and Pi and pig carry on as in any other
+// directory. TestMainHandlesCwdErrors checks the reporting everywhere with a failing processCwd, as Pi's own test stubs process.cwd().
 func TestMainReportsDeletedWorkingDirectory(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("getcwd(3) returns the stale path of a removed working directory on macOS, as Node's process.cwd() does")
+	}
 	if args, ok := os.LookupEnv(deletedCwdChildEnv); ok {
 		cwd, err := os.Getwd()
 		if err != nil {

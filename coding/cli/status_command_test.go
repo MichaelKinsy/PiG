@@ -373,3 +373,28 @@ func TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity(t *testing.T) {
 		t.Fatalf("code=%d stdout=%s", code, stdout)
 	}
 }
+
+// A path through a symbolic link names the same directory whether or not the part below the link exists yet, so the report does not
+// change when a run creates the agent directory (on macOS the temporary directory is a link: /var -> /private/var).
+func TestCanonicalStatusPathResolvesTheExistingPartOfAMissingPath(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "real")
+	link := filepath.Join(root, "link")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symbolic links unavailable: %v", err)
+	}
+	canonicalReal := canonicalStatusPath(real)
+	missing := filepath.Join(link, "agent", ".pig")
+	if got, want := canonicalStatusPath(missing), filepath.Join(canonicalReal, "agent", ".pig"); got != want {
+		t.Errorf("missing path = %q, want %q", got, want)
+	}
+	if err := os.MkdirAll(filepath.Join(real, "agent", ".pig"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := canonicalStatusPath(missing), filepath.Join(canonicalReal, "agent", ".pig"); got != want {
+		t.Errorf("created path = %q, want %q", got, want)
+	}
+}
