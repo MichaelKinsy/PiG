@@ -326,8 +326,8 @@ func streamingChangesText(t *testing.T, changes []JSONChange) any {
 				path[i] = strconv.Itoa(element.(int))
 			}
 		}
-		entry := `{"kind":` + quote(change.Kind) + `,"path":[` + strings.Join(path, ",") + `],`
-		if change.Kind == jsonChangeSet {
+		entry := `{"kind":` + quote(string(change.Kind)) + `,"path":[` + strings.Join(path, ",") + `],`
+		if change.Kind == JSONChangeSet {
 			entry += `"value":` + streamingJSONText(t, change.Value, nil, "")
 		} else {
 			entry += `"text":` + quote(change.Text)

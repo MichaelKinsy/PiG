@@ -40,15 +40,21 @@ type JSONPath []any
 // numbers and literals are not reported until they end. A container nested more than 32 levels deep is reported as one set of
 // its whole value when it closes, so paths stay short.
 type JSONChange struct {
-	Kind  string // "set" or "append"
+	Kind JSONChangeKind
+
 	Path  JSONPath
 	Value any    // set
 	Text  string // append
 }
 
+// JSONChangeKind is the kind of a JSONChange, Pi's `kind: "set" | "append"`.
+type JSONChangeKind string
+
 const (
-	jsonChangeSet    = "set"
-	jsonChangeAppend = "append"
+	// JSONChangeSet is a key, an array item or a finished value appearing.
+	JSONChangeSet JSONChangeKind = "set"
+	// JSONChangeAppend is a piece extending an open string.
+	JSONChangeAppend JSONChangeKind = "append"
 
 	// streamingMaxReportedDepth: changes are reported at most this deep, so a path costs O(1) to build.
 	streamingMaxReportedDepth = 32
@@ -103,7 +109,7 @@ type streamingFrame struct {
 
 // streamingOpenChange is a change still being extended by the piece being read.
 type streamingOpenChange struct {
-	kind  string
+	kind  JSONChangeKind
 	path  JSONPath
 	value any
 	text  string
@@ -360,7 +366,7 @@ func (p *StreamingJSONParser) startString() {
 	p.str = open
 	p.place(slot, "")
 	if hasPath {
-		open.change = p.report(&streamingOpenChange{kind: jsonChangeSet, path: path, value: ""})
+		open.change = p.report(&streamingOpenChange{kind: JSONChangeSet, path: path, value: ""})
 	}
 }
 
@@ -498,14 +504,14 @@ func (p *StreamingJSONParser) placeString(open *streamingOpenString, text string
 	// Extend this string's newest change while nothing came after it; otherwise report an append.
 	change := open.change
 	if change != nil && len(p.changes) > 0 && p.changes[len(p.changes)-1] == change {
-		if change.kind == jsonChangeSet {
+		if change.kind == JSONChangeSet {
 			change.value = jsstring.Concat(change.value.(string), text)
 		} else {
 			change.text = jsstring.Concat(change.text, text)
 		}
 		return
 	}
-	open.change = p.report(&streamingOpenChange{kind: jsonChangeAppend, path: open.path, text: text})
+	open.change = p.report(&streamingOpenChange{kind: JSONChangeAppend, path: open.path, text: text})
 }
 
 func (p *StreamingJSONParser) endString(open *streamingOpenString) {
@@ -549,7 +555,7 @@ func (p *StreamingJSONParser) endScalar() {
 	if value, ok := streamingScalarValue(token); ok {
 		p.place(slot, value)
 		if path, has := p.reportedPath(slot); has {
-			p.report(&streamingOpenChange{kind: jsonChangeSet, path: path, value: value})
+			p.report(&streamingOpenChange{kind: JSONChangeSet, path: path, value: value})
 		}
 	}
 	p.valueEnded(p.top())
@@ -593,9 +599,9 @@ func (p *StreamingJSONParser) openContainer(isArray bool) {
 	// A fresh container: the working one keeps changing, and a change never does.
 	if hasPath {
 		if isArray {
-			p.report(&streamingOpenChange{kind: jsonChangeSet, path: path, value: []any{}})
+			p.report(&streamingOpenChange{kind: JSONChangeSet, path: path, value: []any{}})
 		} else {
-			p.report(&streamingOpenChange{kind: jsonChangeSet, path: path, value: map[string]any{}})
+			p.report(&streamingOpenChange{kind: JSONChangeSet, path: path, value: map[string]any{}})
 		}
 	}
 }
@@ -654,9 +660,9 @@ func (p *StreamingJSONParser) closeContainer() {
 	// Too deep to report inside: the whole value, final now that it is closed.
 	if frame.hasPath && !frame.reportsInside {
 		if frame.isArray {
-			p.report(&streamingOpenChange{kind: jsonChangeSet, path: frame.path, value: frame.array})
+			p.report(&streamingOpenChange{kind: JSONChangeSet, path: frame.path, value: frame.array})
 		} else {
-			p.report(&streamingOpenChange{kind: jsonChangeSet, path: frame.path, value: frame.object})
+			p.report(&streamingOpenChange{kind: JSONChangeSet, path: frame.path, value: frame.object})
 		}
 	}
 	p.valueEnded(p.top())
