@@ -1080,6 +1080,8 @@ type anthropicParams struct {
 	cacheControl        *anthCacheControl
 	allowEmptySignature bool
 	nativeToolChanges   bool
+	// threadSession is the session whose requests use message threads; empty when threads don't apply.
+	threadSession string
 	// toolDefinitions converts tools for native tool_addition blocks; nil
 	// unless nativeToolChanges.
 	toolDefinitions anthToolDefinitions
@@ -1171,6 +1173,8 @@ type anthropicOutgoing struct {
 	body   *requestBody
 	betas  *string
 	params anthropicParamHeaders
+	// thread is the message-threads request this request is, nil when it is sent without a thread.
+	thread *anthThreadRequest
 }
 
 func (p *anthropicProvider) prepareStream(ctx context.Context, transcript TranscriptContext, opts StreamOptions, model *Model, recordLevel func(AnthropicEffort)) (*anthropicStreamRequest, error) {
@@ -1219,7 +1223,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 	}
 	recordLevel(params.providerThinkingLevel)
 	prepared := &anthropicStreamRequest{baseURL: baseURL, client: client, params: params}
-	prepared.first, err = p.prepareRequest(ctx, baseURL, client, params.request, model, opts)
+	prepared.first, err = p.prepareParams(ctx, baseURL, client, params, model, opts)
 	if err != nil {
 		lease.release()
 		return nil, err
@@ -1233,7 +1237,7 @@ func (p *anthropicProvider) prepareStream(ctx context.Context, transcript Transc
 			}
 			recordLevel(retryParams.providerThinkingLevel)
 			prepared.params = retryParams
-			return p.prepareRequest(ctx, baseURL, client, retryParams.request, model, opts)
+			return p.prepareParams(ctx, baseURL, client, retryParams, model, opts)
 		}
 	}
 	return prepared, nil
@@ -1263,7 +1267,7 @@ func (p *anthropicProvider) send(ctx, requestContext context.Context, client ant
 // streamResponse sends the request, handles a non-success status, and runs the body pipeline on the provider's executor turn. The request context is canceled with the caller's and when the pipeline ends.
 func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, request *anthropicStreamRequest, opts StreamOptions, model *Model, builder *assistantStreamBuilder) error {
 	defer request.client.federation.release()
-	resp, err := p.send(ctx, requestContext, request.client, request.first, opts)
+	resp, thread, err := p.sendThreaded(ctx, requestContext, request, request.first, opts, builder.partial)
 	if err != nil {
 		return err
 	}
@@ -1288,14 +1292,14 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 			if err != nil {
 				return err
 			}
-			retry, err = p.prepareRequest(ctx, request.baseURL, request.client, request.params.request, model, opts)
+			retry, err = p.prepareParams(ctx, request.baseURL, request.client, request.params, model, opts)
 		default:
 			return anthHTTPError(resp.StatusCode, b)
 		}
 		if err != nil {
 			return err
 		}
-		resp, err = p.send(ctx, requestContext, request.client, retry, opts)
+		resp, thread, err = p.sendThreaded(ctx, requestContext, request, retry, opts, builder.partial)
 		if err != nil {
 			return err
 		}
@@ -1318,7 +1322,11 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 			defer func() { _ = native.Close() }()
 			body = native
 		}
-		p.parseAnthropicSSE(ctx, body, builder, anthropicStreamNames{isOAuthToken: request.client.isOAuthToken, currentTools: request.params.tools})
+		p.parseAnthropicSSE(ctx, body, builder, anthropicStreamNames{isOAuthToken: request.client.isOAuthToken, currentTools: request.params.tools, replied: func(output *AssistantMessage) {
+			if thread != nil {
+				p.recordThreadReply(model, thread, request.params, request.client.isOAuthToken, output)
+			}
+		}})
 		return nil
 	})
 }
@@ -1485,6 +1493,16 @@ func anthSystemBlocks(systemPrompt string, isOAuthToken bool, cc *anthCacheContr
 	return blocks
 }
 
+// supportsMessageThreads reports whether the endpoint supports message threads. Gateways that drop unknown request fields would silently turn a
+// continue into a request without the earlier conversation, so the default is limited to Anthropic's own endpoint (anthropic-messages.ts
+// getAnthropicCompat). Widen or remove this restriction once proxies generally forward the thread field.
+func (p *anthropicProvider) supportsMessageThreads(model *Model) bool {
+	if compat := model.ProviderMeta.Compat; compat != nil && compat.SupportsMessageThreads != nil {
+		return *compat.SupportsMessageThreads
+	}
+	return p.cfg.ProviderID == "anthropic" && strings.Contains(p.cfg.BaseURL, "api.anthropic.com")
+}
+
 // anthropicCompatFlag reads an opt-in model compat flag (default false).
 func anthropicCompatFlag(model *Model, flag func(*ModelCompat) *bool) bool {
 	if compat := model.ProviderMeta.Compat; compat != nil {
@@ -1549,6 +1567,9 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 			len(initialTools) > 0,
 	}
 	params.disablePreferredStrictTools, params.preferredStrict = disablePreferredStrictTools, new(bool)
+	if opts.SessionID != "" && resolveAnthropicCacheRetention(opts.CacheRetention, env) != CacheRetentionNone && p.supportsMessageThreads(model) {
+		params.threadSession = opts.SessionID
+	}
 	params.activeEffort = anthropicProviderEffort(model, opts)
 	maxTokens := opts.MaxTokens
 	if maxTokens <= 0 {
@@ -1593,6 +1614,7 @@ func (p *anthropicProvider) buildParams(model *Model, transcript TranscriptConte
 		hasFallbacks:                    len(allowedFallbackModels) > 0,
 		supportsMidConvoEffort:          params.activeEffort != "",
 		nativeToolChanges:               params.nativeToolChanges,
+		messageThreads:                  params.threadSession != "",
 	})
 	// pig divergence (D130): Pi #10759. An explicit anthropic-beta header can drop the managed-effort betas, so each managed body field is sent only with its beta: the mid-conversation output_config markers with mid-conversation-output-config-2026-07-01 and block_binding with thinking-binding-controls-2026-08-01 (applySampling). Pi sends both regardless and the API rejects the request with 400.
 	params.effortMarkers = effortMessages && slices.Contains(betas, midConversationEffortBeta)
@@ -1720,16 +1742,58 @@ func (p *anthropicProvider) applySampling(req *anthRequest, model *Model, transc
 
 // prepareRequest runs OnPayload with the selected model and current request, then builds the streaming POST. Upstream calls the payload hook synchronously, before its first await.
 func (p *anthropicProvider) prepareRequest(ctx context.Context, baseURL string, client anthropicClient, req anthRequest, model *Model, opts StreamOptions) (*anthropicOutgoing, error) {
-	payload := any(req)
-	if opts.OnPayload != nil {
-		next, err := opts.OnPayload(req, model)
-		if err != nil {
-			return nil, err
-		}
-		if next != nil {
-			payload = next
-		}
+	payload, err := runAnthropicPayloadHook(req, model, opts)
+	if err != nil {
+		return nil, err
 	}
+	return p.outgoing(ctx, baseURL, client, payload, opts, false)
+}
+
+// prepareParams prepares the built request like prepareRequest, as a message-threads request when the session uses threads: the hook runs once
+// on the full request, and the thread request is derived from what it left.
+func (p *anthropicProvider) prepareParams(ctx context.Context, baseURL string, client anthropicClient, params anthropicParams, model *Model, opts StreamOptions) (*anthropicOutgoing, error) {
+	payload, err := runAnthropicPayloadHook(params.request, model, opts)
+	if err != nil {
+		return nil, err
+	}
+	if params.threadSession == "" || opts.DisableContinuation {
+		return p.outgoing(ctx, baseURL, client, payload, opts, false)
+	}
+	thread, err := p.prepareThread(params.threadSession, payload)
+	if err != nil {
+		return nil, err
+	}
+	if thread == nil {
+		return p.outgoing(ctx, baseURL, client, payload, opts, false)
+	}
+	if thread.continues {
+		checkAnthropicPayload(ctx, APIAnthropicMessages, payload)
+	}
+	outgoing, err := p.outgoing(ctx, baseURL, client, thread.body, opts, thread.continues)
+	if err != nil {
+		return nil, err
+	}
+	outgoing.thread = thread
+	return outgoing, nil
+}
+
+// runAnthropicPayloadHook runs OnPayload with the selected model and current request; the request it returns replaces it unless nil.
+func runAnthropicPayloadHook(req anthRequest, model *Model, opts StreamOptions) (any, error) {
+	if opts.OnPayload == nil {
+		return req, nil
+	}
+	next, err := opts.OnPayload(req, model)
+	if err != nil {
+		return nil, err
+	}
+	if next != nil {
+		return next, nil
+	}
+	return req, nil
+}
+
+// outgoing builds the streaming POST of a payload. checked reports that the caller validated the full request this body continues: a continue sends only the new messages, which do not stand alone.
+func (p *anthropicProvider) outgoing(ctx context.Context, baseURL string, client anthropicClient, payload any, opts StreamOptions, checked bool) (*anthropicOutgoing, error) {
 	var betas *string
 	var params anthropicParamHeaders
 	var body *requestBody
@@ -1756,7 +1820,9 @@ func (p *anthropicProvider) prepareRequest(ctx context.Context, baseURL string, 
 	if err != nil {
 		return nil, fmt.Errorf(p.cfg.ProviderID+": marshal request: %w", err)
 	}
-	checkRequestSegments(ctx, APIAnthropicMessages, body)
+	if !checked {
+		checkRequestSegments(ctx, APIAnthropicMessages, body)
+	}
 	// Upstream calls client.beta.messages.create (anthropic-messages.ts:1065,
 	// 588), which the Anthropic SDK's beta namespace routes to
 	// /v1/messages?beta=true rather than /v1/messages. This is the single
@@ -1820,6 +1886,8 @@ var anthropicBodyReadHops = bodyReadHops{buffered: 2, data: 3, end: 1, endAfterD
 type anthropicStreamNames struct {
 	isOAuthToken bool
 	currentTools []ToolSchema
+	// replied runs once the stream ended with a clean reply, before the diagnostics are attached (anthropic-messages.ts recordThreadReply); nil records nothing.
+	replied func(output *AssistantMessage)
 }
 
 func (names anthropicStreamNames) toolName(name string) string {
@@ -2284,6 +2352,9 @@ func (p *anthropicProvider) parseAnthropicSSE(ctx context.Context, r io.Reader, 
 		}
 		fail(errors.New(message))
 		return
+	}
+	if names.replied != nil {
+		names.replied(output)
 	}
 	if len(inputTransformations) > 0 {
 		transformations := make([]any, len(inputTransformations))
