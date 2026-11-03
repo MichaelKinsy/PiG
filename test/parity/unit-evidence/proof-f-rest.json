@@ -99,7 +99,7 @@
       "TestRemoteTerminalCloseSettlesEveryWaiterWithTheAbortedError"
     ],
     "upstream_reference": "packages/env/test/terminal.test.ts; packages/env/src/terminal.ts RemoteTerminal.exited, close",
-    "mutation": "env/terminal.go RemoteTerminal: Exited reading the settlement channel on every call (no sync.Once) hangs the second caller; Close not calling its abort; Exited returning exit code 0; each compiled mutant fails the named tests against the pig daemon, the baseline passes"
+    "mutation": "env/terminal.go RemoteTerminal: Exited reading the settlement channel on every call (no sync.Once) hangs the second caller; Close not calling its abort; Exited returning exit code 0; each compiled mutant fails the named tests in both the pig and pi daemon subtests when the pinned Pi mirror is present (the pi subtests skip without it), the baseline passes"
   },
   {
     "upstream": "packages/env/src/list-files.ts",

@@ -152601,8 +152601,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
+        "test:coding/extension/host/subprocess/user_bash_exec_result_test.go#TestUserBashOperationsExecReportsAbortedOnlyWhenTheContextWasCancelled",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -152624,8 +152624,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
+        "test:coding/extension/host/subprocess/user_bash_exec_result_test.go#TestUserBashOperationsExecReportsAbortedOnlyWhenTheContextWasCancelled",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -152647,8 +152647,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
+        "test:coding/extension/host/subprocess/user_bash_exec_result_test.go#TestUserBashOperationsExecReportsAbortedOnlyWhenTheContextWasCancelled",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -193855,8 +193855,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/user_bash_operations_test.go#TestConformance_UserBashOperationsRunInTheExtension",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns",
-        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsExecAbortsWithTheContext"
+        "test:coding/extension/host/subprocess/user_bash_exec_result_test.go#TestUserBashOperationsExecReportsAbortedOnlyWhenTheContextWasCancelled",
+        "test:coding/extension/host/subprocess/user_bash_operations_test.go#TestUserBashOperationsAreNotReleasedWhileAnExecRuns"
       ]
     },
     {
@@ -212742,6 +212742,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetFollowUpMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_queue_modes_test.go#TestSettingsManagerQueueModeSettersWriteTheirOwnGlobalKey",
         "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
       ]
     },
@@ -212762,6 +212763,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetFollowUpMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_queue_modes_test.go#TestSettingsManagerQueueModeSettersWriteTheirOwnGlobalKey",
         "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
       ]
     },
@@ -214132,6 +214134,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetSteeringMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_queue_modes_test.go#TestSettingsManagerQueueModeSettersWriteTheirOwnGlobalKey",
         "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
       ]
     },
@@ -214152,6 +214155,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetSteeringMode"
       ],
       "evidence": [
+        "test:internal/codingagent/settings_queue_modes_test.go#TestSettingsManagerQueueModeSettersWriteTheirOwnGlobalKey",
         "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
       ]
     },
@@ -259378,8 +259382,8 @@
       ],
       "evidence": [
         "test:env/terminal_test.go#TestNewRemoteTerminalKeepsWhatItIsGivenAndWriteTakesBytesOrText",
-        "test:env/local_daemon_terminal_test.go#TestOpenTerminalOverTheLocalDaemonOfThePackagedLayout",
-        "test:env/terminal_linux_test.go#TestTerminalEnvironmentIsOrderedByName"
+        "test:env/terminal_test.go#TestRemoteTerminalCloseSettlesEveryWaiterWithTheAbortedError",
+        "test:env/terminal_test.go#TestRemoteTerminalSettlesOnceForEveryWaiterAndDropsInputAfterTheEnd"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -259468,7 +259472,8 @@
         "call:env/terminal.go#RemoteTerminal.Resize"
       ],
       "evidence": [
-        "test:env/terminal_test.go#TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode"
+        "test:env/terminal_test.go#TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode",
+        "test:env/terminal_test.go#TestRemoteTerminalSettlesOnceForEveryWaiterAndDropsInputAfterTheEnd"
       ]
     },
     {
@@ -259488,7 +259493,8 @@
         "call:env/terminal.go#RemoteTerminal.Resize"
       ],
       "evidence": [
-        "test:env/terminal_test.go#TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode"
+        "test:env/terminal_test.go#TestOpenTerminalRunsAProgramInATerminalWithInputResizingAndItsExitCode",
+        "test:env/terminal_test.go#TestRemoteTerminalSettlesOnceForEveryWaiterAndDropsInputAfterTheEnd"
       ]
     },
     {
@@ -275535,7 +275541,7 @@
       "id": "pkg:telemetry/.#AttributeValue",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:76a3ec17b65ed4cb97caa926b66f3860830ffe2c75ec7bb061c911349f9be06a",
-      "rationale": "Derived by the interface gap detector: AttributeValue is Go telemetry/context.go#AttributeValue (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: AttributeValue is Go telemetry/context.go#AttributeValue (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/context.go#AttributeValue"
       ],
@@ -275548,7 +275554,8 @@
         "call:telemetry/context.go#Attr"
       ],
       "evidence": [
-        "reach:telemetry/context.go#Attr"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
@@ -276423,7 +276430,7 @@
       "id": "pkg:telemetry/.#MetricQuery::property:attributes",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:69c177603975c073487e9191c2461b0ec85c3b891c77ab4547459995550c93ab",
-      "rationale": "Derived by the interface gap detector: MetricQuery::property:attributes is Go telemetry/store.go#MetricQuery.Attributes (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MetricQuery::property:attributes is Go telemetry/store.go#MetricQuery.Attributes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#MetricQuery.Attributes"
       ],
@@ -276436,7 +276443,7 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
@@ -276465,7 +276472,7 @@
       "id": "pkg:telemetry/.#MetricQuery::property:startMax",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9b7dbaff680541b8823bf1a47fbc05c0542ee7791086e04f885d5d0898f0e701",
-      "rationale": "Derived by the interface gap detector: MetricQuery::property:startMax is Go telemetry/store.go#MetricQuery.StartMax (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MetricQuery::property:startMax is Go telemetry/store.go#MetricQuery.StartMax (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#MetricQuery.StartMax"
       ],
@@ -276478,14 +276485,14 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
       "id": "pkg:telemetry/.#MetricQuery::property:startMin",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fe57f45f9c51de2c0fd5e89adef2b0e0b71cdc497d8f8bdaef3d706e9a1efc9d",
-      "rationale": "Derived by the interface gap detector: MetricQuery::property:startMin is Go telemetry/store.go#MetricQuery.StartMin (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MetricQuery::property:startMin is Go telemetry/store.go#MetricQuery.StartMin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#MetricQuery.StartMin"
       ],
@@ -276498,7 +276505,7 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
@@ -277376,7 +277383,8 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryMetricRowsKeepAttributeInsertionOrder",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
@@ -277397,7 +277405,8 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
@@ -277417,14 +277426,15 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
+        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:kind",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0605cad63bd6189759b501ed3b7ba5026054e9ab93b7ae8075687bd16886321d",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:kind is Go telemetry/store.go#StoredMetric.Kind (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:kind is Go telemetry/store.go#StoredMetric.Kind (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Kind"
       ],
@@ -277437,14 +277447,14 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:max",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:04e68c194c740ba69d2cfbca9366e14b8db7caafe227766b79eca4fcb979d808",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:max is Go telemetry/store.go#StoredMetric.Max (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:max is Go telemetry/store.go#StoredMetric.Max (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Max"
       ],
@@ -277457,14 +277467,14 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:min",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:dc45a942a696474b4166c9dfa8b2033188ba05bda83c3bb7cd75d482c4722c11",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:min is Go telemetry/store.go#StoredMetric.Min (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:min is Go telemetry/store.go#StoredMetric.Min (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Min"
       ],
@@ -277477,14 +277487,14 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:name",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2e90b2656ea0c887525328582c78a1512ccdc80c48f9de26047d9bb31fda9cb9",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:name is Go telemetry/store.go#StoredMetric.Name (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:name is Go telemetry/store.go#StoredMetric.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Name"
       ],
@@ -277497,7 +277507,7 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
@@ -277518,14 +277528,15 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
       "id": "pkg:telemetry/.#StoredMetric::property:unit",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b748906283f3b46653a3a6d40c75675d8da7cc8457e25b1a6fd377efce055693",
-      "rationale": "Derived by the interface gap detector: StoredMetric::property:unit is Go telemetry/store.go#StoredMetric.Unit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: StoredMetric::property:unit is Go telemetry/store.go#StoredMetric.Unit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#StoredMetric.Unit"
       ],
@@ -277538,7 +277549,7 @@
         "call:chord/telemetrysqlite/store.go#findMetrics"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findMetrics"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes"
       ]
     },
     {
@@ -279262,7 +279273,9 @@
         "public-api:telemetry/store.go#TelemetryStore"
       ],
       "evidence": [
-        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots"
+        "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindMetricsFiltersByNameIntervalAndAttributes",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -279484,7 +279497,7 @@
       "id": "pkg:telemetry/.#TraceQuery::property:attributes",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:69c177603975c073487e9191c2461b0ec85c3b891c77ab4547459995550c93ab",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:attributes is Go telemetry/store.go#TraceQuery.Attributes (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:attributes is Go telemetry/store.go#TraceQuery.Attributes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.Attributes"
       ],
@@ -279497,14 +279510,14 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
       "id": "pkg:telemetry/.#TraceQuery::property:cursor",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0a7bcc6acfd0f75526144603b83b3bda3a8fb7d2b250dc993176e5dbd9c12146",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:cursor is Go telemetry/store.go#TraceQuery.Cursor (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:cursor is Go telemetry/store.go#TraceQuery.Cursor (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.Cursor"
       ],
@@ -279517,14 +279530,14 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
       "id": "pkg:telemetry/.#TraceQuery::property:errors",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:297597a016428f567c3d54ab06c98eb8af1ba9c8bfaac2b9e482c028f584e67f",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:errors is Go telemetry/store.go#TraceQuery.Errors (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:errors is Go telemetry/store.go#TraceQuery.Errors (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.Errors"
       ],
@@ -279537,7 +279550,7 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
@@ -279557,7 +279570,8 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestUsesTwoSpanQueriesForAPageNotOnePerTrace"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestUsesTwoSpanQueriesForAPageNotOnePerTrace",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
@@ -279578,14 +279592,15 @@
       ],
       "evidence": [
         "test:telemetry/store_upstream_test.go#TestInMemoryStoreSnapshots",
-        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads"
+        "test:chord/telemetrysqlite/telemetry_sqlite_store_test.go#TestAttributesKeepInsertionOrderInRowsAndReads",
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
       "id": "pkg:telemetry/.#TraceQuery::property:startMax",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9b7dbaff680541b8823bf1a47fbc05c0542ee7791086e04f885d5d0898f0e701",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMax is Go telemetry/store.go#TraceQuery.StartMax (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMax is Go telemetry/store.go#TraceQuery.StartMax (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.StartMax"
       ],
@@ -279598,14 +279613,14 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
       "id": "pkg:telemetry/.#TraceQuery::property:startMin",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fe57f45f9c51de2c0fd5e89adef2b0e0b71cdc497d8f8bdaef3d706e9a1efc9d",
-      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMin is Go telemetry/store.go#TraceQuery.StartMin (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TraceQuery::property:startMin is Go telemetry/store.go#TraceQuery.StartMin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "telemetry/store.go#TraceQuery.StartMin"
       ],
@@ -279618,7 +279633,7 @@
         "call:chord/telemetrysqlite/store.go#findTraces"
       ],
       "evidence": [
-        "reach:chord/telemetrysqlite/store.go#findTraces"
+        "test:telemetry/store_queries_test.go#TestInMemoryFindTracesFiltersOrdersAndPagesSettledTraces"
       ]
     },
     {
@@ -285318,6 +285333,8 @@
         "call:tui/selection_navigation.go#GetSelectPageIndex"
       ],
       "evidence": [
+        "test:tui/select_page_index_runtime_test.go#TestGetSelectPageIndexFollowsRemappedPageKeysThroughTheRuntimeInputPath",
+        "test:tui/select_page_index_runtime_test.go#TestGetSelectPageIndexMovesAFocusedSelectorThroughTheRuntimeInputPath",
         "test:tui/select_page_keys_test.go#TestGetSelectPageIndex"
       ]
     },
@@ -285338,6 +285355,8 @@
         "call:tui/selection_navigation.go#GetSelectPageIndex"
       ],
       "evidence": [
+        "test:tui/select_page_index_runtime_test.go#TestGetSelectPageIndexFollowsRemappedPageKeysThroughTheRuntimeInputPath",
+        "test:tui/select_page_index_runtime_test.go#TestGetSelectPageIndexMovesAFocusedSelectorThroughTheRuntimeInputPath",
         "test:tui/select_page_keys_test.go#TestGetSelectPageIndex"
       ]
     },
