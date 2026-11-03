@@ -80,6 +80,8 @@ export default function (pi) {
     if (process.env.RPC_SHUTDOWN_DIALOG) {
       record("dialog:" + (await ctx.ui.select("Shutdown dialog", ["keep"])));
     }
+    // RPC_SHUTDOWN_RECORD_DONE reports that the handler ran to its end.
+    if (process.env.RPC_SHUTDOWN_RECORD_DONE) record("session_shutdown:done");
   });
   pi.registerCommand("ask", {
     description: "Wait on a select",
