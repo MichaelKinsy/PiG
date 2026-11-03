@@ -161,6 +161,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2323d94](#bf-2323d94) | `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy… | PiG's own defect | All platforms | Unreleased |
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | Unreleased |
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-23841dc](#bf-23841dc) | The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does… | PiG's own defect | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
@@ -3496,6 +3497,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `234664cc42` (2026-10-30, #11501)
 - **Tests:** `coding/codemode_output_summary_test.go::TestCodemodeSummarizesUnionAndMultiLineOutputTypesInsteadOfInliningThem`, `coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep`
 - **Release note:** With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no longer puts its whole rendered output type, with its comments run together, into every request. The description now lists the field names of each variant of a union of objects (`{ action: "start", process } | { action: "list", processes, truncated? }`), shows the value of `const` fields, and points a longer type to `await describeTool("name")`. Carried forward from Pi f6ee9ce9 (earendil-works/pi#11501), past the 1.4.0+b3a29f11 pin.
+
+### BF-23841dc
+
+**The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.
+- **Root cause:** documentation-audit.eval.ts:15-21 writes `verdict: Type.Union([Type.Literal("match"), Type.Literal("mismatch"), Type.Literal("inconclusive")])`, which TypeBox serializes as `{"anyOf":[{"type":"string","const":"match"},...]}`. The Go port used ai.StringEnum, so the model saw `{"type":"string","enum":[...]}`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `23841dce31` (2026-11-02)
+- **Tests:** `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`
+- **Release note:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.
 
 ### BF-23ee6e1
 
