@@ -30646,28 +30646,6 @@
       "tests": []
     },
     {
-      "id": "BF-f08ffe9",
-      "title": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for…",
-      "symptom": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills.",
-      "rootCause": "validAgentPluginSkills compared len(description) (bytes) with 1024; Pi's validateDescription compares description.length (UTF-16 units), so a 600-character CJK description (1800 bytes) was dropped and 513 astral characters (2052 bytes, 1026 units) are now rejected only by units. Now jsstring.Length. Test: TestAgentPluginsV1DescriptionLimitCountsUTF16Units (red before the fix).",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills. The limit counts UTF-16 units like Pi's skill validation, so 513 astral characters are over it.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "f08ffe97f4",
-          "date": "2026-11-02"
-        }
-      ],
-      "tests": [
-        "coding/packagecontent/packagecontent_test.go::TestAgentPluginsV1DescriptionLimitCountsUTF16Units"
-      ]
-    },
-    {
       "id": "BF-b430c7a",
       "title": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go…",
       "symptom": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go in-process widgets share a side of the editor, as in Pi.",
@@ -41765,6 +41743,28 @@
       "tests": [
         "ai/transport_error_test.go::TestProviderTransportFailureMidStreamKeepsTheCause",
         "ai/transport_error_test.go::TestProviderTransportFailureMidStreamMatchesTerminated"
+      ]
+    },
+    {
+      "id": "BF-f08ffe9",
+      "title": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for…",
+      "symptom": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills.",
+      "rootCause": "validAgentPluginSkills compared len(description) (bytes) with 1024; Pi's validateDescription compares description.length (UTF-16 units), so a 600-character CJK description (1800 bytes) was dropped and 513 astral characters (2052 bytes, 1026 units) are now rejected only by units. Now jsstring.Length. Test: TestAgentPluginsV1DescriptionLimitCountsUTF16Units (red before the fix).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills. The limit counts UTF-16 units like Pi's skill validation, so 513 astral characters are over it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f08ffe97f4",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/packagecontent/packagecontent_test.go::TestAgentPluginsV1DescriptionLimitCountsUTF16Units"
       ]
     },
     {
