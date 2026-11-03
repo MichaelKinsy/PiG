@@ -48,7 +48,7 @@ func must[T any](value T, err error) T {
 }
 
 // closeHarness closes the Harness and fails the test on error.
-func closeHarness(t *testing.T, harness Harness) {
+func closeHarness(t testing.TB, harness Harness) {
 	t.Helper()
 	if err := harness.Close(testContext); err != nil {
 		t.Fatal(err)
