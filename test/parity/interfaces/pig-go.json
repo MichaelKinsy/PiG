@@ -242941,6 +242941,17 @@
       "shapeHash": "sha256:6e0dcc77bc5854fbad913bb3ebb1d4d4cb0ed2da81e3cc29ddb480c40af8d94f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.EntryReads",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.EntryReads",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ExportHeader",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.ExportHeader",
@@ -242972,6 +242983,17 @@
         "type": "func(fromID ...string) []SessionEntry"
       },
       "shapeHash": "sha256:230f5fedb1b2db1151b2fef855e3b704ec58197a0523ebcdf544f3a977350bb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.GetBranchSystemMessages",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.GetBranchSystemMessages",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/agent.AgentMessage"
+      },
+      "shapeHash": "sha256:d60bc5152d6dcb12ddb6c19b10a5a050804dc9e45a0fcc20acd75276ddb5a741"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.GetChildren",
@@ -248384,6 +248406,17 @@
         "type": "func() []error"
       },
       "shapeHash": "sha256:37478fdf5e8948aa8a01a8ab0577b707b1b1512f6963742ab3ae9050136efefc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.releaseSwitchHeap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.releaseSwitchHeap",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.reloadFromExtension",
@@ -257263,6 +257296,17 @@
       "shapeHash": "sha256:6e0dcc77bc5854fbad913bb3ebb1d4d4cb0ed2da81e3cc29ddb480c40af8d94f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.EntryReads",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.EntryReads",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ExportHeader",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.ExportHeader",
@@ -257294,6 +257338,17 @@
         "type": "func(fromID ...string) []SessionEntry"
       },
       "shapeHash": "sha256:230f5fedb1b2db1151b2fef855e3b704ec58197a0523ebcdf544f3a977350bb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.GetBranchSystemMessages",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.GetBranchSystemMessages",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/agent.AgentMessage"
+      },
+      "shapeHash": "sha256:d60bc5152d6dcb12ddb6c19b10a5a050804dc9e45a0fcc20acd75276ddb5a741"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.GetChildren",

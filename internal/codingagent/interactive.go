@@ -366,6 +366,10 @@ type InteractiveMode struct {
 	// idleCollectPending is set while that wait runs; typed input restarts it.
 	idleCollectPending atomic.Bool
 	idleCollector      idleHeapCollector
+	// switchHeapRelease is set while a heap release after a Session replacement or tree navigation is queued or running.
+	switchHeapRelease atomic.Bool
+	// switchHeapReleases counts the releases requested after a Session replacement or tree navigation, coalesced ones included.
+	switchHeapReleases atomic.Int64
 
 	branchSummaryCancel context.CancelFunc
 

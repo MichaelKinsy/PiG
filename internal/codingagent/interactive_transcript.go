@@ -129,6 +129,7 @@ func (m *InteractiveMode) repaintInitialMessages() {
 	m.rebuildChat(true)
 	m.renderProjectTrustWarningIfNeeded()
 	m.showSessionCompactedStatus()
+	m.releaseSwitchHeap()
 }
 
 // renderSessionEntries refreshes the footer name before painting the current Session, including an unnamed fork. Pi's footer.ts:124-128 reads the current SessionManager name rather than retaining the source name.
