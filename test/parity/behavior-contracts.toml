@@ -2962,7 +2962,20 @@ evidence = [
   "tui/markdown_marked_lexer_rules_test.go#TestMarkedBlockRulesEqualTheirPatterns",
   "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
-  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+  "tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender",
+  "tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+  "tui/markdown_core_contract_test.go#TestMarkdownFinishStreamingDropsTheMemos",
+  "tui/markdown_core_contract_test.go#TestMarkdownAsyncPendingFrameIsKeptOnlyAtItsWidth",
+  "tui/markdown_core_contract_test.go#TestMarkdownNegativeWidthRendersAsZero",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
 ]
 
 [contract.upstream]
@@ -2992,7 +3005,20 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
-  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+  "tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender",
+  "tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+  "tui/markdown_core_contract_test.go#TestMarkdownFinishStreamingDropsTheMemos",
+  "tui/markdown_core_contract_test.go#TestMarkdownAsyncPendingFrameIsKeptOnlyAtItsWidth",
+  "tui/markdown_core_contract_test.go#TestMarkdownNegativeWidthRendersAsZero",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
 ]
 
 [contract.upstream]
@@ -3028,7 +3054,20 @@ evidence = [
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
   "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
-  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+  "tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender",
+  "tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+  "tui/markdown_core_contract_test.go#TestMarkdownFinishStreamingDropsTheMemos",
+  "tui/markdown_core_contract_test.go#TestMarkdownAsyncPendingFrameIsKeptOnlyAtItsWidth",
+  "tui/markdown_core_contract_test.go#TestMarkdownNegativeWidthRendersAsZero",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
+  "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
 ]
 
 [contract.upstream]
@@ -3060,7 +3099,18 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
-  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+  "tui/markdown_emphasis_contract_test.go#TestMarkdownRandomEmphasisMatchesPi",
+  "tui/markdown_emphasis_contract_test.go#TestMarkdownOrphanDelimiterSkipMatchesPi",
+  "tui/markdown_style_state_contract_test.go#TestMarkdownDefaultStyleCallsMatchPi",
+  "tui/markdown_spans_contract_test.go#TestStackedInlineRenderingCallsThemeFunctionsOncePerToken",
+  "tui/markdown_spans_contract_test.go#TestStackedInlineRenderingTakesCodesOutsideEveryLevel",
+  "tui/markdown_spans_contract_test.go#TestMarkdownInlineLatexOffMatchesPi",
+  "tui/markdown_spans_contract_test.go#TestMarkdownTextStyleCombinationsMatchPi",
+  "tui/markdown_spans_contract_test.go#TestMarkdownBackslashEscapesInEmphasisMatchPi",
+  "tui/markdown_spans_contract_test.go#TestMarkdownDefaultColorEqualsAColorTextStyle",
+  "tui/markdown_commonmark_contract_test.go#TestMarkdownCommonmarkDocsMatchPi",
+  "tui/markdown_residual_contract_test.go#TestMarkdownResidualDocsMatchPi",
 ]
 
 [contract.upstream]
@@ -3091,7 +3141,12 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
-  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnTokenizerSources",
+  "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
+  "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
 ]
 
 [contract.upstream]
@@ -3122,7 +3177,13 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
-  "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
+  "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+  "tui/markdown_table_arith_oracle_test.go#TestMarkdownTableColumnWidthsMatchPiOneAndTwoColumns",
+  "tui/markdown_table_arith_oracle_test.go#TestMarkdownTableColumnWidthsMatchPiManyColumns",
+  "tui/markdown_table_arith_oracle_test.go#TestMarkdownTableRandomCellsMatchPi",
+  "tui/markdown_table_contract_test.go#TestMarkdownRandomTablesMatchPi",
+  "tui/markdown_table_contract_test.go#TestMarkdownTableColumnsOfNoWidthMatchPi",
+  "tui/markdown_spans_contract_test.go#TestMarkdownTableWithoutHeaderCellsRendersNothing",
 ]
 
 [contract.upstream]
