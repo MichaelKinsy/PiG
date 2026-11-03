@@ -26,7 +26,7 @@ type instance interface {
 	// clockChanged tells an instance whose clock the host reads (the Worker host's QuickJS) that the virtual clock of a
 	// deterministic VM changed; an instance that reads the clock itself ignores it.
 	clockChanged(c *virtualClock)
-	// halt makes the instance trap at its next loop iteration.
+	// halt makes the instance trap within haltPollInterval loop iterations.
 	halt()
 	// close releases the instance; it may be called more than once and on a partly built instance.
 	close()
@@ -104,7 +104,7 @@ func (v *vm) quickjsVersion() string {
 	}
 }
 
-// halt makes the instance trap at its next loop iteration, whatever native code the script is in.
+// halt makes the instance trap within haltPollInterval loop iterations, whatever native code the script is in.
 func (v *vm) halt() { v.inst.halt() }
 
 // close releases the instance. A vm whose instance was never made has nothing to release.
