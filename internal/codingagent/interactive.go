@@ -1524,6 +1524,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	m.runEnded.Store(false)
 	m.runCtx = ctx
+	removeWriteErrorHandler := m.exitOnDeadTerminalWrite()
+	m.onStop(func() error { removeWriteErrorHandler(); return nil })
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(ctx)
 	m.onStop(func() error {
 		m.backgroundCancel()

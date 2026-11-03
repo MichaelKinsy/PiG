@@ -912,3 +912,10 @@ commit = "0c8f09f42d"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "PiG's own audit tool, not a port of a Pi test: the carry test went with the carry of reviewed rows (a manifest now audits against the exact earlier pin, so no row survives a pin move unchanged), and a new test requires the from mirror to exist. No Pi behavior is involved."
+
+[[entry]]
+path = "tui/terminal_foreground_pty_test.go"
+commit = "f33e07a23f"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The two expected values are the hung-up-terminal answer of TestStdinInForegroundFollowsTheTerminalProcessGroup, a test this unreleased branch added for D227 (Pi has no foreground check and no test of it). ENOTTY, a terminal that is not the controlling terminal, now answers foreground like Pi's unconditional restart instead of an error, so the hung-up case accepts EIO (Linux) or the no-controlling-terminal answer. No shipped Pi behavior and no existing test changed."

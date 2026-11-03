@@ -50,6 +50,7 @@ func TestInteractiveSuspendUpstream(t *testing.T) {
 				stop:          func() { calls = append(calls, "stop") },
 				start:         func() error { calls = append(calls, "start"); return nil },
 				requestRender: func() { calls = append(calls, "render-force") },
+				foreground:    func() (bool, error) { return true, nil },
 				kill: func(pid int) error {
 					calls = append(calls, fmt.Sprintf("kill:%d:SIGTSTP", pid))
 					if failed {
@@ -99,7 +100,7 @@ func TestSuspendCancellationCleansUpWithoutRestart(t *testing.T) {
 			onContinue, onCancel = continued, canceled
 			return func() { cleanups++ }
 		},
-		stop: func() { stops++ }, start: func() error { starts++; return nil }, requestRender: func() { t.Error("render after cancellation") }, kill: func(int) error { return nil },
+		stop: func() { stops++ }, start: func() error { starts++; return nil }, requestRender: func() { t.Error("render after cancellation") }, kill: func(int) error { return nil }, foreground: func() (bool, error) { return true, nil },
 	}
 	if err := suspendTerminal(ctx, "linux", nil, ops); err != nil {
 		t.Fatal(err)

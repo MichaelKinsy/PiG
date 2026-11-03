@@ -39,6 +39,30 @@ func terminalHungUp(file *os.File) bool {
 	}
 }
 
+// inForeground is tcgetpgrp on stdin compared with this process's group: whether the group may use the terminal without a SIGTTOU or SIGTTIN
+// stop. Job control applies only to the controlling terminal: ENOTTY means stdin is a terminal that is not this process's controlling terminal,
+// so nothing can stop the process there and it counts as foreground, as Pi's SIGCONT handler restarts the UI there. Any other error, EIO of a
+// hung-up terminal first, is returned for the caller to treat as a dead terminal.
+func (t *ProcessTerminal) inForeground() (bool, error) {
+	if t.stdin == nil {
+		return false, syscall.ENOTTY
+	}
+	fd := int(t.stdin.Fd())
+	for {
+		pgrp, err := unix.IoctlGetInt(fd, unix.TIOCGPGRP)
+		if isEINTR(err) {
+			continue
+		}
+		if errors.Is(err, unix.ENOTTY) {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return pgrp == syscall.Getpgrp(), nil
+	}
+}
+
 // pollReadable waits up to ms milliseconds for fd to become readable. It
 // returns n>0 when readable, 0 on timeout. EINTR is retried internally so the
 // caller never observes it. Mirrors the original DrainInput poll loop.
@@ -116,7 +140,7 @@ func (w *terminalInputWaiter) close() {
 	_ = w.cancelWrite.Close()
 }
 
-// isEINTR reports whether a read error is an interrupted syscall worth retrying.
+// isEINTR reports whether a read, poll or termios ioctl error is an interrupted syscall worth retrying.
 func isEINTR(err error) bool { return errors.Is(err, unix.EINTR) }
 
 // startResizeWatcher installs a SIGWINCH handler that calls onResize on resize,

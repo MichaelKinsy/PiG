@@ -2934,6 +2934,26 @@ Call-site markers: `extensions/sdk/type_schema_refine.go` (`Refine`), `extension
 
 Evidence: `TestConformance_RefinedToolArgumentsAreNotRefined` (`test/extension-conformance/refine_arguments_test.go`) registers a tool whose schema carries refinements in every SDK and requires that the host runs none of them (a probe records every call of a predicate and a message function).
 
+## D227 A suspended session resumed in the background stays parked until `fg`
+
+What: after Ctrl+Z, a SIGCONT that reaches PiG while its process group is not the foreground group of the terminal on stdin (`bg`, or `kill -CONT` from another process) does not restart the UI. PiG checks `tcgetpgrp(stdin)` first. When the group is in the background it stops itself again with SIGTSTP to the process group, as Ctrl+Z does, without entering raw mode, drawing a frame or touching the terminal, and keeps waiting for the next SIGCONT. `fg` hands the terminal to the group and sends SIGCONT; the check then passes and the UI starts as in Pi. A hung-up terminal answers the check with EIO, which exits 129 as Pi's dead-terminal handling does. When stdin is a terminal that is not the controlling terminal (ENOTTY), no job control applies and PiG restarts the UI as Pi does.
+
+Why: Pi's `handleCtrlZ` (`packages/coding-agent/src/modes/interactive/interactive-mode.ts`, the `process.once("SIGCONT", ...)` handler) calls `ui.start()` and `ui.requestRender(true)` on any SIGCONT. In a background group the termios ioctl of `setRawMode(true)` stops the process with SIGTTOU, so the shell reports `suspended (tty output)` (observed with Pi 1.4.0+b556cfe5, whose `handleCtrlZ` is identical to v1.5.0, on Linux under tmux and bash; the reporter saw the same with Pi 1.3.0 under zsh). Pi reaches the stopped state only because the terminal call faults: the reporter also sees a first write succeed on a terminal without `TOSTOP`, with a read stopping the process next. PiG stops itself before it touches the terminal, whatever the terminal modes are. The common end state is the same: the job is stopped and `fg` returns to the session; the shell's stop reason differs (`suspended` instead of `suspended (tty output)`).
+
+Pi bug: reported by the user as #396; Pi 1.3.0 and 1.5.0 behave the same way. A Pi issue draft is in `handoffs/next/issues/issue-396.md`.
+
+Scope: only a SIGCONT that arrives while the process group does not own its controlling terminal. Ctrl+Z then `fg`, and every other resume, run Pi's sequence unchanged.
+
+SCRUTINIZED:approved
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-02 (fix #396 with a foreground check; keep the process-group SIGTSTP target of Pi).
+
+Remove when: Pi checks the foreground process group before it restarts the UI on SIGCONT, or an equivalent that keeps a background resume from touching the terminal.
+
+Call-site markers: `internal/codingagent/suspend.go` (`suspendTerminal` continuation), `internal/codingagent/interactive_signals_unix.go` (`foreground` operation and the `onSuspendContinue` waiter).
+
+Evidence: `TestSuspendedSessionResumedInTheBackgroundStaysParkedUntilFg`, `TestSuspendedSessionWhoseTerminalIsGoneDoesNotRestart`, `TestSuspendWaiterKeepsWaitingAfterAParkedContinuation` (`internal/codingagent`), `TestStdinInForegroundFollowsTheTerminalProcessGroup` (`tui`, a real pseudo-terminal).
+
 ## D228 Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy
 
 What: two parts, one cause. macOS Terminal.app (default profile, Option-as-Meta off) sends Option+Up as plain Up, `ESC [ A` (captured on the owner's Mac, 2026-11-02); Ghostty sends `ESC [ 1;3 A` and the dequeue key `app.message.dequeue` (default Alt+Up) works there. Pi 1.5.0 treats plain Up as prompt-history recall (`interactive-mode.ts:3097` binds `app.message.dequeue`, `:4696` names it in the queued hint through `getAppKeyDisplay`), so in Terminal.app the queued text appears in the editor as a copy, the message stays queued, and it is sent after the tool even when the user deletes the copy.

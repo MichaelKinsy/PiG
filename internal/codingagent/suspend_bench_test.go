@@ -15,7 +15,7 @@ func BenchmarkSuspendLifecycle(b *testing.B) {
 			keepAlive:       func(interval time.Duration) func() { return time.NewTicker(interval).Stop },
 			ignoreInterrupt: func() func() { mode.suspended.Store(true); return func() { mode.suspended.Store(false) } },
 			continued:       func(continued func() error, _ func()) func() { onContinue = continued; return func() {} },
-			stop:            func() {}, start: func() error { return nil }, requestRender: func() {}, kill: func(int) error { return nil },
+			stop:            func() {}, start: func() error { return nil }, requestRender: func() {}, kill: func(int) error { return nil }, foreground: func() (bool, error) { return true, nil },
 		}
 		if err := suspendTerminal(b.Context(), "unix", nil, ops); err != nil {
 			b.Fatal(err)

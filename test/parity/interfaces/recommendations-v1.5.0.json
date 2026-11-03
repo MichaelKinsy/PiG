@@ -166662,6 +166662,7 @@
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorScheme.Store",
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorsPending.Store",
         "go:github.com/MichaelKinsy/PiG/tui#terminalColorsState.Store",
+        "go:github.com/MichaelKinsy/PiG/tui#terminalWriteErrorHandler.Store",
         "go:github.com/MichaelKinsy/PiG/tui#wholeFrames.Store"
       ],
       "missingClosure": [
