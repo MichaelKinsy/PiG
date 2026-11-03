@@ -105,15 +105,6 @@ func sessionSelected(frame []string) string {
 	return ""
 }
 
-func sessionHeader(frame []string) string {
-	for _, line := range frame {
-		if plain := sessionPlain(line); strings.Contains(plain, "Resume Session") {
-			return plain
-		}
-	}
-	return ""
-}
-
 func sessionScroll(frame []string) string {
 	for _, line := range frame {
 		if plain := sessionPlain(line); regexp.MustCompile(`^  \(\d+/\d+\)$`).MatchString(plain) {
@@ -640,7 +631,6 @@ func TestSessionSelectorKeybindingSourcesMatchPi(t *testing.T) {
 	type action struct {
 		id, defaultKey string
 		acted          func(t *testing.T, tr sessionContractTrace)
-		keys           []string
 	}
 	actions := []action{
 		{id: "app.session.toggleSort", defaultKey: skCtrlS, acted: sessionWantContains("Sort: Recent")},
@@ -684,8 +674,9 @@ func TestSessionSelectorKeybindingSourcesMatchPi(t *testing.T) {
 		if a.id == "app.session.deleteNoninvasive" {
 			continue
 		}
-		cases = append(cases, sessionContractCase{name: "hints/" + a.id + "/follow-the-process-wide-manager", fixture: "big", global: rebound(a.id), bindings: none, check: sessionWantContains("ctrl+g")})
-		cases = append(cases, sessionContractCase{name: "hints/" + a.id + "/ignore-the-component-manager", fixture: "big", global: none, bindings: rebound(a.id), check: sessionWantLacks("ctrl+g")})
+		cases = append(cases,
+			sessionContractCase{name: "hints/" + a.id + "/follow-the-process-wide-manager", fixture: "big", global: rebound(a.id), bindings: none, check: sessionWantContains("ctrl+g")},
+			sessionContractCase{name: "hints/" + a.id + "/ignore-the-component-manager", fixture: "big", global: none, bindings: rebound(a.id), check: sessionWantLacks("ctrl+g")})
 	}
 	cases = append(cases,
 		sessionContractCase{name: "hints/empty-named-message-follows-the-process-wide-manager", fixture: "unnamed", global: rebound("app.session.toggleNamedFilter"), bindings: none, keys: []string{skCtrlN}, check: sessionWantContains("Press ctrl+g to show all")},
