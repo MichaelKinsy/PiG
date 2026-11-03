@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// These tests mirror packages/ai/test/validation.test.ts in Pi b556cfe5, where validateToolArguments validates with pi-schema.
+// These tests mirror packages/ai/test/validation.test.ts in Pi v1.5.0, where validateToolArguments validates with pi-schema.
 // Go never generates JavaScript functions, so the CSP case exercises the same
 // validator path as every other call, with no Function-constructor dependency.
 func TestValidateToolArgumentsWithoutFunctionConstructor(t *testing.T) {

@@ -241,7 +241,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v1.1.0/packages/ai/test/faux-provider.test.ts:327
+	// .upstream/v1.5.0/packages/ai/test/faux-provider.test.ts:327
 	t.Run("counts cached characters up to the first difference in the joined prompt", func(t *testing.T) {
 		p := NewFauxProvider(FauxConfig{})
 		p.SetResponses([]FauxResponseStep{fauxUpstreamText("a"), fauxUpstreamText("b"), fauxUpstreamText("c")})
@@ -388,7 +388,7 @@ func TestFauxProviderUpstream(t *testing.T) {
 	})
 }
 
-// .upstream/v1.1.0/packages/ai/test/faux-provider.test.ts:327 "counts cached characters up to the first difference in the joined prompt":
+// .upstream/v1.5.0/packages/ai/test/faux-provider.test.ts:327 "counts cached characters up to the first difference in the joined prompt":
 // the cached prefix is measured in characters of the joined prompt texts, so a first message edited after "user:hello w" keeps
 // only those 12 characters cached (4 and 3 tokens at the faux provider's 4-characters-per-token estimate).
 func TestFauxProviderCountsCachedCharactersUpToTheFirstDifference(t *testing.T) {
