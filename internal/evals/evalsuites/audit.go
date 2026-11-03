@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/evals"
 	"github.com/MichaelKinsy/PiG/internal/evals/bridge"
@@ -26,12 +25,16 @@ func submitAudit() evals.CustomTool {
 			Name: auditToolName, Label: "Submit documentation audit",
 			Description:   "Submit the final verdict after completing the documentation investigation.",
 			PromptSnippet: "Submit the final documentation audit as validated structured data",
-			// TypeBox's Type.Object writes type, required, properties, then the options.
+			// TypeBox's Type.Object writes type, required, properties, then the options; Type.Union of Type.Literal writes anyOf of {type, const}.
 			Parameters: chordjson.ObjectOf(
 				"type", "object",
 				"required", []string{"verdict", "explanation"},
 				"properties", chordjson.ObjectOf(
-					"verdict", ai.StringEnum([]string{"match", "mismatch", "inconclusive"}, nil),
+					"verdict", chordjson.ObjectOf("anyOf", []any{
+						chordjson.ObjectOf("type", "string", "const", "match"),
+						chordjson.ObjectOf("type", "string", "const", "mismatch"),
+						chordjson.ObjectOf("type", "string", "const", "inconclusive"),
+					}),
 					"explanation", chordjson.ObjectOf("type", "string", "minLength", 1, "maxLength", 2000),
 				),
 				"additionalProperties", false,
