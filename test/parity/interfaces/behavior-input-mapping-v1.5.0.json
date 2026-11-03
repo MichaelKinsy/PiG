@@ -1634,20 +1634,37 @@
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderCall",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/tool_codemode_renderer.go#codemodeRenderCall"
+      ],
+      "evidence": [
+        "internal/codingagent/code_highlighter_rows_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+        "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+        "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
+        "test/parity/scenarios/tools/25-codemode-cards.toml"
+      ],
+      "contracts": [
+        "coding-agent/codemode-renderer/call"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderResult",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
+      ],
+      "evidence": [
+        "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+        "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
+        "test/parity/scenarios/tools/25-codemode-cards.toml"
+      ],
+      "contracts": [
+        "coding-agent/codemode-renderer/result"
+      ],
       "divergence": "",
       "rationale": ""
     },
