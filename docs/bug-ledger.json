@@ -32490,6 +32490,30 @@
       ]
     },
     {
+      "id": "BF-be2920a",
+      "title": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request…",
+      "symptom": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi. It was sent as an ordinary function tool instead. `prefer` is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "be2920a2f3",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictPreferUnsupportedPlain",
+        "ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictRequireUnsupported",
+        "ai/openai_completions_strict_require_test.go::TestCompletionsStreamStrictRequireUnsupportedFailsBeforeRequest"
+      ]
+    },
+    {
       "id": "BF-be6803c",
       "title": "The /tree \"Summarize branch?\" selector and \"Custom summarization instructions\" editor, the /import…",
       "symptom": "The /tree \"Summarize branch?\" selector and \"Custom summarization instructions\" editor, the /import confirmation and the missing-session-cwd confirmation of /resume and /import are dialogs on the same stack as an extension's, as in Pi.",

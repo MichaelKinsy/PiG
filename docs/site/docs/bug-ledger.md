@@ -1153,6 +1153,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | Unreleased |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-bede0f0](#bf-bede0f0) | `pig status` no longer lists the resources of an untrusted project as enabled | PiG's own defect | All platforms | Unreleased |
 | [BF-bede0f0-2](#bf-bede0f0-2) | `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use | PiG's own defect | All platforms | Unreleased |
@@ -17273,6 +17274,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdb7ad8292` (2026-10-09), `c715193fab` (2026-10-09)
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
+
+### BF-be2920a
+
+**A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request with `Tool "<name>" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `be2920a2f3` (2026-11-02)
+- **Tests:** `ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictPreferUnsupportedPlain`, `ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictRequireUnsupported`, `ai/openai_completions_strict_require_test.go::TestCompletionsStreamStrictRequireUnsupportedFailsBeforeRequest`
+- **Release note:** A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request with `Tool "<name>" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi. It was sent as an ordinary function tool instead. `prefer` is unchanged.
 
 ### BF-be6803c
 
