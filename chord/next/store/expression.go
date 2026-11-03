@@ -173,6 +173,13 @@ type ColumnRefs map[string]*ColumnRef
 // NewColumnRef is the reference to column.
 func NewColumnRef(column string) *ColumnRef { return &Expression{Op: ExprCol, Args: []any{column}} }
 
+// Column is Pi's `ColumnRef.column`: the column a reference names. A ColumnRef is an Expression here, so one that is not a
+// reference (where Pi's `instanceof ColumnRef` is false) has no column and reads "".
+func (e *Expression) Column() string {
+	column, _ := e.isRef()
+	return column
+}
+
 // isRef reports whether e is a column reference, and its column.
 func (e *Expression) isRef() (string, bool) {
 	if e == nil || e.Op != ExprCol || len(e.Args) != 1 {
