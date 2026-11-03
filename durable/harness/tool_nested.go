@@ -12,7 +12,6 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -453,7 +452,7 @@ const maxSummaryErrorChars = 500
 func summaryOf(result durable.NestedToolExecutionResult, output []ai.ToolResultMessageContent) NestedToolSummary {
 	summary := NestedToolSummary{IsError: result.IsError, DurationMs: result.DurationMs, Usage: result.Usage}
 	if result.IsError {
-		summary.Error = jsstring.Slice(errorTextOf(result, output), 0, maxSummaryErrorChars)
+		summary.Error = ai.OwnedSlice(errorTextOf(result, output), 0, maxSummaryErrorChars)
 	}
 	return summary
 }

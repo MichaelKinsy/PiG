@@ -1,6 +1,9 @@
 package jsstring
 
-import "unicode/utf8"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // Length counts JavaScript UTF-16 units in a UTF-8/WTF-8 string.
 func Length(text string) int {
@@ -120,4 +123,11 @@ func byteOffset(text string, n int) (int, bool) {
 		}
 	}
 	return len(text), units == n
+}
+
+// OwnedSlice is Slice as a string of its own. A Go substring shares its source's backing array, so an excerpt kept from a large text
+// would keep all of the text alive; the copy keeps just the excerpt (Pi's ownedSlice, which appends a character and slices it off so V8
+// copies the slice).
+func OwnedSlice(text string, start int, ends ...int) string {
+	return strings.Clone(Slice(text, start, ends...))
 }

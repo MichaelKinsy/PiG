@@ -17,6 +17,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -25,7 +26,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/internal/jsclock"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -2562,7 +2562,7 @@ func (s *TaskScheduler) finishPhase(invocation *invocation, span telemetry.Telem
 		case terminal.Error != nil:
 			message = terminal.Error.Message
 		}
-		span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "task_" + string(terminal.Status), Message: jsstring.Slice(message, 0, 500)}})
+		span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeError, Error: &telemetry.SpanStatusError{Name: "task_" + string(terminal.Status), Message: ai.OwnedSlice(message, 0, 500)}})
 	} else if outcome == "aborted" {
 		span.SetStatus(telemetry.SpanStatus{Status: telemetry.SpanStatusCodeOK})
 	}

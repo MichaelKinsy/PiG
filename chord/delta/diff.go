@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/delta/diff.ts.
@@ -631,4 +632,11 @@ func DiffRevisions(before, after JsonValue) []Op {
 		return []Op{{"r", after}}
 	}
 	return d.operations
+}
+
+// OwnedSlice is Pi's ownedSlice(text, start, end = text.length) (delta/index.ts:118-120): `text.slice(start, end)` as a string of its
+// own. A Go substring shares its source's backing array, so an append op cut from a long, growing string would retain all of it for
+// as long as the op lives; the copy keeps just the slice.
+func OwnedSlice(text string, start int, end ...int) string {
+	return jsstring.OwnedSlice(text, start, end...)
 }
