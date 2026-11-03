@@ -1,14 +1,14 @@
 # PORT_MAP coverage report
 
-Generated from `1019` PORT_MAP entries and `833` parity scenarios.
+Generated from `1020` PORT_MAP entries and `833` parity scenarios.
 
 ## Status
 
-- **Porting:** 909 / 917 intended-portable entries ✅ (99.1%).
-- **Behavior verification:** 836 / 909 ported entries (92.0%); 0 weak-only, 73 untested.
+- **Porting:** 910 / 918 intended-portable entries ✅ (99.1%).
+- **Behavior verification:** 837 / 910 ported entries (92.0%); 0 weak-only, 73 untested.
 - **Upstream test porting:** 756 ported / 15 partial / 115 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.5.0.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.5.0.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1019. Breakdown: 102 n/a (designed out) · 8 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1020. Breakdown: 102 n/a (designed out) · 8 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -21,7 +21,7 @@ Raw PORT_MAP rows: 1019. Breakdown: 102 n/a (designed out) · 8 🟡 partial. Se
 | `coding-agent` | 256 | 27 | 229 | 228 | 1 | 0 | 99.6% | 99.6% |
 | `durable` | 85 | 9 | 76 | 76 | 0 | 0 | 100.0% | 98.7% |
 | `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 100.0% |
-| `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
+| `evals` | 6 | 0 | 6 | 6 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
 | `schema` | 43 | 3 | 40 | 40 | 0 | 0 | 100.0% | 0.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
@@ -29,7 +29,7 @@ Raw PORT_MAP rows: 1019. Breakdown: 102 n/a (designed out) · 8 🟡 partial. Se
 
 - **Four core packages (agent, ai, coding-agent, tui):** 521 / 522 intended-portable files ✅ (99.8%) from 573 rows; 517 behavioral (99.2%), 0 weak-only, 4 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 596 / 597 intended-portable files ✅ (99.8%) from 659 rows; 552 behavioral (92.6%), 0 weak-only, 44 untested.
-- **Whole monorepo (12 packages):** 909 / 917 intended-portable files ✅ (99.1%) from 1019 rows; 836 behavioral (92.0%), 0 weak-only, 73 untested.
+- **Whole monorepo (12 packages):** 910 / 918 intended-portable files ✅ (99.1%) from 1020 rows; 837 behavioral (92.0%), 0 weak-only, 73 untested.
 - **Interface closure:** 14383 of 14469 semantic interface IDs closed (395 designed-out, 86 pending, 13988 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -1004,6 +1004,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/evals/src/harness.ts` | ✅ | 0 | 9 (unit:./internal/evals:TestCreatePiDocumentationEvalHarnessInSandbox, unit:./internal/evals:TestExcludePiDocumentationRequiresTheWorkingDirectorySectionAfterTheDocumentation, unit:./internal/evals:TestHarnessUpstream, unit:./internal/evals:TestResolveSandboxIdentityRequiresBothIdsOrNeither, unit:./internal/evals:TestRunPiCodingAgentAnswersAndRecordsTheRun, unit:./internal/evals:TestRunPiCodingAgentFailures, unit:./internal/evals:TestRunPiCodingAgentTransformsTheSystemPromptThroughTheBridge, unit:./internal/evals:TestSettledResponseRejectsRunsWithoutAUsableAssistantMessage, unit:./internal/evals:TestToTranscriptEventsGivesAFailedToolResultItsTextOrAGenericMessage) | not run | ./internal/evals:TestCreatePiDocumentationEvalHarnessInSandbox, ./internal/evals:TestExcludePiDocumentationRequiresTheWorkingDirectorySectionAfterTheDocumentation, ./internal/evals:TestHarnessUpstream, ./internal/evals:TestResolveSandboxIdentityRequiresBothIdsOrNeither, ./internal/evals:TestRunPiCodingAgentAnswersAndRecordsTheRun, ./internal/evals:TestRunPiCodingAgentFailures, ./internal/evals:TestRunPiCodingAgentTransformsTheSystemPromptThroughTheBridge, ./internal/evals:TestSettledResponseRejectsRunsWithoutAUsableAssistantMessage, ./internal/evals:TestToTranscriptEventsGivesAFailedToolResultItsTextOrAGenericMessage |
 | `packages/evals/src/plan.ts` | ✅ | 0 | 2 (unit:./internal/evals:TestCreateTaskPlanRejectsEveryMalformedModelIdentity, unit:./internal/evals:TestPlanUpstream) | not run | ./internal/evals:TestCreateTaskPlanRejectsEveryMalformedModelIdentity, ./internal/evals:TestPlanUpstream |
 | `packages/evals/src/report.ts` | ✅ | 0 | 3 (unit:./internal/evals:TestReadTaskObservationMatchesUpstream, unit:./internal/evals:TestReportUpstream, unit:./internal/evals:TestSummarizeEvalObservationsMatchesUpstream) | not run | ./internal/evals:TestReadTaskObservationMatchesUpstream, ./internal/evals:TestReportUpstream, ./internal/evals:TestSummarizeEvalObservationsMatchesUpstream |
+| `packages/evals/evals/documentation-audit.eval.ts` | ✅ | 0 | 1 (unit:./internal/evals/evalsuites:TestSubmitAuditParametersKeepTheirAuthoredOrder) | not run | ./internal/evals/evalsuites:TestSubmitAuditParametersKeepTheirAuthoredOrder |
 | `packages/schema/src/annotations.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/schema/src/builders.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/schema/src/checks.ts` | ✅ | **0 (untested)** | **0** | not run |  |
