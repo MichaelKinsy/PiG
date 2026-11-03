@@ -634,6 +634,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-69c175b](#bf-69c175b) | fix(models): models.json entries keep exposed limits and cost; bound thinking-only messages in summaries; pin… | PiG's own defect | All platforms | Unreleased |
 | [BF-69cd9d2](#bf-69cd9d2) | PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the… | PiG's own defect | All platforms | Unreleased |
 | [BF-69f6341](#bf-69f6341) | The Radius relay WebSocket URL is built with the WHATWG URL parser, as Pi's `new URL` does: gateway hosts are… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6a46bc7](#bf-6a46bc7) | The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-10](#bf-6a46bc7-10) | A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-11](#bf-6a46bc7-11) | A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-12](#bf-6a46bc7-12) | The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-13](#bf-6a46bc7-13) | A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-14](#bf-6a46bc7-14) | A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-2](#bf-6a46bc7-2) | Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-3](#bf-6a46bc7-3) | A wait of a Session continuation stays registered until the continuation has entered, so a publication that… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-4](#bf-6a46bc7-4) | A Harness wait that ended by cancellation or a close no longer holds the publications after it when its… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-5](#bf-6a46bc7-5) | Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-6](#bf-6a46bc7-6) | A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-7](#bf-6a46bc7-7) | A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-8](#bf-6a46bc7-8) | Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on… | PiG's own defect | All platforms | Unreleased |
+| [BF-6a46bc7-9](#bf-6a46bc7-9) | The Session orders the continuations of what a publication resolved before the next part of the same storage… | PiG's own defect | All platforms | Unreleased |
 | [BF-6a6fffa](#bf-6a6fffa) | A session message whose integer member, such as `timestamp`, a usage count or `durationMs`, is spelled with a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-2](#bf-6a6fffa-2) | `formatToolCallWithArgs` against live Pi: new `TestFormatToolCallWithArgsMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6a6fffa-3](#bf-6a6fffa-3) | `getTextOutput` against live Pi: new `TestGetTextOutputMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
@@ -3077,7 +3091,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Fix commits:** `1c1887a562` (2026-10-23, #298)
-- **Tests:** `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks`, `ai/usage_json_test.go::TestUsageCostTotalFromProviderWire`, `automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote`, `chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed`, `chord/state_source_test.go::TestConformanceReplicatedStateSourceContract`, `durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits`, `durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped` and 34 more in docs/bug-ledger.json
+- **Tests:** `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks`, `ai/usage_json_test.go::TestUsageCostTotalFromProviderWire`, `automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote`, `chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed`, `chord/state_source_test.go::TestConformanceReplicatedStateSourceContract`, `durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits`, `durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped` and 33 more in docs/bug-ledger.json
 - **Release note:** Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time. A frame the link had handed to the host loop before it closed could run after Close took its last look at the host's objects and after the connection had released what it held, so it created an object nothing disposed or released, and Close waited for that object's resource open for good (seen as a 30 minute `chord/host` test timeout on Windows after a `ready_timeout` get). A connection now ignores frames once its link closed, as Pi's link delivers none.
 
 ### BF-1c6b864
@@ -10048,6 +10062,202 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_token_endpoint_oracle_test.go::TestAnthropicTokenEndpointRuleMatchesSDK`, `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/mistral_url_oracle_test.go::TestMistralChatCompletionsURLMatchesPiOnSeededProbes`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes`, `ai/radius_urls_oracle_test.go::TestRadiusURLsMatchPiOnSeededProbes` and 5 more in docs/bug-ledger.json
 - **Release note:** The Radius relay WebSocket URL is built with the WHATWG URL parser, as Pi's `new URL` does: gateway hosts are normalized, userinfo and ports follow Pi, an unparseable gateway reports "Invalid URL", and an unsupported scheme is reported with its trailing colon.
 
+### BF-6a46bc7
+
+**The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count. A listener blocked on a plain lock the caller holds is the one gap.
+
+### BF-6a46bc7-10
+
+**A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.
+
+### BF-6a46bc7-11
+
+**A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the Session's hop between two parts of a call see every listener call that is not yet entered; frames published behind a running call no longer fold into one call at more than one processor.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the Session's hop between two parts of a call see every listener call that is not yet entered; frames published behind a running call no longer fold into one call at more than one processor.
+
+### BF-6a46bc7-12
+
+**The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the writer's drain and for a part's publication) mark the delivery entered, so a listener that calls `UnloadDocuments` during a multi-part call does not stall the Session's publications.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the writer's drain and for a part's publication) mark the delivery entered, so a listener that calls `UnloadDocuments` during a multi-part call does not stall the Session's publications.
+
+### BF-6a46bc7-13
+
+**A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session (`Close`, a line ticket's `Release`) at one of the parts of a multi-part storage call no longer stalls the Session's hop: every wait of the Session a listener can reach marks the delivery entered and ends with its context.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session (`Close`, a line ticket's `Release`) at one of the parts of a multi-part storage call no longer stalls the Session's hop: every wait of the Session a listener can reach marks the delivery entered and ends with its context.
+
+### BF-6a46bc7-14
+
+**A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.
+
+### BF-6a46bc7-2
+
+**Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver).
+
+### BF-6a46bc7-3
+
+**A wait of a Session continuation stays registered until the continuation has entered, so a publication that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it.
+
+### BF-6a46bc7-4
+
+**A Harness wait that ended by cancellation or a close no longer holds the publications after it when its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`.
+
+### BF-6a46bc7-5
+
+**Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again.
+
+### BF-6a46bc7-6
+
+**A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when the invocation ended before the submit's job started, and stores nothing, as Pi's job-start abort check does; the handle's cancellation no longer detaches before the call queues (Pi session.ts commit).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when the invocation ended before the submit's job started, and stores nothing, as Pi's job-start abort check does; the handle's cancellation no longer detaches before the call queues (Pi session.ts commit).
+
+### BF-6a46bc7-7
+
+**A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint, not sorted (Pi tool.ts).
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint, not sorted (Pi tool.ts).
+
+### BF-6a46bc7-8
+
+**Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on every settle, so the cost of a settle no longer grows with the number of idle contexts.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on every settle, so the cost of a settle no longer grows with the number of idle contexts.
+
+### BF-6a46bc7-9
+
+**The Session orders the continuations of what a publication resolved before the next part of the same storage…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6a46bc71d9` (2026-11-02)
+- **Tests:** None recorded.
+- **Release note:** The Session orders the continuations of what a publication resolved before the next part of the same storage call is published at any number of goroutines in the process. The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines. The waits of the Session (`SessionImpl.Park`, `SessionImpl.Await`, a commit caller's resumption) now register before they block and acknowledge when they resumed, so a publication costs microseconds and 4 KiB, whatever the process runs. A caller that needs its continuation ordered up to its next wait of the Session passes `session.WithContinuation(ctx)` and calls `Entered`. `SessionImpl.ReadOnLineCtx` and `ReadWithTicketCtx` run a line read with the caller's line admission and continuation.
+
 ### BF-6a6fffa
 
 **A session message whose integer member, such as `timestamp`, a usage count or `durationMs`, is spelled with a…**
@@ -15904,7 +16114,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `ad6d659c09` (2026-10-30)
-- **Tests:** `durable/core/session/sched_idle_scopes_test.go::TestAKeptContextGoesBusyWithWorkBelowItAndIdleAgainWhenItEnds`, `durable/core/session/sched_idle_scopes_test.go::TestAKeptContextKeepsItsExpiryWhenReadAgain`, `durable/core/session/sched_idle_scopes_test.go::TestATaskChangeSettlesTheConversationsAboveItWithoutACheckOfEveryScope`, `durable/core/session/sched_idle_scopes_test.go::TestEndingATaskCostsTheSameAtAnyNumberOfKeptContexts`, `durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero`, `durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack`, `durable/harness/harness_tasks_test.go::TestPublicationAtAdoption`, `durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks` and 4 more in docs/bug-ledger.json
+- **Tests:** `durable/core/session/sched_idle_scopes_test.go::TestAKeptContextGoesBusyWithWorkBelowItAndIdleAgainWhenItEnds`, `durable/core/session/sched_idle_scopes_test.go::TestAKeptContextKeepsItsExpiryWhenReadAgain`, `durable/core/session/sched_idle_scopes_test.go::TestATaskChangeSettlesTheConversationsAboveItWithoutACheckOfEveryScope`, `durable/core/session/sched_idle_scopes_test.go::TestEndingATaskCostsTheSameAtAnyNumberOfKeptContexts`, `durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero`, `durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack`, `durable/harness/harness_tasks_test.go::TestPublicationAtAdoption`, `durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks`
 - **Release note:** The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it re-checks idleness only for the conversations above the tasks that became live or ended (a task whose chain is not loaded yet is settled when the chain loads), expires idle context ranges from an index ordered by `idleSince`, and `wake()` takes the earliest sleep from the sleeping tasks and scans the live tasks only while nothing runs. Before, every commit re-walked every conversation read in the last `contextRetentionMs`. A task run with 4,000 conversations keeping a context range took 3.2 ms and 8,800 allocations in the Harness, and about 4.2 ms in the core; it now costs what it does with 100. Carried forward from Pi 35dfa757, past the 1.4.0+b3a29f11 pin.
 
 ### BF-ad9ed64
@@ -22884,6 +23094,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D219 | pi-schema regular expressions differ from V8 in four contrived cases | deliberate difference |
 | D220 | Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier… | [BF-D220](#bf-d220) |
 | D222 | A plugin input the build cannot read is reported at the import that names it, not at esbuild's library | deliberate difference |
+| D224 | A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow… | deliberate difference |
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
 | D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |

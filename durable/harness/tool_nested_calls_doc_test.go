@@ -25,7 +25,8 @@ type createdDocs struct {
 	docs []string
 }
 
-func (recorder *createdDocs) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (recorder *createdDocs) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	for _, write := range writes {
 		if create, ok := write.(durable.DocumentCreateWrite); ok {
 			key := "<none>"
@@ -37,7 +38,7 @@ func (recorder *createdDocs) Commit(ctx context.Context, writes []durable.Storag
 			recorder.mu.Unlock()
 		}
 	}
-	return recorder.Storage.Commit(ctx, writes, adopt)
+	return recorder.Storage.Commit(ctx, batches, receive)
 }
 
 // harness-nested-tools.test.ts:99 it("stores one document per nested call, keyed by its key, written only by that call")
@@ -69,6 +70,8 @@ func TestOneDocumentPerNestedCallKeyedByItsKey(t *testing.T) {
 		}
 	}
 	recorder.mu.Unlock()
+	// The two calls run on goroutines, which admit in no fixed order (D181): upstream's Promise.all admits them in call order.
+	slices.Sort(nested)
 	if want := []string{"pi.tool.nested-call 1", "pi.tool.nested-call named"}; !slices.Equal(nested, want) {
 		t.Fatalf("documents created for nested calls %v, want %v", nested, want)
 	}

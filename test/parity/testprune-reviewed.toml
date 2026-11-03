@@ -595,6 +595,33 @@ class = "NOBEHAVIOR"
 reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
 
 [[entry]]
+path = "schema/internal/ecmaregex/golden_test.go"
+commit = "14c930470b86a72372bb7af9ae24d577aa603629"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "ecmaregex is the ECMAScript regular-expression engine PiG needs under packages/schema/src/shared.ts and formats/typebox/regex.ts; V8 is the oracle and no Pi test line governs it. The commit extends the golden replay, not any Pi behavior: it also compares V8's SyntaxError message of every invalid row, reads the golden's match results from a packed bit string, decodes lone surrogates as WTF-8, skips the pinned known gaps, and names the Go and Unicode versions in every failure. The expected values that changed are the golden's row format and counts, regenerated under Node 24.22.1."
+
+[[entry]]
+path = "schema/formats/oracle_test.go"
+commit = "1de91268b66ee9f62f8e82f3b2edf178e89bcb17"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test replays rows of Pi's own formats (packages/schema/src/formats/index.ts) generated under Node 24. The commit moves the generator out of the test comment into testdata/gen, adds rows with lone surrogates (decoded as WTF-8 instead of U+FFFD, the repo's JS-string convention), and raises the row-count floor from the corpus it now replays; no Pi behavior changes, the new rows' expectations are Pi's results."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "CITE"
+cite = "packages/chord/test/next-node/workers/support.ts:138"
+reason = "Pi's fixture plugin writes `label.ts` (`export const label = <JSON>;`) into the copy's notes plugin (support.ts:138); the Go fleet's fixture plugin did write a file named `label`. The commit gives it Pi's file name, content and package files; the one expected value it changes is that file name, now Pi's."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_workers_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "NOBEHAVIOR"
+reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."
+
+[[entry]]
 path = "chord/nextnode/plugins/plugins_endtoend_test.go"
 commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
 class = "CITE"
@@ -623,45 +650,6 @@ cite = "packages/chord/src/next/host/host.ts:124"
 reason = "Pi's `activation_failed` carries a `failure` (a FailureCause), not an `error` (host.ts:124): the Node host's background reports now keep every field of their kind, so the persisted-document case reads the activation failure's cause (`Failure.Error`, `Failure.Kind`) where the first port flattened it into `Err`."
 
 [[entry]]
-path = "schema/internal/ecmaregex/golden_test.go"
-commit = "14c930470b86a72372bb7af9ae24d577aa603629"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "ecmaregex is the ECMAScript regular-expression engine PiG needs under packages/schema/src/shared.ts and formats/typebox/regex.ts; V8 is the oracle and no Pi test line governs it. The commit extends the golden replay, not any Pi behavior: it also compares V8's SyntaxError message of every invalid row, reads the golden's match results from a packed bit string, decodes lone surrogates as WTF-8, skips the pinned known gaps, and names the Go and Unicode versions in every failure. The expected values that changed are the golden's row format and counts, regenerated under Node 24.22.1."
-
-[[entry]]
-path = "schema/formats/oracle_test.go"
-commit = "1de91268b66ee9f62f8e82f3b2edf178e89bcb17"
-class = "NOBEHAVIOR"
-cite = ""
-reason = "The test replays rows of Pi's own formats (packages/schema/src/formats/index.ts) generated under Node 24. The commit moves the generator out of the test comment into testdata/gen, adds rows with lone surrogates (decoded as WTF-8 instead of U+FFFD, the repo's JS-string convention), and raises the row-count floor from the corpus it now replays; no Pi behavior changes, the new rows' expectations are Pi's results."
-
-[[entry]]
-path = "chord/nextnode/workers/workers_fleet_test.go"
-commit = "f59f4016039310a105a789060419985ed07c795a"
-class = "CITE"
-cite = "packages/chord/test/next-node/workers/support.ts:138"
-reason = "Pi's fixture plugin writes `label.ts` (`export const label = <JSON>;`) into the copy's notes plugin (support.ts:138); the Go fleet's fixture plugin did write a file named `label`. The commit gives it Pi's file name, content and package files; the one expected value it changes is that file name, now Pi's."
-
-[[entry]]
-path = "chord/nextnode/workers/workers_workers_test.go"
-commit = "f59f4016039310a105a789060419985ed07c795a"
-class = "NOBEHAVIOR"
-reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."
-
-[[entry]]
-path = "chord/next/host/host_host_test.go"
-commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
-class = "NOBEHAVIOR"
-reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
-
-[[entry]]
-path = "chord/next/host/host_reference_test.go"
-commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
-class = "NOBEHAVIOR"
-reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
-
-[[entry]]
 path = "chord/nextnode/workers/workers_fixture_worker_test.go"
 commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
 class = "NOBEHAVIOR"
@@ -674,6 +662,18 @@ commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's fixture plugin (testdata/plugins/notes: worker.ts, label.ts, package.json, byte for byte) with the real esbuild build instead of a stand-in Builder and Evaluator, which the plugins component no longer has; the expected labels and reports are Pi's."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
 
 [[entry]]
 path = "internal/minimatch/minimatch_oracle_test.go"
@@ -766,7 +766,6 @@ class = "NOBEHAVIOR"
 cite = ""
 reason = "The commit makes the tracker's weak text buffers observable to the test: the expected texts of each commit are now built apart from the tracker's strings (strings.Clone of an independently concatenated text), so a buffer the tracker reuses cannot change what the test expects. The values Pi's tracker.ts produces (every revision and op keeps its text while later appends grow the same buffer) are unchanged."
 
-
 [[entry]]
 path = "chord/nextnode/plugins/plugins_node_test.go"
 commit = "e0f6bd3215"
@@ -794,6 +793,69 @@ commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
 class = "CITE"
 cite = "packages/chord/src/next-node/compression.ts:17"
 reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."
+
+[[entry]]
+path = "durable/storage/jsonl/reclamation_planning_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/src/storage/jsonl/storage.ts:324-325,346"
+reason = "Pi e5c6182b makes JsonlStorage.commit store several batches (storage.ts:285-325): memory runs ahead of the file once a batch applied, so any failure after that (a sidecar path join failing included) poisons the storage with that failure as the cause instead of leaving it usable; a reopened storage has no record of the batch. The path-join test expects the poisoned error and the absent document."
+
+[[entry]]
+path = "durable/harness/context_extend_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-context.test.ts:452"
+reason = "Pi e5c6182b group commit lets the Session know each committed entry, so a task's kept context range takes the entries as they were committed: harness-context.test.ts:452 expects the extended read to scan 0 rows (expect(extended.rows).toBe(0)); the earlier Go test expected the 3 new ones. The expected value (0) is Pi's."
+
+[[entry]]
+path = "durable/harness/harness_context_ranges_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-context.test.ts:452,458,736,746"
+reason = "Pi e5c6182b: the kept range takes each committed entry and the Session knows the bounds, so only a first read scans: harness-context.test.ts:452 and :458 expect the extension and the edit read to scan 0 rows, :736 and :746 the repeated reads 0. The earlier Go counts (4, 2) were the pre-group-commit scans. The expected values (0) are Pi's."
+
+[[entry]]
+path = "durable/harness/harness_deferred_progress_upstream_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-deferred-progress.test.ts:164-165"
+reason = "Pi defers a generation attempt like the partials (harness-deferred-progress.test.ts:164: the attempt is presentation, deferred: none of it was stored; :165 expects the stored live document has no generation). The earlier Go test expected the stored attempt 1. The expected value (none stored) is Pi's."
+
+[[entry]]
+path = "durable/harness/harness_idle_scopes_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-idle-scopes.test.ts:184"
+reason = "New port of harness-idle-scopes.test.ts (Pi 35dfa757): the file is added in this commit, and its expected values are Pi's (:184, :189 and the cases between), checked against a full recompute of the idle state."
+
+[[entry]]
+path = "durable/harness/harness_live_deltas_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-live-deltas.test.ts:117"
+reason = "Pi observeCommits (harness-live-deltas.test.ts:117, :341, :384) sees a held (deferred) pi.live operation as part of the stored commit that takes it, first; the Go test collects the same operations through observeStoredLiveOps. The expected operations are Pi's."
+
+[[entry]]
+path = "durable/harness/harness_restart_failure_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-restart-failure.test.ts:775-776"
+reason = "Pi e5c6182b: harness-restart-failure.test.ts:775-776 expects the retention checks of a generation round to be at most 49 per round (group commit coalesces some reconcile passes), no lower bound; the Go test keeps Pi's upper bound and drops the lower one that counted the pre-group-commit passes."
+
+[[entry]]
+path = "durable/harness/harness_task_graph_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-task-graph.test.ts:387"
+reason = "Pi e5c6182b publishes a commit after Storage stored it, not inside the adopt: harness-task-graph.test.ts:387 expects [\"graph adopting=false\", \"view adopting=false\"] (the test is renamed 'at the publication of the one commit that changes both', :368). The earlier Go test expected adopting=true. The expected value (false) is Pi's."
+
+[[entry]]
+path = "durable/session/session_adoption_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/session-adoption.test.ts:47"
+reason = "Pi e5c6182b: Storage.commit takes batches and a receive callback that gives the Session's durability receipt (session-adoption.test.ts:47, :57); the Session adopts and publishes once Storage resolved. The Go test follows the same order logs. The expected order is Pi's."
 
 [[entry]]
 path = "coding/extension/host/subprocess/host_helpers_highlight_test.go"

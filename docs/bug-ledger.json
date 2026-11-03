@@ -3290,7 +3290,6 @@
         "durable/harness/harness_read_only_test.go::TestReadOnlyHarness",
         "durable/json_test.go::TestCopyJsonDetachesAndRejectsNonFiniteNumbers",
         "durable/session/session_adoption_internal_test.go::TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage",
-        "durable/session/session_adoption_test.go::TestSessionAdoptionInsideStorageCommit",
         "internal/usagetotals/usagetotals_test.go::TestCombineUsageMarksTheTotalProviderReportedOnlyWhenBothTotalsAre",
         "test/parity/interface-closure/autobind/library_test.go::TestAliasesOwnerKnowsGenericAliases"
       ]
@@ -17695,6 +17694,286 @@
       ]
     },
     {
+      "id": "BF-6a46bc7",
+      "title": "The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process…",
+      "symptom": "The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count. A listener blocked on a plain lock the caller holds is the one gap.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-10",
+      "title": "A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next…",
+      "symptom": "A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-11",
+      "title": "A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the…",
+      "symptom": "A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the Session's hop between two parts of a call see every listener call that is not yet entered; frames published behind a running call no longer fold into one call at more than one processor.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the Session's hop between two parts of a call see every listener call that is not yet entered; frames published behind a running call no longer fold into one call at more than one processor.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-12",
+      "title": "The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the…",
+      "symptom": "The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the writer's drain and for a part's publication) mark the delivery entered, so a listener that calls `UnloadDocuments` during a multi-part call does not stall the Session's publications.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the writer's drain and for a part's publication) mark the delivery entered, so a listener that calls `UnloadDocuments` during a multi-part call does not stall the Session's publications.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-13",
+      "title": "A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session…",
+      "symptom": "A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session (`Close`, a line ticket's `Release`) at one of the parts of a multi-part storage call no longer stalls the Session's hop: every wait of the Session a listener can reach marks the delivery entered and ends with its context.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A watch listener that calls the Harness (`WaitForTask`, `WaitForIdle`, `Abort`, `Close`) or the Session (`Close`, a line ticket's `Release`) at one of the parts of a multi-part storage call no longer stalls the Session's hop: every wait of the Session a listener can reach marks the delivery entered and ends with its context.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-14",
+      "title": "A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as…",
+      "symptom": "A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-2",
+      "title": "Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo…",
+      "symptom": "Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-3",
+      "title": "A wait of a Session continuation stays registered until the continuation has entered, so a publication that…",
+      "symptom": "A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-4",
+      "title": "A Harness wait that ended by cancellation or a close no longer holds the publications after it when its…",
+      "symptom": "A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-5",
+      "title": "Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed…",
+      "symptom": "Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-6",
+      "title": "A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when…",
+      "symptom": "A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when the invocation ended before the submit's job started, and stores nothing, as Pi's job-start abort check does; the handle's cancellation no longer detaches before the call queues (Pi session.ts commit).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when the invocation ended before the submit's job started, and stores nothing, as Pi's job-start abort check does; the handle's cancellation no longer detaches before the call queues (Pi session.ts commit).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-7",
+      "title": "A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint…",
+      "symptom": "A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint, not sorted (Pi tool.ts).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint, not sorted (Pi tool.ts).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-8",
+      "title": "Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on…",
+      "symptom": "Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on every settle, so the cost of a settle no longer grows with the number of idle contexts.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on every settle, so the cost of a settle no longer grows with the number of idle contexts.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-6a46bc7-9",
+      "title": "The Session orders the continuations of what a publication resolved before the next part of the same storage…",
+      "symptom": "The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Session orders the continuations of what a publication resolved before the next part of the same storage call is published at any number of goroutines in the process. The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines. The waits of the Session (`SessionImpl.Park`, `SessionImpl.Await`, a commit caller's resumption) now register before they block and acknowledge when they resumed, so a publication costs microseconds and 4 KiB, whatever the process runs. A caller that needs its continuation ordered up to its next wait of the Session passes `session.WithContinuation(ctx)` and calls `Entered`. `SessionImpl.ReadOnLineCtx` and `ReadWithTicketCtx` run a line read with the caller's line admission and continuation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6a46bc71d9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6a6fffa",
       "title": "A session message whose integer member, such as `timestamp`, a usage count or `durationMs`, is spelled with a…",
       "symptom": "PiG dropped the message from the session context and RPC `get_messages`.",
@@ -29640,11 +29919,7 @@
         "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero",
         "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack",
         "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption",
-        "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks",
-        "durable/harness/scheduler_idle_scopes_test.go::TestIdleWaitersByScope",
-        "durable/harness/scheduler_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
-        "durable/harness/scheduler_idle_scopes_test.go::TestKeptContextRanges",
-        "durable/harness/scheduler_idle_scopes_test.go::TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns"
+        "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks"
       ]
     },
     {
@@ -45762,6 +46037,10 @@
     {
       "id": "D222",
       "title": "A plugin input the build cannot read is reported at the import that names it, not at esbuild's library"
+    },
+    {
+      "id": "D224",
+      "title": "A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow…"
     },
     {
       "id": "D225",

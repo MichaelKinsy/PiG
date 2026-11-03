@@ -21,8 +21,8 @@ type syncObserver[A any] interface {
 	End(end durable.WatchEnd)
 }
 
-// guard is a host's observer behind the rule for observers that run inside Storage's adopt (session.ts guardObserver): one
-// that panics is reported through report, detached, and ended listener_error, so the panic never reaches adopt; nothing
+// guard is a host's observer behind the rule for observers that run at a commit's publication (session.ts guardObserver): one
+// that panics is reported through report, detached, and ended listener_error, so the panic never reaches the publication; nothing
 // reaches it after its detach or end, and from then on the guard references neither it nor its source.
 type guard[A any] struct {
 	mu       sync.Mutex

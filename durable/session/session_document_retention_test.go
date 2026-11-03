@@ -35,21 +35,6 @@ var (
 	retentionSessionCounterDoc = defineDoc("test.retention.session-counter", 1, sessionScope, func() obj { return delta.JsonObjectOf("count", 0) })
 )
 
-// retentionClock is a controllable wall clock.
-type retentionClock struct {
-	now  atomic.Int64
-	fail atomic.Bool
-}
-
-func (clock *retentionClock) read() float64 {
-	if clock.fail.Load() {
-		panic(errors.New("clock"))
-	}
-	return float64(clock.now.Load())
-}
-
-func (clock *retentionClock) advance(ms int64) { clock.now.Add(ms) }
-
 // retentionSession is a Session with a controllable clock and retention.
 type retentionSession struct {
 	storage   *sessiontest.ControlledStorage
@@ -73,7 +58,7 @@ func (opened *retentionSession) sizes() session.DocumentCacheSizes {
 // settleLine lets the line run what is queued on it: an eviction job, then returns.
 func (opened *retentionSession) settleLine(t *testing.T) {
 	t.Helper()
-	_, err := opened.session.ReadOnLine(func() (any, error) { return nil, nil })
+	_, err := opened.session.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 	must(t, err)
 }
 
@@ -444,14 +429,14 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 				return mustDoc(t, tx, retentionCounterDoc, conversationId).Set("count", 1)
 			}))
 			clock.advance(1e12)
-			_, err := kernel.ReadOnLine(func() (any, error) { return nil, nil })
+			_, err := kernel.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 			must(t, err)
 			want := 1
 			if name == "dropped" {
 				want = 0
 			}
 			eventuallyTrue(t, func() bool {
-				_, err := kernel.ReadOnLine(func() (any, error) { return nil, nil })
+				_, err := kernel.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 				must(t, err)
 				return kernel.DocumentCacheSizes().Cached == want
 			})

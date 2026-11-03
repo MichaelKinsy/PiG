@@ -114,9 +114,11 @@ func TestTheRestartLimitOnTheNormalPath(t *testing.T) {
 		if others.Load() != 15*rounds {
 			t.Fatalf("a round resolved the settings %v times outside the idle checks, want Pi's 15 (6 agents, 9 phases)", float64(others.Load())/rounds)
 		}
-		// Pi's 34 per round: a settlement that finds nothing to settle is not counted by the scheduler's goroutines.
-		if perRound := float64(retention.Load()) / rounds; perRound < 30 || perRound > 36 {
-			t.Fatalf("a round made %v retention checks, want about Pi's 34", perRound)
+		// No more often than Pi's 34 per round (harness-restart-failure.test.ts: 49 in all, no more often than before the
+		// restart limit applied to every kind; group commit coalesces some reconcile passes): a settlement that finds nothing to
+		// settle is not counted by the scheduler's goroutines.
+		if perRound := float64(retention.Load()) / rounds; perRound > 36 {
+			t.Fatalf("a round made %v retention checks, want at most about Pi's 34", perRound)
 		}
 		mustClose(t, harness)
 	})

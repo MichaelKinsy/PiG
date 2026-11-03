@@ -7,6 +7,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -38,7 +39,7 @@ func TestJsonlPublicationFailuresNameTheFailedStep(t *testing.T) {
 		} else {
 			writes = []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{Id: entry, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "later"}}}
 		}
-		_, err := storage.Commit(testContext, writes, func(durable.Seq) {})
+		_, err := durabletest.CommitWrites(testContext, storage, writes)
 		poisoned, ok := errors.AsType[*jsonl.JsonlStoragePoisonedError](err)
 		if !ok || poisoned.Cause == nil {
 			t.Fatalf("%s: commit error = %v (%T), want a poisoned error with a cause", tc.name, err, err)

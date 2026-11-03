@@ -15,16 +15,11 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 func openSqlite(t *testing.T, path string) durable.Storage {
 	t.Helper()
-	storage, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return storage
+	return openNodeSqliteStorage(t, path)
 }
 
 func liveOf(t *testing.T, harness Harness, id durable.ConversationId) *LiveState {
@@ -197,9 +192,14 @@ func TestSubmissions(t *testing.T) {
 		release := deferred()
 		storage := &heldSubmissionReads{controlledStorage: newControlledStorage(), entered: entered, release: release}
 		setup := chatSetup(t)
-		setup.Faux.SetResponses([]ai.FauxResponseStep{unanswered().step})
-		harness, root := openChat(t, storage, setup)
-		submission := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")}))
+		setup.Faux.SetResponses([]ai.FauxResponseStep{unanswered().step, unanswered().step})
+		first, root := openChat(t, storage, setup)
+		id := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")})).Id()
+		closeHarness(t, first)
+		// Reopen: the Session caches the submissions it writes, so only a reopened one reads it from Storage.
+		storage.Reopen()
+		harness, _ := openChat(t, storage, setup)
+		submission := must(harness.Submission(testContext, id))
 		storage.hold.Store(true)
 		waiting := make(chan error, 1)
 		go func() { _, err := submission.Wait(testContext); waiting <- err }()
@@ -225,7 +225,8 @@ func TestSubmissions(t *testing.T) {
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAfter(release, "answer")})
 		harness, root := openChat(t, newControlledStorage(), setup)
 		submission := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")}))
-		sealed := harness.(*harnessImpl).submissions.waiters.Add(testContext, 999_999)
+		sealed := harness.(*harnessImpl).submissions.waiters.Add(testContext, harness.(*harnessImpl).SessionImpl, 999_999)
+		go func() { _, _ = sealed.Wait() }()
 		closing := make(chan struct{})
 		var once sync.Once
 		observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {

@@ -2142,11 +2142,13 @@ func (h *chordHost) reloadReport(started []startedFate, committed CommittedReloa
 	}
 	// Pi's report completes at least three microtask ticks after a check settled (`await checked`, the async map's
 	// result, `Promise.all`), so what the same batch delivered first (a watcher of a reference that left `live` aborting
-	// the context from its callback) enters its listener before the report: the deliveries scheduled so far have entered
-	// their listeners (up to a first wait), then the context is read. The wait is not for the listeners to return, which
-	// Pi's report never does: a listener may call `Reload` itself (its own delivery is skipped), a slow one does not delay
-	// the report, and ctx's abort ends the wait (`aborted`, as the wait for the checks).
+	// the context from its callback) runs its listener's synchronous part before the report: the deliveries scheduled so far
+	// have entered (their listener call returned, or went on to a wait the host knows), then the context is read. The wait is
+	// not for a listener to finish a wait of its own: a listener may call `Reload` itself (its own delivery is entered and
+	// skipped), and ctx's abort ends the wait (`aborted`, as the wait for the checks).
 	h.enter(func() {})
+	// pig divergence (D224): a listener that blocks on something the host cannot see, without calling chord.DeliveryEntered, holds
+	// this wait back; Pi's listener awaits.
 	if err := h.scheduler.AwaitEntered(ctx); err != nil {
 		return nil, committedAborted(committed)
 	}

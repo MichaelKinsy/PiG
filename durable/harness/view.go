@@ -173,7 +173,6 @@ type viewMount struct {
 // ConversationViews holds the Harness's conversation view mounts: at most one per conversation, built on the Session line by its first observer and dropped with its last. Each mount advances from the Session's commit publications, which are durable, and hands each observer the next revision of its own window.
 type ConversationViews struct {
 	session *session.SessionImpl
-	storage durable.Storage
 	mu      sync.Mutex
 	mounts  map[durable.ConversationId]*viewMount
 	order   []durable.ConversationId
@@ -181,8 +180,8 @@ type ConversationViews struct {
 }
 
 // NewConversationViews subscribes the mounts to the Session's commits and close.
-func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Storage) *ConversationViews {
-	views := &ConversationViews{session: sessionImpl, storage: storage, mounts: map[durable.ConversationId]*viewMount{}}
+func NewConversationViews(sessionImpl *session.SessionImpl) *ConversationViews {
+	views := &ConversationViews{session: sessionImpl, mounts: map[durable.ConversationId]*viewMount{}}
 	sessionImpl.FollowCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		// Detach may run off the line, from a watch that ends on its delivery goroutine; read the observers under the lock.
 		type advancing struct {
@@ -300,18 +299,18 @@ func (views *ConversationViews) Attach(ctx context.Context, id durable.Conversat
 		observer *ViewObserver
 		detach   func()
 	}
-	result, err := views.session.ReadOnLine(func() (any, error) {
+	result, err := views.session.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		views.mu.Lock()
 		mount := views.mounts[id]
 		views.mu.Unlock()
 		if mount == nil {
-			built, err := views.build(ctx, id)
+			built, err := views.build(ctx, storage, id)
 			if err != nil {
 				return nil, err
 			}
 			mount = built
 		}
-		entries, before, err := loadWindow(ctx, views.storage, id, bounds)
+		entries, before, err := loadWindow(ctx, storage, id, bounds)
 		if err != nil {
 			return nil, err
 		}
@@ -349,8 +348,8 @@ func (views *ConversationViews) Attach(ctx context.Context, id durable.Conversat
 	return registered.observer, registered.detach, nil
 }
 
-func (views *ConversationViews) build(ctx context.Context, id durable.ConversationId) (*viewMount, error) {
-	conversation, err := views.storage.Conversation(ctx, id)
+func (views *ConversationViews) build(ctx context.Context, storage durable.Storage, id durable.ConversationId) (*viewMount, error) {
+	conversation, err := storage.Conversation(ctx, id)
 	if err != nil {
 		return nil, err
 	}
