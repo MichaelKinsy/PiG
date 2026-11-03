@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -266,8 +267,8 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 // the loop (a second unguarded call beside a guarded one), is not a retry.
 func retriedAtCallSite(stack []ast.Node) bool {
 	loopIndex := -1
-	for i := len(stack) - 1; i >= 0; i-- {
-		if _, ok := stack[i].(*ast.ForStmt); ok {
+	for i, node := range slices.Backward(stack) {
+		if _, ok := node.(*ast.ForStmt); ok {
 			loopIndex = i
 			break
 		}
