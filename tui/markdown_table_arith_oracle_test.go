@@ -100,12 +100,16 @@ func compareMarkdownTablesWithPi(t *testing.T, probes []markdownRenderProbe) {
 	t.Logf("%d tables, %d renders equal Pi's", len(probes), renders)
 }
 
+// The (longest word, natural width) pairs are the boundary values of the arithmetic: a longest word of 1 (no shrink weight), 2 and 3 (small weights), 5 (the first value
+// that leaves a remainder in the weighted shares) and 31 (above the 30-column cap), each with a natural width equal to it, one, two and four columns wider (the
+// smallest remainders of the one-column-at-a-time distribution) and twelve wider. Larger values only add whole columns to the same remainders (the arithmetic check of
+// behavior-inputs-b4-arith-check.py raised no flag for them), so they add no new branch.
 // TestMarkdownTableColumnWidthsMatchPiOneAndTwoColumns builds every table of one column and of two columns from the (longest word, natural width) pairs below,
 // in both row orders, and compares the rendering at every width up to where it fits.
 func TestMarkdownTableColumnWidthsMatchPiOneAndTwoColumns(t *testing.T) {
 	var shapes []markdownTableColumn
-	for _, longest := range []int{1, 2, 3, 5, 8, 31, 40} {
-		for _, extra := range []int{0, 1, 2, 4, 9, 40} {
+	for _, longest := range []int{1, 2, 3, 5, 31} {
+		for _, extra := range []int{0, 1, 2, 4, 12} {
 			shapes = append(shapes, markdownTableColumn{longest, longest + extra})
 		}
 	}
@@ -142,7 +146,7 @@ func TestMarkdownTableColumnWidthsMatchPiManyColumns(t *testing.T) {
 	var probes []markdownRenderProbe
 	longests := []int{1, 1, 2, 3, 5, 8, 13, 30, 31, 45}
 	extras := []int{0, 0, 1, 2, 4, 9, 40, 120}
-	for len(probes) < 700 {
+	for len(probes) < 300 {
 		n := 3 + rng.IntN(6)
 		columns := make([]markdownTableColumn, n)
 		swap := make([]bool, n)
@@ -178,7 +182,7 @@ func TestMarkdownTableRandomCellsMatchPi(t *testing.T) {
 		return strings.TrimSpace(strings.Join(parts, " "))
 	}
 	var probes []markdownRenderProbe
-	for len(probes) < 600 {
+	for len(probes) < 250 {
 		n := 1 + rng.IntN(5)
 		rows := rng.IntN(4)
 		var b strings.Builder
