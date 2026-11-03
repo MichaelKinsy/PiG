@@ -1,0 +1,75 @@
+# Behavior family: interactive-rendering
+# Surface: /fork user-message selector input state machine (UserMessageList.handleInput: up and down wrap,
+#          page keys clamp, confirm selects the highlighted message, cancel dismisses the selector)
+#
+# Three user messages are listed, the latest selected. Up moves to the middle message, then Escape cancels and the chat is shown unchanged.
+#
+# Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
+#
+
+name = "63-user-message-selector-cancel"
+description = "Escape dismisses the /fork selector without forking in both binaries."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 80
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: alpha"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["reply with exactly: alpha", "Enter"]
+settle_seconds = 4
+wait_contains = ["alpha"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["reply with exactly: beta", "Enter"]
+settle_seconds = 4
+wait_contains = ["beta"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["reply with exactly: gamma", "Enter"]
+settle_seconds = 4
+wait_contains = ["gamma"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+settle_seconds = 1
+wait_contains = ["Fork from Message", "Message 3 of 3"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: beta"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 2
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

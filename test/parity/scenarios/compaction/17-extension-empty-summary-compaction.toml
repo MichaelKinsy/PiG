@@ -1,0 +1,55 @@
+# Behavior family: compaction
+# Surface: InteractiveMode compaction_end success check. Pi's handler takes the success branch when the event
+# carries a result object (interactive-mode.ts:3768 `else if (event.result)`), whatever the summary holds, so an
+# extension that answers session_before_compact with an empty summary still rebuilds the transcript and shows the
+# [compaction] block. The compaction_end event of a compaction without a result carries an error message instead.
+#
+# Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
+#
+
+name = "17-extension-empty-summary-compaction"
+description = "An empty extension compaction summary still renders the [compaction] block as a successful compaction."
+covers = [
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/coding-agent/src/core/compaction/utils.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+# Depends on testdata/{pig,pi}-agent/settings.json setting
+# compaction.keepRecentTokens=100 so this small fixture still has messages
+# outside the recent-keep window to summarize. Under the default (20000) the
+# 0.79.10 empty-compaction guard would refuse (see 05-nothing-to-compact).
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/empty-summary-compaction.mjs"]
+pig_extensions = ["testdata/ext/empty-summary-compaction.mjs"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compact-session"
+capture_start = "[compaction]"
+capture_end = "expand)"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+settle_seconds = 5
+wait_contains = ["[compaction]", "450 tokens"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command", "Nothing to compact"]
+both_contain = ["[compaction]", "450 tokens", "expand)"]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

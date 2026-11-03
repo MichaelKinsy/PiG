@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -222,6 +223,15 @@ func (p *SlashOnlyProvider) SuggestionTask(lines []string, line, col int, _ bool
 	return "", nil, false
 }
 
+// textBeforePrefix is upstream's currentLine.slice(0, cursorCol - prefix.length): when the cursor sits before the end of the prefix's length
+// the end offset is negative and String.slice counts it from the end of the line. Columns are bytes; the offsets count UTF-16 units.
+func textBeforePrefix(line string, cursorCol int, prefix string) string {
+	if before := cursorCol - len(prefix); before >= 0 {
+		return line[:before]
+	}
+	return jsstring.Slice(line, 0, jsstring.Length(line[:cursorCol])-jsstring.Length(prefix))
+}
+
 // ApplyCompletion replaces the trailing `prefix` chars of the current
 // line with the completion text. Three behaviors:
 //
@@ -239,11 +249,7 @@ func (p *SlashOnlyProvider) ApplyCompletion(lines []string, cursorLine, cursorCo
 	if cursorCol > len(line) {
 		cursorCol = len(line)
 	}
-	if len(prefix) > cursorCol {
-		// Defensive: prefix longer than what's before cursor. Treat as no-op.
-		return lines, cursorLine, cursorCol
-	}
-	beforePrefix := line[:cursorCol-len(prefix)]
+	beforePrefix := textBeforePrefix(line, cursorCol, prefix)
 	afterCursor := line[cursorCol:]
 
 	out := make([]string, len(lines))

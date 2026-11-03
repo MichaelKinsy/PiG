@@ -27,7 +27,7 @@ func TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast(t *testi
 	p.opts.Settings = Settings{ShowCacheMissNotices: true}
 	p.toolsExpanded = true
 	p.chatContainer.Add(tui.NewTruncatedText("STALE TRANSCRIPT", 0, 0))
-	p.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", Summary: "NEW SUMMARY", TokensBefore: 4321, Usage: &ai.Usage{Input: 1000, Output: 200, Cost: ai.UsageCost{Total: 0.5}}})
+	p.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", HasResult: true, Summary: "NEW SUMMARY", TokensBefore: 4321, Usage: &ai.Usage{Input: 1000, Output: 200, Cost: ai.UsageCost{Total: 0.5}}})
 	got := p.chat()
 	kept, summary, notice := strings.Index(got, "KEPT QUESTION"), strings.Index(got, "NEW SUMMARY"), strings.Index(got, "Compaction: 1.2k tokens billed (~$0.50)")
 	if strings.Contains(got, "STALE TRANSCRIPT") || strings.Contains(got, "OLD QUESTION") || strings.Contains(got, "STORED SUMMARY") || kept < 0 || summary < kept || notice < summary {

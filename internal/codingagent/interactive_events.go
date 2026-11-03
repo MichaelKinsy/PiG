@@ -490,7 +490,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			} else {
 				m.showStatus("Auto-compaction cancelled")
 			}
-		case e.Summary != "":
+		case e.HasResult:
 			var entries []SessionEntry
 			if session := m.currentSession(); session != nil {
 				entries = session.BuildContextEntries()

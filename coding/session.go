@@ -2913,6 +2913,7 @@ func (s *Session) compact(ctx context.Context, customInstructions string) (*Comp
 	finish()
 	s.emitCompactionEvent(agent.CompactionEndEvent{
 		Reason:               "manual",
+		HasResult:            true,
 		Summary:              result.Summary,
 		FirstKeptEntryID:     result.FirstKeptEntryID,
 		TokensBefore:         result.TokensBefore,
@@ -3506,6 +3507,7 @@ func (s *Session) runAutoCompaction(ctx context.Context, reason string, willRetr
 	}
 	s.emitCompactionEvent(agent.CompactionEndEvent{
 		Reason:               reason,
+		HasResult:            true,
 		Summary:              result.Summary,
 		FirstKeptEntryID:     result.FirstKeptEntryID,
 		TokensBefore:         result.TokensBefore,

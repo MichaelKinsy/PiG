@@ -78,7 +78,7 @@ func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 		return []any{rpcObject{{"type", "compaction_start"}, {"reason", event.Reason}}}, nil
 	case agent.CompactionEndEvent:
 		out := rpcObject{{"type", "compaction_end"}, {"reason", event.Reason}}
-		if event.Summary != "" {
+		if event.HasResult {
 			result := rpcObject{{"summary", event.Summary}, {"firstKeptEntryId", event.FirstKeptEntryID}, {"tokensBefore", event.TokensBefore}, {"estimatedTokensAfter", event.EstimatedTokensAfter}}
 			if event.Usage != nil {
 				result = append(result, rpcField{"usage", rpcUsage(event.Usage)})
