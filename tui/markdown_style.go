@@ -107,7 +107,7 @@ func (m *Markdown) childMarkdown(content string) *Markdown {
 func (m *Markdown) latexEnabled() bool { return m.options.RenderLatex == nil || *m.options.RenderLatex }
 
 // renderQuote returns the quote's rows and whether it has a border: a quote narrower than three columns has none, and its own spacing row is not added (Pi 8a2ebd385).
-func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIndented, lazyBreaks []int, width int, notLast bool) (rows []string, bordered bool, listEnd int) {
+func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIndented, lazyBreaks, lazyGroups, lazyListEnds []int, width int, notLast bool) (rows []string, bordered bool, listEnd int) {
 	theme := m.markdownTheme()
 	quoteStyle := func(text string) string { return theme.Quote(theme.Italic(text)) }
 	prefix := markdownStylePrefix(quoteStyle)
@@ -117,6 +117,8 @@ func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIn
 	child.lazyLines = lazyLines
 	child.lazyIndented = lazyIndented
 	child.lazyBreaks = lazyBreaks
+	child.lazyGroups = lazyGroups
+	child.lazyListEnds = lazyListEnds
 	child.keepPartialFence = m.keepPartialFence || notLast
 	// upstream: markdown.ts renderToken blockquote (Pi 8a2ebd385): with no room for another border ("│ " plus one content column) the nested content renders
 	// without one and without wrapping it again. Otherwise each extra level re-wraps every child line at width 1 and the output grows exponentially with the nesting depth.
