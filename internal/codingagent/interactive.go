@@ -443,6 +443,9 @@ type InteractiveMode struct {
 	// headerBox is the header container every layout mount shares. startupHeaderPending is true from the first paint until startup has the terminal's colors, and keeps the container empty. Owner loop only.
 	headerBox            *tui.Container
 	startupHeaderPending bool
+	// changelogEntries and extensionChangelogUpdates are the startup notices init() prepares before the UI starts (interactive-mode.ts changelogMarkdown and extensionChangelogUpdates); the bind shows them.
+	changelogEntries          []ChangelogEntry
+	extensionChangelogUpdates []extensionChangelogUpdate
 	// spriteOwners names the extensions whose sprites the bound build registered in piglogin's catalogue (D2). Binding
 	// another build's bridge removes them first, since the outgoing bridge no longer reaches the UI when its host shuts
 	// down. Guarded by spriteOwnersMu.
@@ -1569,6 +1572,10 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 		m.backgroundCtx = nil
 		return nil
 	})
+	// Pi's init() prepares the changelog data right after registering the signal handlers, so a first start or an update records the version before the
+	// model scope notice, the UI and the extensions (interactive-mode.ts:976-981).
+	m.changelogEntries = m.getChangelogForDisplay()
+	m.extensionChangelogUpdates = m.getExtensionChangelogUpdates()
 	mark := m.startupMark()
 	m.initStartupTheme()
 	mark("theme-detected")
@@ -1834,18 +1841,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.tuiInst.Render()
 	mark("first-render-done")
 	// Upstream's rebindCurrentSession shows the startup changelog notice after the loaded resources (showStartupNoticesIfNeeded, interactive-mode.ts
-	// bindCurrentSessionExtensions), before init() renders the initial messages. A fresh session (no prior messages) shows "what's new" when the binary
-	// version differs from the last recorded version, and the install-telemetry ping goes out on the same two occasions upstream sends it: a fresh
-	// install and an update with new changelog entries (getChangelogForDisplay).
-	if m.opts.SettingsManager != nil && m.opts.ResumePath == "" {
-		var newEntries []ChangelogEntry
-		if m.opts.AppVersion != "" {
-			newEntries = startupChangelog(m.opts.SettingsManager, m.opts.AppVersion)
-		}
-		if extensionUpdates := m.getExtensionChangelogUpdates(); len(newEntries) > 0 || len(extensionUpdates) > 0 {
-			m.showStartupChangelog(newEntries, extensionUpdates)
-		}
-	}
+	// bindCurrentSessionExtensions), before init() renders the initial messages.
+	m.showStartupChangelog(m.changelogEntries, m.extensionChangelogUpdates)
 
 	m.renderInitialMessages()
 	// upstream: interactive-mode.ts run() shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the

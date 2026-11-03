@@ -1,0 +1,42 @@
+# Behavior family: startup
+# Surface: which sessions init() records the changelog version for.
+#
+# Upstream evidence (Pi 1.5.0 interactive-mode.ts getChangelogForDisplay, 1357-1382): the changelog is skipped only when `session.state.messages.length > 0`; being
+# resumed is not the test. `-c` on a session file that holds the header and no message therefore takes the first-start branch and records the running version in
+# settings.json before session_start, exactly as a new session does (scenario 20). The agent directory has no settings.json; the extension reports whether a
+# version is recorded, since each binary records its own.
+
+name = "21-startup-changelog-version-recorded-for-a-resumed-session-without-messages"
+description = "A resumed session with no messages records the changelog version, as pi tests the message count and not whether the session was resumed."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-fresh"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-fresh", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "sessions", "-c"]
+pi_args = ["--offline", "--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/startup-changelog/recorded.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-changelog/recorded.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "STARTUP CHANGELOG VERSION:"
+ready_pattern_pi = "STARTUP CHANGELOG VERSION:"
+ready_timeout_seconds = 30
+settle_seconds = 1
+cwd = "testdata/empty-session"
+capture_start = "STARTUP CHANGELOG VERSION:"
+capture_end_regex = 'STARTUP CHANGELOG VERSION:[^\n]*'
+
+[assert]
+both_reach_ready = true
+both_contain = ["STARTUP CHANGELOG VERSION: recorded"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

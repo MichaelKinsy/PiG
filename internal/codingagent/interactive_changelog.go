@@ -101,17 +101,31 @@ func readPackageJson(packageRoot string) (name, version string) {
 	return name, version
 }
 
-// getExtensionChangelogUpdates is the update list for this run: the source infos of every loaded extension, and no updates for a resumed session.
-func (m *InteractiveMode) getExtensionChangelogUpdates() []extensionChangelogUpdate {
-	if m.opts.SettingsManager == nil || m.newRunner == nil {
+// sessionHasMessages is Pi's `this.session.state.messages.length > 0`: the Session this mode binds already holds conversation messages.
+func (m *InteractiveMode) sessionHasMessages() bool {
+	return m.opts.SessionHandle != nil && len(m.opts.SessionHandle.Agent().Messages()) > 0
+}
+
+// getChangelogForDisplay is interactive-mode.ts getChangelogForDisplay: the What's New entries of a Session without messages, recording the version
+// and sending the install-telemetry ping on a first start and on an update with new entries (startupChangelog).
+func (m *InteractiveMode) getChangelogForDisplay() []ChangelogEntry {
+	if m.opts.SettingsManager == nil || m.opts.AppVersion == "" || m.sessionHasMessages() {
 		return nil
 	}
-	sources := m.newRunner.ExtensionSources()
+	return startupChangelog(m.opts.SettingsManager, m.opts.AppVersion)
+}
+
+// getExtensionChangelogUpdates is the update list for this run: the source infos of every loaded extension, and no updates for a Session with messages.
+func (m *InteractiveMode) getExtensionChangelogUpdates() []extensionChangelogUpdate {
+	if m.opts.SettingsManager == nil || m.opts.ExtensionRunner == nil {
+		return nil
+	}
+	sources := m.opts.ExtensionRunner.ExtensionSources()
 	infos := make([]PiSourceInfo, len(sources))
 	for i, extensionSource := range sources {
 		infos[i] = extensionSource.SourceInfo
 	}
-	return getExtensionChangelogUpdates(m.opts.SettingsManager, infos, m.opts.ResumePath != "")
+	return getExtensionChangelogUpdates(m.opts.SettingsManager, infos, m.sessionHasMessages())
 }
 
 // showStartupChangelog is showStartupNoticesIfNeeded's changelog block (interactive-mode.ts) for the entries newer than the last version seen, in file order with their links
