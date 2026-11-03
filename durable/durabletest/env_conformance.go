@@ -6,7 +6,7 @@ package durabletest
 //
 // Go mapping: upstream's cases await Promises; these block on the environment call. A failed check or an unexpected
 // error ends the case. Cases that upstream gives a timeout (watch cases wait up to three seconds per step) carry it as
-// EnvConformanceCase.Timeout, which a runner without a default timeout may ignore.
+// EnvConformanceCase.Timeout, which RegisterEnvConformance enforces as the case's ceiling, as Pi passes it to runner.it.
 
 import (
 	"context"
@@ -231,12 +231,37 @@ func RegisterEnvConformance(t *testing.T, name string, withEnv EnvConformancePro
 		}
 		for index, testCase := range CreateEnvConformance(conformanceOptions(t)) {
 			t.Run(testCase.Name, func(t *testing.T) {
-				if err := CreateEnvConformance(conformanceOptions(t))[index].Run(); err != nil {
+				created := CreateEnvConformance(conformanceOptions(t))[index]
+				if err := runCaseWithin(created.Timeout, created.Run); err != nil {
 					t.Fatal(err)
 				}
 			})
 		}
 	})
+}
+
+// runCaseWithin runs a case and fails it when it outlives timeout, the per-case ceiling Pi passes to runner.it
+// (testing/runner.ts:36); a zero timeout is the runner's default and runs the case unbounded. A case that outlives its timeout is
+// abandoned, as a test runner abandons one.
+func runCaseWithin(timeout time.Duration, run func() error) error {
+	if timeout <= 0 {
+		return run()
+	}
+	done := make(chan error, 1)
+	go func() {
+		// A check that fails through testing.TB.FailNow ends this goroutine; the case is already marked failed, so it still reports.
+		var err error
+		defer func() { done <- err }()
+		err = run()
+	}()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case err := <-done:
+		return err
+	case <-timer.C:
+		return fmt.Errorf("case timed out after %v", timeout)
+	}
 }
 
 // CreateEnvConformance creates runner-independent cases for an ExecutionEnv. WithEnv must call its callback exactly
