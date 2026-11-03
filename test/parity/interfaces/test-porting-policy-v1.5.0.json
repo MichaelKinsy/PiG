@@ -493,6 +493,15 @@
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
     },
     {
+      "path": "packages/agent/test/agent-tool-typebox.test.ts",
+      "upstreamTestHash": "sha256:ae0464bc26bb9dcc135741eed18444a6cb9c65f85dab119d5b357bbab598528a",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: type-level only (AgentTool\u003cTypeBoxShape\u003e params typing via expectTypeOf); no runtime code. The Go counterpart is agent.AgentTool (agent/agent.go), whose arguments reach tools through agent/tool_execution.go validation."
+    },
+    {
       "path": "packages/agent/test/agent.test.ts",
       "upstreamTestHash": "sha256:562579b6adbe4440a9ec77c061570fa0ab0be5bc243ad2c414c8b2909a5defd7",
       "area": "tools",
@@ -2082,6 +2091,18 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/validation-probes.test.ts",
+      "upstreamTestHash": "sha256:9970c260ebdb403c94846f21c31f1aa56927dd43e119d13960466885b58a17c7",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [reviewer probes (Sol) › keeps the validator of a schema object, as before, also when the schema is changed later]: object-identity caching: Pi keys its validator cache by the schema object's identity (a WeakMap), so an object mutated in place keeps its stale validator; PiG tool schemas are values read on every call and its cache is keyed by the schema text (ai/validate_arguments.go), so no Go product path holds a schema object that changes under a cached validator except an in-process AgentTool that mutates the map it returns; the rest of the case (the first outcome, and that the schema a call is given is the one it validates against) runs in TestValidateToolArgumentsValidatesTheSchemaItIsGiven.",
+      "designedOutCases": [
+        "reviewer probes (Sol) › keeps the validator of a schema object, as before, also when the schema is changed later"
+      ]
+    },
+    {
       "path": "packages/ai/test/validation.test.ts",
       "upstreamTestHash": "sha256:9b358cdd5390c16cca0299532ee66df592b49badc3a77edf5e2c2bd260af98c2",
       "area": "tools",
@@ -3129,6 +3150,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/next/schema/schema-switch.test.ts",
+      "upstreamTestHash": "sha256:209a5eb7f7095439617a4422cbfeaf68018e60a4e7baf309765ad9a1efe900fc",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Production-path review at Pi 1.5.0: the test runs Chord next contracts, documents, store tables, jobs and host (chord/next/contracts fingerprints and SnapshotSchema, chord/next/store DefineTable/EvolveTable/ImportStore, chord/next/documents, chord/next/host) over Pi's recorded fixtures. No pig product path imports them (only chord/nextnode and durable/storage/store do, and nothing outside tests imports those); siblings under chord/test/next/ are area extensions with no hot-path tag."
+    },
+    {
       "path": "packages/chord/test/next/state/batch.test.ts",
       "upstreamTestHash": "sha256:ff9f54f270d65f1a4ee5d15fc5d9a40c76999078013407e6981cc62d9db4c5ac",
       "area": "extensions",
@@ -3939,6 +3967,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/coding-agent/test/code-highlighter.test.ts",
+      "upstreamTestHash": "sha256:e8d098a05d4275c6568e593e8f5d3755089ea07038f77b88b0ce1d7dd4c895fb",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: CodeHighlighter (tui/code_highlighter.go) and the write/codemode tool rows (internal/codingagent/tool_builtin_renderers.go writeRenderCall, write_highlight_cache.go, tool_codemode_renderer.go codemodeRenderCall) run for every Main Screen tool row."
     },
     {
       "path": "packages/coding-agent/test/codemode-renderer.test.ts",
@@ -6712,6 +6749,15 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/harness-context-range.test.ts",
+      "upstreamTestHash": "sha256:acd35d7585a3ac1063c4f335a7779d5b86e3422559707e8c3e2b408cce09d2ca",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: kept context ranges of a Harness conversation (the range a read keeps and a commit extends); the Go test drives durable/harness/context.go (readContextFrom, advanceRange, readContext) over durable/session and durable/storage MemoryStorage, with scheduler_idle.go calling advanceRange. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+    },
+    {
       "path": "packages/durable/test/harness-context.test.ts",
       "upstreamTestHash": "sha256:432a9684c21f3ca48fa2625c812fd2c39fa952f77b8b9042615bdda29969fca5",
       "area": "cli",
@@ -6775,6 +6821,15 @@
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/harness-group-commit.test.ts",
+      "upstreamTestHash": "sha256:4ac2f17128b02d4cb65f4ce04356a953187e1d775e73f0e9e185965812ded9a1",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: group commit and the Harness scheduler (docs/group-commit.md section 6); the Go test drives durable/harness/scheduler.go and scheduler_idle.go (regions that wait for unpublished commits, memberships, reservations, migrations, decision copies, record cache reads) and durable/session (Session line, writer, CachedStorage) over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+    },
+    {
       "path": "packages/durable/test/harness-hook-reads.test.ts",
       "upstreamTestHash": "sha256:d04265c97672ba7fde44d525a7195821a090b7156bb44210696760af9deec07b",
       "area": "cli",
@@ -6791,6 +6846,15 @@
         "hot-path"
       ],
       "rationale": "New in Pi 7ec1f648 (1.3.0+8efd314f): HarnessOptions.models and settings read at each use, the production path of every generation, tool and hook. Ported over the core and the reference Harness."
+    },
+    {
+      "path": "packages/durable/test/harness-idle-scopes.test.ts",
+      "upstreamTestHash": "sha256:a35c49e3cde839151be10b09347248b9c6217db527a52e2f57e9079dc2a0b4ff",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: idle waiters by scope, kept context range expiry and wake(); the Go test drives durable/harness/scheduler_idle.go (idle waiters by scope, kept context ranges and their expiry order, idleState, Wake) and context.go over MemoryStorage counting scanned entry rows. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
     },
     {
       "path": "packages/durable/test/harness-inbox.test.ts",
@@ -7180,6 +7244,15 @@
       "rationale": "New in 1.0.2; area and tags follow the sibling tests under packages/durable/test/. It asserts the provider session ID that reaches the Provider request, a production path."
     },
     {
+      "path": "packages/durable/test/search.test.ts",
+      "upstreamTestHash": "sha256:28ed0ce624cfc27c117c90e09446450657e55571ed59b581a351f3dabd74e48b",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: durable tool-search tokenization and ranking; the Go test drives durable/internal/search/search.go (RankDocuments, BM25 with name boost) and internal/searchtext (Tokenize, the Unicode word segmentation), the ranking behind durable/codemode searchTools and durable/toolsearch. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+    },
+    {
       "path": "packages/durable/test/session-adoption.test.ts",
       "upstreamTestHash": "sha256:42ae98d7a94b167283c399dca83468825816e9366ae7a08101db882fe34ab76b",
       "area": "sessions",
@@ -7189,6 +7262,18 @@
       "rationale": "New in Pi 92ab5360; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
     },
     {
+      "path": "packages/durable/test/session-cached-storage.test.ts",
+      "upstreamTestHash": "sha256:7f29ff94fdec32eff84870073e050c0b829688310a37d4547de5f301df873a18",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [cached storage › keeps the written record itself, frozen: no copy]: Go has no Object.isFrozen: CachedStorage (durable/session/cached_storage.go) keeps the written record by shared referent and a caller who mutates a published record changes what the cache serves, so the frozen-state assertion on record.state has no Go form; the rest of the case (the identity of the task and the conversation the cache serves, no copy) runs in TestCachedStorageKeepsWrittenRecordItselfShared.",
+      "designedOutCases": [
+        "cached storage › keeps the written record itself, frozen: no copy"
+      ]
+    },
+    {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
       "upstreamTestHash": "sha256:f9555a19175438877b309d1ca9bb5fab026c0ba5af9f882f0cd5b00d5f0ee46b",
       "area": "cli",
@@ -7196,6 +7281,18 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/session-conversation-tails.test.ts",
+      "upstreamTestHash": "sha256:e7fc989babae389e6f035bda5e415f4984b9835c945ca292de375c84fa27762c",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [conversation tails › freezes the markers it keeps]: Go has no Object.freeze: ConversationTails (durable/session/conversation_tails.go) shares the kept markers and records are immutable by convention, so a mutation after apply neither throws nor is refused, and no Go production path can express the frozen-record input; the remaining behavior of the markers (kept, bounded, cutoff answers) runs in TestConversationTailsReadsOnceThenFollowsCommits, TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt and TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers.",
+      "designedOutCases": [
+        "conversation tails › freezes the markers it keeps"
+      ]
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
@@ -7244,6 +7341,19 @@
         "hot-path"
       ],
       "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/session-group-commit.test.ts",
+      "upstreamTestHash": "sha256:945fd772a069dd8af82e232f2fc4c4d808cdd8535ca027ab97d381b22d31ec18",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [group commit: failures per part › rejects every part of a call with its rejection value, ${value} included] [group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed]: a Go error cannot be present but nil: Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"), while Go's Commit returns a non-nil error on every failure and the writer (writer.go) requires result.Refused != nil, so a rejection or refusal of undefined or null has no Go form; the rest of both cases (every part rejected with the call's rejection value, the refused part's refusal and the parts after it failing SessionFailed) runs with non-nil values in TestGroupCommitFailuresPerPart.",
+      "designedOutCases": [
+        "group commit: failures per part › rejects every part of a call with its rejection value, ${value} included",
+        "group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed"
+      ]
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
@@ -7327,6 +7437,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/durable/test/store-storage-commit.test.ts",
+      "upstreamTestHash": "sha256:d1be14297cd5b3ac2cef380446b6452acfbcadee5f1eac7465d898bf40152111",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: StoreStorage commit path over Chord v2 (one transaction and one seq per batch, refusals, rollbacks, publication, GC); the Go test drives durable/storage/store/storage.go, commit.go, tables.go (StoreStorage.Commit over chordstore CommitSeries: one backend transaction per call, refusals in turn, rollback, unknown outcome, Publishing in the host batch) and durable/session (the Session that publishes), chord/next/store. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+    },
+    {
       "path": "packages/durable/test/store-storage.test.ts",
       "upstreamTestHash": "sha256:1c13c21282bbf46e11f942b1b8ac01c24991d9f3825446f3a9e5128df9216e6a",
       "area": "cli",
@@ -7343,6 +7462,15 @@
         "hot-path"
       ],
       "rationale": "New in 1.1.0; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+    },
+    {
+      "path": "packages/durable/test/tool-args-typebox.test.ts",
+      "upstreamTestHash": "sha256:af661354a4a3f0062027688f75d789cf45e2e747bf17f70aeec8ba53b96fc848",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: type-level only (defineTool/ToolRegistration args typed from a TypeBox-shaped schema via expectTypeOf); no runtime code. The Go counterpart durable.ToolRegistration/harness.DefineTool (durable/harness/define.go, durable/harness_types.go) takes args as any and validates through ai.ValidateToolArguments (durable/harness/tool.go)."
     },
     {
       "path": "packages/durable/test/tool-search.test.ts",
@@ -7543,33 +7671,89 @@
     {
       "path": "packages/schema/test/builders.test.ts",
       "upstreamTestHash": "sha256:db5e8ff652d0e52a3b47a50d24eb059d9d5bfeba9358f8422d0173612495c3f4",
-      "area": "utilities",
-      "tags": [],
-      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static\u003c\u003e type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static\u003c\u003e type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
       "designedOutCases": [
-        "builders \u203a carry the static type of valid values"
+        "builders › carry the static type of valid values"
       ]
+    },
+    {
+      "path": "packages/schema/test/coerce-typebox.test.ts",
+      "upstreamTestHash": "sha256:4028934e4fdf2b1f2ba37df73094d9a5f9556e5be3243663b88cbdb30815b92c",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: TypeBox's Value.Convert rules run as pass 2 of schema.CompileCoercing's coercer (schema/coerce.go convertOnly/coerce), which ai/validate.go (toolArgumentValidators) compiles for every tool call and agent/tool_execution.go, durable/harness/tool.go and durable/core/driver/session.go reach through ai.ValidateToolArguments*; the test drives pass 2 alone through the export_test.go ConvertOnly wrapper over the same coercer code. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: the 18 cases whose schema, input or expectation holds undefined or a bigint (listed in designedOutCases; the seven ids that two upstream sites share are named id@line): their schema, input or expectation holds `undefined` (8) or a bigint (10), which no Go JSON value can be: tool arguments reach the coercer only through JSON (ai/validate.go decodes with chordjson into nil, bool, float64, string, []any or *Object), and Pi's own path reads a big JSON integer as a double, never as a bigint; the other 186 runnable sites run in TestCoerceTypeBoxUpstream (schema/coerce_typebox_upstream_test.go) over schema/testdata/coerce-typebox.json.",
+      "designedOutCases": [
+        "Value.Convert.Any › Should Convert 2",
+        "Value.Convert.Array › Should Convert 9",
+        "Value.Convert.Null › Should Convert 10",
+        "Value.Convert.Null › Should Convert 11",
+        "Value.Convert.Null › Should Convert 17",
+        "Value.Convert.Number › Should Convert 19",
+        "Value.Convert.Object › Should Convert 7",
+        "Value.Convert.String › Should Convert 5",
+        "Value.Convert.String › Should Convert 8",
+        "Value.Convert.String › Should Convert 14",
+        "Value.Convert.Unknown › Should Convert 2",
+        "Value.Convert.Boolean › Should Convert 20@337",
+        "Value.Convert.Boolean › Should Convert 17@390",
+        "Value.Convert.Boolean › Should Convert 18@395",
+        "Value.Convert.Boolean › Should Convert 19@400",
+        "Value.Convert.Boolean › Should Convert 23@420",
+        "Value.Convert.Number › Should Convert 10@940",
+        "Value.Convert.Number › Should Convert 11@945"
+      ]
+    },
+    {
+      "path": "packages/schema/test/coerce.test.ts",
+      "upstreamTestHash": "sha256:d08ea5303eee91926305b270dc91d19dfdda67b9171d213e16e810a40d4f05cd",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: CompileCoercing/Coerce/Parse (schema/coerce.go, validator.go) validate and coerce the arguments of every tool call: ai/validate.go compiles each tool schema with schema.CompileCoercing, and agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go call it through ai.ValidateToolArguments*."
     },
     {
       "path": "packages/schema/test/conformance.test.ts",
       "upstreamTestHash": "sha256:c8a4ff57f6a93a380b9ac1020ad6fc1cb8ce1805657fd4b761ede18340f3fcf0",
-      "area": "utilities",
-      "tags": [],
-      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path."
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile."
     },
     {
       "path": "packages/schema/test/shared.test.ts",
       "upstreamTestHash": "sha256:cdde5a66a4e2aaa169c07d4baa3d5f43efbaa9de48ad210656a4314034be6ec4",
-      "area": "utilities",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile."
+    },
+    {
+      "path": "packages/schema/test/typebox-static.test.ts",
+      "upstreamTestHash": "sha256:0e8af029502d2e8a2f3d51861136adf577e7707415b75d861f10ce24357ed1db",
+      "area": "tools",
       "tags": [],
-      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path."
+      "rationale": "Production-path review at Pi 1.5.0: the file is type-level only (expectTypeOf over Static\u003c\u003e of TypeBox schemas); it runs no production code. PORT_MAP records src/typebox-static.ts as type-level only with no Go counterpart; the Go schema builders are typed Go values, and the coercion the last case calls is covered by coerce_upstream_test.go."
     },
     {
       "path": "packages/schema/test/validator.test.ts",
       "upstreamTestHash": "sha256:08e6622f1f37dbe24f6245bd6d2dac40c154adeb1b49a05b0d7b76ed7eba4456",
-      "area": "utilities",
-      "tags": [],
-      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path."
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [values › treats a property set to undefined as absent]: Go has no undefined: a Go value is JSON null or an absent *Object member, never a present-but-undefined member, and no Go production path (tool arguments decode through chordjson into nil, bool, float64, string, []any or *Object) can carry one; the rest of the values group (absent versus null members, required, additional properties) runs in TestValues (schema/validator_upstream_test.go).",
+      "designedOutCases": [
+        "values › treats a property set to undefined as absent"
+      ]
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",
@@ -7924,6 +8108,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/tui/test/text.test.ts",
+      "upstreamTestHash": "sha256:e4a3c616422775d0b4373fbe0a7895d43d3d762bf0ce289c66b1397dfd95caa2",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: tui.Text.SetText/Render (tui/text.go) back Main Screen message and tool text rendering."
     },
     {
       "path": "packages/tui/test/truncate-to-width.test.ts",
