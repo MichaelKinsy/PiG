@@ -61,7 +61,8 @@ func toolCallPartial(id, name string) *ai.AssistantMessage {
 func TestEventAgentStartClearsThePendingTools(t *testing.T) {
 	p := newEventProbe(t, true)
 	startReadTool(p, "a")
-	p.handleAgentEvent(agent.MessageUpdateEvent{AssistantMessageEvent: ai.ToolCallDeltaEvent{ContentIndex: 0, Delta: `{}`, Partial: toolCallPartial("b", "read")}})
+	p.handleAgentEvent(agent.MessageStartEvent{Message: assistantMsg("")})
+	p.handleAgentEvent(agent.MessageUpdateEvent{Message: assistantMsg(""), AssistantMessageEvent: ai.ToolCallDeltaEvent{ContentIndex: 0, Delta: `{}`, Partial: toolCallPartial("b", "read")}})
 	if len(p.toolByID) == 0 || len(p.toolStarts) == 0 || len(p.toolFileCalls) == 0 || len(p.pendingArgs) == 0 {
 		t.Fatalf("precondition: toolByID=%d toolStarts=%d toolFileCalls=%d pendingArgs=%d", len(p.toolByID), len(p.toolStarts), len(p.toolFileCalls), len(p.pendingArgs))
 	}
@@ -238,7 +239,8 @@ func TestEventMessageEndFinishesTheMessage(t *testing.T) {
 	})
 	t.Run("user message", func(t *testing.T) {
 		p := newEventProbe(t, false)
-		p.handleAgentEvent(agent.MessageUpdateEvent{AssistantMessageEvent: ai.ToolCallStartEvent{ContentIndex: 0, Partial: toolCallPartial("call-1", "read")}})
+		p.handleAgentEvent(agent.MessageStartEvent{Message: assistantMsg("")})
+		p.handleAgentEvent(agent.MessageUpdateEvent{Message: assistantMsg(""), AssistantMessageEvent: ai.ToolCallStartEvent{ContentIndex: 0, Partial: toolCallPartial("call-1", "read")}})
 		p.handleAgentEvent(agent.MessageEndEvent{Message: userMsg("hi")})
 		if len(p.pendingArgs) != 1 {
 			t.Fatal("a user message_end touched the pending tool arguments")
@@ -437,7 +439,8 @@ func TestEventAgentEndSettlesRunningToolsAndForgetsPendingArguments(t *testing.T
 	p := newEventProbe(t, false)
 	startReadTool(p, "a")
 	card := p.toolByID["a"]
-	p.handleAgentEvent(agent.MessageUpdateEvent{AssistantMessageEvent: ai.ToolCallStartEvent{ContentIndex: 0, Partial: toolCallPartial("b", "read")}})
+	p.handleAgentEvent(agent.MessageStartEvent{Message: assistantMsg("")})
+	p.handleAgentEvent(agent.MessageUpdateEvent{Message: assistantMsg(""), AssistantMessageEvent: ai.ToolCallStartEvent{ContentIndex: 0, Partial: toolCallPartial("b", "read")}})
 	if len(p.pendingArgs) == 0 {
 		t.Fatal("precondition: pending arguments")
 	}

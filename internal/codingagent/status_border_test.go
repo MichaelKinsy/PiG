@@ -24,7 +24,7 @@ func TestWorkingStatusUsesEditorBorder(t *testing.T) {
 	m.editor.EmbedWorkingStatus = true
 	m.statusContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
-	m.handleAgentEvent(agent.AgentStartEvent{})
+	m.handleAgentEvent(agent.TurnStartEvent{})
 	if lines := m.statusContainer.Render(80); len(lines) != 0 {
 		t.Fatalf("status occupies separate rows: %#v", lines)
 	}
@@ -46,7 +46,7 @@ func TestWorkingStatusStaysVisibleThroughPendingAndRunningToolsUntilAgentEnd(t *
 		StopReason: ai.StopReasonStop,
 	}}
 	events := []agent.AgentEvent{
-		agent.AgentStartEvent{},
+		agent.TurnStartEvent{},
 		agent.MessageStartEvent{Message: assistant},
 		agent.MessageEndEvent{Message: assistant},
 		agent.ToolExecutionStartEvent{ToolCallID: "call-1", ToolName: "read", Args: json.RawMessage(`{"path":"main.go"}`)},

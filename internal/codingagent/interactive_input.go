@@ -957,7 +957,7 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		// Esc while working. During an automatic-retry countdown upstream
 		// swaps in an Escape handler that only cancels the retry delay, so
 		// the run itself settles with the failed attempt.
-		if m.retryCountdownStop != nil && m.opts.SessionHandle != nil {
+		if m.retryEscapeHandler && m.opts.SessionHandle != nil {
 			m.opts.SessionHandle.AbortRetry()
 			return nil
 		}

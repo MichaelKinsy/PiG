@@ -519,10 +519,25 @@ func (m *InteractiveMode) interruptShutdown() bool {
 // Equivalent to /model with no args; reuses the SlashContext callbacks
 // so behavior stays consistent between keybinding and slash entry.
 
-// requestExtensionShutdown ends the session at an extension's request. The user did not ask for it, so it leaves a line
+// requestExtensionShutdown is an extension's ctx.shutdown(): it ends an idle session at once and a running one when the run settles.
+func (m *InteractiveMode) requestExtensionShutdown() {
+	m.shutdownRequested.Store(true)
+	if m.extensionIsIdle() {
+		m.shutdownForExtension()
+	}
+}
+
+// checkShutdownRequested ends the session if an extension asked for it during the run.
+func (m *InteractiveMode) checkShutdownRequested() {
+	if m.shutdownRequested.Load() {
+		m.shutdownForExtension()
+	}
+}
+
+// shutdownForExtension ends the session at an extension's request. The user did not ask for it, so it leaves a line
 // in exit.log; an extension's timer can end an idle session this way.
 // pig additive (D102): Pi leaves no trace.
-func (m *InteractiveMode) requestExtensionShutdown() {
+func (m *InteractiveMode) shutdownForExtension() {
 	RecordEnding(m.opts.AgentDir, "extension requested shutdown (ctx.shutdown())")
 	m.requestShutdown()
 }

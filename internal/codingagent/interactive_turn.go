@@ -348,7 +348,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 			}
 			m.emitAgentSettledFor(runner, aborted)
 			// upstream: interactive-mode.ts handleEvent reports the Session's agent_settled event; interactive mode here drives settlement itself.
-			m.runOnMain(m.runCtx, func() { m.programStatusReporter().HandleEvent(agent.AgentSettledEvent{Aborted: aborted}) })
+			m.runOnMain(m.runCtx, func() { m.handleAgentEvent(agent.AgentSettledEvent{Aborted: aborted}) })
 		}()
 		// agent-session.ts:1673-1691 validates the model and its auth before
 		// the compaction check and before_agent_start. interactive-mode.ts

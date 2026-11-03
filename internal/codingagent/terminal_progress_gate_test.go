@@ -37,7 +37,7 @@ func TestTerminalProgressFollowsSettingOnly(t *testing.T) {
 			writes := recordTerminalProgress(t)
 			m := statusBorderMode(t, false)
 			m.opts.Settings = settingsFromJSON(t, tc.settings)
-			m.handleAgentEvent(agent.AgentStartEvent{})
+			m.handleAgentEvent(agent.TurnStartEvent{})
 			m.handleAgentEvent(agent.AgentEndEvent{})
 			m.handleAgentEvent(agent.CompactionStartEvent{Reason: "manual"})
 			m.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual"})
