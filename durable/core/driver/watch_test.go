@@ -461,9 +461,9 @@ func TestObserveCommitsEndsAThrowingObserverListenerError(t *testing.T) {
 	}
 }
 
-// Session.observeCommits (session.ts): the Session's close ends an observer ended after its last publication, and never one that
-// detached.
-func TestObserveCommitsEndsEndedAtCloseAndNeverAfterDetach(t *testing.T) {
+// Session.observeCommits (session.ts, closeEnds): the Session's close fails an observer with "session closed" after its last
+// publication (an adapter follows the next Session), and never ends one that detached.
+func TestObserveCommitsFailsSessionClosedAtCloseAndNeverAfterDetach(t *testing.T) {
 	s := openCore(t)
 	seen := make(chan durable.Seq, 8)
 	attached := &endingCommits{advance: func(_ context.Context, p durable.CommitPublication) { seen <- p.Seq }, ended: make(chan durable.WatchEnd, 2)}
@@ -481,8 +481,8 @@ func TestObserveCommitsEndsEndedAtCloseAndNeverAfterDetach(t *testing.T) {
 	}
 	select {
 	case end := <-attached.ended:
-		if end.Kind != durable.WatchEnded || end.Error != nil {
-			t.Fatalf("ended %+v, want ended", end)
+		if end.Kind != durable.WatchFailed || end.Error == nil || end.Error.Error() != "session closed" {
+			t.Fatalf("ended %+v, want failed with session closed", end)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("the observer did not end at close")
@@ -493,3 +493,66 @@ func TestObserveCommitsEndsEndedAtCloseAndNeverAfterDetach(t *testing.T) {
 	default:
 	}
 }
+
+// Session.close (session.ts closeEnds, Pi 5f312dac, decision "Slice 8 S1"): a synchronous observer of a view, the task graph or a
+// document fails with "session closed" (an adapter following the Session follows the next one), where a watch of the same
+// source ends ended.
+func TestSessionCloseFailsObserversAndEndsWatches(t *testing.T) {
+	s := openCore(t)
+	writeNotes(t, s, "a")
+	root, err := s.Root(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graphEnds := make(chan durable.WatchEnd, 2)
+	viewEnds := make(chan durable.WatchEnd, 2)
+	docEnds := make(chan durable.WatchEnd, 2)
+	if _, err := s.ObserveTaskGraph(t.Context(), &endingObserver[harness.TaskGraph]{ended: graphEnds}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ObserveConversation(t.Context(), root.Id(), &endingObserver[harness.ConversationView]{ended: viewEnds}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ObserveDocErased(t.Context(), notesDoc, &endingObserver[durable.JsonObject]{ended: docEnds}); err != nil {
+		t.Fatal(err)
+	}
+	graphWatch, err := s.WatchTaskGraph(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	docWatch, err := s.WatchDocErased(t.Context(), notesDoc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for name, ends := range map[string]chan durable.WatchEnd{"graph": graphEnds, "view": viewEnds, "document": docEnds} {
+		select {
+		case end := <-ends:
+			if end.Kind != durable.WatchFailed || end.Error == nil || end.Error.Error() != "session closed" {
+				t.Fatalf("%s observer ended %+v, want failed with session closed", name, end)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("the %s observer did not end at close", name)
+		}
+	}
+	for name, watch := range map[string]interface {
+		Closed() <-chan struct{}
+		End() durable.WatchEnd
+	}{"graph": graphWatch, "document": docWatch} {
+		select {
+		case <-watch.Closed():
+		case <-time.After(5 * time.Second):
+			t.Fatalf("the %s watch did not close", name)
+		}
+		if end := watch.End(); end != (durable.WatchEnd{Kind: durable.WatchEnded}) {
+			t.Fatalf("%s watch ended %+v, want ended", name, end)
+		}
+	}
+}
+
+type endingObserver[T any] struct{ ended chan durable.WatchEnd }
+
+func (o *endingObserver[T]) Advance(context.Context, durable.WatchCall[T]) {}
+func (o *endingObserver[T]) End(end durable.WatchEnd)                      { o.ended <- end }
