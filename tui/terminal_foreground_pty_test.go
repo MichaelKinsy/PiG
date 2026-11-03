@@ -199,3 +199,15 @@ func TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg(t *testing.T) {
 		t.Fatalf("job-control cycle reported %q, want the SIGTTOU stop and then raw mode entered", got)
 	}
 }
+
+// Job control applies only to the controlling terminal. When stdin is a terminal that is not this process's controlling terminal, tcgetpgrp
+// reports ENOTTY and no SIGTTOU or SIGTTIN can stop the process, so Pi's SIGCONT handler restarts the UI there and so must PiG. Only a hung-up
+// terminal (EIO) is dead; reading ENOTTY as dead made `kill -CONT` end such a session with exit 129.
+func TestStdinInForegroundTreatsATerminalThatIsNotTheControllingTerminalAsForeground(t *testing.T) {
+	master, slave := openTestPTY(t) // opened with O_NOCTTY: not the controlling terminal of the test process
+	defer func() { _ = master.Close() }()
+	foreground, err := NewProcessTerminalWithOutput(slave, nil, io.Discard).inForeground()
+	if err != nil || !foreground {
+		t.Fatalf("a terminal that is not the controlling terminal reported foreground=%t err=%v, want foreground without an error", foreground, err)
+	}
+}

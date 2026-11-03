@@ -116,3 +116,30 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 	}
 	return findings
 }
+
+// The audit must demand the retry, not the mention: a function that names isEINTR and then returns on it, or a loop that returns on EINTR,
+// still hands EINTR to its caller.
+func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
+	const header = "package p\nimport \"golang.org/x/sys/unix\"\nfunc isEINTR(error) bool { return false }\nvar _ = unix.EINTR\n"
+	for _, tc := range []struct {
+		name, body string
+		flagged    bool
+	}{
+		{"retry loop that continues", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n return n, err\n}", false},
+		{"retry loop that leaves only on a different error", "for {\n n, err := unix.Poll(nil, 0)\n if !isEINTR(err) { return n, err }\n}", false},
+		{"mutant: returns on EINTR", "n, err := unix.Poll(nil, 0)\n if isEINTR(err) { return 0, err }\n return n, err", true},
+		{"mutant: names EINTR and loops but returns on it", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { return 0, err }\n if err == nil { return n, nil }\n}", true},
+		{"mutant: no check at all", "return unix.Poll(nil, 0)", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fset := token.NewFileSet()
+			file, err := parser.ParseFile(fset, "audited.go", header+"func f() (int, error) {\n"+tc.body+"\n}\n", 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := auditEINTR(fset, "audited.go", file); (len(got) > 0) != tc.flagged {
+				t.Fatalf("audit findings %v, flagged want %t", got, tc.flagged)
+			}
+		})
+	}
+}
