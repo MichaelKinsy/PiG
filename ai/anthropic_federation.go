@@ -566,7 +566,7 @@ func parseAnthropicTokenResponse(status int, text string) (anthropicAccessToken,
 			return anthropicAccessToken{}, fmt.Errorf("Token endpoint response: unsupported token_type \"%s\" (want Bearer)", jsonAsJSString(tokenType))
 		}
 	}
-	expiresIn := jsNumberFromJSON(members["expires_in"])
+	expiresIn := jsnumber.FromJSON(members["expires_in"])
 	if math.IsNaN(expiresIn) || math.IsInf(expiresIn, 0) {
 		return anthropicAccessToken{}, fmt.Errorf("Token endpoint response missing required fields: %s", redactAnthropicTokenJSON(raw))
 	}
@@ -644,6 +644,3 @@ func jsonAsJSString(raw json.RawMessage) string {
 	}
 	return stringifyJSONValue(raw)
 }
-
-// jsNumberFromJSON is Number(value) for the JSON value of a token response member; an absent member is NaN.
-func jsNumberFromJSON(raw json.RawMessage) float64 { return jsnumber.FromJSON(raw) }

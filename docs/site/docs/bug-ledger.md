@@ -3237,7 +3237,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1f2f94065d` (2026-11-02)
 - **Tests:** `ai/anthropic_federation_number_oracle_test.go::TestFederationExpiresInNumberMatchesJS`, `ai/auth_context_oracle_test.go::TestDefaultProviderAuthContextMatchesPi`, `ai/cloudflare_stream_upstream_test.go::TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs`, `ai/oauth_credential_order_test.go::TestOAuthCredentialMembersFollowPiFlowLiterals`, `ai/oauth_load_oracle_test.go::TestOAuthFlowLoadersMatchPi`
-- **Release note:** The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does. A response that sent the lifetime as a string such as `"0x10"`, `"0b11"` or `[5]` was rejected as missing required fields although `Number()` accepts it, and one such as `"1_0"`, `"inf"` or `"0x1p3"` was accepted as a finite lifetime although `Number()` yields NaN and Pi rejects the response.
+- **Release note:** The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does. A response that sent the lifetime as a string such as `"0x10"`, `"0b11"` or `[5]` was rejected as missing required fields although `Number()` accepts it, and one such as `"1_0"` or `"0x1p3"` was accepted as a finite lifetime although `Number()` yields NaN and Pi rejects the response.
 
 ### BF-1f7fa2f
 

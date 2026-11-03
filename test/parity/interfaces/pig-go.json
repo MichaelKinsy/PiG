@@ -44611,17 +44611,6 @@
       "shapeHash": "sha256:e174f8719461b904c88023fdcf9a115ba867fe82c27289a0b06347e3921b833a"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#jsNumberFromJSON",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "jsNumberFromJSON",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(raw encoding/json.RawMessage) float64"
-      },
-      "shapeHash": "sha256:dc80001e7c4d1ed396f60bc91d9d0972561c8421b5f75b8c1eed7ae3c11c13e8"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#jsNumberToInt",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "jsNumberToInt",
@@ -92734,6 +92723,17 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#menuChoice",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "menuChoice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(answer string, count int) (int, bool)"
+      },
+      "shapeHash": "sha256:e3b6bd150f3bcbfd889b8cc9cda13effcf58bfdc3b6d3335464337520540851d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#mergeExtConfigs",
