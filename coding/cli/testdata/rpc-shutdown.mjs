@@ -42,6 +42,15 @@ export default function (pi) {
       record("settled_wait:done");
     });
   }
+  // RPC_SHUTDOWN_AT_START requests shutdown synchronously from session_start; RPC_SHUTDOWN_IDLE_TIMER=ms requests it from a timer, while the session is idle.
+  if (process.env.RPC_SHUTDOWN_AT_START) {
+    pi.on("session_start", (_event, ctx) => ctx.shutdown());
+  }
+  if (process.env.RPC_SHUTDOWN_IDLE_TIMER) {
+    pi.on("session_start", (_event, ctx) => {
+      setTimeout(() => ctx.shutdown(), Number(process.env.RPC_SHUTDOWN_IDLE_TIMER));
+    });
+  }
   if (process.env.RPC_SHUTDOWN_ON_SETTLED) {
     pi.on("agent_settled", (_event, ctx) => ctx.shutdown());
   }
@@ -71,6 +80,8 @@ export default function (pi) {
     if (process.env.RPC_SHUTDOWN_DIALOG) {
       record("dialog:" + (await ctx.ui.select("Shutdown dialog", ["keep"])));
     }
+    // RPC_SHUTDOWN_RECORD_DONE reports that the handler ran to its end.
+    if (process.env.RPC_SHUTDOWN_RECORD_DONE) record("session_shutdown:done");
   });
   pi.registerCommand("ask", {
     description: "Wait on a select",
@@ -148,6 +159,24 @@ export default function (pi) {
       record("quit");
       if (_args === "title") ctx.ui.setTitle("quitting");
       ctx.shutdown();
+    },
+  });
+  // quitslow requests shutdown and keeps running; slow only keeps running.
+  pi.registerCommand("quitslow", {
+    description: "Request shutdown, then wait",
+    handler: async (_args, ctx) => {
+      record("quitslow");
+      ctx.shutdown();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      record("quitslow:done");
+    },
+  });
+  pi.registerCommand("slow", {
+    description: "Wait",
+    handler: async () => {
+      record("slow");
+      await new Promise(resolve => setTimeout(resolve, 100));
+      record("slow:done");
     },
   });
   pi.registerTool({

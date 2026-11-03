@@ -18,8 +18,6 @@ func TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal(t *testing.T) {
 	exempt := map[string]string{
 		"coding/cli/guard.go:guardBinaryIdentity":        "runs before any mode starts",
 		"coding/cli/rpc_mode.go:serveRPCMode":            "RPC mode has no TUI: stdin and stdout are the JSONL protocol",
-		"coding/cli/rpc_shutdown_unix.go:dieBySignal":    "RPC shutdown; the process dies by the signal",
-		"coding/cli/rpc_shutdown_windows.go:dieBySignal": "RPC shutdown; the process exits with the signal's status",
 	}
 	fset := token.NewFileSet()
 	var seen int

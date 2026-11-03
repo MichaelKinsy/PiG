@@ -503,7 +503,12 @@ func TestRPCExtensionShutdownRequestExits(t *testing.T) {
 			records := drainRPCOutput(p)
 			p.waitForExit("after ctx.shutdown()")
 			response := handledPromptResponse("quit")
-			if want := []rpcRecord{rpcShutdownStartedNotify, response}; !reflect.DeepEqual(records, want) {
+			want := []rpcRecord{rpcShutdownStartedNotify, response}
+			if impl.name == "pig" {
+				// pig divergence (D231): follows Pi main 1708b4788, where the shutdown waits for the command's prompt response.
+				want = []rpcRecord{response, rpcShutdownStartedNotify}
+			}
+			if !reflect.DeepEqual(records, want) {
 				t.Fatalf("stdout = %v, want the prompt response and the session_shutdown notification", records)
 			}
 			if events := readRPCShutdownReport(t, report); !slices.Equal(events, []string{"quit", "session_shutdown"}) {
@@ -535,12 +540,11 @@ func TestRPCInputEndWritesSessionShutdownDialog(t *testing.T) {
 	}
 }
 
-// rpc-mode.ts shutdown() (728-744): the first trigger removes the signal
-// handlers, unsubscribes stdout, disposes, flushes stdout unless the signal is
-// SIGTERM, and exits. After it started, a termination signal takes its
-// default action, and stdin end or a shutdown request re-enters shutdown(),
-// which exits 0 at once; stdin end after the dispose finished does nothing,
-// because detachInput ran (739).
+// rpc-mode.ts shutdown() (728-744): the first trigger unsubscribes stdout,
+// disposes, flushes stdout unless the signal is SIGTERM, and exits. pig
+// divergence (D231, Pi main ace560c30): after it started, a stdin end, a
+// shutdown request or a single signal does nothing and the dispose finishes; a
+// repeated signal exits at once with 128 plus its number.
 func TestRPCShutdownTriggers(t *testing.T) {
 	type harness struct {
 		shutdown *rpcShutdown
@@ -553,12 +557,10 @@ func TestRPCShutdownTriggers(t *testing.T) {
 			close(h.release)
 		}
 		h.shutdown = newRPCShutdown(
-			func() { h.steps <- "remove signal handlers" },
 			func() { h.steps <- "detach" },
 			func() { h.steps <- "dispose"; <-h.release },
 			func() { h.steps <- "flush" },
 			func(code int) { h.steps <- fmt.Sprintf("exit %03d", code) },
-			func(sig os.Signal) { h.steps <- "die " + sig.String() },
 		)
 		return h
 	}
@@ -579,7 +581,7 @@ func TestRPCShutdownTriggers(t *testing.T) {
 		t.Helper()
 		done := make(chan struct{})
 		go func() { trigger(); close(done) }()
-		for _, step := range []string{"remove signal handlers", "detach", "dispose"} {
+		for _, step := range []string{"detach", "dispose"} {
 			if got := <-h.steps; got != step {
 				t.Fatalf("step = %q, want %q", got, step)
 			}
@@ -590,56 +592,66 @@ func TestRPCShutdownTriggers(t *testing.T) {
 	t.Run("stdin end flushes and exits 0", func(t *testing.T) {
 		h := newHarness(false)
 		h.shutdown.inputEnd()
-		expect(t, h, "remove signal handlers", "detach", "dispose", "flush", "exit 000")
+		expect(t, h, "detach", "dispose", "flush", "exit 000")
 	})
 	t.Run("a shutdown request flushes and exits 0", func(t *testing.T) {
 		h := newHarness(false)
 		h.shutdown.requested()
-		expect(t, h, "remove signal handlers", "detach", "dispose", "flush", "exit 000")
+		expect(t, h, "detach", "dispose", "flush", "exit 000")
 	})
 	t.Run("SIGTERM exits 143 without a flush", func(t *testing.T) {
 		h := newHarness(false)
 		h.shutdown.signal(syscall.SIGTERM)
-		expect(t, h, "remove signal handlers", "detach", "dispose", "exit 143")
+		expect(t, h, "detach", "dispose", "exit 143")
 	})
 	t.Run("another signal flushes and exits 128 plus its number", func(t *testing.T) {
 		h := newHarness(false)
 		h.shutdown.signal(syscall.SIGINT)
-		expect(t, h, "remove signal handlers", "detach", "dispose", "flush", "exit 130")
+		expect(t, h, "detach", "dispose", "flush", "exit 130")
 	})
-	t.Run("a signal during a dispose takes its default action", func(t *testing.T) {
+	t.Run("a single signal during a dispose does not interrupt it", func(t *testing.T) {
 		h := newHarness(true)
 		done := disposing(t, h, h.shutdown.inputEnd)
-		h.shutdown.signal(syscall.SIGTERM)
-		expect(t, h, "die "+syscall.SIGTERM.String())
+		if h.shutdown.signal(syscall.SIGTERM) {
+			t.Fatal("the signal started a second shutdown")
+		}
+		expect(t, h)
 		close(h.release)
 		<-done
-		expect(t, h)
+		expect(t, h, "flush", "exit 000")
 	})
-	t.Run("stdin end during a signal dispose exits 0 at once", func(t *testing.T) {
-		h := newHarness(true)
-		done := disposing(t, h, func() { h.shutdown.signal(syscall.SIGTERM) })
-		h.shutdown.inputEnd()
-		expect(t, h, "exit 000")
-		close(h.release)
-		<-done
-		// The process ended at the first exit; the dispose finishing afterwards does not exit 143.
-		expect(t, h)
-	})
-	t.Run("a shutdown request during a stdin-end dispose exits 0 at once", func(t *testing.T) {
+	t.Run("a repeated signal during a dispose exits at once", func(t *testing.T) {
 		h := newHarness(true)
 		done := disposing(t, h, h.shutdown.inputEnd)
-		h.shutdown.requested()
-		expect(t, h, "exit 000")
+		h.shutdown.repeatedSignal(syscall.SIGTERM)
+		expect(t, h, "exit 143")
 		close(h.release)
 		<-done
 		// The process ended at the first exit; the dispose finishing afterwards neither flushes nor exits again.
 		expect(t, h)
 	})
+	t.Run("stdin end during a signal dispose does not interrupt it", func(t *testing.T) {
+		h := newHarness(true)
+		done := disposing(t, h, func() { h.shutdown.signal(syscall.SIGTERM) })
+		h.shutdown.inputEnd()
+		expect(t, h)
+		close(h.release)
+		<-done
+		expect(t, h, "exit 143")
+	})
+	t.Run("a shutdown request during a stdin-end dispose does nothing", func(t *testing.T) {
+		h := newHarness(true)
+		done := disposing(t, h, h.shutdown.inputEnd)
+		h.shutdown.requested()
+		expect(t, h)
+		close(h.release)
+		<-done
+		expect(t, h, "flush", "exit 000")
+	})
 	t.Run("stdin end after a finished dispose does nothing", func(t *testing.T) {
 		h := newHarness(false)
 		h.shutdown.signal(syscall.SIGTERM)
-		expect(t, h, "remove signal handlers", "detach", "dispose", "exit 143")
+		expect(t, h, "detach", "dispose", "exit 143")
 		h.shutdown.inputEnd()
 		expect(t, h)
 	})
