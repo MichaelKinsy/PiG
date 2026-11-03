@@ -61,6 +61,10 @@ type toolCardProbe struct {
 	Width    int             `json:"width"`
 	Theme    string          `json:"theme"`
 	CWD      string          `json:"cwd"`
+	// Hyperlinks is the terminal's OSC 8 support, which the path in a call header links through (renderToolPath).
+	Hyperlinks bool `json:"hyperlinks,omitempty"`
+	// DocsPage names a page of the documentation root (README.md, docs/x.md); the Pi oracle reads it from Pi's package and Args holds PiG's page.
+	DocsPage string `json:"docsPage,omitempty"`
 	// Settle waits for the edit call's diff preview before the card is drawn.
 	Settle bool `json:"settle,omitempty"`
 	// Bindings are user keybindings (the expand hint names the keys bound to app.tools.expand).
@@ -426,6 +430,7 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 	out := make([][]string, len(probes))
 	for i, probe := range probes {
 		tui.SetTheme(probe.Theme)
+		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true, Hyperlinks: probe.Hyperlinks})
 		installCardBindings(t, probe)
 		raw, _ := json.Marshal(probe.Args)
 		// A session registers bash, powershell, grep, find and ls as tool definitions; bindToolCard gives read, write and edit their built-in definitions.

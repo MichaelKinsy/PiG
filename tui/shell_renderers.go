@@ -83,6 +83,9 @@ func jsTruthy(v any) bool {
 	return true
 }
 
+// JSTemplateString is `${value}` interpolation of a JSON-decoded value.
+func JSTemplateString(v any) string { return jsTemplateString(v) }
+
 // jsTemplateString mirrors `${value}` interpolation for a JSON-decoded value.
 func jsTemplateString(v any) string {
 	switch x := v.(type) {

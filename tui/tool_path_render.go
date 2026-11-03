@@ -44,6 +44,17 @@ func linkPath(styledText, rawPath, cwd string) string {
 	return Hyperlink(styledText, nodeurl.PathToFileURL(abs, runtime.GOOS == "windows"))
 }
 
+// ToolPathLinkError is the error upstream renderToolPath throws for a path its hyperlink cannot name: with hyperlink support linkPath resolves
+// the raw path against the working directory, and a file: URL that names a host or holds an encoded separator makes that resolution throw. It is nil
+// without hyperlink support and for an empty path, which renders no link.
+func ToolPathLinkError(rawPath, cwd string) error {
+	if rawPath == "" || !GetCapabilities().Hyperlinks {
+		return nil
+	}
+	_, err := resolvepath.Resolve(rawPath, cwd)
+	return err
+}
+
 // renderToolPath styles a tool path argument: accent color, $HOME
 // shortened, and (capability permitting) an OSC-8 hyperlink. An empty
 // path renders as a muted "...". Mirrors upstream renderToolPath
