@@ -1,0 +1,47 @@
+# Behavior family: extensions-runtime
+# Surface: agent_settled of InteractiveMode.handleEvent (interactive-mode.ts 3729-3731) and the extension shutdown handler (2129-2134).
+#
+# Pi's shutdownHandler sets shutdownRequested and shuts down at once only when the session is idle. A turn_start handler that calls ctx.shutdown()
+# runs while the reply streams, so Pi lets the run finish, and checkShutdownRequested at agent_settled ends the session: the reply "42" is drawn,
+# then session_shutdown "quit" is reported and the process exits 0. PiG ended the session at the call, mid-run, and the reply never appeared.
+#
+# Upstream evidence (Pi 1.5.0 oracle, parity harness, 2026-11-03, 100x35 tmux, test-faux): the final frame holds the prompt, the reply "42"
+# and the line "SHUTDOWN_EVENT quit".
+name = "93-shutdown-during-run-waits-for-settle"
+description = "ctx.shutdown() from a handler that runs during a reply ends the session after the reply, when the run settles"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/shutdown-during-run.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/shutdown-during-run.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "What is 20+22?"
+capture_end = "SHUTDOWN_EVENT quit"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["SHUTDOWN_EVENT quit"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_contain = [" 42", "SHUTDOWN_EVENT quit"]
+both_not_contain = ["panic:", "goroutine ", "uncaughtException"]
+output_equal = true
+runs = 3

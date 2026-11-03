@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# The Go probe lives next to the private interactive owner-loop implementation.
+# Preserve its exit status; print only its machine-readable trace on success.
+if ! output=$(./test/parity/testdata/prebuilt-go-test.sh -count=1 -run '^TestHandleEventProbe$' -v ./internal/codingagent); then
+    printf '%s\n' "$output"
+    exit 1
+fi
+printf '%s\n' "$output" | grep '^HANDLE_EVENT '

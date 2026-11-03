@@ -27,8 +27,10 @@ func TestInteractiveToolArgumentsPerDeltaAllocationGate(t *testing.T) {
 	partial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "call_0", Name: "write"}}}
 	marginal := perfgate.CheckLinear(t, "interactive.tool_arguments_delta", n, 1.5, func(units int) {
 		m, _ := newTickRenderProbe(t, "regular")
+		streaming := assistantMsg("")
+		m.handleAgentEvent(agent.MessageStartEvent{Message: streaming})
 		for unit := range units {
-			m.handleAgentEvent(agent.MessageUpdateEvent{AssistantMessageEvent: ai.ToolCallDeltaEvent{ContentIndex: 0, Delta: string(arguments[16*unit : 16*unit+16]), Partial: partial}})
+			m.handleAgentEvent(agent.MessageUpdateEvent{Message: streaming, AssistantMessageEvent: ai.ToolCallDeltaEvent{ContentIndex: 0, Delta: string(arguments[16*unit : 16*unit+16]), Partial: partial}})
 		}
 		if m.toolByID["call_0"] == nil {
 			t.Fatal("the deltas made no tool card")
