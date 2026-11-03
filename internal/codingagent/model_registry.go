@@ -1972,6 +1972,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.SupportsMidConvoToolChanges != nil {
 		merged.SupportsMidConvoToolChanges = ovr.SupportsMidConvoToolChanges
 	}
+	if ovr.SupportsMessageThreads != nil {
+		merged.SupportsMessageThreads = ovr.SupportsMessageThreads
+	}
 	if base.Extra != nil || ovr.Extra != nil {
 		merged.Extra = maps.Clone(base.Extra)
 		if merged.Extra == nil {

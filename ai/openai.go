@@ -149,13 +149,15 @@ type OpenAICompat struct {
 	ChatTemplateArgs            map[string]any `json:"chatTemplateArgs,omitempty"`
 	SupportsThinkingTokenBudget *bool          `json:"supportsThinkingTokenBudget,omitempty"`
 	// ThinkingTokenBudgetField selects the budget wire field and takes precedence over SupportsThinkingTokenBudget.
-	ThinkingTokenBudgetField       ThinkingTokenBudgetField        `json:"thinkingTokenBudgetField,omitempty"`
-	SupportsAdditionalTools        *bool                           `json:"supportsAdditionalTools,omitempty"`
-	SupportsMidConvoEffort         *bool                           `json:"supportsMidConvoEffort,omitempty"`
-	SupportsMidConvoSystemMessages *bool                           `json:"supportsMidConvoSystemMessages,omitempty"`
-	SupportsMidConvoToolAdditions  *bool                           `json:"supportsMidConvoToolAdditions,omitempty"`
-	SupportsMidConvoToolChanges    *bool                           `json:"supportsMidConvoToolChanges,omitempty"`
-	AllowedFallbackModels          []AnthropicAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
+	ThinkingTokenBudgetField       ThinkingTokenBudgetField `json:"thinkingTokenBudgetField,omitempty"`
+	SupportsAdditionalTools        *bool                    `json:"supportsAdditionalTools,omitempty"`
+	SupportsMidConvoEffort         *bool                    `json:"supportsMidConvoEffort,omitempty"`
+	SupportsMidConvoSystemMessages *bool                    `json:"supportsMidConvoSystemMessages,omitempty"`
+	SupportsMidConvoToolAdditions  *bool                    `json:"supportsMidConvoToolAdditions,omitempty"`
+	SupportsMidConvoToolChanges    *bool                    `json:"supportsMidConvoToolChanges,omitempty"`
+	// SupportsMessageThreads reports whether the endpoint supports Anthropic message threads. Unset, it is true for provider anthropic on api.anthropic.com and false otherwise.
+	SupportsMessageThreads *bool                           `json:"supportsMessageThreads,omitempty"`
+	AllowedFallbackModels  []AnthropicAllowedFallbackModel `json:"allowedFallbackModels,omitempty"`
 	// Extra holds the members PiG does not model, as written. Pi's compat schemas allow additional properties and a compat object keeps
 	// them (model-config.ts getProvider, provider-composer.ts mergeCompat), so a custom API can read its own compat settings.
 	Extra map[string]json.RawMessage `json:"-"`
