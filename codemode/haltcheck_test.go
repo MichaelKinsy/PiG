@@ -219,3 +219,30 @@ func haltChild(t *testing.T) {
 		t.Fatal("spin() still running 10s after the halt global was set")
 	}
 }
+
+// A loop that runs for many poll intervals still finishes with its result while the halt global is clear, and traps at
+// a poll once it is set.
+func TestInstrumentHaltPollsRepeatedlyAcrossALongLoop(t *testing.T) {
+	// count: a loop that adds one until 100000 and returns the total.
+	module := []byte{
+		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+		0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+		0x03, 0x02, 0x01, 0x00,
+		0x07, 0x09, 0x01, 0x05, 'c', 'o', 'u', 'n', 't', 0x00, 0x00,
+		0x0a, 0x19, 0x01, 0x17, 0x01, 0x01, 0x7f,
+		0x03, 0x40, 0x20, 0x00, 0x41, 0x01, 0x6a, 0x22, 0x00, 0x41, 0xa0, 0x8d, 0x06, 0x49, 0x0d, 0x00, 0x0b, 0x20, 0x00, 0x0b,
+	}
+	instrumented, err := instrumentHalt(module)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := instantiateWithoutContextChecks(t, instrumented)
+	out, err := mod.ExportedFunction("count").Call(t.Context())
+	if err != nil || len(out) != 1 || out[0] != 100000 {
+		t.Fatalf("count() = %v, %v with the halt global clear, want 100000", out, err)
+	}
+	mod.ExportedGlobal(haltExport).(api.MutableGlobal).Set(1)
+	if _, err := mod.ExportedFunction("count").Call(t.Context()); err == nil || !strings.Contains(err.Error(), "unreachable") {
+		t.Fatalf("count() = %v with the halt global set, want an unreachable trap", err)
+	}
+}
