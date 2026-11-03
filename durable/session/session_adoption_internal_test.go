@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -101,5 +102,13 @@ func TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage(t *testing.
 	}
 	if failure := kernel.Failure(); failure == nil || !errors.Is(failure, err) || strings.Contains(failure.Error(), "without adopting") {
 		t.Fatalf("session failure %v, want the adoption error %v", failure, err)
+	}
+	select {
+	case <-kernel.Closed():
+	case <-time.After(30 * time.Second):
+		t.Fatal("the failed Session never ended")
+	}
+	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, err) {
+		t.Fatalf("session end %+v, want failed with the adoption error %v", end, err)
 	}
 }

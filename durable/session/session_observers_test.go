@@ -367,9 +367,8 @@ func TestObserveDoc(t *testing.T) {
 
 	t.Run("rejects, never panics, on a closed Session or a missing scope ID", func(t *testing.T) {
 		opened := openObserving()
-		if _, err := opened.session.ObserveDocErased(ctx, observeConversationCounter, opened.recorder()); err == nil {
-			t.Fatal("a missing scope ID was accepted")
-		}
+		_, missing := opened.session.ObserveDocErased(ctx, observeConversationCounter, opened.recorder())
+		expectErrorContains(t, missing, "requires a conversation ID")
 		must(t, opened.session.Close(ctx))
 		_, err := opened.session.ObserveDocErased(ctx, observeSessionCounter, opened.recorder())
 		expectErrorContains(t, err, "Session is closed")
@@ -585,7 +584,7 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 		observation = opened.observe(t, observer, observeConversationCounter, conversationId)
 		recreate()
 		mu.Lock()
-		if len(changes) != 1 || !changes[0].Retired || !same(changes[0].Value, observation.Value()) {
+		if len(changes) != 1 || changes[0].Kind != durable.WatchCallValue || len(changes[0].Ops) != 0 || !changes[0].Retired || !same(changes[0].Value, observation.Value()) {
 			t.Fatalf("changes %+v", changes)
 		}
 		mu.Unlock()
@@ -635,7 +634,7 @@ func (*bareObserver) End(durable.WatchEnd)                            {}
 // of the object, or the Session holding one, does.
 func valueWeak(value obj) weak.Pointer[byte] {
 	// The object's first field is the slice of its members: its first word is the address of their storage.
-	return weak.Make(*(**byte)(unsafe.Pointer(&value)))
+	return weak.Make(*(**byte)(unsafe.Pointer(&value))) //nolint:gosec // the test reads the first word of the object, a pointer to its members, to watch their storage
 }
 
 // weakLastObserver keeps nothing of what it is given but a weak pointer to the storage of the last value.

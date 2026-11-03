@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordstore "github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -99,6 +100,49 @@ var liveContract = mustContract(contracts.Local("app.live", contracts.LocalDecla
 	Version: 1, Params: contracts.Params{},
 	Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int()), contracts.Mem("bump", contracts.NewMethod())},
 }))
+
+var memoDoc = func() *documents.StateDefinition {
+	definition, err := documents.DefineState("memo", documents.StateOptions{
+		Schema:         contracts.Obj(contracts.Prop("m", contracts.Int())),
+		Version:        1,
+		Initial:        func() *delta.JsonObject { return delta.JsonObjectOf("m", 1.0) },
+		Persist:        true,
+		CheckpointWhen: func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return true },
+	})
+	if err != nil {
+		panic(err)
+	}
+	return definition
+}()
+
+var memoContract = mustContract(contracts.Local("app.memo", contracts.LocalDeclaration{
+	Version: 1, Params: contracts.Params{},
+	Members: []contracts.LocalEntry{contracts.Mem("memo", contracts.Obj(contracts.Prop("m", contracts.Int()))), contracts.Mem("set", contracts.NewMethod())},
+}))
+
+// persistMemo is an object's persisted document in the store, set to 2 through a host that then closes (Pi's
+// `defineState("memo")` of `app.memo`).
+func persistMemo(t *testing.T, store *chordstore.ChordStore) {
+	t.Helper()
+	chordHost := value(host.CreateHost(host.HostOptions{Store: store, OnError: func(host.HostError) {}}))
+	facet := host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
+		return h.Serve(memoContract, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+			memo := self.State(memoDoc).(*documents.Singleton)
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"memo": self.Derive([]any{memo}, func(values []any) (delta.JsonValue, error) { return values[0], nil })},
+				Methods: map[string]contracts.MethodFunction{
+					"set": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						_, err := memo.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("m", 2.0) })
+						return nil, err
+					},
+				},
+			}}, nil
+		}, host.ServeOptions{})
+	})
+	value(chordHost.Load([]host.HostFacet{{Name: "app", Facet: facet}}, background))
+	value(value(chordHost.Get(background, memoContract, delta.JsonObjectOf(), host.GetOptions{})).Call("set", nil, background))
+	must(t, chordHost.Close(background))
+}
 
 func mustContract(contract *contracts.Contract, err error) *contracts.Contract {
 	if err != nil {
@@ -321,9 +365,13 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 		live := value(chordHost.Get(background, liveContract, delta.JsonObjectOf(), host.GetOptions{}))
 		seen := watched(t, live, "n")
 		value(live.Call("bump", nil, background))
-		current := func() any { return value(live.Member("n").Value()) }
-		eventually(t, "n reaches 2", func() bool { return current() == 2.0 })
-		eventually(t, "the watch sees 2", func() bool { all := seen.all(); return len(all) > 0 && all[len(all)-1] == 2.0 })
+		time.Sleep(20 * time.Millisecond)
+		if got := value(live.Member("n").Value()); got != 2.0 {
+			t.Fatalf("n = %v, want 2", got)
+		}
+		if all := seen.all(); len(all) == 0 || all[len(all)-1] != 2.0 {
+			t.Fatalf("the watch saw %v, want 2 last", all)
+		}
 		must(t, chordHost.Close(background))
 		must(t, store.Close(background))
 	})

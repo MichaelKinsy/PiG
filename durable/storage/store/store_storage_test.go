@@ -335,12 +335,8 @@ func TestStoreStorageArchives(t *testing.T) {
 	t.Run("export and import keep rewindable history, retired records and Chord's own data: reads at a point agree", func(t *testing.T) {
 		store, storage := recorded(t)
 		rewindable, seqs := history(t, storage)
-		// Chord's own data in the same store: a document of another owner (Pi creates one through a host's object).
-		address := chordstore.DocumentAddress{Owner: "app.memo", Namespace: "chord", Kind: "memo", Key: new("")}
-		text := `{"m":1}`
-		fence := chordstore.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
-		_, err := store.Commit([]chordstore.StagedWrite{chordstore.CreateDocument(address, chordstore.DocumentBase{Version: 1, Value: delta.JsonObjectOf("m", float64(1))}, text, nil)}, fence, background)
-		must(t, err)
+		// Chord's own data in the same store: an object's persisted document.
+		persistMemo(t, store)
 		parts := exportedParts(t, store)
 		chordOwned := false
 		for _, part := range parts {
