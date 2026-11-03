@@ -1285,10 +1285,8 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 			continue
 		}
 		fn := &oaiToolFunction{
-			Name:           t.Name,
-			Description:    t.Description,
-			Parameters:     t.Parameters,
-			parameterOrder: t.parameterOrder,
+			Name:        t.Name,
+			Description: t.Description,
 		}
 		// Upstream resolves strict sampling for every tool, so strict "require" fails on
 		// a provider without strict mode; strict is only sent when supported.

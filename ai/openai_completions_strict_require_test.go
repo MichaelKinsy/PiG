@@ -15,12 +15,15 @@ import (
 // function tool without a strict field. Rows were produced by running Pi, not by hand.
 const strictRequireUnsupportedError = `Tool "lookup" requires JSON-schema constrained sampling, but strict tools are unsupported.`
 
+// strictSamplingTool decodes the tool from JSON so it records key order as a decoded tool does;
+// Pi sends the parameters in the order type, properties, required.
 func strictSamplingTool(strict string) ToolSchema {
-	return ToolSchema{
-		Name: "lookup", Description: "d",
-		Parameters:          map[string]any{"type": "object", "properties": map[string]any{"a": map[string]any{"type": "string"}}, "required": []any{"a"}},
-		ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: ConstrainedSamplingStrict(strict)},
+	var tool ToolSchema
+	raw := `{"name":"lookup","description":"d","parameters":{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]},"constrainedSampling":{"type":"json_schema","strict":"` + strict + `"}}`
+	if err := json.Unmarshal([]byte(raw), &tool); err != nil {
+		panic(err)
 	}
+	return tool
 }
 
 func strictRequireRows() map[string]OpenAIConfig {
@@ -70,7 +73,7 @@ func TestCompletionsConvertToolsStrictPreferUnsupportedPlain(t *testing.T) {
 				t.Fatal(err)
 			}
 			got, _ := json.Marshal(out[0])
-			const want = `{"type":"function","function":{"name":"lookup","description":"d","parameters":{"properties":{"a":{"type":"string"}},"required":["a"],"type":"object"}}}`
+			const want = `{"type":"function","function":{"name":"lookup","description":"d","parameters":{"type":"object","properties":{"a":{"type":"string"}},"required":["a"]}}}`
 			if string(got) != want {
 				t.Fatalf("got %s\nwant %s", got, want)
 			}
