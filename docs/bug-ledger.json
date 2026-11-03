@@ -30588,6 +30588,30 @@
       ]
     },
     {
+      "id": "BF-aff6631",
+      "title": "A code mode script in a loop can no longer freeze the whole process",
+      "symptom": "A code mode script in a loop can no longer freeze the whole process.",
+      "rootCause": "Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A code mode script in a loop can no longer freeze the whole process. Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes. Every guest loop, including the QuickJS loops that run JavaScript loops and recursion, now reaches Go at least every 1024 iterations, as Pi's worker `terminate()` reaches a runaway script, so the hard stop runs on time. A custom WebAssembly module that recurses without any loop still never reaches Go, as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aff6631677",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "codemode/haltcheck_test.go::TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld",
+        "codemode/haltcheck_test.go::TestInstrumentHaltPollsRepeatedlyAcrossALongLoop",
+        "codemode/haltcheck_test.go::TestInstrumentHaltTrapsALoopWhenTheGlobalIsSet"
+      ]
+    },
+    {
       "id": "BF-affc944",
       "title": "Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are…",
       "symptom": "Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are retried.",
@@ -32436,6 +32460,30 @@
         "ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB",
         "ai/sse_long_line_test.go::TestSSEDecoderBoundsALine",
         "ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength"
+      ]
+    },
+    {
+      "id": "BF-be2920a",
+      "title": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request…",
+      "symptom": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi. It was sent as an ordinary function tool instead. `prefer` is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "be2920a2f3",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictPreferUnsupportedPlain",
+        "ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictRequireUnsupported",
+        "ai/openai_completions_strict_require_test.go::TestCompletionsStreamStrictRequireUnsupportedFailsBeforeRequest"
       ]
     },
     {
