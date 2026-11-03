@@ -47,7 +47,7 @@ func instantiateWithoutContextChecks(t *testing.T, wasm []byte) api.Module {
 	return mod
 }
 
-// A loop with the halt global set traps on its next iteration; with it clear, a loop runs unchanged.
+// A loop with the halt global set traps within haltPollInterval iterations; with it clear, a loop runs unchanged.
 func TestInstrumentHaltTrapsALoopWhenTheGlobalIsSet(t *testing.T) {
 	instrumented, err := instrumentHalt(haltTestModule)
 	if err != nil {
