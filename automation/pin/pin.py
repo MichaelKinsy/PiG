@@ -28,6 +28,7 @@ import os
 import re
 import shlex
 import subprocess
+import tarfile
 import sys
 import tomllib
 from pathlib import Path
@@ -180,12 +181,21 @@ def derived(pin: Pin) -> dict[str, str]:
 
 def copy_install_lock(pin: Pin) -> None:
     """bench/k8s/image/pi-agent holds Pi's release-published install pair unmodified: copy it byte for byte from the pinned
-    source's packages/coding-agent/install-lock (npm would rewrite the lock, and k8sbench pins the published hashes)."""
-    source = ROOT / ".upstream" / pin.mirror_dir / "packages" / "coding-agent" / "install-lock"
-    if not source.is_dir():
-        raise PinError(f"{source} is missing; run `make upstream-mirror` so pin-sync can copy Pi's install lock")
-    for name in ("package.json", "package-lock.json"):
-        (ROOT / "bench/k8s/image/pi-agent" / name).write_bytes((source / name).read_bytes())
+    source tarball's packages/coding-agent/install-lock (npm would rewrite the lock, and k8sbench pins the published hashes;
+    the mirror drops package lockfiles, so it cannot be the source)."""
+    wanted = {f"packages/coding-agent/install-lock/{name}": name for name in ("package.json", "package-lock.json")}
+    found: dict[str, bytes] = {}
+    with tarfile.open(pinlib.tarball(pin.tag, True) if pin.kind == "tag" else pinlib.tarball(pin.commit, False)) as archive:
+        for member in archive:
+            name = wanted.get(member.name.split("/", 1)[-1])
+            if name and member.isfile():
+                found[name] = archive.extractfile(member).read()
+                if len(found) == len(wanted):
+                    break
+    if len(found) != len(wanted):
+        raise PinError(f"Pi {pin.version}'s tarball has no packages/coding-agent/install-lock pair")
+    for name, data in found.items():
+        (ROOT / "bench/k8s/image/pi-agent" / name).write_bytes(data)
 
 
 def cmd_sync(args: argparse.Namespace) -> None:
