@@ -860,6 +860,308 @@ sha256 = "0f96035f806e95557e23a12ee434b9266da547e3c43fe77899e98e9ec1253254"
 keybindings = []
 
 [[contract]]
+id = "coding-agent/handle-event/run-start"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "handleEvent forwards the event to the program status reporter, then switches on the type (the owner loop dispatches events only after init); agent_start clears the pending tools and puts the main Escape handler back over a retry one, and shows no progress or status; turn_start writes terminal progress when the setting is on, shows the working status unless one is already shown when the working status is visible (clearing any status when it is not), and requests a render"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_status.go#clearStatusIndicator",
+  "internal/codingagent/interactive_input.go#dispatchInputChunk",
+]
+evidence = [
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartKeepsTheRetryStatusUntilTurnStart",
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartRestoresTheMainEscapeHandler",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventAgentStartClearsThePendingTools",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventTurnStartShowsProgressAndTheWorkingStatus",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate async handleEvent(event: AgentSessionEvent): Promise<void> {"
+end = "\t\t\tcase \"queue_update\":"
+sha256 = "55fe328ea296b7662669195bc16dfb91f6a4833fd738b24f899aee5fdf61926a"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/queue-update"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "queue_update refreshes the pending-messages display from the session queue and the compaction queue and requests a render"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_transcript.go#updatePendingMessagesDisplay",
+]
+evidence = [
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventQueueUpdateRefreshesThePendingMessages",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventUserMessageStartRefreshesThePendingMessages",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/58-alt-up-dequeues-queued-message.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"queue_update\":"
+end = "\t\t\tcase \"entry_appended\":"
+sha256 = "30d657555b8315da5ad6468a299a6b7815a29cb598b499f28e192d782c4c7e96"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/entry-appended-entries"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "entry_appended skips an entry the last boundary compaction drew (once), then draws a custom entry through its registered renderer above a streaming message and requests a render, a cache-warm usage entry as a notice, a displayed custom_message as a message, and nothing for a hidden one or any other type"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_cache_warming.go#handleEntryAppended",
+  "internal/codingagent/interactive_transcript.go#addCustomEntryToChat",
+]
+evidence = [
+  "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
+  "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
+  "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedIgnoresOtherEntries",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/extensions-runtime/91-boundary-entries-render-live.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"entry_appended\":"
+end = "\t\t\t\t} else if (event.entry.type === \"compaction\") {"
+sha256 = "ae5f33ac5e6cba30a8a23ac0a80e1c8ff682f666932634e7c98763f903fca4cb"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/entry-appended-compaction"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "a compaction entry that is the first context entry clears the chat, draws the retained entries before it, its summary with its cost notice, then the retained entries after it, remembers those later ids so their own events draw nothing, and requests a render; a compaction that is not the first context entry changes nothing"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_cache_warming.go#renderBoundaryCompaction",
+]
+evidence = [
+  "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+  "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedSupersededCompactionChangesNothing",
+  "test/parity/scenarios/extensions-runtime/92-boundary-compaction-render-live.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\t\t} else if (event.entry.type === \"compaction\") {"
+end = "\t\t\tcase \"session_info_changed\":"
+sha256 = "ab76dee2551678b1382cc6ac295a31fa80955ca3fa2bd18d536862f471550106"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/session-info-thinking"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "session_info_changed sets the terminal title from the session name and working directory, refreshes the footer and requests a render; thinking_level_changed refreshes the footer and the editor border color from the effective level"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_thinking.go#refreshThinkingLevel",
+]
+evidence = [
+  "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter",
+  "internal/codingagent/session_name_event_test.go#TestSessionNameEventUpdatesInteractiveFooter",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"session_info_changed\":"
+end = "\t\t\tcase \"message_start\":"
+sha256 = "45959f3124a1e5e020f3326602d8285f9dbeea082931f0078d31d415e5eb9cf8"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/message-start-update"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "message_start draws a displayed custom message, a user message (then refreshes the pending messages), or starts the streaming assistant block; message_update runs only while a message streams: it refreshes the block, creates one tool card per tool call id (expanded when tools are expanded) and updates the arguments of an existing card, then requests a render"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventMessageStartRendersEachRole",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventMessageUpdateStreamsTextAndCreatesOneCardPerToolCall",
+  "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageUpdateNeedsAStreamingMessage",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"message_start\":"
+end = "\t\t\tcase \"message_end\":"
+sha256 = "0ac0d2e3437ab907d40495d5b94b19859f15423a95987dd388c86138e91d2292"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/message-end"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "message_end of a user message does nothing; any other message without a streaming message only requests a render; otherwise the aborted message takes the abort text, an aborted or failed message pushes its error into every pending tool card and may suggest a bug report, a finished one completes the tool arguments then shows the thinking-drop notice and then the cache-miss notice, the streaming message is released and a render requested"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_chat.go#maybeSuggestBugReport",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventMessageEndFinishesTheMessage",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventMessageEndRequestsAFrame",
+  "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndNeedsAStreamingMessage",
+  "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"message_end\":"
+end = "\t\t\tcase \"bash_execution_update\":"
+sha256 = "adbba5a7559507031fd28d23cf1ff0646e0667a4c709ac6ecc2e3da5295ba512"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/tool-execution"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "bash_execution_update draws nothing; tool_execution_start ignores a nested call, reuses the streamed card or creates one (expanded when tools are expanded) and marks it started; tool_execution_update shows a partial, never failed, result on a known card; tool_execution_end warns once about a changed install on an error, then settles a known card with its result, error flag and duration and forgets it; each requests a render"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventToolExecutionLifecycle",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventToolCardArgumentsAndExecutionStart",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventToolUpdateIsPartialAndEndRecordsTheDuration",
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventBashExecutionUpdateChangesNothing",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"bash_execution_update\":"
+end = "\t\t\tcase \"agent_end\":"
+sha256 = "4255dadd921503d615e16311a801137d88e2a482f49ad2ae662928cf546fe503"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/agent-end-settled"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "agent_end stops the terminal progress when the setting is on, clears the working status only, removes a message still streaming, clears the pending tools and requests a render; agent_settled ends the session when an extension asked for shutdown during the run (ctx.shutdown() ends an idle session at once)"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_tui.go#checkShutdownRequested",
+  "internal/codingagent/interactive_tui.go#requestExtensionShutdown",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndClearsTheRunState",
+  "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndSettlesRunningToolsAndForgetsPendingArguments",
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentSettledChecksTheShutdownRequest",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/extensions-runtime/93-shutdown-during-run-waits-for-settle.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"agent_end\":"
+end = "\t\t\tcase \"compaction_start\": {"
+sha256 = "597aa4959da44f6369a4d829b0a79b8330ff70a4fa5a81013faaab6464bc06d9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/compaction-end"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "compaction_end stops the progress when the setting is on, restores the Escape handler, clears only the compaction status, then shows \"Compaction cancelled\" as an error (manual) or \"Auto-compaction cancelled\" as a status when aborted; for a result redraws the transcript with the new summary last and its cost notice; for an error shows it as an error (manual) or an error-colored line; then flushes the compaction queue (steering when it will retry) and requests a render"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_compaction.go#renderCompactionResult",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventCompactionStartAndEnd",
+  "internal/codingagent/interactive_handle_event_compaction_test.go#TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/compaction/01-compact-command.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"compaction_end\": {"
+end = "\t\t\tcase \"auto_retry_start\": {"
+sha256 = "ce180eeeeb727df4b0408f4ba88d36704108a7aa667f41188487ce9ce61c25b7"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/auto-retry"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "auto_retry_start makes Escape cancel the retry delay and shows the retry status; auto_retry_end restores the main handler, clears only the retry status and shows \"Retry failed after N attempts: ...\" (Unknown error when none) only on failure"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_status.go#showRetryStatusIndicator",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventAutoRetry",
+  "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"auto_retry_start\": {"
+end = "\t\t\tcase \"summarization_retry_scheduled\": {"
+sha256 = "16434deb3a6630d563fd794403b82180e8cb6f7da55307e25eccc8d2df6f88c7"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/handle-event/summarization-retry"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "event-dispatch"
+claim = "summarization_retry_scheduled shows the error and the retry status; summarization_retry_attempt_start clears the retry status then shows the branch-summary status or the compaction status of its reason; summarization_retry_finished clears only the retry status; each requests a render"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "internal/codingagent/interactive_status.go#showCompactionStatusIndicator",
+]
+evidence = [
+  "internal/codingagent/interactive_events_contract_test.go#TestEventSummarizationRetry",
+  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/21-status-lifecycle.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"summarization_retry_scheduled\": {"
+end = "\t\t}\n\t}\n\n\t/** Extract text content from a user message */"
+sha256 = "ea9355c4908d4346412871d87118e1aadcfa41f8aec7ea6fa84d4a7a34a9a604"
+keybindings = []
+
+[[contract]]
 id = "tui/render/main-screen-full-redraw"
 upstream_id = "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender"
 family = "fullscreen"

@@ -461,10 +461,34 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent",
       "ownerFamily": "compaction",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_events.go#handleAgentEvent",
+        "internal/codingagent/interactive_cache_warming.go#handleEntryAppended",
+        "internal/codingagent/interactive_tui.go#checkShutdownRequested"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+        "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+        "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+        "internal/codingagent/interactive_handle_event_probe_test.go#TestHandleEventProbe",
+        "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml"
+      ],
+      "contracts": [
+        "coding-agent/compaction/escape-cancel",
+        "coding-agent/handle-event/run-start",
+        "coding-agent/handle-event/queue-update",
+        "coding-agent/handle-event/entry-appended-entries",
+        "coding-agent/handle-event/entry-appended-compaction",
+        "coding-agent/handle-event/session-info-thinking",
+        "coding-agent/handle-event/message-start-update",
+        "coding-agent/handle-event/message-end",
+        "coding-agent/handle-event/tool-execution",
+        "coding-agent/handle-event/agent-end-settled",
+        "coding-agent/handle-event/compaction-end",
+        "coding-agent/handle-event/auto-retry",
+        "coding-agent/handle-event/summarization-retry"
+      ],
       "divergence": "",
       "rationale": ""
     },
