@@ -3,7 +3,7 @@ package tui
 import "testing"
 
 // A list item line that the hr rule matches ('- - -', '* * *') starts no list: marked's Tokenizer.list stops at it, so inside an item it is content that lexes as a
-// rule. parseMarkdownList returned without consuming such a line, and the item loop treated it as a nested list again forever (`- a\n\n  - - -` and `- * * *` hung
+// rule. the item loop returned without consuming such a line, and the item loop treated it as a nested list again forever (`- a\n\n  - - -` and `- * * *` hung
 // Render and grew memory without bound).
 // Pi source: marked 18 Tokenizer.list (the hr check before each item) and packages/tui/src/components/markdown.ts renderList.
 func TestMarkdownListItemRuleLineIsContentNotANestedListMatchesPi(t *testing.T) {

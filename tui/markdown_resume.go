@@ -3,6 +3,7 @@ package tui
 import (
 	"reflect"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -25,18 +26,10 @@ import (
 // the text that was rendered.
 // index is the position of the point in the points of its state, set when it is picked.
 type resumePoint struct {
-	index, line, rawOff, outLen                                   int
-	silentEnd, emptyFloor, listSpaceEnd, latexNoSpaceEnd, listEnd int
-	emptyBlockRow, sawEmptyHeading, lexedBracket                  bool
-	flags                                                         markedLexerFlags
-	prefix                                                        []string
-}
-
-func absoluteListEnd(listEnd, base int) int {
-	if listEnd < 0 {
-		return -1
-	}
-	return listEnd + base
+	index, line, rawOff, outLen int
+	lexedBracket                bool
+	flags                       markedLexerFlags
+	prefix                      []string
 }
 
 // resumeRecorder collects the resume points of one render. rawStarts holds the byte offset, in the text before its line
@@ -78,13 +71,9 @@ type resumeKey struct {
 // markdownPureHighlight is the code of the highlighter of GetMarkdownTheme.
 var markdownPureHighlight = reflect.ValueOf(HighlightCode).Pointer()
 
-// resumeKey is the key of a render now, and false when the render cannot be resumed from or by another: a quote or list item
-// (it renders inside its document), or a style function that is not one of tui's own, whose result may depend on what the
-// function captured.
+// resumeKey is the key of a render now, and false when the render cannot be resumed from or by another: a style function that is
+// not one of tui's own, whose result may depend on what the function captured.
 func (m *Markdown) resumeKey(width, contentWidth int) (resumeKey, bool) {
-	if m.styleContext != nil || m.styleOwner != nil {
-		return resumeKey{}, false
-	}
 	context, pure := m.currentInlineContext()
 	if !pure || m.defaultTextStyle != nil && m.defaultTextStyle.BgColor != nil {
 		return resumeKey{}, false
@@ -197,3 +186,14 @@ func (m *Markdown) keepWraps() {
 	clear(m.wraps)
 	m.wraps, m.nextWraps = m.nextWraps, m.wraps
 }
+
+// latexClipsFirstCharacter reports whether pi-tui's latexBlock start() matches a top-level paragraph line's src.slice(1), and the byte size of the first character it leaves as the paragraph.
+func latexClipsFirstCharacter(line string) (int, bool) {
+	first, size := utf8.DecodeRuneInString(line)
+	// slice(1) splits an astral character, and the lone surrogate it leaves cannot start the match.
+	//portlint:allow utf16units size is the first character's byte length, and the match needs it in the BMP, so line[size:] is src.slice(1)
+	return size, first <= 0xFFFF && blockLatexStart(line[size:])
+}
+
+// wrapTextWithAnsi is the wrap of an overflowing rendered line.
+var wrapTextWithAnsi = widthx.WrapTextWithAnsi
