@@ -6,9 +6,10 @@ package session_test
 // observeCommits observers runs here right after the publication's scope, before the commit resolves for its caller, so
 // the order logs read "resolve" (Storage) before "observed" (the Session's own observers) and "host".
 //
-// Go cannot patch Transaction.prototype.adopt and .discard, so the adoption count is read from the storage's own order log and
-// from the adopted snapshot, "discard not called" is read from the Session failing with the storage's error while the adopted
-// value stays visible, and the case where adoption itself throws is in session_group_commit_internal_test.go.
+// Go cannot patch Transaction.prototype.adopt, so the adoption count is read from the storage's own order log and from the
+// adopted snapshot. The discard assertions are TestWriterDiscardsAPartOnlyWhenStorageRejectedBeforeItsReceipt
+// (session_adoption_internal_test.go), which counts a part's Discard on a real Writer, and the case where adoption itself
+// throws is TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage in the same file.
 
 import (
 	"context"

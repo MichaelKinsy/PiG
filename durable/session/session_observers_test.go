@@ -1,17 +1,22 @@
 package session_test
 
 // Ports packages/durable/test/session-observers.test.ts: Session.observeDoc(), the synchronous observer of one document
-// address that watches are built on. Upstream's three tests that read V8's WeakRef and gc() ("keeps no detached observer
-// alive", "keeps no value of a document retired for good, while still attached") have no Go counterpart; what they protect,
-// that a detached observer is referenced by nothing of the Session, is checked on the references themselves where Go
-// can: the detached observer is no longer pinned (documentCacheSizes.attached) and gets no call.
+// address that watches are built on. Upstream's two tests that read V8's WeakRef and gc() ("keeps no detached observer
+// alive", "keeps no value of a document retired for good, while still attached") run on Go's weak pointers and
+// runtime.GC (TestObserveDocKeepsNothingAlive). The case "reports an observer whose call returns a rejected promise, then
+// detaches it and ends it `listener_error`" is designed out under the owner class approval of Promise/thenable mechanics:
+// a Go observer's Advance returns no value, and one that panics is reported, detached and ended `listener_error`
+// ("reports a throwing observer, detaches it and ends it with the error").
 
 import (
 	"context"
 	"errors"
 	"math"
+	"runtime"
 	"sync"
 	"testing"
+	"unsafe"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -228,15 +233,39 @@ func TestObserveDoc(t *testing.T) {
 		}
 	})
 
-	t.Run("ends once when the Session closes", func(t *testing.T) {
+	t.Run("ends once when the Session closes, failed (S1: an adapter follows the next Session), a watch ended", func(t *testing.T) {
 		opened := openObserving()
 		opened.add(t, 1)
 		observer := opened.recorder()
 		opened.observe(t, observer, observeSessionCounter)
+		watch, err := opened.session.WatchDocErased(ctx, observeSessionCounter)
+		must(t, err)
 		must(t, opened.session.Close(ctx))
 		calls := observer.all()
-		if len(calls) != 1 || !calls[0].end || calls[0].endCall != (durable.WatchEnd{Kind: durable.WatchEnded}) {
+		if len(calls) != 1 || !calls[0].end || calls[0].endCall.Kind != durable.WatchFailed || calls[0].endCall.Error == nil || calls[0].endCall.Error.Error() != "session closed" {
 			t.Fatalf("calls %+v", calls)
+		}
+		<-watch.Closed()
+		expectEqual(t, watch.End(), durable.WatchEnd{Kind: durable.WatchEnded})
+	})
+
+	t.Run("ends each close's observers with an error of that close, not one shared by every Session", func(t *testing.T) {
+		// Pi makes a new Error per close; Go gives every close a new error wrapping session.ErrSessionClosedEnd, which errors.Is reads.
+		var errs []error
+		for range 2 {
+			opened := openObserving()
+			opened.add(t, 1)
+			observer := opened.recorder()
+			opened.observe(t, observer, observeSessionCounter)
+			must(t, opened.session.Close(ctx))
+			for _, call := range observer.all() {
+				if call.end {
+					errs = append(errs, call.endCall.Error)
+				}
+			}
+		}
+		if len(errs) != 2 || errs[0] == nil || errs[1] == nil || errs[0].Error() != "session closed" || errs[1].Error() != "session closed" || !errors.Is(errs[0], session.ErrSessionClosedEnd) || !errors.Is(errs[1], session.ErrSessionClosedEnd) || any(errs[0]) == any(errs[1]) {
+			t.Fatalf("errors %v", errs)
 		}
 	})
 
@@ -338,9 +367,8 @@ func TestObserveDoc(t *testing.T) {
 
 	t.Run("rejects, never panics, on a closed Session or a missing scope ID", func(t *testing.T) {
 		opened := openObserving()
-		if _, err := opened.session.ObserveDocErased(ctx, observeConversationCounter, opened.recorder()); err == nil {
-			t.Fatal("a missing scope ID was accepted")
-		}
+		_, missing := opened.session.ObserveDocErased(ctx, observeConversationCounter, opened.recorder())
+		expectErrorContains(t, missing, "requires a conversation ID")
 		must(t, opened.session.Close(ctx))
 		_, err := opened.session.ObserveDocErased(ctx, observeSessionCounter, opened.recorder())
 		expectErrorContains(t, err, "Session is closed")
@@ -416,7 +444,7 @@ func (observer *throwingCommits) End(end durable.WatchEnd) {
 }
 
 func TestObserveCommits(t *testing.T) {
-	t.Run("gets every stored commit, then ended once the Session closed, after its last publication", func(t *testing.T) {
+	t.Run("gets every stored commit, then failed once the Session closed (S1), after its last publication", func(t *testing.T) {
 		opened := openObserving()
 		recorder := &commitsRecorder{}
 		opened.session.ObserveCommits(recorder)
@@ -424,7 +452,9 @@ func TestObserveCommits(t *testing.T) {
 		opened.add(t, 1)
 		must(t, opened.session.Close(ctx))
 		expectEqual(t, recorder.order, []string{"seq", "seq", "end"})
-		expectEqual(t, recorder.ends, []durable.WatchEnd{{Kind: durable.WatchEnded}})
+		if len(recorder.ends) != 1 || recorder.ends[0].Kind != durable.WatchFailed || recorder.ends[0].Error == nil || recorder.ends[0].Error.Error() != "session closed" {
+			t.Fatalf("ends %+v", recorder.ends)
+		}
 	})
 
 	t.Run("ends failed with the error that failed the Session", func(t *testing.T) {
@@ -554,7 +584,7 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 		observation = opened.observe(t, observer, observeConversationCounter, conversationId)
 		recreate()
 		mu.Lock()
-		if len(changes) != 1 || !changes[0].Retired || !same(changes[0].Value, observation.Value()) {
+		if len(changes) != 1 || changes[0].Kind != durable.WatchCallValue || len(changes[0].Ops) != 0 || !changes[0].Retired || !same(changes[0].Value, observation.Value()) {
 			t.Fatalf("changes %+v", changes)
 		}
 		mu.Unlock()
@@ -582,6 +612,111 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 		if attached := opened.session.DocumentCacheSizes().Attached; attached != 0 {
 			t.Fatalf("attached %d", attached)
 		}
+		must(t, opened.session.Close(ctx))
+	})
+}
+
+// collect runs the collector until no round frees more: Pi's collect() runs gc() five rounds with a timer turn between.
+func collect() {
+	for range 5 {
+		runtime.GC()
+		runtime.Gosched()
+	}
+}
+
+// bareObserver is an observer only the Session references, with no state of its own.
+type bareObserver struct{ _ int }
+
+func (*bareObserver) Advance(context.Context, durable.WatchCall[obj]) {}
+func (*bareObserver) End(durable.WatchEnd)                            {}
+
+// valueWeak is a weak pointer to the storage a JSON object's members live in: the value stays reachable while any copy
+// of the object, or the Session holding one, does.
+func valueWeak(value obj) weak.Pointer[byte] {
+	// The object's first field is the slice of its members: its first word is the address of their storage.
+	return weak.Make(*(**byte)(unsafe.Pointer(&value))) //nolint:gosec // the test reads the first word of the object, a pointer to its members, to watch their storage
+}
+
+// weakLastObserver keeps nothing of what it is given but a weak pointer to the storage of the last value.
+type weakLastObserver struct {
+	mu   sync.Mutex
+	seen int
+	last weak.Pointer[byte]
+}
+
+func (observer *weakLastObserver) Advance(_ context.Context, change durable.WatchCall[obj]) {
+	if change.Kind == durable.WatchCallValue && !change.Retired {
+		last := valueWeak(change.Value)
+		observer.mu.Lock()
+		observer.last = last
+		observer.seen++
+		observer.mu.Unlock()
+	}
+}
+func (*weakLastObserver) End(durable.WatchEnd) {}
+
+func (observer *weakLastObserver) value() *byte {
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	return observer.last.Value()
+}
+
+func TestObserveDocKeepsNothingAlive(t *testing.T) {
+	t.Run("keeps no detached observer alive", func(t *testing.T) {
+		opened := openObserving()
+		opened.add(t, 1)
+		// Attach an observer only the Session references; detach says whether to detach it before returning.
+		attach := func(detach bool) (durable.Observation[obj], weak.Pointer[bareObserver]) {
+			observer := &bareObserver{}
+			observation := opened.observe(t, observer, observeSessionCounter)
+			if detach {
+				observation.Detach()
+			}
+			return observation, weak.Make(observer)
+		}
+		// Control: an attached observer stays, so the collection below is real.
+		attached, attachedObserver := attach(false)
+		collect()
+		if attachedObserver.Value() == nil {
+			t.Fatal("an attached observer was collected")
+		}
+		attached.Detach()
+
+		_, detachedObserver := attach(true)
+		collect()
+		if detachedObserver.Value() != nil {
+			t.Fatal("a detached observer is still referenced by the Session")
+		}
+		must(t, opened.session.Close(ctx))
+	})
+
+	t.Run("keeps no value of a document retired for good, while still attached", func(t *testing.T) {
+		opened := openObserving()
+		conversationId := sessiontest.CreateConversation(t, opened.session)
+		commit(t, opened.session, func(tx durable.Tx) error {
+			_, err := tx.Doc(observeConversationCounter, conversationId)
+			return err
+		})
+		// Attach an observer that keeps nothing, change the document, and retire it: only a weak pointer to its last value.
+		retire := func() (durable.Observation[obj], *weakLastObserver) {
+			observer := &weakLastObserver{}
+			observation := opened.observe(t, observer, observeConversationCounter, conversationId)
+			commit(t, opened.session, func(tx durable.Tx) error {
+				return mustDoc(t, tx, observeConversationCounter, conversationId).Set("count", 7)
+			})
+			commit(t, opened.session, func(tx durable.Tx) error { return tx.RetireDoc(observeConversationCounter, conversationId) })
+			must(t, opened.session.UnloadDocuments())
+			return observation, observer
+		}
+		observation, observer := retire()
+		if observer.seen != 1 {
+			t.Fatalf("the observer saw %d values, want its one change", observer.seen)
+		}
+		collect()
+		if observer.value() != nil {
+			t.Fatal("the Session keeps the last value of a document retired for good")
+		}
+		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
 }
