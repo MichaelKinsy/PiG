@@ -29,7 +29,7 @@ type chordRegistryReader struct {
 func (reader chordRegistryReader) Snapshot() durable.RegistrySnapshot { return reader.value.Value() }
 
 func (reader chordRegistryReader) Subscribe(listener func()) func() {
-	observation, err := reader.value.Observe(compositionObserver{listener: listener}, reader.ctx)
+	observation, err := reader.value.Observe(&compositionObserver{listener: listener}, reader.ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -37,15 +37,16 @@ func (reader chordRegistryReader) Subscribe(listener func()) func() {
 }
 
 // compositionObserver wakes its listener for every composed value. A failed composition keeps the last snapshot: nothing to
-// reconsider.
+// reconsider. It is used as a pointer: the source finds an observer to detach by comparing interfaces, which panics on a struct
+// holding a func.
 type compositionObserver struct{ listener func() }
 
-func (observer compositionObserver) Advance(call chord.NativeWatchCall[durable.RegistrySnapshot], _ context.Context) {
+func (observer *compositionObserver) Advance(call chord.NativeWatchCall[durable.RegistrySnapshot], _ context.Context) {
 	if call.Kind == chord.WatchCallValue {
 		observer.listener()
 	}
 }
 
-func (compositionObserver) End(chord.WatchEnd) {}
+func (*compositionObserver) End(chord.WatchEnd) {}
 
-var _ state.NativeObserver[durable.RegistrySnapshot] = compositionObserver{}
+var _ state.NativeObserver[durable.RegistrySnapshot] = (*compositionObserver)(nil)
