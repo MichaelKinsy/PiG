@@ -12,6 +12,11 @@ All notable public changes to PiG will be recorded in this file.
 
 - Package filters, manifest `!`/`+`/`-` overrides, settings resource patterns, model scopes and built-in extension overrides follow minimatch 11.0.3, as in Pi: a path portion is matched by a state machine (`@isaacs/nonrecursive-glob-match`) instead of a regular expression. An empty path portion matches only an empty pattern portion (so `""` no longer matches `*(a)`), `*\.5` matches `gpt-5.5`, case folds one code point at a time with Unicode simple case folding, and a pattern that minimatch 10.2.6 could not compile (a POSIX class beside an escaped `,`, as in `[[:alpha:]]*,md`) now compiles; only a pattern over 65,536 UTF-16 units still fails.
 
+### Added
+
+- Anthropic requests with a session id (and cache retention not `none`) use message threads (`message-threads-2026-08-12` beta), as in Pi: the server continues from the previous reply and PiG sends only the new messages. When anything earlier in the request changed, or the server can't continue the thread, the full request is sent. On by default only for the `anthropic` provider on `api.anthropic.com`; set `compat.supportsMessageThreads` in `models.json` to change that, for example for gateways that forward the `thread` field. `ai.CleanupSessionResources` frees a session's thread state. Cache warming does not touch the session's thread.
+- Go API `ai`: `StreamOptions.DisableContinuation` keeps a request from using or replacing server-side continuation state such as Anthropic message threads. Set it on requests that repeat an earlier one, such as cache warming.
+
 ### Fixed
 
 - The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.
