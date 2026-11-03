@@ -1093,7 +1093,10 @@ jobs:
           PIG_PARITY_PI_BIN: ${{ github.workspace }}/extensions/sdk-ts/node_modules/.bin/pi
         run: |
           set -euo pipefail
-          brew install tmux
+          # The scenario's job-control shell must be a current bash: macOS ships 3.2, whose interactive script shell leaves the job in a background process group, so the program stops at its first terminal call.
+          # Only the bash keg goes on PATH (the Homebrew bin directory also holds the image's default node and npm).
+          brew install tmux bash
+          export PATH="$(brew --prefix bash)/bin:$PATH"
           go test -count=1 -v -timeout 20m -run 'TestStdinInForeground|TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg|TestEnterRawModeRetriesAnInterruptedTermiosIoctl|TestRestoreTerminalFromSignalRetriesAnInterruptedIoctl' ./tui
           go test -count=1 -v -timeout 20m -run 'TestSuspend|TestWriteToAHungUpTerminalExits129|TestRemoteEditorTerminalWrite|TestForegroundCheckFailingWithEIOTakesTheDeadTerminalExit' ./internal/codingagent
           # A failed scenario leaves the pane and the streams of both programs in its artifacts directory: print them, they are the only evidence of a macOS-only failure.
