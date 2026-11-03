@@ -267765,8 +267765,8 @@
       ],
       "evidence": [
         "test:mcp/goroutines_test.go#TestStreamableHTTPClientLeavesNoGoroutineBehindAfterClose",
-        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
-        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
+        "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses",
+        "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter"
       ]
     },
     {
