@@ -80,18 +80,13 @@ type Editor struct {
 	autocompletePrefix            string // buffer slice the popup is matching against
 	autocompleteMousePressedIndex *int
 	// autocompleteQueryCursor is the text cursor at the moment
-	// autocompleteItems/autocompletePrefix were last populated. The local
-	// and async suggestion applies are themselves deferred (scheduleAsyncApply
-	// posts them to run on the host's main loop, single-threaded with
-	// keystroke handling, so a fast keystroke burst can dispatch more inserts
-	// -- including Enter -- before an already-computed apply for an earlier
-	// keystroke actually runs). AutocompleteAccept compares this against the
-	// live cursor before trusting autocompletePrefix's length, so an accept
-	// that arrives after the buffer moved on treats the popup as stale
-	// instead of splicing the suggestion's full value into the wrong offset.
+	// autocompleteItems/autocompletePrefix were last populated. A remote
+	// provider's accept (acceptAsyncAutocomplete) compares it against the
+	// live cursor and drops the accept when the buffer moved on, because the
+	// remote completion is applied by the provider at the position it was
+	// asked about.
 	autocompleteQueryCursor [2]int
 	autocompleteForced      bool
-	autocompleteFromAwaited bool
 	autocompleteMax         int // max visible rows (default 5)
 	autocompletePopupMax    int // the row limit the open popup was built with: Pi builds its SelectList once per suggestion update, so a later setAutocompleteMaxVisible only applies from the next one
 	paddingX                int
@@ -1256,7 +1251,6 @@ func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocom
 // AutocompleteCancel dismisses the popup without applying.
 func (e *Editor) AutocompleteCancel() {
 	e.autocompleteForced = false
-	e.autocompleteFromAwaited = false
 	e.autocompleteMousePressedIndex = nil
 	e.autocompleteRequestID++
 	e.asyncSeq++
@@ -1295,14 +1289,6 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 		apply()
 	}
 	if len(e.autocompleteItems) == 0 {
-		return false
-	}
-	if e.autocompleteFromAwaited && e.cursor != e.autocompleteQueryCursor {
-		// An awaited command result cannot be recomputed on the input loop. Reject a popup whose cursor belongs to older text.
-		e.setAutocompleteItems(nil)
-		e.autocompleteCursor = 0
-		e.autocompletePrefix = ""
-		e.Invalidate()
 		return false
 	}
 	item := e.autocompleteItems[e.autocompleteCursor]

@@ -1,0 +1,48 @@
+# Behavior family: interactive-rendering
+# Surface: UserMessageComponent.render (user-message.ts): the message is markdown on the user background and text color,
+#          with the ordered-list number as typed and backslash escapes kept.
+#
+# "3. " opens an ordered list that Pi shows as typed (a markdown renderer would renumber it) and "\*literal\*" keeps its backslashes.
+# The comparison is of the escaped capture, so the user background and the text color are compared byte for byte.
+#
+# Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
+#
+
+name = "64-user-message-markers-escapes-colors"
+description = "A user message keeps its typed list number and backslash escapes, on the user background and text color, identically in pig and pi."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "3."
+capture_end = "literal"
+
+[[tmux.steps]]
+keys = ["3. reply with exactly: Hello \\*literal\\*", "Enter"]
+settle_seconds = 4
+wait_contains = ["Hello"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["3. reply with exactly: Hello", "\\*literal"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

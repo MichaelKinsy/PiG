@@ -831,6 +831,25 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/compaction/17-extension-empty-summary-compaction.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[compaction]",
+            "capture_end": "expand)",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: An empty extension compaction summary still renders the [compaction] block as a successful compaction.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/custom-editor-precedence.toml",
       "transforms": [
         {
@@ -3137,6 +3156,84 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "LIVE-STREAM",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Fullscreen page, half-page and line scrolling lands on the same rows in pig and pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/16-main-screen-external-editor-repaint.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "draft text",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: After the external editor returns, the main screen is repainted in full and shows no output of the editor child.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/17-keyboard-scroll-top-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end": "LIVE-STREAM-03"
+          },
+          "reason": "Owned visible surface: Fullscreen Ctrl+Home shows the start of the transcript, with the same rows below the startup header, in pig and pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/fullscreen/18-alt-screen-search-highlights.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "Took \\d+\\.\\ds",
+          "with": "Took Ns",
+          "reason": "The measured sub-second tool duration varies with scheduling; retain the label, units and surrounding cells."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "$ ",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Fullscreen transcript search highlights the matches and the selected match in the transcript rows identically in pig and pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml",
       "transforms": [
         {
@@ -4390,6 +4487,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/59-app-action-keys.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Session Tree",
+            "capture_end": ""
+          },
+          "reason": "Owned visible surface: Remapped session keys, thinking and tool toggles, the model selector key reach the same handlers in both binaries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/interactive-rendering/59-up-recalls-queued-message-copy-tip.toml",
       "transforms": [
         {
@@ -4434,6 +4549,60 @@
             "capture_end": "(auto)"
           },
           "reason": "Owned visible surface: In Terminal.app plain Up restores the queued steering message to the editor in PiG; Pi recalls history and still sends it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/62-user-message-selector-navigation-confirm.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "reply with exactly: beta",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: The /fork selector wraps, clamps on page keys and confirms the highlighted message in both binaries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/63-user-message-selector-cancel.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "reply with exactly: alpha",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Escape dismisses the /fork selector without forking in both binaries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/64-user-message-markers-escapes-colors.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "3.",
+            "capture_end": "literal"
+          },
+          "reason": "Owned visible surface: A user message keeps its typed list number and backslash escapes, on the user background and text color, identically in pig and pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

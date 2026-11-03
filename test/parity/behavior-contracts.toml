@@ -1337,6 +1337,7 @@ evidence = [
   "tui/main_screen_upstream_parity_test.go#TestMainScreenFramesMatchPi084LogicalHistory",
   "test/parity/scenarios/fullscreen/03-main-screen-history-redraw.toml",
   "test/parity/scenarios/fullscreen/04-main-screen-assistant-streaming.toml",
+  "test/parity/scenarios/fullscreen/16-main-screen-external-editor-repaint.toml",
   "test/parity/scenarios/fullscreen/05-main-screen-tool-streaming.toml",
   "test/parity/scenarios/fullscreen/06-main-screen-tool-settled.toml",
   "test/parity/scenarios/fullscreen/07-main-screen-editor-growth.toml",
@@ -2034,6 +2035,8 @@ pig_targets = ["tui/user_message_selector.go#HandleInput"]
 evidence = [
   "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
   "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml",
+  "test/parity/scenarios/interactive-rendering/62-user-message-selector-navigation-confirm.toml",
+  "test/parity/scenarios/interactive-rendering/63-user-message-selector-cancel.toml",
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
   "tui/user_message_selector_contract_test.go#TestUserMessageSelectorPageKeyOverlapsMatchPi",
 ]
@@ -3737,7 +3740,8 @@ pig_targets = [
 ]
 evidence = [
   "tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi",
-  "test/parity/scenarios/interactive-rendering/02-user-message-box.toml"
+  "test/parity/scenarios/interactive-rendering/02-user-message-box.toml",
+  "test/parity/scenarios/interactive-rendering/64-user-message-markers-escapes-colors.toml"
 ]
 
 [contract.upstream]
@@ -3781,7 +3785,10 @@ pig_targets = [
 ]
 evidence = [
   "tui/assistant_message_render_oracle_test.go#TestAssistantMessageComponentRenderMatchesPi",
-  "test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml"
+  "test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml",
+  "test/parity/scenarios/interactive-rendering/23-resume-assistant-terminal-state.toml",
+  "test/parity/scenarios/interactive-rendering/25-review-thinking-tool-boundary.toml",
+  "test/parity/scenarios/interactive-rendering/26-review-thinking-markdown.toml"
 ]
 
 [contract.upstream]
@@ -5337,6 +5344,9 @@ pig_targets = [
 evidence = [
   "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
   "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+  "test/parity/scenarios/fullscreen/13-alt-screen-search-input.toml",
+  "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+  "test/parity/scenarios/fullscreen/18-alt-screen-search-highlights.toml",
   "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell",
   "tui/alt_screen_render_contract_test.go#TestAltScreenDoesNotDrawWhileInactive",
   "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
@@ -5537,6 +5547,7 @@ evidence = [
   "tui/render_scheduler_test.go#TestTUIRenderNowCancelsPendingRequestedFrame",
   "tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface",
   "test/parity/scenarios/fullscreen/03-main-screen-history-redraw.toml",
+  "test/parity/scenarios/fullscreen/16-main-screen-external-editor-repaint.toml",
 ]
 
 [contract.upstream]
@@ -5802,6 +5813,8 @@ evidence = [
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
   "test/parity/scenarios/interactive-rendering/03-tool-execution-bash.toml",
+  "test/parity/scenarios/extensions-runtime/24-tool-renderers-collapsed.toml",
+  "test/parity/scenarios/extensions-runtime/25-tool-renderers-expanded.toml",
   "tui/tool_execution_render_contract_test.go#TestSelfShellCardDrawsBlankRowComponentsThenImages",
   "tui/tool_execution_render_contract_test.go#TestToolCardAppliesStreamedArgumentsAtRender",
 ]
@@ -5964,6 +5977,8 @@ evidence = [
   "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
   "tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker",
   "test/parity/scenarios/fullscreen/02-keyboard-navigation-fullscreen.toml",
+  "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+  "test/parity/scenarios/fullscreen/17-keyboard-scroll-top-fullscreen.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
   "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
   "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeyBoundToTwoActionsRunsTheEarlierOne",
@@ -7121,6 +7136,7 @@ evidence = [
   "tui/tui_render_now_contract_test.go#TestRenderNowRecordsTheRenderTime",
   "tui/tui_render_now_contract_test.go#TestRenderNowForceResetsTheRenderState",
   "test/parity/scenarios/fullscreen/03-main-screen-history-redraw.toml",
+  "test/parity/scenarios/fullscreen/16-main-screen-external-editor-repaint.toml",
 ]
 
 [contract.upstream]

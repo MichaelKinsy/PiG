@@ -1,0 +1,60 @@
+# Behavior family: fullscreen
+# Surface: TuiBase.renderNow(force) through the main-screen external editor handoff (Pi stops the TUI, runs the editor
+#          child on the terminal, then starts the TUI and calls requestRender(true); Pig repaints with RenderNow(true)).
+#
+# The child writes "external-child-ready" on the main screen and edits the buffer. The forced repaint clears the screen
+# and replays the history, so nothing the child wrote remains. A repaint that is not forced would paint only the changed
+# rows over the child's output and leave its text on screen.
+#
+# Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
+#
+
+name = "16-main-screen-external-editor-repaint"
+description = "After the external editor returns, the main screen is repainted in full and shows no output of the editor child."
+covers = [
+  "packages/tui/src/tui.ts",
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "VISUAL=node editor.mjs"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "VISUAL=node editor.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions", "--tui-mode", "regular"]
+
+[tmux]
+cwd = "testdata/external-editor-cwd"
+width = 100
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "draft text"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["draft text"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["hex:07"]
+wait_contains = ["external-child-ready"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["edited in child", "Enter"]
+wait_visible_contains = ["draft text\nedited in child"]
+wait_not_contains = ["external-child-ready"]
+settle_seconds = 1
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["draft text", "edited in child"]
+both_not_contain = ["panic:", "goroutine ", "external-child-ready"]
+escaped_output_equal = true
+runs = 3
