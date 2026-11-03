@@ -180,7 +180,7 @@ func assistants(t *testing.T, conversation Conversation) []durable.EntryRecord {
 	return found
 }
 
-func submit(t *testing.T, conversation Conversation, draft durable.SubmissionDraft) durable.Submission {
+func submit(t testing.TB, conversation Conversation, draft durable.SubmissionDraft) durable.Submission {
 	t.Helper()
 	return must(conversation.Submit(testContext, draft))
 }
