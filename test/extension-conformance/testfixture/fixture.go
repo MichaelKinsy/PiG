@@ -304,7 +304,7 @@ func modelConformanceOptions() map[string]any {
 	}
 }
 
-// processFactoryCalls is a package-level counter the factory increments (D201): every generation in one Go process shares it.
+// processFactoryCalls is a package-level counter the factory increments (D205): every generation in one Go process shares it.
 var processFactoryCalls atomic.Int64
 
 // Extension returns the canonical Go SDK fixture shared by subprocess and
@@ -619,7 +619,7 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": "echo: " + text}, nil
 	})
 
-	// D201 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+	// D205 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
 	var sharedMu sync.Mutex
 	sharedCalls := 0
 	var sharedHeard []string

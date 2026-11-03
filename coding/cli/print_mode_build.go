@@ -78,7 +78,7 @@ func (b *cliRuntimeBuilder) printHost(owner context.Context, build *cliBuild, st
 // rebuild constructs the destination cwd's build for a replacement Session.
 func (b *cliRuntimeBuilder) rebuild(ctx context.Context, options coding.CreateAgentSessionRuntimeOptions) (*cliBuild, error) {
 	if b.buildMu != nil {
-		// pig additive (D201): a --listen server runs one build at a time, a replacement's included.
+		// pig additive (D205): a --listen server runs one build at a time, a replacement's included.
 		b.buildMu.Lock()
 		defer b.buildMu.Unlock()
 	}
@@ -95,7 +95,7 @@ func (b *cliRuntimeBuilder) rebuild(ctx context.Context, options coding.CreateAg
 	return b.buildFor(ctx, in)
 }
 
-// listenBuild builds the resources of one --listen connection: rebuild's body over cliBuildInput{CWD: cwd}, a fresh Session log. The caller holds buildMu. pig additive (D201).
+// listenBuild builds the resources of one --listen connection: rebuild's body over cliBuildInput{CWD: cwd}, a fresh Session log. The caller holds buildMu. pig additive (D205).
 func (b *cliRuntimeBuilder) listenBuild(ctx context.Context, cwd string) (*cliBuild, error) {
 	return b.buildFor(ctx, cliBuildInput{CWD: cwd})
 }

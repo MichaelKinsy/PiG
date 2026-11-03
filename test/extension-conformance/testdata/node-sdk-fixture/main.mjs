@@ -11,7 +11,7 @@ import {
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
-// D201: a module-level counter the factory increments; every generation in one Node process shares it.
+// D205: a module-level counter the factory increments; every generation in one Node process shares it.
 let processFactoryCalls = 0;
 export default function (pi) {
   processFactoryCalls++;
@@ -236,7 +236,7 @@ export default function (pi) {
     parameters: { type: "object", required: ["text"], properties: { text: { type: "string", description: "Text to echo" }, offset: { type: "number" } } },
     async execute(_id, params) { return { content: [{ type: "text", text: `echo: ${params.text ?? ""}` }] }; },
   });
-  // D201 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+  // D205 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
   let sharedCalls = 0;
   const sharedHeard = [];
   pi.events.on("shared-cells", (data) => sharedHeard.push(data.from));

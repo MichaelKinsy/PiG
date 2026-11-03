@@ -1756,7 +1756,7 @@ fn main() {
             ToolResult::text(format!("echo: {text}"))
         },
     );
-    // D201 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    // D205 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
     let shared_calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let shared_heard = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
     {

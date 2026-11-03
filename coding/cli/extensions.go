@@ -108,7 +108,7 @@ func normalizeRuntimeExtensionConfigs(configs []subprocess.ExtConfig) []subproce
 func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, cells *subprocess.CellRegistry) (*subprocess.Host, *subprocess.UIBridge) {
 	host := subprocess.NewHostWithConfigRoot(cwd, codingagent.ConfigRoot())
 	if cells != nil {
-		// pig additive (D201): a --listen server's Hosts share cell processes.
+		// pig additive (D205): a --listen server's Hosts share cell processes.
 		host.ShareCells(cells)
 	}
 	// Create UIBridge: starts with NoopUIContext. The real UIContext is wired
@@ -263,7 +263,7 @@ type startupExtensionSet struct {
 	host    *subprocess.Host
 	bridge  *subprocess.UIBridge
 	configs []subprocess.ExtConfig
-	// cells is the registry the host this set creates shares cell processes through; a --listen server sets it (pig additive (D201)).
+	// cells is the registry the host this set creates shares cell processes through; a --listen server sets it (pig additive (D205)).
 	cells *subprocess.CellRegistry
 }
 
