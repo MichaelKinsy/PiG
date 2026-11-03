@@ -670,7 +670,8 @@ func (m *Markdown) renderMarkdownTable(out []string, table *markedBlock, availab
 		topCells[i] = strings.Repeat("─", w)
 	}
 	separator := "├─" + strings.Join(topCells, "─┼─") + "─┤"
-	lines := append(out, "┌─"+strings.Join(topCells, "─┬─")+"─┐")
+	lines := out
+	lines = append(lines, "┌─"+strings.Join(topCells, "─┬─")+"─┐")
 
 	headerWrapped := make([][]string, numCols)
 	maxHeaderLines := 1

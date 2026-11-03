@@ -4,6 +4,7 @@ package tui
 // Ports packages/tui/src/components/markdown.ts (its marked block lexer).
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -30,7 +31,6 @@ var (
 	markedBlockLheading = newAnchoredMarkedRegexp(markedLheadingSource, false)
 	// markedBlockquoteSetext and markedBlockquoteMarker are other.blockquoteSetextReplace and other.blockquoteSetextReplace2 (rules.ts:75-76).
 	markedBlockquoteSetext = newMarkedRegexp(`\n {0,3}((?:=+|-+) *)(?=\n|$)`)
-	markedHTMLBegin        = newAnchoredMarkedRegexp(`^ {0,3}<(?:[a-zA-Z][^\n]*>|!--)`, false)
 )
 
 // markedInlineEntry is one entry of Lexer.inlineQueue: the source of an inline token list, which the list tokenizer may still change.
@@ -76,6 +76,7 @@ type markedBlockLexer struct {
 	topTokens []*markedBlock
 }
 
+// pig additive (D112): Pi's marked lexer keeps no state between renders and allocates each token; a lexer that reuses slabs of tokens lexes the same text to the same tokens.
 const markedSlabSize = 16
 
 // newBlock stores a token in the lexer's slabs.
@@ -896,14 +897,16 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		i := 0
 		for ; i < len(lines); i++ {
 			// get lines up to a continuation
-			if markedQuoteStart(lines[i]) {
+			switch {
+			case markedQuoteStart(lines[i]):
 				currentLines = append(currentLines, lines[i])
 				inBlockquote = true
-			} else if !inBlockquote {
+				continue
+			case !inBlockquote:
 				currentLines = append(currentLines, lines[i])
-			} else {
-				break
+				continue
 			}
+			break
 		}
 		lines = lines[i:]
 
@@ -933,10 +936,10 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		}
 
 		last := markedLast(tokens)
-		if last != nil && last.kind == "code" {
+		switch {
+		case last != nil && last.kind == "code":
 			// blockquote continuation cannot be preceded by a code block
-			break
-		} else if last != nil && last.kind == "blockquote" {
+		case last != nil && last.kind == "blockquote":
 			// include continuation in nested blockquote
 			continuation := strings.Join(lines, "\n")
 			newText := last.raw + "\n" + markedStripQuoteMarkers(continuation)
@@ -945,8 +948,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 
 			raw = raw + "\n" + continuation
 			text = markedWithoutTail(text, last.text) + newToken.text
-			break
-		} else if last != nil && last.kind == "list" {
+		case last != nil && last.kind == "list":
 			// include continuation in nested list
 			newText := last.raw + "\n" + strings.Join(lines, "\n")
 			newToken, _ := l.list([]rune(newText))
@@ -956,6 +958,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 			lines = strings.Split(markedSubstring(newText, newToken.raw), "\n")
 			continue
 		}
+		break
 	}
 	return &markedBlock{kind: "blockquote", raw: raw, tokens: tokens, text: text}
 }
@@ -1177,7 +1180,9 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 			break
 		}
 
-		raw := string(rest[:itemEnd])
+		var raw strings.Builder
+		raw.Grow(itemEnd)
+		raw.WriteString(string(rest[:itemEnd]))
 		pos += itemEnd
 
 		line := markedFirstLine(rest[bulletLength:itemEnd])
@@ -1202,7 +1207,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 
 		if blankLine && strings.Trim(nextLine, " \t") == "" {
 			// Items begin with at most one blank line.
-			raw += nextLine + "\n"
+			raw.WriteString(nextLine + "\n")
 			pos = min(len(src), pos+markedRuneCount(nextLine)+1)
 			endEarly = true
 		}
@@ -1238,24 +1243,25 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 				}
 
 				blankLine = widthx.JSTrim(nextLine) == ""
-				raw += rawLine + "\n"
+				raw.WriteString(rawLine + "\n")
 				pos = min(len(src), pos+markedRuneCount(rawLine)+1)
 				line = markedSliceUnits(nextLine, indent)
 			}
 		}
 
+		itemRaw := raw.String()
 		if !list.loose {
 			// If the previous item ended with a blank line, the list is loose.
 			if endsWithBlankLine {
 				list.loose = true
-			} else if markedEndsWithBlankLine(raw) {
+			} else if markedEndsWithBlankLine(itemRaw) {
 				endsWithBlankLine = true
 			}
 		}
 
 		_, task := markedTaskPrefix(itemContents)
-		list.items = append(list.items, &markedBlock{kind: "list_item", raw: raw, task: task, text: itemContents})
-		listRaw.WriteString(raw)
+		list.items = append(list.items, &markedBlock{kind: "list_item", raw: itemRaw, task: task, text: itemContents})
+		listRaw.WriteString(itemRaw)
 	}
 
 	// Do not consume newlines at end of final item.
@@ -1297,9 +1303,9 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 			item.text = markedTrimTask(item.text)
 			first.raw = markedTrimTask(first.raw)
 			first.text = markedTrimTask(first.text)
-			for i := len(l.queue) - 1; i >= 0; i-- {
-				if _, isTask := markedTaskPrefix(l.queue[i].src); isTask {
-					l.queue[i].src = markedTrimTask(l.queue[i].src)
+			for _, entry := range slices.Backward(l.queue) {
+				if _, isTask := markedTaskPrefix(entry.src); isTask {
+					entry.src = markedTrimTask(entry.src)
 					break
 				}
 			}

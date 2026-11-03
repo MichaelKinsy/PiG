@@ -13,15 +13,14 @@ import (
 
 // The block rule pieces as marked's edit() composes them (rules.ts:109-244). Literal tabs are the "\t" characters of marked's string-built sources.
 const (
-	markedHTMLTagNames              = `address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul`
-	markedBlockHrRule               = ` {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)`
-	markedHeadingInterrupt          = ` {0,3}#{1,6}(?:\s|$)`
-	markedBlockquoteStart           = ` {0,3}>`
-	markedFencesInterrupt           = " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)"
-	markedHTMLInterrupt             = `<\/?(?:` + markedHTMLTagNames + `)(?: +|\n|\/?>)|<(?:script|pre|style|textarea|!--)`
-	markedGfmTableBody              = ` *([^\n ].*)\n {0,3}((?:\| *)?:?-+:? *(?:\| *:?-+:? *)*(?:\| *)?)(?:\n((?:(?! *\n|` + markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + "|(?: {4}| {0,3}\t)[^\\n]|" + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]|` + markedHTMLInterrupt + `).*(?:\n|$))*)\n*|$)`
-	markedParagraphInterruptNoTable = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]|` + markedHTMLInterrupt
-	markedParagraphInterrupt        = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]|` + markedHTMLInterrupt + `|` + markedGfmTableBody + `|[ \t]+\n`
+	markedHTMLTagNames       = `address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul`
+	markedBlockHrRule        = ` {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)`
+	markedHeadingInterrupt   = ` {0,3}#{1,6}(?:\s|$)`
+	markedBlockquoteStart    = ` {0,3}>`
+	markedFencesInterrupt    = " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)"
+	markedHTMLInterrupt      = `<\/?(?:` + markedHTMLTagNames + `)(?: +|\n|\/?>)|<(?:script|pre|style|textarea|!--)`
+	markedGfmTableBody       = ` *([^\n ].*)\n {0,3}((?:\| *)?:?-+:? *(?:\| *:?-+:? *)*(?:\| *)?)(?:\n((?:(?! *\n|` + markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + "|(?: {4}| {0,3}\t)[^\\n]|" + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]|` + markedHTMLInterrupt + `).*(?:\n|$))*)\n*|$)`
+	markedParagraphInterrupt = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]|` + markedHTMLInterrupt + `|` + markedGfmTableBody + `|[ \t]+\n`
 	// markedQuoteInterrupt is the paragraph rule inside a blockquote (Ae's Me): the GFM interrupts without lheading and table, and a list item of any start number.
 	markedQuoteInterrupt       = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)|` + markedHTMLInterrupt + `|[ \t]+\n`
 	markedBlockHTMLSource      = "^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:<\\/\\1>[^\\n]*\\n*|$)|<!--(?:-?>|[\\s\\S]*?(?:-->|$))[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|<\\/?(" + markedHTMLTagNames + ")(?: +|\\n|\\/?>)[\\s\\S]*?(?:(?:\\n[ \t]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][\\w-]*)(?: +[a-zA-Z:_][\\w.:-]*(?: *= *\"[^\"\\n]*\"| *= *'[^'\\n]*'| *= *[^\\s\"'=<>`]+)?)*? *\\/?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ \t]*)+\\n|$)|<\\/(?!script|pre|style|textarea)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ \t]*)+\\n|$))"
@@ -38,9 +37,7 @@ var (
 	markedBlockDef = newAnchoredMarkedRegexp(`^ {0,3}\[((?!\s*\])(?:\\[\s\S]|[^\[\]\\])+)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)((?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))))? *(?:\n+|$)`, false)
 	// markedParagraphInterruptAt is the lookahead of the GFM paragraph rule: a line it matches ends the paragraph before it.
 	markedParagraphInterruptAt = newAnchoredMarkedRegexp(`^(?:`+markedParagraphInterrupt+`)`, false)
-	// markedParagraphInterruptNoTableAt is markedParagraphInterruptAt without its table lookahead, on one line.
-	markedParagraphInterruptNoTableAt = newAnchoredMarkedRegexp(`^(?:`+markedParagraphInterruptNoTable+`)`, false)
-	markedQuoteInterruptAt            = newAnchoredMarkedRegexp(`^(?:`+markedQuoteInterrupt+`)`, false)
+	markedQuoteInterruptAt     = newAnchoredMarkedRegexp(`^(?:`+markedQuoteInterrupt+`)`, false)
 )
 
 // markedDefCandidate rejects, without the regexp, a line that cannot start a definition: one not opening with "[" after at most three spaces, or one whose label visibly ends without "]:". The label ends at the first "[" or "]" unless a backslash escapes it, and may continue on the next line.

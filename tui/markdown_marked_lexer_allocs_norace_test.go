@@ -19,16 +19,20 @@ func TestMarkedListItemRulesAllocateNothing(t *testing.T) {
 		"<div>",
 		"* * *",
 	}
+	matches := 0
 	allocs := testing.AllocsPerRun(100, func() {
+		matches = 0
 		for _, line := range lines {
-			markedItemBegin(line, 3)
-			markedHrBegin(line, 3)
-			markedFencesBegin(line, 3)
-			markedHeadingBegin(line, 3)
-			markedHTMLBeginAt(line, 3)
-			markedBlockquoteBegin(line, 3)
+			for _, rule := range []func(string, int) bool{markedItemBegin, markedHrBegin, markedFencesBegin, markedHeadingBegin, markedHTMLBeginAt, markedBlockquoteBegin} {
+				if rule(line, 3) {
+					matches++
+				}
+			}
 		}
 	})
+	if matches == 0 {
+		t.Fatal("no line matched a rule")
+	}
 	if allocs > 0 {
 		t.Fatalf("asking %d lines about the rules that end a list item allocated %.1f times, want 0", len(lines), allocs)
 	}
