@@ -27,12 +27,12 @@
   "mutation": "durable/harness/define.go: replace 'Input: input' with 'Input: *new(I)'; compiling go test -overlay -run exact test -count=1 fails TestAfterRun."
  },
  {
-  "upstream": "packages/durable/src/harness/registry.ts",
+  "upstream": "packages/durable/src/harness/registry-reader.ts",
   "package": "./durable/harness",
   "tests": [
    "TestRegistryReader"
   ],
-  "upstream_reference": "packages/durable/src/harness/registry-reader.ts:14 (registryReader); the upstream file has no PORT_MAP row of its own, registry.ts is its sibling",
+  "upstream_reference": "packages/durable/src/harness/registry-reader.ts:14 (registryReader)",
   "mutation": "durable/harness/registry_reader.go: replace 'call.Kind == chord.WatchCallValue' with 'call.Kind != chord.WatchCallValue'; compiling go test -overlay -run exact test -count=1 fails TestRegistryReader. Second mutant: observation.Detach replaced by a no-op fails TestRegistryReader."
  },
  {

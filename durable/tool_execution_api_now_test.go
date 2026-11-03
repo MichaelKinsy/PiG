@@ -72,11 +72,13 @@ func TestToolExecutionApiNowReadsTheHarnessClockAndThrowsAfterTheCallSettled(t *
 	if len(reads) != 2 {
 		t.Fatalf("the tool read the clock %d times, want 2", len(reads))
 	}
-	if reads[0] != base+float64(clockCalls[0]+1) || reads[1] != base+float64(clockCalls[1]+1) {
-		t.Fatalf("reads %v, want each api.Now() to be the very next reading of HarnessOptions.Now (%v and %v)", reads, base+float64(clockCalls[0]+1), base+float64(clockCalls[1]+1))
+	// The scheduler reads the same clock from its own goroutine, so the ticks between the tool's two reads are not exactly one:
+	// each read is a later reading than the last tick the tool saw before it, and no later than the last tick taken after it.
+	if !(reads[0] > base+float64(clockCalls[0]) && reads[0] <= base+float64(clockCalls[1])) {
+		t.Fatalf("first read %v, want a reading of HarnessOptions.Now taken after tick %v and by tick %v", reads[0], base+float64(clockCalls[0]), base+float64(clockCalls[1]))
 	}
-	if !(reads[1] > reads[0]) {
-		t.Fatalf("reads %v, want a later read to see a later clock", reads)
+	if !(reads[1] > base+float64(clockCalls[1]) && reads[1] > reads[0]) {
+		t.Fatalf("second read %v, want a reading taken after tick %v and later than the first (%v)", reads[1], base+float64(clockCalls[1]), reads[0])
 	}
 	defer func() {
 		recovered := recover()

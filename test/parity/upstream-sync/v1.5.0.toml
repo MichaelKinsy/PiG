@@ -5079,9 +5079,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/provider.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/registry-reader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/registry_reader_test.go#TestRegistryReader"]
+rationale = "PORT_MAP row is ✅ ported (durable/harness/registry_reader.go). coverage.md reports 1 behavioral verification for this file (0 scenarios whose covers list it, 1 named unit test); the first of each are cited."
 
 [[files]]
 path = "packages/durable/src/harness/registry.ts"
