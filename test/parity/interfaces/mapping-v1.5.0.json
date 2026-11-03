@@ -123853,7 +123853,8 @@
         "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
       ],
       "evidence": [
-        "test:chord/next/registries/value_test.go#TestRegistryValue"
+        "test:chord/next/registries/value_test.go#TestRegistryValue",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost"
       ]
     },
     {
@@ -123873,7 +123874,8 @@
         "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
       ],
       "evidence": [
-        "test:chord/next/registries/value_test.go#TestRegistryValue"
+        "test:chord/next/registries/value_test.go#TestRegistryValue",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost"
       ]
     },
     {
@@ -231549,6 +231551,7 @@
         "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231591,6 +231594,7 @@
         "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231848,6 +231852,7 @@
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231869,6 +231874,7 @@
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -239359,7 +239365,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/util.go#sessionEnd"
+        "call:durable/session/observation.go#guard.Advance"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
