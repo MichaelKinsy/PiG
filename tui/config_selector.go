@@ -312,7 +312,7 @@ func (l configResourceList) Render(width int) []string {
 	lines = append(lines, "")
 
 	if len(cs.filtered) == 0 {
-		lines = append(lines, fit(t.Muted+"  No resources found"+"\x1b[39m"))
+		lines = append(lines, t.Muted+"  No resources found"+"\x1b[39m")
 	} else {
 		// Calculate visible range.
 		start := max(0, min(cs.cursor-cs.maxVisible/2, len(cs.filtered)-cs.maxVisible))
@@ -376,6 +376,7 @@ func (l configResourceList) Render(width int) []string {
 					name = t.Dim + name + "\x1b[39m"
 				}
 				status := ""
+				// pig divergence (D230): a declared Package member whose file is absent is listed with a warning `  missing` suffix; Pi lists only files that exist.
 				if e.item.Health != "" {
 					status = t.Warning + "  " + e.item.Health + "\x1b[39m"
 				}
@@ -397,7 +398,7 @@ func (l configResourceList) Render(width int) []string {
 				}
 			}
 			if itemCount > 0 {
-				lines = append(lines, fit(t.Dim+fmt.Sprintf("  (%d/%d)", currentItemIndex, itemCount)+"\x1b[39m"))
+				lines = append(lines, t.Dim+fmt.Sprintf("  (%d/%d)", currentItemIndex, itemCount)+"\x1b[39m")
 			}
 		}
 	}

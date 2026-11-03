@@ -156,6 +156,7 @@ func PackageResourceItemsFromInventory(root string, pkg ConfiguredPackage, resou
 		}
 		// A missing member is no path Pi's filter sees, so a pattern it alone reaches never throws there.
 		enabled, _ := packagecontent.MemberEnabled(root, member.Pattern, filters[member.Kind])
+		// pig divergence (D230): the missing member is listed (Health "missing") so `pig config` can disable it; Pi's config list holds only files that exist.
 		out = append(out, tui.ResourceItem{
 			Path: memberPath, Pattern: member.Pattern, Enabled: enabled,
 			ResourceType: resourceType, Scope: pkg.Scope, Origin: "package",
