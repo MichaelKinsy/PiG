@@ -105,7 +105,10 @@ func (c *ExtensionEditorComponent) HandleInput(data string) {
 		c.Invalidate()
 		return
 	}
-	if c.matchesExternalEditor(data) && c.externalEditor != nil {
+	if c.matchesExternalEditor(data) {
+		if c.externalEditor == nil {
+			return
+		}
 		c.externalEditor(c.externalEditorCommand, c.editor.Text(), func(text string) {
 			if !c.done {
 				c.externalEditorStatus.SetText("")
