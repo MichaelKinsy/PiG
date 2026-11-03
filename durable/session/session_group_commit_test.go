@@ -857,10 +857,29 @@ func TestGroupCommitTheStoragesPublicationScope(t *testing.T) {
 			scopes []string
 			depth  int
 			inside []bool
+			// called is the number of scopes the Session opened; early the scopes it opened before the commits of the ones
+			// before had been published; last closes once the latest scope ended.
+			called int
+			early  []int
+			last   chan struct{}
 		)
-		// Runs each publication on another goroutine, inside a scope of its own.
+		// Runs each publication on another goroutine, inside a scope of its own. A macrotask runs to completion before the
+		// next starts: a scope starts when the one before ended, tail included, which the Session cannot see once the publication
+		// ran. That the Session opens the next scope only once the commits before were published is checked where it opens.
 		box.set(func(_ ctxT, publish func()) {
+			mu.Lock()
+			if g.published.len() != called {
+				early = append(early, called)
+			}
+			called++
+			before, ended := last, make(chan struct{})
+			last = ended
+			mu.Unlock()
 			go func() {
+				defer close(ended)
+				if before != nil {
+					<-before
+				}
 				mu.Lock()
 				depth++
 				scopes = append(scopes, fmt.Sprintf("open %d", g.published.len()))
@@ -892,7 +911,14 @@ func TestGroupCommitTheStoragesPublicationScope(t *testing.T) {
 			mustBump(t, part)
 		}
 		mu.Lock()
+		lastScope := last
+		mu.Unlock()
+		<-lastScope
+		mu.Lock()
 		defer mu.Unlock()
+		if len(early) != 0 {
+			t.Fatalf("scopes %v opened before the commits before them were published", early)
+		}
 		if !slices.Equal(inside, []bool{true, true, true}) {
 			t.Fatalf("own observers inside the scope %v, want all", inside)
 		}
