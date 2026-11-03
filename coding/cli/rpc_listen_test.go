@@ -581,7 +581,12 @@ func (s *listenServer) flood(conn net.Conn, count int, marker string) {
 	for i := range count {
 		batch.WriteString(`{"id":"r` + strconv.Itoa(i) + `","type":"get_available_models"}` + "\n")
 	}
-	batch.WriteString(`{"id":"marker","type":"bash","command":": > '` + marker + `'"}` + "\n")
+	markerCommand, err := json.Marshal(map[string]string{"id": "marker", "type": "bash", "command": ": > '" + filepath.ToSlash(marker) + "'"})
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	batch.Write(markerCommand)
+	batch.WriteString("\n")
 	written := make(chan error, 1)
 	go func() {
 		_, err := conn.Write([]byte(batch.String()))
