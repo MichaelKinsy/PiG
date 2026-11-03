@@ -54,6 +54,7 @@ func ListenForLoopbackSignIn(ctx context.Context, options ListenForLoopbackSignI
 				return nil, err
 			}
 			// `Number(url.port) || undefined`
+			//portlint:allow numbers a parsed URL's port is only ASCII digits, which Atoi and Number read the same; an empty port is 0 in both
 			if p, err := strconv.Atoi(u.Port); err == nil && p != 0 {
 				port = &p
 			}

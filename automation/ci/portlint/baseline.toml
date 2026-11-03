@@ -3337,18 +3337,6 @@ snippet = "perServer = min(maxServerDescriptionChars, (MaxServersSectionChars-si
 
 [[hit]]
 check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "newCallbackSettings"
-snippet = "p, _ := strconv.Atoi(u.Port)"
-
-[[hit]]
-check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "SignInMcpServer"
-snippet = "if p, err := strconv.Atoi(u.Port); err == nil && p != 0 {"
-
-[[hit]]
-check = "numbers"
 file = "coding/mcpext/runtime.go"
 func = "Connection.Timeout"
 snippet = "return time.Duration(seconds * float64(time.Second))"

@@ -267,6 +267,7 @@ func loopbackSettings(settings McpOAuthSettings) (loopbackCallbackSettings, erro
 	var port *int
 	fixed := ""
 	if u.Port != "" {
+		//portlint:allow numbers a parsed URL's port is only ASCII digits, which Atoi and Number read the same; an empty port is 0 in both
 		p, _ := strconv.Atoi(u.Port)
 		port = &p
 		// A configured URI with a port is sent exactly as written, since servers compare it as a string.
