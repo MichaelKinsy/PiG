@@ -52,25 +52,34 @@ func TestStreamableHTTPTransportAcceptsAJSONBodyWithALeadingBOM(t *testing.T) {
 	}
 }
 
-// streamable-http.ts checkResponse keeps `(await response.text()).slice(0, MAX_ERROR_BODY_BYTES)`:
-// 8192 UTF-16 units of the decoded body, not 8192 bytes.
-func TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody(t *testing.T) {
-	url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, _ *requestLog) {
-		_, _ = io.ReadAll(r.Body)
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = io.WriteString(w, strings.Repeat("é", 9000))
-	})
-	client := newHTTPClient()
-	_, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url}))
-	httpErr, ok := errors.AsType[*mcp.McpHttpError](err)
-	if !ok {
-		t.Fatalf("err = %v", err)
-	}
-	if got := len(utf16.Encode([]rune(httpErr.Body))); got != 8*1024 {
-		t.Fatalf("body has %d UTF-16 units, want %d", got, 8*1024)
-	}
-	if httpErr.Body != strings.Repeat("é", 8*1024) {
-		t.Fatalf("body is not the decoded prefix")
+// streamable-http.ts checkResponse (4a8b60bc3) keeps readBodyText(response, MAX_ERROR_BODY_BYTES): the first 8192 bytes of the
+// body, decoded; a multi-byte character cut by the limit is dropped, not replaced, and a body that ends inside one is
+// replaced (decoder.decode() flushes it).
+// mutation-checked: counting UTF-16 units instead of bytes, or keeping the cut character's lead byte, fails it.
+func TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody(t *testing.T) {
+	for _, tc := range []struct{ name, body, want string }{
+		{"two-byte characters", strings.Repeat("é", 9000), strings.Repeat("é", 4*1024)},
+		{"a character cut by the limit", strings.Repeat("a", 8*1024-1) + "é" + "tail", strings.Repeat("a", 8*1024-1)},
+		{"a character ending at the limit", strings.Repeat("a", 8*1024-2) + "é" + "tail", strings.Repeat("a", 8*1024-2) + "é"},
+		{"a body of exactly the limit", strings.Repeat("a", 8*1024), strings.Repeat("a", 8*1024)},
+		{"a body ending inside a character", strings.Repeat("a", 8*1024-1) + "\xc3", strings.Repeat("a", 8*1024-1) + "\uFFFD"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, _ *requestLog) {
+				_, _ = io.ReadAll(r.Body)
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = io.WriteString(w, tc.body)
+			})
+			client := newHTTPClient()
+			_, err := client.Connect(t.Context(), newHTTPTransport(t, mcp.StreamableHTTPTransportOptions{URL: url}))
+			httpErr, ok := errors.AsType[*mcp.McpHttpError](err)
+			if !ok {
+				t.Fatalf("err = %v", err)
+			}
+			if httpErr.Body != tc.want {
+				t.Fatalf("body has %d UTF-16 units, want %d (the decoded first %d bytes)", len(utf16.Encode([]rune(httpErr.Body))), len(utf16.Encode([]rune(tc.want))), 8*1024)
+			}
+		})
 	}
 }
 
