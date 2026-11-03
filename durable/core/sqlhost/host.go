@@ -173,7 +173,10 @@ type Options struct {
 	OnCommitted func(c abi.Commit, sql []string)
 }
 
-// Host is one core session and its SQLite connection.
+// Host is one core session and its SQLite connection: the native Go host of one Session, which the SQLite engine drives through
+// the core ABI. Host.Close is Session.close; the rest of the Session's behavior is the core's, not this host's.
+//
+// Ports packages/durable/src/session/session.ts
 type Host struct {
 	opts   Options
 	box    *mailbox
@@ -987,7 +990,7 @@ func (h *Host) setTimer(id uint32, at float64, background bool) {
 	if stop, ok := h.timers[id]; ok {
 		stop()
 	}
-	wait := max(time.Duration((at-h.opts.Clock())*float64(time.Millisecond)), 0)
+	wait := timerDelay(at, h.opts.Clock())
 	if wait > h.opts.TimerLead {
 		wait -= h.opts.TimerLead
 	}

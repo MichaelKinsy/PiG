@@ -197,7 +197,7 @@ func TestExportedContextReadsAreDetachedFromTheStorage(t *testing.T) {
 	for range 3 {
 		s.turn(1)
 	}
-	bounds := must(CaptureContextBounds(testContext, s.storage, 1, nil))
+	bounds := must(CaptureContextBounds(testContext, inlineLine{s.storage}, s.storage, 1, nil, false))
 	// A deep copy, so damage that reached the storage cannot reach the expectation too.
 	pristine := detach.ContextView(must(DeriveContext(testContext, s.storage, 1, bounds)))
 	damageView(must(DeriveContext(testContext, s.storage, 1, bounds)))

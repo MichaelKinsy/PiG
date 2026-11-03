@@ -22,16 +22,18 @@ type commitCounter struct {
 	endedIn map[durable.TaskId]int
 }
 
-func (store *commitCounter) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *commitCounter) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	store.mu.Lock()
-	store.commits++
-	for _, write := range writes {
-		if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
-			store.endedIn[task.Value.Id] = store.commits
+	for _, writes := range batches {
+		store.commits++
+		for _, write := range writes {
+			if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
+				store.endedIn[task.Value.Id] = store.commits
+			}
 		}
 	}
 	store.mu.Unlock()
-	return store.Storage.Commit(ctx, writes, adopt)
+	return store.Storage.Commit(ctx, batches, receive)
 }
 
 func (store *commitCounter) ended(id durable.TaskId) int {

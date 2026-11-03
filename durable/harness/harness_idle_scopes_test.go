@@ -3,15 +3,12 @@ package harness
 // Ports packages/durable/test/harness-idle-scopes.test.ts (Pi main 35dfa757): idle checks without per-commit scans. A task change
 // settles only the conversations above it (idle waiters and kept context ranges), expiry runs oldest first from an ordered
 // index, and wake() reads only sleeping tasks while work is active. Every case checks the incremental idle state against a full
-// recompute (idleState).
-//
-// Not ported: the two cases of entry-only commits that drop an expired or an unextendable range. The scheduler of 1.4.0+b3a29f11
-// does not extend kept ranges at commits, so no entry commit drops one.
+// recompute (TaskScheduler.idleState, scheduler_idle.go).
 
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,39 +17,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
-
-// idleState is the kept contexts' idle state, computed on demand: how many are kept and how many are idle, how many disagree with
-// a full recompute (an idle period without idleLocked, or idleLocked without one; an expiry order that differs from the idle
-// periods, or is not sorted), and how many idle checks covered every scope.
-type idleStateOf struct{ contexts, idleContexts, idleMismatches, fullIdleChecks int }
-
-func (s *TaskScheduler) idleState() idleStateOf {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	state := idleStateOf{contexts: len(s.contexts), fullIdleChecks: s.fullIdleChecks}
-	for id, kept := range s.contexts {
-		if kept.idleSince != nil {
-			state.idleContexts++
-		}
-		if (kept.idleSince != nil) != s.idleLocked(&id) {
-			state.idleMismatches++
-		}
-		if s.idleOrder.Has(id) != (kept.idleSince != nil) {
-			state.idleMismatches++
-		}
-	}
-	previous := -1e300
-	for _, id := range s.idleOrder.Values() {
-		kept := s.contexts[id]
-		if kept == nil || kept.idleSince == nil || *kept.idleSince < previous {
-			state.idleMismatches++
-			continue
-		}
-		previous = *kept.idleSince
-	}
-	return state
-}
 
 // idleGates are the gates and read signals of the tasks of one test, by name.
 type idleGates struct {
@@ -223,15 +189,6 @@ func (env *idleEnv) end(name string, id durable.TaskId) {
 	}
 }
 
-// keep starts a task in conversation that runs until the test ends. Its chain is loaded afterwards, so later tasks of the
-// conversation do not wait for a chain load: until it is loaded, a live task counts as inside every scope, and an idle period
-// another conversation's kept range started would restart. (Pi loads the chain of a new task in its creating commit.)
-func (env *idleEnv) keep(conversation Conversation) {
-	env.t.Helper()
-	env.start("keeper", conversation, 0)
-	env.quiet()
-}
-
 // rowsOf is the entry rows a read of read from a new task in into scans.
 func (env *idleEnv) rowsOf(name string, into Conversation, read durable.ConversationId) int64 {
 	env.t.Helper()
@@ -245,13 +202,20 @@ func (env *idleEnv) rowsOf(name string, into Conversation, read durable.Conversa
 // quiet waits until the scheduler passes the last changes started have settled.
 func (env *idleEnv) quiet() {
 	env.t.Helper()
-	time.Sleep(50 * time.Millisecond)
-	pollUntil(env.t, func() bool {
-		env.scheduler.mu.Lock()
-		defer env.scheduler.mu.Unlock()
-		return !env.scheduler.reconcileScheduled && env.scheduler.reconcilingWork == 0
+	awaitSchedulerSettled(env.t, env.scheduler)
+}
+
+// awaitSchedulerSettled waits until no scheduler pass is scheduled or underway (reconcile, sweep, drain, wake), then until every
+// goroutine has run up to a wait, so what the passes started has been done.
+func awaitSchedulerSettled(t *testing.T, scheduler *TaskScheduler) {
+	t.Helper()
+	pollUntil(t, func() bool {
+		scheduler.mu.Lock()
+		defer scheduler.mu.Unlock()
+		return !scheduler.reconcileScheduled && scheduler.reconcilingWork == 0 && scheduler.reconciles == 0 &&
+			!scheduler.sweepScheduled && !scheduler.wakeScheduled && !scheduler.draining
 	})
-	time.Sleep(50 * time.Millisecond)
+	awaitQuiescent(t)
 }
 
 func (env *idleEnv) close() {
@@ -260,7 +224,7 @@ func (env *idleEnv) close() {
 	mustClose(env.t, env.harness)
 }
 
-func (env *idleEnv) expectState(want idleStateOf, fields string) {
+func (env *idleEnv) expectState(want SchedulerIdleState, fields string) {
 	env.t.Helper()
 	got := env.scheduler.idleState()
 	check := func(field string, got, want int) {
@@ -268,20 +232,23 @@ func (env *idleEnv) expectState(want idleStateOf, fields string) {
 			env.t.Errorf("%s = %d, want %d (state %+v)", field, got, want, env.scheduler.idleState())
 		}
 	}
-	check("contexts", got.contexts, want.contexts)
-	check("idleContexts", got.idleContexts, want.idleContexts)
-	check("idleMismatches", got.idleMismatches, want.idleMismatches)
-	check("fullIdleChecks", got.fullIdleChecks, want.fullIdleChecks)
+	check("contexts", got.Contexts, want.Contexts)
+	check("idleContexts", got.IdleContexts, want.IdleContexts)
+	check("idleMismatches", got.IdleMismatches, want.IdleMismatches)
+	check("fullIdleChecks", got.FullIdleChecks, want.FullIdleChecks)
 }
 
-// settledWithin reports whether wait settled within a short time.
-func settledWithin(wait func() error) bool {
+// settledAfterFlush reports whether wait settled once every goroutine has run up to a wait: a wait that its task changes
+// allow to settle has settled by then, and one that is still held is parked.
+func settledAfterFlush(t *testing.T, wait func() error) bool {
+	t.Helper()
 	done := make(chan struct{})
 	go func() { _ = wait(); close(done) }()
+	awaitQuiescent(t)
 	select {
 	case <-done:
 		return true
-	case <-time.After(150 * time.Millisecond):
+	default:
 		return false
 	}
 }
@@ -336,10 +303,11 @@ func TestIdleWaitersByScope(t *testing.T) {
 			return result
 		}
 		isSettled := func(result *waitResult) bool {
+			awaitQuiescent(t)
 			select {
 			case <-result.done:
 				return true
-			case <-time.After(150 * time.Millisecond):
+			default:
 				return false
 			}
 		}
@@ -401,7 +369,8 @@ func TestIdleWaitersByScope(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// P and D stay live in storage, as a crash leaves them; the first Harness never ran them and is not used again.
+		// P and D stay live in storage, as a crash leaves them; the first Harness never ran them and is not used again
+		// (closing a Harness closes its MemoryStorage here, where Pi reopens a ControlledStorage).
 		// Reopened, no chain is loaded: P and D count as inside every scope until the reconcile pass loads theirs.
 		second := &idleEnv{t: t, gates: gates, scan: &scanCount{}}
 		second.work = idleWork(gates)
@@ -416,20 +385,22 @@ func TestIdleWaitersByScope(t *testing.T) {
 		}
 		rootWait := make(chan struct{})
 		go func() { _ = second.root.WaitForIdle(testContext); close(rootWait) }()
+		awaitQuiescent(t)
 		select {
 		case <-rootWait:
 			t.Fatal("the root is idle while P and D are live")
-		case <-time.After(150 * time.Millisecond):
+		default:
 		}
 		second.harness.Resume()
 		gates.gate("d").resolve()
 		if _, err := second.harness.WaitForTask(testContext, built.d); err != nil {
 			t.Fatal(err)
 		}
+		awaitQuiescent(t)
 		select {
 		case <-rootWait:
 			t.Fatal("the root is idle while P is live")
-		case <-time.After(150 * time.Millisecond):
+		default:
 		}
 		gates.gate("p").resolve()
 		select {
@@ -446,7 +417,7 @@ func TestIdleWaitersByScope(t *testing.T) {
 		busy, other := env.conversation(0), env.conversation(0)
 		held := env.start("held", busy, 0)
 		quick := env.start("quick", other, 0)
-		idleBusy := func() bool { return settledWithin(func() error { return busy.WaitForIdle(testContext) }) }
+		idleBusy := func() bool { return settledAfterFlush(t, func() error { return busy.WaitForIdle(testContext) }) }
 		idleOther := make(chan struct{})
 		go func() { _ = other.WaitForIdle(testContext); close(idleOther) }()
 		env.end("quick", quick)
@@ -464,9 +435,57 @@ func TestIdleWaitersByScope(t *testing.T) {
 		}
 		env.close()
 	})
+
+	// scheduler.ts: a commit's task changes are settled at its publication, over the scopes above the tasks that ended
+	// (addScopesAbove), not at the reconcile pass after it.
+	t.Run("resolve a waiter at the publication of the change that ended the last task below, before the pass after it", func(t *testing.T) {
+		env := openIdle(t, idleEnvOptions{})
+		busy := env.conversation(0)
+		held := env.start("held", busy, 0)
+		waiting := make(chan struct{})
+		go func() { _ = busy.WaitForIdle(testContext); close(waiting) }()
+		awaitQuiescent(t)
+		// The task's end queues behind one line job, and a second one is admitted behind that end: the pass its publication
+		// schedules takes its place after the second, so only the publication's own check can resolve the waiter meanwhile.
+		firstEntered, releaseFirst := holdLine(t, env.harness)
+		if err := firstEntered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		env.gates.gate("held").resolve()
+		awaitQuiescent(t)
+		secondAdmitted, secondEntered, releaseSecond := deferred(), deferred(), deferred()
+		second := goCall(func() error {
+			_, err := env.harness.Commit(lineadmission.With(testContext, secondAdmitted.resolve), func(durable.Tx) (any, error) {
+				secondEntered.resolve()
+				return nil, releaseSecond.wait(t.Context())
+			})
+			return err
+		})
+		if err := secondAdmitted.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		releaseFirst()
+		if err := secondEntered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		awaitQuiescent(t)
+		select {
+		case <-waiting:
+		default:
+			t.Error("the waiter was not resolved while a job held the line after the task's end was published")
+		}
+		releaseSecond.resolve()
+		if err := second.wait(t); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := env.harness.WaitForTask(testContext, held); err != nil {
+			t.Fatal(err)
+		}
+		env.close()
+	})
 }
 
-func TestKeptContextRanges(t *testing.T) {
+func TestIdleKeptContextRanges(t *testing.T) {
 	t.Run("settles a run end whose sweep drops the chain without a check of every scope", func(t *testing.T) {
 		env := openIdle(t, idleEnvOptions{})
 		type tree struct {
@@ -503,7 +522,7 @@ func TestKeptContextRanges(t *testing.T) {
 		pollUntil(t, func() bool { return tkTaskRecord(t, env.harness, built.t).State.Status == durable.TaskCompleting })
 		env.quiet()
 		before := env.scheduler.idleState()
-		env.expectState(idleStateOf{contexts: 1, idleContexts: 0, idleMismatches: 0}, "contexts idleContexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 0, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
 		// D's end makes C idle, T finalizes, and the sweep forgets C's chain: none of it checks every scope.
 		env.gates.gate("d").resolve()
 		if _, err := env.harness.WaitForTask(testContext, d); err != nil {
@@ -514,7 +533,7 @@ func TestKeptContextRanges(t *testing.T) {
 		}
 		env.quiet()
 		want := before
-		want.idleContexts = 1
+		want.IdleContexts = 1
 		if got := env.scheduler.idleState(); got != want {
 			t.Fatalf("idle state %+v, want %+v", got, want)
 		}
@@ -529,14 +548,13 @@ func TestKeptContextRanges(t *testing.T) {
 		clock := &testClock{now: 1_000}
 		env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { return 1_000 }})
 		x, z := env.conversation(2), env.conversation(0)
-		env.keep(z)
 		env.end("reader", env.start("reader", z, x.Id()))
-		env.expectState(idleStateOf{contexts: 1, idleContexts: 1}, "contexts idleContexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 1}, "contexts idleContexts idleMismatches")
 		clock.advance(1_500)
 		// No timer expired it; the task change that makes X busy checks expiry first.
 		busy := env.start("busy", x, 0)
 		env.quiet()
-		env.expectState(idleStateOf{contexts: 0, idleContexts: 0}, "contexts idleContexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 0, IdleContexts: 0}, "contexts idleContexts idleMismatches")
 		env.end("busy", busy)
 		env.close()
 	})
@@ -545,20 +563,18 @@ func TestKeptContextRanges(t *testing.T) {
 		clock := &testClock{now: 1_000}
 		env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { return 1_000 }})
 		x, z := env.conversation(2), env.conversation(0)
-		env.keep(z)
 		env.end("reader", env.start("reader", z, x.Id()))
 		held := env.start("held", z, 0)
 		// Held runs: no task changes from here.
 		env.quiet()
-		env.expectState(idleStateOf{contexts: 1, idleContexts: 1}, "contexts idleContexts")
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 1}, "contexts idleContexts")
 		clock.advance(1_500)
 		// A wait on busy Z asks for a reconcile pass, which has no work and changes no task: it checks expiry.
 		idle := make(chan struct{})
 		go func() { _ = z.WaitForIdle(testContext); close(idle) }()
 		env.quiet()
-		env.expectState(idleStateOf{contexts: 0, idleMismatches: 0}, "contexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 0, IdleMismatches: 0}, "contexts idleMismatches")
 		env.end("held", held)
-		env.gates.gate("keeper").resolve()
 		select {
 		case <-idle:
 		case <-time.After(10 * time.Second):
@@ -571,21 +587,19 @@ func TestKeptContextRanges(t *testing.T) {
 		clock := &testClock{now: 1_000}
 		env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { return 1_000 }})
 		a, b, z := env.conversation(3), env.conversation(5), env.conversation(0)
-		env.keep(z)
 		env.end("read a", env.start("read a", z, a.Id()))
 		clock.advance(-500)
 		env.end("read b", env.start("read b", z, b.Id()))
-		env.expectState(idleStateOf{contexts: 2, idleContexts: 2, idleMismatches: 0}, "contexts idleContexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 2, IdleContexts: 2, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
 		// B went idle at 500 and expires first, though it went idle last.
 		clock.advance(1_100)
 		env.end("unrelated", env.start("unrelated", z, 0))
-		env.expectState(idleStateOf{contexts: 1, idleMismatches: 0}, "contexts idleMismatches")
-		// A read scans one row for the bounds probe, and the whole transcript unless a range is kept.
-		if rows := env.rowsOf("again b", z, b.Id()); rows != 6 {
-			t.Errorf("a read of B scanned %d rows, want 6", rows)
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleMismatches: 0}, "contexts idleMismatches")
+		if rows := env.rowsOf("again b", z, b.Id()); rows != 5 {
+			t.Errorf("a read of B scanned %d rows, want 5", rows)
 		}
-		if rows := env.rowsOf("again a", z, a.Id()); rows != 1 {
-			t.Errorf("a read of A scanned %d rows, want 1", rows)
+		if rows := env.rowsOf("again a", z, a.Id()); rows != 0 {
+			t.Errorf("a read of A scanned %d rows, want 0", rows)
 		}
 		env.close()
 	})
@@ -596,16 +610,15 @@ func TestKeptContextRanges(t *testing.T) {
 		var mu sync.Mutex
 		env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { mu.Lock(); defer mu.Unlock(); return retention }})
 		a, z := env.conversation(2), env.conversation(0)
-		env.keep(z)
 		env.end("read", env.start("read", z, a.Id()))
-		env.expectState(idleStateOf{contexts: 1, idleContexts: 1}, "contexts idleContexts")
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 1}, "contexts idleContexts")
 		// The clock goes back below A's idle start; then retention 0 and an unrelated task change.
 		clock.advance(-1_000)
 		mu.Lock()
 		retention = 0
 		mu.Unlock()
 		env.end("unrelated", env.start("unrelated", z, 0))
-		env.expectState(idleStateOf{contexts: 0, idleMismatches: 0}, "contexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 0, IdleMismatches: 0}, "contexts idleMismatches")
 		env.close()
 	})
 
@@ -613,20 +626,54 @@ func TestKeptContextRanges(t *testing.T) {
 		clock := &testClock{now: 1_000}
 		env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { return 1_000 }})
 		a, b, z := env.conversation(3), env.conversation(5), env.conversation(0)
-		env.keep(z)
 		env.end("read a", env.start("read a", z, a.Id()))
 		clock.advance(500)
 		env.end("read b", env.start("read b", z, b.Id()))
 		clock.advance(300)
-		if rows := env.rowsOf("again a", z, a.Id()); rows != 1 {
-			t.Errorf("a second read of A scanned %d rows, want 1", rows)
+		if rows := env.rowsOf("again a", z, a.Id()); rows != 0 {
+			t.Errorf("a second read of A scanned %d rows, want 0", rows)
 		}
 		clock.advance(300)
 		env.end("unrelated", env.start("unrelated", z, 0))
-		env.expectState(idleStateOf{contexts: 1, idleMismatches: 0}, "contexts idleMismatches")
-		if rows := env.rowsOf("late b", z, b.Id()); rows != 1 {
-			t.Errorf("a read of B scanned %d rows, want 1", rows)
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleMismatches: 0}, "contexts idleMismatches")
+		if rows := env.rowsOf("late b", z, b.Id()); rows != 0 {
+			t.Errorf("a read of B scanned %d rows, want 0", rows)
 		}
+		env.close()
+	})
+
+	t.Run("drops a range from the expiry order when an entry commit finds it expired", func(t *testing.T) {
+		clock := &testClock{now: 1_000}
+		env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { return 1_000 }})
+		a, z := env.conversation(2), env.conversation(0)
+		env.end("read", env.start("read", z, a.Id()))
+		clock.advance(1_500)
+		// An entry-only commit settles no idleness: the range is dropped where it would be extended.
+		env.addEntries(a, 1)
+		env.expectState(SchedulerIdleState{Contexts: 0, IdleContexts: 0, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
+		env.close()
+	})
+
+	t.Run("drops a range from the expiry order when an entry commit cannot extend it", func(t *testing.T) {
+		env := openIdle(t, idleEnvOptions{})
+		a, z := env.conversation(0), env.conversation(0)
+		appendEntry := func(draft durable.EntryDraft) durable.EntryRecord {
+			record, err := durable.Commit(testContext, a, func(tx durable.Tx) (durable.EntryRecord, error) {
+				return tx.AppendEntry(a.Id(), draft)
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return record
+		}
+		first := appendEntry(durable.EntryDraft{Kind: "note"})
+		second := appendEntry(durable.EntryDraft{Kind: "note"})
+		appendEntry(durable.EntryDraft{Kind: "summary", Head: &second.Id})
+		env.end("read", env.start("read", z, a.Id()))
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 1, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
+		// A marker whose head is older than the range's: the range cannot be extended and is dropped.
+		appendEntry(durable.EntryDraft{Kind: "summary", Head: &first.Id})
+		env.expectState(SchedulerIdleState{Contexts: 0, IdleContexts: 0, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
 		env.close()
 	})
 
@@ -641,14 +688,13 @@ func TestKeptContextRanges(t *testing.T) {
 			var mu sync.Mutex
 			env := openIdle(t, idleEnvOptions{clock: clock, retention: func() float64 { mu.Lock(); defer mu.Unlock(); return retention }})
 			a, z := env.conversation(2), env.conversation(0)
-			env.keep(z)
 			env.end("read", env.start("read", z, a.Id()))
 			clock.advance(500)
 			mu.Lock()
 			retention = test.changed
 			mu.Unlock()
 			env.end("unrelated", env.start("unrelated", z, 0))
-			env.expectState(idleStateOf{contexts: test.kept, idleMismatches: 0}, "contexts idleMismatches")
+			env.expectState(SchedulerIdleState{Contexts: test.kept, IdleMismatches: 0}, "contexts idleMismatches")
 			env.close()
 		})
 	}
@@ -658,16 +704,16 @@ func TestKeptContextRanges(t *testing.T) {
 		a := env.conversation(2)
 		own := env.start("own", a, a.Id())
 		env.quiet()
-		env.expectState(idleStateOf{contexts: 1, idleContexts: 0, idleMismatches: 0}, "contexts idleContexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 1, IdleContexts: 0, IdleMismatches: 0}, "contexts idleContexts idleMismatches")
 		env.end("own", own)
 		env.quiet()
-		env.expectState(idleStateOf{contexts: 0, idleMismatches: 0}, "contexts idleMismatches")
+		env.expectState(SchedulerIdleState{Contexts: 0, IdleMismatches: 0}, "contexts idleMismatches")
 		env.close()
 	})
 }
 
 func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork(t *testing.T) {
-	random := rand.New(rand.NewSource(42))
+	random := rand.New(rand.NewPCG(42, 42))
 	env := openIdle(t, idleEnvOptions{})
 	// A context range keeps entries: every conversation gets one.
 	env.addEntries(env.root, 1)
@@ -688,17 +734,17 @@ func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWor
 			conversations = append(conversations, env.conversation(1))
 		case action < 0.45 || len(live) == 0:
 			// A task in any conversation, also one whose owner chain ended and was swept; it may read a context.
-			into := conversations[random.Intn(len(conversations))]
+			into := conversations[random.IntN(len(conversations))]
 			var read durable.ConversationId
 			if random.Float64() < 0.6 {
-				read = conversations[random.Intn(len(conversations))].Id()
+				read = conversations[random.IntN(len(conversations))].Id()
 			}
 			background := random.Float64() < 0.15
 			live[name] = liveTask{id: env.start(name, into, read, background), conversation: into}
 			names = append(names, name)
 		case action < 0.6:
 			// Work a live task owns: a child task, or an owned conversation with a task that reads it.
-			ownerName := names[random.Intn(len(names))]
+			ownerName := names[random.IntN(len(names))]
 			owner, ok := live[ownerName]
 			if !ok {
 				continue
@@ -744,7 +790,7 @@ func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWor
 			live[name] = liveTask{id: created.id, conversation: intoConversation}
 			names = append(names, name)
 		default:
-			ended := names[random.Intn(len(names))]
+			ended := names[random.IntN(len(names))]
 			if _, ok := live[ended]; !ok {
 				continue
 			}
@@ -752,19 +798,19 @@ func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWor
 			env.gates.gate(ended).resolve()
 		}
 		env.quiet()
-		if state := env.scheduler.idleState(); state.idleMismatches != 0 {
-			t.Fatalf("step %d: %d mismatches with a full recompute: %+v", step, state.idleMismatches, state)
+		if state := env.scheduler.idleState(); state.IdleMismatches != 0 {
+			t.Fatalf("step %d: %d mismatches with a full recompute: %+v", step, state.IdleMismatches, state)
 		}
 	}
 	state := env.scheduler.idleState()
-	if state.contexts <= 5 || state.idleContexts == 0 || state.idleContexts >= state.contexts {
+	if state.Contexts <= 5 || state.IdleContexts == 0 || state.IdleContexts >= state.Contexts {
 		t.Errorf("idle state %+v: want more than 5 kept ranges, some idle and some busy", state)
 	}
 	// Every task here is created in a conversation whose chain was swept, so it is live with its chain not loaded until its
 	// reservation. Pi loads the chain in the creating commit; 1.4.0+b3a29f11 does not, and settles such a task's scopes once its
 	// chain is loaded, so no idle check covers every scope.
-	if state.fullIdleChecks != 0 {
-		t.Errorf("%d idle checks covered every scope, want 0", state.fullIdleChecks)
+	if state.FullIdleChecks != 0 {
+		t.Errorf("%d idle checks covered every scope, want 0", state.FullIdleChecks)
 	}
 	env.close()
 }
@@ -843,7 +889,7 @@ func TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns(t *testing.T
 			clock := &testClock{now: 1_000}
 			opened := tkOpenRoot(t, []durable.AnyTask{idleWork(gates)}, tkOptions{storage: store, now: clock.Now})
 			scheduler := opened.harness.(*harnessImpl).tasks
-			time.Sleep(100 * time.Millisecond)
+			awaitSchedulerSettled(t, scheduler)
 			got := scheduler.Wake()
 			if got.Active != test.want.Active || (got.At == nil) != (test.want.At == nil) || (got.At != nil && *got.At != *test.want.At) {
 				t.Errorf("wake = %+v, want %+v", got, test.want)
@@ -876,7 +922,7 @@ func TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns(t *testing.T
 		if _, err := opened.harness.WaitForTask(testContext, id); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(100 * time.Millisecond)
+		awaitSchedulerSettled(t, scheduler)
 		if got := scheduler.Wake(); got.Active || got.At == nil || *got.At != 5_000 {
 			t.Errorf("wake = %+v, want inactive with at 5000", got)
 		}

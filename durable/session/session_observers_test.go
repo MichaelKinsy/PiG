@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 var (
@@ -139,7 +140,7 @@ func TestObserveDoc(t *testing.T) {
 		must(t, opened.session.Close(ctx))
 	})
 
-	t.Run("starts at the committed value and advances inside adopt with each stored commit's ops", func(t *testing.T) {
+	t.Run("starts at the committed value and advances at the publication of each stored commit with its ops", func(t *testing.T) {
 		opened := openObserving()
 		opened.add(t, 1)
 		observer := opened.recorder()
@@ -150,7 +151,7 @@ func TestObserveDoc(t *testing.T) {
 		if len(calls) != 1 {
 			t.Fatalf("calls %+v", calls)
 		}
-		expectAdvance(t, calls[0], delta.JsonObjectOf("count", 3), []durable.Op{{"s", []any{"count"}, 3}}, false, true)
+		expectAdvance(t, calls[0], delta.JsonObjectOf("count", 3), []durable.Op{{"s", []any{"count"}, 3}}, false, false)
 		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
@@ -198,11 +199,11 @@ func TestObserveDoc(t *testing.T) {
 		if len(calls) != 2 {
 			t.Fatalf("calls %+v", calls)
 		}
-		expectAdvance(t, calls[0], observation.Value(), nil, true, true)
+		expectAdvance(t, calls[0], observation.Value(), nil, true, false)
 		if !same(calls[0].advance.Value, observation.Value()) {
 			t.Fatal("a retirement carries the value the observer was given")
 		}
-		expectAdvance(t, calls[1], delta.JsonObjectOf("count", 9), []durable.Op{{"r", delta.JsonObjectOf("count", 9)}}, false, true)
+		expectAdvance(t, calls[1], delta.JsonObjectOf("count", 9), []durable.Op{{"r", delta.JsonObjectOf("count", 9)}}, false, false)
 		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
@@ -303,13 +304,13 @@ func TestObserveDoc(t *testing.T) {
 			err         error
 		}
 		result := make(chan attached, 1)
+		attaching := make(chan struct{})
 		go func() {
-			observation, err := opened.session.ObserveDocErased(ctx, observeSessionCounter, observer)
+			observation, err := opened.session.ObserveDocErased(lineadmission.With(ctx, func() { close(attaching) }), observeSessionCounter, observer)
 			result <- attached{observation, err}
 		}()
-		// The attachment is queued behind the commit on the line.
-		for opened.session.LineJobs() < 2 {
-		}
+		// The attachment is queued behind the commit on the line, and reads what the commit wrote only once it is published.
+		<-attaching
 		gate.Release()
 		got := <-result
 		must(t, got.err)

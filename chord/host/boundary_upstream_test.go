@@ -33,6 +33,7 @@ var chordHelpers = []string{
 	"internal/linkerexec", // starts Node for the plugins worker and checks its version (chord/nextnode/plugins)
 	"internal/nodepath",
 	"internal/nodeurl",
+	"internal/watchentered",     // tells a watch delivery that its listener went on to a wait of the host (chord/watch_impl.go)
 	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
 	"schema/internal/ecmaregex", // pi-schema's ECMAScript regular expressions
 	"telemetry",                 // pi-telemetry, the dependency of Context.telemetry (chord/context)

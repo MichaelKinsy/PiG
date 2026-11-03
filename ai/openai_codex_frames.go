@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/api/openai-codex-responses.ts (mapCodexEvents, extractCodexEventError and the frame decoding of parseWebSocket).
+
 import (
 	"bytes"
 	"encoding/json"

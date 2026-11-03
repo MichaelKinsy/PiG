@@ -30,6 +30,8 @@ func (l *hostLink) awaitDeliveries(ctx context.Context) error {
 // listeners (the wait of `Reload`'s report).
 func (h *chordHost) awaitDelivered(ctx context.Context) error {
 	h.enter(func() {})
+	// pig divergence (D224): a listener that blocks on something the host cannot see, without calling chord.DeliveryEntered, holds
+	// this wait back; Pi's listener awaits.
 	if err := h.scheduler.AwaitEntered(ctx); err != nil {
 		return err
 	}

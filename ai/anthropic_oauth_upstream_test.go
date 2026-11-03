@@ -1,5 +1,8 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/anthropic.ts
+// pi: packages/ai/src/auth/oauth/callback-server.ts
+
 import (
 	"context"
 	"encoding/json"

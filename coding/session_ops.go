@@ -1,5 +1,7 @@
 package coding
 
+// Ports packages/coding-agent/src/core/agent-session-runtime.ts (fork() at position "before").
+
 import (
 	"fmt"
 

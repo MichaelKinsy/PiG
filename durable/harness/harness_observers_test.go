@@ -132,7 +132,7 @@ func appendPlainNote(t *testing.T, root Conversation) durable.EntryRecord {
 }
 
 func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
-	t.Run("start at the current value and advance inside adopt with the same change a watch gets", func(t *testing.T) {
+	t.Run("start at the current value and advance at the publication with the same change a watch gets", func(t *testing.T) {
 		store := newControlledStorage()
 		opened := tkOpenRoot(t, nil, tkOptions{storage: store})
 		harness, root := opened.harness, opened.root
@@ -161,7 +161,8 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 			t.Fatalf("view calls %d", len(calls))
 		}
 		call := calls[0]
-		if !call.adopting || call.advance.Kind != durable.WatchCallValue || call.advance.Retired || call.advance.Value.Entries[len(call.advance.Value.Entries)-1].Id != entry.Id {
+		// Published once Storage stored it, outside its call.
+		if call.adopting || call.advance.Kind != durable.WatchCallValue || call.advance.Retired || call.advance.Value.Entries[len(call.advance.Value.Entries)-1].Id != entry.Id {
 			t.Fatalf("view call %+v", call)
 		}
 		eventually(t, func() bool { watchedMu.Lock(); defer watchedMu.Unlock(); return len(watched) == 1 })
@@ -303,7 +304,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		id := tkStart(t, opened.root, missing.Erased())
 		key := taskKey(id)
 		calls := graph.all()
-		if len(calls) != 1 || !calls[0].adopting || calls[0].advance.Kind != durable.WatchCallValue || calls[0].advance.Retired || calls[0].advance.Value.Tasks[key].Blocked != durable.BlockedMissingTask {
+		if len(calls) != 1 || calls[0].adopting || calls[0].advance.Kind != durable.WatchCallValue || calls[0].advance.Retired || calls[0].advance.Value.Tasks[key].Blocked != durable.BlockedMissingTask {
 			t.Fatalf("calls %+v", calls)
 		}
 		first := calls[0].advance
@@ -420,7 +421,7 @@ func TestTaskDocuments(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	t.Run("an observer gets the retirement, then its end, inside the adopt of the commit that ends the task", func(t *testing.T) {
+	t.Run("an observer gets the retirement, then its end, at the publication of the commit that ends the task", func(t *testing.T) {
 		opened := openObserversWriter(t)
 		progress := newCallRecorder[observersProgressState](opened.store)
 		var endedAdopting bool
@@ -429,11 +430,11 @@ func TestTaskDocuments(t *testing.T) {
 		opened.finish()
 		must(opened.harness.WaitForTask(testContext, opened.id))
 		calls := progress.all()
-		if len(calls) != 2 || calls[0].advance == nil || calls[0].advance.Kind != durable.WatchCallValue || !calls[0].adopting || !calls[0].advance.Retired || len(calls[0].advance.Ops) != 0 || !reflect.DeepEqual(calls[0].advance.Value, observersProgressState{Lines: []string{"started"}}) || !calls[1].end || calls[1].endWith != (durable.WatchEnd{Kind: durable.WatchEnded}) {
+		if len(calls) != 2 || calls[0].advance == nil || calls[0].advance.Kind != durable.WatchCallValue || calls[0].adopting || !calls[0].advance.Retired || len(calls[0].advance.Ops) != 0 || !reflect.DeepEqual(calls[0].advance.Value, observersProgressState{Lines: []string{"started"}}) || !calls[1].end || calls[1].endWith != (durable.WatchEnd{Kind: durable.WatchEnded}) {
 			t.Fatalf("calls %+v", calls)
 		}
-		if !endedAdopting {
-			t.Fatal("the end did not run inside adopt")
+		if endedAdopting {
+			t.Fatal("the end ran inside the storage call")
 		}
 		mustClose(t, opened.harness)
 		if got := progress.all(); len(got) != 2 {

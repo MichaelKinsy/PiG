@@ -1,5 +1,7 @@
 package cli
 
+// Ports packages/coding-agent/src/core/model-resolver.ts
+
 // Startup model selection. Mirrors upstream main.ts buildSessionOptions (CLI
 // model, then the --models / enabledModels scope for a new session) and
 // sdk.ts createAgentSession's findInitialModel fallback (saved default with
@@ -301,8 +303,8 @@ func testFauxCLIModel(options startupModelOptions) (*codingagent.RuntimeModel, s
 		return nil, "", false
 	}
 	thinking := ""
-	if colon := strings.LastIndex(modelID, ":"); colon != -1 && validThinkingLevels[modelID[colon+1:]] {
-		modelID, thinking = modelID[:colon], modelID[colon+1:]
+	if colon := strings.LastIndex(modelID, ":"); colon != -1 && validThinkingLevels[modelID[colon+1:]] { //portlint:allow utf16units colon is the byte index of ASCII ':' (0x3A), which never occurs inside a multibyte UTF-8 sequence, so the slices split at the same character as lastIndexOf/substring; the suffix is only used when it equals a thinking level (test-faux-only shortcut)
+		modelID, thinking = modelID[:colon], modelID[colon+1:] //portlint:allow utf16units colon is the byte index of ASCII ':' (0x3A), which never occurs inside a multibyte UTF-8 sequence, so the slices split at the same character as lastIndexOf/substring; the suffix is only used when it equals a thinking level (test-faux-only shortcut)
 	}
 	return &codingagent.RuntimeModel{Provider: "test-faux", ID: modelID, Name: "Test Faux"}, thinking, true
 }

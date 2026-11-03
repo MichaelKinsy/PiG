@@ -79,7 +79,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 	ctx := context.Background()
 	store := storage.NewMemoryStorage()
 	line := session.CreateSession(store)
-	view := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }})
+	view := NewTaskGraphView(line, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }})
 	live, err := view.Watch(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -186,7 +186,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 			outcome.OK = encoded
 		}
 		line.WaitDeliveries()
-		fresh, err := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).Watch(ctx)
+		fresh, err := NewTaskGraphView(line, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).Watch(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}

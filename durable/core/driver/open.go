@@ -19,16 +19,23 @@ import (
 // goroutine holding the core and the connection, and the store closed with the Harness. The registry may keep changing
 // while the Harness runs.
 func OpenHarness(ctx context.Context, path string, options harness.HarnessOptions) (harness.Harness, error) {
-	return openHarness(ctx, path, options, nil)
+	return openHarness(ctx, path, options, nil, nil)
 }
 
-func openHarness(ctx context.Context, path string, options harness.HarnessOptions, onCommit func(abi.Commit, []string)) (harness.Harness, error) {
+// openHarness is OpenHarness with the pigfault build's hooks: onCommit runs before the store applies each commit, and wrap
+// replaces the core the owner drives with one that observes its events. Both are nil in the production build.
+func openHarness(ctx context.Context, path string, options harness.HarnessOptions, onCommit func(abi.Commit, []string), wrap func(*core.Session) sqlhost.Stepper) (harness.Harness, error) {
 	db, err := sqlhost.OpenDB(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 	uuid := func() string { id, _ := ai.UUIDv7(nil); return id }
-	s, err := open(ctx, SessionConfig{Core: core.NewSession(uuid), SQL: core.SQLTable(), DB: db, Harness: options, onCommit: onCommit})
+	session := core.NewSession(uuid)
+	var stepper sqlhost.Stepper = session
+	if wrap != nil {
+		stepper = wrap(session)
+	}
+	s, err := open(ctx, SessionConfig{Core: stepper, SQL: core.SQLTable(), DB: db, Harness: options, onCommit: onCommit})
 	if err != nil {
 		_ = db.Close()
 		return nil, err

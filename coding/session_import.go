@@ -1,4 +1,5 @@
-// Ports importFromJsonl from packages/coding-agent/src/core/agent-session-runtime.ts.
+// Ports packages/coding-agent/src/core/agent-session-runtime.ts importFromJsonl.
+
 package coding
 
 import (

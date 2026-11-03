@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -161,6 +162,9 @@ type NestedCalls struct {
 	ended    bool
 	// admissions counts the nested calls being admitted.
 	admissions sync.WaitGroup
+	// last is closed once the previous call's admission has reached the Session line (or that call ended): the next call
+	// enqueues its creation commit after it.
+	last chan struct{}
 	// made is whether this attempt committed the madeNestedCalls memo; a failed commit is tried again by the next call.
 	madeMu sync.Mutex
 	made   bool
@@ -220,12 +224,35 @@ func (n *NestedCalls) Execute(ctx context.Context, caller NestedCaller, name str
 	}
 	// Registered now, so cleanup waits for it, including the memo.
 	n.admissions.Add(1)
+	// Calls reach the Session line in call order: upstream's executeTool runs synchronously to its first await and its
+	// continuations run in order, while goroutines that waited on the same memo wake in no order.
+	previous := n.last
+	turn := make(chan struct{})
+	n.last = turn
 	n.mu.Unlock()
+	var release sync.Once
+	defer release.Do(func() { close(turn) })
 	var id durable.TaskId
 	err := n.markMade(ctx, caller)
-	if err == nil {
-		id, err = startNestedCall(ctx, caller, n.callId, name, args, key, option, !n.resumes)
+	if err == nil && previous != nil {
+		select {
+		case <-previous:
+		case <-ctx.Done():
+		}
 	}
+	if err == nil {
+		prior := lineadmission.From(ctx)
+		admitted := lineadmission.With(ctx, func() {
+			if prior != nil {
+				prior()
+			}
+			release.Do(func() { close(turn) })
+		})
+		id, err = startNestedCall(admitted, caller, n.callId, name, args, key, option, !n.resumes)
+	}
+	// A caller whose commit does not report the Session line's admission (the core driver's) releases the next call once the
+	// creation commit settled; the call's own wait below must not hold it.
+	release.Do(func() { close(turn) })
 	n.admissions.Done()
 	if err != nil {
 		return durable.NestedToolExecutionResult{}, err

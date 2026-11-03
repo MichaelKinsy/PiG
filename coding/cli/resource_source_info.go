@@ -1,6 +1,7 @@
 package cli
 
 // Ports packages/coding-agent/src/core/resource-loader.ts (mapSkillPath and resource source metadata).
+// Ports packages/coding-agent/src/core/source-info.ts (createSourceInfo, in sourceInfoFromResourceItem).
 
 import (
 	"os"

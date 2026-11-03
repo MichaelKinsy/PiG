@@ -159,9 +159,13 @@ func addTask(t *testing.T, registry Registry, task durable.AnyTask, name ...stri
 var hookExtensions = 0
 
 // addHooks installs an extension with one hook registration for task; handlers is untyped so a test can register a handler set the task does not use.
-func addHooks(t *testing.T, registry Registry, task durable.AnyTask, handlers any) installed {
+func addHooks(t *testing.T, registry Registry, task durable.AnyTask, handlers any, name ...string) installed {
 	hookExtensions++
-	return installOne(t, registry, new(durable.Extension{Name: fmt.Sprintf("hooks:%d", hookExtensions), Hooks: []durable.HookRegistration{{Task: task.AnyDefinition().Name, Handlers: handlers}}}))
+	extension := fmt.Sprintf("hooks:%d", hookExtensions)
+	if len(name) > 0 {
+		extension = name[0]
+	}
+	return installOne(t, registry, new(durable.Extension{Name: extension, Hooks: []durable.HookRegistration{{Task: task.AnyDefinition().Name, Handlers: handlers}}}))
 }
 
 // addSection installs a one-section extension named after the section.

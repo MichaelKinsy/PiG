@@ -1,6 +1,7 @@
 package extension_test
 
 // pi: packages/coding-agent/test/exec-utf8-chunks.test.ts (#11360)
+// pi: packages/coding-agent/src/core/exec.ts
 
 import (
 	"context"
