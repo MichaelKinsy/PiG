@@ -1,0 +1,54 @@
+# Behavior family: extensions-runtime
+# Surface: the interactive layout of a tool run in a session whose extension registers handlers that return nothing for every agent, turn, message, tool and input event.
+# Upstream evidence: Pi 1.5.0 oracle, same probe as 94 (see its notes on the pane height) with the prompt "Run: expr 20 + 22", which the faux provider answers with a bash
+# call. A tool run adds the tool_execution_*, tool_call and tool_result events to the handlers' reach; the tool card, its spacers and the rows above the editor border
+# must equal Pi's.
+name = "95-noop-event-handlers-keep-tool-layout"
+description = "Handlers that return nothing leave the rows of a tool run between the reply and the editor border as Pi draws them"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi = ["PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/noop-event-handlers.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/noop-event-handlers.mjs",
+]
+
+[tmux]
+width = 100
+height = 22
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Run: expr 20 + 22"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+wait_contains = ["Took"]
+wait_timeout_seconds = 20
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["$ expr 20 + 22", "Took"]
+both_not_contain = ["panic:", "goroutine ", "Extension error"]
+# lint-known-gap: only the tool duration line varies between runs and products.
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = "Took \\d+\\.\\ds"
+with = "Took Ns"
+reason = "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
