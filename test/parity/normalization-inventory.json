@@ -4299,7 +4299,7 @@
         },
         {
           "kind": "normalize_replace",
-          "pattern": "(?m)^ ↳ That.s a copy\\. The queued message still sends\\. .*\\n(?: .*\\n)*? ?.*Profiles > Keyboard\\.\\s*\\n",
+          "pattern": "(?m)^ ↳ That.s a copy\\. The queued message still sends\\. .*\\n(?: .*\\n)*? ?.*Profiles > Keyboard\\.[ \\t]*\\n",
           "with": "",
           "reason": "D228 adds the one-time copy tip, wrapped over two rows because it ends with the Terminal.app mapping hint under TERM_PROGRAM=tmux."
         },
