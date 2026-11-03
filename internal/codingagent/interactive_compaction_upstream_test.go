@@ -169,7 +169,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 			m.opts.SessionHandle = h
 			m.turnActive.Store(true)
 			m.compactionQueue = []compactionQueuedMessage{{text: "change direction", mode: compactionQueueSteer}}
-			m.flushCompactionQueue(t.Context(), true)
+			m.flushCompactionQueue(t.Context(), false)
 			if len(m.compactionQueue) != 0 || !reflect.DeepEqual(h.inputs, []string{"change direction"}) || !reflect.DeepEqual(h.behaviors, []string{"steer"}) {
 				t.Fatalf("inputs=%v modes=%v queue=%v", h.inputs, h.behaviors, m.compactionQueue)
 			}

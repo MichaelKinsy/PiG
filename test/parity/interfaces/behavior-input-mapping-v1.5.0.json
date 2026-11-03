@@ -451,10 +451,24 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue",
       "ownerFamily": "compaction",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive_events.go#handleAgentEvent",
+        "internal/codingagent/interactive_transcript.go#flushCompactionQueue",
+        "internal/codingagent/interactive_turn.go#queueUserInput",
+        "internal/codingagent/interactive_input_preflight.go#finishPreflight",
+        "internal/codingagent/prompt_rejection.go#rejectPrompt"
+      ],
+      "evidence": [
+        "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueDeliversInOrderToTheActiveRun",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRunsExtensionCommands",
+        "test/parity/scenarios/compaction/06-overflow-retry-flushes-queued-message.toml",
+        "test/parity/scenarios/compaction/08-manual-compaction-flushes-entered-message.toml"
+      ],
+      "contracts": [
+        "coding-agent/compaction/retry-queue-flush"
+      ],
       "divergence": "",
       "rationale": ""
     },
