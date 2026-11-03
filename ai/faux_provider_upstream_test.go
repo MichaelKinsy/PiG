@@ -401,7 +401,10 @@ func TestFauxProviderCountsCachedCharactersUpToTheFirstDifference(t *testing.T) 
 	}
 
 	// Prompt texts: "user:hello world" (16 characters), then 16 + 2 + "user:next" (9) = 27.
-	complete(user("hello world"))
+	first := complete(user("hello world"))
+	if first.Usage.Input != 0 || first.Usage.CacheRead != 0 || first.Usage.CacheWrite != 4 {
+		t.Fatalf("first usage = %+v, want input 0, cacheRead 0, cacheWrite 4", first.Usage)
+	}
 	extended := complete(user("hello world"), user("next"))
 	if extended.Usage.Input != 0 || extended.Usage.CacheRead != 4 || extended.Usage.CacheWrite != 3 {
 		t.Fatalf("extended usage = %+v, want input 0, cacheRead 4, cacheWrite 3", extended.Usage)

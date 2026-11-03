@@ -3,8 +3,14 @@
   "entries": [
     {
       "path": "packages/agent/test/agent-loop.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:704708e5eb837a37bfb83c76d70efa925b20ea5c5cc6a2ddd3cb7301da2c6fa3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:704708e5eb837a37bfb83c76d70efa925b20ea5c5cc6a2ddd3cb7301da2c6fa3",
+      "evidence": [
+        "agent/agent_loop_upstream_test.go",
+        "agent/new_agent_stream_error_test.go#TestNewAgentAcceptsEachStreamFunctionSource",
+        "agent/agent_transcript_upstream_test.go#TestAgentLoop_BuildsProviderContextExclusivelyFromTranscriptMessages"
+      ],
+      "rationale": "All 34 cases are ported (Pi names appear in the cited test comments), including the 1.1.0 durationMs case ('records how long execute() took on the tool result, excluding hooks', on a synthetic clock) and the default-stream-function case added with this change (a nil streamFn calls the host default once; a compiling mutation that ignores the default fails it). Pi v1.4.0→v1.5.0 delta: the only changes are Type.Object/Type.String/Type.Array schema construction replaced by pi-schema obj/str/arr; no case, input or expectation changes. Go tool schemas are JSON schema documents, so agent_loop_upstream_test.go already carries the same closed-object schemas (see the 'should prepare tool arguments for validation' port, Pi 6536f801)."
     },
     {
       "path": "packages/agent/test/agent-tool-typebox.test.ts",
@@ -13,8 +19,18 @@
     },
     {
       "path": "packages/agent/test/agent.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:562579b6adbe4440a9ec77c061570fa0ab0be5bc243ad2c414c8b2909a5defd7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:562579b6adbe4440a9ec77c061570fa0ab0be5bc243ad2c414c8b2909a5defd7",
+      "evidence": [
+        "agent/agent_upstream_test.go",
+        "agent/agent_transcript_upstream_test.go",
+        "agent/agent_public_properties_test.go",
+        "agent/new_agent_stream_error_test.go",
+        "agent/lifecycle_upstream_test.go",
+        "agent/system_state_test.go",
+        "agent/agent_upstream_test.go#TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt"
+      ],
+      "rationale": "All 35 cases (including the it.each rows) are ported; the cited test comments carry the upstream line numbers of the 0.99.1 file, whose only change at 1.1.0 is that the cases build their stream with createAssistantMessageEventStream instead of a local EventStream subclass, which has no Go form (scriptedProvider streams are ai.AssistantMessageEventStream already). Verified case by case against the 1.1.0 file. The one case Pi bd3c9b82 adds ('attributes requests to pi by default and merges a configured identity over it') is TestAgent_AttributesRequestsByDefaultAndMergesAConfiguredIdentityOverIt; its default attribution is PiG's (D26). Pi v1.4.0→v1.5.0 delta: the only changes are Type.Object({}) replaced by pi-schema obj({}) in tool parameters, toolsAdded expectations and local schemas; no case, input or expectation changes. The Go cases already assert empty closed-object schemas."
     },
     {
       "path": "packages/agent/test/e2e.test.ts",
@@ -641,8 +657,14 @@
     },
     {
       "path": "packages/ai/test/faux-provider.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1b38e24d86d4f25fa0e43ab821be2254daa3125682f024bb23822537ef984975"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1b38e24d86d4f25fa0e43ab821be2254daa3125682f024bb23822537ef984975",
+      "evidence": [
+        "ai/faux_provider_upstream_test.go",
+        "ai/faux_model_definitions_test.go",
+        "ai/faux_provider_upstream_test.go#TestFauxProviderCountsCachedCharactersUpToTheFirstDifference"
+      ],
+      "rationale": "All 24 cases are ported. The case added at 1.1.0, 'counts cached characters up to the first difference in the joined prompt', has its own test with the upstream prompts and token counts; a compiling mutation of the cached-token rounding fails it. Pi v1.4.0→v1.5.0 delta: the 'counts cached characters up to the first difference in the joined prompt' case now also asserts the first call's usage (input 0, cacheRead 0, cacheWrite 4) and expects input 0 on the extended and edited calls; the Go test asserts all three. The Type import move has no Go form."
     },
     {
       "path": "packages/ai/test/fetch-option.test.ts",
@@ -883,8 +905,13 @@
     },
     {
       "path": "packages/ai/test/interleaved-thinking.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7434abff7d439beaf80bb3d7e5fd208cfa1397765f2c5ca7b546f14d9a743afe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7434abff7d439beaf80bb3d7e5fd208cfa1397765f2c5ca7b546f14d9a743afe",
+      "evidence": [
+        "ai/interleaved_thinking_upstream_test.go#TestInterleavedThinkingFauxUpstream",
+        "ai/interleaved_thinking_live_test.go#TestInterleavedThinkingLiveUpstream"
+      ],
+      "rationale": "All four upstream model cases and the two-turn calculator assertions are ported. Offline faux companions run each provider/model case and assert the replayed tool result. The live counterparts (build tag live) assert that each real Claude model emits thinking around its tool call; they call liveProviderKey or requireBedrockLiveCredentials, which use testenv.RequireLiveEnv to skip without Anthropic or AWS Bedrock credentials. Pi v1.4.0→v1.5.0 delta: only the StringEnum import path moved (utils/typebox-helpers to utils/string-enum); no case changes."
     },
     {
       "path": "packages/ai/test/json-parse.test.ts",
@@ -1724,8 +1751,15 @@
     },
     {
       "path": "packages/ai/test/stream.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7d94f3f812bf8635e7612cffca5f0d0dff48a240167c2ac93ae3cf4226d8507d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7d94f3f812bf8635e7612cffca5f0d0dff48a240167c2ac93ae3cf4226d8507d",
+      "evidence": [
+        "ai/stream_upstream_test.go#TestStreamUpstream",
+        "ai/testdata/stream-cases.json",
+        "test/parity/testdata/extract-stream-cases.mjs",
+        "test/parity/scenarios/providers-faux-streaming/17-native-stream-options.toml"
+      ],
+      "rationale": "All 233 cases are ported with source-cited wrapper inputs extracted from pinned Pi, independently drift-checked, and Go implementations of every original helper assertion. Native HTTP/SSE/AWS and real Codex WebSocket fixtures exercise text, partial tool arguments, thinking, image payloads, multi-turn tool results, OAuth-shaped requests and all three Bedrock payload hooks. Fixed ignored raw Anthropic thinking/budget/effort and Bedrock requestMetadata; compiling mutations and exact Pi payload probes prove these paths. For stream.test.ts:1544, upstream test expectation disagrees with the pinned implementation; PiG matches the implementation. The credential-gated suite at :1541 expects max, but bedrock-converse-stream.ts:795-807 and a direct onPayload probe return high for Opus 4.6 xhigh. The lead approved asserting high, with no divergence or designed-out disposition. Remote model generation is not claimed by the hermetic matrix. Pi 0.99.2 review: the only change since 0.87.1 is Together moving to moonshotai/Kimi-K3 (stream.test.ts:759-760). ai/testdata/stream-cases.json was extracted from the 0.99.2 file: its 233 rows carry the same 233 line numbers and titles as the inventory. TestStreamUpstream's drift check re-runs the extractor, which needs the npm Pi 0.99.2 dist (not installable yet), so that test FAILS in this environment with ERR_MODULE_NOT_FOUND; the row data itself was compared against the inventory here. Pi 1.0.3 renames the Azure provider ID to azure; the Go cases use the azure provider. Pi 3daa2028→b06c1f2c: Pi b06c1f2c renames the Kimi For Coding e2e describe to 'via OpenAI Completions'; ai/testdata/stream-cases.json is regenerated from the test by test/parity/testdata/extract-stream-cases.mjs. Pi 99fe1489/90d863f7 rename the Xiaomi model to mimo-v2.6-pro in this file; the Go cases use it (71023aec→8efd314f). Pi 95364a54 (#10910): the NVIDIA case is Nemotron 3.5 Super VL; ai/testdata/stream-cases.json is regenerated from the pinned source (extract-stream-cases.mjs). Pi fdce48eb (#11173) moves the openai-codex case to gpt-6.1-sol because the Codex backend rejects gpt-5.5 for ChatGPT accounts; the Go case takes the same model from the regenerated catalog. Pi e5fe9777 renames the GitHub Copilot suite from gpt-5.3-codex via OpenAI Completions to gpt-6-luna via OpenAI Responses and makes its thinking and multi-turn cases use the suite model instead of gpt-5-mini; ai/testdata/stream-cases.json is regenerated from the pinned source (still 233 cases, drift-checked by test/parity/testdata/extract-stream-cases.mjs) and TestStreamUpstream runs the GitHub Copilot cases against the gpt-6-luna catalog entry. Pi v1.4.0→v1.5.0 delta: only the StringEnum import path moved (utils/typebox-helpers to utils/string-enum); no case changes, so all 233 cases and stream-cases.json stand."
     },
     {
       "path": "packages/ai/test/streaming-json.test.ts",
@@ -1947,8 +1981,24 @@
     },
     {
       "path": "packages/ai/test/validation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9b358cdd5390c16cca0299532ee66df592b49badc3a77edf5e2c2bd260af98c2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9b358cdd5390c16cca0299532ee66df592b49badc3a77edf5e2c2bd260af98c2",
+      "evidence": [
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsWithoutFunctionConstructor",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPlainJSONPrimitiveRules",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsOptionalNullIsOmission",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPreservesReferencedNullableOptional",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPreservesNullableUnionArm",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsPreservesNullableOneOfArm",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsCoercesNullableUnion",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsNullableArrayWithItems",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsRejectsInvalidPlainCoercions",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsReportsArgumentsError",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsListsSchemaErrorsThenTheArguments",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsReportsAMissingRequiredPropertyAtTheProperty",
+        "ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced"
+      ],
+      "rationale": "All nine upstream cases use the same inputs and expected values or validation failures. Go's validator has no Function-constructor dependency. Omitting the three pre-validation steps compiles and fails the primitive, optional-null, and union regressions, the cross-SDK agent-path test, and tools/13 and tools/14 paired scenarios. The additional Pi 0.87.1 / TypeBox 1.3.27 oracle matrix covers all seven built-in schemas and native versus plain extension schemas. Pi 3daa2028→b06c1f2c: Pi 87f9a364 adds the argumentsError validation case; ported in TestValidateToolArgumentsReportsArgumentsError. Pi v1.4.0→v1.5.0 delta: the coercion table now follows TypeBox rules (null to \"null\" for a required string; boolean \"1\"/\"0\"; null \"null\"; integer \"42.1\" to 42; number array wrap \"7\" to [7]) and the failing table becomes yes/abc/nil/4x; three new cases (error list then received arguments, missing required property, returned copy) are ported one-to-one in TestValidateToolArgumentsPlainJSONPrimitiveRules, TestValidateToolArgumentsRejectsInvalidPlainCoercions and the three added tests. The generated-validator assertion (Function constructor, typebox/compile) has no Go form."
     },
     {
       "path": "packages/ai/test/xai-oauth.test.ts",
@@ -6659,8 +6709,18 @@
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7586187873bfa2dab2b5de036b21fb3914b98cc738cddcdedaa81e0cb12f1c20"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7586187873bfa2dab2b5de036b21fb3914b98cc738cddcdedaa81e0cb12f1c20",
+      "evidence": [
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
+        "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
+        "coding/codemode_session_upstream_test.go#Pi #10631: a misplaced options line fails before the script runs",
+        "coding/codemode_session_upstream_test.go#formats output at the item limit in linear time",
+        "coding/codemode_session_upstream_test.go#arrayImagesContext",
+        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+      ],
+      "rationale": "25 it blocks; every case is a subtest of the three cited Go tests with the same scripts and expectations (reviewed row carried, including the 1.1.0 multi-item headers, console_output and classify cases). 1.2.0 changes three cases: 'applies the timeout_ms option and rejects invalid options' gains the misplaced options line (#10631), already in that subtest; the new 'formats output at the item limit in linear time' (#10678) is the subtest of the same name in TestUpstreamCodemodeOptionsAndStore (100000 text(\"\") items, `==> text 100000/100000 <==`, under 5 s); 'reports provider errors as results and invalid arguments as exceptions' gains ten argument cases (arrayModel, arrayContext, arrayState, arrayQuestions, arrayQuestion, noInstructions, badBool, badKind, arrayImagesContext, badImageBlock), added to that subtest of TestUpstreamCodemodeModels with Pi's messages (dca0f8983c). Pi v1.4.0→v1.5.0 delta: the new case 'summarizes union and multi-line output types instead of inlining them' (#11501) is TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes with the same process, entries and count tools and the same three descriptions; the TypeBoxAgentTool type annotation has no Go form."
     },
     {
       "path": "packages/coding-agent/test/suite/agent-session-compaction-model-overrides.test.ts",
