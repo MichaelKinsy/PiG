@@ -43,8 +43,7 @@ settle_seconds = 2
 both_reach_ready = true
 both_contain = ["$ expr 20 + 22", "Took"]
 both_not_contain = ["panic:", "goroutine ", "Extension error"]
-# lint-known-gap: only the tool duration line varies between runs and products.
-output_normalized_equal = true
+escaped_output_equal = true
 runs = 3
 
 # normalize-rationale: only the sub-second tool duration varies with scheduling.
