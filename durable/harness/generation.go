@@ -1064,11 +1064,10 @@ func (throttle *partialThrottle) flush() {
 	go func() {
 		defer close(done)
 		runtime := throttle.runtime
-		message, err := durable.ToJsonObject(pinned(&partial))
+		message, taken, err := throttle.changes.BindPartial(cut, pinned(&partial))
 		if err != nil {
 			throttle.changes.Uncut(cut)
 		} else {
-			taken := throttle.changes.Bind(cut, message)
 			err = runtime.Commit(throttle.ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 				live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 				if err != nil {
