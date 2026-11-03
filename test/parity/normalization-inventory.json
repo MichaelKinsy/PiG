@@ -2484,6 +2484,60 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/91-boundary-entries-render-live.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end": "BOUNDARY-MESSAGE"
+          },
+          "reason": "Owned visible surface: Entries an extension appends at a turn boundary are drawn live: a custom entry through its renderer, a displayed custom message, not a hidden one",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/92-boundary-compaction-render-live.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": " 42",
+            "capture_end": "AFTER-COMPACTION"
+          },
+          "reason": "Owned visible surface: A compaction an extension appends at a turn boundary rebuilds the transcript around its summary and draws each later entry once",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/93-shutdown-during-run-waits-for-settle.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end": "SHUTDOWN_EVENT quit"
+          },
+          "reason": "Owned visible surface: ctx.shutdown() from a handler that runs during a reply ends the session after the reply, when the run settles",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {

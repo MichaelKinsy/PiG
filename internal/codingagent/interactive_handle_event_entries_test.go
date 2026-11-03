@@ -120,7 +120,7 @@ func TestHandleEventEntryAppendedCompactionRebuildsTheTranscript(t *testing.T) {
 	p.handleAgentEvent(appendedEvent(t, p, ids["compaction"]))
 	got := p.chat()
 	kept, summary, after := strings.Index(got, "KEPT QUESTION"), strings.Index(got, "BOUNDARY SUMMARY"), strings.Index(got, "AFTER COMPACTION")
-	if strings.Contains(got, "STALE TRANSCRIPT") || strings.Contains(got, "OLD QUESTION") || kept < 0 || summary < 0 || after < 0 || !(kept < summary && summary < after) {
+	if strings.Contains(got, "STALE TRANSCRIPT") || strings.Contains(got, "OLD QUESTION") || kept < 0 || summary < 0 || after < 0 || kept >= summary || summary >= after {
 		t.Fatalf("chat = %q, want the kept entry, the summary and the later entry in that order and nothing else", got)
 	}
 	p.handleAgentEvent(appendedEvent(t, p, ids["after"]))
