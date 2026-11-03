@@ -153,7 +153,7 @@ func rawLineStarts(content string) []int {
 	return starts
 }
 
-// layoutRows lays out lines in rows of the component's width, with the margins and background, and appends them to rows and
+// layoutRows lays out lines in rows of the component's width, with the margins, and appends them to rows and
 // the number of rows before each line to starts. The wraps it uses are kept for the next render by keepWraps.
 func (m *Markdown) layoutRows(rows []string, starts []int, lines []string, width, contentWidth int) ([]string, []int) {
 	if m.wrapsWidth != contentWidth {
@@ -164,10 +164,6 @@ func (m *Markdown) layoutRows(rows []string, starts []int, lines []string, width
 		m.nextWraps = map[string][]string{}
 	}
 	margin := strings.Repeat(" ", m.paddingX)
-	background := func(line string) string { return line }
-	if m.defaultTextStyle != nil && m.defaultTextStyle.BgColor != nil {
-		background = m.defaultTextStyle.BgColor
-	}
 	add := func(row string) {
 		if widthx.IsImageLine(row) {
 			rows = append(rows, row)
@@ -175,7 +171,7 @@ func (m *Markdown) layoutRows(rows []string, starts []int, lines []string, width
 		}
 		row = margin + row + margin
 		row += strings.Repeat(" ", max(0, width-widthx.VisibleWidth(row)))
-		rows = append(rows, background(row))
+		rows = append(rows, row)
 	}
 	for _, line := range lines {
 		starts = append(starts, len(rows))

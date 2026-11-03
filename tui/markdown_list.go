@@ -23,6 +23,8 @@ type markdownListEntry struct {
 	blocks []markdownListBlock
 	// spacedEmpty reports an empty item whose line holds spaces after the marker.
 	spacedEmpty bool
+	// markerGap reports that a space or tab follows the marker on its line.
+	markerGap bool
 }
 type markdownListBlock struct {
 	text string
@@ -82,7 +84,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 			body = lines[i][markerEnd+1:]
 		}
 		contentIndent := markerEnd + spacing
-		entry := markdownListEntry{marker: rawMarker, spacedEmpty: body == "" && lines[i][markerEnd:] != ""}
+		entry := markdownListEntry{marker: rawMarker, spacedEmpty: body == "" && lines[i][markerEnd:] != "", markerGap: strings.HasPrefix(lines[i][markerEnd:], " ") || strings.HasPrefix(lines[i][markerEnd:], "\t")}
 		// Tokenizer.list leaves the item's text empty when the first line is blank by JavaScript's trim, so an item holding only a Unicode space has no text.
 		// Its content then starts one column after the marker (`g = t[1].length + 1`) however many spaces follow the marker.
 		if widthx.JSTrim(body) == "" {
@@ -169,7 +171,9 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 					break
 				}
 				ni, nm, _, nested := parseMarkdownListItem(lines[k])
-				if nested && len(ni) < contentIndent && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
+				// An item whose first line is empty ends at a blank line that follows it (Tokenizer.list), so a bullet indented as far as the item's content is the next item of the list.
+				endsEmpty := firstBlank && j == i+1 && body == ""
+				if nested && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
 					// Tokenizer.ts:372-374: the blank lines stay in the item's text; only the last item's text is trimmed, so an indented code block keeps one trailing blank line.
 					for range k - j {
 						if len(pending) > 0 {
@@ -180,7 +184,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 					j = k
 					break
 				}
-				if markdownIndent(lines[k]) >= contentIndent {
+				if markdownIndent(lines[k]) >= contentIndent && !endsEmpty {
 					pending = append(pending, "")
 					list.loose = true
 					afterBlank = true
@@ -191,7 +195,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 			}
 			ni, _, _, nested := parseMarkdownListItem(line)
 			// A bullet four or more spaces past the content indent is indented code, not a nested list. A line the hr rule matches ('- - -') starts no list (Tokenizer.list stops at it), so it stays item content and lexes as a rule.
-			if nested && len(ni) >= contentIndent && len(ni)-contentIndent <= 3 && !isMarkedHr(line[contentIndent:]) {
+			if nested && len(ni) >= contentIndent && len(ni)-contentIndent <= 3 && !isMarkedHr(line[contentIndent:]) && !(strings.TrimRight(line, " \t") == ni+"-" && !afterBlank && widthx.JSTrim(previous) != "" && markdownIsTextLine(previous, beforeLast(pending))) {
 				endRun(false)
 				flush()
 				child, next := parseMarkdownList(lines, j, append(slices.Clone(outer), contentIndent))
@@ -367,7 +371,7 @@ func (m *Markdown) renderList(list *markdownList, depth, width int) []string {
 		if list.ordered {
 			bullet = strconv.Itoa(list.start+index) + ". "
 		}
-		if m.options.PreserveOrderedListMarkers {
+		if m.options.PreserveOrderedListMarkers && (!list.ordered || item.keepsOrderedMarker(index == len(list.items)-1)) {
 			bullet = item.marker + " "
 		}
 		blocks := append([]markdownListBlock(nil), item.blocks...)
@@ -455,6 +459,23 @@ func (m *Markdown) renderList(list *markdownList, depth, width int) []string {
 		}
 	}
 	return out
+}
+
+// keepsOrderedMarker reports that markdown.ts getOrderedListMarker finds the marker of the item in its raw: a space or tab must follow the delimiter, and the last item's raw is
+// trimmed of its trailing whitespace, so an item that is only its marker and spaces has none. The numbered marker stands in for one it does not find.
+func (e markdownListEntry) keepsOrderedMarker(last bool) bool {
+	if !e.markerGap {
+		return false
+	}
+	if !last || !e.spacedEmpty {
+		return true
+	}
+	for _, block := range e.blocks {
+		if block.list != nil || block.text != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // markdownTaskMarkerStripped is the task fix-up of marked's list tokenizer (Tokenizer.list, the loop after the items are lexed).
