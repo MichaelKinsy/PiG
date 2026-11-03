@@ -1,4 +1,6 @@
 // Package storage holds the in-memory reference implementation of the durable Storage contract.
+//
+// pig divergence (D229): PiG's Storage backends are this memory one, durable/storage/jsonl, durable/storage/sqlite and durable/storage/store; there is no browser IndexedDbStorage, because PiG ships no browser or WebAssembly build.
 package storage
 
 // Ports packages/durable/src/storage/memory.ts
