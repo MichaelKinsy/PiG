@@ -13,7 +13,15 @@ import (
 // markdownCoreSurvivorDocs are documents that a mutation of the block loop, the quote handling or the table layout of markdown.ts render turns into rows
 // Pi does not render: each was found by comparing the rows of the mutated code with the unmutated code's over generated documents and then reduced.
 var markdownCoreSurvivorDocs = []string{
-	// A fence after a definition and a LaTeX start line.
+	// A fence after a definition and a LaTeX start line, after an HTML comment, and quotes ending in a line of whitespace or a lazy indented line.
+	"<!-->\n[0]:s\n```",
+	">0\nn\n\t",
+	">k\n)\n\t",
+	"> #\n  ",
+	"> #\n ",
+	"> a\n\n \n",
+	">\n \n> b",
+	">1. y\n>  \n    e",
 	"[ref0]:\"\n\\[6\\]\n[ref0]:s\n\n```",
 	// A table delimiter row with no cells in the header row, and a table that overflows by one column width.
 	"|\n-",
@@ -29,22 +37,6 @@ var markdownCoreSurvivorDocs = []string{
 	"|   |   | 🙂 | long cell with many words in it | $x$ |\n|:-:|------------|:-:|:-:|------------|\n",
 	"| 日本語 | bb |   | bb |\n|------------|:--|-|:--|\n",
 	"|   |   | b |\n|--:|---|------------|\n| a\\|b |   | 1234567890123456789012345678901234567 |   |\n| [l](http://u.v) |  | long cell with many words in it |\n| 日本語 | a\\|b | $x$ |\n",
-}
-
-// markdownCoreQuoteDocs are quotes followed by a whitespace-only line, compared from width 3 on: at widths 0 to 2 (to 4 with padding) Pig renders one row more or
-// fewer than Pi (recorded in behavior-inputs-b5-evidence.md).
-var markdownCoreQuoteDocs = []string{">0\nn\n\t", ">k\n)\n\t", "> #\n  ", "> #\n ", "> a\n\n \n", ">\n \n> b"}
-
-func TestMarkdownCoreQuoteDocsMatchPi(t *testing.T) {
-	var probes []markdownContractProbe
-	for _, doc := range markdownCoreQuoteDocs {
-		for _, pad := range []int{0, 1} {
-			probes = append(probes, markdownContractProbe{Text: doc, PaddingX: pad, PaddingY: pad, Theme: "tagged", Ops: markdownContractRenderOps(5, 6, 7, 8, 9, 12, 20, 40, 80)})
-		}
-	}
-	if failures := compareMarkdownContract(t, probes); failures > 0 {
-		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
-	}
 }
 
 // A quote that holds only a definition and ends in a line of spaces renders no rows of its own, at every width including the ones narrower than a border.
