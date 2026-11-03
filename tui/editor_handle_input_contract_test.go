@@ -449,7 +449,8 @@ func TestEditorAutocompleteBoundariesMatchPi(t *testing.T) {
 	add(nil, false, nil, "/", "\x1b[97u", "\x1b[108u", "\x1b[32;2u", "\x7f", "\x7f")
 	add(nil, false, nil, "/", "\x1b[27;1;97~", "\x1b[98:66;2u", "\x1b[108u")
 	left := "\x1b[D"
-	for _, bindings := range []map[string][]string{nil, {"tui.input.submit": {"shift+enter"}, "tui.input.newLine": {"alt+enter"}}, {"tui.input.submit": {"enter", "shift+enter"}}} {
+	// With the confirm key moved away from Enter, Enter reaches the newline and submit branches while the popup is open.
+	for _, bindings := range []map[string][]string{nil, {"tui.input.submit": {"shift+enter"}, "tui.input.newLine": {"alt+enter"}}, {"tui.input.submit": {"enter", "shift+enter"}}, {"tui.select.confirm": {"ctrl+s"}}, {"tui.select.confirm": {"ctrl+s"}, "tui.input.submit": {"shift+enter"}}, {"tui.select.confirm": {"ctrl+s"}, "tui.input.newLine": {"enter"}}} {
 		for _, disabled := range []bool{false, true} {
 			for _, enter := range []string{"\r", "\n", "\x1b\r"} {
 				add(bindings, disabled, nil, "q\\", " ", "al", "\t", left, left, left, enter, "x")

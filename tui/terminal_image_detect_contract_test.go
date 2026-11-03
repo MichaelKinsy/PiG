@@ -59,5 +59,15 @@ func detectCapabilitiesBranchOrderCases() []piColorCase {
 			}
 		}
 	}
+	// Override spellings that are not exactly 1 or 0 change nothing, over detected terminals whose flags are true and false.
+	for _, base := range []map[string]string{{"TERM_PROGRAM": "kitty"}, {"TERM_PROGRAM": "iTerm.app"}, {"TERM": "xterm-direct"}, {}} {
+		for _, name := range []string{"PI_TRUE_COLOR", "PI_HYPERLINKS"} {
+			for _, value := range []string{"false", "FALSE", "true", "TRUE", "01", "1 ", " 0", "yes", "no", "off"} {
+				env := maps.Clone(base)
+				env[name] = value
+				add("linux", false, env)
+			}
+		}
+	}
 	return cases
 }
