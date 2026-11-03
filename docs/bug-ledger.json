@@ -2520,8 +2520,39 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
+        "coding/cli/package_inventory_test.go::TestPackageManagementHelpListsOnlyListValidateAndPublish",
+        "coding/cli/package_inventory_test.go::TestPackageManagementSurfaceIsListValidateAndPublishOnly",
+        "coding/cli/package_publish_test.go::TestPackageCommandRoutesPublish",
+        "coding/cli/package_publish_test.go::TestPackagePublishArgumentErrors",
+        "coding/cli/package_publish_test.go::TestPackagePublishDefaultsToTheCurrentDirectory",
+        "coding/cli/package_publish_test.go::TestPackagePublishDryRunValidatesAndPublishesNothing",
+        "coding/cli/package_publish_test.go::TestPackagePublishRefusesAnExistingVersion",
+        "coding/cli/package_publish_test.go::TestPackagePublishRefusesWhatTheCatalogCannotList",
+        "coding/cli/package_publish_test.go::TestPackagePublishYesRunsPlainNPMPublishInThePackage",
+        "coding/cli/piglet_publish_npm_test.go::TestPigletPublishedToNPMIsAddedBackAndValidates",
+        "coding/cli/piglet_publish_realnpm_test.go::TestPigletNPMSourceRoundTripsThroughRealNPM",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi",
+        "coding/cli/rpc_shutdown_test.go::TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation",
@@ -2682,7 +2713,33 @@
       ],
       "tests": [
         "agent/tool_argument_order_test.go::TestAgentLoopDeliversEditedToolArgumentsInTheHooksOrder",
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
+        "coding/cli/package_inventory_test.go::TestPackageManagementHelpListsOnlyListValidateAndPublish",
+        "coding/cli/package_inventory_test.go::TestPackageManagementSurfaceIsListValidateAndPublishOnly",
+        "coding/cli/package_publish_test.go::TestPackageCommandRoutesPublish",
+        "coding/cli/package_publish_test.go::TestPackagePublishArgumentErrors",
+        "coding/cli/package_publish_test.go::TestPackagePublishDefaultsToTheCurrentDirectory",
+        "coding/cli/package_publish_test.go::TestPackagePublishDryRunValidatesAndPublishesNothing",
+        "coding/cli/package_publish_test.go::TestPackagePublishRefusesAnExistingVersion",
+        "coding/cli/package_publish_test.go::TestPackagePublishRefusesWhatTheCatalogCannotList",
+        "coding/cli/package_publish_test.go::TestPackagePublishYesRunsPlainNPMPublishInThePackage",
+        "coding/cli/piglet_publish_npm_test.go::TestPigletPublishedToNPMIsAddedBackAndValidates",
+        "coding/cli/piglet_publish_realnpm_test.go::TestPigletNPMSourceRoundTripsThroughRealNPM",
         "coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi",
+        "coding/cli/rpc_shutdown_test.go::TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation",
@@ -4078,6 +4135,7 @@
         }
       ],
       "tests": [
+        "coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan",
         "internal/childwait/pipe_blocked_unix_test.go::TestPollPipeAnswersWhileAReaderIsBlockedInReadingIt",
         "internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversEveryPipeWhenOneEndedAndAHolderKeepsTheOther",
         "internal/childwait/pipe_unix_test.go::TestPipesWaitDeliversWhatWaitsUnreadInAPipeAHolderKeepsOpen",
@@ -4322,9 +4380,23 @@
           "hash": "2359a0a7b8",
           "date": "2026-11-02",
           "pr": "402"
+        },
+        {
+          "hash": "82d035c075",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "ebac4d662e",
+          "date": "2026-11-02",
+          "pr": "402"
+        },
+        {
+          "hash": "f4884dd329",
+          "date": "2026-11-02"
         }
       ],
       "tests": [
+        "internal/codingagent/interactive_queue_hint_test.go::TestExtensionEditorKeepsPiUpBehavior",
         "internal/codingagent/interactive_queue_hint_test.go::TestQueuedHintAndTipNameTheConfiguredDequeueKey",
         "internal/codingagent/interactive_queue_hint_test.go::TestQueuedHistoryRecallTipShowsOnceAndGoesWithTheQueue",
         "internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun",
@@ -5624,6 +5696,7 @@
       "tests": [
         "coding/session_active_tools_order_test.go::TestSetActiveToolsKeepsActiveOrderAndAppendsNewTools",
         "coding/session_provider_prompt_test.go::TestRegisteredToolPromptContributions",
+        "coding/session_system_prompt_updates_upstream_test.go::TestReorderedActiveToolsDoNotPatchThePrompt",
         "coding/session_tools_restore_test.go::TestSetActiveToolsByName"
       ]
     },
@@ -6507,7 +6580,10 @@
           "date": "2026-10-21"
         }
       ],
-      "tests": []
+      "tests": [
+        "ai/providers/bedrock/identity_bedrock_oracle_test.go::TestBedrockUserAgentMatchesPi",
+        "ai/providers/bedrock/identity_bedrock_test.go::TestBedrockUserAgentCarriesTheClientIdentity"
+      ]
     },
     {
       "id": "BF-33ea9e4",
@@ -6690,6 +6766,25 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_ctx_signal_test.go::TestExtensionContextSignalComparedWithPi",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
@@ -8119,6 +8214,7 @@
       ],
       "tests": [
         "agent/stream_fn_descriptor_test.go::TestAgentEffectiveStreamFunction",
+        "agent/tool_settle_test.go::TestParallelToolEndsFollowTheOrderTheToolsSettle",
         "chord/host/manager_fork_test.go::TestForkInstanceReplaysControlMessagesReceivedBeforeTheFirstListener",
         "chord/host/manager_ipc_listener_test.go::TestNodeChannelGivesTheFirstMessageListenerTheMessagesThatCameBeforeIt",
         "chord/host/manager_ipc_listener_test.go::TestNodeChannelQueuesAMessageThatArrivesDuringTheReplayBehindTheBacklog",
@@ -9342,6 +9438,25 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
@@ -10705,6 +10820,7 @@
         }
       ],
       "tests": [
+        "coding/cli/piglet_deny_all_tool_scope_test.go::TestPigletKeepsAnExtensionsDenyAllSelectionInEveryMode",
         "coding/extension/host/subprocess/state_presence_test.go::TestNodeActiveToolsNarrowedToNoneSurvivesTheWire",
         "coding/extension/host/subprocess/state_test.go::TestActiveToolsNarrowedToNoneIsAnEmptyListOnTheWire",
         "coding/extension/host/subprocess/state_test.go::TestSetActiveToolsEmptyListReachesTheHostAsEmpty",
@@ -12882,6 +12998,10 @@
       "origin": "commit",
       "commits": [
         {
+          "hash": "144341e42a",
+          "date": "2026-10-27"
+        },
+        {
           "hash": "5cc630eba0",
           "date": "2026-10-27"
         }
@@ -13994,6 +14114,10 @@
       "fixedIn": "Unreleased",
       "origin": "commit",
       "commits": [
+        {
+          "hash": "144341e42a",
+          "date": "2026-10-27"
+        },
         {
           "hash": "62b009c7e6",
           "date": "2026-10-27"
@@ -20007,7 +20131,7 @@
       "id": "BF-761f5a2",
       "title": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory",
       "symptom": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory.",
-      "rootCause": "SessionManager.Clone decoded every record of the branch (GetBranch), rewrote each with replaceJSONField, decoded the rewritten records again and built the clone from them: a 427 MB session peaked at 4.8-5.1 GB on /fork where Pi peaks at 1.23 GB. Clone now plans the retained path from the index, reads each record from its resident entry, line or block, splices the new parentId (and a compaction's firstKeptEntryId) into its text, writes it to the new file, and opens that file the lazy way a resume does.",
+      "rootCause": "SessionManager.Clone decoded every record of the branch (GetBranch), rewrote each with replaceJSONField, decoded the rewritten records again and built the clone from them: a 427 MB session peaked at 2.9-4.5 GB on /fork where Pi peaks at 1.23 GB. Clone now plans the retained path from the index, reads each record from its resident entry, line or block, splices the new parentId (and a compaction's firstKeptEntryId) into its text, writes it to the new file, and opens that file the lazy way a resume does.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
@@ -20022,12 +20146,9 @@
         }
       ],
       "tests": [
-        "internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionCompactionBoundariesMatchPiOracle",
         "internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionMatchesPiOracle",
         "internal/codingagent/session_clone_export_alloc_test.go::TestCloneAndExportCostAFewBytesPerSourceByte",
-        "internal/codingagent/session_clone_stream_test.go::TestCloneKeepsTheFileItWroteWhenItFails",
         "internal/codingagent/session_clone_stream_test.go::TestCloneReadsNoSourceEntryBackToDecodeIt",
-        "internal/codingagent/session_clone_stream_test.go::TestCloneReadsRecordsFromCompressedBlocks",
         "internal/codingagent/session_clone_stream_test.go::TestCloneWritesTheSameFileFromResidentAndFileBackedSources"
       ]
     },
@@ -20968,7 +21089,7 @@
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D215",
-      "removeWhen": "Pi stores an absolute local path as typed and warns about a missing local Package, or the owner reverses the decision. Then the two branches, the call-site markers and the tests' D215 cases go.",
+      "removeWhen": "Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.",
       "fixedIn": "Unreleased",
       "releaseNote": "`pig install /abs/path` (and `~/path` or a `file://` URL) records the path as you typed it in `packages[]`. It was stored relative to the agent directory as spelled at install, so a later start through another spelling of `PIG_HOME` (a symlinked `~/.local/share/...` directory, a synced config) resolved it to nothing and the Package's tools disappeared with only a stderr line. A relative path is still stored relative to the settings directory. Running `pig install \u003cabsolute path\u003e` again rewrites an existing entry for the same Package (D215, #389).",
       "origin": "release note",
@@ -20981,6 +21102,15 @@
         {
           "hash": "7e160533d7",
           "date": "2026-10-29"
+        },
+        {
+          "hash": "9a388567fd",
+          "date": "2026-10-30"
+        },
+        {
+          "hash": "b368be57f5",
+          "date": "2026-10-30",
+          "pr": "389"
         }
       ],
       "tests": [
@@ -20988,7 +21118,9 @@
         "coding/cli/package_local_path_test.go::TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling",
         "coding/cli/package_local_path_test.go::TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist",
         "coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10PackageCommandPaths",
-        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerAddAndRemoveSourceInTheScopeSettings"
+        "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerAddAndRemoveSourceInTheScopeSettings",
+        "test/extension-conformance/session_graph_lisp_test.go::TestSessionGraphLispPackedAcrossSDKs",
+        "test/extension-conformance/session_graph_test.go::TestSessionGraphDefaultPackageManagerAcrossSDKs"
       ]
     },
     {
@@ -22769,43 +22901,6 @@
       ]
     },
     {
-      "id": "BF-8a38027",
-      "title": "Windows paths are compared case-insensitively",
-      "symptom": "Windows paths are compared case-insensitively.",
-      "rootCause": "Adds resolvepath.ComparisonKey, PathsEqual and IsPathWithin (Pi getPathComparisonKey, pathsEqual, isPathWithin) and uses them where Pi did: the trust store and the user .agents/skills exclusion, resource path keys (ResourcePathKey is getResourcePathKey), skill scope and dedup, resource loader source matching and path merging, the loaded extension set, session cwd and default session directory matching, the session import self-check, worktree AGENTS.md shadowing and local package identity. Windows behavior is tested by a simulated platform (resolvepath.OverridePlatform).",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "Windows",
-      "class": "pi-port",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Windows paths are compared case-insensitively. `c:\\Users\\me` and `C:\\Users\\me` name one directory, but exact string comparison treated them as two: with a working directory and a home directory that differ only in casing, global skills loaded as project skills and every one was reported as a name collision, `~/.agents/skills` counted as a project resource that needs trust, saved trust decisions in `trust.json` were not found, `--continue` and resume by id hid sessions recorded under another casing of the working directory, and `pig remove` did not match a package configured under another casing. Resource, extension and skill path keys, source matching, local package identity, the session-import self-check and the worktree `AGENTS.md` shadowing now use one comparison key. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "8a38027ac9",
-          "date": "2026-10-30",
-          "pr": "10488"
-        }
-      ],
-      "tests": [
-        "coding/extension/host/subprocess/startup_origin_windows_paths_test.go::TestFinalSetOriginIgnoresPathCasingOnWindows",
-        "coding/pigletbuild/records_identity_stability_test.go::TestRecordSourceIdentityBytesDoNotChangeWhenThePlatformFoldsCase",
-        "coding/resource_loader_windows_paths_test.go::TestResourceLoaderPathMatchingIgnoresCaseOnWindows",
-        "coding/session_import_windows_paths_test.go::TestImportDestinationRecognizesAStoredSessionInOtherCasingOnWindows",
-        "coding/source/identity_stability_test.go::TestLocalIdentityKeepsItsSpellingWhateverThePlatformFoldsCase",
-        "internal/codingagent/context_files_windows_paths_test.go::TestShadowedContextFileOfComparesCaseInsensitivelyOnWindows",
-        "internal/codingagent/resource_path_key_case_test.go::TestLoadSkillsClassifiesAnExplicitPathUnderTheUserSkillsDirectoryRegardlessOfCasingOnWindows",
-        "internal/codingagent/resource_path_key_case_test.go::TestResourcePathKeyFoldsFilePathCasingOnWindowsButNotSyntheticIdentifiers",
-        "internal/codingagent/session_windows_paths_test.go::TestSessionCwdAndDefaultDirectoryComparisonsIgnoreCaseOnWindows",
-        "internal/codingagent/trust_manager_windows_paths_test.go::TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffersOnlyByCaseOnWindows",
-        "internal/codingagent/trust_manager_windows_paths_test.go::TestProjectTrustStoreMatchesSavedDecisionsRegardlessOfCasingOnWindows",
-        "internal/packagemanager/package_identity_case_test.go::TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows",
-        "internal/resolvepath/path_compare_test.go::TestIsPathWithinMatchesWholePathSegments",
-        "internal/resolvepath/path_compare_test.go::TestPathComparisonKeepsCasingOnCaseSensitivePlatforms",
-        "internal/resolvepath/path_compare_test.go::TestPathComparisonTreatsDriveLettersAndComponentsCaseInsensitivelyOnWindows"
-      ]
-    },
-    {
       "id": "BF-8a44836",
       "title": "Closing a session with an MCP server that signs in with OAuth no longer fails at random",
       "symptom": "Closing a session with an MCP server that signs in with OAuth no longer fails at random.",
@@ -23601,6 +23696,10 @@
       "commits": [
         {
           "hash": "8e3613da73",
+          "date": "2026-10-29"
+        },
+        {
+          "hash": "9936d84718",
           "date": "2026-10-29"
         }
       ],
@@ -27069,8 +27168,39 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
+        "coding/cli/package_inventory_test.go::TestPackageManagementHelpListsOnlyListValidateAndPublish",
+        "coding/cli/package_inventory_test.go::TestPackageManagementSurfaceIsListValidateAndPublishOnly",
+        "coding/cli/package_publish_test.go::TestPackageCommandRoutesPublish",
+        "coding/cli/package_publish_test.go::TestPackagePublishArgumentErrors",
+        "coding/cli/package_publish_test.go::TestPackagePublishDefaultsToTheCurrentDirectory",
+        "coding/cli/package_publish_test.go::TestPackagePublishDryRunValidatesAndPublishesNothing",
+        "coding/cli/package_publish_test.go::TestPackagePublishRefusesAnExistingVersion",
+        "coding/cli/package_publish_test.go::TestPackagePublishRefusesWhatTheCatalogCannotList",
+        "coding/cli/package_publish_test.go::TestPackagePublishYesRunsPlainNPMPublishInThePackage",
+        "coding/cli/piglet_publish_npm_test.go::TestPigletPublishedToNPMIsAddedBackAndValidates",
+        "coding/cli/piglet_publish_realnpm_test.go::TestPigletNPMSourceRoundTripsThroughRealNPM",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/cli/rpc_shutdown_test.go::TestRPCInputEndAfterExtensionCommandComparedWithPi",
+        "coding/cli/rpc_shutdown_test.go::TestRPCInputEndWindowClosesBeforeNextPollComparedWithPi",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation",
@@ -27192,6 +27322,11 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/extension/host/runtimecell/hash_inputs_test.go::TestCommandVersionCachesWarmProbeAndDetectsReplacement",
         "coding/extension/host/subprocess/node_recovery_test.go::TestNodeUnattributableCrashRestartsWholeGroup",
@@ -27804,9 +27939,26 @@
         {
           "hash": "cca788e454",
           "date": "2026-10-24"
+        },
+        {
+          "hash": "15672c749b",
+          "date": "2026-10-25",
+          "pr": "308"
+        },
+        {
+          "hash": "8bf7a51de1",
+          "date": "2026-10-25",
+          "pr": "308"
+        },
+        {
+          "hash": "6ed71a9cc7",
+          "date": "2026-10-26"
         }
       ],
-      "tests": []
+      "tests": [
+        "ai/providers/bedrock/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi",
+        "ai/providers/bedrock/bedrock_request_body_oracle_test.go::TestBedrockRequestBodyMatchesPi"
+      ]
     },
     {
       "id": "BF-D196",
@@ -27825,9 +27977,15 @@
         {
           "hash": "cca788e454",
           "date": "2026-10-24"
+        },
+        {
+          "hash": "6ed71a9cc7",
+          "date": "2026-10-26"
         }
       ],
-      "tests": []
+      "tests": [
+        "ai/providers/bedrock/bedrock_bearer_divergence_test.go::TestBedrockBearerTokenDivergencesFromPi"
+      ]
     },
     {
       "id": "BF-D197",
@@ -27846,6 +28004,10 @@
         {
           "hash": "811a09f9d5",
           "date": "2026-10-24"
+        },
+        {
+          "hash": "6ed71a9cc7",
+          "date": "2026-10-26"
         }
       ],
       "tests": [
@@ -27858,7 +28020,7 @@
       "id": "BF-D198",
       "title": "The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
       "symptom": "none.",
-      "rootCause": "a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (`ai/src/utils/validation.ts` uses `Value.Convert` and `Compile(schema).Check`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.",
+      "rootCause": "a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (at Pi, `ai/src/utils/validation.ts:15,59` compiles the schema with pi-schema and calls `parse`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
@@ -27875,6 +28037,14 @@
         {
           "hash": "eb9071495b",
           "date": "2026-10-25"
+        },
+        {
+          "hash": "6d87597b01",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "418429cde6",
+          "date": "2026-11-02"
         }
       ],
       "tests": [
@@ -27903,6 +28073,10 @@
         {
           "hash": "99f0027ef1",
           "date": "2026-10-24"
+        },
+        {
+          "hash": "6ed71a9cc7",
+          "date": "2026-10-26"
         }
       ],
       "tests": [
@@ -28727,6 +28901,11 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/agent_env_isolation_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
@@ -28779,8 +28958,12 @@
           "pr": "170"
         }
       ],
-      "commitsFrom": "release note",
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
         "internal/codingagent/exit_record_test.go::TestBackgroundTaskPanicEndsTheSessionWithACrashRecord",
@@ -28824,6 +29007,11 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "internal/codingagent/exit_record_test.go::TestBackgroundGroupPanicReachesTheHandlerWithItsStack",
         "internal/codingagent/exit_record_test.go::TestBackgroundTaskPanicEndsTheSessionWithACrashRecord",
@@ -30010,6 +30198,10 @@
         "durable/core/session/sched_idle_scopes_test.go::TestEndingATaskCostsTheSameAtAnyNumberOfKeptContexts",
         "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero",
         "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack",
+        "durable/harness/context_kept_range_test.go::TestKeptContextRanges",
+        "durable/harness/harness_idle_scopes_test.go::TestIdleWaitersByScope",
+        "durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
+        "durable/harness/harness_idle_scopes_test.go::TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns",
         "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption",
         "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks"
       ]
@@ -30381,6 +30573,11 @@
       "tests": [
         "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
         "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
+        "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess",
+        "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause",
+        "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound",
+        "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid",
+        "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeWhoseVersionIsNoVersionIsRefused",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeASendAfterTheChannelEndedReturnsTheProcessesExit",
@@ -31146,6 +31343,25 @@
         }
       ],
       "tests": [
+        "coding/cli/diagnose_test.go::TestDiagnoseShowsLogPathsAndRecentUnexpectedExits",
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitOnAClosedTerminalLeavesALine",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKeepsRunningWhenInputEndsOnALiveTerminal",
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveKilledSessionIsReportedByTheNextStart",
         "coding/cli/rpc_initial_tools_test.go::TestRPCFreshPromptDeclaresStructuredSystemOnce",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
@@ -31808,6 +32024,20 @@
         }
       ],
       "tests": [
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledDuringTheLastEntryReportsTheCancellation",
@@ -35992,8 +36222,8 @@
       "id": "BF-d71c4e2",
       "title": "Lower- and upper-casing in `tui`, `internal/codingagent` and `internal/nodespawn` keeps a lone UTF-16…",
       "symptom": "Lower- and upper-casing in `tui`, `internal/codingagent` and `internal/nodespawn` keeps a lone UTF-16 surrogate unchanged, as JavaScript's `toLowerCase` and `toUpperCase` do.",
-      "rootCause": "Derived files, frozen closure and provider data, pin ledgers, vendored pi-dist shims and observation fixtures regenerated by the pin tooling.",
-      "rootCauseSource": "commit",
+      "rootCause": "",
+      "rootCauseSource": "",
       "userImpact": "Wrong output or ordering",
       "platform": "Windows",
       "class": "own",
@@ -36001,18 +36231,6 @@
       "releaseNote": "Lower- and upper-casing in `tui`, `internal/codingagent` and `internal/nodespawn` keeps a lone UTF-16 surrogate unchanged, as JavaScript's `toLowerCase` and `toUpperCase` do. `\"a\\uD800b\"` stays `\"a\\uD800b\"` instead of gaining three U+FFFD, so two environment names that differ only in a lone surrogate are no longer merged by the Windows environment-name dedupe, and a Σ beside a lone surrogate is lowered as beside any other non-letter.",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "0225926a0a",
-          "date": "2026-10-31"
-        },
-        {
-          "hash": "2c165433d4",
-          "date": "2026-10-31"
-        },
-        {
-          "hash": "83f801801a",
-          "date": "2026-10-31"
-        },
         {
           "hash": "d71c4e2361",
           "date": "2026-11-01"
@@ -36028,8 +36246,8 @@
       "id": "BF-d71c4e2-2",
       "title": "A glob filter, model scope or other `internal/minimatch` pattern with a numeric brace range beyond 2^53…",
       "symptom": "A glob filter, model scope or other `internal/minimatch` pattern with a numeric brace range beyond 2^53 expands as Pi's brace-expansion 5.0.12 does, in JavaScript number arithmetic: `x{99999999999999999999..99999999999999999999}` matches `x100000000000000000000` and no longer `x57`, and `x{9007199254740993..9007199254740995}` matches `x9007199254740992`.",
-      "rootCause": "Derived files, frozen closure and provider data, pin ledgers, vendored pi-dist shims and observation fixtures regenerated by the pin tooling.",
-      "rootCauseSource": "commit",
+      "rootCause": "",
+      "rootCauseSource": "",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
@@ -36037,14 +36255,6 @@
       "releaseNote": "A glob filter, model scope or other `internal/minimatch` pattern with a numeric brace range beyond 2^53 expands as Pi's brace-expansion 5.0.12 does, in JavaScript number arithmetic: `x{99999999999999999999..99999999999999999999}` matches `x100000000000000000000` and no longer `x57`, and `x{9007199254740993..9007199254740995}` matches `x9007199254740992`.",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "2c165433d4",
-          "date": "2026-10-31"
-        },
-        {
-          "hash": "83f801801a",
-          "date": "2026-10-31"
-        },
         {
           "hash": "d71c4e2361",
           "date": "2026-11-01"
@@ -37299,6 +37509,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37363,6 +37574,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37427,6 +37639,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37491,6 +37704,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37555,6 +37769,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37619,6 +37834,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37683,6 +37899,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37747,6 +37964,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37811,6 +38029,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37875,6 +38094,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -37939,6 +38159,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38003,6 +38224,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38067,6 +38289,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38131,6 +38354,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38195,6 +38419,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38259,6 +38484,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38323,6 +38549,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38387,6 +38614,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38451,6 +38679,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38515,6 +38744,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -38579,6 +38809,7 @@
         }
       ],
       "tests": [
+        "agent/tool_settle_test.go::TestToolBatchFromContextNamesTheParallelBatch",
         "automation/ci/bugledger/bugledger_test.go::TestAFixTitledSquashWithNoNoteIsRefusedNotAttributed",
         "automation/ci/bugledger/bugledger_test.go::TestTheLedgerRefusesToAttributeTheTestsOfASquash",
         "automation/ci/bugledger/bugledger_test.go::TestTheSquashThresholdIsTheCountOfTouchedFiles",
@@ -39878,6 +40109,20 @@
         }
       ],
       "tests": [
+        "coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
+        "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
+        "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
+        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
+        "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
+        "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCEnforcesTheSizeLimitOldestFirst",
+        "coding/cli/extensions_cache_command_test.go::TestAutomaticExtensionCacheGCNeverWaitsForAnotherCollector",
         "coding/extension/exec_tree_test.go::TestExecCommandKeepsOutputWrittenAfterTheLeaderExits",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleBusyEntriesAreSkippedNotErrors",
         "coding/extension/host/runtimecell/cache_lifecycle_busy_test.go::TestCacheLifecycleCancelledBeforeStartTouchesNothing",
@@ -40737,6 +40982,33 @@
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWithAForeignThemeCallsItsStylesAgain",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownWrapsOnlyChangedLines",
         "tui/windowed_render_test.go::TestWindowedFramesEqualWholeFrames"
+      ]
+    },
+    {
+      "id": "BF-e90f6c8",
+      "title": "Windows paths are compared case-insensitively",
+      "symptom": "Windows paths are compared case-insensitively.",
+      "rootCause": "Part (a) of Pi's commit. A new resolvepath.ShortenHomePath replaces only a leading home directory on a segment boundary (equal paths give ~, relative paths and an empty home come back unchanged), and the tool-call renderer, the loaded-resource listing, the session selector, the tree selector and the startup banner use it. The config selector's formatBaseDir was already anchored.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows paths are compared case-insensitively. `c:\\Users\\me` and `C:\\Users\\me` name one directory, but exact string comparison treated them as two: with a working directory and a home directory that differ only in casing, global skills loaded as project skills and every one was reported as a name collision, `~/.agents/skills` counted as a project resource that needs trust, saved trust decisions in `trust.json` were not found, `--continue` and resume by id hid sessions recorded under another casing of the working directory, and `pig remove` did not match a package configured under another casing. Resource, extension and skill path keys, source matching, local package identity, the session-import self-check and the worktree `AGENTS.md` shadowing now use one comparison key. Carried forward from Pi 1be312b4 (earendil-works/pi#10488), past the 1.4.0+b3a29f11 pin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e90f6c8f9c",
+          "date": "2026-10-30",
+          "pr": "10488"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/home_shorten_test.go::TestHomeShorteningAnchorsAtAPathSegment",
+        "internal/codingagent/loaded_resources_oracle_test.go::TestLoadedResourcesFormattingMatchesPi",
+        "internal/resolvepath/shorten_home_test.go::TestShortenHomePathIgnoresCaseOnWindows",
+        "internal/resolvepath/shorten_home_test.go::TestShortenHomePathReplacesOnlyALeadingHomeDirectory",
+        "tui/tool_path_render_pi_test.go::TestRenderToolPathHonorsPiGeneratedExpectations"
       ]
     },
     {
@@ -41667,12 +41939,7 @@
       ],
       "tests": [
         "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
-        "internal/codingagent/code_highlighter_rows_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
-        "tui/assistant_message_reuse_upstream_test.go::TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
-        "tui/code_highlighter_test.go::TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange",
-        "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "tui/markdown_block_reuse_upstream_test.go::TestUpstreamMarkdownBlockReuse",
-        "tui/text_set_text_upstream_test.go::TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender"
       ]
     },
     {
