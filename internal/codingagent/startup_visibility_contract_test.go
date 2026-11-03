@@ -7,8 +7,8 @@ import "testing"
 
 func TestStartupHeaderAndDetailsVisibilityFollowVerboseAndQuietStartup(t *testing.T) {
 	for _, tc := range []struct {
-		quiet         QuietStartup
-		verbose       bool
+		quiet          QuietStartup
+		verbose        bool
 		header, detail bool
 	}{
 		{QuietStartupFalse, false, true, true},
