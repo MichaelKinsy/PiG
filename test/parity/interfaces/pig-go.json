@@ -243491,6 +243491,17 @@
       "shapeHash": "sha256:da483b6f3d9b6efb7dba69e955dc815da708ef0840f6c6c0884e017110369ab7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.branchedRecord",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.branchedRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(idx int32, records *recordSource, reader *recordReader) []byte"
+      },
+      "shapeHash": "sha256:de09d91bff26bafee5ace7bac1b77c42f82eb652e41bd66817a7cc0f7b20962b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.coldLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.coldLocked",
@@ -243920,6 +243931,17 @@
       "shapeHash": "sha256:d9a90934af30d1737d7e23a7057faaed1ffff2b78bc24fd9a907dc241e8a2792"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.planBranchedSession",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.planBranchedSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(leafID string) (branchedPlan, bool)"
+      },
+      "shapeHash": "sha256:f3d1acb75de27936934ddcf3b1d66e9c143b903a437054c8e2b68435f4d07a21"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.planRecordWriteLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.planRecordWriteLocked",
@@ -244083,6 +244105,17 @@
         "type": "func(leafID string) []int32"
       },
       "shapeHash": "sha256:b9039526eb26c27b2efd6cb40ade89a0cd91129de726b763e57b4855c8219d19"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.writeBranchedSession",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.writeBranchedSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(plan branchedPlan, emit func(parts ...[]byte) error) error"
+      },
+      "shapeHash": "sha256:fa1ade38aa92a7b3264e883cad4ab1b6533d45711b69fc7bb36b3f02f4face4b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HasProjectContextFile",
@@ -245161,6 +245194,17 @@
         "type": "func() []github.com/MichaelKinsy/PiG/coding/extension.ResourceDiagnostic"
       },
       "shapeHash": "sha256:fecf932d903fdf2c20116a4b6602e12d111923d63ab329c11ff11ec99cc934fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.builtInEditor",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.builtInEditor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.builtInHeaderClickArea",
@@ -257846,6 +257890,17 @@
       "shapeHash": "sha256:da483b6f3d9b6efb7dba69e955dc815da708ef0840f6c6c0884e017110369ab7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.branchedRecord",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.branchedRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(idx int32, records *recordSource, reader *recordReader) []byte"
+      },
+      "shapeHash": "sha256:de09d91bff26bafee5ace7bac1b77c42f82eb652e41bd66817a7cc0f7b20962b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.coldLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.coldLocked",
@@ -258275,6 +258330,17 @@
       "shapeHash": "sha256:d9a90934af30d1737d7e23a7057faaed1ffff2b78bc24fd9a907dc241e8a2792"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.planBranchedSession",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.planBranchedSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(leafID string) (branchedPlan, bool)"
+      },
+      "shapeHash": "sha256:f3d1acb75de27936934ddcf3b1d66e9c143b903a437054c8e2b68435f4d07a21"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.planRecordWriteLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.planRecordWriteLocked",
@@ -258438,6 +258504,17 @@
         "type": "func(leafID string) []int32"
       },
       "shapeHash": "sha256:b9039526eb26c27b2efd6cb40ade89a0cd91129de726b763e57b4855c8219d19"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.writeBranchedSession",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.writeBranchedSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(plan branchedPlan, emit func(parts ...[]byte) error) error"
+      },
+      "shapeHash": "sha256:fa1ade38aa92a7b3264e883cad4ab1b6533d45711b69fc7bb36b3f02f4face4b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionAccounting",
@@ -266932,15 +267009,26 @@
       "shapeHash": "sha256:d3253b46f22edbc6c6c7db165994e79adc75decf5ffce4a0842b8c25fe47e9cf"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#branchedSessionEntries",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#branchedPlan",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "branchedSessionEntries",
-      "kind": "function",
+      "name": "branchedPlan",
+      "kind": "type",
       "exported": false,
       "shape": {
-        "type": "func(source *Session, path []SessionEntry) ([]github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, []FileEntry, error)"
+        "type": "branchedPlan"
       },
-      "shapeHash": "sha256:f2fe2a1b87be1fe024e5698c847928d18c969d0126802f7a2cc90660adbdaf61"
+      "shapeHash": "sha256:dc7d245a73b6410e47868e6f5da200861ccffec795de40c194cf926aa371aa9c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#branchedRecord",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "branchedRecord",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "branchedRecord"
+      },
+      "shapeHash": "sha256:feabd05082d60bd636a5088cf45bdbe34bced0bb24d1ef8c9c9f4043dd859667"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bridgeWidgetSeq",
@@ -267997,6 +268085,17 @@
         "type": "func(r rune) []rune"
       },
       "shapeHash": "sha256:c9eb93ea27d0f480d0445303afde41763ef350ff6d5f19fac07eebde039954dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#canonicalMemberParts",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "canonicalMemberParts",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, field string, value any) (parts [3][]byte, ok bool, err error)"
+      },
+      "shapeHash": "sha256:80bf2af2e51e61cd83ebb20b847467f33173f77c39d18f9b408cf29b7e46be63"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#canonicalMemberValue",
@@ -290868,17 +290967,6 @@
       "shapeHash": "sha256:ab7c0cb5073f53392bddae1a68834777c529098c446f850b921946f4a04cb4f7"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#rebasedMessage",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "rebasedMessage",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(entry SessionEntry, parent *string, raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) FileEntry"
-      },
-      "shapeHash": "sha256:cb36eb0638598c5ddabcde0d78d5d1978c4e9d5777bd25845fa4b487947af346"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#rebuildWriteHighlightCacheFull",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "rebuildWriteHighlightCacheFull",
@@ -292111,6 +292199,17 @@
       "shapeHash": "sha256:c822a84c9d7f7b2cff601e3b162c04fa003b3ec1990f6fd2ab9ba0491c2baa52"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#replaceJSONFieldParts",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "replaceJSONFieldParts",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, field string, value any) ([][]byte, error)"
+      },
+      "shapeHash": "sha256:3b0e3b964b1b503c584fa040b7658dc8c0a541132afb54df1ec597b38f587fa9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#replaceJSONTokens",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "replaceJSONTokens",
@@ -292587,6 +292686,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#rewriteMemberJSONField",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "rewriteMemberJSONField",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, field string, value any, remove bool) ([]byte, error)"
+      },
+      "shapeHash": "sha256:0bb90e8d89f5cce9b5a3c851710d2e7906e7177d748e94b40cab7fa25f1e0871"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#rewriteRecordMembers",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "rewriteRecordMembers",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -300810,6 +300920,17 @@
         "type": "func(path string, lines [][]byte) error"
       },
       "shapeHash": "sha256:926fef29a24744a4774344b502dfb3b27e8d21d3d434d76f2e0c0c9e81838811"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeSessionRecords",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "writeSessionRecords",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, mode int, bufferSize int, fill func(emit func(parts ...[]byte) error) error) error"
+      },
+      "shapeHash": "sha256:6cb2e9d19d542e8faeae2ebfd894679ede8777f0336f733b9d08244191552e3b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#writeTreeNode",
