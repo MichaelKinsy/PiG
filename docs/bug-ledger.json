@@ -12511,6 +12511,29 @@
       ]
     },
     {
+      "id": "BF-59e2efb",
+      "title": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then…",
+      "symptom": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives. Every router delivered after the check now judges the connection, from the router the check read, so the removal ends it. A router delivered between the check's count and its read no longer ends a connection the router it read admits once that router's delivery is listed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59e2efb012",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/review_test.go::TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead",
+        "chord/nextnode/http/review_test.go::TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers"
+      ]
+    },
+    {
       "id": "BF-59fb623",
       "title": "fix(requestvalidity): one Responses assistant turn holds all its items, in any order",
       "symptom": "fix(requestvalidity): one Responses assistant turn holds all its items, in any order",
