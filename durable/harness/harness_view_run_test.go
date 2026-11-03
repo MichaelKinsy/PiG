@@ -199,7 +199,7 @@ func TestARunAsTheConversationViewShowsIt(t *testing.T) {
 		// The run shows from the input's commit until the commit that appends the answer and clears the partial.
 		views := history.All()
 		started := slices.IndexFunc(states, func(state LiveState) bool { return state.Run != nil })
-		if started < 0 || states[started].Run.TaskId == 0 || !slices.Equal(states[started].Run.Inputs, []durable.SubmissionId{submission.Id()}) || states[started].Run.Turns != 0 {
+		if started < 0 || states[started].Run.TaskId == 0 || !slices.Equal(states[started].Run.Inputs, []durable.SubmissionId{submission.Id()}) || states[started].Run.Turns != 0 || states[started].Run.First == nil {
 			t.Fatalf("run at %d = %+v, want the submission's", started, states[started].Run)
 		}
 		if kind := lastEntry(views[started]).Kind; kind != "pi.user" {

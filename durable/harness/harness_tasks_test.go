@@ -910,7 +910,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		{"work after adopt", func() durable.Storage { return newLateResolvingStorage() }, func(s durable.Storage) bool { return s.(*lateResolvingStorage).adopting.Load() }, nil},
 	}
 
-	t.Run("resumes task and idle waits only once subscribeCommits() listeners saw the terminal commit", func(t *testing.T) {
+	t.Run("resumes task and idle waits only once observeCommits() observers saw the terminal commit", func(t *testing.T) {
 		gate := deferred()
 		gated := tkGated("test.wake-gated", gate)
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()}, tkOptions{storage: newLateResolvingStorage()})
@@ -944,7 +944,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		gate.resolve()
 		for range 3 {
 			if got := <-results; !got.saw {
-				t.Fatalf("%s resumed before the subscribeCommits() listeners saw the terminal commit", got.wait)
+				t.Fatalf("%s resumed before the observeCommits() observers saw the terminal commit", got.wait)
 			}
 		}
 		mustClose(t, opened.harness)
@@ -1037,12 +1037,16 @@ func TestPublicationAtAdoption(t *testing.T) {
 		opened.harness.Resume()
 		waited := make(chan durable.SettledTask[durable.JsonValue], 1)
 		callAsync(func() {
-			receipt, _ := opened.harness.WaitForTask(testContext, id)
+			receipt, err := opened.harness.WaitForTask(testContext, id)
+			if err != nil {
+				t.Errorf("WaitForTask: %v", err)
+			}
 			waited <- receipt
 		})
 		gate.resolve()
 		receipt := <-waited
-		if receipt.State.Outcome == nil || receipt.State.Outcome.Status != durable.OutcomeCompleted {
+		// Pi: {status: "completed", result: null}; a completed outcome without a result is null here.
+		if outcome := receipt.State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted || (outcome.Result != nil && *outcome.Result != nil) || outcome.Error != nil || outcome.Reason != nil {
 			t.Fatalf("receipt %+v", receipt.State)
 		}
 		if got := seen.all(); !reflect.DeepEqual(got, []string{"terminal"}) {

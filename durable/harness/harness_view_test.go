@@ -445,6 +445,7 @@ func TestConversationView(t *testing.T) {
 		// upstream: packages/durable/test/harness-view.test.ts:231
 		harness, root := openChat(t, storage.NewMemoryStorage(), chatSetup(t))
 		watch := must(root.Watch(testContext, nil))
+		initial := watch.Value()
 		for range 101 {
 			noteEntry(t, root, "note")
 		}
@@ -468,6 +469,8 @@ func TestConversationView(t *testing.T) {
 		if len(got[0].ops) == 0 || durable.Op(got[0].ops[0])[0] == "r" {
 			t.Fatalf("ops %v, want folded ops, not a root replacement", got[0].ops)
 		}
+		// harness-view.test.ts:267: replaying the folded ops onto the starting view yields the delivered view (replay checks it).
+		replay(t, initial, got)
 		// The default window took 100 appends, then dropped its oldest 51 at the 101st, down to 50.
 		expectSameJSON(t, got[0].value, committed(t, harness, root, got[0].value.Conversation, 50))
 		must(watch.Stop())

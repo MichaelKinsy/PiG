@@ -86,6 +86,10 @@ func TestStreamedPartialsCommitAtACostThatFollowsTheNewText(t *testing.T) {
 	}
 	smallBytes, smallCommits := stream(40_000)
 	largeBytes, largeCommits := stream(400_000)
+	// NOT Pi's bound (harness-view-run.test.ts:587,589: large.commits > 5*small.commits, raw bytes per commit ratio < 2). Go measured
+	// 185 commits / 168760528 bytes (40 KB) and 551 commits / 3351220456 bytes (400 KB): 3.0x the commits, 6.7x the bytes per commit.
+	// Each commit marshals and re-decodes the whole in-flight message (checkDecodes/partsDecode decode the touched top-level part, which
+	// here is the message), so the cost per commit grows with the text; Pi's check does not copy. The row stays partial for this case.
 	// Pi's faux stream commits a partial per token, hundreds of times more for the larger text; a Go run commits the newest partial once
 	// per interval, so the commits of the two streams are compared as they come.
 	if smallCommits < 20 || largeCommits < smallCommits {

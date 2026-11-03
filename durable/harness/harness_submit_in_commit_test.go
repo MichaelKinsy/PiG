@@ -599,7 +599,7 @@ func TestSubmitInsideTheCallersCommit(t *testing.T) {
 		if submitSpan.Name == "" || submitSpan.ParentID != nil || submitSpan.Attributes.Value("result") != "queued" {
 			t.Fatalf("submit span %+v", submitSpan)
 		}
-		if len(submitSpan.Links) != 2 || !reflect.DeepEqual(submitSpan.Links[0].Context, callers[0].Context) || !reflect.DeepEqual(submitSpan.Links[1].Context, run.Trace) {
+		if len(submitSpan.Links) != 2 || !reflect.DeepEqual(submitSpan.Links[0].Context, callers[0].Context) || !reflect.DeepEqual(submitSpan.Links[1].Context, run.Trace) || len(submitSpan.Links[0].Attributes) != 0 || len(submitSpan.Links[1].Attributes) != 0 {
 			t.Fatalf("submit links %+v, want the caller's context and the run's trace %v", submitSpan.Links, run.Trace)
 		}
 		if record := must(must(harness.Submission(testContext, id)).Status(testContext)); !reflect.DeepEqual(record.Trace, submitSpan.Context) {

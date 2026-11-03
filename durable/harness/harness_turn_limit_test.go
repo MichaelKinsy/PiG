@@ -431,7 +431,9 @@ func TestTurnLimit(t *testing.T) {
 			return noopResult()
 		}, durable.ReplaySafe))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{turnRound("c1"), turnRound("c2"), fauxAnswer("done")})
-		first, firstRoot := openAt(t, path, setup)
+		// harness-turn-limit.test.ts:347: the first process crashes; every later storage call hangs (no close write-back).
+		opened := thOpen(t, path, setup)
+		first, firstRoot := opened.harness, opened.root
 		if err := firstRoot.Configure(testContext, AgentChange{MaxTurns: SetTo(2.0)}); err != nil {
 			t.Fatal(err)
 		}
@@ -442,7 +444,7 @@ func TestTurnLimit(t *testing.T) {
 		if run := liveOf(t, first, firstRoot.Id()).Run; run == nil || run.Turns != 2 {
 			t.Fatalf("run = %s, want turns 2", jsonText(t, run))
 		}
-		closeHarness(t, first)
+		opened.kill()
 
 		// The replay-safe call runs again after reopen; the stored count still ends the run at this round.
 		runs = 0
