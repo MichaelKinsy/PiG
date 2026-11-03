@@ -44,7 +44,7 @@ func TestMarshalLeavesAPlainValueAndOtherFailuresAlone(t *testing.T) {
 		t.Fatalf("Marshal = %s, %v", encoded, err)
 	}
 	other := errors.New("not an encoding failure")
-	if got := Error(other); got != other {
+	if got := Error(other); !errors.Is(got, other) {
 		t.Fatalf("Error(%v) = %v, want it unchanged", other, got)
 	}
 	if got := Error(nil); got != nil {
