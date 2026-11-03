@@ -79,19 +79,16 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 	}
 	for _, decl := range file.Decls {
 		allowedSeam := seamVar(decl)
-		var retryLoops []*ast.ForStmt
-		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
-			ast.Inspect(fn.Body, func(node ast.Node) bool {
-				if loop, ok := node.(*ast.ForStmt); ok && retriesEINTR(loop) {
-					retryLoops = append(retryLoops, loop)
-				}
-				return true
-			})
-		}
+		var stack []ast.Node
 		ast.Inspect(decl, func(node ast.Node) bool {
+			if node == nil {
+				stack = stack[:len(stack)-1]
+				return true
+			}
+			stack = append(stack, node)
 			if call, ok := node.(*ast.CallExpr); ok {
-				if fn, ok := call.Fun.(*ast.Ident); ok && (fn.Name == "makeRawTerminal" || fn.Name == "restoreTerminal") && !insideAny(retryLoops, call.Pos()) {
-					report(call.Pos(), fn.Name+" outside a loop that retries on EINTR")
+				if fn, ok := call.Fun.(*ast.Ident); ok && (fn.Name == "makeRawTerminal" || fn.Name == "restoreTerminal") && !retriedAtCallSite(stack) {
+					report(call.Pos(), fn.Name+" outside a loop that retries on EINTR for this call's error")
 				}
 			}
 			selector, ok := node.(*ast.SelectorExpr)
@@ -113,8 +110,8 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 			case "golang.org/x/sys/unix":
 				name := selector.Sel.Name
 				sleeps := name == "Poll" || name == "Select" || name == "Read" || (strings.HasPrefix(name, "Ioctl") && name != "IoctlFileClone")
-				if sleeps && !insideAny(retryLoops, selector.Pos()) {
-					report(selector.Pos(), "unix."+name+" outside a loop that retries on EINTR")
+				if sleeps && !retriedAtCallSite(stack) {
+					report(selector.Pos(), "unix."+name+" outside a loop that retries on EINTR for this call's error")
 				}
 			}
 			return true
@@ -137,6 +134,9 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 		{"mutant: names EINTR and loops but returns on it", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { return 0, err }\n if err == nil { return n, nil }\n}", true},
 		{"mutant: no check at all", "return unix.Poll(nil, 0)", true},
 		{"seam call in a retry loop", "for {\n err := makeRawTerminal(0)\n if !isEINTR(err) { return 0, err }\n}", false},
+		{"mutant: a second unguarded call beside a guarded one in the function", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n if err != nil { return n, err }\n break\n}\n return unix.Poll(nil, 0)", true},
+		{"mutant: a second unguarded call inside the same retry loop", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n m, err2 := unix.Poll(nil, 0)\n return n + m, err2\n}", true},
+		{"two guarded calls", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n return n, err\n}\n for {\n m, err := unix.Poll(nil, 0)\n if !isEINTR(err) { return m, err }\n}", false},
 		{"mutant: seam call that returns on EINTR", "err := makeRawTerminal(0)\n if isEINTR(err) { return 0, err }\n return 0, err", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -152,28 +152,75 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 	}
 }
 
-// retriesEINTR reports whether loop goes round again on EINTR: it holds an if on isEINTR or EINTR that continues (the interrupted case), or an
-// if on the negation that leaves the loop (the interrupted case falls through to the next iteration). An if that returns on EINTR is no retry.
-func retriesEINTR(loop *ast.ForStmt) bool {
-	retries := false
+// retriedAtCallSite reports whether the call at the top of stack is retried on EINTR: the innermost loop around it goes round again on an
+// EINTR test of the error this very call assigned. A loop that retries on some other call's error, or a call whose error is never tested in
+// the loop (a second unguarded call beside a guarded one), is not a retry.
+func retriedAtCallSite(stack []ast.Node) bool {
+	loopIndex := -1
+	for i := len(stack) - 1; i >= 0; i-- {
+		if _, ok := stack[i].(*ast.ForStmt); ok {
+			loopIndex = i
+			break
+		}
+	}
+	if loopIndex < 0 {
+		return false
+	}
+	var assigned map[string]bool
+	for i := len(stack) - 1; i > loopIndex; i-- {
+		if assign, ok := stack[i].(*ast.AssignStmt); ok {
+			assigned = map[string]bool{}
+			for _, lhs := range assign.Lhs {
+				if ident, ok := lhs.(*ast.Ident); ok && ident.Name != "_" {
+					assigned[ident.Name] = true
+				}
+			}
+			break
+		}
+	}
+	if len(assigned) == 0 {
+		return false
+	}
+	for name := range retriedErrors(stack[loopIndex].(*ast.ForStmt)) {
+		if assigned[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// retriedErrors returns the identifiers tested for EINTR by an if in loop that makes it go round again: an if on isEINTR or EINTR that
+// continues (the interrupted case), or an if on the negation that leaves the loop (the interrupted case falls through to the next iteration).
+// An if that returns on EINTR is no retry.
+func retriedErrors(loop *ast.ForStmt) map[string]bool {
+	names := map[string]bool{}
 	ast.Inspect(loop.Body, func(node ast.Node) bool {
 		stmt, ok := node.(*ast.IfStmt)
 		if !ok || !namesEINTR(stmt.Cond) {
 			return true
 		}
+		retries := false
 		if not, ok := stmt.Cond.(*ast.UnaryExpr); ok && not.Op == token.NOT {
 			retries = true
-			return false
+		} else {
+			ast.Inspect(stmt.Body, func(inner ast.Node) bool {
+				if branch, ok := inner.(*ast.BranchStmt); ok && branch.Tok == token.CONTINUE {
+					retries = true
+				}
+				return true
+			})
 		}
-		ast.Inspect(stmt.Body, func(inner ast.Node) bool {
-			if branch, ok := inner.(*ast.BranchStmt); ok && branch.Tok == token.CONTINUE {
-				retries = true
-			}
-			return true
-		})
+		if retries {
+			ast.Inspect(stmt.Cond, func(inner ast.Node) bool {
+				if ident, ok := inner.(*ast.Ident); ok {
+					names[ident.Name] = true
+				}
+				return true
+			})
+		}
 		return true
 	})
-	return retries
+	return names
 }
 
 func namesEINTR(expr ast.Expr) bool {
@@ -185,13 +232,4 @@ func namesEINTR(expr ast.Expr) bool {
 		return true
 	})
 	return found
-}
-
-func insideAny(loops []*ast.ForStmt, pos token.Pos) bool {
-	for _, loop := range loops {
-		if loop.Pos() <= pos && pos < loop.End() {
-			return true
-		}
-	}
-	return false
 }
