@@ -35856,9 +35856,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -35878,9 +35878,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -37340,9 +37340,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -37362,9 +37362,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -38198,9 +38198,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -38220,9 +38220,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -40245,9 +40245,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -40267,9 +40267,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -41661,9 +41661,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -41683,9 +41683,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -42955,9 +42955,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -42977,9 +42977,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -44122,9 +44122,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -44144,9 +44144,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -44896,9 +44896,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -44918,9 +44918,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -46320,9 +46320,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -46342,9 +46342,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -47283,9 +47283,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -47305,9 +47305,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -77202,9 +77202,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -77224,9 +77224,9 @@
         "call:ai/compat.go#Stream"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
-        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered"
       ]
     },
     {
@@ -78264,6 +78264,7 @@
         "call:ai/compat.go#StreamSimpleContext"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/cloudflare_streams_test.go#TestCloudflarePlaceholdersMaterializeOnceOnlyThroughTheProviderWrapper",
         "test:ai/compat_registry_test.go#TestStreamSimpleContextDispatchesTheSimpleFunctionWithTheNormalizedContext"
       ]
@@ -78285,6 +78286,7 @@
         "call:ai/compat.go#StreamSimpleContext"
       ],
       "evidence": [
+        "test:ai/compat_cloudflare_auth_oracle_test.go#TestCompatCloudflareAuthRoutingMatchesPi",
         "test:ai/cloudflare_streams_test.go#TestCloudflarePlaceholdersMaterializeOnceOnlyThroughTheProviderWrapper",
         "test:ai/compat_registry_test.go#TestStreamSimpleContextDispatchesTheSimpleFunctionWithTheNormalizedContext"
       ]
