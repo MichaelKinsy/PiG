@@ -90,6 +90,102 @@ end = "\t/** Update rendered assistant messages without rebuilding live tool com
 sha256 = "c616d5de55de545f831efc875a3271f7323b003ebe8e806d2d6347f41cfd1839"
 keybindings = ["app.clear"]
 
+[[contract]]
+id = "coding-agent/startup/init-lifecycle-order"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
+family = "startup"
+kind = "startup-lifecycle"
+claim = "init returns at once when already initialized; otherwise it registers the signal handlers, prepares the changelog data, prints the model scope notice to stdout unless the renderer is fullscreen, mounts one component tree, binds app.clear to the Ctrl-C handler, Ctrl-D to the exit handler (empty editor only) and submit to handleStartupSubmit, which keeps the text in the editor and shows `Startup is still in progress`, focuses the editor, starts the UI before extensions load, sets isInitialized, reports the program status, applies the theme from settings and waits for the terminal colors, writing the color query before the first frame, before it builds the header"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive.go#Init",
+  "internal/codingagent/startup_input.go#beginStartupSubmitWindow",
+  "internal/codingagent/startup_input.go#handleStartupSubmit",
+  "internal/codingagent/model_scope_line.go#getModelScopeNotice",
+]
+evidence = [
+  "internal/codingagent/startup_init_contract_test.go#TestInitReturnsWithoutWorkOnceInitialized",
+  "internal/codingagent/startup_hints_test.go#TestModelScopeLineMatchesPiInit",
+  "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader",
+  "internal/codingagent/startup_submit_test.go#TestStartupSubmitKeepsTextAndReportsProgress",
+  "internal/codingagent/startup_query_order_pty_test.go#TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrame",
+  "internal/codingagent/startup_color_wait_render_test.go#TestStartupColorWaitPaintsTheRequestedFirstFrameBeforeItReturns",
+  "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+  "test/parity/scenarios/startup/17-startup-exit-key-before-session-start-completes.toml",
+  "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+  "test/parity/scenarios/startup/10-startup-input-before-session-start-completes.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tasync init(): Promise<void> {\n\t\tif (this.isInitialized) return;\n"
+end = "\t\t// Add header with keybindings from config (unless silenced)\n"
+sha256 = "768314ab8c6e10fae0fb498eb63dc81fd39b3901146deb0d3fbf9cadbb844d49"
+keybindings = ["app.clear"]
+
+[[contract]]
+id = "coding-agent/startup/init-header-construction"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
+family = "startup"
+kind = "startup-header"
+claim = "the startup header is built once the terminal colors arrived: verbose forces it and quietStartup true hides it, replacing it with an empty header; shown, it carries the version beside the logo (PiG's pig head and composite version are D2 and D63), the compact key hints (interrupt, clear/exit, /, !, expand tools) joined by a muted separator with the onboarding line naming the expand key and, when startup details show, loaded resources, or the expanded hints in Pi's order with the onboarding sentence, starting expanded when verbose or tools are expanded, between two spacers; with fullscreen the model scope notice follows the header, and a render is requested"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/startup_header.go#mountStartupHeader",
+  "internal/codingagent/startup_header.go#drawBuiltInHeader",
+  "internal/codingagent/startup_visibility.go#shouldShowStartupHeader",
+  "internal/codingagent/startup_visibility.go#shouldShowStartupDetails",
+  "internal/codingagent/model_scope_line.go#showFullscreenModelScopeNotice",
+]
+evidence = [
+  "internal/codingagent/startup_header_test.go#TestBuiltInHeaderMatchesPiStartupHelp",
+  "internal/codingagent/startup_header_test.go#TestBuiltInHeaderInitialExpansion",
+  "internal/codingagent/startup_header_details_capture_test.go#TestBuiltInHeaderOnboardingKeepsStartupDetailsCapture",
+  "internal/codingagent/startup_hints_test.go#TestStartupKeybindHintsShowsCoreBindings",
+  "internal/codingagent/startup_visibility_contract_test.go#TestStartupHeaderAndDetailsVisibilityFollowVerboseAndQuietStartup",
+  "test/parity/scenarios/startup/02-startup-compact-help.toml",
+  "test/parity/scenarios/startup/03-startup-expanded-help.toml",
+  "test/parity/scenarios/startup/14-startup-quiet-header.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t// Add header with keybindings from config (unless silenced)\n"
+end = "\t\tif (this.renderer.mode === \"fullscreen\") this.showFullscreenModelScopeNotice();\n"
+sha256 = "95c41e0eb551b632dfec68b0f3f23ed8ecea3116393a6a4576f4f1d069ad3eca"
+keybindings = ["app.clear"]
+
+[[contract]]
+id = "coding-agent/startup/init-post-header-order"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
+family = "startup"
+kind = "startup-lifecycle"
+claim = "after the header init requests a render, ensures fd and rg with their status lines in the chat while the startup submit handler stays bound, then installs the remaining key handlers and the ordinary submit handler, binds the session so extensions start and the loaded resources show before any message, shows the startup changelog notice, renders the initial messages (the resumed transcript, the project-trust warning, the compaction count), and run then shows the startup diagnostics, migrated credentials, models.json error, model fallback message and crash notice after them; init finishes by watching theme and git branch changes, updating the provider count, flushing a frame and loading the remaining syntax grammars"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive.go#Init",
+  "internal/codingagent/interactive_tools_status.go#ensureManagedTools",
+  "internal/codingagent/startup_input.go#endStartupSubmitWindow",
+  "internal/codingagent/interactive_transcript.go#renderInitialMessages",
+  "internal/codingagent/settings_diagnostics.go#showInitNotices",
+]
+evidence = [
+  "internal/codingagent/startup_submit_test.go#TestStartupSubmitWindowCoversManagedToolSetup",
+  "internal/codingagent/startup_submit_test.go#TestManagedToolSetupWithoutADownloadReadsNoInput",
+  "internal/codingagent/loaded_resources_quiet_header_upstream_test.go#TestLoadedResourcesQuietStartupHeaderUpstream",
+  "internal/codingagent/loaded_resources_oracle_test.go#TestLoadedResourcesFormattingMatchesPi",
+  "internal/codingagent/interactive_changelog_test.go#TestStartupChangelogFollowsPi",
+  "test/parity/scenarios/startup/05-startup-loaded-resources.toml",
+  "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\tif (this.renderer.mode === \"fullscreen\") this.showFullscreenModelScopeNotice();\n"
+end = "\t/**\n\t * Update terminal title with session name and cwd.\n\t */"
+sha256 = "26b10e96cfa0c4914bcb82f114ffac8ba0ca05fa07001b57b0f96b3772face4a"
+keybindings = ["app.clear"]
+
 # This contract covers only the two model-cycle actions in setupKeyHandlers.
 [[contract]]
 id = "coding-agent/interactive/model-cycle-actions"
