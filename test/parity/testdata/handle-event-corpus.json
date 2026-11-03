@@ -1,0 +1,1346 @@
+{
+ "sequences": [
+  {
+   "name": "run-start",
+   "steps": [
+    {
+     "name": "agent_start",
+     "event": {
+      "type": "agent_start"
+     }
+    },
+    {
+     "name": "turn_start",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 0
+     }
+    },
+    {
+     "name": "turn_start again",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 1
+     }
+    },
+    {
+     "name": "turn_end",
+     "event": {
+      "type": "turn_end",
+      "turnIndex": 1
+     }
+    },
+    {
+     "name": "agent_end",
+     "event": {
+      "type": "agent_end"
+     }
+    },
+    {
+     "name": "agent_settled",
+     "event": {
+      "type": "agent_settled",
+      "aborted": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "run-start embedded",
+   "embedded": true,
+   "steps": [
+    {
+     "name": "agent_start",
+     "event": {
+      "type": "agent_start"
+     }
+    },
+    {
+     "name": "turn_start",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 0
+     }
+    },
+    {
+     "name": "agent_end",
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  },
+  {
+   "name": "working hidden",
+   "steps": [
+    {
+     "name": "hide",
+     "op": "workingVisible",
+     "visible": false
+    },
+    {
+     "name": "agent_start",
+     "event": {
+      "type": "agent_start"
+     }
+    },
+    {
+     "name": "turn_start",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 0
+     }
+    },
+    {
+     "name": "compaction_start",
+     "event": {
+      "type": "compaction_start",
+      "reason": "threshold"
+     }
+    },
+    {
+     "name": "turn_start over compaction",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 1
+     }
+    },
+    {
+     "name": "show",
+     "op": "workingVisible",
+     "visible": true
+    },
+    {
+     "name": "turn_start shown",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 2
+     }
+    },
+    {
+     "name": "agent_end",
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  },
+  {
+   "name": "retry",
+   "steps": [
+    {
+     "name": "agent_start",
+     "event": {
+      "type": "agent_start"
+     }
+    },
+    {
+     "name": "turn_start",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 0
+     }
+    },
+    {
+     "name": "agent_end",
+     "event": {
+      "type": "agent_end"
+     }
+    },
+    {
+     "name": "auto_retry_start",
+     "event": {
+      "type": "auto_retry_start",
+      "attempt": 1,
+      "maxAttempts": 3,
+      "delayMs": 2500,
+      "errorMessage": "overloaded"
+     }
+    },
+    {
+     "name": "esc in the delay",
+     "op": "esc"
+    },
+    {
+     "name": "agent_start of the retry",
+     "event": {
+      "type": "agent_start"
+     }
+    },
+    {
+     "name": "esc after agent_start",
+     "op": "esc"
+    },
+    {
+     "name": "turn_start of the retry",
+     "event": {
+      "type": "turn_start",
+      "turnIndex": 0
+     }
+    },
+    {
+     "name": "auto_retry_end success",
+     "event": {
+      "type": "auto_retry_end",
+      "success": true,
+      "attempt": 1
+     }
+    },
+    {
+     "name": "esc after the retry",
+     "op": "esc"
+    },
+    {
+     "name": "auto_retry_start again",
+     "event": {
+      "type": "auto_retry_start",
+      "attempt": 2,
+      "maxAttempts": 3,
+      "delayMs": 4000,
+      "errorMessage": "overloaded"
+     }
+    },
+    {
+     "name": "auto_retry_end failure",
+     "event": {
+      "type": "auto_retry_end",
+      "success": false,
+      "attempt": 2,
+      "finalError": "still overloaded"
+     }
+    },
+    {
+     "name": "esc after the failure",
+     "op": "esc"
+    },
+    {
+     "name": "auto_retry_start third",
+     "event": {
+      "type": "auto_retry_start",
+      "attempt": 1,
+      "maxAttempts": 3,
+      "delayMs": 1000,
+      "errorMessage": "overloaded"
+     }
+    },
+    {
+     "name": "auto_retry_end cancelled",
+     "event": {
+      "type": "auto_retry_end",
+      "success": false,
+      "attempt": 1
+     }
+    }
+   ]
+  },
+  {
+   "name": "compaction",
+   "steps": [
+    {
+     "name": "compaction_start manual",
+     "event": {
+      "type": "compaction_start",
+      "reason": "manual"
+     }
+    },
+    {
+     "name": "esc in compaction",
+     "op": "esc"
+    },
+    {
+     "name": "compaction_end cancelled",
+     "event": {
+      "type": "compaction_end",
+      "reason": "manual",
+      "aborted": true,
+      "willRetry": false
+     }
+    },
+    {
+     "name": "esc after compaction",
+     "op": "esc"
+    },
+    {
+     "name": "compaction_start threshold",
+     "event": {
+      "type": "compaction_start",
+      "reason": "threshold"
+     }
+    },
+    {
+     "name": "compaction_end auto cancelled",
+     "event": {
+      "type": "compaction_end",
+      "reason": "threshold",
+      "aborted": true,
+      "willRetry": false
+     }
+    },
+    {
+     "name": "compaction_start overflow",
+     "event": {
+      "type": "compaction_start",
+      "reason": "overflow"
+     }
+    },
+    {
+     "name": "compaction_end auto error",
+     "event": {
+      "type": "compaction_end",
+      "reason": "overflow",
+      "aborted": false,
+      "willRetry": true,
+      "errorMessage": "context too large"
+     }
+    },
+    {
+     "name": "compaction_start manual again",
+     "event": {
+      "type": "compaction_start",
+      "reason": "manual"
+     }
+    },
+    {
+     "name": "compaction_end manual error",
+     "event": {
+      "type": "compaction_end",
+      "reason": "manual",
+      "aborted": false,
+      "willRetry": false,
+      "errorMessage": "no model"
+     }
+    },
+    {
+     "name": "compaction_start over working",
+     "event": {
+      "type": "compaction_start",
+      "reason": "threshold"
+     }
+    },
+    {
+     "name": "agent_end keeps the compaction status",
+     "event": {
+      "type": "agent_end"
+     }
+    },
+    {
+     "name": "compaction_end without result",
+     "event": {
+      "type": "compaction_end",
+      "reason": "threshold",
+      "aborted": false,
+      "willRetry": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "retry during compaction",
+   "steps": [
+    {
+     "name": "compaction_start",
+     "event": {
+      "type": "compaction_start",
+      "reason": "manual"
+     }
+    },
+    {
+     "name": "summarization_retry_scheduled",
+     "event": {
+      "type": "summarization_retry_scheduled",
+      "attempt": 1,
+      "maxAttempts": 3,
+      "delayMs": 2000,
+      "errorMessage": "rate limited"
+     }
+    },
+    {
+     "name": "esc during the summarization retry",
+     "op": "esc"
+    },
+    {
+     "name": "summarization_retry_attempt_start",
+     "event": {
+      "type": "summarization_retry_attempt_start",
+      "source": "compaction",
+      "reason": "manual"
+     }
+    },
+    {
+     "name": "esc in the attempt",
+     "op": "esc"
+    },
+    {
+     "name": "summarization_retry_finished",
+     "event": {
+      "type": "summarization_retry_finished"
+     }
+    },
+    {
+     "name": "compaction_end",
+     "event": {
+      "type": "compaction_end",
+      "reason": "manual",
+      "aborted": true,
+      "willRetry": false
+     }
+    },
+    {
+     "name": "esc at the end",
+     "op": "esc"
+    }
+   ]
+  },
+  {
+   "name": "queue",
+   "steps": [
+    {
+     "name": "queue_update empty",
+     "event": {
+      "type": "queue_update",
+      "steering": [],
+      "followUp": []
+     }
+    },
+    {
+     "name": "queue two",
+     "op": "queue",
+     "steering": [
+      "steer one"
+     ],
+     "followUp": [
+      "follow one",
+      "follow two"
+     ]
+    },
+    {
+     "name": "queue_update",
+     "event": {
+      "type": "queue_update",
+      "steering": [
+       "steer one"
+      ],
+      "followUp": [
+       "follow one",
+       "follow two"
+      ]
+     }
+    },
+    {
+     "name": "queue consumed",
+     "op": "queue",
+     "steering": [],
+     "followUp": [
+      "follow two"
+     ]
+    },
+    {
+     "name": "queue_update after consume",
+     "event": {
+      "type": "queue_update",
+      "steering": [],
+      "followUp": [
+       "follow two"
+      ]
+     }
+    },
+    {
+     "name": "queue cleared",
+     "op": "queue"
+    },
+    {
+     "name": "queue_update cleared",
+     "event": {
+      "type": "queue_update",
+      "steering": [],
+      "followUp": []
+     }
+    }
+   ]
+  },
+  {
+   "name": "thinking",
+   "steps": [
+    {
+     "name": "level high",
+     "op": "thinking",
+     "level": "high"
+    },
+    {
+     "name": "thinking_level_changed high",
+     "event": {
+      "type": "thinking_level_changed",
+      "level": "high"
+     }
+    },
+    {
+     "name": "level minimal",
+     "op": "thinking",
+     "level": "minimal"
+    },
+    {
+     "name": "thinking_level_changed minimal",
+     "event": {
+      "type": "thinking_level_changed",
+      "level": "minimal"
+     }
+    },
+    {
+     "name": "level off",
+     "op": "thinking",
+     "level": "off"
+    },
+    {
+     "name": "thinking_level_changed off",
+     "event": {
+      "type": "thinking_level_changed",
+      "level": "off"
+     }
+    }
+   ]
+  },
+  {
+   "name": "settled",
+   "steps": [
+    {
+     "name": "agent_settled without a request",
+     "event": {
+      "type": "agent_settled",
+      "aborted": false
+     }
+    },
+    {
+     "name": "request",
+     "op": "shutdownRequested"
+    },
+    {
+     "name": "agent_settled with a request",
+     "event": {
+      "type": "agent_settled",
+      "aborted": false
+     }
+    },
+    {
+     "name": "agent_settled aborted",
+     "event": {
+      "type": "agent_settled",
+      "aborted": true
+     }
+    }
+   ]
+  },
+  {
+   "name": "no-op events",
+   "steps": [
+    {
+     "name": "bash_execution_update",
+     "event": {
+      "type": "bash_execution_update",
+      "id": "b1",
+      "delta": "output"
+     }
+    },
+    {
+     "name": "bash_execution_update without id",
+     "event": {
+      "type": "bash_execution_update",
+      "delta": "more"
+     }
+    },
+    {
+     "name": "session_info_changed named",
+     "event": {
+      "type": "session_info_changed",
+      "name": "my session"
+     }
+    },
+    {
+     "name": "session_info_changed cleared",
+     "event": {
+      "type": "session_info_changed"
+     }
+    }
+   ]
+  },
+  {
+   "name": "entries",
+   "steps": [
+    {
+     "name": "custom_message displayed",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom_message",
+       "id": "m1",
+       "parentId": null,
+       "timestamp": "2026-01-01T00:00:00.000Z",
+       "customType": "note",
+       "content": "SHOWN MESSAGE",
+       "display": true
+      }
+     }
+    },
+    {
+     "name": "custom_message hidden",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom_message",
+       "id": "m2",
+       "parentId": "m1",
+       "timestamp": "2026-01-01T00:00:01.000Z",
+       "customType": "note",
+       "content": "HIDDEN MESSAGE",
+       "display": false
+      }
+     }
+    },
+    {
+     "name": "custom registered",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom",
+       "id": "c1",
+       "parentId": "m2",
+       "timestamp": "2026-01-01T00:00:02.000Z",
+       "customType": "note",
+       "data": "ENTRY DATA"
+      }
+     }
+    },
+    {
+     "name": "custom unregistered",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom",
+       "id": "c2",
+       "parentId": "c1",
+       "timestamp": "2026-01-01T00:00:03.000Z",
+       "customType": "other",
+       "data": "UNSEEN"
+      }
+     }
+    },
+    {
+     "name": "label",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "label",
+       "id": "l1",
+       "parentId": "c2",
+       "timestamp": "2026-01-01T00:00:04.000Z",
+       "targetId": "m1",
+       "label": "tag"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "messages",
+   "steps": [
+    {
+     "name": "message_start user",
+     "event": {
+      "type": "message_start",
+      "message": {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "hello there"
+        }
+       ],
+       "timestamp": 1
+      }
+     }
+    },
+    {
+     "name": "message_start assistant",
+     "event": {
+      "type": "message_start",
+      "message": {
+       "role": "assistant",
+       "content": [],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "message_update text",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "partial"
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "text_delta",
+       "contentIndex": 0,
+       "delta": "partial"
+      }
+     }
+    },
+    {
+     "name": "message_end user ignored",
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "hello there"
+        }
+       ],
+       "timestamp": 1
+      }
+     }
+    },
+    {
+     "name": "message_end assistant",
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "final answer"
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "message_start assistant again",
+     "event": {
+      "type": "message_start",
+      "message": {
+       "role": "assistant",
+       "content": [],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "agent_end removes the streaming message",
+     "event": {
+      "type": "agent_end"
+     }
+    },
+    {
+     "name": "message_end without a message",
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "orphan"
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "message_update without a message",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "orphan"
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "text_delta",
+       "contentIndex": 0,
+       "delta": "orphan"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "tool run",
+   "steps": [
+    {
+     "name": "message_start",
+     "event": {
+      "type": "message_start",
+      "message": {
+       "role": "assistant",
+       "content": [],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "toolcall_start",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "calling"
+        },
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {}
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "toolcall_start",
+       "contentIndex": 1
+      }
+     }
+    },
+    {
+     "name": "toolcall_delta",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "calling"
+        },
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {
+          "path": "a.txt"
+         }
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "toolcall_delta",
+       "contentIndex": 1,
+       "delta": "{\"path\":\"a.txt\"}"
+      }
+     }
+    },
+    {
+     "name": "message_end tool use",
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "calling"
+        },
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {
+          "path": "a.txt"
+         }
+        }
+       ],
+       "stopReason": "toolUse",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "tool_execution_start",
+     "event": {
+      "type": "tool_execution_start",
+      "toolCallId": "call-1",
+      "toolName": "read",
+      "args": {
+       "path": "a.txt"
+      }
+     }
+    },
+    {
+     "name": "tool_execution_update",
+     "event": {
+      "type": "tool_execution_update",
+      "toolCallId": "call-1",
+      "toolName": "read",
+      "args": {
+       "path": "a.txt"
+      },
+      "partialResult": {
+       "content": [
+        {
+         "type": "text",
+         "text": "partial contents"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "tool_execution_end",
+     "event": {
+      "type": "tool_execution_end",
+      "toolCallId": "call-1",
+      "toolName": "read",
+      "result": {
+       "content": [
+        {
+         "type": "text",
+         "text": "file contents"
+        }
+       ]
+      },
+      "isError": false,
+      "durationMs": 1234
+     }
+    },
+    {
+     "name": "nested call ignored",
+     "event": {
+      "type": "tool_execution_start",
+      "toolCallId": "child",
+      "parentToolCallId": "call-1",
+      "toolName": "read",
+      "args": {
+       "path": "c.txt"
+      }
+     }
+    },
+    {
+     "name": "unknown update ignored",
+     "event": {
+      "type": "tool_execution_update",
+      "toolCallId": "nobody",
+      "toolName": "read",
+      "args": {},
+      "partialResult": {
+       "content": [
+        {
+         "type": "text",
+         "text": "lost"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "fresh call without streaming",
+     "event": {
+      "type": "tool_execution_start",
+      "toolCallId": "call-2",
+      "toolName": "read",
+      "args": {
+       "path": "b.txt"
+      }
+     }
+    },
+    {
+     "name": "fresh call end",
+     "event": {
+      "type": "tool_execution_end",
+      "toolCallId": "call-2",
+      "toolName": "read",
+      "result": {
+       "content": [
+        {
+         "type": "text",
+         "text": "b contents"
+        }
+       ]
+      },
+      "isError": false,
+      "durationMs": 50
+     }
+    }
+   ]
+  },
+  {
+   "name": "aborted run",
+   "steps": [
+    {
+     "name": "message_start",
+     "event": {
+      "type": "message_start",
+      "message": {
+       "role": "assistant",
+       "content": [],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "toolcall_start",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {
+          "path": "a.txt"
+         }
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "toolcall_start",
+       "contentIndex": 0
+      }
+     }
+    },
+    {
+     "name": "message_end aborted",
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {
+          "path": "a.txt"
+         }
+        }
+       ],
+       "stopReason": "aborted",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "agent_end",
+     "event": {
+      "type": "agent_end"
+     }
+    }
+   ]
+  },
+  {
+   "name": "tool run expanded",
+   "steps": [
+    {
+     "name": "message_start",
+     "event": {
+      "type": "message_start",
+      "message": {
+       "role": "assistant",
+       "content": [],
+       "stopReason": "stop",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "toolcall_start",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "calling"
+        },
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {}
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "toolcall_start",
+       "contentIndex": 1
+      }
+     }
+    },
+    {
+     "name": "toolcall_delta",
+     "event": {
+      "type": "message_update",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "calling"
+        },
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {
+          "path": "a.txt"
+         }
+        }
+       ],
+       "stopReason": "stop",
+       "timestamp": 2
+      },
+      "assistantMessageEvent": {
+       "type": "toolcall_delta",
+       "contentIndex": 1,
+       "delta": "{\"path\":\"a.txt\"}"
+      }
+     }
+    },
+    {
+     "name": "message_end tool use",
+     "event": {
+      "type": "message_end",
+      "message": {
+       "role": "assistant",
+       "content": [
+        {
+         "type": "text",
+         "text": "calling"
+        },
+        {
+         "type": "toolCall",
+         "id": "call-1",
+         "name": "read",
+         "arguments": {
+          "path": "a.txt"
+         }
+        }
+       ],
+       "stopReason": "toolUse",
+       "timestamp": 2
+      }
+     }
+    },
+    {
+     "name": "tool_execution_start",
+     "event": {
+      "type": "tool_execution_start",
+      "toolCallId": "call-1",
+      "toolName": "read",
+      "args": {
+       "path": "a.txt"
+      }
+     }
+    },
+    {
+     "name": "tool_execution_update",
+     "event": {
+      "type": "tool_execution_update",
+      "toolCallId": "call-1",
+      "toolName": "read",
+      "args": {
+       "path": "a.txt"
+      },
+      "partialResult": {
+       "content": [
+        {
+         "type": "text",
+         "text": "partial contents"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "tool_execution_end",
+     "event": {
+      "type": "tool_execution_end",
+      "toolCallId": "call-1",
+      "toolName": "read",
+      "result": {
+       "content": [
+        {
+         "type": "text",
+         "text": "file contents"
+        }
+       ]
+      },
+      "isError": false,
+      "durationMs": 1234
+     }
+    },
+    {
+     "name": "nested call ignored",
+     "event": {
+      "type": "tool_execution_start",
+      "toolCallId": "child",
+      "parentToolCallId": "call-1",
+      "toolName": "read",
+      "args": {
+       "path": "c.txt"
+      }
+     }
+    },
+    {
+     "name": "unknown update ignored",
+     "event": {
+      "type": "tool_execution_update",
+      "toolCallId": "nobody",
+      "toolName": "read",
+      "args": {},
+      "partialResult": {
+       "content": [
+        {
+         "type": "text",
+         "text": "lost"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "name": "fresh call without streaming",
+     "event": {
+      "type": "tool_execution_start",
+      "toolCallId": "call-2",
+      "toolName": "read",
+      "args": {
+       "path": "b.txt"
+      }
+     }
+    },
+    {
+     "name": "fresh call end",
+     "event": {
+      "type": "tool_execution_end",
+      "toolCallId": "call-2",
+      "toolName": "read",
+      "result": {
+       "content": [
+        {
+         "type": "text",
+         "text": "b contents"
+        }
+       ]
+      },
+      "isError": false,
+      "durationMs": 50
+     }
+    }
+   ],
+   "expanded": true
+  },
+  {
+   "name": "entries expanded",
+   "steps": [
+    {
+     "name": "custom_message displayed",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom_message",
+       "id": "m1",
+       "parentId": null,
+       "timestamp": "2026-01-01T00:00:00.000Z",
+       "customType": "note",
+       "content": "SHOWN MESSAGE",
+       "display": true
+      }
+     }
+    },
+    {
+     "name": "custom_message hidden",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom_message",
+       "id": "m2",
+       "parentId": "m1",
+       "timestamp": "2026-01-01T00:00:01.000Z",
+       "customType": "note",
+       "content": "HIDDEN MESSAGE",
+       "display": false
+      }
+     }
+    },
+    {
+     "name": "custom registered",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom",
+       "id": "c1",
+       "parentId": "m2",
+       "timestamp": "2026-01-01T00:00:02.000Z",
+       "customType": "note",
+       "data": "ENTRY DATA"
+      }
+     }
+    },
+    {
+     "name": "custom unregistered",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "custom",
+       "id": "c2",
+       "parentId": "c1",
+       "timestamp": "2026-01-01T00:00:03.000Z",
+       "customType": "other",
+       "data": "UNSEEN"
+      }
+     }
+    },
+    {
+     "name": "label",
+     "event": {
+      "type": "entry_appended",
+      "entry": {
+       "type": "label",
+       "id": "l1",
+       "parentId": "c2",
+       "timestamp": "2026-01-01T00:00:04.000Z",
+       "targetId": "m1",
+       "label": "tag"
+      }
+     }
+    }
+   ],
+   "expanded": true
+  }
+ ]
+}

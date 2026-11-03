@@ -240,8 +240,12 @@ type InteractiveMode struct {
 	ownerOverflowActive atomic.Bool
 	// ownerForwarder joins the overflow forwarder alone, so a caller can wait for ownerOverflowActive to clear without waiting on the session's long-lived background tasks.
 	ownerForwarder sync.WaitGroup
-	requestExit    atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime   atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// shutdownRequested records an extension's ctx.shutdown() while a run streams; agent_settled then ends the session (interactive-mode.ts shutdownRequested).
+	shutdownRequested atomic.Bool
+	// entriesRenderedByBoundaryCompaction holds the ids of entries after a boundary compaction that its rebuild of the transcript already drew.
+	entriesRenderedByBoundaryCompaction map[string]struct{}
+	requestExit                         atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime                        atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -404,6 +408,10 @@ type InteractiveMode struct {
 	// Countdown goroutine cancel function for auto-retry.
 	// Called on AutoRetryEndEvent or when a new retry starts.
 	retryCountdownStop func()
+
+	// retryEscapeHandler is set while Escape cancels the automatic-retry delay (interactive-mode.ts retryEscapeHandler): auto_retry_start sets it,
+	// agent_start and auto_retry_end restore the main handler.
+	retryEscapeHandler bool
 
 	// Slash-command registry. Owns 14 builtins + the dynamic
 	// extension-registered set. Constructed in Run().
