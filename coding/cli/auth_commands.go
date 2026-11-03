@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -271,8 +270,8 @@ func resolveLoginProvider(input string, registry **authContributionRegistry) (ai
 	if err != nil {
 		return nil, err
 	}
-	idx, err := strconv.Atoi(strings.TrimSpace(line))
-	if err != nil || idx < 1 || idx > len(targets) {
+	idx, ok := menuChoice(line, len(targets))
+	if !ok {
 		return nil, fmt.Errorf("Invalid selection")
 	}
 	return authProviderFromContribution(targets[idx-1].ID, registry)
@@ -325,8 +324,8 @@ func resolveLogoutProvider(store *ai.AuthStorage, input string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	idx, err := strconv.Atoi(strings.TrimSpace(line))
-	if err != nil || idx < 1 || idx > len(providers) {
+	idx, ok := menuChoice(line, len(providers))
+	if !ok {
 		return "", fmt.Errorf("Invalid selection")
 	}
 	return providers[idx-1], nil
@@ -384,11 +383,11 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 				return "", err
 			}
 			// cli.ts answerPrompt: Number.parseInt(answer, 10) - 1 indexes the options; anything else is "Invalid selection".
-			n := jsnumber.ParseInt(line)
-			if !(n >= 1 && n <= float64(len(prompt.Options))) { // NaN fails both comparisons
+			n, ok := menuChoice(line, len(prompt.Options))
+			if !ok {
 				return "", fmt.Errorf("Invalid selection")
 			}
-			return prompt.Options[int(n)-1].ID, nil
+			return prompt.Options[n-1].ID, nil
 		},
 	}
 	if parityHarnessEnabled() {
@@ -418,6 +417,17 @@ func sortedOAuthProviders() []ai.OAuthProviderInterface {
 		return strings.Compare(a.Name(), b.Name())
 	})
 	return providers
+}
+
+// menuChoice is the 1-based choice a numbered menu answer names, as Pi reads it: Number.parseInt(answer, 10) - 1 indexes the list (cli.ts), so
+// the leading digits after JavaScript whitespace and an optional sign count and whatever follows them is ignored, and an answer outside 1..count
+// (or with no digits) names nothing.
+func menuChoice(answer string, count int) (int, bool) {
+	n := jsnumber.ParseInt(answer)
+	if !(n >= 1 && n <= float64(count)) { // NaN fails both comparisons
+		return 0, false
+	}
+	return int(n), true
 }
 
 func readLine(r io.Reader) (string, error) {

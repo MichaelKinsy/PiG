@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-// The federation token response reads expires_in with Number(data.expires_in) (the Anthropic SDK oidc-federation.ts:125). jsNumberFromJSON must give Number(JSON.parse(text)) for every JSON value, including strings that Number reads as hexadecimal, octal or binary integers and strings Go's ParseFloat reads differently ("inf", "0x1p3", "1_0").
+// The federation token response reads expires_in with Number(data.expires_in) (the Anthropic SDK oidc-federation.ts:125). jsnumber.FromJSON must give Number(JSON.parse(text)) for every JSON value, including strings that Number reads as hexadecimal, octal or binary integers and strings Go's ParseFloat reads differently ("0x1p3", "1_0").
 func TestFederationExpiresInNumberMatchesJS(t *testing.T) {
 	inputs := []string{
 		`3600`, `3600.5`, `1e3`, `-0`, `1e999`, `"3600"`, `" 3600 "`, `"\u00a03600\ufeff"`, `""`, `"   "`,
@@ -21,12 +22,12 @@ func TestFederationExpiresInNumberMatchesJS(t *testing.T) {
 	pioracle.Run(t, `
 emit(input.map((text) => { const n = Number(JSON.parse(text)); return Object.is(n, -0) ? "-0" : String(n); }));`, inputs, &want)
 	for i, text := range inputs {
-		got := jsNumberFromJSON(json.RawMessage(text))
+		got := jsnumber.FromJSON(json.RawMessage(text))
 		if !sameJSNumber(got, want[i]) {
-			t.Errorf("jsNumberFromJSON(%s) = %v, Number(JSON.parse) = %s", text, got, want[i])
+			t.Errorf("jsnumber.FromJSON(%s) = %v, Number(JSON.parse) = %s", text, got, want[i])
 		}
 	}
-	if got := jsNumberFromJSON(nil); !math.IsNaN(got) {
+	if got := jsnumber.FromJSON(nil); !math.IsNaN(got) {
 		t.Errorf("an absent member = %v, want NaN", got)
 	}
 }
