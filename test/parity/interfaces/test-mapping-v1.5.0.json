@@ -8699,17 +8699,16 @@
     },
     {
       "path": "packages/durable/test/harness-view-run.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:13d25836c0121effd24dfb81fcca400bac578335807293203d6a464438d4678f",
       "evidence": [
+        "durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage",
         "durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt",
         "durable/harness/harness_view_run_test.go#TestStreamedPartials",
+        "durable/harness/partial_object_test.go#TestPartialObjectEqualsTheEncodedPartial",
         "durable/harness/streamed_partials_memory_test.go"
       ],
-      "rationale": "12 of 13 upstream cases are ported and listed in evidence; the first case also asserts Run.First is set (harness-view-run.test.ts:111). The watcher-memory case is measured on Go's heap in streamed_partials_memory_test.go. The case 'commits a growing text and tool call at a cost that follows the new text' (:547) is not closed: Pi asserts large.commits > 5 * small.commits and a raw bytes-per-commit ratio < 2; Go measured 185 commits / 168760528 bytes for 40 KB and 551 commits / 3351220456 bytes for 400 KB (3.0x the commits, 6.7x the bytes per commit), because each commit marshals and re-decodes the whole in-flight message (checkDecodes decodes the touched top-level part, here the message), so the cost per commit grows with the text. TestStreamedPartialsCommitAtACostThatFollowsTheNewText keeps a looser bound (not Pi's) and is not counted as a port; it is listed in missingCases.",
-      "missingCases": [
-        "streamed partials › commits a growing text and tool call at a cost that follows the new text, not the string lengths"
-      ]
+      "rationale": "All 13 upstream cases are ported (the first also asserts Run.First is set, harness-view-run.test.ts:111). The two V8 heap measurements are measured on Go's heap in streamed_partials_memory_test.go (bytes allocated, runtime.MemStats.TotalAlloc, for GCProfiler; the heap in use after a collection for getHeapStatistics). The cost case (:547) has Pi's bounds: large.commits > 5 * small.commits (:576) and a bytes-per-commit ratio < 2 (:578). A commit of the in-flight partial costs the new text: the partial is built without encoding its text, thinking and tracked arguments (partial_changes.go BindPartial), and the commit's decode check (checkDecodes) decodes only the touched content blocks and members of the message and nothing for an append to a text, thinking or argument string (checkpoint_decode.go checkAssistantOps; differential and mutation-checked in checkpoint_decode_differential_test.go). Measured in tern-ci:v7 with BenchmarkStreamedPartials: 40 KB 186 commits and 16.8 MB (90 KB per commit), 400 KB 1733 commits and 170.9 MB (99 KB per commit): 9.3x the commits and 1.09x the bytes per commit; before, 2.7x the commits and 6.7x the bytes per commit (80.4 MB over 94.8 commits, 1428 MB over 252.8)."
     },
     {
       "path": "packages/durable/test/harness-view.test.ts",
