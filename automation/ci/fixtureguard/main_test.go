@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // blob builds deterministic base64 text of exactly n characters without a committed payload.
@@ -454,9 +456,7 @@ func TestTermsFileSymlinkAndBOM(t *testing.T) {
 	root := gitRepo(t, map[string]string{"docs/a.md": "has Zorblax-Internal inside\n"})
 	real := filepath.Join(root, "docs", "a.md")
 	link := filepath.Join(t.TempDir(), "terms-link.txt")
-	if err := os.Symlink(real, link); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
+	testenv.Symlink(t, real, link)
 	var out, errOut bytes.Buffer
 	if code := run(root, link, &out, &errOut); code != 2 || !strings.Contains(errOut.String(), "outside the repository") {
 		t.Fatalf("a symlink into the repository must be rejected: exit %d, %q", code, errOut.String())
