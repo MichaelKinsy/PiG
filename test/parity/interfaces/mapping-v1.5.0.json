@@ -224768,8 +224768,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
-        "test:durable/core/driver/docs_core_test.go#TestCoreAnUncertainStorageFailurePoisonsTheSession",
-        "test:durable/core/driver/watch_test.go#TestObserveCommitsDeliversPublicationsInOrder"
+        "test:durable/core/driver/commits_queue_test.go#TestObserveCommitsDetachInsideAdvanceDropsTheQueuedPublications",
+        "test:durable/core/driver/docs_core_test.go#TestCoreAnUncertainStorageFailurePoisonsTheSession"
       ]
     },
     {
@@ -226752,7 +226752,8 @@
         "call:durable/harness/transcript.go#ConversationTranscript.Newest"
       ],
       "evidence": [
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript"
+        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptIsSafeForConcurrentUse"
       ]
     },
     {
@@ -228241,9 +228242,9 @@
         "call:durable/harness/transcript.go#NewConversationTranscript"
       ],
       "evidence": [
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptIsSafeForConcurrentUse",
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptSharedLoadFailureReachesEveryWaiter",
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptWaitersGiveUpIndependentlyOfTheSharedLoad"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -228264,9 +228265,9 @@
         "call:durable/harness/transcript.go#NewConversationTranscript"
       ],
       "evidence": [
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscript",
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
-        "test:durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptIsSafeForConcurrentUse",
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptSharedLoadFailureReachesEveryWaiter",
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptWaitersGiveUpIndependentlyOfTheSharedLoad"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232575,7 +232576,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232596,7 +232598,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232617,7 +232620,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232638,7 +232642,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232659,7 +232664,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232680,7 +232686,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232701,7 +232708,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/observe_doc_typed_test.go#TestObserveDocDecodesTheTokensTypeAndKeepsCommitOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233325,7 +233333,7 @@
       "id": "pkg:durable/.#SetTimer",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:26947572d21e5403e55ddf4eddbd067ea6033db04ca829b26a7fc823725e65f1",
-      "rationale": "Derived by the interface gap detector: SetTimer is Go durable/types.go#SetTimer (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SetTimer is Go durable/types.go#SetTimer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#SetTimer"
       ],
@@ -233338,14 +233346,15 @@
         "call:durable/session/session.go#CreateSession"
       ],
       "evidence": [
-        "reach:durable/session/session.go#CreateSession"
+        "test:durable/timers_host_settimer_test.go#TestHostTimersHandTheHostSetTimerItsCallbackDelayAndKind",
+        "test:durable/timers_host_settimer_test.go#TestHostTimersWithoutAHostSetTimerArmNativeTimersForBothKinds"
       ]
     },
     {
       "id": "pkg:durable/.#SetTimer::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8026e9bc156c6690daa080d2e640ccd7da60fa98cb6d8cb4f8407341eafff987",
-      "rationale": "Derived by the interface gap detector: SetTimer::call:0 is Go durable/types.go#SetTimer (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: SetTimer::call:0 is Go durable/types.go#SetTimer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/types.go#SetTimer"
       ],
@@ -233358,7 +233367,8 @@
         "call:durable/session/session.go#CreateSession"
       ],
       "evidence": [
-        "reach:durable/session/session.go#CreateSession"
+        "test:durable/timers_host_settimer_test.go#TestHostTimersHandTheHostSetTimerItsCallbackDelayAndKind",
+        "test:durable/timers_host_settimer_test.go#TestHostTimersWithoutAHostSetTimerArmNativeTimersForBothKinds"
       ]
     },
     {
@@ -237099,7 +237109,7 @@
       "id": "pkg:durable/.#ToolExecutionApi::property:now",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cc7604879da6b051ce791a4901955f5acc73da975f330915257196c07d333e98",
-      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness_types.go#ToolExecutionApi.Now"
       ],
@@ -237112,14 +237122,14 @@
         "call:durable/codemode/call.go#call.complete"
       ],
       "evidence": [
-        "reach:durable/codemode/call.go#call.complete"
+        "test:durable/tool_execution_api_now_test.go#TestToolExecutionApiNowReadsTheHarnessClockAndThrowsAfterTheCallSettled"
       ]
     },
     {
       "id": "pkg:durable/.#ToolExecutionApi::property:now::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3e0b081ebbd71e514bd05601ea038c0c56bc24b739bed58495893591b5062cba",
-      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now::call:0 is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ToolExecutionApi::property:now::call:0 is Go durable/harness_types.go#ToolExecutionApi.Now (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/harness_types.go#ToolExecutionApi.Now"
       ],
@@ -237132,7 +237142,7 @@
         "call:durable/codemode/call.go#call.complete"
       ],
       "evidence": [
-        "reach:durable/codemode/call.go#call.complete"
+        "test:durable/tool_execution_api_now_test.go#TestToolExecutionApiNowReadsTheHarnessClockAndThrowsAfterTheCallSettled"
       ]
     },
     {
@@ -238067,7 +238077,8 @@
         "call:durable/harness/transcript.go#ConversationTranscript.build"
       ],
       "evidence": [
-        "test:durable/harness/conversation_transcript_test.go#TestTranscriptItemsAreWrittenWithPisKind"
+        "test:durable/harness/conversation_transcript_test.go#TestTranscriptItemsAreWrittenWithPisKind",
+        "test:durable/harness/transcript_loader_contract_test.go#TestConversationTranscriptIsSafeForConcurrentUse"
       ]
     },
     {
