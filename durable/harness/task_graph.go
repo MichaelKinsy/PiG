@@ -143,7 +143,7 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, blocking TaskGraphBlocki
 	})
 	blocking.SubscribeBlocked(view.refreshBlocked)
 	sessionImpl.SubscribeClose(func() {
-		end := sessionEnd(view.session.Failure())
+		watchEnd, observerEnd := session.CloseEnds(view.session.Failure())
 		view.mu.Lock()
 		view.closed = true
 		var observers []taskGraphObserver
@@ -153,6 +153,10 @@ func NewTaskGraphView(sessionImpl *session.SessionImpl, blocking TaskGraphBlocki
 		view.mount = nil
 		view.mu.Unlock()
 		for _, observer := range observers {
+			end := observerEnd
+			if _, follows := observer.(graphWatch); follows {
+				end = watchEnd
+			}
 			session.Contained(func() { observer.End(end) }, view.session.Report)
 		}
 	})

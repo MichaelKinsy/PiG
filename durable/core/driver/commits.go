@@ -296,13 +296,10 @@ func (s *coreSession) advanceCommits(sub *commitSub, ctx context.Context, p dura
 	}
 }
 
-// endAllCommits ends every open observer with the Session's close: ended, or failed with the failure that failed it. The
-// delivery goroutine has returned, so each saw its last publication.
+// endAllCommits ends every open observer with the Session's close: failed with session.ClosedSession, or with the failure that
+// failed the Session (session.CloseEnds). The delivery goroutine has returned, so each saw its last publication.
 func (s *coreSession) endAllCommits() {
-	end := durable.WatchEnd{Kind: durable.WatchEnded}
-	if fatal := s.client.poisoned.Load(); fatal != nil {
-		end = durable.WatchEnd{Kind: durable.WatchFailed, Error: fatal}
-	}
+	_, end := session.CloseEnds(s.failure())
 	s.mu.Lock()
 	subs := make([]*commitSub, 0, len(s.commits.ids))
 	for _, id := range s.commits.ids {
