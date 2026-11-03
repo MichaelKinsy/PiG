@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack. <!-- fix: 0e410cdcdf365e9957e6862a154a69bf0c0db7f0 -->
+- `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack. <!-- fix: ada701819cf5aa940ce24da7b6d759ce6af52520 -->
