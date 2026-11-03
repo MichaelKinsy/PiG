@@ -272,6 +272,34 @@ func TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingW
 
 // Own test, mirrors follow.test.ts › types › infers the value type from the attachment, without a type argument: a
 // runtime's own observe is typed by its value, and FollowAttach carries only that type.
+// The calls of a runtime on a goroutine of its own (a Durable Harness closing) enter a section of the host's loop themselves:
+// the owner is told of the end inside one, as it is when the call comes from a section.
+func TestFollowObserverCallsFromAnotherGoroutineEnterASectionOfTheLoop(t *testing.T) {
+	h := newMemberHarness(t)
+	runtime := newFollowRuntime(h.loop)
+	var inSection atomic.Bool
+	var told atomic.Int32
+	owner := followOwner{label: "app.follow", ctx: memberBackground, ended: func(chord.WatchEnd) {
+		inSection.Store(h.loop.onLoop())
+		told.Add(1)
+	}}
+	source := newFollowSource(runtime.attach, owner, h.batch, h.loop)
+	h.loop.Run(func() {
+		if err := source.attach(memberBackground); err != nil {
+			t.Fatal(err)
+		}
+	})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		followObserverOf{source: source}.End(chord.WatchEnd{Kind: chord.WatchFailed, Error: errors.New("session closed")})
+	}()
+	<-done
+	if told.Load() != 1 || !inSection.Load() {
+		t.Fatalf("the owner was told %d times, inside a section: %v; want once, inside one", told.Load(), inSection.Load())
+	}
+}
+
 func TestFollowAttachIsTypedByItsAttachment(t *testing.T) {
 	var attach FollowAttach[*delta.JsonObject] = func(FollowObserver[any], context.Context) (*FollowAttachment[*delta.JsonObject], error) {
 		return &FollowAttachment[*delta.JsonObject]{Value: memberCount(1), Detach: func() {}}, nil

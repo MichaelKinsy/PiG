@@ -402,6 +402,28 @@ func TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFi
 	}
 }
 
+// A call that reads the abort right after it ran (an in-flight call whose attempt was sealed meanwhile) sees it at once: Pi's
+// `AbortSignal.any` aborts its result in the step that aborts the input, where the child's Done follows on another goroutine.
+func TestLinkedAbortSignalsReportAnAbortOfASourceAtOnce(t *testing.T) {
+	for _, first := range []string{"caller", "call"} {
+		callerCtx, abortCaller := chordctx.WithCancel(chordctx.Background())
+		callCtx, abortCall := chordctx.WithCancel(chordctx.Background())
+		linked := withLinkedAbortSignal(callCtx, callerCtx)
+		if got := linked.aborted(); got != nil {
+			t.Fatalf("aborted before any abort = %v", got)
+		}
+		if first == "caller" {
+			abortCaller(scopeReason(first))
+		} else {
+			abortCall(scopeReason(first))
+		}
+		if got := linked.aborted(); got == nil || got.Error() != first {
+			t.Fatalf("aborted right after %s aborted = %v, want %q", first, got, first)
+		}
+		linked.release()
+	}
+}
+
 func TestLinkedAbortSignalsDetachFromBothSourcesOnReleaseALaterAbortReachesNothing(t *testing.T) {
 	callerCtx, abortCaller := newScopeCounting()
 	callCtx, abortCall := newScopeCounting()
