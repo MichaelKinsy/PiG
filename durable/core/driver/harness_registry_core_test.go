@@ -127,7 +127,7 @@ func promptText(text string) func(context.Context, durable.PromptInput) (*string
 	return func(context.Context, durable.PromptInput) (*string, error) { return &text, nil }
 }
 
-// harness-registry.test.ts:250 "orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped",
+// harness-registry.test.ts:251 "orders sections by extension, replaces same keys in place, and renders instructions last and unwrapped",
 // through the system entry a real turn records (prompt.ts :45 wraps every section except tag:false as <key>...</key>): the driver resolves sections for the generation request (Session.agent).
 func TestCoreRegistryOrdersAndWrapsPromptSectionsInTheRecordedSystemEntry(t *testing.T) {
 	setup := chatSetup()
@@ -185,7 +185,7 @@ func TestCoreRegistryOrdersAndWrapsPromptSectionsInTheRecordedSystemEntry(t *tes
 	}
 }
 
-// harness-registry.test.ts:279 "collects hooks of the selected extensions in extension order": the hooks a real run executes are those of the
+// harness-registry.test.ts:280 "collects hooks of the selected extensions in extension order": the hooks a real run executes are those of the
 // conversation's selected extensions, in the selection's order (agent.ts agentHooks), and an extension left out contributes none.
 func TestCoreRegistryRunsTheHooksOfTheSelectedExtensionsInSelectionOrder(t *testing.T) {
 	log := &toolLog{}
