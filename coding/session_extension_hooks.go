@@ -341,12 +341,14 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	replaceMessageInPlace(end.Message, normalizeReplacementContent(*replacement))
 }
 
-// normalizeReplacementContent gives a replacement with missing content an
-// empty content list, as upstream normalizes untyped handler results before
-// they enter agent state or session history.
+// normalizeReplacementContent gives a user, assistant, toolResult or custom
+// replacement with missing content an empty content list, as upstream
+// normalizes untyped handler results before they enter agent state or session
+// history. A system replacement keeps the content it has, as upstream's role
+// check leaves it.
 func normalizeReplacementContent(message agent.AgentMessage) agent.AgentMessage {
 	switch {
-	case message.NullContent(),
+	case message.System == nil && message.NullContent(),
 		message.Custom != nil && message.Custom["role"] == agent.RoleCustom && message.Custom["content"] == nil:
 		return message.WithEmptyContent()
 	}
