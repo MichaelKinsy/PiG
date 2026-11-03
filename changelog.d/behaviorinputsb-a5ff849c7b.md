@@ -1,0 +1,3 @@
+### Fixed
+
+- Markdown rendering matches Pi for five more shapes of text. A paragraph whose last line is only spaces no longer gets an extra blank row under a default text color. An ordered list item with nothing after its delimiter (`2)`) renders as `2.` when list markers are preserved. In a quote narrower than three columns, lazy list lines followed by one blank line no longer add a blank row. A bare `-` under a list item's text is a setext underline (a heading) instead of a nested empty item, also while the text streams. A list item that starts with an empty line and is followed by a blank line ends there, and a bullet up to three spaces in after it is the next item. <!-- fix: a5ff849c7b, 5a998f3f4e -->
