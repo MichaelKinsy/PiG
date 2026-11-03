@@ -529,14 +529,24 @@ func (t *ProcessTerminal) disableModifyOtherKeys() {
 //
 // Each protocol has its own write. The output lock keeps teardown writes adjacent to other control writes on this terminal.
 func (t *ProcessTerminal) disableKeyboardProtocol() {
+	t.disableKeyboardProtocolLocked(true)
+}
+
+// disableKeyboardProtocolLocked is disableKeyboardProtocol. With wait false it writes without the output lock when another goroutine holds it, as
+// RestoreOnExit does: the goroutine that holds it may be the one calling this, from a write-error handler that runs inside its own failed write.
+func (t *ProcessTerminal) disableKeyboardProtocolLocked(wait bool) {
 	popKitty := keyboardProtocolPushed.Swap(false)
 	disableModify := modifyOtherKeysActive.Swap(false)
 	if !popKitty && !disableModify {
 		return
 	}
 	kittyProtocolActive.Store(false)
-	t.outMu.Lock()
-	defer t.outMu.Unlock()
+	if wait {
+		t.outMu.Lock()
+		defer t.outMu.Unlock()
+	} else if t.outMu.TryLock() {
+		defer t.outMu.Unlock()
+	}
 	if popKitty {
 		t.write(keyboardProtocolPop)
 	}

@@ -27,7 +27,12 @@ func TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock(t *testi
 	remove := OnTerminalWriteError(func(error) { restored <- RestoreTerminalFromSignal() })
 	t.Cleanup(remove)
 
-	go processTerminal.writeUnlogged("\x1b[>7u\x1b[?u")
+	written := make(chan struct{})
+	go func() {
+		defer close(written)
+		processTerminal.writeUnlogged("\x1b[>7u\x1b[?u")
+	}()
+	t.Cleanup(func() { <-written })
 	select {
 	case ok := <-restored:
 		if !ok {

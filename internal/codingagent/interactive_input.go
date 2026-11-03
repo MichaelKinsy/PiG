@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -94,7 +95,11 @@ func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 // a terminal.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (isDeadTerminalError).
 func isDeadTerminalError(err error) bool {
-	return errors.Is(err, syscall.EIO) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) || errors.Is(err, syscall.ENOTTY)
+	switch nodeerrno.ErrorCode(err) {
+	case "EIO", "EPIPE", "ENOTCONN", "ENOTTY":
+		return true
+	}
+	return false
 }
 
 // inputLoop reads terminal input from source and dispatches to the editor or
