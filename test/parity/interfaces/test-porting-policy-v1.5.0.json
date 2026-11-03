@@ -7362,7 +7362,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the designed-out case tests a JS promise returned by an observer's call; a Go observer's Advance returns no value, so a failing observer is a panic that the Session reports once, detaches and ends listener_error, asserted by session TestObserveDoc (reports a throwing observer, detaches it and ends it with the error). [observeDoc throwing asynchronously \u203a reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`] The call returns a Promise upstream and Go has none, so the rejection has no counterpart.",
+      "designedOutCases": [
+        "observeDoc throwing asynchronously \u203a reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`"
+      ]
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",

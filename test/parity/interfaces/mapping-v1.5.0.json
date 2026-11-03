@@ -118080,7 +118080,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
-        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch"
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118102,7 +118103,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
-        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch"
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118125,7 +118127,8 @@
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
       ]
     },
     {

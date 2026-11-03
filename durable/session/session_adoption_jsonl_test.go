@@ -56,9 +56,6 @@ func TestPublishesAJsonlCommitOnceTheStorageReclaimedItsSidecarAndResolved(t *te
 	defer func() { must(t, kernel.Close(ctx)) }()
 	count()
 	sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { files.record("host") })
-	files.mu.Lock()
-	files.order = nil
-	files.mu.Unlock()
 	count()
 	files.record("resolved")
 	files.mu.Lock()

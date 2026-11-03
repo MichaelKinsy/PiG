@@ -12,9 +12,8 @@ package store
 // is its own: claims and close, owners sharing a store, the store's semantics for a refused commit, the allocator,
 // archives, head markers, reads, commits.
 //
-// Not ported here (rows: pending): "publishes each commit of a Session inside the attached host's batch" (a
-// SessionImpl), "a derive over the conversation view and the task graph ..." and "a deferred Durable commit, then an
-// immediate one ..." (Harness over a host); designed out: the two GC tests (WeakRef/gc has no Go counterpart).
+// The cases that need a Chord host or a Harness (commits inside the host's batch, Durable's views as Chord sources,
+// the collected closed StoreStorage) are in store_storage_host_test.go.
 
 import (
 	"context"
@@ -195,6 +194,9 @@ func TestStoreStorageClaimsAndClose(t *testing.T) {
 	})
 
 	t.Run("waits at close for its calls underway, then releases its claims", func(t *testing.T) {
+		// Pi commits the root conversation on a fresh store here; Go holds an entry commit at its first statement instead, so
+		// the call is underway at a known point and the test is deterministic. The expectations are Pi's: Close waits for the
+		// call, then the owner is free to claim again.
 		made := counted(t, ":memory:")
 		entered, release := make(chan struct{}), make(chan struct{})
 		made.db.setFaults(faults{hold: func(_ string, index int) {
@@ -336,12 +338,8 @@ func TestStoreStorageArchives(t *testing.T) {
 	t.Run("export and import keep rewindable history, retired records and Chord's own data: reads at a point agree", func(t *testing.T) {
 		store, storage := recorded(t)
 		rewindable, seqs := history(t, storage)
-		// Chord's own data in the same store: a document of another owner (Pi creates one through a host's object).
-		address := chordstore.DocumentAddress{Owner: "app.memo", Namespace: "chord", Kind: "memo", Key: new("")}
-		text := `{"m":1}`
-		fence := chordstore.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
-		_, err := store.Commit([]chordstore.StagedWrite{chordstore.CreateDocument(address, chordstore.DocumentBase{Version: 1, Value: delta.JsonObjectOf("m", float64(1))}, text, nil)}, fence, background)
-		must(t, err)
+		// Chord's own data in the same store: an object's persisted document.
+		persistMemo(t, store)
 		parts := exportedParts(t, store)
 		chordOwned := false
 		for _, part := range parts {
@@ -486,25 +484,6 @@ func TestStoreStorageReads(t *testing.T) {
 }
 
 func TestStoreStorageCommits(t *testing.T) {
-	t.Run("publishes inside the attached host's batch, and plainly without a host", func(t *testing.T) {
-		store := memoryStore(t).(*chordstore.ChordStore)
-		storage := value(Open(background, store, "harness"))
-		var plain []bool
-		storage.Publishing(background, func() { plain = append(plain, store.Batch() == nil) })
-		if !reflect.DeepEqual(plain, []bool{true}) {
-			t.Fatalf("plain publication = %v, want [true]", plain)
-		}
-		must(t, store.Attach(chordstore.Attachment{Failed: func(error) {}, Batch: state.NewBatch(func(state.BatchError) {}, nil)}))
-		var running []bool
-		for range 2 {
-			storage.Publishing(background, func() { running = append(running, store.Batch().Running()) })
-		}
-		if !reflect.DeepEqual(running, []bool{true, true}) {
-			t.Fatalf("publication in the batch = %v, want [true true]", running)
-		}
-		must(t, store.Close(background))
-	})
-
 	t.Run("counts four statements for an entry append and for a delta, with a host attached", func(t *testing.T) {
 		meter := newMeter(t)
 		store := memoryStore(t).(*chordstore.ChordStore)
