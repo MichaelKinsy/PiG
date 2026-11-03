@@ -118,9 +118,7 @@ func readWriteCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	for _, path := range compactPaths {
 		for _, rng := range []map[string]any{{}, {"offset": 3, "limit": 4}, {"offset": "9"}} {
 			args := map[string]any{"path": path}
-			for k, v := range rng {
-				args[k] = v
-			}
+			maps.Copy(args, rng)
 			add(fmt.Sprintf("read compact %q %v", path, rng), "read", args, nil, both, bothWidths, bothStates, nil)
 		}
 	}
@@ -141,9 +139,7 @@ func readWriteCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 		}
 		for _, rng := range []map[string]any{{}, {"offset": 3, "limit": 4}} {
 			args := map[string]any{"path": pigPath}
-			for k, v := range rng {
-				args[k] = v
-			}
+			maps.Copy(args, rng)
 			add(fmt.Sprintf("read docs %s %v", page, rng), "read", args, nil, both, bothWidths, []bool{false}, func(p *toolCardProbe) { p.DocsPage = page })
 		}
 	}
