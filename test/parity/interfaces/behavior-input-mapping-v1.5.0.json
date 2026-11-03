@@ -2418,11 +2418,21 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/config_selector.go#Render"
+      ],
+      "evidence": [
+        "coding/cli/config_selector_command_test.go#TestConfigSelectorDisablesEnabledMissingPackageMember",
+        "docs/parity/DIVERGENCES.md#D230 `pig config` lists declared Package members that are missing from disk, marked `missing`",
+        "test/parity/scenarios/selectors/02-config-resources-list.toml",
+        "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+        "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/config-selector/resource-list-render"
+      ],
+      "divergence": "D230",
       "rationale": ""
     },
     {
