@@ -7,8 +7,6 @@ package widthx
 import (
 	"strings"
 	"unicode/utf8"
-
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring"
 )
 
 // ExtractAnsi returns the byte length of the ANSI escape starting at byte
@@ -119,15 +117,14 @@ func boxDrawingAt(s string, i int) bool {
 	return i+2 < len(s) && s[i] == 0xE2 && (s[i+1] == 0x94 || s[i+1] == 0x95) && s[i+2]&0xC0 == 0x80
 }
 
-// NormalizeTerminalOutput encodes unpaired UTF-16 units like Node's UTF-8 terminal writes, then rewrites Thai/Lao AM vowels to compatibility
+// NormalizeTerminalOutput rewrites Thai/Lao AM vowels to compatibility
 // decompositions that preserve logical content while avoiding stale-cell
-// artifacts in some terminal differential repaints. Visible tabs are expanded
+// artifacts in some terminal differential repaints. An unpaired UTF-16 unit
+// stays in the string, as in upstream, where VisibleWidth measures it as zero
+// cells; Terminal.Write encodes it when the frame is written. Visible tabs are expanded
 // to the fixed layout width (3 spaces, matching VisibleWidth) so terminal tab
 // stops cannot wrap a logical line; tabs inside ANSI sequences stay untouched.
 func NormalizeTerminalOutput(s string) string {
-	if !utf8.ValidString(s) {
-		s = string(jsstring.ToUTF8(s))
-	}
 	if containsThaiLaoAM(s) {
 		s = strings.ReplaceAll(s, "\u0e33", "\u0e4d\u0e32")
 		s = strings.ReplaceAll(s, "\u0eb3", "\u0ecd\u0eb2")
