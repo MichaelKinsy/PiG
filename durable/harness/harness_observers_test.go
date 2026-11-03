@@ -181,9 +181,15 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 			t.Fatalf("view calls after detach %d", len(got))
 		}
 		must(watch.Stop())
+		graphWatch := must(harness.WatchTaskGraph(testContext))
 		mustClose(t, harness)
-		if got := graph.all(); len(got) != 1 || !got[0].end || got[0].endWith != (durable.WatchEnd{Kind: durable.WatchEnded}) {
+		// S1: a Session close fails an observer (it may follow the next Session); a watch ends ended.
+		if got := graph.all(); len(got) != 1 || !got[0].end || got[0].endWith.Kind != durable.WatchFailed || got[0].endWith.Error == nil || got[0].endWith.Error.Error() != "session closed" {
 			t.Fatalf("graph calls %+v", got)
+		}
+		<-graphWatch.Closed()
+		if end := graphWatch.End(); end != (durable.WatchEnd{Kind: durable.WatchEnded}) {
+			t.Fatalf("graph watch end %+v", end)
 		}
 	})
 
