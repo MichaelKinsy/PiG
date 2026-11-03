@@ -10,7 +10,11 @@
       "path": "packages/agent/test/agent-tool-typebox.test.ts",
       "disposition": "designed-out",
       "upstreamTestHash": "sha256:ae0464bc26bb9dcc135741eed18444a6cb9c65f85dab119d5b357bbab598528a",
-      "rationale": "Owner class approval of 2026-10-29 (TypeScript type-level checks, verified for this row): the only case asserts with expectTypeOf that AgentTool params, execute() and prepareArguments() are typed by a TypeBox-shaped schema; it has no runtime behaviour. Go's agent.AgentTool is an interface over JSON arguments with no generic parameter type, so no Go compile-time equivalent exists to port."
+      "evidence": [
+        "agent/prepare_arguments_test.go#TestAgentToolArgumentsOfASchemaReachExecuteAsTheSchemaShape",
+        "agent/prepare_arguments_test.go#TestPrepareArguments_PreparedArgumentsAreStillValidated"
+      ],
+      "rationale": "Owner class approval of 2026-10-29 (TypeScript type-level checks, verified for this row): the only case asserts with expectTypeOf that AgentTool params, execute() and prepareArguments() are typed by a TypeBox-shaped schema. Go mechanism: agent.AgentTool takes JSON arguments (json.RawMessage) that RunToolCall validates against the tool's schema (ai.ValidateToolArguments) after PrepareArguments, so Execute only runs with arguments of the schema's shape; there is no generic parameter type to assert. Go test: TestAgentToolArgumentsOfASchemaReachExecuteAsTheSchemaShape uses the upstream schema (required string command, optional \"fast\" | \"deep\" mode), decodes what Execute receives into that shape for a full call, an optional-less call, and refuses a bad mode, a missing command and a non-string command without executing; TestPrepareArguments_PreparedArgumentsAreStillValidated covers the prepared arguments."
     },
     {
       "path": "packages/agent/test/agent.test.ts",
@@ -4458,7 +4462,7 @@
         "internal/codingagent/code_highlighter_rows_test.go#TestWriteRowStreamingHighlightsOnlyTheChangedLastLine",
         "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"
       ],
-      "rationale": "All 3 upstream cases run. The CodeHighlighter case checks returned-lines identity and a grammar generation bump. The codemode and write cases are Go-form (no highlight.js call counter; the process memo answers repeats): the rows' own CodeHighlighter must hold the same lines across redraws. The write case's streaming half (unchanged first lines not highlighted again, only the changed last line) is TestWriteRowStreamingHighlightsOnlyTheChangedLastLine, which drives writeRenderCall through the card state with the same 60-line inputs."
+      "rationale": "All 3 upstream cases run. The CodeHighlighter case checks returned-lines identity and a grammar generation bump. The codemode and write cases are Go-form (no highlight.js call counter; the process memo answers repeats): the rows' own CodeHighlighter must hold the same lines across redraws. The write case's streaming half (unchanged first lines not highlighted again, only the changed last line) is TestWriteRowStreamingHighlightsOnlyTheChangedLastLine, which drives writeRenderCall through the card state with the same 60-line inputs and, as Pi spies on its highlight function, records what the write cache highlights through the writeHighlightCode hook (write_highlight_cache.go): after the update exactly the changed last line is highlighted. Mutation-checked: re-highlighting the leading 50 lines on every update, and rebuilding the whole cache on every update, both fail it."
     },
     {
       "path": "packages/coding-agent/test/codemode-renderer.test.ts",
@@ -8713,7 +8717,7 @@
         "durable/session/cached_storage_test.go#TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait",
         "durable/session/cached_storage_test.go#TestCachedStorageKeepsWrittenRecordItselfShared"
       ],
-      "rationale": "All 7 upstream cases run with the same records, sizes (598 live tasks, 256 ended, awaited 2 and waits 1) and read counts. In the last case the identity assertions (toBe on the task and the conversation) are pointer and shared-referent identity in Go (a write carries the record by value); the Object.isFrozen assertion on record.state has no Go counterpart (JavaScript object freezing) and is not ported."
+      "rationale": "All 7 upstream cases run with the same records, sizes (598 live tasks, 256 ended, awaited 2 and waits 1) and read counts. In the last case the identity assertions (toBe on the task and the conversation) are pointer and shared-referent identity in Go (a write carries the record by value); the Object.isFrozen assertion on record.state has no Go counterpart (JavaScript object freezing) and is not ported: that fragment of the last case is dropped, not run (the case's other assertions run). Owner decision pending on a JS-mechanics category (Object.freeze / a rejection value that is present but undefined or null)."
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
@@ -8730,7 +8734,7 @@
     },
     {
       "path": "packages/durable/test/session-conversation-tails.test.ts",
-      "disposition": "ported",
+      "disposition": "partial",
       "upstreamTestHash": "sha256:e7fc989babae389e6f035bda5e415f4984b9835c945ca292de375c84fa27762c",
       "evidence": [
         "durable/session/conversation_tails_test.go",
@@ -8739,7 +8743,10 @@
         "durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt",
         "durable/session/conversation_tails_test.go#TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers"
       ],
-      "rationale": "Four of the five cases run with Pi's inputs and expectations (4096 conversations and 256 markers after 5000 conversations). 'freezes the markers it keeps' asserts only Object.isFrozen on the written record, which Go has no counterpart for (conversation_tails.go records that kept markers are shared and entry records are immutable by convention)."
+      "rationale": "Four of the five cases run with Pi's inputs and expectations (4096 conversations and 256 markers after 5000 conversations). The fifth, 'freezes the markers it keeps', is not ported: it asserts only Object.isFrozen on the written record and Go has no counterpart (conversation_tails.go shares the kept markers and records are immutable by convention; a writer that mutates one after apply is not refused as in Pi's strict-mode ESM). Owner decision pending on a JS-mechanics category (Object.freeze / a rejection value that is present but undefined or null).",
+      "missingCases": [
+        "conversation tails › freezes the markers it keeps"
+      ]
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
@@ -8828,7 +8835,7 @@
     },
     {
       "path": "packages/durable/test/session-group-commit.test.ts",
-      "disposition": "ported",
+      "disposition": "partial",
       "upstreamTestHash": "sha256:945fd772a069dd8af82e232f2fc4c4d808cdd8535ca027ab97d381b22d31ec18",
       "evidence": [
         "durable/session/session_group_commit_test.go",
@@ -8849,7 +8856,11 @@
         "durable/session/session_group_commit_internal_test.go#TestGroupCommitSettlesADeferredCommitWhoseAdoptionFailsAlone",
         "durable/session/session_group_commit_internal_test.go#TestWriterFailsTheSessionForAThrowInTheReadCachesWriteThrough"
       ],
-      "rationale": "All 34 case ids run (audited against Pi 1.5.0 at session-group-commit.test.ts:170-959). The three publication-throws cases and the adoption case that Pi runs by patching Transaction.prototype.adopt/adoptHeld run in session_group_commit_internal_test.go with the adoption aborted by the storage's publication scope; the CachedStorage.published throw case runs at the Writer with its own host (Go cannot patch a method). The two ${value} cases (rejection or refusal value undefined and null) run with a non-nil error value: Go's Commit returns an error that is never nil on failure, so a rejection of no value has no Go form. The randomized case uses Pi's generator bit for bit (TestRandomIsPisGenerator) with seeds 1, 7, 42, 1234 and 99991."
+      "rationale": "32 of the 34 case ids run (audited against Pi 1.5.0 at session-group-commit.test.ts:170-959). The three publication-throws cases and the adoption case that Pi runs by patching Transaction.prototype.adopt/adoptHeld run in session_group_commit_internal_test.go with the adoption aborted by the storage's publication scope; the CachedStorage.published throw case runs at the Writer with its own host (Go cannot patch a method). The randomized case uses Pi's generator bit for bit (TestRandomIsPisGenerator) with seeds 1, 7, 42, 1234 and 99991. Not ported: the two ${value} cases (rejection or refusal value undefined and null). Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"); a Go error cannot be present but nil, so the Go subtests use a non-nil error value, which repeats the non-falsy case Pi already has and is not the upstream input. Owner decision pending on a JS-mechanics category (Object.freeze / a rejection value that is present but undefined or null).",
+      "missingCases": [
+        "group commit: failures per part › rejects every part of a call with its rejection value, ${value} included",
+        "group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed"
+      ]
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
@@ -8925,7 +8936,7 @@
         "durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC",
         "durable/session/store_storage_publication_test.go#TestStoreStoragePublishesEachCommitOfACallInAHostBatchOfItsOwn"
       ],
-      "rationale": "All 19 case ids run. Added in this audit: 'publishes each commit of a call in a host batch of its own' (a Session over a StoreStorage with a host attached, a held first call, calls [1 3], 2 backend transactions, publish running=true then flush for each of the four seqs; a mutation that publishes outside the batch fails it), 'keeps nothing of a settled call' (a weak.Pointer to the batches in place of the WeakRef; a mutation that retains the batches fails it) and 'refuses a batch whose rows staging cannot encode' (an EntryId is an int64, so Pi's non-integer 1.5 cannot be sent: the first ID beyond the safe integers, 2^53, is refused by the same int column check with column \"id\": 9007199254740992 is not a int value; the batch before it stays stored and receives [0])."
+      "rationale": "All 19 case ids run. Added in this audit: 'publishes each commit of a call in a host batch of its own' (a Session over a StoreStorage with a host attached, a held first call, calls [1 3], 2 backend transactions, publish running=true then flush for each of the four seqs; a mutation that publishes outside the batch fails it), 'keeps nothing of a settled call' (a weak.Pointer to the batches in place of the WeakRef; a mutation that retains the batches fails it) and 'refuses a batch whose rows staging cannot encode' (an EntryId is an int64, so Pi's non-integer 1.5 cannot be sent: the first ID beyond the safe integers, 2^53, is refused by the same int column check with column \"id\": 9007199254740992 is not a int value; the batch before it stays stored and receives [0]). The EntryId 2^53 input in place of Pi's 1.5 is the type-level class (owner 2026-10-29, verified for this row): the Go mechanism is EntryId int64, which cannot hold a non-integer, and the test is the 'refuses a batch whose rows staging cannot encode' subtest of TestStoreStorageRefusals; both checks refuse with the same int-column message."
     },
     {
       "path": "packages/durable/test/store-storage.test.ts",
@@ -8941,7 +8952,10 @@
       "path": "packages/durable/test/tool-args-typebox.test.ts",
       "disposition": "designed-out",
       "upstreamTestHash": "sha256:af661354a4a3f0062027688f75d789cf45e2e747bf17f70aeec8ba53b96fc848",
-      "rationale": "Owner class approval of 2026-10-29 (TypeScript type-level checks, verified for this row): the only case asserts with expectTypeOf that tool arguments in execute() and prepareArguments() are typed by the parameter schema; no runtime behaviour. Go's ToolRegistration.Execute and PrepareArguments take `any` (DefineTool is not generic), so there is no compile-time assertion to port."
+      "evidence": [
+        "durable/harness/harness_tools_test.go#TestToolArgumentsOfASchemaReachExecuteAsTheSchemaShape"
+      ],
+      "rationale": "Owner class approval of 2026-10-29 (TypeScript type-level checks, verified for this row): the only case asserts with expectTypeOf that tool arguments in execute() and prepareArguments() are typed by the parameter schema. Go mechanism: durable.ToolRegistration.Execute and PrepareArguments take `any`, and the harness validates the arguments against the registered schema (ai.ValidateToolArguments, durable/harness/tool.go) after PrepareArguments, so Execute only runs with arguments of the schema's shape. Go test: TestToolArgumentsOfASchemaReachExecuteAsTheSchemaShape uses the upstream schema (required path string, optional integer offset, required string array tags), runs a full call and a call repaired by PrepareArguments, decodes what Execute receives into that shape, and refuses a non-numeric offset and a non-string path without executing."
     },
     {
       "path": "packages/durable/test/tool-search.test.ts",
@@ -9257,7 +9271,7 @@
       "evidence": [
         "schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream"
       ],
-      "rationale": "TestCoerceTypeBoxUpstream runs 186 of the 221 upstream sites from schema/testdata/coerce-typebox.json (regenerated at v1.5.0 with gen-coerce-typebox.mjs against TypeBox 1.3.27: byte-identical, 221 ids and names in file order equal): every Convert expectation by deep equality (+0/-0 and NaN as vitest) and every Check result. 17 are Pi's own it.skip (not run upstream). 18 have no Go form: their schema, input or expectation holds `undefined` (8) or a bigint (10), which no Go JSON value can be; 11 are listed in missingCases; the other 7 (Boolean 17-20 and 23, Number 10-11) share their id with a second upstream case site, so missingCases cannot name them (the checker rejects an ambiguous id). Designing them out needs owner approval.",
+      "rationale": "TestCoerceTypeBoxUpstream runs 186 of the 221 upstream sites from schema/testdata/coerce-typebox.json (regenerated at v1.5.0 with gen-coerce-typebox.mjs against TypeBox 1.3.27: byte-identical, 221 ids and names in file order equal): every Convert expectation by deep equality (+0/-0 and NaN as vitest) and every Check result. 17 are Pi's own it.skip (not run upstream). 18 have no Go form: their schema, input or expectation holds `undefined` (8) or a bigint (10), which no Go JSON value can be (tool arguments reach the coercer only through JSON: ai/validate.go decodes with chordjson into nil, bool, float64, string, []any or *Object); all 18 are listed in missingCases, the 7 whose id two upstream sites share by `id@line`. Designing them out needs owner approval (a class 'JavaScript-only value kinds with no JSON form').",
       "missingCases": [
         "Value.Convert.Any › Should Convert 2",
         "Value.Convert.Array › Should Convert 9",
@@ -9269,7 +9283,14 @@
         "Value.Convert.String › Should Convert 5",
         "Value.Convert.String › Should Convert 8",
         "Value.Convert.String › Should Convert 14",
-        "Value.Convert.Unknown › Should Convert 2"
+        "Value.Convert.Unknown › Should Convert 2",
+        "Value.Convert.Boolean › Should Convert 20@337",
+        "Value.Convert.Boolean › Should Convert 17@390",
+        "Value.Convert.Boolean › Should Convert 18@395",
+        "Value.Convert.Boolean › Should Convert 19@400",
+        "Value.Convert.Boolean › Should Convert 23@420",
+        "Value.Convert.Number › Should Convert 10@940",
+        "Value.Convert.Number › Should Convert 11@945"
       ]
     },
     {
@@ -9310,8 +9331,23 @@
     },
     {
       "path": "packages/schema/test/validator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:08e6622f1f37dbe24f6245bd6d2dac40c154adeb1b49a05b0d7b76ed7eba4456"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:08e6622f1f37dbe24f6245bd6d2dac40c154adeb1b49a05b0d7b76ed7eba4456",
+      "evidence": [
+        "schema/validator_upstream_test.go#TestErrors",
+        "schema/validator_upstream_test.go#TestValues",
+        "schema/validator_upstream_test.go#TestOptions",
+        "schema/validator_upstream_test.go#TestSchemas",
+        "schema/validator_additions_upstream_test.go#TestUnresolvedReferences",
+        "schema/validator_additions_upstream_test.go#TestStringLengths",
+        "schema/validator_additions_upstream_test.go#TestErrorMessages",
+        "schema/validator_additions_upstream_test.go#TestExtraFormats",
+        "schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"
+      ],
+      "rationale": "Per-case audit of all 30 upstream cases: 29 run with the same inputs and expected results (TypeBox Type.Object/Type.Ref cases run on the JSON those builders emit; Uint8Array as []byte; the deep-frozen case runs its no-mutation half, Go has no Object.freeze; 'leave values at their place uncoerced' is TestCoerceUnresolvedReferences). 1 case is not ported: 'values › treats a property set to undefined as absent' (Go has no undefined: a nil value is JSON null, not an absent member). Owner decision pending on a JS-only value category. Go-only extras: Go map key order, Go number kinds, Go map schema, two concurrency cases. The ported tests pass under -race.",
+      "missingCases": [
+        "values › treats a property set to undefined as absent"
+      ]
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",
