@@ -32658,6 +32658,39 @@
       ]
     },
     {
+      "id": "BF-bf89558",
+      "title": "A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`…",
+      "symptom": "It used to report Go's `json: ... unsupported type: func()` or `unsupported value: NaN`.",
+      "rootCause": "Pi's copyJson reports a function as 'Value contains a non-JSON function; expected strict JSON' (packages/chord/src/json.ts:42), the detail of a faulted run's submission and of pi.live.runFailure. The Go session encoded the assembled entry with encoding/json and reported 'json: unsupported type: func()'. The strict encoding moves to durable/internal/strictjson, which maps a function (as it already mapped a non-finite number) to chord's text, and the session's entry copy uses it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`, `Infinity`), now faults with Pi's text, `Value contains a non-JSON function; expected strict JSON` or `Value contains a non-finite number and is not strict JSON`, in the submission's `detail` and in `pi.live.runFailure.detail`. It used to report Go's `json: ... unsupported type: func()` or `unsupported value: NaN`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf89558136",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "de985c5719",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_compaction_test.go::TestCompactionEdgeCases",
+        "durable/harness/harness_context_ranges_test.go::TestTaskContextRanges",
+        "durable/harness/harness_generation_test.go::TestGeneration",
+        "durable/harness/harness_live_deltas_test.go::TestLiveDeltas",
+        "durable/internal/strictjson/strictjson_test.go::TestMarshalLeavesAPlainValueAndOtherFailuresAlone",
+        "durable/internal/strictjson/strictjson_test.go::TestMarshalReportsAFunctionAsChordsNonJSONFunction",
+        "durable/internal/strictjson/strictjson_test.go::TestMarshalReportsANonFiniteNumberAsChordsStrictJSONError",
+        "durable/session/entry_strict_json_test.go::TestAnEntryWhoseMessageIsNotStrictJSONFailsWithChordsText"
+      ]
+    },
+    {
       "id": "BF-bf9911e",
       "title": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a…",
       "symptom": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from.",

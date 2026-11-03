@@ -1,7 +1,6 @@
 package durable
 
 import (
-	stdjson "encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -9,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable/internal/ordered"
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/durable/internal/strictjson"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -23,7 +22,7 @@ func ToJsonValue(value any) (JsonValue, error) {
 	if copyErr == nil {
 		return copied, nil
 	}
-	encoded, err := marshalStrict(value)
+	encoded, err := strictjson.Marshal(value)
 	if err != nil {
 		if errors.Is(err, delta.ErrNotStrictJSON) {
 			return nil, err
@@ -33,19 +32,6 @@ func ToJsonValue(value any) (JsonValue, error) {
 	// Objects decode in encoding order, so a struct's fields keep their declared order.
 	return decodeJsonText(encoded)
 }
-
-func isNonFinite(text string) bool {
-	return text == "NaN" || text == "+Inf" || text == "-Inf"
-}
-
-// nonFiniteError is chord's non-finite strict JSON error for a typed value that JSON encoding rejected.
-type nonFiniteError struct{}
-
-func (nonFiniteError) Error() string {
-	return "Value contains a non-finite number and is not strict JSON"
-}
-
-func (nonFiniteError) Is(target error) bool { return target == delta.ErrNotStrictJSON }
 
 // ToJsonObject returns the JSON object representation of value; it fails when value does not encode as an object.
 func ToJsonObject(value any) (JsonObject, error) {
@@ -75,7 +61,7 @@ func FromJsonValue[T any](value JsonValue) (T, error) {
 			return typed, nil
 		}
 	}
-	encoded, err := marshalStrict(value)
+	encoded, err := strictjson.Marshal(value)
 	if err != nil {
 		return decoded, err
 	}
@@ -119,19 +105,6 @@ func holdsDynamicJSON[T any]() bool {
 		return true
 	}
 	return false
-}
-
-// marshalStrict is json.Marshal with a non-finite number reported as chord's strict JSON error.
-func marshalStrict(value any) ([]byte, error) {
-	encoded, err := jsstring.MarshalKeepingSurrogates(value)
-	// A value's own MarshalJSON may use either package, so the non-finite number can arrive as either package's error.
-	if unsupported, ok := errors.AsType[*sdkjson.UnsupportedValueError](err); ok && isNonFinite(unsupported.Str) {
-		return nil, nonFiniteError{}
-	}
-	if unsupported, ok := errors.AsType[*stdjson.UnsupportedValueError](err); ok && isNonFinite(unsupported.Str) {
-		return nil, nonFiniteError{}
-	}
-	return encoded, err
 }
 
 // CopyJson returns a detached copy of a JSON value.
