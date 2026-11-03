@@ -36,7 +36,7 @@ const (
 func main() {
 	root := flag.String("root", ".", "repository root")
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), `Usage: fixtureguard [-root dir]
+		_, _ = fmt.Fprintf(flag.CommandLine.Output(), `Usage: fixtureguard [-root dir]
 
 Refuses test fixtures that look like verbatim provider captures: encrypted or
 signature blobs, billing rows, real provider ids and timestamps, reasoning text,
@@ -60,31 +60,31 @@ Run it before pushing: make fixture-guard.
 func run(root, termsFile string, stdout, stderr io.Writer) int {
 	terms, err := loadTerms(root, termsFile)
 	if err != nil {
-		fmt.Fprintln(stderr, "fixture-guard:", err)
+		_, _ = fmt.Fprintln(stderr, "fixture-guard:", err)
 		return 2
 	}
 	files, err := listFiles(root)
 	if err != nil {
-		fmt.Fprintln(stderr, "fixture-guard:", err)
+		_, _ = fmt.Fprintln(stderr, "fixture-guard:", err)
 		return 2
 	}
 	findings, scanned, err := scanTree(root, files, terms)
 	if err != nil {
-		fmt.Fprintln(stderr, "fixture-guard:", err)
+		_, _ = fmt.Fprintln(stderr, "fixture-guard:", err)
 		return 2
 	}
 	findings, stale := applyAllowlist(findings, scanned)
 	for _, f := range findings {
-		fmt.Fprintf(stdout, "%s:%d: %s: %s\n", redactPath(f.path, terms), f.line, f.code, f.message)
+		_, _ = fmt.Fprintf(stdout, "%s:%d: %s: %s\n", redactPath(f.path, terms), f.line, f.code, f.message)
 	}
 	for _, s := range stale {
-		fmt.Fprintf(stdout, "allowlist.go: stale entry %s %s no longer matches; delete it\n", s.path, s.code)
+		_, _ = fmt.Fprintf(stdout, "allowlist.go: stale entry %s %s no longer matches; delete it\n", s.path, s.code)
 	}
 	if len(findings) > 0 || len(stale) > 0 {
-		fmt.Fprintln(stdout, "fixture-guard: replace the captured content with a minimal synthetic shape generated in the test; do not commit the capture")
+		_, _ = fmt.Fprintln(stdout, "fixture-guard: replace the captured content with a minimal synthetic shape generated in the test; do not commit the capture")
 		return 1
 	}
-	fmt.Fprintf(stdout, "fixture-guard: clean (%d files)\n", len(scanned))
+	_, _ = fmt.Fprintf(stdout, "fixture-guard: clean (%d files)\n", len(scanned))
 	return 0
 }
 
