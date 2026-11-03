@@ -2122,60 +2122,139 @@
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.render",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "tui/markdown.go#Render",
+        "tui/markdown.go#renderBlocks"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render"
+      ],
+      "divergence": "D220",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderBlock",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#applyMarkdownBackground",
+        "tui/markdown.go#renderDocument"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-block"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderInlineTokens",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#renderInlineMarkdown",
+        "tui/markdown_marked.go#emStrong"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-inline-tokens"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderList",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown_list.go#renderList"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-list"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderTable",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#renderMarkdownTable"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi"
+      ],
+      "contracts": [
+        "tui/markdown/render-table"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderToken",
       "ownerFamily": "tui-components",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/markdown.go#renderContent"
+      ],
+      "evidence": [
+        "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
+        "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
+        "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding"
+      ],
+      "contracts": [
+        "tui/markdown/render-token"
+      ],
       "divergence": "",
       "rationale": ""
     },
