@@ -690,64 +690,82 @@ func TestReviewARouterChangeBetweenAPluginSocketUpgradesCheckAndItsKeepStillEnds
 
 // Pi's revoke runs at the delivery of its router, so a router delivered before an upgrade's check never ends what that check
 // admitted. Here the revoke against V1 (host gone) was still running, and the one against V2 (host back) waiting, when an
-// upgrade checked against V2: the connection stays.
+// upgrade checked against V2: the connection stays, whether V1's revoke takes its snapshot before the keep (the recheck must
+// not end it) or after it (the revoke must not end it).
 func TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits(t *testing.T) {
-	hookV1, releaseV1 := newGate(), newGate()
-	hookV2, releaseV2 := newGate(), newGate()
-	entered, release := newGate(), newGate()
-	t.Cleanup(releaseV1.resolve)
-	t.Cleanup(releaseV2.resolve)
-	t.Cleanup(release.resolve)
-	var removedSeen atomic.Bool
-	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
-	server := serving(t, []plugin{tunnel}, servedOptions{
-		revokeHook: func(router *Router) {
-			if !router.Hosts.Has("t.example") {
-				removedSeen.Store(true)
-				hookV1.resolve()
-				<-releaseV1.done()
-				return
+	for _, afterKeep := range []bool{false, true} {
+		name := "the stale revoke snapshots before the keep"
+		if afterKeep {
+			name = "the stale revoke snapshots after the keep"
+		}
+		t.Run(name, func(t *testing.T) {
+			hookV1, releaseV1 := newGate(), newGate()
+			hookV2, releaseV2 := newGate(), newGate()
+			entered, release := newGate(), newGate()
+			t.Cleanup(releaseV1.resolve)
+			t.Cleanup(releaseV2.resolve)
+			t.Cleanup(release.resolve)
+			var removedSeen atomic.Bool
+			tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+			server := serving(t, []plugin{tunnel}, servedOptions{
+				revokeHook: func(router *Router) {
+					if !router.Hosts.Has("t.example") {
+						removedSeen.Store(true)
+						hookV1.resolve()
+						<-releaseV1.done()
+						return
+					}
+					if removedSeen.Load() {
+						hookV2.resolve()
+						<-releaseV2.done()
+					}
+				},
+				links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+					entered.resolve()
+					<-release.done()
+					return LinkOptions{}, nil
+				}},
+			})
+			handedOut := func() {
+				eventually(t, "the hand-out finished", func() bool {
+					server.http.upgrades.mu.Lock()
+					defer server.http.upgrades.mu.Unlock()
+					return server.http.upgrades.pending == 0
+				})
 			}
-			if removedSeen.Load() {
-				hookV2.resolve()
-				<-releaseV2.done()
+			server.reload(t)
+			receive(t, hookV1.done(), "the revoke against V1 (host gone)")
+			server.reload(t, tunnel)
+			type dialed struct {
+				socket *clientSocket
+				err    error
 			}
-		},
-		links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
-			entered.resolve()
-			<-release.done()
-			return LinkOptions{}, nil
-		}},
-	})
-	server.reload(t)
-	receive(t, hookV1.done(), "the revoke against V1 (host gone)")
-	server.reload(t, tunnel)
-	type dialed struct {
-		socket *clientSocket
-		err    error
-	}
-	opening := httpAsync(func() dialed {
-		socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
-		return dialed{socket, err}
-	})
-	receive(t, entered.done(), "the links options hook (checked against V2)")
-	releaseV1.resolve()
-	receive(t, hookV2.done(), "the revoke against V2 begins, the one against V1 done")
-	release.resolve()
-	got := receive(t, opening, "the upgrade")
-	if got.err != nil {
-		t.Fatalf("upgrade: %v", got.err)
-	}
-	releaseV2.resolve()
-	server.http.revokeTasks.Wait()
-	// The hand-out is over (its recheck ran) once the reservation is released.
-	eventually(t, "the hand-out finished", func() bool {
-		server.http.upgrades.mu.Lock()
-		defer server.http.upgrades.mu.Unlock()
-		return server.http.upgrades.pending == 0
-	})
-	open := server.http.upgrades.snapshot()
-	if len(open) != 1 || open[0].socket.ReadyState() != WebSocketOpenState {
-		t.Fatalf("the connection the newest router admits was ended: %d kept", len(open))
+			opening := httpAsync(func() dialed {
+				socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
+				return dialed{socket, err}
+			})
+			receive(t, entered.done(), "the links options hook (checked against V2)")
+			if !afterKeep {
+				releaseV1.resolve()
+				receive(t, hookV2.done(), "the revoke against V2 begins, the one against V1 done")
+			}
+			release.resolve()
+			got := receive(t, opening, "the upgrade")
+			if got.err != nil {
+				t.Fatalf("upgrade: %v", got.err)
+			}
+			if afterKeep {
+				handedOut()
+				releaseV1.resolve()
+				receive(t, hookV2.done(), "the revoke against V2 begins, the one against V1 done")
+			}
+			releaseV2.resolve()
+			server.http.revokeTasks.Wait()
+			handedOut()
+			open := server.http.upgrades.snapshot()
+			if len(open) != 1 || open[0].socket.ReadyState() != WebSocketOpenState {
+				t.Fatalf("the connection the newest router admits was ended: %d kept", len(open))
+			}
+		})
 	}
 }
