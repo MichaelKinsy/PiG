@@ -890,3 +890,31 @@ func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.
 		t.Fatal("the router the component reads is not the one the follower delivered")
 	}
 }
+
+// The deliveries an upgrade needs are kept only while it is in flight: its own settling, and every delivery that follows one,
+// drop the rest (a leak would cost one router per reload for the life of the component).
+func TestReviewTheDeliveriesKeptForUpgradesAreBoundedByTheOnesInFlight(t *testing.T) {
+	u := NewUpgrades()
+	router := func() *Router { return &Router{Hosts: NewStringSet(), SocketHandlers: map[*HttpSocket]struct{}{}} }
+	u.delivered(router())
+	seen := u.admitting()
+	const deliveries = 1000
+	for range deliveries {
+		u.delivered(router())
+	}
+	if got := len(u.history); got != deliveries+1 {
+		t.Fatalf("in flight across %d deliveries the history holds %d, want %d", deliveries, got, deliveries+1)
+	}
+	u.settled(seen)
+	if len(u.history) != 1 || len(u.inflight) != 0 {
+		t.Fatalf("after settled the history holds %d and %d are in flight, want 1 and 0", len(u.history), len(u.inflight))
+	}
+	for range deliveries {
+		each := u.admitting()
+		u.delivered(router())
+		u.settled(each)
+	}
+	if len(u.history) != 1 || len(u.inflight) != 0 {
+		t.Fatalf("after %d admit, deliver, settle rounds the history holds %d and %d are in flight, want 1 and 0", deliveries, len(u.history), len(u.inflight))
+	}
+}
