@@ -302,7 +302,6 @@ func closedSignal(done <-chan struct{}) bool {
 func (e *Editor) publishAutocomplete(force, explicit bool, cursor [2]int, result *AutocompleteSuggestions, err error) {
 	defer e.requestRender()
 	e.asyncCancel = nil
-	e.autocompleteFromAwaited = e.asyncAutocomplete == nil
 	if err != nil {
 		e.autocompleteError(err)
 		return

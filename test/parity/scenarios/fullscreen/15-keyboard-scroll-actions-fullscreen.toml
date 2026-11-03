@@ -1,0 +1,102 @@
+# Behavior family: fullscreen
+# Surface: alternate-screen viewport keyboard scrolling (handleViewportInput: page, half-page and line
+#          bindings, tui.altScreen.pageUp/pageDown/halfPageUp/halfPageDown/lineUp/lineDown)
+#
+# Three 24-line streamed replies overflow the 24-row terminal many times over, so both binaries follow the end.
+# Scrolling is relative to the bottom, whose rows are identical (the startup header above the transcript
+# differs between pig and pi and is never reached). The half-page and line actions have no default key; the
+# scenario agent directory binds them to F5-F8, sent as escape sequences. The sequence ends with a net
+# position that depends on every action's direction and amount, and the scroll-to-end indicator is on screen.
+#
+# Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
+#
+
+name = "15-keyboard-scroll-actions-fullscreen"
+description = "Fullscreen page, half-page and line scrolling lands on the same rows in pig and pi."
+covers = [
+  "packages/tui/src/tui-alt-screen.ts",
+]
+tags = ["fast", "hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-scroll"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-scroll", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 24
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "LIVE-STREAM"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM", "Enter"]
+settle_seconds = 3
+wait_contains = ["LIVE-STREAM-24"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM", "Enter"]
+settle_seconds = 3
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM", "Enter"]
+settle_seconds = 3
+wait_timeout_seconds = 15
+
+# two pages up (the page amount is the viewport height less 4 rows)
+[[tmux.steps]]
+keys = ["PgUp"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["PgUp"]
+settle_seconds = 1
+
+# one page down
+[[tmux.steps]]
+keys = ["PgDn"]
+settle_seconds = 1
+
+# half a page up, twice
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 35 7e"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 35 7e"]
+settle_seconds = 1
+
+# half a page down
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 37 7e"]
+settle_seconds = 1
+
+# one line up, twice
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 38 7e"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 38 7e"]
+settle_seconds = 1
+
+# one line down
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 39 7e"]
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

@@ -594,9 +594,11 @@ type CompactionStartEvent struct {
 // CompactionEndEvent fires when compaction completes, aborts, or errors.
 // Mirrors upstream compaction_end event (agent-session.ts).
 type CompactionEndEvent struct {
-	Reason               string
-	Aborted              bool
-	WillRetry            bool
+	Reason    string
+	Aborted   bool
+	WillRetry bool
+	// HasResult is upstream's `event.result` being present: a completed compaction, whatever its summary holds.
+	HasResult            bool
 	Summary              string
 	FirstKeptEntryID     string
 	TokensBefore         int
