@@ -163,14 +163,31 @@ func piMarkdownContract(t *testing.T, probes []markdownContractProbe) [][]markdo
 // keeps the highlighting per block source and PiG per language and code, so PiG's calls must be among Pi's.
 func compareMarkdownContract(t *testing.T, probes []markdownContractProbe) int {
 	t.Helper()
+	differences, rowFailures := markdownContractDifferences(t, probes)
+	reported := map[string]bool{}
+	for i := range probes {
+		if reason, differs := differences[i]; differs {
+			if key := probes[i].Text; !reported[key] && len(reported) < 30 {
+				reported[key] = true
+				t.Errorf("%s", reason)
+			}
+		}
+	}
+	t.Logf("%d probes: %d differ from Pi, %d of them in the rows", len(probes), len(differences), rowFailures)
+	return len(differences)
+}
+
+// markdownContractDifferences returns, for each probe whose rows or callbacks differ from pi-tui's (see compareMarkdownContract), the index of the probe and the reason, and the number of
+// probes that differ in the rows.
+func markdownContractDifferences(t *testing.T, probes []markdownContractProbe) (differences map[int]string, rowFailures int) {
+	t.Helper()
 	expected := piMarkdownContract(t, probes)
 	previous := GetCapabilities()
 	t.Cleanup(func() {
 		SetCapabilities(previous)
 		SetTheme("dark")
 	})
-	failures, rowFailures := 0, 0
-	reported := map[string]bool{}
+	differences = map[int]string{}
 	for i, probe := range probes {
 		SetCapabilities(TerminalCapabilities{TrueColor: true, Hyperlinks: probe.Links})
 		var log markdownContractLog
@@ -206,15 +223,10 @@ func compareMarkdownContract(t *testing.T, probes []markdownContractProbe) int {
 			}
 		}
 		if reason != "" {
-			failures++
-			if key := probe.Text; !reported[key] && len(reported) < 30 {
-				reported[key] = true
-				t.Errorf("%s", reason)
-			}
+			differences[i] = reason
 		}
 	}
-	t.Logf("%d probes: %d differ from Pi, %d of them in the rows", len(probes), failures, rowFailures)
-	return failures
+	return differences, rowFailures
 }
 
 func markdownContractVariantOf(probe markdownContractProbe) string {
