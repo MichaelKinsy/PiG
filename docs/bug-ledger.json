@@ -590,6 +590,25 @@
       ]
     },
     {
+      "id": "BF-06a8890",
+      "title": "fix(bug): tell the reporter exactly what to do with the /bug archive",
+      "symptom": "fix(bug): tell the reporter exactly what to do with the /bug archive",
+      "rootCause": "The closing /bug message said only \"open a PiG issue and attach\" the archive. It now says to open the link, drag the archive into the issue and submit, and that the link fills the versions and report ID so \"What happened\" is the only field to write. The form label says an error message or a sentence is plenty. (D62 wording is PiG-only; the crash hint stays Pi's.)",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "06a8890d60",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-07151d0",
       "title": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's…",
       "symptom": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's `session_shutdown` or `agent_settled` handler awaits a timer, however busy the machine is.",
