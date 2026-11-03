@@ -1037,12 +1037,16 @@ func TestPublicationAtAdoption(t *testing.T) {
 		opened.harness.Resume()
 		waited := make(chan durable.SettledTask[durable.JsonValue], 1)
 		callAsync(func() {
-			receipt, _ := opened.harness.WaitForTask(testContext, id)
+			receipt, err := opened.harness.WaitForTask(testContext, id)
+			if err != nil {
+				t.Errorf("WaitForTask: %v", err)
+			}
 			waited <- receipt
 		})
 		gate.resolve()
 		receipt := <-waited
-		if receipt.State.Outcome == nil || receipt.State.Outcome.Status != durable.OutcomeCompleted {
+		// Pi: {status: "completed", result: null}; a completed outcome without a result is null here.
+		if outcome := receipt.State.Outcome; outcome == nil || outcome.Status != durable.OutcomeCompleted || (outcome.Result != nil && *outcome.Result != nil) || outcome.Error != nil || outcome.Reason != nil {
 			t.Fatalf("receipt %+v", receipt.State)
 		}
 		if got := seen.all(); !reflect.DeepEqual(got, []string{"terminal"}) {

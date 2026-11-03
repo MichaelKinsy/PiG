@@ -329,7 +329,7 @@ func thProgress(setup *chatState, persistWithinMs float64) {
 }
 
 func TestAfterToolOnResultsTheCallPhaseDecides(t *testing.T) {
-	// harness-tool-hooks.test.ts:135 it("sees and replaces unavailable, invalid, and blocked results, with the raw arguments") (#11043)
+	// harness-tool-hooks.test.ts:137 it("sees and replaces unavailable, invalid, and blocked results, with the raw arguments") (#11043)
 	t.Run("sees and replaces unavailable, invalid, and blocked results, with the raw arguments", func(t *testing.T) {
 		setup := chatSetup(t)
 		var ran atomic.Int32
@@ -411,7 +411,7 @@ func TestAfterToolOnResultsTheCallPhaseDecides(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:198 it("bounds a replacement output with the tool's limits, or the defaults for an unresolved tool") (#11043)
+	// harness-tool-hooks.test.ts:200 it("bounds a replacement output with the tool's limits, or the defaults for an unresolved tool") (#11043)
 	t.Run("bounds a replacement output with the tool's limits, or the defaults for an unresolved tool", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, thTool("small", thEmpty, func(tool *durable.ToolRegistration) {
@@ -463,7 +463,7 @@ func TestAfterToolOnResultsTheCallPhaseDecides(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:238 it("lets a hook's terminate on a blocked call count toward the round") (#11043)
+	// harness-tool-hooks.test.ts:240 it("lets a hook's terminate on a blocked call count toward the round") (#11043)
 	t.Run("lets a hook's terminate on a blocked call count toward the round", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, thTool("echo", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -491,7 +491,7 @@ func TestAfterToolOnResultsTheCallPhaseDecides(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:258 it("runs on nested invalid and blocked calls; the caller gets diagnostics and details, not output") (#11043)
+	// harness-tool-hooks.test.ts:260 it("runs on nested invalid and blocked calls; the caller gets diagnostics and details, not output") (#11043)
 	t.Run("runs on nested invalid and blocked calls; the caller gets diagnostics and details, not output", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, thTool("echo", thEmpty))
@@ -562,7 +562,7 @@ func TestAfterToolOnResultsTheCallPhaseDecides(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:311 it("gives a nested call a hook turns into a success its output as value, unless the tool has a schema") (#11043)
+	// harness-tool-hooks.test.ts:313 it("gives a nested call a hook turns into a success its output as value, unless the tool has a schema") (#11043)
 	t.Run("gives a nested call a hook turns into a success its output as value, unless the tool has a schema", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, thTool("plain", thEmpty))
@@ -617,7 +617,7 @@ func TestAfterToolOnResultsTheCallPhaseDecides(t *testing.T) {
 }
 
 func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
-	// harness-tool-hooks.test.ts:370 it("runs on an interrupted call; a replaced output loses the slot's truncation diagnostic") (#11043)
+	// harness-tool-hooks.test.ts:372 it("runs on an interrupted call; a replaced output loses the slot's truncation diagnostic") (#11043)
 	t.Run("runs on an interrupted call; a replaced output loses the slot's truncation diagnostic", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -664,7 +664,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-tool-hooks.test.ts:411 it("runs on an abort result, but not on the aborted results of calls that never started") (#11043)
+	// harness-tool-hooks.test.ts:413 it("runs on an abort result, but not on the aborted results of calls that never started") (#11043)
 	t.Run("runs on an abort result, but not on the aborted results of calls that never started", func(t *testing.T) {
 		setup := chatSetup(t)
 		tlSetExecution(setup, durable.ToolExecutionSequential)
@@ -696,7 +696,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:441 it("reports a throwing hook on an abort result and settles the result as built") (#11043)
+	// harness-tool-hooks.test.ts:443 it("reports a throwing hook on an abort result and settles the result as built") (#11043)
 	t.Run("reports a throwing hook on an abort result and settles the result as built", func(t *testing.T) {
 		setup := chatSetup(t)
 		work := thBlockingTool("work")
@@ -729,7 +729,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:464 it("settles an abort without the hooks in the abort handler's last attempt") (#11043)
+	// harness-tool-hooks.test.ts:466 it("settles an abort without the hooks in the abort handler's last attempt") (#11043)
 	t.Run("settles an abort without the hooks in the abort handler's last attempt", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -778,7 +778,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-tool-hooks.test.ts:506 it("sees the held progress of an aborted call, and the result stores it") (#11043)
+	// harness-tool-hooks.test.ts:508 it("sees the held progress of an aborted call, and the result stores it") (#11043)
 	t.Run("sees the held progress of an aborted call, and the result stores it", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -823,7 +823,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-tool-hooks.test.ts:539 it("runs on an abandoned nested call's result") (#11043)
+	// harness-tool-hooks.test.ts:541 it("runs on an abandoned nested call's result") (#11043)
 	t.Run("runs on an abandoned nested call's result", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -871,7 +871,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-tool-hooks.test.ts:583 it("runs on a restart_limit result at the limit, and not once the hooks themselves were cut off") (#11043)
+	// harness-tool-hooks.test.ts:585 it("runs on a restart_limit result at the limit, and not once the hooks themselves were cut off") (#11043)
 	t.Run("runs on a restart_limit result at the limit, and not once the hooks themselves were cut off", func(t *testing.T) {
 		path := sqlitePath(t)
 		setup := chatSetup(t)
@@ -929,7 +929,7 @@ func TestAfterToolOnResultsRebuiltFromTheSlot(t *testing.T) {
 }
 
 func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
-	// harness-tool-hooks.test.ts:631 it("run afterTool inside their own tool task") (#11043)
+	// harness-tool-hooks.test.ts:633 it("run afterTool inside their own tool task") (#11043)
 	t.Run("run afterTool inside their own tool task", func(t *testing.T) {
 		setup := chatSetup(t)
 		type seenIn struct {
@@ -962,7 +962,7 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:655 it("count toward a round's terminate") (#11043)
+	// harness-tool-hooks.test.ts:657 it("count toward a round's terminate") (#11043)
 	t.Run("count toward a round's terminate", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, thTool("echo", thEmpty))
@@ -979,7 +979,7 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:673 it("take their turn in a sequential round, and the last handoff in call order wins") (#11043)
+	// harness-tool-hooks.test.ts:675 it("take their turn in a sequential round, and the last handoff in call order wins") (#11043)
 	t.Run("take their turn in a sequential round, and the last handoff in call order wins", func(t *testing.T) {
 		setup := chatSetup(t)
 		tlSetExecution(setup, durable.ToolExecutionSequential)
@@ -1013,7 +1013,7 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:702 it("each get a tool task in a parallel round of only such calls") (#11043)
+	// harness-tool-hooks.test.ts:704 it("each get a tool task in a parallel round of only such calls") (#11043)
 	t.Run("each get a tool task in a parallel round of only such calls", func(t *testing.T) {
 		setup := chatSetup(t)
 		seen := &syncList[string]{}
@@ -1038,7 +1038,7 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// harness-tool-hooks.test.ts:724 it("keep their flag in a version 2 generation's sequential round, also one migrated from version 1") (#11043)
+	// harness-tool-hooks.test.ts:726 it("keep their flag in a version 2 generation's sequential round, also one migrated from version 1") (#11043)
 	t.Run("keep their flag in a version 2 generation's sequential round, also one migrated from version 1", func(t *testing.T) {
 		for _, version := range []int{2, 1} {
 			path := sqlitePath(t)
@@ -1110,7 +1110,7 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 		}
 	})
 
-	// harness-tool-hooks.test.ts:782 it("settle unavailable, not aborted, when their sequential round is aborted before they start") (#11043)
+	// harness-tool-hooks.test.ts:784 it("settle unavailable, not aborted, when their sequential round is aborted before they start") (#11043)
 	t.Run("settle unavailable, not aborted, when their sequential round is aborted before they start", func(t *testing.T) {
 		setup := chatSetup(t)
 		tlSetExecution(setup, durable.ToolExecutionSequential)
