@@ -144,5 +144,5 @@ func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIn
 			out = append(out, theme.QuoteBorder("│ ")+wrapped)
 		}
 	}
-	return out, true, -1
+	return out, true, child.lastListEnd
 }
