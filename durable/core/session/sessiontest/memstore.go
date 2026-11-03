@@ -466,15 +466,16 @@ func (m *MemStore) Commit(writes []session.Write, nextID session.ID) (session.Se
 	seq := m.nextSeq
 	submitted := writes
 	writes = m.resolveCopies(writes)
+	// Durable's own checks refuse the batch before anything is written: the writer's call stores the batches before it and stops here.
 	if err := m.checkGlobalIDs(writes); err != nil {
-		return 0, err
+		return 0, &session.RefusedError{Err: err}
 	}
 	actions, order, err := m.prepareDocActions(writes)
 	if err != nil {
-		return 0, err
+		return 0, &session.RefusedError{Err: err}
 	}
 	if err := m.checkDocActions(actions, order); err != nil {
-		return 0, err
+		return 0, &session.RefusedError{Err: err}
 	}
 	m.nextID = max(m.nextID, nextID)
 	for _, w := range writes {

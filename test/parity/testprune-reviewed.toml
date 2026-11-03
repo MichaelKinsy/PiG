@@ -822,3 +822,10 @@ commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
 class = "CITE"
 cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
 reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "durable/core/driver/harness_provider_request_core_test.go"
+commit = "e6e85cd392"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi's onPayload answer is whatever JSON.parse read; PiG's core driver hands the providers that answer as validated JSON text (a json.RawMessage, which the providers already take through payloadReplacement) instead of a decoded any, so it keeps the member order the chain wrote. Only the Go representation the test compares changed (sent holds the chain's text, not decoded maps); no Pi behavior changed."

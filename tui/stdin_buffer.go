@@ -85,11 +85,18 @@ func (b *StdinBuffer) FlushTimeout() time.Duration {
 // byte is never rewritten as a Meta key; the decoded text then goes through
 // ProcessString.
 func (b *StdinBuffer) ProcessTerminalBytes(data []byte) []string {
-	text, ok := b.utf8.write(data)
+	text, ok := b.decodeTerminalBytes(data)
 	if !ok {
 		return nil
 	}
 	return b.ProcessString(text)
+}
+
+// decodeTerminalBytes is the decoding half of ProcessTerminalBytes. ok is false when the read decodes to the empty string
+// (every byte held for a later read): Node emits no data event for it, so upstream's process() does not run and neither
+// restarts nor clears the flush timeout. A caller that owns the timer must skip ProcessString and its timer update then.
+func (b *StdinBuffer) decodeTerminalBytes(data []byte) (text string, ok bool) {
+	return b.utf8.write(data)
 }
 
 // utf8Decoder ports Node's StringDecoder for "utf8" (src/string_decoder.cc

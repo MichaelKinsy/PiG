@@ -117,7 +117,11 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		// An observer of a mount another holds only loads its window (view.ts attach: `this.#mounts.get(id) ?? build`).
 		record, held = mount.conversation, mount.docs
 	} else {
-		h.read(hopcost.ReadRow)
+		// storage.conversation of #build is read through the line's gated Storage.
+		if err := h.sess.TouchRead(session.ConversationKey(conv)); err != nil {
+			return nil, err
+		}
+		hit := h.readRecord(hopcost.RecordConversation, conv)
 		var err error
 		record, err = h.mir.Conversation(conv)
 		if err != nil {
@@ -125,6 +129,9 @@ func (h *handler) viewOpen(req *jv.Object, target *jv.Object) (any, error) {
 		}
 		if record == nil {
 			return nil, errors.New("Conversation " + itoa(int64(conv)) + " does not exist")
+		}
+		if hit == hopcost.CacheMiss {
+			h.sess.KeepRecord(hopcost.RecordConversation, conv, record)
 		}
 	}
 	docObject := jv.NewObject()
@@ -210,6 +217,9 @@ func (h *handler) loadWindow(conv session.ID, bounds windowBounds) ([]*jv.Object
 			// A `from` below 1 has no entry before it; the query's 0 would not bound the scan.
 			var before session.ID
 			if bounds.from > 1 {
+				if err := h.sess.TouchEntries(conv); err != nil {
+					return nil, 0, err
+				}
 				page, err := h.mir.ScanEntries(session.EntryQuery{ConversationID: conv, MaxEntryID: session.ID(bounds.from - 1)}, 1, 0)
 				if err != nil {
 					return nil, 0, err
@@ -241,6 +251,9 @@ func (h *handler) scanUpTo(query session.EntryQuery, limit int) ([]*jv.Object, e
 	entries := make([]*jv.Object, 0, min(limit, viewScanPage))
 	var after session.ID
 	for {
+		if err := h.sess.TouchEntries(query.ConversationID); err != nil {
+			return nil, err
+		}
 		h.read(hopcost.ReadScanEntries)
 		page, err := h.mir.ScanEntries(query, min(viewScanPage, limit-len(entries)), after)
 		if err != nil {

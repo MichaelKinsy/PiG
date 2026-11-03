@@ -1,10 +1,10 @@
 # Durable core conformance gate
 
-The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E37, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi 1.4.0 `e7a0df27`, the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
+The gate every lane of the Durable core uses ([CONTRACT.md](../../docs/plan/durable-core/CONTRACT.md) sections 5-7). It runs the corpus (E00-E37, U, SC, I, W1-W4, X1, H) against pi-durable at the pinned reference commit (`PIN` `main`, Pi 1.4.0 `b556cfe5`, the commit PiG pins) and against a candidate, and compares the two at the store, commit, context, output and order levels (order: the scenario's API calls and the commits in one sequence, CONTRACT 5.8). One Pi commit is one row of `commit` lines, so a difference names the first divergent commit seq, the table, the column and whether the text differs in value, key order or number format.
 
 ## References
 
-`PIN` names the reference: `main` is Pi 1.4.0 `e7a0df27` (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
+`PIN` names the reference: `main` is Pi 1.4.0 `b556cfe5` (the commit PiG pins), the reference of every E, U, SC, I, W, X, H and F row (the tick rows F-ticks-*, F-split-* and `tools/gen-hopticks.mjs` included); the candidate runs over the same checkout. `release` names v1.0.4, whose stores the R rows read.
 
 ## Run it
 
@@ -53,7 +53,7 @@ JSON Lines (CONTRACT 7.6): `meta`, `store` (path of each store opened), `sql` (s
 | rows | runner | what is compared |
 |---|---|---|
 | E00-E37 | `example` | the upstream example runs under the hooks; store, commit, context, output, order. E16 needs a provider key and is skipped |
-| U-* (90) | `vitest` | the upstream test files, run from source; a row passes when every test the reference passes passes, the reference running the same file at the same time (a test both fail under the load of the moment is named, not counted) |
+| U-* (99) | `vitest` | the upstream test files, run from source; a row passes when every test the reference passes passes, the reference running the same file at the same time (a test both fail under the load of the moment is named, not counted) |
 | SC | `vitest` | `registerStorageConformance` over the candidate's write encoder (pending until the encoder exists) |
 | I | `interop` | `durable/interop/scenario.mjs` under the hooks |
 | W1-*, W2-* | `bench` | `scenarios/bench.mjs`: ten 8-tool turns on a copy of the fixture, full-walk and incremental scripted model |
@@ -74,7 +74,7 @@ The F rows that differ from Pi today are listed in `baseline.toml` with owner, c
 1. **`candidate_dir`**: a directory laid out like `packages/durable/src` (the JS API of ADR D12). Every module it has replaces the reference's module of the same path; the rest come from the reference. This runs E, U, SC and I rows. Its storage modules open stores through `globalThis[Symbol.for("pig.contract")]`: `openStore(path)` returns a host-loop store (`run`, `all`, one `tx(work)` per commit), `openDatabase(path)` returns pi-durable's `SqliteDatabase` facade. Both write through capsql, so the candidate cannot write a row the contract does not see.
 2. **`bench`**: a Node module exporting `runBench(options)` that runs the bench scenario and returns what `lib/run.mjs` `runScenario` returns (`trace`, `stores`, `code`, `signal`, `stdout`, `stderr`). The options are in `lib/impl.mjs`. `contexts: ["bench"]` limits the context comparison to the bench fingerprint for a core that does not build the full pi-ai Context. Scenarios outside a core's slice exit with status 3 and are reported as a failed run, never as a pass.
 
-`ts` (`impls/ts-driver.mjs`, the vendored durable-core-ts control, `impls/ts-core/`) is the reference candidate: it passes W1, W2, W4c, X1, the H-50 matrix (77 crash points, 3 orders, plus the clean restart) and X1-live against Pi main. `test/matrix.test.mjs` breaks it four ways (key order, a missing `endedAt`, a usage total, recovery that does not requeue a task) and requires the matrix to fail naming the cause.
+`ts` (`impls/ts-driver.mjs`, the vendored durable-core-ts control, `impls/ts-core/`) is the reference candidate: it passes W1, W2, W4c, X1, the H-50 matrix (68 crash points, 3 orders, plus the clean restart) and X1-live against Pi main. `test/matrix.test.mjs` breaks it four ways (key order, a missing `endedAt`, a usage total, recovery that does not requeue a task) and requires the matrix to fail naming the cause.
 
 ## What is not done
 

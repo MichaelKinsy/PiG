@@ -9,6 +9,7 @@ import "sync"
 type mailbox struct {
 	mu     sync.Mutex
 	items  []func(error)
+	head   int // items before head ran; their slots are nil
 	wake   chan struct{}
 	closed bool
 }
@@ -21,6 +22,11 @@ func (m *mailbox) put(work func(error)) bool {
 	if m.closed {
 		m.mu.Unlock()
 		return false
+	}
+	if m.head > 0 && len(m.items) == cap(m.items) {
+		// A full slice moves its live items to the front instead of growing: the queue keeps one backing array while it drains and refills.
+		m.items = m.items[:copy(m.items, m.items[m.head:])]
+		m.head = 0
 	}
 	m.items = append(m.items, work)
 	m.mu.Unlock()
@@ -35,12 +41,12 @@ func (m *mailbox) put(work func(error)) bool {
 func (m *mailbox) take() (func(error), bool) {
 	for {
 		m.mu.Lock()
-		if len(m.items) > 0 {
-			work := m.items[0]
-			m.items[0] = nil
-			m.items = m.items[1:]
-			if len(m.items) == 0 {
-				m.items = nil
+		if m.head < len(m.items) {
+			work := m.items[m.head]
+			m.items[m.head] = nil
+			m.head++
+			if m.head == len(m.items) {
+				m.items, m.head = m.items[:0], 0
 			}
 			m.mu.Unlock()
 			return work, true
@@ -69,7 +75,7 @@ func (m *mailbox) close() {
 func (m *mailbox) drain() []func(error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	items := m.items
-	m.items = nil
+	items := m.items[m.head:]
+	m.items, m.head = nil, 0
 	return items
 }

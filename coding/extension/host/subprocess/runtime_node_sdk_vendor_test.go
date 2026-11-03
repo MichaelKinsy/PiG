@@ -42,7 +42,7 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 			// .upstream/v0.99.1/packages/coding-agent/src/modes/interactive/theme/theme.ts:4-24 imports its colour helpers and getTerminalColorMode from the pi-tui barrel.
 			[2]string{`import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, getTerminalColorMode, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "@earendil-works/pi-tui";`, `import { backgroundAnsi, colorToHex, colorToOklch, foregroundAnsi, indexedColor, mixColors, parseColor, rgbColor, styleTextWithAnsi, } from "../../../../pi-tui/colors.js";
 import { getTerminalColorMode, } from "../../../../pi-tui/terminal-image.js";`},
-			[2]string{`import { highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";`, `import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";`},
+			[2]string{`import { getHighlightLanguageCount, highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";`, `import { getHighlightLanguageCount, highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";`},
 		)
 	case "modes/interactive/theme/system-theme.js":
 		replacements = append(replacements,

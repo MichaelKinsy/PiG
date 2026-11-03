@@ -24,7 +24,8 @@ function lazy(open) {
 	ready.catch(() => {})
 	return new Proxy({}, {
 		get: (_, prop) => {
-			if (prop === "then") return undefined
+			// `then` keeps the proxy from being taken for a promise; `publishing` is an optional method of Storage that SqliteStorage does not have.
+			if (prop === "then" || prop === "publishing") return undefined
 			return async (...args) => { const storage = await ready; return storage[prop](...args) }
 		},
 	})

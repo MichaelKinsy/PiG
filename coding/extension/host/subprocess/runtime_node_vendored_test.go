@@ -14,7 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// pinnedPiPackages is where `npm ci` in extensions/sdk-ts installs the Pi
+// pinnedPiPackages is where `make parity-deps` installs the Pi
 // release named by coding.UpstreamVersion.
 var pinnedPiPackages = filepath.Join("..", "..", "..", "..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent")
 
@@ -22,7 +22,7 @@ func readPinned(t *testing.T, parts ...string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(append([]string{pinnedPiPackages}, parts...)...))
 	if err != nil {
-		t.Fatalf("read the pinned Pi package (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned Pi package (run make parity-deps): %v", err)
 	}
 	return data
 }
@@ -166,7 +166,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			t.Fatal(err)
 		}
 		if manifest.Version != coding.UpstreamPackageVersion {
-			t.Fatalf("installed %s %s, pinned Pi %s: run npm ci in extensions/sdk-ts", pkg, manifest.Version, coding.UpstreamPackageVersion)
+			t.Fatalf("installed %s %s, pinned Pi %s: run make parity-deps", pkg, manifest.Version, coding.UpstreamPackageVersion)
 		}
 	}
 	shims := filepath.Join("runtime-node", "shims")
@@ -317,7 +317,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		yamlFiles[filepath.ToSlash(filepath.Join("dist", rel))] = path
 		return err
 	}); err != nil {
-		t.Fatalf("read the pinned yaml build (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned yaml build (run make parity-deps): %v", err)
 	}
 	hljs := filepath.Join(nodeModules, "highlight.js")
 	hljsFiles := map[string]string{
@@ -333,7 +333,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		hljsFiles[filepath.ToSlash(filepath.Join("lib", rel))] = path
 		return err
 	}); err != nil {
-		t.Fatalf("read the pinned highlight.js (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned highlight.js (run make parity-deps): %v", err)
 	}
 	jiti := filepath.Join(nodeModules, "jiti")
 	jitiFiles := map[string]string{
@@ -350,7 +350,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			jitiFiles[filepath.ToSlash(rel)] = path
 			return err
 		}); err != nil {
-			t.Fatalf("read the pinned jiti (run npm ci in extensions/sdk-ts): %v", err)
+			t.Fatalf("read the pinned jiti (run make parity-deps): %v", err)
 		}
 	}
 	jsdiff := filepath.Join(nodeModules, "diff")
@@ -367,7 +367,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		diffFiles[filepath.ToSlash(filepath.Join("libesm", rel))] = path
 		return err
 	}); err != nil {
-		t.Fatalf("read the pinned diff (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned diff (run make parity-deps): %v", err)
 	}
 	ignore := filepath.Join(nodeModules, "ignore")
 	marked := filepath.Join(nodeModules, "marked")
@@ -416,7 +416,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		for rel, path := range files {
 			want, err := os.ReadFile(path)
 			if err != nil {
-				t.Fatalf("read the pinned %s (run npm ci in extensions/sdk-ts): %v", dir, err)
+				t.Fatalf("read the pinned %s (run make parity-deps): %v", dir, err)
 			}
 			got, err := os.ReadFile(filepath.Join(shims, dir, filepath.FromSlash(rel)))
 			if err != nil || !bytes.Equal(got, want) {

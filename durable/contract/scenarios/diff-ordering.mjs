@@ -9,7 +9,7 @@
 // hide the difference instead of failing on it. Waits are virtual timers (detenv) and microtask ticks, so they are exact.
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { num, obj } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxText, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { createRegistry, defineDoc, defineExtension, defineTool, GenerationTask, Harness, hook, ToolTask } from "@earendil-works/pi-durable"
@@ -105,7 +105,7 @@ const pause = async ({ ticks, ms }) => {
 const slot = (text, size) => { let h = 0; for (const ch of String(text)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % size }
 
 const Notes = defineDoc({ kind: "diff.notes", version: 1, scope: "conversation", history: "latest", fork: "current", initial: () => ({ lines: [] }) })
-const parameters = Type.Object({ ticks: Type.Number(), ms: Type.Number(), n: Type.Number() })
+const parameters = obj({ ticks: num(), ms: num(), n: num() })
 const tool = (name, execute, extra = {}) => defineTool({ name, description: `diff tool ${name}`, parameters, replay: "safe", ...extra, execute })
 const text = value => ({ output: [{ type: "text", text: value }] })
 const tools = [

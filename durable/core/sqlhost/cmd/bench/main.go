@@ -47,11 +47,11 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
 
-// lookupSchema is bench.mjs's lookup tool, Type.Object({ n: Type.Number() }), in the key order TypeBox gives it and Pi
-// stores (type, required, properties): decoding the JSON keeps that order, so the stored declaration does not change.
+// lookupSchema is bench.mjs's lookup tool, obj({ n: num() }), in the key order pi-schema gives it and Pi stores (type, properties,
+// required, additionalProperties): decoding the JSON keeps that order, so the stored declaration does not change.
 var lookupSchema = func() ai.ToolSchema {
 	var schema ai.ToolSchema
-	if err := json.Unmarshal([]byte(`{"name":"lookup","description":"Look up record number n","parameters":{"type":"object","required":["n"],"properties":{"n":{"type":"number"}}}}`), &schema); err != nil {
+	if err := json.Unmarshal([]byte(`{"name":"lookup","description":"Look up record number n","parameters":{"type":"object","properties":{"n":{"type":"number"}},"required":["n"],"additionalProperties":false}}`), &schema); err != nil {
 		panic(err)
 	}
 	return schema

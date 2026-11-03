@@ -307,7 +307,7 @@ func (g *Generation) abort(rt *session.Runtime, task *jv.Object, done func(error
 			finish(nil)
 			return
 		}
-		r.entry(idField(cp, "assistant"), func(entry *jv.Object) {
+		r.entry(idField(cp, "assistant"), func(entry *jv.Object, _ bool) {
 			var calls []*jv.Object
 			if models, ok := arrayField(entry, "model"); ok && len(models) > 0 {
 				if m, ok := models[0].(*jv.Object); ok && str(m, "role") == "assistant" {

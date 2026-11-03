@@ -1,4 +1,4 @@
-version = "1.4.0+b556cfe5"
+version = "1.5.0"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -1374,10 +1374,10 @@ rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1;
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummary_Abort", "test:internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummary_Error", "test:internal/codingagent/compaction/branch_summarization_test.go#TestGenerateBranchSummary_Success", "test:coding/session_branch_summary_upstream_test.go#TestBranchSummaryAgentStreamCancellation", "test:coding/session_branch_summary_upstream_test.go#TestSummarizationUsesAgentStreamOverride"]
-rationale = "generateBranchSummary awaits completeSummarization (the session stream function or the default, retried by the configured policy) with the caller's signal; an aborted response returns { aborted: true } instead of throwing, an error or a tool call returns { error }, and only a clean response gets the preamble and file lists. Go GenerateBranchSummary (internal/codingagent/compaction/branch_summarization.go) makes the same single blocking call with the context and maps the three outcomes the same way: TestGenerateBranchSummary_Abort, _Error and _Success pin them, TestBranchSummaryAgentStreamCancellation proves cancelling mid-stream through the Agent stream override ends the call as aborted, and TestSummarizationUsesAgentStreamOverride that the session stream function is the one awaited. Delta at Pi 269afc66: generateBranchSummary reads the new thinkingLevel option and sets requestOptions.reasoning before the same awaited completeSummarization call; no added or removed line contains async, await, Promise or .then, so the awaited and cancellable contracts are unchanged."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/compaction/compaction.ts"
@@ -1535,10 +1535,10 @@ rationale = "Reviewed streamFn/buildRequestOptions: request presence overrides s
 
 [[files]]
 path = "packages/coding-agent/src/core/session-manager.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-manager.ts"

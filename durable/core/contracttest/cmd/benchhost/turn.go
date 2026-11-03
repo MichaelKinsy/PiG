@@ -18,7 +18,6 @@ const (
 	usageKey    = "faux/scripted-1"
 	interrupted = "Tool lookup was interrupted and may have partially run"
 	attemptOps  = `[["s",["generation"],{"attempt":1}]]`
-	toolRunning = `[["s",["tools",0,"status"],"running"]]`
 )
 
 // obj builds a JSON object from alternating keys and values, in order.
@@ -255,7 +254,8 @@ func completed(entry int64) *jv.Object {
 	return obj("status", "completed", "result", obj("entryId", num(entry)))
 }
 
-// runGeneration is the three commits that take a pending generation to a model request.
+// runGeneration is the two commits that take a pending generation to a model request. The attempt (`generation: {attempt: 1}`) rides with
+// the live document's next write (harness/generation.ts, PROGRESS_COMMIT): no commit of its own.
 func (e *engine) runGeneration() error {
 	g := e.gen(e.t.gen)
 	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, state("running", prepareCheckpoint())); return nil }); err != nil {
@@ -265,17 +265,13 @@ func (e *engine) runGeneration() error {
 	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, state("running", e.requestCheckpoint())); return nil }); err != nil {
 		return err
 	}
-	_, err := e.commit(func(tx *store.Tx) error {
-		e.live.Set("generation", obj("attempt", num(1)))
-		tx.DocumentDelta(e.liveDoc, e.liveVer, []byte(attemptOps))
-		return nil
-	})
-	return err
+	e.live.Set("generation", obj("attempt", num(1)))
+	return nil
 }
 
 func quote(s string) string { return string(jv.AppendString(nil, s)) }
 
-// submit is the input event: four commits, then the model request.
+// submit is the input event: three commits, then the model request.
 func (e *engine) submit(reqID, text string) error {
 	e.t = turnState{active: true, reqID: reqID, user: e.st.MintID(), sub: e.st.MintID(), gen: e.st.MintID()}
 	t := e.t
@@ -434,13 +430,12 @@ func (e *engine) model(trace *contracttest.Writer) error {
 	return e.executeTool()
 }
 
-// executeTool takes the tool task to its execute phase; the live document records it running (a delta).
+// executeTool takes the tool task to its execute phase; the live document holds its slot running, and stores it with its next write (harness/tool.ts).
 func (e *engine) executeTool() error {
 	_, err := e.commit(func(tx *store.Tx) error {
 		e.putTask(tx, e.tool(), state("running", obj("phase", "execute", "arguments", obj("n", num(int64(e.t.call))), "replay", "unsafe")))
 		tools, _ := e.live.Get("tools")
 		tools.([]any)[0].(*jv.Object).Set("status", "running")
-		tx.DocumentDelta(e.liveDoc, e.liveVer, []byte(toolRunning))
 		return nil
 	})
 	return err

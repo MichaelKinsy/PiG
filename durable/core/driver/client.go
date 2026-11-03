@@ -42,6 +42,8 @@ type Client struct {
 	// created is HarnessOptions.ConversationCreated: a transaction that created or forked a conversation runs it last, in that
 	// transaction, after the core's built-in creation hook (harness.ts conversationCreated); an error fails the operation.
 	created func(tx durable.Tx, conversation durable.ConversationRecord) error
+	// replicas are the document values the transactions read, which the core is asked to catch up from (doc_replica.go).
+	replicas docReplicas
 }
 
 // SessionFailedError is what every call after a failed commit returns: Pi's SessionFailed (session.ts GuardedStorage), with the

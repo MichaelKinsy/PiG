@@ -37,7 +37,9 @@ writeFileSync(join(work, "tsconfig.json"), JSON.stringify({
 	compilerOptions: {
 		target: "ES2024", module: "ESNext", moduleResolution: "Bundler", strict: true, noEmit: true, allowImportingTsExtensions: true, skipLibCheck: true,
 		types: ["node", "workers-types"], typeRoots: [join(modules, "@types"), join(modules, "@cloudflare")], lib: ["ES2024"],
-		paths: { "@earendil-works/pi-durable": [join(work, "src", "ref-index.ts")], "@earendil-works/pi-durable/*": [join(durable, "src", "*", "index.ts")] },
+		paths: { "@earendil-works/pi-durable": [join(work, "src", "ref-index.ts")], "@earendil-works/pi-durable/*": [join(durable, "src", "*", "index.ts")],
+			// pi-schema is a dependency of the reference's own sources, not of the host: its source mirror.
+			"@earendil-works/pi-schema": [join(pi, "packages", "schema", "src", "index.ts")], "@earendil-works/pi-schema/formats": [join(pi, "packages", "schema", "src", "formats", "index.ts")] },
 	},
 	include: ["test/examples/*.ts"],
 }))

@@ -16,25 +16,22 @@ func (s *Scheduler) scheduleReconcile() {
 	s.microtask(s.reconcile)
 }
 
-// microtask is `queueMicrotask(fn)` as the scheduler's code calls it. Inside the commit observer (scheduler.ts #observe, which runs in the
-// Storage's adopt) it queues behind the dispatch to the host's `subscribeCommits` listeners (session.ts #notifyHosts), which a listener
-// registered at adoption has queued first: it runs a hop later, so a commit such a listener makes is admitted to the line before it.
+// microtask is `queueMicrotask(fn)` as the scheduler's code calls it. Inside the commit observer (scheduler.ts #observe, which runs at the
+// publication, in the Storage's adopt) a microtask runs one tick after the publication: the job #kick queues to drain the reservations
+// enqueues its line job there (job 14 of the cold submit, 225 -> 226), and behind it the dispatch to the host's `subscribeCommits` listeners
+// (session.ts #notifyHosts) a listener registered at adoption queued first, so a commit such a listener makes is admitted to the line first.
 func (s *Scheduler) microtask(fn func()) {
-	if s.observing && s.env.CommitListeners != nil && *s.env.CommitListeners && s.env.After != nil {
-		s.env.After(1, fn)
+	if s.observing && s.loop.Hops != nil && s.loop.Hops(1, funcResumer(fn)) {
 		return
 	}
 	s.loop.Defer(fn)
 }
 
-// abortLater signals the run of inv: scheduler.ts #observe queues `invocation.controller.abort()` as a microtask inside the Storage's adopt, behind
-// the dispatch to the host's `subscribeCommits` listeners a listener registered at adoption queued first, so it runs a hop later when there are
-// any (no closure: the invocation's own resumer is what the hops chain resumes).
+// abortLater signals the run of inv: scheduler.ts #observe queues `invocation.controller.abort()` as a microtask inside the Storage's adopt, so it
+// runs one tick after the publication, behind the dispatch to the host's `subscribeCommits` listeners (queued first, in the same pass) when there
+// are any and alone when there are none (no closure: the invocation's own resumer is what the hops chain resumes).
 func (s *Scheduler) abortLater(inv *invocation) {
-	if s.observing && s.env.CommitListeners != nil && *s.env.CommitListeners && s.loop.Hops != nil && s.loop.Hops(1, inv.aborter.of(inv)) {
-		return
-	}
-	inv.signal.Abort()
+	s.loop.Wait(1, inv.aborter.of(inv))
 }
 
 // scheduleReconcileAfterRead is scheduleReconcile for a chain load: Pi's #loadChain schedules it after its Storage read
@@ -74,6 +71,7 @@ func (s *Scheduler) observe(pub *Publication) {
 }
 
 func (s *Scheduler) observeCommit(pub *Publication) {
+	s.advanceContexts(pub)
 	var updated []*jv.Object
 	var failed []ID
 	changed := false
@@ -229,22 +227,22 @@ func (s *Scheduler) reconcile() {
 	if work {
 		s.reconcilingWork++
 	}
-	cascade := s.cascadePending
-	s.cascadePending = false
 	checks := slices.Clone(s.failFastChecks)
 	s.failFastChecks = nil
-	j := &reconcileJob{s: s, work: work, cascade: cascade, checks: checks}
+	j := &reconcileJob{s: s, work: work, checks: checks}
 	j.rn = j
-	s.loop.QueueAfterTail(&j.job)
+	s.loop.QueueInternal(&j.job)
 }
 
 // reconcileJob is the commit of one reconcile pass queued on the Session line: the line job and the state of its callback in one
 // allocation, since a task graph's commits queue one each, thousands at a time.
 type reconcileJob struct {
 	job
-	s       *Scheduler
-	cascade bool
-	work    bool
+	s *Scheduler
+	// cascade is whether the pass loads the queued inputs: read once, when the callback first runs (Pi reads #cascadePending there). A
+	// run again after a gate keeps it, as Pi's callback waits in place.
+	cascade, started bool
+	work             bool
 	// taken is set when the callback took the finalize checks into round: the job runs again from its start when a Storage gate or a
 	// read answers, so the checks the first run took stay with this reconcile, as Pi's callback runs once and clears them as it takes
 	// them (#finalize).
@@ -253,12 +251,14 @@ type reconcileJob struct {
 	round  []ID
 }
 
-func (j *reconcileJob) runJob() error {
+// RunJob is the reconcile pass's commit.
+func (j *reconcileJob) RunJob() error {
 	_, err := j.s.sess.RunCommit(j.change, TxScope{})
 	return err
 }
 
-func (j *reconcileJob) doneJob(err error) {
+// DoneJob continues the pass once its commit is done.
+func (j *reconcileJob) DoneJob(err error) {
 	s := j.s
 	if err != nil {
 		s.failSession(err)
@@ -271,10 +271,14 @@ func (j *reconcileJob) doneJob(err error) {
 }
 
 func (j *reconcileJob) change(tx *Tx) error {
-	s, cascade, checks := j.s, j.cascade, j.checks
+	s, checks := j.s, j.checks
 	if s.closing {
 		return nil
 	}
+	if !j.started {
+		j.cascade, j.started = s.cascadePending, true
+	}
+	cascade := j.cascade
 	before := 0
 	if s.env.ReadTicks != nil {
 		before = s.env.ReadTicks()
@@ -283,38 +287,44 @@ func (j *reconcileJob) change(tx *Tx) error {
 	if err != nil {
 		return err
 	}
+	// Pi clears #cascadePending once the load returned: a publication while the load waits still finds it set and schedules another pass.
+	if cascade {
+		s.cascadePending = false
+	}
 	// The transaction's ticks replace the job's Store reads, so charge the Storage reads #loadScopes made and a tick for
 	// each call it awaited (scheduler.ts:680-693).
 	loaded := 0
 	if s.env.ReadTicks != nil {
 		loaded = s.env.ReadTicks() - before
 	}
-	tx.charge(loaded + awaits)
-	// Pi's #reconcile callback awaits #loadScopes (1) and `await #finalize(tx)` (an async call with nothing to finalize: 1),
-	// which makes the no-write job 8 ticks (E23 jobs 40, 49, 68); marks, fail-fast reads and withdrawals add their own awaits.
-	tx.charge(2)
+	// `await #loadScopes` also returns once (1); `await #marks()` awaits its region and returns (the region's tick is charged by endRegion, 1 more); the withdrawn
+	// inputs' region and `await #finalize(tx)`, whose rounds each await a region, add theirs.
+	tx.charge(loaded + awaits + 1)
+	s.beginRegion()
+	s.record(IntentKey)
+	for _, id := range s.intent.Values() {
+		s.liveRecord(id)
+		s.walkDown(taskTreeNode(id), walkOptions{enter: func(below ID) bool { return !s.intent.Has(below) }}, func(below ID, n taskNode, rec *jv.Object) bool {
+			if rec != nil {
+				s.liveRecord(below)
+			}
+			return true
+		})
+	}
+	for _, id := range checks {
+		if waiter, ok := s.liveRecord(id); ok && taskStatus(waiter) == StatusWaiting {
+			for _, member := range idsOf(getObj(waiter, "state"), "on") {
+				s.liveRecord(member)
+			}
+		}
+	}
+	if err := s.endRegion(tx); err != nil {
+		return err
+	}
+	tx.charge(1)
 	// A cascade from an abandoned owner passes its restart reason on; any other intent marks, or upgrades a restart mark, as
 	// a request. Collected first, so a request wins over a restart mark of the same pass.
-	type staged struct {
-		rec    *jv.Object
-		reason string
-	}
-	marks := map[ID]staged{}
-	var markOrder []ID
-	mark := func(rec *jv.Object, reason string) {
-		id := mustInt(rec, "id")
-		found, ok := marks[id]
-		if ok && found.reason == "" {
-			return
-		}
-		if getBool(rec, "abortRequested") && (!rec.Has("abortReason") || reason != "") {
-			return
-		}
-		if !ok {
-			markOrder = append(markOrder, id)
-		}
-		marks[id] = staged{rec, reason}
-	}
+	marks := abortMarks{byID: map[ID]stagedMark{}}
 	// Every live foreground task below a live owner with cancellation intent, which is its nearest one: a walk down from
 	// each owner with intent does not enter another, whose own walk covers what is below it. Derived again on every
 	// pass, as loading edges can reveal a cancelled owner.
@@ -327,7 +337,7 @@ func (j *reconcileJob) change(tx *Tx) error {
 		}
 		s.walkDown(taskTreeNode(id), walkOptions{enter: func(below ID) bool { return !s.intent.Has(below) }}, func(_ ID, n taskNode, rec *jv.Object) bool {
 			if rec != nil && !n.background {
-				mark(rec, reason)
+				marks.add(rec, reason)
 			}
 			return true
 		})
@@ -347,14 +357,21 @@ func (j *reconcileJob) change(tx *Tx) error {
 		}
 		for _, member := range on {
 			if rec, ok := s.live.get(member); ok && !failedOutcome(rec) {
-				mark(rec, "")
+				marks.add(rec, "")
 			}
 		}
 	}
-	for _, id := range markOrder {
-		if err := tx.stageTask(withAbortMark(marks[id].rec, marks[id].reason)); err != nil {
+	for _, id := range marks.order {
+		if err := tx.stageTask(withAbortMark(marks.byID[id].rec, marks.byID[id].reason)); err != nil {
 			return err
 		}
+	}
+	s.beginRegion()
+	for _, id := range queued {
+		s.belowCancelled(up{id: id})
+	}
+	if err := s.endRegion(tx); err != nil {
+		return err
 	}
 	for _, id := range queued {
 		if s.belowCancelled(up{id: id}) {
@@ -368,6 +385,34 @@ func (j *reconcileJob) change(tx *Tx) error {
 		s.finalizeChecks.Clear()
 	}
 	return s.finalize(tx, j.round)
+}
+
+// stagedMark is the record a reconcile pass marks for abort, and the restart reason it passes on.
+type stagedMark struct {
+	rec    *jv.Object
+	reason string
+}
+
+// abortMarks collects the tasks a reconcile pass marks, in the order they were found.
+type abortMarks struct {
+	byID  map[ID]stagedMark
+	order []ID
+}
+
+// add marks rec: a request wins over a restart mark of the same pass.
+func (m *abortMarks) add(rec *jv.Object, reason string) {
+	id := mustInt(rec, "id")
+	found, ok := m.byID[id]
+	if ok && found.reason == "" {
+		return
+	}
+	if getBool(rec, "abortRequested") && (!rec.Has("abortReason") || reason != "") {
+		return
+	}
+	if !ok {
+		m.order = append(m.order, id)
+	}
+	m.byID[id] = stagedMark{rec, reason}
 }
 
 // reconcileWork reports whether a reconcile pass would have work: a cascade to derive, held outcomes to check, or failFast
@@ -396,7 +441,26 @@ func (s *Scheduler) finalize(tx *Tx, round []ID) error {
 	round = slices.Clone(round)
 	done := map[ID]bool{}
 	o := overlayOf(tx)
-	for len(round) > 0 {
+	// `await #finalize` returns once more after its last region.
+	defer tx.charge(1)
+	for {
+		// Each round is one decision region.
+		s.beginRegion()
+		for _, id := range round {
+			rec, ok := o.tasks[id]
+			if !ok {
+				rec, ok = s.liveRecord(id)
+			}
+			if ok && taskStatus(rec) == StatusCompleting && !done[id] {
+				s.hasOwnedLive(id, o, done)
+			}
+		}
+		if err := s.endRegion(tx); err != nil {
+			return err
+		}
+		if len(round) == 0 {
+			return nil
+		}
 		next := newOrderedSet[ID]()
 		for _, id := range round {
 			rec, ok := o.tasks[id]
@@ -429,42 +493,77 @@ func (s *Scheduler) finalize(tx *Tx, round []ID) error {
 			}
 		}
 		round = next.Values()
+		if len(round) == 0 {
+			return nil
+		}
 	}
-	return nil
 }
 
 // drain reserves and starts every runnable task until nothing is dirty.
 func (s *Scheduler) drain() {
-	var loop func()
-	finish := func() {
-		s.draining = false
-		if s.dirty {
-			s.kick()
-		}
+	d := &drainer{s: s}
+	d.loop()
+}
+
+// drainer is one drain: its passes run one after the other, so the pass's state stays in it.
+type drainer struct {
+	s   *Scheduler
+	res []*reservation
+	// again: the next Resume is the pass that follows an abort handler's start, not the start of res.
+	again bool
+}
+
+func (d *drainer) finish() {
+	s := d.s
+	s.draining = false
+	if s.dirty {
+		s.kick()
 	}
-	loop = func() {
-		if !s.dirty || !s.enabled || s.closing {
-			finish()
-			return
-		}
-		s.dirty = false
-		s.reserve(func(res []*reservation, err error) {
-			if err != nil {
-				s.failSession(err)
-				finish()
-				return
-			}
-			// `for (const reservation of await this.#reserve())` (scheduler.ts #drain): #reserve is an async function, so #drain resumes a tick after it
-			// returns, and then starts each reservation and asks for the next pass.
-			s.loop.NextTick(func() {
-				for _, r := range res {
-					s.start(r)
-				}
-				loop()
-			})
-		})
+}
+
+func (d *drainer) loop() {
+	s := d.s
+	if !s.dirty || !s.enabled || s.closing {
+		d.finish()
+		return
 	}
-	loop()
+	s.dirty = false
+	s.reserve(d.reserved)
+}
+
+func (d *drainer) reserved(res []*reservation, err error) {
+	if err != nil {
+		d.s.failSession(err)
+		d.finish()
+		return
+	}
+	// `for (const reservation of await this.#reserve())` (scheduler.ts #drain): #reserve is an async function, so #drain resumes a tick after it
+	// returns, and then starts each reservation and asks for the next pass.
+	d.res = res
+	d.s.loop.NextTickResumer(d)
+}
+
+// Resume starts the reservations of the pass and asks for the next one.
+func (d *drainer) Resume() {
+	if d.again {
+		d.again = false
+		d.loop()
+		return
+	}
+	aborting := false
+	for _, r := range d.res {
+		d.s.start(r)
+		aborting = aborting || r.inv.abortMode
+	}
+	d.res = nil
+	if aborting {
+		// Pi starts an abort handler in this tick, synchronously: a commit it makes first reaches the line before the next pass. The host runs the
+		// handler after this step, so the pass follows a hop later.
+		d.again = true
+		d.s.loop.NextTickResumer(d)
+		return
+	}
+	d.loop()
 }
 
 func (s *Scheduler) reserve(then func([]*reservation, error)) {
@@ -479,7 +578,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		}
 		reservations = nil
 	}
-	s.commit(func(tx *Tx) error {
+	s.commitInternal(func(tx *Tx) error {
 		cleanup()
 		abandoned = nil
 		faulted = nil
@@ -493,6 +592,15 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		}
 		if s.reserveSkip == pinSkip {
 			return nil
+		}
+		if s.abandoned.Len() > 0 {
+			s.beginRegion()
+			for _, id := range s.abandoned.Values() {
+				s.liveRecord(id)
+			}
+			if err := s.endRegionPlain(tx); err != nil {
+				return err
+			}
 		}
 		for _, id := range s.abandoned.Values() {
 			if rec, live := s.live.get(id); live && !getBool(rec, "abortRequested") {
@@ -522,6 +630,23 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		if s.env.ReadTicks != nil {
 			ticks += s.env.ReadTicks() - before
 		}
+		// The candidates are scanned in a decision region, one tick of its own.
+		s.beginRegion()
+		for _, id := range s.runnable.Values() {
+			if s.invocations[id] != nil {
+				continue
+			}
+			if rec, live := s.liveRecord(id); live && taskStatus(rec) != StatusCompleting {
+				s.waitingOn(rec, true)
+				if !getBool(rec, "abortRequested") && !getBool(rec, "background") {
+					s.belowCancelled(parentOf(nodeOf(rec)))
+				}
+			}
+		}
+		if err := s.endRegion(tx); err != nil {
+			return err
+		}
+		ticks++
 		defer func() { tx.ticks = ticks }()
 		var snapshot Snapshot
 		for _, id := range s.runnable.Values() {

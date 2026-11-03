@@ -121,7 +121,8 @@ func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) 
 		if err != nil {
 			return err
 		}
-		u := tx.ticks
+		// The tick of the region the job decided in is GatedChange's own (hopcost.GatedRegion), not the change callback's.
+		u := tx.ticks - hopcost.GatedRegion
 		if next == nil {
 			tx.ticks = hopcost.RuntimeCommit(u, false, 0)
 			return nil
@@ -171,7 +172,7 @@ func (r *Runtime) BeginHost(span uint32, trace any) (tx *Tx, current *jv.Object,
 	if !inv.abortMode && getBool(found, "abortRequested") {
 		return nil, nil, errorf("Task %d has a durable abort mark", inv.taskID)
 	}
-	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: span, Trace: trace})
+	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: span, Trace: trace, Host: true})
 	return tx, found, err
 }
 
@@ -182,7 +183,11 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 	if next != nil {
 		overlay := stagedTasks(tx)
 		if err := r.s.commitState(tx, r.inv, current, next); err != nil {
-			r.s.sess.Abandon(tx, err)
+			// A key an unpublished commit writes: the decision region staged nothing, so the transaction stays open and the host finishes
+			// it again once the key is published (Session.Finish does the same for the settle's keys).
+			if !restarts(err) {
+				r.s.sess.Abandon(tx, err)
+			}
 			return nil, err
 		}
 		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay, r.s.stateAwaits))
@@ -195,9 +200,6 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 	r.s.sess.lastTicks = tx.ticks
 	return r.s.sess.Finish(tx)
 }
-
-// FinishHostSettled commits again the host transaction of BeginHost whose commit returned a *NeedGate (Session.FinishSettled).
-func (r *Runtime) FinishHostSettled(tx *Tx) (*Publication, error) { return r.s.sess.FinishSettled(tx) }
 
 // AbandonHost ends the host transaction of BeginHost without a commit.
 func (r *Runtime) AbandonHost(tx *Tx, err error) { r.s.sess.Abandon(tx, err) }
@@ -221,15 +223,27 @@ func (r *Runtime) gatedWith(late, deferred bool, change func(tx *Tx, current *jv
 		if s.closing {
 			return s.closedErr()
 		}
-		found, ok := s.live.get(inv.taskID)
-		if !ok {
-			return errorf("Task %d is terminal", inv.taskID)
+		// The task's record is read in a decision region: a commit of the task that is not published yet makes the job wait.
+		s.beginRegion()
+		found, ok := s.liveRecord(inv.taskID)
+		var derr error
+		switch {
+		case !ok:
+			derr = errorf("Task %d is terminal", inv.taskID)
+		case taskStatus(found) != StatusRunning:
+			derr = errorf("Task %d is %s", inv.taskID, string(taskStatus(found)))
+		case !inv.abortMode && getBool(found, "abortRequested"):
+			derr = errorf("Task %d has a durable abort mark", inv.taskID)
 		}
-		if st := taskStatus(found); st != StatusRunning {
-			return errorf("Task %d is %s", inv.taskID, string(st))
+		if err := s.endRegionPlain(tx); err != nil {
+			return err
 		}
-		if !inv.abortMode && getBool(found, "abortRequested") {
-			return errorf("Task %d has a durable abort mark", inv.taskID)
+		if derr != nil {
+			return derr
+		}
+		// The step that ends it may have run while the region waited.
+		if inv.ended {
+			return endedError(inv)
 		}
 		return change(tx, found)
 	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1, Span: inv.span, Trace: inv.carrier()}, then)
@@ -334,25 +348,32 @@ func (r *Runtime) OwnedTasks(then func([]*jv.Object, error)) {
 	}
 	var out []*jv.Object
 	r.s.loop.ReadLine(func() error {
+		out = nil
 		// The step that ends the invocation may have run on the line before this.
 		if r.inv.ended {
 			return endedError(r.inv)
 		}
-		children := r.s.below[taskTreeNode(r.inv.taskID)]
-		if children == nil {
-			return nil
-		}
-		children.Range(func(node treeNode) bool {
-			if node.conversation {
-				return true
-			}
-			if rec, live := r.s.live.get(node.id); live {
-				if owner, _ := rec.Get("owner"); owner == float64(r.inv.taskID) {
-					out = append(out, jv.Clone(rec).(*jv.Object))
+		// Every live task is listed under its parent node, its owner task when it has one: a decision region, so a commit not published yet
+		// that changes the list makes the job wait.
+		s := r.s
+		s.beginRegion()
+		s.record(OwnedKey(nodeKey(taskTreeNode(r.inv.taskID))))
+		if children := s.below[taskTreeNode(r.inv.taskID)]; children != nil {
+			children.Range(func(node treeNode) bool {
+				if node.conversation {
+					return true
 				}
-			}
-			return true
-		})
+				if rec, live := s.liveRecord(node.id); live {
+					if owner, _ := rec.Get("owner"); owner == float64(r.inv.taskID) {
+						out = append(out, jv.Clone(rec).(*jv.Object))
+					}
+				}
+				return true
+			})
+		}
+		if err := s.endRegionPlain(nil); err != nil {
+			return err
+		}
 		sort.Slice(out, func(a, b int) bool { return idOfRecord(out[a]) < idOfRecord(out[b]) })
 		return nil
 	}, func(err error) { then(out, err) })
@@ -431,9 +452,11 @@ func stagedTasks(tx *Tx) int {
 func commitStateTicks(next *jv.Object, overlay, awaits int) int {
 	switch status, _ := getStr(next, "status"); status {
 	case StatusWaiting:
-		return 1 + awaits
+		// await #validateWait: #loadScopes (its awaits and its own return), the region, and the call's return
+		return 2 + awaits + 1
 	case StatusTerminal:
-		return 1 + awaits + overlay
+		// #loadScopes, one #loadChain per staged task, the region
+		return 1 + awaits + overlay + 1
 	}
 	return 0
 }

@@ -6,19 +6,19 @@ package photonimage
 import (
 	"bytes"
 	"compress/flate"
-	"embed"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
 	"io/fs"
 	"math/bits"
 	"math/rand/v2"
+	"os"
 	"slices"
 	"strings"
 )
 
-//go:embed testdata/png-real/pngsuite/*.png testdata/png-real/image-rs/*.png testdata/png-real/go/*.png testdata/scene-photon-300x200.png
-var pngRealFiles embed.FS
+// pngRealFiles reads the real PNG files from testdata, which is a data-only module that go:embed cannot reach.
+var pngRealFiles = os.DirFS(".")
 
 // pngCorpus is the files whose decoding the test compares with Photon: every colour type and bit depth with and without Adam7 and with every
 // filter, the transparency chunk of each colour type in every shape, the chunk order and chunk contents the png crate checks, animated PNGs,
@@ -1165,14 +1165,17 @@ func pngRealCorpus(b *formatCorpusBuilder) {
 			panic(err)
 		}
 		for _, e := range entries {
-			data, err := pngRealFiles.ReadFile("testdata/png-real/" + dir + "/" + e.Name())
+			if !strings.HasSuffix(e.Name(), ".png") {
+				continue
+			}
+			data, err := fs.ReadFile(pngRealFiles, "testdata/png-real/"+dir+"/"+e.Name())
 			if err != nil {
 				panic(err)
 			}
 			b.add("real-"+dir+"-"+strings.TrimSuffix(e.Name(), ".png"), data)
 		}
 	}
-	scene, err := pngRealFiles.ReadFile("testdata/scene-photon-300x200.png")
+	scene, err := fs.ReadFile(pngRealFiles, "testdata/scene-photon-300x200.png")
 	if err != nil {
 		panic(err)
 	}

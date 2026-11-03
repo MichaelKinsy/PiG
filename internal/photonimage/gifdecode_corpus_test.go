@@ -4,16 +4,16 @@
 package photonimage
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"math/bits"
+	"os"
 	"slices"
 	"strings"
 )
 
-//go:embed testdata/gif-real/*.gif testdata/gif-real/go/*.gif
-var gifRealFiles embed.FS
+// gifRealFiles reads the real GIF files from testdata, which is a data-only module that go:embed cannot reach.
+var gifRealFiles = os.DirFS(".")
 
 // gifPalette is n colours of three bytes.
 func gifPalette(n int, seed uint32) []byte { return icoNoise(seed, 3*n) }
@@ -234,7 +234,7 @@ func gifCorpus() []formatCase {
 		if err != nil || e.IsDir() {
 			return err
 		}
-		data, err := gifRealFiles.ReadFile(path)
+		data, err := fs.ReadFile(gifRealFiles, path)
 		if err != nil {
 			return err
 		}

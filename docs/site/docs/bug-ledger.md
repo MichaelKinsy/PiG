@@ -281,6 +281,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3b9bd16-2](#bf-3b9bd16-2) | `chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at… | PiG's own defect | Windows, macOS | Unreleased |
 | [BF-3b9bd16-3](#bf-3b9bd16-3) | `chord/next/link`: `Channel.Idle` returns when the channel closes | PiG's own defect | All platforms | Unreleased |
 | [BF-3ba74f2](#bf-3ba74f2) | fix(codingagent): wait for a read's rest on the route snapshot that found no modal | PiG's own defect | All platforms | Unreleased |
+| [BF-3c2dde4](#bf-3c2dde4) | A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ca622b](#bf-3ca622b) | fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ce6bcb](#bf-3ce6bcb) | fix(changelog,source): /i scheme tests fold as JavaScript does, not as RE2's (?i) | PiG's own defect | All platforms | Unreleased |
@@ -362,6 +363,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4b9f5f8](#bf-4b9f5f8) | `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer | PiG's own defect | All platforms | Unreleased |
 | [BF-4bcc7da](#bf-4bcc7da) | `StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
@@ -944,6 +946,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | Unreleased |
 | [BF-985b5f9](#bf-985b5f9) | fix(coding): a resumed session takes its active tools from the transcript (pi-mono #10785) [SIGNOFF-PENDING] | PiG's own defect | All platforms | Unreleased |
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | Unreleased |
+| [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | Unreleased |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
@@ -3437,7 +3440,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `228dbea36a` (2026-10-27)
-- **Tests:** `durable/core/hops_host_commit_test.go::TestAHostCommitIsAnsweredEarlyEnoughForItsCallerToResumeAtThePiJobEnd`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
+- **Tests:** `durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
 
 ### BF-2309604
 
@@ -5150,6 +5153,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3ba74f2827` (2026-10-13)
 - **Tests:** None recorded.
 
+### BF-3c2dde4
+
+**A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.
+- **Root cause:** Node emits no data event for a read that decodes to the empty string, so Pi's StdinBuffer.process() neither restarts nor clears its timeout (terminal.ts:281-283, stdin-buffer.ts:321-325).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3c2dde4146` (2026-11-02)
+- **Tests:** `tui/terminal_input_esc_timer_test.go::TestTerminalInputHeldUTF8ReadLeavesEscTimerAlone`
+- **Release note:** A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it. ESC, then the two bytes of é arriving 5 ms and 11 ms later, is Escape followed by é, not Alt+é.
+
 ### BF-3ca622b
 
 **fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the…**
@@ -5559,7 +5576,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `432775653a` (2026-10-27)
-- **Tests:** `durable/core/host/cf/test/settimer-timers.test.ts`, `durable/core/session/sched_close_reserve_test.go::TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt`
+- **Tests:** `durable/core/host/cf/test/settimer-timers.test.ts`, `durable/core/session/sched_close_reserve_test.go::TestAReservationJobThatRunsAgainAfterACommitKeepsTheDecisionOfItsFirstRun`
 - **Release note:** Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake` (sleeping tasks arm host timers or wake the host once per change, a background timer the host declines is dropped, a foreground one it declines or throws on falls back to `setTimeout` and is reported once, `TaskRuntime.setTimer` timers end with their invocation) and `settings.restartLimit` (including `Infinity`) reaches the core, so a crash-looping task parks. A reservation commit that the host's Storage holds while `close()` seals the Harness now lands and is written back as pending instead of being dropped, and a `sleepUntil` of `NaN` or an infinity is rejected as Pi rejects it.
 
 ### BF-432ab7f
@@ -6261,6 +6278,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4afdbac644` (2026-10-10)
 - **Tests:** `internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi`
 - **Release note:** `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map iteration reached first, so a trust.json with several wrong-typed values reported a random key; Pi's `Object.entries` order (array-index keys, then insertion order) decides, and `read` now walks `orderedjson` keys. New live-Pi oracle `TestProjectTrustStoreMultiEntryFilesMatchPi` (`internal/codingagent/trust_store_multi_oracle_test.go`; 1,200 trust.json files x 1-5 get/getEntry/set/setMany operations; symlinked cwd, missing paths, astral and BMP-high keys); red before the fix (4-5 of 1,200, varying with map order); 8 mutations red (key order, null rejected, false-as-true, non-object check, UTF-16 key sort, null entry stops the ancestor walk, null delete, BOM). Extends `TestProjectTrustStoreMatchesPi`, which passed before the fix. Not compared: the V8 text after `Failed to read trust store <path>: `, file modes, cross-process locking.
+
+### BF-4b9f5f8
+
+**`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4b9f5f800d` (2026-11-02)
+- **Tests:** `coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryOmitsFailedRetriedAttempt`
+- **Release note:** `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer. When a partial assistant reply failed and automatic retry succeeded, the branch summary still contained the failed attempt, and a context edit that replaced an entry's content was ignored. The summary input now applies each entry's latest context edit through the projection the live context and compaction use: an omission drops the entry and a replacement swaps its content (Pi d0fe21308).
 
 ### BF-4bcc7da
 
@@ -14331,6 +14362,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `98666dfd10` (2026-10-27)
 - **Tests:** `durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore`
 - **Release note:** Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves.
+
+### BF-9883d4b
+
+**Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail.
+- **Root cause:** - session: Writer (admission, batched Storage calls, refusal, rejection after receipts, SessionFailed), Loop with host-supplied durations, decision regions with the keys each decision read (scheduler.ts #region, membershipKeys, #loadChain, pins), tails/taskdocs (CachedStorage shape: conversation tails 4096, ended tasks 256, submissions 256), the scheduler kick as one microtask after the publication, waitForTask registered in the job body, maintain jobs exempt from admission. - hopcost: tick model re-derived at (multi-batch Commit, ReceiveTail, record cache, JobTicks); ticks.json regenerated. - core and host ABI: joined commits (flags byte), macrotask effect, receive/ publish/touch ops…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9883d4b247` (2026-11-02)
+- **Tests:** `durable/core/ctxread_test.go::TestContextBoundsOfAConversationNotKnownReadStorageOnce`, `durable/core/ctxread_test.go::TestContextBoundsOfACutoffInTheKeptRangeReadNoEntry`, `durable/core/ctxread_test.go::TestContextBoundsOfAnInvisibleCutoffFail`, `durable/core/ctxread_test.go::TestContextBoundsOfWhatTheSessionWroteReadNothing`, `durable/core/ctxread_test.go::TestRangeCurrentOnlyOfAReadAtTheNewestEntryOrTheUnchangedRange`, `durable/core/driver/doc_replica_test.go::TestDocReplicaCatchesUpWithTheOperationsTheCoreSent`, `durable/core/driver/doc_replica_test.go::TestDocReplicasKeepOnlyAnswersTheCoreNamedAndAFewDocuments`, `durable/core/driver/fanout_scaling_norace_test.go::TestScalingCoreNestedCallFanout` and 61 more in docs/bug-ledger.json
+- **Release note:** Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail. 1000 nested calls take 2.05 s instead of 4.94 s and 4000 calls 8.5 s instead of 49.3 s, with allocations per call flat.
 
 ### BF-98a21df
 

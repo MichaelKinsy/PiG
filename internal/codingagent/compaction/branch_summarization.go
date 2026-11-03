@@ -219,12 +219,23 @@ func CollectEntriesForBranchSummary(session ReadonlySession, oldLeafID, targetID
 // contributes to its summary (branch-summarization.ts getMessageFromEntry).
 // Tool results are skipped because the assistant tool call already carries
 // their position; compaction entries contribute their summary.
-func getMessageFromEntryForBranch(e codingagent.SessionEntry) (agent.AgentMessage, bool) {
+//
+// edit is the latest context edit that targets the entry. It is applied through
+// codingagent.ProjectContextEntry, the projection the live context and
+// compaction use: an omission drops the entry and a replacement swaps its
+// content (branch-summarization.ts getMessageFromEntry).
+func getMessageFromEntryForBranch(e codingagent.SessionEntry, edit *codingagent.ContextEditEntry) (agent.AgentMessage, bool) {
 	switch e.Base().Type {
 	case "message", "bash_execution", "custom_message":
 		messages := codingagent.SessionEntryToContextMessages(e)
 		if len(messages) != 1 || messages[0].ToolResult != nil {
 			return agent.AgentMessage{}, false
+		}
+		if edit != nil {
+			messages = codingagent.ProjectContextEntry(e, messages, edit)
+			if len(messages) == 0 {
+				return agent.AgentMessage{}, false
+			}
 		}
 		return messages[0], true
 	case "branch_summary":
@@ -304,6 +315,18 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (
 		}
 	}
 
+	// Context edits hide or replace earlier entries in model context; honor the latest edit per target. A context_edit entry is never lazy, so reading its record does not read the lazy message entries.
+	edits := make(map[string]codingagent.ContextEditEntry)
+	for _, entry := range entries {
+		if entry.Base().Type != "context_edit" {
+			continue
+		}
+		var edit codingagent.ContextEditEntry
+		if err := json.Unmarshal(entry.Raw(), &edit); err == nil {
+			edits[edit.TargetID] = edit
+		}
+	}
+
 	// Second pass: walk from newest to oldest, adding messages within the budget (collected newest first and reversed once; a prepend per message copied the list each time).
 	var messages []agent.AgentMessage
 	totalTokens := 0
@@ -323,7 +346,11 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) (
 		}
 		entry := window[i-lo]
 
-		msg, ok := getMessageFromEntryForBranch(entry)
+		var edit *codingagent.ContextEditEntry
+		if found, ok := edits[entry.Base().ID]; ok {
+			edit = &found
+		}
+		msg, ok := getMessageFromEntryForBranch(entry, edit)
 		if !ok {
 			continue
 		}

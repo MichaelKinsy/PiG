@@ -102,6 +102,20 @@ func itemMode(item *delta.Obj) string {
 
 func queued(inbox *delta.Obj) *delta.Arr { return inbox.Arr("items") }
 
+// pickQueued is the indexes of the queued items of mode, all of them in queueMode "all", else the first.
+func pickQueued(items *delta.Arr, mode, queueMode string) []int {
+	var indexes []int
+	for i := range items.Len() {
+		if itemMode(items.Obj(i)) == mode {
+			indexes = append(indexes, i)
+		}
+	}
+	if queueMode != ModeAll && len(indexes) > 1 {
+		indexes = indexes[:1]
+	}
+	return indexes
+}
+
 // Apply is applyBoundary: it places the queued items a boundary selects (spec section 6): every write, the first or all
 // steers, and at final the first or all follow-ups. A selected reset turns a postTools boundary into final. Writes are
 // placed first and user items after them, each in ID order, so user items queued before a reset run in the new context. A
@@ -109,30 +123,17 @@ func queued(inbox *delta.Obj) *delta.Arr { return inbox.Arr("items") }
 // Selected and stale items are removed positionally, after the entries are appended.
 func Apply(tx *session.Tx, b *Boundary, final bool, now float64) (Result, error) {
 	items := queued(b.Inbox)
-	n := items.Len()
 	reset := HasQueuedReset(items)
 	var writes []int
-	for i := range n {
+	for i := range items.Len() {
 		if itemMode(items.Obj(i)) == "write" {
 			writes = append(writes, i)
 		}
 	}
 	final = final || reset
-	pick := func(mode, queueMode string) []int {
-		var indexes []int
-		for i := range n {
-			if itemMode(items.Obj(i)) == mode {
-				indexes = append(indexes, i)
-			}
-		}
-		if queueMode != ModeAll && len(indexes) > 1 {
-			indexes = indexes[:1]
-		}
-		return indexes
-	}
-	users := pick("steer", b.Modes.Steering)
+	users := pickQueued(items, "steer", b.Modes.Steering)
 	if final {
-		users = append(users, pick("followUp", b.Modes.FollowUp)...)
+		users = append(users, pickQueued(items, "followUp", b.Modes.FollowUp)...)
 	}
 	slices.Sort(users)
 	var first session.ID

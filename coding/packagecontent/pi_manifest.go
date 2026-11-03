@@ -101,13 +101,14 @@ func ResolvePackageChangelogPath(packageRoot string) string {
 	if filepath.IsAbs(changelogPath) {
 		resolved = filepath.Clean(changelogPath)
 	}
-	if _, err := os.Stat(resolved); err != nil {
+	info, err := os.Stat(resolved) //perf:ok once per package extension config at each resource load, not per request or event
+	if err != nil {
 		return ""
 	}
 	if !isPathInside(canonicalizePath(packageRoot), canonicalizePath(resolved)) {
 		return ""
 	}
-	if info, err := os.Stat(resolved); err != nil || !info.Mode().IsRegular() {
+	if !info.Mode().IsRegular() {
 		return ""
 	}
 	return resolved

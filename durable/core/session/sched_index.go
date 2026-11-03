@@ -274,6 +274,7 @@ func (s *Scheduler) walkDown(start treeNode, opts walkOptions, visit func(id ID,
 	for len(pending) > 0 {
 		at := pending[len(pending)-1]
 		pending = pending[:len(pending)-1]
+		s.recordOwned(at)
 		stopped := false
 		each := func(children *orderedSet[treeNode]) {
 			if children == nil || stopped {
@@ -414,6 +415,9 @@ func (s *Scheduler) known(node treeNode) bool {
 // nearestLiveAbove returns the nearest live task above ended ordinary work n, in the overlay's view: the one that work
 // held, if any. Work at or below a background task holds nothing above it.
 func (s *Scheduler) nearestLiveAbove(n taskNode, o *overlay) *jv.Object {
+	if s.reading {
+		s.record(IntentKey)
+	}
 	for current := n; !current.background; {
 		owner := current.owner
 		if owner == 0 {
@@ -432,7 +436,7 @@ func (s *Scheduler) nearestLiveAbove(n taskNode, o *overlay) *jv.Object {
 			rec, found = o.tasks[owner]
 		}
 		if !found {
-			rec, found = s.live.get(owner)
+			rec, found = s.liveRecord(owner)
 		}
 		if found && taskStatus(rec) != StatusTerminal {
 			return rec
@@ -509,7 +513,7 @@ func (s *Scheduler) scheduleSweep() {
 // listed node.
 func (s *Scheduler) sweep() {
 	s.dropQueue.Range(func(n treeNode) bool {
-		if _, listed := s.below[n]; listed {
+		if _, listed := s.below[n]; listed || s.pins[n] > 0 {
 			return true
 		}
 		if n.conversation {

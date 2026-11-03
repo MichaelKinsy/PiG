@@ -60,7 +60,7 @@ export interface HostApiOptions {
 const UNCANCELLED_READS = new Set(["context", "getTask", "entry", "entries"])
 
 const read = <T>(client: CoreClient, context: Context, op: string, args: Record<string, unknown>, revive?: (value: T) => T): Promise<T> =>
-  awaitWithContext(client.api<T>(op, args, revive), context)
+  op.startsWith("waitFor") ? client.awaitWait(client.api<T>(op, args, revive), context) : awaitWithContext(client.api<T>(op, args, revive), context)
 
 /** Committed document reads (`DocumentReader`): `snapshot(token, ...owner, [key], context)` and `snapshotAsOf`. */
 export function documentReader(client: CoreClient) {
