@@ -121,8 +121,8 @@ def private_bytes(pids):
             for line in Path(f"/proc/{pid}/smaps_rollup").read_text().splitlines():
                 if line.startswith("Pss:"):
                     total += int(line.split()[1]) * 1024
-        except OSError:
-            pass
+        except FileNotFoundError:
+            pass  # the process exited between the listing and the read; any other error is a measurement failure
     return total
 
 
@@ -136,6 +136,11 @@ def sample(roots):
 def requests_served(port):
     with urllib.request.urlopen(f"http://127.0.0.1:{port}/count", timeout=10) as r:
         return json.load(r)["requests"]
+
+
+def requests_with_fixtures(port):
+    with urllib.request.urlopen(f"http://127.0.0.1:{port}/count", timeout=10) as r:
+        return json.load(r)["with_fixtures"]
 
 
 def setup_home(root, port, extensions, workspace):
@@ -173,6 +178,7 @@ def run_arm(arm, n, args, root, workspace, port):
     env = env_for(root)
     procs, chans, sock_path = [], [], None
     served0 = requests_served(port)
+    fixtures0 = requests_with_fixtures(port)
     try:
         if arm == "listen":
             sock_path = tempfile.mkdtemp(prefix="sh-") + "/pig.sock"
@@ -206,6 +212,10 @@ def run_arm(arm, n, args, root, workspace, port):
         served = requests_served(port) - served0
         if served != 2 * args.turns * n:
             errors.append(f"model requests {served}, want {2 * args.turns * n} (2 per turn per session)")
+        if getattr(args, "extensions", False):
+            with_fixtures = requests_with_fixtures(port) - fixtures0
+            if with_fixtures != served:
+                errors.append(f"model requests carrying both fixture tools {with_fixtures}, want {served} (a session did not load both extensions)")
         return {"arm": arm, "sessions": n, "points": points, "model_requests": served, "errors": errors}
     finally:
         for c in chans:
@@ -252,7 +262,9 @@ def main():
             root = scratch / "root"
             setup_home(root, port, args.extensions, workspace)
             if args.extensions:  # warm the Go extension's build cache so no arm pays for it
-                run_arm("rpc", 1, argparse.Namespace(pig=args.pig, turns=1), root, workspace, port)
+                warm = run_arm("rpc", 1, argparse.Namespace(pig=args.pig, turns=1, extensions=True), root, workspace, port)
+                if warm["errors"]:
+                    sys.exit("warm-up failed, the measured arms would pay for the build: " + "; ".join(warm["errors"]))
             for n in args.sessions:
                 for arm in args.arms:
                     r = run_arm(arm, n, args, root, workspace, port)
