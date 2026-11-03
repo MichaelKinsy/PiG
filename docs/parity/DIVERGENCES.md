@@ -2978,3 +2978,23 @@ Call-site markers: `internal/codingagent/interactive_queue_hint.go` (`dequeueHin
 Evidence: `TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage` (a tool call holds the turn, a steering message is queued, plain Up with `TERM_PROGRAM=Apple_Terminal` restores it, the editor is cleared, the tool ends and no model request body contains the queued text; a request count cannot show this, since a queued steering message rides in the request that carries the tool result; red on 0d8500283a), `TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun`, `TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState`, `TestQueuedHintAndTipNameTheConfiguredDequeueKey` and `TestExtensionEditorKeepsPiUpBehavior` (`internal/codingagent/interactive_queue_hint_test.go`; the second drives a delegated remote editor and an installed editor factory), and the byte sweep `TestOptionUpEncodingsPerTerminalAgainstTheKeyDecoder`.
 
 Parity allowance: scenario `interactive-rendering/59-up-recalls-queued-message-copy-tip` compares the screen with Pi's byte for byte under `TERM_PROGRAM=tmux` and removes only the tip rows; scenario `interactive-rendering/60-terminal-app-up-dequeues-queued-message` states each side's outcome under `TERM_PROGRAM=Apple_Terminal`, where the screens differ by this record. Alt+Up bytes stay compared with Pi in `interactive-rendering/58-alt-up-dequeues-queued-message`.
+
+## D231 PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`
+
+What: PiG's RPC mode takes Pi main commit 1708b4788 ("fix(coding-agent): process idle ctx.shutdown() requests in RPC mode", Pi #11746, fixing #11599) before the pin reaches a release that contains it. An extension's `ctx.shutdown()` sets a request and schedules one check on the next tick of the stdin executor. The check shuts down only when a request is pending, input is attached, no command is being handled and the session is idle, and it is repeated when a command ends (for `prompt`, when the prompt settles), at `agent_settled` and when input is attached. A request made while the session is idle (for example from a timer) shuts down at once instead of waiting for the next stdin command. A request made during startup, such as a synchronous `ctx.shutdown()` in `session_start`, is handled once input is attached. A shutdown requested by an extension command waits until the command finished, so the command's `prompt` response is written before `session_shutdown` and the exit. A shutdown that has started is not started again by a repeated request. A request made while an extension-started compaction runs still waits for the next command or run.
+
+Why: Pi 1.5.0 only sets a flag that is read after a stdin command and at `agent_settled`, so an idle request keeps the process alive until the client sends another command, and an extension command that requests shutdown exits before its `prompt` response is written. The owner asked for the fix to ship in 0.7.0.
+
+Pi bug: Pi 1.5.0 (`rpc-mode.ts` `shutdownHandler`, `checkShutdownRequested`), fixed by Pi main 1708b4788 ([#11599](https://github.com/earendil-works/pi/issues/11599)). Pi main ace560c30 (#11752, a started RPC or print shutdown finishes; only a repeated signal forces exit) changes the same code and is not part of this record.
+
+Scope: RPC mode only. Where PiG's wire output follows from the ordering above, the `prompt` response of the requesting command precedes the `session_shutdown` side effects, which Pi 1.5.0 writes first.
+
+Owner decision: 2026-11-03, owner approved by relay via Claude.
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 1708b4788.
+
+Call-site markers: `coding/cli/rpc_shutdown_gate.go` (`rpcShutdownGate`), `coding/cli/rpc_mode.go` (`shutdownGate.bind` in `serveRPCMode`, `shutdownGate.InputReady`), `coding/cli/rpc_admission.go` (`commandTurn`, `rpcAwaitHandler`, `startPreparedPrompt`).
+
+Evidence: `TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand`, `TestRPCExtensionShutdownFromSessionStartExits`, `TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown`, `TestRPCExtensionShutdownWaitsForCommandOfSameChunk`, `TestRPCShutdownGate` (`coding/cli`); `TestRPCExtensionShutdownRequestExits` and `TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder` state each side's order, because the Pi 1.5.0 oracle writes the notification before the response.
