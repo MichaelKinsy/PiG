@@ -2,12 +2,12 @@
 # Surface: InteractiveMode.setupKeyHandlers (interactive-mode.ts:3047-3115): the app actions no other scenario presses.
 #
 # Upstream (Pi 1.5.0): setupKeyHandlers registers app.thinking.toggle, app.thinking.cycle, app.tools.expand, app.model.select and the four
-# app.session.* actions on the default editor, and onEscape arms the double-Escape action on an empty editor. keybindings.json remaps the session
-# actions (which have no default key) to F5-F8. Each step waits for the action's own effect, so a binary that does not run the handler never
+# app.session.* actions on the default editor,. keybindings.json remaps the session
+# actions (which have no default key) to F5-F8 (sent as hex: new F5, tree F6, fork F7, resume F8). Each step waits for the action's own effect, so a binary that does not run the handler never
 # reaches the final frame; the comparator then compares the complete final frame of the session tree both binaries show.
 
 name = "59-app-action-keys"
-description = "Remapped session keys, thinking and tool toggles, the model selector key and the double Escape reach the same handlers in both binaries."
+description = "Remapped session keys, thinking and tool toggles, the model selector key reach the same handlers in both binaries."
 covers = [
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
 ]
@@ -32,6 +32,11 @@ capture_start = "Session Tree"
 capture_end = ""
 
 [[tmux.steps]]
+keys = ["hex:1b 5b 31 35 7e"]
+wait_contains = ["New session started"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
 keys = ["reply with exactly: alpha", "Enter"]
 wait_contains = ["alpha"]
 wait_timeout_seconds = 15
@@ -52,7 +57,22 @@ wait_contains = ["Tool output: expanded"]
 wait_timeout_seconds = 10
 
 [[tmux.steps]]
-keys = ["F7"]
+keys = ["hex:1b 5b 5a"]
+wait_contains = ["Current model does not support thinking"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["C-l"]
+wait_contains = ["Only showing models from configured providers"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_not_contains = ["Only showing models from configured providers"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 38 7e"]
 wait_contains = ["Fork from Message"]
 wait_timeout_seconds = 10
 
@@ -62,7 +82,7 @@ wait_not_contains = ["Fork from Message"]
 wait_timeout_seconds = 10
 
 [[tmux.steps]]
-keys = ["F8"]
+keys = ["hex:1b 5b 31 39 7e"]
 wait_contains = ["Resume Session"]
 wait_timeout_seconds = 10
 
@@ -72,17 +92,7 @@ wait_not_contains = ["Resume Session"]
 wait_timeout_seconds = 10
 
 [[tmux.steps]]
-keys = ["F6"]
-wait_contains = ["Session Tree"]
-wait_timeout_seconds = 10
-
-[[tmux.steps]]
-keys = ["Escape"]
-wait_not_contains = ["Session Tree"]
-wait_timeout_seconds = 10
-
-[[tmux.steps]]
-keys = ["Escape", "Escape"]
+keys = ["hex:1b 5b 31 37 7e"]
 wait_contains = ["Session Tree"]
 wait_timeout_seconds = 10
 
