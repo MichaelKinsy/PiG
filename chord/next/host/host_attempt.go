@@ -924,8 +924,10 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 			settle(err)
 			// An abort that came before the handler returned wins, as Pi's `awaitWithContext` rejects at the abort: the
 			// listener of `AfterFunc` runs on a goroutine of its own and may not have settled the result yet.
-			if callContext.Err() != nil {
-				result.settle(nil, context.Cause(callContext))
+			// The child context follows its sources on a goroutine of its own, so the sources are read at once: an abort of the
+			// attempt (a followed Session that closed) that came before the handler returned is already one here.
+			if cause := linked.aborted(); cause != nil {
+				result.settle(nil, cause)
 				return
 			}
 			// The handler's result is the current version's: its mapping back is the provider's (results are not validated).

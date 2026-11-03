@@ -490,7 +490,7 @@ func mustJSONCore(t *testing.T, value any) string {
 	return string(encoded)
 }
 
-// harness-nested-tools.test.ts:428 "reports nested calls in pi.live.nestedTools with their parent", over the core: the nested
+// harness-nested-tools.test.ts:429 "reports nested calls in pi.live.nestedTools with their parent", over the core: the nested
 // slots and the nested result reach a client of the view and of the commits, and the slots name the call's task and the calling one.
 func TestCoreNestedCallsAreListedInTheViewWithTheirParent(t *testing.T) {
 	h, root, submit := nestedCoreHarnessPaused(t,

@@ -299,7 +299,10 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		mustClose(t, harness)
 	})
 
-	// session.ts commit: `context.abortSignal?.throwIfAborted()` as the job starts (Pi e5c6182b, harness.ts submit).
+	// Go-only: not a case of harness-ownership.test.ts at v1.5.0. It keeps the expectations of the v1.4.0 case `rejects a handle
+	// operation queued on the line when the invocation ends before it runs`, which Pi replaced by the case above, as the other
+	// order of the same race: the mark is published while an earlier job holds the line, so the invocation is aborted before the
+	// submit's job starts and session.ts commit's `context.abortSignal?.throwIfAborted()` rejects it (Pi e5c6182b, harness.ts submit).
 	t.Run("rejects a handle submit whose invocation was aborted while it was queued behind a line job, and stores nothing", func(t *testing.T) {
 		setup := chatSetup(t)
 		type ready struct {
