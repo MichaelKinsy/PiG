@@ -29635,6 +29635,26 @@
       ]
     },
     {
+      "id": "BF-a967e74",
+      "title": "A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it…",
+      "symptom": "A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs). It is now built whole before it is attached and fires at most once, as Node's `once` does. An upgrade whose router changed between its last check and its keep was also never ended when its host, relay or socket handler had left in that window (the peer's connection stayed open, seen as a 30 s wait in a soak); it is now checked against the newest router once kept.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a967e74352",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a9757c8",
       "title": "A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves…",
       "symptom": "A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` from the stored credential's env again, under the request env, as Pi's `Models.applyAuth` merges the resolution env before `cloudflareStreams` runs.",
