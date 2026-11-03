@@ -57,9 +57,10 @@ setHandlersRunning(() => {
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
 
-// siblingToolPending reports whether a tool call is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does.
-function siblingToolPending() {
+// siblingToolPending reports whether a tool call of group is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does. pig additive (D205): a member with a group counts only its own Host's tools, because another session's tool is no sibling of its session; a group-less member counts the whole process, as before.
+function siblingToolPending(group) {
   for (const runtime of liveRuntimes) {
+    if (group && runtime.group !== group) continue;
     for (const request of runtime.requestRecords.values()) {
       if (request.toolCall && !request.settled) return true;
     }
@@ -1487,7 +1488,7 @@ export class Connection {
     const kind = parentRequestId ? undefined : originKind();
     // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
     const timer = kind !== undefined;
-    const tick = kind === "tick" || (timer && siblingToolPending());
+    const tick = kind === "tick" || (timer && siblingToolPending(this.owner?.group));
     // The host runs a tick call after the tool_execution_end of the tool call whose handler queued the callback, which this process cannot order against the call: it says which tool call that was.
     const originTool = tick ? originToolCallId() : undefined;
     return new Promise((resolve, reject) => {
@@ -5797,4 +5798,4 @@ export function reportLoadFailure(sockPath, failure) {
 }
 
 // pig additive (D205): the per-group state the shared-process tests read.
-export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup };
+export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };

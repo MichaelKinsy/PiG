@@ -18,7 +18,7 @@ func nodeGroupScript(t *testing.T, body string) {
 	}
 	script := fmt.Sprintf(`import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { Runtime, busFor, drainFor, xrefRealm, groupBuses, groupDrains, liveRuntimes, releaseGroup } from %q;
+import { Runtime, busFor, drainFor, xrefRealm, groupBuses, groupDrains, liveRuntimes, releaseGroup, siblingToolPending } from %q;
 import { runWithRuntime } from %q;
 // member is a runtime joined to the process (attachConnection registers it) over a connection no Host answers; connected false leaves it without one.
 const member = (name, group, connected = true) => {
@@ -31,6 +31,20 @@ const member = (name, group, connected = true) => {
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, output)
 	}
+}
+
+func TestSharedNodeCellCountsPendingToolsPerHost(t *testing.T) {
+	nodeGroupScript(t, `
+const a = member("a", "g1");
+const b = member("b", "g2");
+b.requestRecords.set("t1", { toolCall: true, settled: false });
+assert.equal(siblingToolPending("g1"), false, "another Host's running tool is no sibling of this Host's timer callbacks");
+assert.equal(siblingToolPending("g2"), true);
+assert.equal(siblingToolPending(""), true, "a group-less member keeps the process-wide check");
+assert.equal(siblingToolPending(undefined), true);
+b.requestRecords.set("t1", { toolCall: true, settled: true });
+assert.equal(siblingToolPending("g2"), false);
+`)
 }
 
 func TestSharedNodeCellDrainsOnlyTheClosingHost(t *testing.T) {

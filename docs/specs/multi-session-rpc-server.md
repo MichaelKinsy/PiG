@@ -93,7 +93,7 @@ In `runtime.mjs`, these become per group:
 - the quit drain (`quitDrain`): a connection end drains only its group;
 - the xref transport selection (`xrefRealm`): a payload crosses to a connection of its own group.
 
-These stay per process, because the group shares one event loop: `turnHold`, `turnWait`, `siblingToolPending`, `shareDecodedFrames`. The print and JSON prompt-end waits (`hostStep`) are not engaged by rpc-mode sessions and are not scoped; a multi-session host for print or JSON mode is out of scope.
+The sibling-tool check that marks a timer call as a tick (`siblingToolPending`) counts only the group's tools: another session's running tool is no sibling. These stay per process, because the group shares one event loop: `turnHold`, `turnWait`, `shareDecodedFrames`. The print and JSON prompt-end waits (`hostStep`) are not engaged by rpc-mode sessions and are not scoped; a multi-session host for print or JSON mode is out of scope.
 
 The Go, Rust and Python runtimes route their event bus through the host and key listeners by process and handler id, with process-unique ids, so no change is expected. The conformance row below proves it.
 
