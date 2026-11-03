@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -57,13 +58,27 @@ func TestStreamableHTTPTransportAcceptsAJSONBodyWithALeadingBOM(t *testing.T) {
 // replaced (decoder.decode() flushes it).
 // mutation-checked: counting UTF-16 units instead of bytes, or keeping the cut character's lead byte, fails it.
 func TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody(t *testing.T) {
-	for _, tc := range []struct{ name, body, want string }{
+	type errorBodyCase struct{ name, body, want string }
+	cases := []errorBodyCase{
 		{"two-byte characters", strings.Repeat("é", 9000), strings.Repeat("é", 4*1024)},
 		{"a character cut by the limit", strings.Repeat("a", 8*1024-1) + "é" + "tail", strings.Repeat("a", 8*1024-1)},
 		{"a character ending at the limit", strings.Repeat("a", 8*1024-2) + "é" + "tail", strings.Repeat("a", 8*1024-2) + "é"},
 		{"a body of exactly the limit", strings.Repeat("a", 8*1024), strings.Repeat("a", 8*1024)},
 		{"a body ending inside a character", strings.Repeat("a", 8*1024-1) + "\xc3", strings.Repeat("a", 8*1024-1) + "\uFFFD"},
-	} {
+	}
+	// A 3- or 4-byte character cut after k of its bytes is dropped whole, wherever the cut falls (Pi: decode(subarray, {stream: true})
+	// withholds the incomplete tail); cut after all its bytes it stays. Expectations checked against Pi's readBodyText on node 24.
+	for _, char := range []string{"é", "€", "😀"} {
+		for k := 1; k <= len(char); k++ {
+			prefix := strings.Repeat("a", 8*1024-k)
+			want := prefix
+			if k == len(char) {
+				want += char
+			}
+			cases = append(cases, errorBodyCase{fmt.Sprintf("%q cut after %d of %d bytes", char, k, len(char)), prefix + char + "tail", want})
+		}
+	}
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			url, _ := startServer(t, func(w http.ResponseWriter, r *http.Request, _ *requestLog) {
 				_, _ = io.ReadAll(r.Body)

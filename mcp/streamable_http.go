@@ -569,10 +569,7 @@ func (t *StreamableHTTPTransport) checkResponse(response *http.Response) error {
 	}
 	// pig divergence (D233): Pi 1.5.0 keeps the first 8192 UTF-16 units of the whole body; Pi main reads only the first MAX_ERROR_BODY_BYTES bytes and cancels the rest (4a8b60bc3, #11335).
 	// TextDecoder decodes the kept bytes without a leading BOM; a failed read leaves an empty body.
-	data, _, err := readBodyBytes(response.Body, maxErrorBodyBytes)
-	if err != nil {
-		data = nil
-	}
+	data, _, _ := readBodyBytes(response.Body, maxErrorBodyBytes)
 	body := jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF")))
 	if response.StatusCode == http.StatusUnauthorized {
 		return NewMcpAuthRequiredError(response, body)

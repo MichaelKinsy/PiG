@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/mcp"
 )
@@ -125,5 +127,75 @@ func TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest(t *t
 	}
 	if !body.closed.Load() {
 		t.Fatal("the rest of the error body was not cancelled")
+	}
+}
+
+// stalledBody yields data, then blocks until it is closed.
+type stalledBody struct {
+	data   []byte
+	closed chan struct{}
+	once   sync.Once
+}
+
+func (b *stalledBody) Read(p []byte) (int, error) {
+	if len(b.data) > 0 {
+		n := copy(p, b.data)
+		b.data = b.data[n:]
+		return n, nil
+	}
+	<-b.closed
+	return 0, errors.New("closed")
+}
+func (b *stalledBody) Close() error { b.once.Do(func() { close(b.closed) }); return nil }
+
+// Pi's readBodyText rejects a body as soon as a chunk takes it past maxBytes, without waiting for the rest: a server that
+// sends maxBytes+1 bytes and then stalls is answered at once.
+// mutation-checked: reading one byte past the limit+1 that proves the overflow (LimitReader maxBytes+2) hangs it.
+func TestStreamableHTTPRejectsAnOversizedJSONReplyWithoutWaitingForTheRestOfTheBody(t *testing.T) {
+	const limit = 512
+	body := &stalledBody{data: bytes.Repeat([]byte("x"), limit+1), closed: make(chan struct{})}
+	t.Cleanup(func() { _ = body.Close() })
+	done := make(chan error, 1)
+	go func() {
+		_, err := sendToolsList(t, mcp.StreamableHTTPTransportOptions{MaxMessageBytes: limit, Fetch: bodyFetch{status: 200, header: jsonHeader(), body: body}})
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil || err.Error() != "MCP JSON response exceeds 512 bytes" {
+			t.Fatalf("err = %v, want MCP JSON response exceeds 512 bytes", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Send waited for the rest of an oversized body")
+	}
+}
+
+// failingBody yields data, then fails.
+type failingBody struct{ data []byte }
+
+func (b *failingBody) Read(p []byte) (int, error) {
+	if len(b.data) > 0 {
+		n := copy(p, b.data)
+		b.data = b.data[n:]
+		return n, nil
+	}
+	return 0, errors.New("connection reset")
+}
+func (b *failingBody) Close() error { return nil }
+
+// Pi's checkResponse is `readBodyText(...).catch(() => ({ text: "" }))`: a body that fails mid-read leaves an empty body, not the
+// bytes read before the failure.
+// mutation-checked: returning the partial data of a failed read fails it.
+func TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty(t *testing.T) {
+	_, err := sendToolsList(t, mcp.StreamableHTTPTransportOptions{Fetch: bodyFetch{status: 500, body: &failingBody{data: []byte("partial")}}})
+	httpErr, ok := errors.AsType[*mcp.McpHttpError](err)
+	if !ok {
+		t.Fatalf("err = %v, want McpHttpError", err)
+	}
+	if httpErr.Body != "" {
+		t.Fatalf("body = %q, want empty", httpErr.Body)
+	}
+	if want := "MCP HTTP request failed with status 500"; httpErr.Error() != want {
+		t.Fatalf("message = %q, want %q", httpErr.Error(), want)
 	}
 }
