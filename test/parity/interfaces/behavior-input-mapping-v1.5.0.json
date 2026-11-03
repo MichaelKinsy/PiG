@@ -1287,50 +1287,104 @@
     {
       "id": "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderOverview",
       "ownerFamily": "providers-registry",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/classifier.go#jsObjectKeyOrder",
+        "ai/llama_cpp_classify.go#renderLlamaOverview",
+        "ai/llama_cpp_classify.go#renderLlamaTask"
+      ],
+      "evidence": [
+        "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
+        "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+        "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+        "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
+      ],
+      "contracts": [
+        "ai/llama-classify/render-overview"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderPrompt",
       "ownerFamily": "providers-registry",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/llama_cpp_classify.go#renderPrompt"
+      ],
+      "evidence": [
+        "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "ai/llama_cpp_render_prompt_oracle_test.go#TestLlamaCppRenderPromptMatchesPi",
+        "test/parity/scenarios/providers-registry/08-llama-classify-render-prompt.toml"
+      ],
+      "contracts": [
+        "ai/llama-classify/render-prompt"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderQuestion",
       "ownerFamily": "providers-registry",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/llama_cpp_classify.go#LlamaCppRenderQuestion",
+        "ai/llama_cpp_classify.go#llamaAnswerInstruction"
+      ],
+      "evidence": [
+        "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
+        "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+        "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+        "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
+      ],
+      "contracts": [
+        "ai/llama-classify/render-question"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderState",
       "ownerFamily": "providers-registry",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/classifier.go#jsObjectKeyOrder",
+        "ai/llama_cpp_classify.go#renderLlamaState"
+      ],
+      "evidence": [
+        "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
+        "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+        "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+        "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
+      ],
+      "contracts": [
+        "ai/llama-classify/render-state"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderTask",
       "ownerFamily": "providers-registry",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "ai/llama_cpp_classify.go#llamaQuestionLabels",
+        "ai/llama_cpp_classify.go#orderedChoiceCriteria",
+        "ai/llama_cpp_classify.go#renderLlamaTask"
+      ],
+      "evidence": [
+        "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
+        "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
+        "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+        "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+        "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
+      ],
+      "contracts": [
+        "ai/llama-classify/render-task"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1362,7 +1416,8 @@
       "pigTargets": [
         "ai/openai_responses.go#convertAnchored",
         "ai/openai_responses.go#renderToolRemovalNotice",
-        "ai/openai_responses.go#systemMessageInstruction"
+        "ai/openai_responses.go#systemMessageInstruction",
+        "ai/openai_responses.go#systemToolAdditions"
       ],
       "evidence": [
         "ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
@@ -1600,10 +1655,35 @@
     {
       "id": "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath",
       "ownerFamily": "tools",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/tool_builtin_renderers.go#panicOnUnlinkablePath",
+        "internal/codingagent/tool_render.go#replaceTabs",
+        "internal/codingagent/tool_render_shell.go#toolResultTextOutput",
+        "internal/resolvepath/shorten_home.go#ShortenHomePath",
+        "tui/compact_read_header.go#FormatReadLineRange",
+        "tui/compact_read_header.go#parseLineNumber",
+        "tui/tool_path_render.go#ToolPathLinkError",
+        "tui/tool_path_render.go#linkPath",
+        "tui/tool_path_render.go#renderToolPathArg",
+        "tui/tool_path_render.go#shortenPath"
+      ],
+      "evidence": [
+        "internal/codingagent/edit_card_unlinkable_path_test.go#TestEditCardDrawsTheCallFallbackForAnUnlinkablePath",
+        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "test/parity/scenarios/tools/26-render-tool-path.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+        "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml",
+        "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi",
+        "tui/render_tool_path_contract_test.go#TestRenderToolPathBoundariesMatchPi",
+        "tui/render_tool_path_oracle_test.go#TestRenderToolPathMatchesPi",
+        "tui/tool_path_render_pi_test.go#TestRenderToolPathHonorsPiGeneratedExpectations"
+      ],
+      "contracts": [
+        "coding-agent/render-utils/path-display-helpers",
+        "coding-agent/render-utils/read-range-and-output-text",
+        "coding-agent/render-utils/render-tool-path"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1781,40 +1861,105 @@
     {
       "id": "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderCall",
       "ownerFamily": "tools",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/compact_read.go#classifyCompactRead",
+        "internal/codingagent/compact_read.go#pigDocsLabel",
+        "internal/codingagent/tool_builtin_renderers.go#readRenderCall",
+        "tui/compact_read_header.go#FormatCompactReadHeader",
+        "tui/compact_read_header.go#FormatReadLineRange",
+        "tui/tool_execution.go#FormatReadHeader"
+      ],
+      "evidence": [
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/compact_read_test.go#TestClassifyCompactRead",
+        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "test/parity/scenarios/tools/24-tool-cards.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+        "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/tool-renderers/read-call-formatting",
+        "coding-agent/tool-renderers/read-rendercall"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderResult",
       "ownerFamily": "tools",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/tool_builtin_renderers.go#readRenderResult",
+        "internal/codingagent/tool_builtin_renderers.go#readTruncation",
+        "internal/codingagent/tool_builtin_renderers.go#typedTruncationView",
+        "internal/codingagent/tool_render_shell.go#toolResultTextOutput",
+        "tui/highlight.go#LanguageFromPath"
+      ],
+      "evidence": [
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad",
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails",
+        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "test/parity/scenarios/tools/24-tool-cards.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
+      ],
+      "contracts": [
+        "coding-agent/tool-renderers/read-format-result",
+        "coding-agent/tool-renderers/read-renderresult"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderCall",
       "ownerFamily": "tools",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/tool_builtin_renderers.go#writeRenderCall",
+        "internal/codingagent/write_highlight_cache.go#rebuildWriteHighlightCacheFull",
+        "internal/codingagent/write_highlight_cache.go#refreshPrefix",
+        "internal/codingagent/write_highlight_cache.go#updateWriteHighlightCacheIncremental",
+        "tui/tool_execution.go#FormatWriteHeaderArgs"
+      ],
+      "evidence": [
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
+        "internal/codingagent/interactive_events_write_stream_oracle_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
+        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "internal/codingagent/write_highlight_cache_test.go#TestWriteHighlightCacheHoldsWhatUpstreamHolds",
+        "internal/codingagent/write_stream_prefix_contract_test.go#TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary",
+        "test/parity/scenarios/tools/24-tool-cards.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
+      ],
+      "contracts": [
+        "coding-agent/tool-renderers/write-call-formatting",
+        "coding-agent/tool-renderers/write-rendercall"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderResult",
       "ownerFamily": "tools",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
+      ],
+      "evidence": [
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "test/parity/scenarios/tools/24-tool-cards.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
+      ],
+      "contracts": [
+        "coding-agent/tool-renderers/write-format-result",
+        "coding-agent/tool-renderers/write-renderresult"
+      ],
       "divergence": "",
       "rationale": ""
     },

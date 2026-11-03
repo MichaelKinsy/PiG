@@ -11,6 +11,8 @@ const { initTheme } = await load("dist/modes/interactive/theme/theme.js");
 const { ToolExecutionComponent } = await load("dist/modes/interactive/components/tool-execution.js");
 const { createAllToolDefinitions } = await load("dist/core/tools/index.js");
 const { loadAllHighlightLanguages } = await load("dist/utils/syntax-highlight.js");
+const { getReadmePath } = await load("dist/config.js");
+const { dirname, join } = await import("node:path");
 // Interactive mode's init loads every highlight.js language off the loop (interactive-mode.ts:1124) and a card drawn after
 // that highlights README.md as markdown. The load is a one-way latch in Pi's process as in PiG's, and PiG's may already have
 // tripped in an earlier test, so both sides draw with every language registered (compareToolCards loads PiG's) instead of
@@ -26,10 +28,12 @@ process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
 const results = [];
 for (const test of JSON.parse(input)) {
-  setCapabilities({ images: null, trueColor: true, hyperlinks: false });
+  setCapabilities({ images: null, trueColor: true, hyperlinks: test.hyperlinks === true });
   initTheme(test.theme);
   setKeybindings(new KeybindingsManager(test.bindings ?? {}));
   now = clockStart;
+  // A probe naming a documentation page reads it from Pi's own documentation root; the Go side puts PiG's bundle page in the arguments.
+  if (test.docsPage) test.args = { ...test.args, path: join(dirname(getReadmePath()), test.docsPage) };
   const defs = createAllToolDefinitions(test.cwd);
   // A probe that settles waits for the edit call's diff preview, which Pi computes after the arguments complete and then
   // announces with context.invalidate(), the ui's requestRender. A fixed delay lost that race on a loaded runner and
