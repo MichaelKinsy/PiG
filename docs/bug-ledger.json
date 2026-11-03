@@ -36163,6 +36163,55 @@
       ]
     },
     {
+      "id": "BF-d4e641b",
+      "title": "An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with…",
+      "symptom": "An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with `MCP JSON response exceeds N bytes`, like an oversized SSE event, instead of being buffered whole (Pi main #11749, D233).",
+      "rootCause": "Pi main's rule, ahead of the pin so that an oversized JSON reply is rejected like the same message sent as SSE. No other mechanism is added: the limit is `StreamableHTTPTransportOptions.MaxMessageBytes`.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D233",
+      "removeWhen": "the pinned Pi release contains 4a8b60bc3. Then the two call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with `MCP JSON response exceeds N bytes`, like an oversized SSE event, instead of being buffered whole (Pi main #11749, D233).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d4e641bde3",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody",
+        "mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses",
+        "mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter",
+        "mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest"
+      ]
+    },
+    {
+      "id": "BF-d4e641b-2",
+      "title": "An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept…",
+      "symptom": "An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d4e641bde3",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody"
+      ]
+    },
+    {
       "id": "BF-d50ec25",
       "title": "The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the…",
       "symptom": "The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the admission loop at top level (Bun never reaches `beforeExit` while an entry module's top-level await is pending, so the quit drain after RPC input ended hung), it hooks `v8.Serializer.prototype.writeValue` only where the runtime has it, it keeps a native method when the runtime froze built-ins, and it loads its lazy modules through one list that a bundling runtime can serve.",
@@ -46743,6 +46792,11 @@
       "id": "D228",
       "title": "Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy",
       "entry": "BF-2359a0a"
+    },
+    {
+      "id": "D233",
+      "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
+      "entry": "BF-d4e641b"
     }
   ],
   "exemptCommits": {

@@ -1274,6 +1274,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d449f74](#bf-d449f74) | `tool_search` and the Durable `searchTools()` ranker compute the same BM25 scores as Pi on arm64: the length… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d490a8b](#bf-d490a8b) | Tool argument validation errors follow Pi: at most eight errors are listed (TypeBox's `maxErrors`), and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d4ddb14](#bf-d4ddb14) | The `/scoped-models` search input stays editable after a submit key reaches it (LF under the Kitty keyboard… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d4e641b](#bf-d4e641b) | An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-d4e641b-2](#bf-d4e641b-2) | An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept… | PiG's own defect | All platforms | Unreleased |
 | [BF-d50ec25](#bf-d50ec25) | The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d50faf0](#bf-d50faf0) | Replacing the editor component with `ctx.ui.setEditorComponent()` while an extension dialog is open no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-d514b3d](#bf-d514b3d) | In a Node extension's `before_agent_start` handler, `event.systemPrompt` and `ctx.getSystemPrompt()` now… | PiG's own defect | All platforms | 0.5.0 |
@@ -18955,6 +18957,36 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/models_error_oracle_test.go::TestModelsErrorMessageMatchesPi`, `coding/extension/host/inproc/registries_test.go::TestShortcuts_DiagnosticMessageMatchesUpstream`, `coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi`, `coding/mcpext/manager_view_oracle_test.go::TestMcpManagerViewMatchesPi` and 12 more in docs/bug-ledger.json
 - **Release note:** The `/scoped-models` search input stays editable after a submit key reaches it (LF under the Kitty keyboard protocol, or Enter with `tui.select.confirm` rebound): it was a host-owned input that finished on submit and ignored all later typing; Pi builds `new Input()` with no `onSubmit` (`tui/scoped_models_list.go`; `TestScopedModelsSelectorMatchesPi` now also runs 336 Kitty-protocol probes, red before; regression `TestScopedModelsSearchStaysEditableAfterASubmitKey`).
 
+### BF-d4e641b
+
+**An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D233)
+- **Symptom:** An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with `MCP JSON response exceeds N bytes`, like an oversized SSE event, instead of being buffered whole (Pi main #11749, D233).
+- **Root cause:** Pi main's rule, ahead of the pin so that an oversized JSON reply is rejected like the same message sent as SSE. No other mechanism is added: the limit is `StreamableHTTPTransportOptions.MaxMessageBytes`.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pinned Pi release contains 4a8b60bc3. Then the two call-site markers and this record go.
+- **Fix commits:** `d4e641bde3` (2026-11-03)
+- **Tests:** `mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody`, `mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses`, `mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter`, `mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest`
+- **Release note:** An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with `MCP JSON response exceeds N bytes`, like an oversized SSE event, instead of being buffered whole (Pi main #11749, D233).
+
+### BF-d4e641b-2
+
+**An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d4e641bde3` (2026-11-03)
+- **Tests:** `mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody`
+- **Release note:** An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).
+
 ### BF-d50ec25
 
 **The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the…**
@@ -23356,6 +23388,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
 | D227 | A suspended session resumed in the background stays parked until `fg` | [BF-b65e288](#bf-b65e288) |
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
+| D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
 
 ## Fix-titled commits that are not bugs in a release
 
