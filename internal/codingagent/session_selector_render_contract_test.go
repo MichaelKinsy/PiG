@@ -75,7 +75,7 @@ func TestSessionListRenderMatchesPi(t *testing.T) {
 		}
 	}
 	// Every window position of the 14-row list: the window follows the highlight and is clamped at both ends, with the position line only while rows are clipped.
-	for pos := 0; pos < 14; pos++ {
+	for pos := range 14 {
 		keys := []string{skCtrlS}
 		for range pos {
 			keys = append(keys, skDown)

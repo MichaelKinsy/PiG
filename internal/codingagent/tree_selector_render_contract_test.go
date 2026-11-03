@@ -117,7 +117,7 @@ func TestTreeListRenderMatchesPi(t *testing.T) {
 	}
 	// Every window position of a list longer than the window: the window follows the highlight and is clamped at both ends.
 	for height := 4; height <= 16; height++ {
-		for pos := 0; pos < 15; pos++ {
+		for pos := range 15 {
 			cases = append(cases, treeContractCase{name: fmt.Sprintf("window/h%02d/row%02d", height, pos), fixture: "long", leaf: "l14", initial: fmt.Sprintf("l%d", pos), height: height})
 		}
 	}
