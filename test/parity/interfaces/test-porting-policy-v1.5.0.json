@@ -2097,7 +2097,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go."
+      "rationale": "Production-path review at Pi 1.5.0: every probe runs validateToolArguments, i.e. ai.ValidateToolArguments (ai/validate_arguments.go) over ai/validate.go's schema.CompileCoercing validators, the tool-argument admission of agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [reviewer probes (Sol) › keeps the validator of a schema object, as before, also when the schema is changed later]: object-identity caching: Pi keys its validator cache by the schema object's identity (a WeakMap), so an object mutated in place keeps its stale validator; PiG tool schemas are values read on every call and its cache is keyed by the schema text (ai/validate_arguments.go), so no Go product path holds a schema object that changes under a cached validator except an in-process AgentTool that mutates the map it returns; the rest of the case (the first outcome, and that the schema a call is given is the one it validates against) runs in TestValidateToolArgumentsValidatesTheSchemaItIsGiven.",
+      "designedOutCases": [
+        "reviewer probes (Sol) › keeps the validator of a schema object, as before, also when the schema is changed later"
+      ]
     },
     {
       "path": "packages/ai/test/validation.test.ts",
@@ -7262,7 +7265,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+      "rationale": "Production-path review at Pi 1.5.0: the Session read cache of task and conversation records; the Go test drives durable/session/cached_storage.go (CachedStorage: written-record cache, ended-task table, live and awaited tasks, reads in flight, Published) over a counting backend. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [cached storage › keeps the written record itself, frozen: no copy]: Go has no Object.isFrozen: CachedStorage (durable/session/cached_storage.go) keeps the written record by shared referent and a caller who mutates a published record changes what the cache serves, so the frozen-state assertion on record.state has no Go form; the rest of the case (the identity of the task and the conversation the cache serves, no copy) runs in TestCachedStorageKeepsWrittenRecordItselfShared.",
+      "designedOutCases": [
+        "cached storage › keeps the written record itself, frozen: no copy"
+      ]
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
@@ -7280,7 +7286,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+      "rationale": "Production-path review at Pi 1.5.0: the Session newest-entry and head-marker cache of each conversation; the Go test drives durable/session/conversation_tails.go (ConversationTails: newest entry and newest head marker per conversation, bounded LRU) used by the Session for LatestEntryId and LatestHeadMarker. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [conversation tails › freezes the markers it keeps]: Go has no Object.freeze: ConversationTails (durable/session/conversation_tails.go) shares the kept markers and records are immutable by convention, so a mutation after apply neither throws nor is refused, and no Go production path can express the frozen-record input; the remaining behavior of the markers (kept, bounded, cutoff answers) runs in TestConversationTailsReadsOnceThenFollowsCommits, TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt and TestConversationTailsKeepsBoundedNumberOfConversationsFewerWithMarkers.",
+      "designedOutCases": [
+        "conversation tails › freezes the markers it keeps"
+      ]
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
@@ -7337,7 +7346,11 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable)."
+      "rationale": "Production-path review at Pi 1.5.0: group commit on the Session line (docs/group-commit.md); the Go test drives durable/session/session.go, writer.go, transaction.go and cached_storage.go (the Session line, group commit writer, gates, outcome fences, publication, upkeep, held documents) and conversation_tails.go over a controlled MemoryStorage. Durable's Harness and Session hold every durable turn's state, so it is tagged hot-path with the sibling packages/durable/test/ rows reviewed at Pi 1.2.0 (cmd/pig itself links only durable/core/jv from Durable). SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [group commit: failures per part › rejects every part of a call with its rejection value, ${value} included] [group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed]: a Go error cannot be present but nil: Pi tells `{stored, refused: undefined}` (rejects with undefined) from `{stored}` (\"Storage committed without adopting the batch\"), while Go's Commit returns a non-nil error on every failure and the writer (writer.go) requires result.Refused != nil, so a rejection or refusal of undefined or null has no Go form; the rest of both cases (every part rejected with the call's rejection value, the refused part's refusal and the parts after it failing SessionFailed) runs with non-nil values in TestGroupCommitFailuresPerPart.",
+      "designedOutCases": [
+        "group commit: failures per part › rejects every part of a call with its rejection value, ${value} included",
+        "group commit: failures per part › rejects a refused part with its refusal, ${value} included, and the parts after it with SessionFailed"
+      ]
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
@@ -7671,7 +7684,27 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: TypeBox's Value.Convert rules run as pass 2 of schema.CompileCoercing's coercer (schema/coerce.go convertOnly/coerce), which ai/validate.go (toolArgumentValidators) compiles for every tool call and agent/tool_execution.go, durable/harness/tool.go and durable/core/driver/session.go reach through ai.ValidateToolArguments*; the test drives pass 2 alone through the export_test.go ConvertOnly wrapper over the same coercer code."
+      "rationale": "Production-path review at Pi 1.5.0: TypeBox's Value.Convert rules run as pass 2 of schema.CompileCoercing's coercer (schema/coerce.go convertOnly/coerce), which ai/validate.go (toolArgumentValidators) compiles for every tool call and agent/tool_execution.go, durable/harness/tool.go and durable/core/driver/session.go reach through ai.ValidateToolArguments*; the test drives pass 2 alone through the export_test.go ConvertOnly wrapper over the same coercer code. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: the 18 cases whose schema, input or expectation holds undefined or a bigint (listed in designedOutCases; the seven ids that two upstream sites share are named id@line): their schema, input or expectation holds `undefined` (8) or a bigint (10), which no Go JSON value can be: tool arguments reach the coercer only through JSON (ai/validate.go decodes with chordjson into nil, bool, float64, string, []any or *Object), and Pi's own path reads a big JSON integer as a double, never as a bigint; the other 186 runnable sites run in TestCoerceTypeBoxUpstream (schema/coerce_typebox_upstream_test.go) over schema/testdata/coerce-typebox.json.",
+      "designedOutCases": [
+        "Value.Convert.Any › Should Convert 2",
+        "Value.Convert.Array › Should Convert 9",
+        "Value.Convert.Null › Should Convert 10",
+        "Value.Convert.Null › Should Convert 11",
+        "Value.Convert.Null › Should Convert 17",
+        "Value.Convert.Number › Should Convert 19",
+        "Value.Convert.Object › Should Convert 7",
+        "Value.Convert.String › Should Convert 5",
+        "Value.Convert.String › Should Convert 8",
+        "Value.Convert.String › Should Convert 14",
+        "Value.Convert.Unknown › Should Convert 2",
+        "Value.Convert.Boolean › Should Convert 20@337",
+        "Value.Convert.Boolean › Should Convert 17@390",
+        "Value.Convert.Boolean › Should Convert 18@395",
+        "Value.Convert.Boolean › Should Convert 19@400",
+        "Value.Convert.Boolean › Should Convert 23@420",
+        "Value.Convert.Number › Should Convert 10@940",
+        "Value.Convert.Number › Should Convert 11@945"
+      ]
     },
     {
       "path": "packages/schema/test/coerce.test.ts",
@@ -7714,7 +7747,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile."
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner 2026-11-03, JS-only values and mechanics (decisions item 1), verified per row: [values › treats a property set to undefined as absent]: Go has no undefined: a Go value is JSON null or an absent *Object member, never a present-but-undefined member, and no Go production path (tool arguments decode through chordjson into nil, bool, float64, string, []any or *Object) can carry one; the rest of the values group (absent versus null members, required, additional properties) runs in TestValues (schema/validator_upstream_test.go).",
+      "designedOutCases": [
+        "values › treats a property set to undefined as absent"
+      ]
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",
