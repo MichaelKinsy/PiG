@@ -183,6 +183,69 @@ func tlAddedNames(system ai.SystemMessage) []string {
 	return names
 }
 
+// tool-args-typebox.test.ts is type-level (expectTypeOf): in Pi, execute() and prepareArguments() are typed by the parameter schema.
+// Go's ToolRegistration.Execute and PrepareArguments take `any`, so the schema is enforced at run time: the arguments a tool
+// executes with are the validated JSON of that schema (a required path, an optional integer offset, a string array of tags).
+func TestToolArgumentsOfASchemaReachExecuteAsTheSchemaShape(t *testing.T) {
+	setup := chatSetup(t)
+	type args struct {
+		Path   string
+		Offset *int
+		Tags   []string
+	}
+	seen := &syncList[args]{}
+	parameters := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"path":   map[string]any{"type": "string"},
+			"offset": map[string]any{"type": "integer"},
+			"tags":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		},
+		"required": []any{"path", "tags"},
+	}
+	addTool(t, setup.Registry, ownTool("read", "Reads a file", parameters, func(_ context.Context, raw any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+		object := raw.(map[string]any)
+		got := args{Path: object["path"].(string)}
+		if offset, ok := object["offset"].(float64); ok {
+			value := int(offset)
+			got.Offset = &value
+		}
+		for _, tag := range object["tags"].([]any) {
+			got.Tags = append(got.Tags, tag.(string))
+		}
+		seen.add(got)
+		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}}, nil
+	}, func(tool *durable.ToolRegistration) {
+		tool.PrepareArguments = func(raw any) (any, error) {
+			object := raw.(map[string]any)
+			if _, ok := object["tags"]; !ok {
+				return map[string]any{"path": object["path"], "tags": []any{}}, nil
+			}
+			return raw, nil
+		}
+	}))
+	run := tlRun(t, setup, []ai.FauxResponseStep{tlCallsStep(
+		tlCall{"read", map[string]any{"path": "a", "offset": float64(2), "tags": []any{"x", "y"}}, "full"},
+		tlCall{"read", map[string]any{"path": "b"}, "prepared"},
+		tlCall{"read", map[string]any{"path": "c", "tags": []any{}, "offset": "abc"}, "badOffset"},
+		tlCall{"read", map[string]any{"path": []any{}, "tags": []any{}}, "badPath"},
+	), tlDone()}, nil)
+	two := 2
+	want := []args{{Path: "a", Offset: &two, Tags: []string{"x", "y"}}, {Path: "b", Tags: nil}}
+	got := seen.all()
+	slices.SortFunc(got, func(a, b args) int { return strings.Compare(a.Path, b.Path) })
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tool ran with %+v, want %+v", got, want)
+	}
+	byId := tlResultById(run.entries)
+	for _, id := range []string{"badOffset", "badPath"} {
+		if text := tlResultText(byId[id]); !strings.Contains(text, "[error]") {
+			t.Fatalf("%s result %q, want an error result for arguments the schema refuses", id, text)
+		}
+	}
+	mustClose(t, run.harness)
+}
+
 func TestToolRound(t *testing.T) {
 	// harness-tools.test.ts:82 it("runs input, tool call, tool result, and answer, and settles the input")
 	t.Run("runs input, tool call, tool result, and answer, and settles the input", func(t *testing.T) {

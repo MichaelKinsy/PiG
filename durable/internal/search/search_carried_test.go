@@ -85,6 +85,8 @@ func TestRankDocumentsMatchesUnicodeQueries(t *testing.T) {
 	documents := []Document{
 		doc("mcp__github__list_issues", "List issues in a repository. state open or closed"),
 		doc("mcp__github__create_pull_request", "Open a pull request."),
+		doc("mcp__linear__search_issues", "Search Linear issues by text."),
+		doc("mcp__docs__search", "Search the documentation."),
 	}
 	for _, test := range [][2]string{
 		{"搜索仓库问题", "问题"},

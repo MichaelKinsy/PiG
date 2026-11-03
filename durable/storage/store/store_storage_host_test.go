@@ -387,7 +387,7 @@ func TestStoreStorageViewsAsChordSources(t *testing.T) {
 	})
 }
 
-func TestStoreStorageGC(t *testing.T) {
+func TestStoreStorageClosedStorageIsCollected(t *testing.T) {
 	t.Run("a closed StoreStorage is collected while its store stays open", func(t *testing.T) {
 		store := memoryStore(t)
 		opened := func() weak.Pointer[StoreStorage] {
