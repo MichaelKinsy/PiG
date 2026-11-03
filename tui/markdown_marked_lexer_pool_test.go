@@ -92,13 +92,13 @@ func TestMarkedBlockLexerTakesTextOfASCIISourcesWithoutCopying(t *testing.T) {
 	state := &markedInlineState{}
 	src := strings.Join([]string{"first paragraph", "", "second one", "continued", "", "", "third"}, "\n")
 	tokens := state.blockLexer().lexRunes(state.blockRunes(src), src)
-	base := uintptr(unsafe.Pointer(unsafe.StringData(src)))
+	base := uintptr(unsafe.Pointer(unsafe.StringData(src))) //nolint:gosec // G103: the address of the source's bytes, compared with the addresses of the tokens' text; nothing is read or written through it.
 	for _, token := range tokens {
 		for name, text := range map[string]string{"raw": token.raw, "text": token.text} {
 			if text == "" {
 				continue
 			}
-			at := uintptr(unsafe.Pointer(unsafe.StringData(text)))
+			at := uintptr(unsafe.Pointer(unsafe.StringData(text))) //nolint:gosec // G103: the address of a token text's bytes, which must lie inside the source's.
 			if at < base || at+uintptr(len(text)) > base+uintptr(len(src)) {
 				t.Errorf("%s token's %s %q is a copy of the source", token.kind, name, text)
 			}
