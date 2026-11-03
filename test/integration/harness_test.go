@@ -175,6 +175,9 @@ func (h *harness) capture() string {
 // interactiveReadyMarker is Pi's auto-compaction footer, painted in regular and fullscreen modes even with quietStartup. Startup help is optional and is not a readiness signal. Interaction assertions still prove that input dispatch and extension startup have completed.
 const interactiveReadyMarker = "(auto)"
 
+// hotkeysLastRow is the action text of the last row Pi's /hotkeys draws (interactive-mode.ts:6955-7023): the Navigation, Editing and Other tables come first, and an Extensions table follows only when an extension registers a shortcut. With none registered, that row is the bottom line of the chat, so it stays on screen after the earlier rows scroll off a pane, and it appears only once the command has dispatched. A row from an earlier table scrolls away.
+const hotkeysLastRow = "Run bash command (excluded from context)"
+
 // startupReadyWait bounds process spawn, resource loading and initial paint. Interaction waits stay short so a genuine hang still fails fast.
 const startupReadyWait = 30 * time.Second
 

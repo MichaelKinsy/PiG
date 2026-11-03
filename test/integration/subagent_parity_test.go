@@ -59,6 +59,8 @@ func pigConfig(t *testing.T) systemConfig {
 func pigConfigWithHome(t *testing.T, pigHome string) systemConfig {
 	t.Helper()
 	trustIntegrationProject(t, pigHome)
+	// Without a settings.json in the agent directory pig opens its first-time setup (D88), which blocks readiness.
+	seedIntegrationSettings(t, pigHome)
 	// Loaded resources follow the awaited session_start handlers; the footer paints earlier.
 	return systemConfig{
 		name:   "pig",
