@@ -133,8 +133,8 @@ func TestRenderSessionItemsCacheMissNoticesFollowTheStopReasonAndTheSetting(t *t
 		t.Fatalf("a completed response has no notice:\n%s", got)
 	}
 	for name, m := range map[string]*InteractiveMode{
-		"aborted response":  build(ai.StopReasonAborted, true),
-		"error response":    build(ai.StopReasonError, true),
+		"aborted response":   build(ai.StopReasonAborted, true),
+		"error response":     build(ai.StopReasonError, true),
 		"notices turned off": build(ai.StopReasonStop, false),
 	} {
 		if got := contractChatText(m); strings.Contains(got, notice) {
