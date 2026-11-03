@@ -939,6 +939,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		switch {
 		case last != nil && last.kind == "code":
 			// blockquote continuation cannot be preceded by a code block
+			return &markedBlock{kind: "blockquote", raw: raw, tokens: tokens, text: text}
 		case last != nil && last.kind == "blockquote":
 			// include continuation in nested blockquote
 			continuation := strings.Join(lines, "\n")
@@ -948,6 +949,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 
 			raw = raw + "\n" + continuation
 			text = markedWithoutTail(text, last.text) + newToken.text
+			return &markedBlock{kind: "blockquote", raw: raw, tokens: tokens, text: text}
 		case last != nil && last.kind == "list":
 			// include continuation in nested list
 			newText := last.raw + "\n" + strings.Join(lines, "\n")
@@ -956,9 +958,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 			raw = markedWithoutTail(raw, last.raw) + newToken.raw
 			text = markedWithoutTail(text, last.raw) + newToken.raw
 			lines = strings.Split(markedSubstring(newText, newToken.raw), "\n")
-			continue
 		}
-		break
 	}
 	return &markedBlock{kind: "blockquote", raw: raw, tokens: tokens, text: text}
 }
