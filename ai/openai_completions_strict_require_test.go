@@ -53,7 +53,7 @@ func TestCompletionsConvertToolsStrictRequireUnsupported(t *testing.T) {
 			if err != nil || out[0].Function.Strict == nil || !*out[0].Function.Strict {
 				t.Fatalf("out = %+v err = %v, want strict:true", out, err)
 			}
-			// prefer never errors; unsupported rows send a plain tool without strict.
+			// With strict mode on, prefer sends strict:true like require.
 			out, err = p.convertTools([]ToolSchema{strictSamplingTool("prefer")})
 			if err != nil || out[0].Function.Strict == nil || !*out[0].Function.Strict {
 				t.Fatalf("prefer out = %+v err = %v", out, err)
@@ -81,33 +81,75 @@ func TestCompletionsConvertToolsStrictPreferUnsupportedPlain(t *testing.T) {
 	}
 }
 
+// streamStrictRequireError streams the transcript through an openAIProvider on cfg and returns the surfaced
+// error message and whether any request reached the transport.
+func streamStrictRequireError(t *testing.T, cfg OpenAIConfig, messages []Message) (string, bool) {
+	t.Helper()
+	sent := false
+	p := &openAIProvider{cfg: cfg}
+	p.client = &http.Client{Transport: openAITestRoundTripperFunc(func(*http.Request) (*http.Response, error) {
+		sent = true
+		return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader("data: [DONE]\n\n"))}, nil
+	})}
+	var msg string
+	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: messages}), StreamOptions{})
+	if err != nil {
+		msg = err.Error()
+	} else {
+		for ev := range stream.Events(context.Background()) {
+			if e, ok := ev.(ErrorEvent); ok {
+				msg = e.Error.ErrorMessage
+			}
+		}
+	}
+	return msg, sent
+}
+
 func TestCompletionsStreamStrictRequireUnsupportedFailsBeforeRequest(t *testing.T) {
 	for name, cfg := range strictRequireRows() {
 		if cfg.Compat != nil && cfg.Compat.SupportsStrictMode != nil && *cfg.Compat.SupportsStrictMode {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {
-			sent := false
-			p := &openAIProvider{cfg: cfg}
-			p.client = &http.Client{Transport: openAITestRoundTripperFunc(func(*http.Request) (*http.Response, error) {
-				sent = true
-				return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"text/event-stream"}}, Body: io.NopCloser(strings.NewReader("data: [DONE]\n\n"))}, nil
-			})}
-			tctx := NormalizeContext(Context{Messages: []Message{
+			msg, sent := streamStrictRequireError(t, cfg, []Message{
 				SystemMessage{Content: SystemText("s"), ToolsAdded: []ToolSchema{strictSamplingTool("require")}},
 				UserMessage{Content: UserText("hi")},
-			}})
-			var msg string
-			stream, err := p.Stream(context.Background(), tctx, StreamOptions{})
-			if err != nil {
-				msg = err.Error()
-			} else {
-				for ev := range stream.Events(context.Background()) {
-					if e, ok := ev.(ErrorEvent); ok {
-						msg = e.Error.ErrorMessage
-					}
-				}
+			})
+			if msg != strictRequireUnsupportedError {
+				t.Fatalf("error = %q, want %q", msg, strictRequireUnsupportedError)
 			}
+			if sent {
+				t.Fatal("request was sent")
+			}
+		})
+	}
+}
+
+// TestCompletionsStreamStrictRequireMidConversationToolAdditions covers a compat with mid-conversation
+// system messages and tool additions but no strict mode (kimi-coding k3 in the catalog). The tool arrives
+// where Pi converts it through the per-system-message path rather than the request tool list.
+func TestCompletionsStreamStrictRequireMidConversationToolAdditions(t *testing.T) {
+	on, off := true, false
+	cfg := OpenAIConfig{ProviderID: "custom", BaseURL: "http://localhost:1/v1", Model: "m", Compat: &OpenAICompat{SupportsMidConvoSystemMessages: &on, SupportsMidConvoToolAdditions: &on, SupportsStrictMode: &off}}
+	rows := map[string][]Message{
+		"later system message": {
+			SystemMessage{Content: SystemText("s")},
+			UserMessage{Content: UserText("hi")},
+			AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: "ok"}}, StopReason: StopReasonStop},
+			SystemMessage{ToolsAdded: []ToolSchema{strictSamplingTool("require")}},
+			UserMessage{Content: UserText("again")},
+		},
+		// An aborted first assistant is dropped by the transform, which leaves the tool-bearing system message
+		// first in the converted transcript but not in the given one: the leading-system-message path converts it.
+		"leading system message after dropped aborted assistant": {
+			AssistantMessage{Content: []AssistantContentBlock{TextContent{Text: "partial"}}, StopReason: StopReasonAborted},
+			SystemMessage{Content: SystemText("s"), ToolsAdded: []ToolSchema{strictSamplingTool("require")}},
+			UserMessage{Content: UserText("hi")},
+		},
+	}
+	for name, messages := range rows {
+		t.Run(name, func(t *testing.T) {
+			msg, sent := streamStrictRequireError(t, cfg, messages)
 			if msg != strictRequireUnsupportedError {
 				t.Fatalf("error = %q, want %q", msg, strictRequireUnsupportedError)
 			}
