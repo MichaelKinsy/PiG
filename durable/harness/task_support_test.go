@@ -65,13 +65,18 @@ func abortedBy(signal context.Context) error {
 // flush is session-support.ts flush(): let pending work run for one scheduling turn.
 func flush() { time.Sleep(time.Millisecond) }
 
-// eventually flushes scheduling turns until check holds (200 attempts, as upstream).
+// eventually is task-support.ts eventually: check, then await flush(), up to 200 times. A turn is awaitQuiescent, then flush().
+// The barrier returns once every other goroutine has run up to a wait, so the work a check waits for (a reopen, a resume, a
+// delivery) has finished or is parked before the next attempt, however slowly a starved scheduler runs it. A goroutine parked
+// on a timer counts as idle to the barrier, so flush() keeps what a Pi turn also is, a macrotask (setTimeout) of wall time: a
+// handover that sleeps 10 ms after its commit still gets the turn spacing Pi gives it.
 func eventually(t *testing.T, check func() bool) {
 	t.Helper()
 	for range 200 {
 		if check() {
 			return
 		}
+		awaitQuiescent(t)
 		flush()
 	}
 	t.Fatal("Condition was not reached")
