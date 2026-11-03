@@ -3389,15 +3389,18 @@ id = "ai/llama-classify/render-state"
 upstream_id = "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderState"
 family = "providers-registry"
 kind = "render-layout"
-claim = "the state is written as `State:` and the state's JSON with one-space indentation, its array-index keys first in ascending order (a Go map keeps no insertion order, so other keys are in byte order), byte for byte over 1500 seeded requests"
+claim = "the state is written as `State:`, a line break and JSON.stringify(state, null, 1): one-space indentation, empty objects and arrays as {} and [], numbers as JavaScript spells them (1e+21, 1e-7, -0 as 0), strings escaped as JSON.stringify escapes them (control characters, quotes, backslashes; U+2028 and U+2029 left raw), array-index keys first in ascending order and the other keys after (a Go map keeps no insertion order, so those are in byte order), byte for byte over 1500 seeded requests and 66 boundary requests against the installed Pi (and as two printed streams in scenarios 07 and 09)"
 status = "ported"
 pig_targets = [
-  "ai/llama_cpp_classify.go#renderLlamaState"
+  "ai/llama_cpp_classify.go#renderLlamaState",
+  "ai/classifier.go#jsObjectKeyOrder"
 ]
 evidence = [
   "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+  "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
   "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
-  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml"
+  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+  "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
 ]
 
 [contract.upstream]
@@ -3412,16 +3415,19 @@ id = "ai/llama-classify/render-task"
 upstream_id = "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderTask"
 family = "providers-registry"
 kind = "render-layout"
-claim = "a question is written as `Question:` and its instructions followed by its options (labeled letters when labels are given, else dashes; the empty description omitted), levels numbered from 0, or the Yes and No meanings that exist, byte for byte over 1500 seeded requests"
+claim = "a question is written as `Question: ` and its instructions; a choice adds a blank line, `Options:` and one line per option in JavaScript key order, the key and `: description` only when the description is not empty, each prefixed by `- ` in the overview and by its label and `. ` in the labeled question; a score adds a blank line, `Levels:` and one `index. level` line per level; a bool adds a blank line and a `Yes means: ` line and a `No means: ` line for each meaning that is not empty, and nothing when neither is; the labels of a choice are A-Z, a-z, 0-9 (2 to 62 options) and of a score the digits (2 to 10 levels), a count outside them throws `A choice question needs 2 to 62 options, got N` or `A score question needs 2 to 10 levels, got N`, and a bool is labeled Yes and No with the keys true and false; the empty, one and 63-option choices, and the 0, 1 and 11-level scores, are boundaries of that table, byte for byte over 1500 seeded requests and 66 boundary requests against the installed Pi (and as two printed streams in scenarios 07 and 09)"
 status = "ported"
 pig_targets = [
   "ai/llama_cpp_classify.go#renderLlamaTask",
-  "ai/llama_cpp_classify.go#llamaQuestionLabels"
+  "ai/llama_cpp_classify.go#llamaQuestionLabels",
+  "ai/llama_cpp_classify.go#orderedChoiceCriteria"
 ]
 evidence = [
   "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+  "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
   "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
-  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml"
+  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+  "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
 ]
 
 [contract.upstream]
@@ -3436,15 +3442,19 @@ id = "ai/llama-classify/render-overview"
 upstream_id = "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderOverview"
 family = "providers-registry"
 kind = "render-layout"
-claim = "the overview opens with the singular or plural task sentence and lists every question of the request in JavaScript key order without labels, byte for byte over 1500 seeded requests"
+claim = "the overview opens with `Task: answer the following question about the state.` for a request of one question and `Task: answer each of the following questions about the state.` for any other count, then writes every question of the request without labels in JavaScript key order (array-index ids ascending, up to 4294967294, ahead of the other ids in insertion order), each separated from the next by a blank line, byte for byte over 1500 seeded requests and 66 boundary requests against the installed Pi (and as two printed streams in scenarios 07 and 09)"
 status = "ported"
 pig_targets = [
-  "ai/llama_cpp_classify.go#renderLlamaOverview"
+  "ai/llama_cpp_classify.go#renderLlamaOverview",
+  "ai/classifier.go#jsObjectKeyOrder",
+  "ai/llama_cpp_classify.go#renderLlamaTask"
 ]
 evidence = [
   "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+  "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
   "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
-  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml"
+  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+  "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
 ]
 
 [contract.upstream]
@@ -3459,15 +3469,18 @@ id = "ai/llama-classify/render-question"
 upstream_id = "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderQuestion"
 family = "providers-registry"
 kind = "render-layout"
-claim = "one question of a request is the state, the overview, the state again and the labeled question with its answer instruction, with its labels and keys, an unsupported option count or an unknown id throwing Pi's message, byte for byte over 1500 seeded requests"
+claim = "one question of a request is the state, the overview, the state again and the labeled question followed by its answer instruction (`Answer with one letter.`, `Answer with one level number.` or `Answer Yes or No.`), joined by blank lines, with its labels and keys; an unknown id throws `Unknown question: id` before any other check, and an unsupported option count throws the message of the label table, byte for byte over 1500 seeded requests and 66 boundary requests against the installed Pi (and as two printed streams in scenarios 07 and 09)"
 status = "ported"
 pig_targets = [
-  "ai/llama_cpp_classify.go#LlamaCppRenderQuestion"
+  "ai/llama_cpp_classify.go#LlamaCppRenderQuestion",
+  "ai/llama_cpp_classify.go#llamaAnswerInstruction"
 ]
 evidence = [
   "ai/llama_cpp_render_oracle_test.go#TestLlamaCppRenderQuestionMatchesPi",
+  "ai/llama_cpp_render_contract_test.go#TestLlamaCppRenderBoundariesMatchPi",
   "ai/llama_cpp_classify_upstream_test.go#TestLlamaCppClassifyUpstream",
-  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml"
+  "test/parity/scenarios/providers-registry/07-llama-classify-render-question.toml",
+  "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml"
 ]
 
 [contract.upstream]
@@ -3686,14 +3699,23 @@ id = "coding-agent/tool-renderers/read-rendercall"
 upstream_id = "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderCall"
 family = "tools"
 kind = "render-layout"
-claim = "the read call header shows the bold toolTitle name, the accent path (or the invalid-arg text for a non-string path), the warning line range and the compact label, byte for byte in both themes at widths 80 and 28"
+claim = "the read call is the compact label when collapsed and the path has a compact classification, else the plain header: a SKILL.md reads `[skill] <its directory>` (the file name when the directory has no name), an AGENTS.override.md, AGENTS.md, AGENTS.MD, CLAUDE.md or CLAUDE.MD (the names are case-sensitive) reads `read resource <path relative to the working directory, or absolute outside it>`, a page of the documentation bundle reads `read docs README.md` or `read docs docs/<page>` (the bundle is PiG's own, D22), each followed by the line range and the dim `(ctrl+o to expand)` hint (bold toolTitle `read` for the docs and resource kinds); any other path, and every path when expanded, reads the bold toolTitle `read`, renderToolPath of file_path ?? path (an empty file_path is kept, a null one falls back to path, any non-string is the invalid-arg text) and the warning-coloured formatReadLineRange of offset and limit (finite numbers or numeric strings, nothing for malformed or absent ones); with hyperlink support a path whose file URL cannot be resolved throws and the card draws the call fallback instead, byte for byte against the installed Pi over the 2322 probes of the read and write card test, the 500 random cards and the fixed cards, in both themes at widths 80 and 28 (and as two printed streams in scenarios 24 and 27)"
 status = "ported"
 pig_targets = [
-  "internal/codingagent/tool_builtin_renderers.go#readRenderCall"
+  "internal/codingagent/tool_builtin_renderers.go#readRenderCall",
+  "tui/compact_read_header.go#FormatCompactReadHeader",
+  "tui/compact_read_header.go#FormatReadLineRange",
+  "internal/codingagent/compact_read.go#classifyCompactRead",
+  "tui/tool_execution.go#FormatReadHeader"
 ]
 evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "test/parity/scenarios/tools/24-tool-cards.toml"
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi",
+  "internal/codingagent/compact_read_test.go#TestClassifyCompactRead",
+  "test/parity/scenarios/tools/24-tool-cards.toml",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
 ]
 
 [contract.upstream]
@@ -3704,19 +3726,55 @@ sha256 = "08cab42fccf6870da744591c74b5efe47fb2b7911eb74d9c238b52017aeaaf4b"
 keybindings = []
 
 [[contract]]
+id = "coding-agent/tool-renderers/read-call-formatting"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the read call's helpers in upstream order: styledReadLineRange colours the range in warning when it is not empty; formatReadCall is the bold toolTitle `read`, a space, renderToolPath of file_path ?? path and the range; a compact classification tries SKILL.md first, then the documentation page, then the resource names, and gives none for an empty path; formatCompactReadCall writes a skill as customMessageLabel `[skill] ` (bold) and customMessageText label, anything else as the bold toolTitle `read <kind>` and the accent label, then the range and the dim expand hint with the key bound to app.tools.expand"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#readRenderCall",
+  "tui/compact_read_header.go#FormatCompactReadHeader",
+  "internal/codingagent/compact_read.go#classifyCompactRead",
+  "internal/codingagent/compact_read.go#pigDocsLabel"
+]
+evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/compact_read_test.go#TestClassifyCompactRead",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+start = "function styledReadLineRange(args: ReadRenderArgs | undefined, theme: Theme): string {"
+end = "function formatReadResult("
+sha256 = "ed5287562fa41398d487e2f8793a3e2510495562435badd722fbc2f6af87775c"
+keybindings = []
+
+[[contract]]
 id = "coding-agent/tool-renderers/write-rendercall"
 upstream_id = "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderCall"
 family = "tools"
 kind = "render-layout"
-claim = "the write call header, then the written content, syntax highlighted by the path's language, collapsed to its first lines with the expand hint, and the invalid content text, byte for byte in both themes at widths 80 and 28"
+claim = "the write call is the bold toolTitle `write` and renderToolPath of file_path ?? path, then, for a content argument that is a string: nothing when it is empty; otherwise a blank line and its lines (carriage returns removed, tabs as three spaces, trailing empty lines dropped), highlighted by the path's language while streaming from the cache that highlights the first 50 lines as one block and each later line on its own, and by the highlighter once the arguments are complete, else toolOutput-coloured; the first ten lines while collapsed with `... (N more lines, M total,` and the expand hint, and all when expanded; a content that is not a string (a number, a boolean, an object) is `[invalid content arg - expected string]` in the error colour, and a null or absent content is empty; a stream whose content is not an extension of the cached content, or whose path or language changed, rebuilds the cache; with hyperlink support a path whose file URL cannot be resolved throws and the card draws the call fallback, byte for byte against the installed Pi over the 2322 probes of the read and write card test, the 500 random cards and the fixed cards, in both themes at widths 80 and 28 (and as two printed streams in scenarios 24 and 27), and frame by frame against the installed Pi while a call streams in 16-character deltas"
 status = "ported"
 pig_targets = [
-  "internal/codingagent/tool_builtin_renderers.go#writeRenderCall"
+  "internal/codingagent/tool_builtin_renderers.go#writeRenderCall",
+  "internal/codingagent/write_highlight_cache.go#updateWriteHighlightCacheIncremental",
+  "internal/codingagent/write_highlight_cache.go#rebuildWriteHighlightCacheFull",
+  "tui/tool_execution.go#FormatWriteHeaderArgs"
 ]
 evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/interactive_events_write_stream_oracle_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
   "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
-  "test/parity/scenarios/tools/24-tool-cards.toml"
+  "internal/codingagent/write_highlight_cache_test.go#TestWriteHighlightCacheHoldsWhatUpstreamHolds",
+  "test/parity/scenarios/tools/24-tool-cards.toml",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+  "internal/codingagent/write_stream_prefix_contract_test.go#TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary"
 ]
 
 [contract.upstream]
@@ -3724,6 +3782,34 @@ path = "packages/coding-agent/src/core/tools/renderers/write.ts"
 start = "\trenderCall(args, theme, context) {"
 end = "\trenderResult(result, _options, theme, context) {"
 sha256 = "5527b7dcec4b048fdd53213b7f7e69e51adcc7f98a7d15547208b117d5c69944"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/write-call-formatting"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderCall"
+family = "tools"
+kind = "render-layout"
+claim = "the write call's highlight cache and formatting in upstream order: the cache holds the path, language, raw content, normalized lines and highlighted lines; refreshWriteHighlightPrefix highlights the first min(50, lines) normalized lines as one block; rebuildWriteHighlightCacheFull is nothing without a language and otherwise the whole content highlighted; updateWriteHighlightCacheIncremental rebuilds unless the language, the path and the content prefix all match, returns the cache for equal content, appends the delta to the last line and highlights each changed line singly, then refreshes the prefix; formatWriteCall reads file_path ?? path and content through str(), draws the header, the invalid-content text or the content lines as described for the call"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#writeRenderCall",
+  "internal/codingagent/write_highlight_cache.go#updateWriteHighlightCacheIncremental",
+  "internal/codingagent/write_highlight_cache.go#refreshPrefix",
+  "internal/codingagent/write_highlight_cache.go#rebuildWriteHighlightCacheFull"
+]
+evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/interactive_events_write_stream_oracle_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
+  "internal/codingagent/write_highlight_cache_test.go#TestWriteHighlightCacheHoldsWhatUpstreamHolds",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+  "internal/codingagent/write_stream_prefix_contract_test.go#TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/write.ts"
+start = "type WriteHighlightCache = {"
+end = "function formatWriteResult("
+sha256 = "65597d144a934d72dbc86bf97cd1537a38783f0aa83e3a6c04639b3983711788"
 keybindings = []
 
 [[contract]]
@@ -3797,14 +3883,22 @@ id = "coding-agent/tool-renderers/read-renderresult"
 upstream_id = "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderResult"
 family = "tools"
 kind = "render-layout"
-claim = "the read result shows the tool output text, syntax highlighted by the path's language, collapsed to the preview lines with the expand hint, the truncation warning and image fallbacks, or the error text, byte for byte in both themes at widths 80 and 28"
+claim = "the read result is empty while collapsed unless the read failed; otherwise the text output (text blocks joined by a line break, ANSI and binary control characters and carriage returns removed, an image line per image block when images are not shown), split into lines by the path's language (file_path ?? path, highlighted and shown as highlighted unless the read failed or the path is empty or has no language, else toolOutput-coloured lines) with tabs written as three spaces, trailing empty lines dropped, the first ten lines while collapsed and `... (N more lines,` with the expand hint for the rest; a truncation then adds a warning line: `[First line exceeds <size> limit]` when the first line exceeded it, `[Truncated: showing N of M lines (L line limit)]` when truncated by lines, else `[Truncated: N lines shown (<size> limit)]`, with the counts printed as JavaScript prints them (`undefined` for a missing one) and the default 2000 lines and 50KB only for a limit that is missing or null (a stored 0 stays 0), byte for byte against the installed Pi over the 2322 probes of the read and write card test, the 500 random cards and the fixed cards, in both themes at widths 80 and 28 (and as two printed streams in scenarios 24 and 27)"
 status = "ported"
 pig_targets = [
-  "internal/codingagent/tool_builtin_renderers.go#readRenderResult"
+  "internal/codingagent/tool_builtin_renderers.go#readRenderResult",
+  "internal/codingagent/tool_builtin_renderers.go#readTruncation",
+  "tui/highlight.go#LanguageFromPath",
+  "internal/codingagent/tool_render_shell.go#toolResultTextOutput"
 ]
 evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "test/parity/scenarios/tools/24-tool-cards.toml"
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad",
+  "test/parity/scenarios/tools/24-tool-cards.toml",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+  "internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails"
 ]
 
 [contract.upstream]
@@ -3815,18 +3909,48 @@ sha256 = "ba34c5b34063527fda9a1f9c5f9c1a548d4a8ddd1eebbd86d91fb7fa87544aaf"
 keybindings = []
 
 [[contract]]
+id = "coding-agent/tool-renderers/read-format-result"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "formatReadResult in upstream order: nothing when collapsed and not an error; the raw path, the text output and the language (none for an error or an empty path); highlighted lines for a language, else the output split by line breaks; trailing empty lines dropped; ten lines while collapsed and all of them when expanded; the remaining count with the muted hint; the truncation warning in the warning colour for the first-line, lines and bytes cases"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#readRenderResult",
+  "internal/codingagent/tool_builtin_renderers.go#readTruncation",
+  "internal/codingagent/tool_builtin_renderers.go#typedTruncationView"
+]
+evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+  "internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+start = "function formatReadResult("
+end = "export const readRenderers:"
+sha256 = "76929a71125a05b085c8164d1f895a2c2cce579b067692f36eb5c868abf46547"
+keybindings = []
+
+[[contract]]
 id = "coding-agent/tool-renderers/write-renderresult"
 upstream_id = "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderResult"
 family = "tools"
 kind = "render-layout"
-claim = "the write result shows nothing on success and the error text in the error colour on failure, byte for byte in both themes at widths 80 and 28"
+claim = "the write result draws nothing (an empty container) unless the write failed and carries text: the error text, the text blocks joined by a line break (an empty block an empty line), in the error colour after a line break, with images and other blocks ignored, ANSI left as written; a successful result, a failed one with no text and one with only images draw nothing, byte for byte against the installed Pi over the 2322 probes of the read and write card test, the 500 random cards and the fixed cards, in both themes at widths 80 and 28 (and as two printed streams in scenarios 24 and 27)"
 status = "ported"
 pig_targets = [
   "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
 ]
 evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "test/parity/scenarios/tools/24-tool-cards.toml"
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+  "test/parity/scenarios/tools/24-tool-cards.toml",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
 ]
 
 [contract.upstream]
@@ -3834,6 +3958,29 @@ path = "packages/coding-agent/src/core/tools/renderers/write.ts"
 start = "\trenderResult(result, _options, theme, context) {"
 end = "\t\ttext.setText(output);\n\t\treturn text;\n\t},\n};"
 sha256 = "4232cd61c2390145a8bcc0fa14d808abb46641186a024f3e1639802820a04802"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/tool-renderers/write-format-result"
+upstream_id = "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderResult"
+family = "tools"
+kind = "render-layout"
+claim = "formatWriteResult in upstream order: undefined unless the result is an error; the text blocks joined by a line break with a missing text read as empty; undefined when the joined text is empty; otherwise a line break and the text in the error colour"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
+]
+evidence = [
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/renderers/write.ts"
+start = "function formatWriteResult("
+end = "export const writeRenderers:"
+sha256 = "9b30bc66eb8dce492336e32cdd19e222e5bfcccc05828fb2fdf3520e18fd457f"
 keybindings = []
 
 [[contract]]
@@ -4267,14 +4414,25 @@ id = "coding-agent/render-utils/render-tool-path"
 upstream_id = "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath"
 family = "tools"
 kind = "render-layout"
-claim = "a null path renders the error-coloured invalid-arg text, an empty one the output-coloured \"...\" (or the fallback), and any other the accent path with a leading home directory replaced by ~ (by string prefix) and, when hyperlinks are supported, wrapped in an OSC 8 link to the file URL of the path resolved against the working directory, byte for byte over 24 path shapes, both themes and three working directories"
+claim = "a null path (str() rejected the argument) renders the error-coloured `[invalid arg]`, an empty one the toolOutput `...` or the empty-path fallback, and any other the accent path with a leading home directory replaced by `~` on a path-segment boundary (the home itself and a trailing separator give `~`, `/home/me2` is not under `/home/me`, a path that leaves home through `..` is not shortened) and, with hyperlink support, wrapped in an OSC 8 link to the file URL of the path resolved against the working directory (`~` expanded, file: URLs read as paths, spaces, non-ASCII and reserved characters percent-encoded, a fallback shortened and linked like a path); a file: URL that names a host or holds an encoded slash makes the link throw in Pi, and PiG raises the same error (ToolPathLinkError) from the read, write, edit and ls call renderers, which draws the call fallback instead; byte for byte over 24 path shapes and 816 boundary probes against the installed Pi, and in the cards (and as printed streams in scenarios 26, 27 and 28)"
 status = "ported"
 pig_targets = [
-  "tui/tool_path_render.go#renderToolPathArg"
+  "tui/tool_path_render.go#renderToolPathArg",
+  "tui/tool_path_render.go#ToolPathLinkError",
+  "tui/tool_path_render.go#shortenPath",
+  "tui/tool_path_render.go#linkPath",
+  "internal/resolvepath/shorten_home.go#ShortenHomePath",
+  "internal/codingagent/tool_builtin_renderers.go#panicOnUnlinkablePath"
 ]
 evidence = [
   "tui/render_tool_path_oracle_test.go#TestRenderToolPathMatchesPi",
-  "test/parity/scenarios/tools/26-render-tool-path.toml"
+  "tui/render_tool_path_contract_test.go#TestRenderToolPathBoundariesMatchPi",
+  "tui/tool_path_render_pi_test.go#TestRenderToolPathHonorsPiGeneratedExpectations",
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "test/parity/scenarios/tools/26-render-tool-path.toml",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+  "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml",
+  "internal/codingagent/edit_card_unlinkable_path_test.go#TestEditCardDrawsTheCallFallbackForAnUnlinkablePath"
 ]
 
 [contract.upstream]
@@ -4282,6 +4440,58 @@ path = "packages/coding-agent/src/core/tools/render-utils.ts"
 start = "export function renderToolPath("
 end = "\treturn linkPath(theme.fg(\"accent\", shortenPath(value)), value, cwd);\n}"
 sha256 = "6c0c9cf1ee9014ec80008014f13a005053bd6d39dd5807e6ca91d0a7b2bd3fd9"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/render-utils/path-display-helpers"
+upstream_id = "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath"
+family = "tools"
+kind = "render-layout"
+claim = "the helpers renderToolPath builds on: shortenPath is the home-shortened form of a string path (shortenHomePath: only an absolute path inside the home directory changes, on a path-segment boundary), and linkPath returns the styled text unchanged without hyperlink support and otherwise wraps it in an OSC 8 link to pathToFileURL(resolvePath(rawPath, cwd))"
+status = "ported"
+pig_targets = [
+  "tui/tool_path_render.go#shortenPath",
+  "tui/tool_path_render.go#linkPath",
+  "internal/resolvepath/shorten_home.go#ShortenHomePath"
+]
+evidence = [
+  "tui/render_tool_path_oracle_test.go#TestRenderToolPathMatchesPi",
+  "tui/render_tool_path_contract_test.go#TestRenderToolPathBoundariesMatchPi",
+  "test/parity/scenarios/tools/26-render-tool-path.toml",
+  "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/render-utils.ts"
+start = "export function shortenPath(path: unknown): string {"
+end = "export function str(value: unknown): string | null {"
+sha256 = "12a632862701e3a7f59ceb80008f7b9540c18f12e18a6cf97d7a7ac4ea03e78b"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/render-utils/read-range-and-output-text"
+upstream_id = "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath"
+family = "tools"
+kind = "render-layout"
+claim = "the output helpers the read and write renderers share: parseLineNumber takes a finite number or a non-blank numeric string (trimmed as JavaScript trims, hex and exponent spellings read as Number reads them); formatReadLineRange is empty when offset and limit are both absent or null, `:start` for a start alone (null start is 1), `:start-end` for both and nothing when either is malformed or infinite, with no end printed when start + limit - 1 is zero; replaceTabs writes three spaces per tab, normalizeDisplayText removes carriage returns, and getTextOutput joins the text blocks with a line break after removing ANSI and binary control characters and carriage returns, adding an image line for each image block when images are not shown"
+status = "ported"
+pig_targets = [
+  "tui/compact_read_header.go#FormatReadLineRange",
+  "tui/compact_read_header.go#parseLineNumber",
+  "internal/codingagent/tool_render_shell.go#toolResultTextOutput",
+  "internal/codingagent/tool_render.go#replaceTabs"
+]
+evidence = [
+  "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi",
+  "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+  "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/tools/render-utils.ts"
+start = "function parseLineNumber(value: unknown): number | undefined {"
+end = "export type ToolRenderResultLike<TDetails> = {"
+sha256 = "ec1beaad1aa684f9fa2b3b3f437b599541b5d733b2d13a6022e5762e91f32775"
 keybindings = []
 
 [[contract]]
@@ -4582,7 +4792,7 @@ id = "ai/llama-classify/render-prompt"
 upstream_id = "render:packages/ai/src/api/llama-cpp-classify.ts#<module>.renderPrompt"
 family = "providers-registry"
 kind = "render-layout"
-claim = "a question's prompt is the server's /apply-template rendering of the system prompt and the question content with thinking disabled, an open <think> at the end closed at once, and a body without a string prompt fails with Pi's message, byte for byte over 318 probes"
+claim = "a question's prompt is the server's /apply-template answer for the system prompt and the question content as the user message, sent with the model id and thinking disabled in chat_template_kwargs; a body that is not an object, or has no string prompt (a number, null, an array, a missing member), fails with `llama.cpp did not return a prompt`; a prompt that ends with `<think>` is closed at once with `</think>`, and any other string (empty, already closed, upper case, `<think>` followed by text or a line break) is used as returned, byte for byte over 318 probes against the installed Pi (and as two printed streams in scenario 08)"
 status = "ported"
 pig_targets = [
   "ai/llama_cpp_classify.go#renderPrompt"

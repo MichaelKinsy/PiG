@@ -1,0 +1,33 @@
+# Behavior family: tools (read and write tool cards)
+# Pi 1.5.0 probe: ToolExecutionComponent built with createAllToolDefinitions(cwd) for read and write over 2322 probes, one per branch of renderers/read.ts, renderers/write.ts and the
+# render-utils.ts helpers they call: the path argument (file_path before path, null, empty and every non-string type), formatReadLineRange over numbers, numeric strings and malformed
+# values, the compact label of a skill, a context file and a documentation page while collapsed, the ten-line preview and its remaining-lines hint at 9, 10, 11 and 12 lines, the language
+# of every extension in getLanguageFromPath's table, tabs, carriage returns, ANSI and trailing blank lines, every truncation warning (by lines, by bytes, first line over the limit,
+# missing counts, zero and custom limits), text blocks, images with and without showing them, the write result's error text, and, with hyperlink support, linked paths and the
+# file: URLs whose resolution throws (the card then draws the call fallback). Each probe is drawn collapsed and expanded in both themes at widths 80 and 28; the rows are compared byte
+# for byte (colours, backgrounds, padding). The Go test TestReadWriteCardsMatchPi runs the same corpus against the installed Pi; this scenario compares the two printed streams.
+# Not in the corpus: the edit card with the two file: URLs that make Pi's edit preview reject with no handler, which ends Pi's process.
+name = "27-read-write-tool-cards"
+description = "The read and write tool cards render the same rows as Pi in every argument, range, result and truncation shape."
+covers = ["packages/coding-agent/src/core/tools/renderers/read.ts", "packages/coding-agent/src/core/tools/renderers/write.ts", "packages/coding-agent/src/core/tools/render-utils.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/read-write-cards-pig.mjs"]
+pig_go_tests = ["./internal/codingagent"]
+pi_args = ["node", "./test/parity/testdata/read-write-cards-pi.mjs"]
+pi_go_tests = ["./internal/codingagent"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 300
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['read docs', '[skill]', 'more lines,', 'Truncated: showing undefined of undefined lines', 'EACCES: permission denied', ']8;;file:///abs/dir/f.go']
+runs = 2

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"iter"
 	"maps"
+	"math"
 	"reflect"
 	"slices"
 	"strconv"
@@ -129,7 +130,7 @@ func builtInToolRenderers(name string) (extension.ToolRenderCallFunc, extension.
 	case "find":
 		return headerRenderCall(func(args json.RawMessage, _ string) string { return tui.FormatFindHeader(args) }), listRenderResult("find")
 	case "ls":
-		return headerRenderCall(tui.FormatLsHeader), listRenderResult("ls")
+		return lsRenderCall, listRenderResult("ls")
 	}
 	return nil, nil
 }
@@ -137,6 +138,21 @@ func builtInToolRenderers(name string) (extension.ToolRenderCallFunc, extension.
 func headerRenderCall(header func(json.RawMessage, string) string) extension.ToolRenderCallFunc {
 	return func(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 		return tui.NewPaddedText(header(args, context.Cwd), 0, 0, nil)
+	}
+}
+
+// lsRenderCall is upstream ls.ts renderCall. Its path goes through renderToolPath, which throws for a path whose hyperlink cannot be named.
+func lsRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+	rawPath, _ := stringArg(args, "path")
+	panicOnUnlinkablePath(rawPath, context.Cwd)
+	return tui.NewPaddedText(tui.FormatLsHeader(args, context.Cwd), 0, 0, nil)
+}
+
+// panicOnUnlinkablePath is renderToolPath's throw (render-utils.ts linkPath): the call renderer throws for a path whose file URL cannot be named, and
+// tool-execution.ts updateDisplay draws the call fallback instead, as runToolRenderer does when it recovers this panic.
+func panicOnUnlinkablePath(rawPath, cwd string) {
+	if err := tui.ToolPathLinkError(rawPath, cwd); err != nil {
+		panic(err)
 	}
 }
 
@@ -409,6 +425,8 @@ func readRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 			return tui.NewPaddedText(header, 0, 0, nil)
 		}
 	}
+	rawPath, _ := stringArg(args, "file_path", "path")
+	panicOnUnlinkablePath(rawPath, context.Cwd)
 	return tui.NewPaddedText(tui.FormatReadHeader(args, context.Cwd), 0, 0, nil)
 }
 
@@ -451,52 +469,126 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 	if remaining := len(lines) - len(display); remaining > 0 {
 		text += moreLinesHint("\n... (" + strconv.Itoa(remaining) + " more lines,")
 	}
-	if truncation := readTruncation(value.Details); truncation != nil && truncation.Truncated {
-		maxBytes := truncation.MaxBytes
-		if maxBytes == 0 {
-			maxBytes = tools.DefaultMaxBytesUpstream
-		}
-		maxLines := truncation.MaxLines
-		if maxLines == 0 {
-			maxLines = tools.DefaultMaxLinesUpstream
-		}
+	if truncation := readTruncation(value.Details); truncation != nil && truncation.truncated {
 		var warning string
 		switch {
-		case truncation.FirstLineExceedsLimit:
-			warning = "[First line exceeds " + tools.FormatSize(maxBytes) + " limit]"
-		case truncation.TruncatedBy == "lines":
-			warning = "[Truncated: showing " + strconv.Itoa(truncation.OutputLines) + " of " + strconv.Itoa(truncation.TotalLines) + " lines (" + strconv.Itoa(maxLines) + " line limit)]"
+		case truncation.firstLineExceedsLimit:
+			warning = "[First line exceeds " + tools.FormatSize(truncation.maxBytes) + " limit]"
+		case truncation.truncatedBy == "lines":
+			warning = "[Truncated: showing " + truncation.outputLines + " of " + truncation.totalLines + " lines (" + truncation.maxLines + " line limit)]"
 		default:
-			warning = "[Truncated: " + strconv.Itoa(truncation.OutputLines) + " lines shown (" + tools.FormatSize(maxBytes) + " limit)]"
+			warning = "[Truncated: " + truncation.outputLines + " lines shown (" + tools.FormatSize(truncation.maxBytes) + " limit)]"
 		}
 		text += "\n" + themeFg(theme.Warning, warning)
 	}
 	return tui.NewPaddedText(text, 0, 0, nil)
 }
 
-func readTruncation(details any) *tools.TruncationResult {
+// truncationView is details.truncation as read.ts formatReadResult reads it. The counts are the text `${value}` makes of the member, so one a
+// result does not carry reads "undefined"; the limits are `value ?? default`, so a limit of 0 is kept.
+type truncationView struct {
+	truncated, firstLineExceedsLimit bool
+	truncatedBy                      string
+	outputLines, totalLines          string
+	maxLines                         string
+	maxBytes                         int
+}
+
+// readTruncation reads details.truncation of a read result: the tool's own details, or the JSON a stored result carries.
+func readTruncation(details any) *truncationView {
 	switch value := detailsObject(details).(type) {
 	case *tools.ReadDetails:
-		if value != nil {
-			return value.Truncation
+		if value == nil || value.Truncation == nil {
+			return nil
 		}
-		return nil
+		return typedTruncationView(value.Truncation)
 	case map[string]any:
-		raw, ok := value["truncation"]
-		if !ok || raw == nil {
+		raw, ok := detailsObject(value["truncation"]).(map[string]any)
+		if !ok {
 			return nil
 		}
-		encoded, err := json.Marshal(raw)
-		if err != nil {
-			return nil
+		view := &truncationView{
+			truncated:             truthyValue(raw["truncated"]),
+			firstLineExceedsLimit: truthyValue(raw["firstLineExceedsLimit"]),
+			outputLines:           jsTemplateText(raw, "outputLines"),
+			totalLines:            jsTemplateText(raw, "totalLines"),
+			maxLines:              strconv.Itoa(tools.DefaultMaxLinesUpstream),
+			maxBytes:              tools.DefaultMaxBytesUpstream,
 		}
-		var truncation tools.TruncationResult
-		if json.Unmarshal(encoded, &truncation) != nil {
-			return nil
+		view.truncatedBy, _ = raw["truncatedBy"].(string)
+		if limit, ok := numberValue(raw["maxLines"]); ok {
+			view.maxLines = tui.JSNumberString(limit)
 		}
-		return &truncation
+		if limit, ok := numberValue(raw["maxBytes"]); ok {
+			view.maxBytes = int(limit)
+		}
+		return view
 	}
 	return nil
+}
+
+// typedTruncationView is the view of a truncation the read tool produced: every member is set, and an unset limit is the default.
+func typedTruncationView(truncation *tools.TruncationResult) *truncationView {
+	view := &truncationView{
+		truncated:             truncation.Truncated,
+		firstLineExceedsLimit: truncation.FirstLineExceedsLimit,
+		truncatedBy:           truncation.TruncatedBy,
+		outputLines:           strconv.Itoa(truncation.OutputLines),
+		totalLines:            strconv.Itoa(truncation.TotalLines),
+		maxLines:              strconv.Itoa(truncation.MaxLines),
+		maxBytes:              truncation.MaxBytes,
+	}
+	if truncation.MaxLines == 0 {
+		view.maxLines = strconv.Itoa(tools.DefaultMaxLinesUpstream)
+	}
+	if truncation.MaxBytes == 0 {
+		view.maxBytes = tools.DefaultMaxBytesUpstream
+	}
+	return view
+}
+
+// truthyValue is JavaScript's truthiness of a decoded JSON value.
+func truthyValue(value any) bool {
+	switch value := value.(type) {
+	case nil:
+		return false
+	case bool:
+		return value
+	case string:
+		return value != ""
+	}
+	if number, ok := numberValue(value); ok {
+		return number != 0 && !math.IsNaN(number)
+	}
+	return true
+}
+
+// numberValue is a decoded JSON number or a Go integer a tool stored in its details, as the float64 JavaScript holds.
+func numberValue(value any) (float64, bool) {
+	switch value := value.(type) {
+	case float64:
+		return value, true
+	case int:
+		return float64(value), true
+	case int64:
+		return float64(value), true
+	case json.Number:
+		number, err := value.Float64()
+		return number, err == nil
+	}
+	return 0, false
+}
+
+// jsTemplateText is `${object[key]}`: "undefined" for a member the object lacks.
+func jsTemplateText(object map[string]any, key string) string {
+	value, present := object[key]
+	if !present {
+		return "undefined"
+	}
+	if number, ok := numberValue(value); ok {
+		return tui.JSNumberString(number)
+	}
+	return tui.JSTemplateString(value)
 }
 
 // listRenderResult is upstream grep.ts, find.ts and ls.ts renderResult.
@@ -522,8 +614,9 @@ func listRenderResult(name string) extension.ToolRenderResultFunc {
 func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 	theme := tui.ActiveTheme()
 	fields := callFields(args, context)
-	text := tui.FormatWriteHeaderArgs(writeHeaderFields(fields), context.Cwd)
 	rawPath, _ := stringField(fields, "file_path", "path")
+	panicOnUnlinkablePath(rawPath, context.Cwd)
+	text := tui.FormatWriteHeaderArgs(writeHeaderFields(fields), context.Cwd)
 	content, ok := stringField(fields, "content")
 	lang := ""
 	if rawPath != "" {
@@ -802,6 +895,8 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 	}
 	headerArgs := input.header
 	state.mu.Unlock()
+	editPath, _ := stringArg(headerArgs, "file_path", "path")
+	panicOnUnlinkablePath(editPath, context.Cwd)
 	header := tui.FormatEditHeader(headerArgs, context.Cwd)
 	// The box is built once per preview, settled state and theme, and its rows are kept per width: the card draws on
 	// every frame it is dirty, and drawing the diff again each time cost a pass over all of it.
