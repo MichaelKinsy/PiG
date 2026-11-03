@@ -9111,6 +9111,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Resume Session (Current Folder)",
+            "capture_end_regex": "^─+$"
+          },
+          "reason": "Owned visible surface: Sort, name filter and the delete confirmation of the real resume picker match Pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/settings/02-settings-selector.toml",
       "transforms": [
         {
@@ -10403,6 +10421,42 @@
             "capture_end": "(1/1)"
           },
           "reason": "Owned visible surface: Digits enter the tree query and filtered rows use visible ancestor geometry.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Type to search:",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: The label editor replaces the tree rows with the prompt, the typed text and the key hints.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Type to search:",
+            "capture_end": "[user]"
+          },
+          "reason": "Owned visible surface: Saving a label returns to the list with the label shown, and Ctrl+O steps the filter modes.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
