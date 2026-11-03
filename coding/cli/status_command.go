@@ -392,15 +392,28 @@ func dropJSONSnippet(message string) string {
 	return jsonSnippet.ReplaceAllString(message, "${1} is not valid JSON")
 }
 
+// canonicalStatusPath is path made absolute with the symbolic links of its existing part resolved. The part that does not exist yet is
+// kept as written, so the answer for a directory does not change when something creates it: on macOS a temporary directory is
+// /var/... but /private/var/... once resolved, and a report that names the agent directory before the first run created it must name it
+// as the second run does.
 func canonicalStatusPath(path string) string {
-	absolute, err := filepath.Abs(path)
-	if err == nil {
+	if absolute, err := filepath.Abs(path); err == nil {
 		path = absolute
 	}
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		path = resolved
+	return filepath.Clean(resolveExistingPrefix(path))
+}
+
+// resolveExistingPrefix resolves the symbolic links of the longest existing leading part of the absolute path and appends the rest.
+func resolveExistingPrefix(path string) string {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
 	}
-	return filepath.Clean(path)
+	parent := filepath.Dir(path)
+	if parent == path {
+		return path
+	}
+	return filepath.Join(resolveExistingPrefix(parent), filepath.Base(path))
 }
 
 func deduplicateStatusErrors(errors []string) []string {
