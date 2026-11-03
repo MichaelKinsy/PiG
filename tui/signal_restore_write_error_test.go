@@ -42,4 +42,3 @@ func TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock(t *testi
 		t.Fatal("RestoreTerminalFromSignal blocked on the output lock its own write holds")
 	}
 }
-
