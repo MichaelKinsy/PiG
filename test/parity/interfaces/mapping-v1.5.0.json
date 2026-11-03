@@ -19012,9 +19012,24 @@
     },
     {
       "id": "pkg:ai/.#JsonChange",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the type under Pi's name: ai/streaming_json_parser.go:38-45 `type JSONChange struct {Kind string; Path JSONPath; Value any; Text string}` (exported, returned by StreamingJSONParser.Append at :175 and consumed by durable/harness/partial_changes.go), ported from Pi utils/streaming-json.ts:51-53 `JsonChange`. The row is mislabelled designed-out with pigTargets null: rebind to ai/streaming_json_parser.go#JSONChange (the Kind/Path/Value/Text struct is the Go form of the kind-discriminated union; TestStreamingJSONParserMatchesPi at ai/streaming_json_parser_oracle_test.go:345 compares changes with Pi). Owner note only if the sealed-interface form (AGENTS.md: discriminated union -> sealed interface) is wanted instead of the tagged struct. | Pi reader: durable/src/harness/partial-changes.ts:5,22,124,157,178 imports JsonChange; Go reader durable/harness/partial_changes.go uses ai.JSONChange. Update test/parity/interfaces/mapping-v1.5.0.json: disposition mapped, pigTargets [ai/streaming_json_parser.go#JSONChange]. | No code change; Go cost is one JSONChange slice per Append (streaming_json_parser.go:202-204 copies the batch), unchanged."
+      "rationale": "Derived by the interface gap detector: JsonChange is Go ai/streaming_json_parser.go#JSONChange (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/streaming_json_parser.go#JSONChange"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/streaming_json_parser.go#StreamingJSONParser.Append"
+      ],
+      "evidence": [
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi"
+      ]
     },
     {
       "id": "pkg:ai/.#JsonObject",
@@ -32438,8 +32453,8 @@
       ],
       "evidence": [
         "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidityRules"
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt"
       ]
     },
     {
@@ -32460,8 +32475,8 @@
       ],
       "evidence": [
         "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidityRules"
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt"
       ]
     },
     {
@@ -37461,7 +37476,7 @@
       "upstreamShapeHash": "sha256:d096d48c9866227f90d1553e0799f23ae18a720ed6bf79cd1ab2d28ae99d34b0",
       "rationale": "Pi packages/ai/src/api/bedrock-converse-stream.lazy.ts:15-24 setBedrockProviderModule overrides the dynamically imported Bedrock module so the Bun binary build, where a variable-specifier import() cannot be bundled, can register a statically imported module (coding-agent/src/bun/runtime-setup.ts:3,11 is its only caller). probe: read bedrock-converse-stream.lazy.ts:1-30 in full and grepped packages/*/src for setBedrockProviderModule (two hits: the definition and runtime-setup.ts). Go links the Bedrock provider statically through ai.RegisterOptionalAPI (ai/optional_api.go:41-57, called from init at ai/providers/bedrock/bedrock.go:1646; ai/all imports the package) and a caller may replace it with ai.RegisterAPIProvider (ai/compat.go:62-75), so there is no dynamic import or bundler step to override. Designed out as a JavaScript bundler mechanic; no existing D-number covers it, the carrier is ai/optional_api.go#RegisterOptionalAPI.",
       "pigTargets": [
-        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
+        "ai/optional_api.go#RegisterOptionalAPI"
       ]
     },
     {
@@ -37470,7 +37485,7 @@
       "upstreamShapeHash": "sha256:b5ad1daafef33bec3c9885d7fe8145fcc7b00934a6359748d81283d263a94fcc",
       "rationale": "The parameter `module: ProviderStreams` belongs to setBedrockProviderModule (bedrock-converse-stream.lazy.ts:22), which is designed out. probe: read bedrock-converse-stream.lazy.ts:15-30; the parameter is stored in the module-level bedrockModuleOverride (:15,23) and read only at :29, and the only caller passes bedrockProviderModule (coding-agent/src/bun/runtime-setup.ts:11). Go has no override call; the Go form that supplies the stream functions is ai/optional_api.go#RegisterOptionalAPI (OptionalAPIRegistration.New/Factory, optional_api.go:25-34) reached from init at ai/providers/bedrock/bedrock.go:1646.",
       "pigTargets": [
-        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
+        "ai/optional_api.go#RegisterOptionalAPI"
       ]
     },
     {
@@ -48392,7 +48407,7 @@
       "upstreamShapeHash": "sha256:f131e6177aee1ca5b968e594987da1b75f173e10c22e757862e08eb4c43ceac4",
       "rationale": "Pi packages/ai/src/bun-oauth.ts:12-25 registerBunOAuthFlows registers statically imported OAuth flows with registerBundledOAuthFlowLoaders (auth/oauth/load.ts:26-31) because the standalone Bun binary cannot follow load.ts's variable-specifier import() (:9-12); coding-agent/src/bun/runtime-setup.ts:2,10 is its only caller. probe: read bun-oauth.ts in full and load.ts:1-60, and grepped packages/*/src for registerBunOAuthFlows (definition and runtime-setup.ts only). Go links every flow statically: ai/oauth_registry.go#builtInOAuthProviders (:13-23, nine flows including radius) is read by GetOAuthProvider (:90-99) and BuiltinProviderAuth (ai/auth_providers.go:554-565), so there is no loader to feed. Designed out as a JavaScript bundler mechanic; no existing D-number covers it.",
       "pigTargets": [
-        "ai/oauth_registry.go#RegisterOAuthProvider"
+        "ai/oauth_registry.go#builtInOAuthProviders"
       ]
     },
     {
@@ -48401,7 +48416,7 @@
       "upstreamShapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
       "rationale": "The call row belongs to registerBunOAuthFlows (Pi packages/ai/src/bun-oauth.ts:12-25), which takes no parameters and only calls registerBundledOAuthFlowLoaders for the Bun binary. probe: read bun-oauth.ts in full and grepped packages/*/src for registerBunOAuthFlows (definition and coding-agent/src/bun/runtime-setup.ts:10 only). Go links every OAuth flow statically in ai/oauth_registry.go#builtInOAuthProviders (:13-23), resolved by GetOAuthProvider (:90-99), so there is nothing to register. Designed out as a JavaScript bundler mechanic; no existing D-number covers it.",
       "pigTargets": [
-        "ai/oauth_registry.go#RegisterOAuthProvider"
+        "ai/oauth_registry.go#builtInOAuthProviders"
       ]
     },
     {
@@ -51876,15 +51891,45 @@
     },
     {
       "id": "pkg:ai/compat#AuthOperationOptions",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:6f8eb7c34c3ed93638baa7cf3ab1de5c583eb10f9ca9e902b833c10234e4e23a",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already exports Pi's AuthOperationOptions: ai/operation_options.go:5-10 `type AuthOperationOptions struct { Signal context.Context }` (doc cites upstream auth/types.ts:AuthOperationOptions), consumed by Models.CheckAuthWith/GetAvailableWith/GetAvailableOfTypeWith/GetAllAvailableWith/LogoutWith (operation_options.go:42-72). Pi reads options?.signal in credential-store.ts:14,30-58, models.ts:290-322,690-832 and coding-agent auth-storage.ts:57,160,259-307. The ledger row is mislabelled designed-out with pigTargets on the ctx-only methods (models_runtime_auth.go:141,204; auth.go:416): rebind to ai/operation_options.go#AuthOperationOptions (type) and the *With methods. | Update mapping-v1.5.0.json pigTargets to [ai/operation_options.go#AuthOperationOptions]. Also check CredentialStore (ai/auth_store.go:38-50) has no options argument for Read/List/Modify/Delete, whereas Pi's CredentialStore.read/list/modify/delete take AuthOperationOptions (auth/types.ts:70-93): that is the ctx-only form and is not a gap if every store call is cancelled by ctx. | No cost change: AuthOperationOptions is a one-pointer struct; operationContext (operation_options.go:26-39) allocates a derived context only when Signal is cancellable."
+      "rationale": "Derived by the interface gap detector: AuthOperationOptions is Go ai/operation_options.go#AuthOperationOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/operation_options.go#AuthOperationOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/operation_options.go#Models.CheckAuthWith"
+      ],
+      "evidence": [
+        "test:ai/operation_options_pi_oracle_test.go#TestOperationOptionsMatchPiOnAMatrix"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/compat#AuthOperationOptions::property:signal",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already exports the member: ai.AuthOperationOptions.Signal (ai/operation_options.go:9, context.Context; nil means no extra signal, a cancelled Signal cancels with context.Cause(signal) as Pi rejects with signal.reason, operation_options.go:5-8,26-39). Pi reads it at auth/credential-store.ts:14-24 (enqueue), models.ts:690-832. Rebind the row to ai/operation_options.go#AuthOperationOptions.Signal instead of designed-out. | Update pigTargets of the property row to [ai/operation_options.go#AuthOperationOptions.Signal]; check the Models store/credential-store paths that take only ctx (auth_store.go:41-49) still honour Pi's signal-per-call behaviour via the *With wrappers. | No cost change: operationContext returns the original ctx when Signal.Done() is nil (operation_options.go:28-31)."
+      "rationale": "Derived by the interface gap detector: AuthOperationOptions::property:signal is Go ai/operation_options.go#AuthOperationOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/operation_options.go#AuthOperationOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/operation_options.go#Models.CheckAuthWith"
+      ],
+      "evidence": [
+        "test:ai/operation_options_pi_oracle_test.go#TestOperationOptionsMatchPiOnAMatrix"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:ai/compat#AuthPrompt",
@@ -63327,9 +63372,24 @@
     },
     {
       "id": "pkg:ai/compat#JsonChange",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the type under Pi's name: ai/streaming_json_parser.go:38-45 `type JSONChange struct {Kind string; Path JSONPath; Value any; Text string}` (exported, returned by StreamingJSONParser.Append at :175 and consumed by durable/harness/partial_changes.go), ported from Pi utils/streaming-json.ts:51-53 `JsonChange`. The row is mislabelled designed-out with pigTargets null: rebind to ai/streaming_json_parser.go#JSONChange (the Kind/Path/Value/Text struct is the Go form of the kind-discriminated union; TestStreamingJSONParserMatchesPi at ai/streaming_json_parser_oracle_test.go:345 compares changes with Pi). Owner note only if the sealed-interface form (AGENTS.md: discriminated union -> sealed interface) is wanted instead of the tagged struct. | Pi reader: durable/src/harness/partial-changes.ts:5,22,124,157,178 imports JsonChange; Go reader durable/harness/partial_changes.go uses ai.JSONChange. Update test/parity/interfaces/mapping-v1.5.0.json: disposition mapped, pigTargets [ai/streaming_json_parser.go#JSONChange]. | No code change; Go cost is one JSONChange slice per Append (streaming_json_parser.go:202-204 copies the batch), unchanged."
+      "rationale": "Derived by the interface gap detector: JsonChange is Go ai/streaming_json_parser.go#JSONChange (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/streaming_json_parser.go#JSONChange"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/streaming_json_parser.go#StreamingJSONParser.Append"
+      ],
+      "evidence": [
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi"
+      ]
     },
     {
       "id": "pkg:ai/compat#JsonObject",
@@ -76563,7 +76623,7 @@
       "upstreamShapeHash": "sha256:d096d48c9866227f90d1553e0799f23ae18a720ed6bf79cd1ab2d28ae99d34b0",
       "rationale": "compat re-export of bedrock-converse-stream.lazy.ts:19-24 setBedrockProviderModule: overrides the dynamically imported Bedrock module for the Bun binary build, where a variable-specifier import() cannot be bundled. Go links the Bedrock provider statically and has no dynamic import or bundler. Designed out by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
       "pigTargets": [
-        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
+        "ai/optional_api.go#RegisterOptionalAPI"
       ]
     },
     {
@@ -76572,7 +76632,7 @@
       "upstreamShapeHash": "sha256:b5ad1daafef33bec3c9885d7fe8145fcc7b00934a6359748d81283d263a94fcc",
       "rationale": "The call row belongs to the compat re-export of setBedrockProviderModule (Pi packages/ai/src/api/bedrock-converse-stream.lazy.ts:22-24), designed out for the Bun bundler. probe: read bedrock-converse-stream.lazy.ts:15-30 and grepped packages/*/src for setBedrockProviderModule (definition and coding-agent/src/bun/runtime-setup.ts:11 only). Go has no dynamic import to override: ai/optional_api.go#RegisterOptionalAPI (init at ai/providers/bedrock/bedrock.go:1646) links Bedrock statically.",
       "pigTargets": [
-        "ai/providers/bedrock/bedrock.go#NewBedrockProvider"
+        "ai/optional_api.go#RegisterOptionalAPI"
       ]
     },
     {
@@ -77501,8 +77561,8 @@
       ],
       "evidence": [
         "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidityRules"
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt"
       ]
     },
     {
@@ -77523,8 +77583,8 @@
       ],
       "evidence": [
         "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidityRules"
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt"
       ]
     },
     {
@@ -100172,9 +100232,24 @@
     },
     {
       "id": "pkg:ai/utils/streaming-json#JsonChange",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the type under Pi's name: ai/streaming_json_parser.go:38-45 `type JSONChange struct {Kind string; Path JSONPath; Value any; Text string}` (exported, returned by StreamingJSONParser.Append at :175 and consumed by durable/harness/partial_changes.go), ported from Pi utils/streaming-json.ts:51-53 `JsonChange`. The row is mislabelled designed-out with pigTargets null: rebind to ai/streaming_json_parser.go#JSONChange (the Kind/Path/Value/Text struct is the Go form of the kind-discriminated union; TestStreamingJSONParserMatchesPi at ai/streaming_json_parser_oracle_test.go:345 compares changes with Pi). Owner note only if the sealed-interface form (AGENTS.md: discriminated union -> sealed interface) is wanted instead of the tagged struct. | Pi reader: durable/src/harness/partial-changes.ts:5,22,124,157,178 imports JsonChange; Go reader durable/harness/partial_changes.go uses ai.JSONChange. Update test/parity/interfaces/mapping-v1.5.0.json: disposition mapped, pigTargets [ai/streaming_json_parser.go#JSONChange]. | No code change; Go cost is one JSONChange slice per Append (streaming_json_parser.go:202-204 copies the batch), unchanged."
+      "rationale": "Derived by the interface gap detector: JsonChange is Go ai/streaming_json_parser.go#JSONChange (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/streaming_json_parser.go#JSONChange"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/streaming_json_parser.go#StreamingJSONParser.Append"
+      ],
+      "evidence": [
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi"
+      ]
     },
     {
       "id": "pkg:ai/utils/streaming-json#JsonPath",
@@ -100258,8 +100333,8 @@
       ],
       "evidence": [
         "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidityRules"
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt"
       ]
     },
     {
@@ -100280,8 +100355,8 @@
       ],
       "evidence": [
         "test:ai/streaming_json_parser_oracle_test.go#TestStreamingJSONParserMatchesPi",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt",
-        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidityRules"
+        "test:ai/streaming_json_change_kind_test.go#TestJSONChangeKindIsAClosedTypeOfSetAndAppend",
+        "test:ai/streamed_arguments_shared_test.go#TestStreamingSnapshotValidImpliesTheArgumentCopyEqualsIt"
       ]
     },
     {
@@ -100608,15 +100683,43 @@
     },
     {
       "id": "pkg:ai/utils/text#ownedSlice",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:9838a34aaba9c258c0a0eebf0458a67fc0796d7a189d20b632c3ef3deeece9f0",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi packages/ai/src/utils/text.ts:48-50 ownedSlice(text, start, end) = `${text.slice(start, end)} `.slice(0, -1) copies a slice so a retained excerpt does not keep its long source alive; it is exported (package.json exports ./utils/*) and called at ai pi-messages.ts:126, radius-config.ts:78, telemetry.ts:195 and error-body.ts:141. Go: three of the four sites already allocate a fresh string by concatenation/formatting (ai/pi_messages.go:361, ai/radius_config.go:300 `truncateUTF16(...)+\"…\"`, ai/errors.go:117 fmt.Sprintf), but telemetry.go:337 passes jsstring.Slice(message.ErrorMessage, 0, 500) to the span status, and jsstring.Slice returns a substring sharing the source (internal/jsstring/slice.go:53-55 `text[from:to]`), so the span retains the whole error message exactly as Pi's telemetry.ts:195 ownedSlice avoids. Fix: strings.Clone the 500-unit excerpt at ai/telemetry.go:337 (or add an ownedSlice helper beside jsstring.Slice and use it there); and the owner should decide whether Pi's exported utils/text ownedSlice needs an exported Go twin (ai has no OwnedSlice; internal/modelgen/jsparse.go:54 has an unrelated unexported ownedSlice(text, end) of UTF-16 truncation). | Pi readers: pi-messages.ts:126, radius-config.ts:78, telemetry.ts:195, error-body.ts:141. Go sites checked: pi_messages.go:361 and radius_config.go:300 and errors.go:117 allocate; only telemetry.go:337 retains the source (jsstring.Slice substring). Go has no exported OwnedSlice (owner decision on exporting). | Fix cost is one strings.Clone of at most 500 units per failed provider call; chord/delta already clones for append ops (chord/delta/diff.go:171-187, tracker.go:1037-1043)."
+      "rationale": "Derived by the interface gap detector: ownedSlice is Go ai/text.go#OwnedSlice (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/text.go#OwnedSlice"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/text.go#OwnedSlice"
+      ],
+      "evidence": [
+        "test:ai/owned_slice_test.go#TestOwnedSliceCopiesItsExcerpt"
+      ]
     },
     {
       "id": "pkg:ai/utils/text#ownedSlice::call:0",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:936f7b411c48a20cffc4e2105fb2f3f3d9021dc1dd6c07ae810b00d76876a97a",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Same as pkg:ai/utils/text#ownedSlice: the `(text, start, end?)` call at telemetry.ts:195 is Go's ai/telemetry.go:337 jsstring.Slice(message.ErrorMessage, 0, 500) whose substring (internal/jsstring/slice.go:53-55) retains the full ErrorMessage; clone it. Other ai sites copy via concatenation (pi_messages.go:361, radius_config.go:300, errors.go:117). | Row id is the ownedSlice call parameters (text, start, end); Go has no ownedSlice function so there is no parameter list to compare; after the fix at telemetry.go:337 the row can be KEEP with rationale 'probe: Go sites clone' or REBIND to an exported helper if the owner wants one. | As the parent row: one bounded copy (<= 500 units) per failed provider response, off the streaming hot path."
+      "rationale": "Derived by the interface gap detector: ownedSlice::call:0 is Go ai/text.go#OwnedSlice (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/text.go#OwnedSlice"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/text.go#OwnedSlice"
+      ],
+      "evidence": [
+        "test:ai/owned_slice_test.go#TestOwnedSliceCopiesItsExcerpt"
+      ]
     },
     {
       "id": "pkg:ai/utils/text#renderSystemMessageUpdate",
@@ -107992,9 +108095,12 @@
     },
     {
       "id": "pkg:chord/.#Ref",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:9dd8a496eb86b8d4fba9265c037b1244047ec653f8c9cc4ece24e267f5a4b000",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/host/contract.go:529 `type Ref interface { RefBase; Member(name string) any }`, documented there as `contract.ts Ref<C>` (what Hold/Get return: chord/host/host.go:1402 Hold returns Ref). Pi chord/src/contract.ts:431-435 `Ref<C>` computes the reference type per contract. The row is mislabelled designed-out with pigTargets Contract: rebind to chord/host/contract.go#Ref (ported, noting the forced difference that Pi's per-contract members are reached by Member(name) because Go has no computed members)."
+      "rationale": "Pi packages/chord/src/contract.ts:431-435 `Ref<C>` computes the reference type per contract (an intersection over the contract's variants). Go declares host.Ref as `interface { RefBase; Member(name string) any }` (chord/host/contract.go:529), what Hold and Get return (host.go:1402); Go has no computed members, so a variant's members are reached by Member(name). Shape rule A7 refuses an intersection alias against an interface. probe: read contract.ts:420-440 and contract.go:520-535. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets.",
+      "pigTargets": [
+        "chord/host/contract.go#Ref"
+      ]
     },
     {
       "id": "pkg:chord/.#ReferencedServeOptions",
@@ -113341,15 +113447,43 @@
     },
     {
       "id": "pkg:chord/delta#ownedSlice",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:9838a34aaba9c258c0a0eebf0458a67fc0796d7a189d20b632c3ef3deeece9f0",
-      "rationale": "Pi f715a15c1 and d8d99950a add ownedSlice(text, start, end?) (chord/src/delta/index.ts:118-120, ai/src/utils/text.ts:48): `${text.slice(start, end)} `.slice(0, -1), a copy of the slice, because V8 represents a slice of 13 or more characters as a view that keeps the whole source string alive. probe: read delta/index.ts:108-120 and grepped chord and ai for callers (delta/diff.ts:68,77; delta/tracker.ts:380,2131,2137; ai utils/error-body.ts:141, telemetry.ts:195, pi-messages.ts:126, radius-config.ts:78); every call exists to end retention of a larger string. Go substrings also share memory with their source, so the retention matters in Go, and chord/delta carries the behavior where Pi calls it: strings.Clone at delta/diff.go:177 and :187, delta/tracker.go:1037 and :1043 and delta/handles.go:197 (AppendText). No exported Go function is ported because the stdlib already provides the copy (strings.Clone) and Go has no V8 view-versus-copy distinction to reproduce; a caller wanting Pi's UTF-16 `slice` semantics uses internal/jsstring.Slice. Designed out as a JavaScript engine representation detail with an existing Go counterpart; covers the function declaration."
+      "rationale": "Derived by the interface gap detector: ownedSlice is Go chord/delta/diff.go#OwnedSlice (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/delta/diff.go#OwnedSlice"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/delta/diff.go#OwnedSlice"
+      ],
+      "evidence": [
+        "test:chord/delta/owned_slice_test.go#TestOwnedSliceIsACopyOfTheSlice"
+      ]
     },
     {
       "id": "pkg:chord/delta#ownedSlice::call:0",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:936f7b411c48a20cffc4e2105fb2f3f3d9021dc1dd6c07ae810b00d76876a97a",
-      "rationale": "Pi f715a15c1 and d8d99950a add ownedSlice(text, start, end?) (chord/src/delta/index.ts:118-120, ai/src/utils/text.ts:48): `${text.slice(start, end)} `.slice(0, -1), a copy of the slice, because V8 represents a slice of 13 or more characters as a view that keeps the whole source string alive. probe: read delta/index.ts:108-120 and grepped chord and ai for callers (delta/diff.ts:68,77; delta/tracker.ts:380,2131,2137; ai utils/error-body.ts:141, telemetry.ts:195, pi-messages.ts:126, radius-config.ts:78); every call exists to end retention of a larger string. Go substrings also share memory with their source, so the retention matters in Go, and chord/delta carries the behavior where Pi calls it: strings.Clone at delta/diff.go:177 and :187, delta/tracker.go:1037 and :1043 and delta/handles.go:197 (AppendText). No exported Go function is ported because the stdlib already provides the copy (strings.Clone) and Go has no V8 view-versus-copy distinction to reproduce; a caller wanting Pi's UTF-16 `slice` semantics uses internal/jsstring.Slice. Designed out as a JavaScript engine representation detail with an existing Go counterpart; covers the call ownedSlice(text, start, end)."
+      "rationale": "Derived by the interface gap detector: ownedSlice::call:0 is Go chord/delta/diff.go#OwnedSlice (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/delta/diff.go#OwnedSlice"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/delta/diff.go#OwnedSlice"
+      ],
+      "evidence": [
+        "test:chord/delta/owned_slice_test.go#TestOwnedSliceIsACopyOfTheSlice"
+      ]
     },
     {
       "id": "pkg:chord/delta#Path",
@@ -113501,9 +113635,12 @@
     },
     {
       "id": "pkg:chord/delta#PathRef",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:79c60d65af3d28d137c25115b9a991cd373da3ec6cd05eae8b7c0584df3b34a9",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the member: chord/delta/delta.go:40-41 `type PathRef = any` (doc: the path inline, or the numeric id the encoder assigned on the path's second use), used by Encoder.Encode at delta/codec.go:59 (`var ref PathRef = path`) and covered by TestNonEmptyPathAndPathRefMatchPi (delta/path_ref_test.go:14). Pi: chord/src/delta/index.ts:19 `PathRef<P> = P | number`. | Rebind pigTargets from chord/delta/delta.go#WireOp to chord/delta/delta.go#PathRef (and keep WireOp as the carrier of the path slot, delta.go:75); the row is mislabelled designed-out: Go exports Pi's name, so the id should map (equivalent-form) rather than be designed out. | No cost: a type alias of any has no runtime representation; the encoder's allocation of a path-or-id value is the same as Pi's."
+      "rationale": "Pi packages/chord/src/delta/index.ts:19 `PathRef<P> = P | number`: a path inline, or the numeric id the encoder assigned on its second use. Go declares `type PathRef = any` (chord/delta/delta.go:40-41), used by Encoder.Encode (codec.go:59) and covered by TestNonEmptyPathAndPathRefMatchPi (delta/path_ref_test.go:14); shape rule A8 refuses a union of named types against a type that is not an interface with methods. probe: read index.ts:10-25, delta.go:36-45 and codec.go:20-100. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets.",
+      "pigTargets": [
+        "chord/delta/delta.go#PathRef"
+      ]
     },
     {
       "id": "pkg:chord/delta#PendingOps",
@@ -113524,7 +113661,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
         "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind"
       ]
     },
     {
@@ -113546,7 +113683,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
         "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind"
       ]
     },
     {
@@ -113567,8 +113704,8 @@
       ],
       "evidence": [
         "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -113589,8 +113726,8 @@
       ],
       "evidence": [
         "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -113633,8 +113770,8 @@
       ],
       "evidence": [
         "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -113655,15 +113792,31 @@
       ],
       "evidence": [
         "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
       "id": "pkg:chord/delta#PendingTake",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:214b78578b68f9b6ce15a86f11e4615a2555c7828041c73ae1b6cb6ba90207d8",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/delta/pending.go:14 `type PendingTake struct { Replace bool; Ops []Op }`, the result of PendingOps.Take (pending.go:81-88). Pi chord/src/delta/pending.ts:9 `PendingTake = {kind:'ops',ops} | {kind:'replace'}` is exported (delta/index.ts:130) and read by Pi owners via `.kind`. The row is mislabelled designed-out with pigTargets None: rebind to chord/delta/pending.go#PendingTake. Open point for the owner: the discriminant is a `Replace bool` and not Pi's `kind` (AGENTS: discriminated union becomes a sealed interface or a Kind field), a recorded-forced-case question."
+      "rationale": "Derived by the interface gap detector: PendingTake is Go chord/delta/pending.go#PendingTake (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/delta/pending.go#PendingTake"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/delta/pending.go#PendingOps.Take"
+      ],
+      "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_take_kind_test.go#TestPendingTakeIsDiscriminatedByKind",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
+      ]
     },
     {
       "id": "pkg:chord/delta#Prepared",
@@ -114821,7 +114974,7 @@
       "id": "pkg:chord/next#ChordError::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:9b5a9694e2d5b089c41dc4debf63e600898f24c7522f50417339552cf27cd880",
-      "rationale": "Pi chord/src/next/data/errors.ts:76 `ChordError` is the class constant ChordErrorClass (:43-57, extends Error, super(init.message, options)) retyped as `new (init: ChordErrorJson, options?: ErrorOptions) => ChordError`, because a class cannot declare its instances as a tagged union. probe: read errors.ts:1-130 in full; constructor calls are invalid (:103-109, no options), asChordError (:113-116, options.cause) and chordErrorFromJson (:136, no options), plus cause-passing callers at data/failure.ts:55, store/export.ts:102, store/json-column.ts:78 and store/refusal.ts:28; options carries only `cause`, which Go's second argument carries. Go form: chord/next/data/errors.go#NewChordError(init ChordErrorInit, cause error) (:114) is the constructor, the cause argument being ErrorOptions.cause (Cause field :109, Unwrap :122); Go has no constructor on a struct type, and the union typing is checked at runtime in ChordErrorFromJson as in Pi. Exercised by TestChordError (chord/next/data/errors_test.go:23). Designed out as a language mechanic (constructor signature retyping).",
+      "rationale": "Pi chord/src/next/data/errors.ts:76 `ChordError` is the class constant ChordErrorClass (:43-57, extends Error, super(init.message, options)) retyped as `new (init: ChordErrorJson, options?: ErrorOptions) => ChordError`, because a class cannot declare its instances as a tagged union. probe: read errors.ts:1-130 in full; constructor calls are invalid (:103-109, no options), asChordError (:113-116, options.cause) and chordErrorFromJson (:136, no options), plus cause-passing callers at data/failure.ts:55, store/export.ts:102, store/json-column.ts:78 and store/refusal.ts:28; options carries only `cause`, which Go's second argument carries. Go form: chord/next/data/errors.go#NewChordError(init ChordErrorInit, cause error) (:114) is the constructor, the cause argument being ErrorOptions.cause (Cause field :109, Unwrap :122); Go has no constructor on a struct type, and the union typing is checked at runtime in ChordErrorFromJson as in Pi. Exercised by TestChordError (chord/next/data/errors_test.go:23). Designed out as a language mechanic (constructor signature retyping). Name: Pi sets this.name = \"ChordError\" (errors.ts:50); Go's data.ChordError has Name() returning \"ChordError\" (errors.go, D103), asserted by TestChordErrorNameIsChordError (chord/next/data/chord_error_name_test.go), so the name is carried; the inventory has no separate ChordError::property:name row.",
       "pigTargets": [
         "chord/next/data/errors.go#NewChordError"
       ]
@@ -115779,9 +115932,13 @@
     },
     {
       "id": "pkg:chord/next#Claimant",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:31e2e1f8873384f406a57412de056e19257a40b66641d5e7a026d8f82e30c139",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/next/store/claims.go:22 `type Claimant interface{ ClaimLabel() string }` and :25 `NamedClaimant{Label}` (the Go carrier of Pi's `{label}`), used by Claims.Table/AssertTable (claims.go:52,61) as Pi's Claimant is used at claims.ts:9-30. The row is mislabelled designed-out: rebind to chord/next/store/claims.go#Claimant (ported with the forced difference recorded at claims.go:17: Go has no field-bearing interface, and the method is ClaimLabel because NamedClaimant has a Label field)."
+      "rationale": "Pi packages/chord/src/next/store/claims.ts:9 `Claimant = { readonly label: string }` is an object-literal alias that any object with a label satisfies. Go has no field-bearing interface: store.Claimant is the one-method interface ClaimLabel() string (store/claims.go:22) and NamedClaimant{Label} the value that is only a label (claims.go:25), read by Claims.Table and AssertTable (claims.go:52,61) as Pi reads label at claims.ts:9-30. probe: read claims.ts:1-40 and claims.go:15-65; shape rule A6 (object-literal alias) refuses the interface. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets. Exercised by TestClaims (chord/next/store/claims_test.go).",
+      "pigTargets": [
+        "chord/next/store/claims.go#Claimant",
+        "chord/next/store/claims.go#NamedClaimant"
+      ]
     },
     {
       "id": "pkg:chord/next#coalesce",
@@ -115959,8 +116116,25 @@
     },
     {
       "id": "pkg:chord/next#ColumnRef",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b2e45238d28ff5c16a6948a6fb3a095cdca8ec21b02409fe6d9ca8303a6c59b6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b2e45238d28ff5c16a6948a6fb3a095cdca8ec21b02409fe6d9ca8303a6c59b6",
+      "rationale": "Derived by the interface gap detector: ColumnRef is Go chord/next/store/expression.go#ColumnRef (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/expression.go#ColumnRef"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/expression.go#Eq"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_refusal_test.go#TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive",
+        "test:chord/next/store/column_ref_column_test.go#TestColumnOfANonReferenceExpressionIsEmpty"
+      ]
     },
     {
       "id": "pkg:chord/next#ColumnRef::construct:0",
@@ -115981,7 +116155,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
         "test:chord/next/host/host_refusal_test.go#TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive",
-        "test:chord/next/host/host_example_20_test.go#TestExample20Tables"
+        "test:chord/next/store/column_ref_column_test.go#TestColumnOfANonReferenceExpressionIsEmpty"
       ]
     },
     {
@@ -116024,9 +116198,24 @@
     },
     {
       "id": "pkg:chord/next#ColumnRef::property:column",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:f607a2efc91ff641b4d11fa6951de12101f27d4784e4429862b9d73f754353e0",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi: store/expression.ts:66-72 `class ColumnRef extends Expression { readonly column: string }` is a distinct public-typed class (type-exported at store/index.ts:10) whose `column` is read at expression.ts:340-344 (scalarColumn: `ref instanceof ColumnRef`, ref.column) and query.ts:64 (orderBy: ref?.column), and is readable by any app callback that is handed a ref. Go: store/expression.go:160-174 aliases `ColumnRef = Expression` and exposes the name only as Args[0] (an untyped any); the accessor isRef (expression.go:177) is unexported, so a Go caller cannot read a ref's column name without a type assertion on Args and an Op check. | Fix: give Go the Pi member, e.g. an exported accessor on ColumnRef returning the column (store/expression.go near :177, a `Column()` method wrapping isRef) or make ColumnRef a struct with a Column field that embeds Expression; keep NewColumnRef (:174). Also note Pi's `instanceof ColumnRef` rejects an Expression that is not a ColumnRef while Go accepts any Expression with Op ExprCol (expression.go:620-624): decide whether that difference needs a distinct type. Update pigTargets to store/expression.go#ColumnRef and re-class the row mapped, not designed-out. | Cost of the fix: none per call (an accessor reading Args[0]); the owner decision is only whether to promote ColumnRef to a real type."
+      "rationale": "Derived by the interface gap detector: ColumnRef::property:column is Go chord/next/store/expression.go#Expression.Column (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/expression.go#Expression.Column"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/expression.go#Expression.Column"
+      ],
+      "evidence": [
+        "test:chord/next/store/column_ref_column_test.go#TestColumnOfANonReferenceExpressionIsEmpty",
+        "test:chord/next/store/column_ref_column_test.go#TestColumnRefColumnIsTheNamedColumn"
+      ]
     },
     {
       "id": "pkg:chord/next#ColumnRef::property:op",
@@ -117315,9 +117504,12 @@
     },
     {
       "id": "pkg:chord/next#EncodedRow",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ff4d7f526a548ca9eb091f89cef5527ecf51b89932a268f6b7158257e02ab59a",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type with the same members: chord/next/store/rows.go:38-45 `type EncodedRow struct { Params; Row; Columns; ID }` (Pi chord/src/next/store/rows.ts:19-26 `{params, row, columns, id}`; Columns is a *delta.JsonObject for Pi's `{[column]: number}`). Pi's type is a plain object type, not a union, so the rationale `no unions` is wrong. Rebind to chord/next/store/rows.go#EncodedRow (ported; the object-keyed `columns` record is the only forced difference)."
+      "rationale": "Pi packages/chord/src/next/store/rows.ts:19-26 `EncodedRow = { params, row, columns: { [column: string]: number }, id }` is an object type with an index-signature member. Go declares the same four members as store.EncodedRow{Params, Row, Columns, ID} (store/rows.go:38-45), Columns being a *delta.JsonObject keyed by column name because a Go struct has no index signature; shape rule T12 refuses *delta.JsonObject as a struct with no field `[column`. probe: read rows.ts:15-30 and rows.go:35-48. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets. Exercised by TestJsonl (chord/next/store/jsonl_test.go).",
+      "pigTargets": [
+        "chord/next/store/rows.go#EncodedRow"
+      ]
     },
     {
       "id": "pkg:chord/next#encodeJsonl",
@@ -117497,7 +117689,7 @@
       "id": "pkg:chord/next#Expression",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4354d6dd4002f71e01cdfdb6912542704ac334a977e2ccc809f4a3844226105b",
-      "rationale": "Derived by the interface gap detector: Expression is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Expression is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression"
       ],
@@ -117510,14 +117702,15 @@
         "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Add"
+        "test:chord/next/store/column_ref_column_test.go#TestColumnOfANonReferenceExpressionIsEmpty",
+        "test:chord/next/store/column_ref_column_test.go#TestColumnRefColumnIsTheNamedColumn"
       ]
     },
     {
       "id": "pkg:chord/next#Expression::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fac5c64ffc385336374692b58c5d521b8bca5caff3d696ed8d058a96e9dd80f0",
-      "rationale": "Derived by the interface gap detector: Expression::construct:0 is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Expression::construct:0 is Go chord/next/store/expression.go#Expression (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/expression.go#Expression"
       ],
@@ -117530,7 +117723,8 @@
         "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
-        "reach:chord/next/store/expression.go#Add"
+        "test:chord/next/store/column_ref_column_test.go#TestColumnOfANonReferenceExpressionIsEmpty",
+        "test:chord/next/store/column_ref_column_test.go#TestColumnRefColumnIsTheNamedColumn"
       ]
     },
     {
@@ -117593,9 +117787,12 @@
     },
     {
       "id": "pkg:chord/next#Facet",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f28903f3c81c20cf6a4b3ea6209f0a49df2dfd95e9a9b1b4b4983ac727946f77",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/next/host/host_facet.go:96 `type Facet struct{ definition *facetDefinition }` returned by DefineFacet (:107), the Go form of Pi chord/src/next/host/facet.ts:73-79 `Facet<P>` = `{setup, \"~principal\"?}` returned by defineFacet. Identity (`facet === other`) is Facet.same (host_facet.go:112). The row is mislabelled designed-out: rebind to chord/next/host/host_facet.go#Facet (ported; forced difference: setup is unexported, so a Go program cannot call facet.setup directly, as Pi's setUp does at facet.ts:126 `facet.setup(host, self)` in setUp (:88))."
+      "rationale": "Pi packages/chord/src/next/host/facet.ts:73-79 `Facet<P> = { setup(host, self); \"~principal\"? }` is the object defineFacet returns, compared by identity; facet.ts:126 calls facet.setup(host, self) in setUp. Go's host.Facet is the opaque value DefineFacet returns (host/host_facet.go:96-108) whose definition sits behind an unexported pointer so that every copy is the same facet (Facet.same, :112) and no literal can make another; setup is therefore unexported and shape rule T12 reports no field `setup`. `~principal` is a phantom type brand. probe: read facet.ts:60-130 and host_facet.go:90-115. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets. Exercised by TestConsumerGC (chord/next/host/remote_consumer_test.go).",
+      "pigTargets": [
+        "chord/next/host/host_facet.go#Facet"
+      ]
     },
     {
       "id": "pkg:chord/next#FacetHost",
@@ -118676,9 +118873,12 @@
     },
     {
       "id": "pkg:chord/next#HostError",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:24f2df8523d7640ff73586157f141af8112b4cc5ba24f2ef8a0425f235c922a8",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/next/host/host_error.go:79 `type HostError struct { Kind HostErrorKind; Object; Failure; Error; Native; Routine; ... }` with the kind constants at :39+, the Go form of Pi chord/src/next/host/host.ts:121 `HostError` union by `kind`. The row is mislabelled designed-out; rebind to chord/next/host/host_error.go#HostError. Open point for the owner: one struct with a Kind field (as registries.RegistryError) versus AGENTS' sealed interface for discriminated unions; it is a recorded forced-case question, not a missing behavior."
+      "rationale": "Pi packages/chord/src/next/host/host.ts:121 `HostError` is a union of object types discriminated by `kind`. Go declares host.HostError as one struct whose Kind (HostErrorKind, constants at host/host_error.go:39+) discriminates, with the members of every variant (host_error.go:79); shape rule T10d refuses it because the struct has no field for a member of one variant (message). probe: read host.ts:100-140 and host_error.go:35-110. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets. Exercised by TestRelayWindow (chord/next/host/remote_relay_test.go).",
+      "pigTargets": [
+        "chord/next/host/host_error.go#HostError"
+      ]
     },
     {
       "id": "pkg:chord/next#hostKind",
@@ -118819,9 +119019,12 @@
     },
     {
       "id": "pkg:chord/next#Implementation",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e9b8aa86b817ff75a14c302c03950b60a2d171bc11de8ac298b33780509d9f0f",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/next/contracts/contract.go:185-188 `type Implementation struct { Variant string; Members VariantImplementation }` with VariantImplementation at :177 (State, Methods, Keyed), the Go form of Pi chord/src/next/contracts/contract.ts:48 `Implementation<C, X>` (variant plus members; VariantImplementation at contract.ts:60). The row is mislabelled designed-out: rebind to chord/next/contracts/contract.go#Implementation (ported; forced difference: Pi's computed member record is a Go map by member name; contracts/contract.go:11-19 records Implementation<C> as designed out although the same-named struct exists)."
+      "rationale": "Pi packages/chord/src/next/contracts/contract.ts:48 `Implementation<C, X>` is the record of a contract's members computed from its shape (VariantImplementation at :60). Go declares contracts.Implementation{Variant, Members VariantImplementation} (contracts/contract.go:177-188) with the members keyed by name in a map, which the host checks against the contract at run time; shape rule T6 refuses a record against a struct. probe: read contract.ts:40-70 and contract.go:170-190. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets. Exercised by TestHoldGC (chord/next/host/remote_hold_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/contract.go#Implementation"
+      ]
     },
     {
       "id": "pkg:chord/next#importStore",
@@ -119272,13 +119475,13 @@
       "id": "pkg:chord/next#isChordError",
       "disposition": "pending",
       "upstreamShapeHash": "sha256:823beb1c80c125c8c68b8d69a26938046c0228af1329d17b6e5e25f76895060c",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi: next/data/errors.ts:79-85 `isChordError<C>(error, code?)` is ONE exported function; its optional code picks between the two questions (instanceof ChordError; or with error.code === code). Go: chord/next/data/errors.go:148 IsChordError(err) and :154 IsChordErrorCode(err, code) split it, and IsChordErrorCode is a name Pi does not have. The 'Go has no optional parameter' rationale is false in this repo: chord/host/errors.go:80 declares `IsChordError(err error, code ...ChordErrorCode) bool` for chord v1's isChordError, a variadic that keeps Pi's single name. | Fix: make data.IsChordError take `code ...ChordErrorCode` (returning (*ChordError, bool) as now, true only when err is a *ChordError and, if a code is given, Code matches), delete IsChordErrorCode, and migrate its callers (grep shows 49 occurrences of IsChordErrorCode in the Go tree including tests). Then map the id to data/errors.go#IsChordError and drop designed-out (the type predicate `error is Extract<ChordError,...>` is the narrowed *ChordError return). | No runtime cost either way (one type assertion and an optional comparison); the change is a signature merge plus caller migration. If the owner wants the split kept, record it as an owner decision since the stated reason does not hold."
+      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: Held (Pi 1.5.0): Pi next/data/errors.ts:79-85 `isChordError(error, code?)` is one predicate over an unknown value. Go's data.IsChordError(err, code ...ChordErrorCode) (*ChordError, bool) now keeps Pi's single name and optional code (IsChordErrorCode is gone), but it returns the ChordError with the bool where every caller reads it (the narrowed `error is Extract<ChordError, ...>`), and signature rule S2g admits only func(value) bool: result T3 refuses (*ChordError, bool) against boolean. The row stays pending until the owner decides between the tuple, a bool-only predicate with a separate AsChordError, or a reviewed signature rule."
     },
     {
       "id": "pkg:chord/next#isChordError::call:0",
       "disposition": "pending",
       "upstreamShapeHash": "sha256:1c2a58dbe2494ed3e179367610d2723a9930c4da57b70acad3dad3490bdeb524",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi: next/data/errors.ts:79-85 `isChordError<C>(error, code?)` is ONE exported function and call:0 is its first call shape (error, code?); its optional code picks between the two questions (instanceof ChordError; or with error.code === code). Go: chord/next/data/errors.go:148 IsChordError(err) and :154 IsChordErrorCode(err, code) split it, and IsChordErrorCode is a name Pi does not have. The 'Go has no optional parameter' rationale is false in this repo: chord/host/errors.go:80 declares `IsChordError(err error, code ...ChordErrorCode) bool` for chord v1's isChordError, a variadic that keeps Pi's single name. | Fix: make data.IsChordError take `code ...ChordErrorCode` (returning (*ChordError, bool) as now, true only when err is a *ChordError and, if a code is given, Code matches), delete IsChordErrorCode, and migrate its callers (grep shows 49 occurrences of IsChordErrorCode in the Go tree including tests). Then map the id to data/errors.go#IsChordError and drop designed-out (the type predicate `error is Extract<ChordError,...>` is the narrowed *ChordError return). | No runtime cost either way (one type assertion and an optional comparison); the change is a signature merge plus caller migration. If the owner wants the split kept, record it as an owner decision since the stated reason does not hold."
+      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: Held (Pi 1.5.0): Pi next/data/errors.ts:79-85 `isChordError(error, code?)` is one predicate over an unknown value. Go's data.IsChordError(err, code ...ChordErrorCode) (*ChordError, bool) now keeps Pi's single name and optional code (IsChordErrorCode is gone), but it returns the ChordError with the bool where every caller reads it (the narrowed `error is Extract<ChordError, ...>`), and signature rule S2g admits only func(value) bool: result T3 refuses (*ChordError, bool) against boolean. The row stays pending until the owner decides between the tuple, a bool-only predicate with a separate AsChordError, or a reviewed signature rule."
     },
     {
       "id": "pkg:chord/next#isNull",
@@ -119348,9 +119551,12 @@
     },
     {
       "id": "pkg:chord/next#JobCtx",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:13403a272b5f05e66158d1d213adf05e0c8391591123d52e8529895a88734020",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already declares the type: chord/next/host/jobs_job.go:64 `type JobCtx interface { Ctx; JobID() string; State() RunState }`, the Go form of Pi chord/src/next/jobs/job.ts:55 `JobCtx<P, S> = Ctx<P> & {jobId} & {state}` (Pi's `jobId` is JobID(), `state` is State(), nil without a state; recorded at jobs_job.go:23-26). The ledger pigTargets (chord/host/types.go#Principal) is wrong. Rebind to chord/next/host/jobs_job.go#JobCtx (ported with the forced difference that fields are methods in a Go interface)."
+      "rationale": "Pi packages/chord/src/next/jobs/job.ts:55 `JobCtx<P, S> = Ctx<P> & { jobId } & ([S] extends [undefined] ? unknown : { state: RunState<S> })` is an intersection alias. Go declares host.JobCtx as an interface embedding Ctx with JobID() and State() (host/jobs_job.go:64; fields are methods, nil State without a state, recorded at jobs_job.go:23-26); shape rule A7 refuses an intersection alias against an interface. probe: read job.ts:45-65 and jobs_job.go:20-70. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets.",
+      "pigTargets": [
+        "chord/next/host/jobs_job.go#JobCtx"
+      ]
     },
     {
       "id": "pkg:chord/next#JobDefinition",
@@ -119894,7 +120100,7 @@
       "id": "pkg:chord/next#JsonColumnSchema",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f58757a12bda34c92dbb234fe7f854449acaa9110e311aec3606c84698993ff4",
-      "rationale": "Pi chord/src/next/store/json-column.ts:23 JsonColumnSchema (Pi 1.5.0): is a TypeScript-only type computed from its type parameters (an interface extending Schema<T> with the `json: JsonColumn` the table reads, typing a JSON column); it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is store.ColumnSchema carrying the JsonColumn (store/json_column.go:46), which Json returns. Exercised by TestDefineTable (chord/next/store/table_test.go).",
+      "rationale": "Pi packages/chord/src/next/store/json-column.ts:23 `JsonColumnSchema` is an interface extending Schema<T> with the one member `json: JsonColumn` (:24) that the table reads; the interface itself has no value, call or constructor, it only types what json() returns. The Go type that stands for it is store.ColumnSchema carrying the JsonColumn in its Json field (store/columns.go:32-36, store/json_column.go:36-46), so the type is a Go representation choice, not a missing member; its child row ::property:json maps the member to that field. probe: read json-column.ts:15-45 and columns.go:30-36. Designed out as a TypeScript interface with no Go form of its own (owner 2026-10-29/30: type-level mechanics). Exercised by TestDefineTable (chord/next/store/table_test.go).",
       "pigTargets": [
         "chord/next/store/columns.go#ColumnSchema",
         "chord/next/store/json_column.go#JsonColumn"
@@ -119911,9 +120117,12 @@
     },
     {
       "id": "pkg:chord/next#JsonColumnSchema::property:json",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:19ab67e9e1a04e7fbf3aebaaea7559ac7073fe748326fb9839c482a299af97f0",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the member: chord/next/store/columns.go:32-36 `ColumnSchema.Json *JsonColumn`, set by Json() (json_column.go:36-41) and read at columns.go:274 `Json: schema.Json`, the Go form of Pi's `json` field (json-column.ts:24) read at columns.ts:119,150 and adapter.ts:119,135-137 (`found.json.version`, `.read`). Rebind pkg:chord/next#JsonColumnSchema::property:json to chord/next/store/columns.go#ColumnSchema (Json field): the member is a run-time datum, not a type artifact, so designed-out is the wrong disposition."
+      "rationale": "Pi packages/chord/src/next/store/json-column.ts:24 `readonly json: JsonColumn` is the one member of the interface JsonColumnSchema, a type that only names the schema json() returns (the parent row is designed out for that reason). The member is run-time data that Pi reads (columns.ts:119,150; adapter.ts:119,135-137) and Go carries it as ColumnSchema.Json, set by Json (store/json_column.go:36-41) and read at columns.go:274, so nothing of the member is missing: the Go struct field belongs to the Go type that stands for the parent. probe: read json-column.ts:15-45 and columns.go:30-36,270-276. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets.",
+      "pigTargets": [
+        "chord/next/store/columns.go#ColumnSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#JsonObject",
@@ -120827,14 +121036,47 @@
     },
     {
       "id": "pkg:chord/next#lit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:217688b53a253deae36d86ea9e0600908b58a6aa1fae1b3380faeaf2c5dc92f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:217688b53a253deae36d86ea9e0600908b58a6aa1fae1b3380faeaf2c5dc92f4",
+      "rationale": "Derived by the interface gap detector: lit is Go chord/next/contracts/schema.go#Lit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Lit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Lit"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/lit_named_test.go#TestLitNamedTypesKeepTheirJSONTypeAndValue",
+        "test:chord/next/contracts/lit_named_test.go#TestOneOfNamedTypesIsAUnionOfTheirLiterals",
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers"
+      ]
     },
     {
       "id": "pkg:chord/next#lit::call:0",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:e6d353229a9abc27c3aca93ebb592333ec16e966a9c2c244cd9f04691751f185",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Go Lit/OneOf accept named types but mis-build them. Pi packages/chord/src/next/contracts/schema.ts:111-113 `lit<const V extends Literal>(value: V)` returns `{ type: typeof value, const: value }` for any string, number or boolean. Go chord/next/contracts/schema.go:189-191 declares `Literal interface { ~string | ~bool | ~int | ~int64 | ~float64 }`, but literalSchema (schema.go:194-211) switches on `any(value).(type)` with `case string`/`case bool`/`case int`/`case int64`/`case float64`, which match only the exact types: for `type Mode string; Lit(Mode(\"a\"))` neither switch matches and the node is `{type: \"number\", const: 0}` instead of `{type: \"string\", const: \"a\"}` (same for a named bool or numeric type). Fix: switch on reflect.Kind (or drop the `~`), keep the const value, and add a named-type case to chord/next/contracts/schema_test.go; then the row is a sound KEEP for the const type parameter only. | Same missing case also affects OneOf (schema.go:217-223) and every caller of literalSchema; record both in the port fix. | No cost beyond the one reflect.Kind read per call if reflect is used; Pi's typeof is also one check per call."
+      "rationale": "Derived by the interface gap detector: lit::call:0 is Go chord/next/contracts/schema.go#Lit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Lit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Lit"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/lit_named_test.go#TestLitNamedTypesKeepTheirJSONTypeAndValue",
+        "test:chord/next/contracts/lit_named_test.go#TestOneOfNamedTypesIsAUnionOfTheirLiterals",
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers"
+      ]
     },
     {
       "id": "pkg:chord/next#loadContent",
@@ -121714,9 +121956,9 @@
         "call:chord/next/contracts/schema.go#Num"
       ],
       "evidence": [
+        "test:chord/next/contracts/num_default_kinds_test.go#TestNumAndIntTakeEveryGoNumberKindAsADefault",
         "test:chord/next/contracts/params_test.go#TestParamsPolicy",
-        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
-        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestContractDataIsTheNormalFormTheFingerprintHashes"
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers"
       ]
     },
     {
@@ -121812,9 +122054,9 @@
         "public-api:chord/next/contracts/schema.go#OneOf"
       ],
       "evidence": [
+        "test:chord/next/contracts/lit_named_test.go#TestOneOfNamedTypesIsAUnionOfTheirLiterals",
         "test:chord/next/contracts/params_test.go#TestParamsPolicy",
-        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
-        "test:chord/next/data/params_test.go#TestCheckParams"
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers"
       ]
     },
     {
@@ -121834,9 +122076,9 @@
         "public-api:chord/next/contracts/schema.go#OneOf"
       ],
       "evidence": [
+        "test:chord/next/contracts/lit_named_test.go#TestOneOfNamedTypesIsAUnionOfTheirLiterals",
         "test:chord/next/contracts/params_test.go#TestParamsPolicy",
-        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
-        "test:chord/next/data/params_test.go#TestCheckParams"
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers"
       ]
     },
     {
@@ -122928,8 +123170,25 @@
     },
     {
       "id": "pkg:chord/next#PluginError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8c782a0bc1e38796c38c3e62118c62a96a0eb081c7c17fd4414995afc73b965d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8c782a0bc1e38796c38c3e62118c62a96a0eb081c7c17fd4414995afc73b965d",
+      "rationale": "Derived by the interface gap detector: PluginError is Go chord/next/data/errors.go#PluginError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/data/errors.go#PluginError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/data/errors.go#NewPluginError"
+      ],
+      "evidence": [
+        "test:chord/next/data/errors_test.go#TestPluginError",
+        "test:chord/next/data/plugin_error_name_test.go#TestPluginErrorNameIsPluginError",
+        "test:chord/next/host/host_example_09_test.go#TestExample09Calls"
+      ]
     },
     {
       "id": "pkg:chord/next#PluginError::construct:0",
@@ -122949,8 +123208,8 @@
       ],
       "evidence": [
         "test:chord/next/data/errors_test.go#TestPluginError",
-        "test:chord/next/host/host_example_09_test.go#TestExample09Calls",
-        "test:chord/next/host/host_routines_test.go#TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCallsNothing"
+        "test:chord/next/data/plugin_error_name_test.go#TestPluginErrorNameIsPluginError",
+        "test:chord/next/host/host_example_09_test.go#TestExample09Calls"
       ]
     },
     {
@@ -123030,9 +123289,24 @@
     },
     {
       "id": "pkg:chord/next#PluginError::property:name",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Go lacks the name. Pi packages/chord/src/next/data/errors.ts:96 `this.name = \"PluginError\"` sets an own `name` (it shows in String(err) and err.name, and the link wire path rebuilds the class at link/errors.ts:22). Go chord/next/data/errors.go:164-181 (type PluginError, NewPluginError, Error()) has no Name() method, although D103 (docs/parity/DIVERGENCES.md:1465) records that the inherited name is the error type's Name() method and Go has the method on other ported errors (ai/auth_resolve.go:185, chord/delta/delta.go:163). Add `func (*PluginError) Name() string { return \"PluginError\" }` after errors.go:181, keep the cause and stack rows as KEEP, and rebind this row to chord/next/data/errors.go#PluginError.Name. Same gap for ChordError (errors.ts:50 sets \"ChordError\", errors.go has no Name()), not in this slice. | The fix is one 1-line method; no rename needed since the exported Go name follows the D103 rule. | No cost: a constant-returning method, no allocation."
+      "rationale": "Derived by the interface gap detector: PluginError::property:name is Go chord/next/data/errors.go#PluginError.Name (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/data/errors.go#PluginError.Name"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/data/errors.go#PluginError.Name"
+      ],
+      "evidence": [
+        "test:chord/next/data/chord_error_name_test.go#TestChordErrorNameIsChordError",
+        "test:chord/next/data/plugin_error_name_test.go#TestPluginErrorNameIsPluginError"
+      ]
     },
     {
       "id": "pkg:chord/next#PluginError::property:stack",
@@ -123549,9 +123823,12 @@
     },
     {
       "id": "pkg:chord/next#Reference",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:58e8939ca23fa3d666161da379746be82f9f9e0ec014639641cde9c88f0a2090",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the type under Pi's name. Pi packages/chord/src/next/host/reference.ts:37-39 `Reference<C>` (the conditional Implementation<C> & Lifecycle or InVariants<C, never>) is the type host.get and host.hold return; Go's host.Reference (chord/next/host/host_reference.go:36-39, doc 'what host.get and host.hold return') is that type, and its sibling Held (host_reference.go:41, `type Held = Reference`; Pi reference.ts:41) is already ported via name rule N1. The row's pigTarget chord/host/contract.go#Contract is the old package's contract type, not the carrier. | Rebind pkg:chord/next#Reference to chord/next/host/host_reference.go#Reference and mark it ported with its forced differences (Call/Member/Keyed accessors for a plain object's members, host_reference.go:20-27); RefIn stays designed-out (compile-time narrowing, KEEP row). | No cost change: a pointer-struct, one binding pointer per reference."
+      "rationale": "Pi packages/chord/src/next/host/reference.ts:37-39 `Reference<C>` (Implementation<C> & Lifecycle, or InVariants<C, never>) is the type host.get and host.hold return. Go's host.Reference (host/host_reference.go:36-39) is that value, its sibling Held = Reference (:41); a plain object's members are reached through Call, Member and Keyed accessors (host_reference.go:20-27). Shape rule T6 refuses the record against a struct. probe: read reference.ts:30-45 and host_reference.go:15-45. Designed out as a Go language mechanic of the representation (AGENTS.md: a discriminated union, intersection or object-literal alias has no Go form), the shape rules refuse the match, and the Go type is named in pigTargets.",
+      "pigTargets": [
+        "chord/next/host/host_reference.go#Reference"
+      ]
     },
     {
       "id": "pkg:chord/next#RefIn",
@@ -125002,9 +125279,25 @@
     },
     {
       "id": "pkg:chord/next#SetOf",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:855bae9aa50a770633357711518c4f1c405149bbb6bd9d633f257569d7c169d2",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the type under Pi's name. Pi packages/chord/src/next/store/expression.ts:90-94 `SetOf<C, K>` is the `set` of a table: new values of non-key columns, each a value or an expression; Go's store.SetOf (chord/next/store/expression.go:197-199, `type SetOf []SetProp`, built with Assign at expression.go:202) is that value (ordered, since Go maps have no order) and is what UpdateStep.Set and the Rows patch take (table_evolve.go:28, table_history.go:116). The row's pigTarget chord/next/contracts/schema.go#Schema is unrelated. | Rebind pkg:chord/next#SetOf to chord/next/store/expression.go#SetOf and mark it ported; the per-column typing of the value or Expression is the only type-level part left, already noted in expression.go:24-30. | No cost change: a slice of SetProp, one allocation per set, as Pi's object literal."
+      "rationale": "Derived by the interface gap detector: SetOf is Go chord/next/store/expression.go#SetOf (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/expression.go#SetOf"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/expression.go#CompileSet"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet",
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets",
+        "test:chord/next/store/evaluate_test.go#TestEvaluator"
+      ]
     },
     {
       "id": "pkg:chord/next#SingletonHandle",
@@ -125311,8 +125604,25 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5b410d34096e1aea243f838b371eecf8499d8e91aa427a388aeda3983875e0bb"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5b410d34096e1aea243f838b371eecf8499d8e91aa427a388aeda3983875e0bb",
+      "rationale": "Derived by the interface gap detector: StateDefinition is Go chord/next/documents/definition.go#StateDefinition (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
+        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
+        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::construct:0",
@@ -125574,9 +125884,23 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:schema",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamShapeHash": "sha256:ae92c71a80e474fa86e7fe81dc4eec787364317f1f967d37f79acc7abd64c7b4",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Go already has the member under Pi's name. Pi packages/chord/src/next/documents/definition.ts:33 `readonly schema: Schema` (line 92) is the plain Schema<unknown> field assigned from the constructor argument (definition.ts:122 `this.schema = schema`); there is no type-level part left (Schema without arguments). Go's documents.StateDefinition.Schema (chord/next/documents/definition.go:90) holds the contracts.Schema the definition was declared with (definition.go:119), and its siblings Name, Version, Keyed, Persist, Fingerprint are all ported to the same-named fields. Rebind to chord/next/documents/definition.go#StateDefinition.Schema and mark ported. | Only the Schema type's brand is type-level, which is its own row (pkg:chord/next#Schema, KEEP). | No cost: a struct field copy."
+      "rationale": "Derived by the interface gap detector: StateDefinition::property:schema is Go chord/next/documents/definition.go#StateDefinition.Schema (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Schema"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/definition.go#newStateDefinition"
+      ],
+      "evidence": [
+        "reach:chord/next/documents/definition.go#newStateDefinition"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:version",
@@ -127578,9 +127902,9 @@
         "call:chord/next/store/query.go#Query.OrderBy"
       ],
       "evidence": [
+        "test:chord/next/store/column_ref_column_test.go#TestColumnRefColumnIsTheNamedColumn",
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ]
     },
     {
@@ -230729,7 +231053,7 @@
       "evidence": [
         "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles",
         "test:durable/core/driver/harness_nested_slots_core_test.go#TestCoreFindsEachNestedSlotAfterSlotsInTheMiddleWereRemoved",
-        "test:durable/harness/tool_nested_test.go#TestAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles"
+        "test:durable/harness/owned_excerpt_test.go#TestNestedSummaryErrorDoesNotRetainTheErrorText"
       ]
     },
     {
@@ -262813,26 +263137,51 @@
     },
     {
       "id": "pkg:mcp/.#ListToolsResult",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4b81e4571790537d9be6fa81230d90bb0949f1bc6a1f8f766f6b46e23f9a17b1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4b81e4571790537d9be6fa81230d90bb0949f1bc6a1f8f766f6b46e23f9a17b1",
+      "rationale": "Derived by the interface gap detector: ListToolsResult is Go mcp/types.go#ListToolsResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/types.go#ListToolsResult"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:mcp/types.go#ListToolsResult"
+      ],
+      "evidence": [
+        "test:mcp/list_tools_result_test.go#TestListToolsResultRoundTripsTheWirePage",
+        "test:mcp/wire_types_test.go#TestListToolsResultKeepsEveryToolMember"
+      ]
     },
     {
       "id": "pkg:mcp/.#ListToolsResult::property:_meta",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/types.ts:87-91 declares ListToolsResult._meta; Go mcp/types.go:207-211 already exports mcp.ListToolsResult with field Meta (json tag _meta), so the row is mislabelled designed-out: Go carries the member. | Asserting Go tests read it (mcp/wire_types_test.go:13 TestListToolsResultKeepsEveryToolMember, mcp/list_tools_result_test.go:11 TestListToolsResultRoundTripsTheWirePage), the same evidence that bound pkg:mcp/.#McpHttpError::property:cause. | Action: rebind pkg:mcp/.#ListToolsResult::property:_meta to mcp/types.go#ListToolsResult.Meta and drop the designed-out disposition; the old rationale says autobind P1(b) L5 refuses it because neither side has a production reader (Pi: only types.ts:87 and index.ts:45 re-export): owner/main to confirm that L5 outweighs an asserting-test binding, else keep designed-out with this probe."
+      "rationale": "Pi packages/mcp/src/protocol/types.ts:87-91 declares ListToolsResult._meta, a type-only export: probe: grep of packages/*/src finds only the declaration and the index.ts:45 re-export, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage, so no Pi code produces or consumes the type. Go's mcp.ListToolsResult (mcp/types.go:207-211) carries the member and TestListToolsResultKeepsEveryToolMember (mcp/wire_types_test.go:13) and TestListToolsResultRoundTripsTheWirePage (mcp/list_tools_result_test.go) assert it, but no non-test Go code reads it because Pi has no reader to port; autobind P1(b) L5 refuses a member no production code reads. Designed out under reason class a of the design-out audit (no Pi reader).",
+      "pigTargets": [
+        "mcp/types.go#ListToolsResult.Meta"
+      ]
     },
     {
       "id": "pkg:mcp/.#ListToolsResult::property:nextCursor",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bed2bcfe640948d6e05d8bb4fc546c4182cf7198bcfe4e36c29ead5f00488f6b",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/types.ts:87-91 declares ListToolsResult.nextCursor; Go mcp/types.go:207-211 already exports mcp.ListToolsResult with field NextCursor (json tag nextCursor), so the row is mislabelled designed-out: Go carries the member. | Asserting Go tests read it (mcp/wire_types_test.go:13 TestListToolsResultKeepsEveryToolMember, mcp/list_tools_result_test.go:11 TestListToolsResultRoundTripsTheWirePage), the same evidence that bound pkg:mcp/.#McpHttpError::property:cause. | Action: rebind pkg:mcp/.#ListToolsResult::property:nextCursor to mcp/types.go#ListToolsResult.NextCursor and drop the designed-out disposition; the old rationale says autobind P1(b) L5 refuses it because neither side has a production reader (Pi: only types.ts:87 and index.ts:45 re-export): owner/main to confirm that L5 outweighs an asserting-test binding, else keep designed-out with this probe."
+      "rationale": "Pi packages/mcp/src/protocol/types.ts:87-91 declares ListToolsResult.nextCursor, a type-only export: probe: grep of packages/*/src finds only the declaration and the index.ts:45 re-export, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage, so no Pi code produces or consumes the type. Go's mcp.ListToolsResult (mcp/types.go:207-211) carries the member and TestListToolsResultKeepsEveryToolMember (mcp/wire_types_test.go:13) and TestListToolsResultRoundTripsTheWirePage (mcp/list_tools_result_test.go) assert it, but no non-test Go code reads it because Pi has no reader to port; autobind P1(b) L5 refuses a member no production code reads. Designed out under reason class a of the design-out audit (no Pi reader).",
+      "pigTargets": [
+        "mcp/types.go#ListToolsResult.NextCursor"
+      ]
     },
     {
       "id": "pkg:mcp/.#ListToolsResult::property:tools",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:dfb27eaa65ad762725f24bda67bf99eba40c426f3de7a1aafe228d781d8a0f77",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/types.ts:87-91 declares ListToolsResult.tools; Go mcp/types.go:207-211 already exports mcp.ListToolsResult with field Tools (json tag tools), so the row is mislabelled designed-out: Go carries the member. | Asserting Go tests read it (mcp/wire_types_test.go:13 TestListToolsResultKeepsEveryToolMember, mcp/list_tools_result_test.go:11 TestListToolsResultRoundTripsTheWirePage), the same evidence that bound pkg:mcp/.#McpHttpError::property:cause. | Action: rebind pkg:mcp/.#ListToolsResult::property:tools to mcp/types.go#ListToolsResult.Tools and drop the designed-out disposition; the old rationale says autobind P1(b) L5 refuses it because neither side has a production reader (Pi: only types.ts:87 and index.ts:45 re-export): owner/main to confirm that L5 outweighs an asserting-test binding, else keep designed-out with this probe."
+      "rationale": "Pi packages/mcp/src/protocol/types.ts:87-91 declares ListToolsResult.tools, a type-only export: probe: grep of packages/*/src finds only the declaration and the index.ts:45 re-export, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage, so no Pi code produces or consumes the type. Go's mcp.ListToolsResult (mcp/types.go:207-211) carries the member and TestListToolsResultKeepsEveryToolMember (mcp/wire_types_test.go:13) and TestListToolsResultRoundTripsTheWirePage (mcp/list_tools_result_test.go) assert it, but no non-test Go code reads it because Pi has no reader to port; autobind P1(b) L5 refuses a member no production code reads. Designed out under reason class a of the design-out audit (no Pi reader).",
+      "pigTargets": [
+        "mcp/types.go#ListToolsResult.Tools"
+      ]
     },
     {
       "id": "pkg:mcp/.#LlmContent",
@@ -262858,8 +263207,25 @@
     },
     {
       "id": "pkg:mcp/.#McpAbortError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5e510f1e3a7338336cf26971a829045743847d8cfca4a2b3250f4061a681608f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5e510f1e3a7338336cf26971a829045743847d8cfca4a2b3250f4061a681608f",
+      "rationale": "Derived by the interface gap detector: McpAbortError is Go mcp/jsonrpc.go#McpAbortError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpAbortError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/client.go#Client.requestInternal"
+      ],
+      "evidence": [
+        "test:mcp/errors_abort_test.go#TestMcpAbortErrorHasPiDefaultsNameAndNoCause",
+        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
+        "test:mcp/client_initialize_abort_test.go#TestClientDoesNotSendACancelNotificationWhenInitializeIsAborted"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpAbortError::construct:0",
@@ -262884,9 +263250,12 @@
     },
     {
       "id": "pkg:mcp/.#McpAbortError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/jsonrpc.ts:74 McpAbortError never sets cause (no ErrorOptions in its constructor, super() takes the message only); Go mcp/jsonrpc.go:409 already exports (*McpAbortError).Cause() error returning nil, the Pi member name, so the row is mislabelled designed-out. | Asserting Go test reads it (mcp/errors_abort_test.go:14), the same evidence that already bound pkg:mcp/.#McpHttpError::property:cause (mapping-v1.5.0.json:263394 via Go mcp/streamable_http.go:83). | Action: rebind pkg:mcp/.#McpAbortError::property:cause to mcp/jsonrpc.go#McpAbortError.Cause and remove the designed-out disposition and the 'constant stand-in' rationale; nothing is missing in Go."
+      "rationale": "ER: mcp/jsonrpc.go#McpAbortError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpAbortError.Cause"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpAbortError::property:message",
@@ -264156,8 +264525,25 @@
     },
     {
       "id": "pkg:mcp/.#McpConnectionClosedError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4ba90dcf0ab64872faf41005ec65c50ba9d6bc1670b6d063ddc8fee6971f4345"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4ba90dcf0ab64872faf41005ec65c50ba9d6bc1670b6d063ddc8fee6971f4345",
+      "rationale": "Derived by the interface gap detector: McpConnectionClosedError is Go mcp/jsonrpc.go#McpConnectionClosedError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpConnectionClosedError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/client.go#Client.Close"
+      ],
+      "evidence": [
+        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
+        "test:mcp/transport_behavior_test.go#TestInMemoryTransportRejectsSendsBeforeStartAndToAnUnstartedOrMissingPeer",
+        "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpConnectionClosedError::construct:0",
@@ -264181,9 +264567,12 @@
     },
     {
       "id": "pkg:mcp/.#McpConnectionClosedError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/jsonrpc.ts:57 McpConnectionClosedError never sets cause (no ErrorOptions in its constructor, super() takes the message only); Go mcp/jsonrpc.go:361 already exports (*McpConnectionClosedError).Cause() error returning nil, the Pi member name, so the row is mislabelled designed-out. | Asserting Go test reads it (mcp/errors_test.go:31-34), the same evidence that already bound pkg:mcp/.#McpHttpError::property:cause (mapping-v1.5.0.json:263394 via Go mcp/streamable_http.go:83). | Action: rebind pkg:mcp/.#McpConnectionClosedError::property:cause to mcp/jsonrpc.go#McpConnectionClosedError.Cause and remove the designed-out disposition and the 'constant stand-in' rationale; nothing is missing in Go."
+      "rationale": "ER: mcp/jsonrpc.go#McpConnectionClosedError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpConnectionClosedError.Cause"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpConnectionClosedError::property:message",
@@ -264238,8 +264627,25 @@
     },
     {
       "id": "pkg:mcp/.#McpError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7c2d48113dc7f68c508404f155b73b7c8796f5fd4d2c4468052c6befce9b0848"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7c2d48113dc7f68c508404f155b73b7c8796f5fd4d2c4468052c6befce9b0848",
+      "rationale": "Derived by the interface gap detector: McpError is Go mcp/jsonrpc.go#McpError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/client.go#Client.handleMessage"
+      ],
+      "evidence": [
+        "test:mcp/client_response_upstream_test.go#TestClientHandleResponseResolvesResultAndRejectsErrorResponse",
+        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
+        "test:mcp/jsonrpc_error_codes_test.go#TestParseJSONRPCMessageRaisesInvalidRequest"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpError::construct:0",
@@ -264263,9 +264669,12 @@
     },
     {
       "id": "pkg:mcp/.#McpError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/jsonrpc.ts:45 McpError never sets cause (no ErrorOptions in its constructor, super() takes the message only); Go mcp/jsonrpc.go:336 already exports (*McpError).Cause() error returning nil, the Pi member name, so the row is mislabelled designed-out. | Asserting Go test reads it (mcp/errors_test.go:31-34), the same evidence that already bound pkg:mcp/.#McpHttpError::property:cause (mapping-v1.5.0.json:263394 via Go mcp/streamable_http.go:83). | Action: rebind pkg:mcp/.#McpError::property:cause to mcp/jsonrpc.go#McpError.Cause and remove the designed-out disposition and the 'constant stand-in' rationale; nothing is missing in Go."
+      "rationale": "ER: mcp/jsonrpc.go#McpError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpError.Cause"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpError::property:code",
@@ -264819,8 +265228,25 @@
     },
     {
       "id": "pkg:mcp/.#McpTimeoutError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d6d3a0f08f406a93018aab7d3f2623f37ee0c9337518a423476ad1d4a0132395"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d6d3a0f08f406a93018aab7d3f2623f37ee0c9337518a423476ad1d4a0132395",
+      "rationale": "Derived by the interface gap detector: McpTimeoutError is Go mcp/jsonrpc.go#McpTimeoutError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpTimeoutError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/client.go#Client.armTimeoutLocked"
+      ],
+      "evidence": [
+        "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
+        "test:mcp/timeout_error_test.go#TestNewMcpTimeoutError",
+        "test:mcp/client_test.go#TestClientCancelsAbortedAndTimedOutRequests"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpTimeoutError::construct:0",
@@ -264845,9 +265271,12 @@
     },
     {
       "id": "pkg:mcp/.#McpTimeoutError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/protocol/jsonrpc.ts:64 McpTimeoutError never sets cause (no ErrorOptions in its constructor, super() takes the message only); Go mcp/jsonrpc.go:385 already exports (*McpTimeoutError).Cause() error returning nil, the Pi member name, so the row is mislabelled designed-out. | Asserting Go test reads it (mcp/errors_test.go:31-34), the same evidence that already bound pkg:mcp/.#McpHttpError::property:cause (mapping-v1.5.0.json:263394 via Go mcp/streamable_http.go:83). | Action: rebind pkg:mcp/.#McpTimeoutError::property:cause to mcp/jsonrpc.go#McpTimeoutError.Cause and remove the designed-out disposition and the 'constant stand-in' rationale; nothing is missing in Go."
+      "rationale": "ER: mcp/jsonrpc.go#McpTimeoutError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
+      "pigTargets": [
+        "mcp/jsonrpc.go#McpTimeoutError.Cause"
+      ]
     },
     {
       "id": "pkg:mcp/.#McpTimeoutError::property:message",
@@ -268917,8 +269346,25 @@
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthAuthorizationRequiredError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3d00a981b1a85ff9d84306fdb32f80e34c4f8e0cc68c5f75c2790bcb402da8fa"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3d00a981b1a85ff9d84306fdb32f80e34c4f8e0cc68c5f75c2790bcb402da8fa",
+      "rationale": "Derived by the interface gap detector: McpOAuthAuthorizationRequiredError is Go mcp/oauth/errors.go#McpOAuthAuthorizationRequiredError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/oauth/errors.go#McpOAuthAuthorizationRequiredError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/oauth/errors.go#NewMcpOAuthAuthorizationRequiredError"
+      ],
+      "evidence": [
+        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
+        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage",
+        "test:coding/mcpext/oauth_challenge_latin1_test.go#TestMcpAuthProviderParsesTheChallengeHeaderAsLatin1"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthAuthorizationRequiredError::construct:0",
@@ -268943,9 +269389,12 @@
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthAuthorizationRequiredError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/oauth/errors.ts:50 McpOAuthAuthorizationRequiredError sets no cause, but its sibling classes expose it as a Go Cause() error method (mcp/jsonrpc.go:336,361,385,409; mcp/oauth/errors.go:138 OAuthRegistrationError; mcp/streamable_http.go:83 McpHttpError, bound in mapping-v1.5.0.json:263394), while Go mcp/oauth/errors.go:145 McpOAuthAuthorizationRequiredError has no Cause method: one Pi family, two Go shapes. | Pi has no reader of this cause (grep of packages/*/src `.cause` finds none for mcp errors), so the value is not observable, but AGENTS.md 'fix a special case's siblings together' applies: either add `func (e *McpOAuthAuthorizationRequiredError) Cause() error { return nil }` in mcp/oauth/errors.go with an asserting test like mcp/oauth/errors_class_test.go:16 and rebind this row, or the owner decides the constant Cause() family is dropped everywhere. | No runtime cost either way (constant method)."
+      "rationale": "Pi packages/mcp/src/oauth/errors.ts:50 declares class McpOAuthAuthorizationRequiredError extends Error; its constructor calls super(message) with no ErrorOptions and never assigns this.cause, so Pi's .cause is always undefined (Pi 1.5.0; no file under packages/mcp/src names cause). There is no Pi member to port: Go's Cause() on a sibling error is a Go error-wrapping mechanic, not a ported member, and callers match this error by its Go type with errors.As; D103 maps a cause a Go error does carry to Unwrap().",
+      "pigTargets": [
+        "mcp/oauth/errors.go#McpOAuthAuthorizationRequiredError"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthAuthorizationRequiredError::property:message",
@@ -271857,8 +272306,25 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9040a980732ba1079fb74e17eb8a5299c23220f78f695b88b3d31b33dfef20c1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9040a980732ba1079fb74e17eb8a5299c23220f78f695b88b3d31b33dfef20c1",
+      "rationale": "Derived by the interface gap detector: OAuthError is Go mcp/oauth/errors.go#OAuthError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/oauth/errors.go#NewOAuthError"
+      ],
+      "evidence": [
+        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
+        "test:mcp/oauth/errors_upstream_test.go#TestNewOAuthErrorUpstream",
+        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthError::construct:0",
@@ -271884,9 +272350,12 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/oauth/errors.ts:1 OAuthError sets no cause, but its sibling classes expose it as a Go Cause() error method (mcp/jsonrpc.go:336,361,385,409; mcp/oauth/errors.go:138 OAuthRegistrationError; mcp/streamable_http.go:83 McpHttpError, bound in mapping-v1.5.0.json:263394), while Go mcp/oauth/errors.go:11 OAuthError has no Cause method: one Pi family, two Go shapes. | Pi has no reader of this cause (grep of packages/*/src `.cause` finds none for mcp errors), so the value is not observable, but AGENTS.md 'fix a special case's siblings together' applies: either add `func (e *OAuthError) Cause() error { return nil }` in mcp/oauth/errors.go with an asserting test like mcp/oauth/errors_class_test.go:16 and rebind this row, or the owner decides the constant Cause() family is dropped everywhere. | No runtime cost either way (constant method)."
+      "rationale": "Pi packages/mcp/src/oauth/errors.ts:1 declares class OAuthError extends Error; its constructor calls super(message) with no ErrorOptions and never assigns this.cause, so Pi's .cause is always undefined (Pi 1.5.0; no file under packages/mcp/src names cause). There is no Pi member to port: Go's Cause() on a sibling error is a Go error-wrapping mechanic, not a ported member, and callers match this error by its Go type with errors.As; D103 maps a cause a Go error does carry to Unwrap().",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthError"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthError::property:code",
@@ -272237,8 +272706,25 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthInsecureEndpointError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b153148bfe4e7db31633cc68bbbca29c9a0e5624f9b44ff3d064f1580755a4c4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b153148bfe4e7db31633cc68bbbca29c9a0e5624f9b44ff3d064f1580755a4c4",
+      "rationale": "Derived by the interface gap detector: OAuthInsecureEndpointError is Go mcp/oauth/errors.go#OAuthInsecureEndpointError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthInsecureEndpointError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/oauth/errors.go#NewOAuthInsecureEndpointError"
+      ],
+      "evidence": [
+        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
+        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage",
+        "test:mcp/oauth/behavior_test.go#TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthInsecureEndpointError::construct:0",
@@ -272263,9 +272749,12 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthInsecureEndpointError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/oauth/errors.ts:28 OAuthInsecureEndpointError sets no cause, but its sibling classes expose it as a Go Cause() error method (mcp/jsonrpc.go:336,361,385,409; mcp/oauth/errors.go:138 OAuthRegistrationError; mcp/streamable_http.go:83 McpHttpError, bound in mapping-v1.5.0.json:263394), while Go mcp/oauth/errors.go:102 OAuthInsecureEndpointError has no Cause method: one Pi family, two Go shapes. | Pi has no reader of this cause (grep of packages/*/src `.cause` finds none for mcp errors), so the value is not observable, but AGENTS.md 'fix a special case's siblings together' applies: either add `func (e *OAuthInsecureEndpointError) Cause() error { return nil }` in mcp/oauth/errors.go with an asserting test like mcp/oauth/errors_class_test.go:16 and rebind this row, or the owner decides the constant Cause() family is dropped everywhere. | No runtime cost either way (constant method)."
+      "rationale": "Pi packages/mcp/src/oauth/errors.ts:28 declares class OAuthInsecureEndpointError extends Error; its constructor calls super(message) with no ErrorOptions and never assigns this.cause, so Pi's .cause is always undefined (Pi 1.5.0; no file under packages/mcp/src names cause). There is no Pi member to port: Go's Cause() on a sibling error is a Go error-wrapping mechanic, not a ported member, and callers match this error by its Go type with errors.As; D103 maps a cause a Go error does carry to Unwrap().",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthInsecureEndpointError"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthInsecureEndpointError::property:endpoint",
@@ -272340,8 +272829,25 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthIssuerMismatchError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d5ec2cc3ac9311c564ec43f796699d03c8052a4066e0d7f1161a21a4dfe0bb9b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d5ec2cc3ac9311c564ec43f796699d03c8052a4066e0d7f1161a21a4dfe0bb9b",
+      "rationale": "Derived by the interface gap detector: OAuthIssuerMismatchError is Go mcp/oauth/errors.go#OAuthIssuerMismatchError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthIssuerMismatchError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/oauth/discovery.go#DiscoverAuthorizationServerMetadata"
+      ],
+      "evidence": [
+        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
+        "test:mcp/oauth/absent_test.go#TestOAuthIssuerMismatchErrorNamesAMissingIssAsNone",
+        "test:mcp/oauth/absent_test.go#TestOAuthIssuerMismatchErrorQuotesIssuersAsJSONStringify"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthIssuerMismatchError::construct:0",
@@ -272366,9 +272872,12 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthIssuerMismatchError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: PENDING (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/oauth/errors.ts:13 OAuthIssuerMismatchError sets no cause, but its sibling classes expose it as a Go Cause() error method (mcp/jsonrpc.go:336,361,385,409; mcp/oauth/errors.go:138 OAuthRegistrationError; mcp/streamable_http.go:83 McpHttpError, bound in mapping-v1.5.0.json:263394), while Go mcp/oauth/errors.go:40 OAuthIssuerMismatchError has no Cause method: one Pi family, two Go shapes. | Pi has no reader of this cause (grep of packages/*/src `.cause` finds none for mcp errors), so the value is not observable, but AGENTS.md 'fix a special case's siblings together' applies: either add `func (e *OAuthIssuerMismatchError) Cause() error { return nil }` in mcp/oauth/errors.go with an asserting test like mcp/oauth/errors_class_test.go:16 and rebind this row, or the owner decides the constant Cause() family is dropped everywhere. | No runtime cost either way (constant method)."
+      "rationale": "Pi packages/mcp/src/oauth/errors.ts:13 declares class OAuthIssuerMismatchError extends Error; its constructor calls super(message) with no ErrorOptions and never assigns this.cause, so Pi's .cause is always undefined (Pi 1.5.0; no file under packages/mcp/src names cause). There is no Pi member to port: Go's Cause() on a sibling error is a Go error-wrapping mechanic, not a ported member, and callers match this error by its Go type with errors.As; D103 maps a cause a Go error does carry to Unwrap().",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthIssuerMismatchError"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthIssuerMismatchError::property:expected",
@@ -272553,8 +273062,25 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthRegistrationError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a40b15b686840b2ad2e4e9938f94b8ffb5e07bd94228ebb0cec0a0714f8199f6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a40b15b686840b2ad2e4e9938f94b8ffb5e07bd94228ebb0cec0a0714f8199f6",
+      "rationale": "Derived by the interface gap detector: OAuthRegistrationError is Go mcp/oauth/errors.go#OAuthRegistrationError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthRegistrationError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:mcp/oauth/errors.go#NewOAuthRegistrationError"
+      ],
+      "evidence": [
+        "test:mcp/oauth/errors_class_test.go#TestOAuthRegistrationErrorCarriesStatusBodyAndName",
+        "test:mcp/oauth/behavior_test.go#TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds",
+        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthRegistrationError::construct:0",
@@ -272599,9 +273125,12 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthRegistrationError::property:cause",
-      "disposition": "pending",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Held pending by test/parity/interface-closure/autobind/holds.json: REBIND (proof-d-audit, Pi 1.5.0): Pi packages/mcp/src/oauth/errors.ts:38 OAuthRegistrationError never sets cause (no ErrorOptions in its constructor, super() takes the message only); Go mcp/oauth/errors.go:138 already exports (*OAuthRegistrationError).Cause() error returning nil, the Pi member name, so the row is mislabelled designed-out. | Asserting Go test reads it (mcp/oauth/errors_class_test.go:16-17), the same evidence that already bound pkg:mcp/.#McpHttpError::property:cause (mapping-v1.5.0.json:263394 via Go mcp/streamable_http.go:83). | Action: rebind pkg:mcp/.#OAuthRegistrationError::property:cause to mcp/oauth/errors.go#OAuthRegistrationError.Cause and remove the designed-out disposition and the 'constant stand-in' rationale; nothing is missing in Go."
+      "rationale": "ER: mcp/oauth/errors.go#OAuthRegistrationError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
+      "pigTargets": [
+        "mcp/oauth/errors.go#OAuthRegistrationError.Cause"
+      ]
     },
     {
       "id": "pkg:mcp/oauth#OAuthRegistrationError::property:message",

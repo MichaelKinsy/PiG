@@ -15912,6 +15912,39 @@
       "shapeHash": "sha256:e70c9af9d81c6ecd6f3e9e1e4341badf28c5217157102e7b78c10a5954f2b886"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#JSONChangeAppend",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "JSONChangeAppend",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "JSONChangeKind"
+      },
+      "shapeHash": "sha256:8fbcb4e033898e66b3c37233a4cfb2a546c5f10769fe3f8e832f613a92babbbb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#JSONChangeKind",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "JSONChangeKind",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "JSONChangeKind"
+      },
+      "shapeHash": "sha256:8fbcb4e033898e66b3c37233a4cfb2a546c5f10769fe3f8e832f613a92babbbb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#JSONChangeSet",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "JSONChangeSet",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "JSONChangeKind"
+      },
+      "shapeHash": "sha256:8fbcb4e033898e66b3c37233a4cfb2a546c5f10769fe3f8e832f613a92babbbb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#JSONPath",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "JSONPath",
@@ -20354,6 +20387,17 @@
         "type": "func(data []byte) error"
       },
       "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#OwnedSlice",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "OwnedSlice",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string, start int, end ...int) string"
+      },
+      "shapeHash": "sha256:913156be1a3548945404401f64290e463950ca7506ccf0eda5e34d9a062ec13f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#PKCE",
@@ -45104,28 +45148,6 @@
         "type": "func(raw encoding/json.RawMessage) string"
       },
       "shapeHash": "sha256:2605eca88a769331fb83c478ac4cb8992ced2a78ad13eda818f2d7dd447af370"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#jsonChangeAppend",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "jsonChangeAppend",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#jsonChangeSet",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "jsonChangeSet",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#jsonKind",
