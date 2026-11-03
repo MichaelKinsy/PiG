@@ -1,9 +1,3 @@
-pkg:ai/.#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
-pkg:ai/.#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
-pkg:ai/compat#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
-pkg:ai/compat#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
-pkg:ai/utils/string-enum#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
-pkg:ai/utils/string-enum#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
 pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	

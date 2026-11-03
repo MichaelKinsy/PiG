@@ -130,6 +130,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | Unreleased |
+| [BF-1c1b349](#bf-1c1b349) | A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1c6b864](#bf-1c6b864) | A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ca0e2f](#bf-1ca0e2f) | fix(codingagent): the terminal reader yields to the main loop it readied before it polls again | PiG's own defect | All platforms | Unreleased |
 | [BF-1cc7519](#bf-1cc7519) | fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK | PiG's own defect | All platforms | Unreleased |
@@ -163,6 +164,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | Unreleased |
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | Unreleased |
+| [BF-23841dc](#bf-23841dc) | The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does… | PiG's own defect | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
@@ -452,6 +454,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
+| [BF-5d4c432](#bf-5d4c432) | A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every… | PiG's own defect | All platforms | Unreleased |
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
@@ -676,6 +679,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6f165a2](#bf-6f165a2) | After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
@@ -1111,6 +1115,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b5ebeb5](#bf-b5ebeb5) | A resumed session draws its `!` and `!!` command blocks, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b5fb4aa](#bf-b5fb4aa) | fix(tui): a streamed Markdown is not resumed past a paragraph that a later LaTeX closer clips; keep wraps… | PiG's own defect | All platforms | Unreleased |
 | [BF-b607c35](#bf-b607c35) | Started from a directory reached through a symlink (a `$PWD` naming a link), pig now uses the physical… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b65e288](#bf-b65e288) | A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-b684b81](#bf-b684b81) | RPC and session JSON write an assistant message's members in the order Pi's providers assign them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b6c65b3](#bf-b6c65b3) | `!` command and RPC `bash` output no longer keeps fragments of color codes, such as a stray `m`, when an… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b6d8ab0](#bf-b6d8ab0) | Fix changelog fragment and bug ledger naming the pre-squash commit of #307 (#317) | PiG's own defect | All platforms | Unreleased |
@@ -3094,6 +3099,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks`, `ai/usage_json_test.go::TestUsageCostTotalFromProviderWire`, `automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote`, `chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed`, `chord/state_source_test.go::TestConformanceReplicatedStateSourceContract`, `durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits`, `durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped` and 33 more in docs/bug-ledger.json
 - **Release note:** Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time. A frame the link had handed to the host loop before it closed could run after Close took its last look at the host's objects and after the connection had released what it held, so it created an object nothing disposed or released, and Close waited for that object's resource open for good (seen as a 30 minute `chord/host` test timeout on Windows after a `ready_timeout` get). A connection now ignores frames once its link closed, as Pi's link delivers none.
 
+### BF-1c1b349
+
+**A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the session with exit 129, as Pi's stdout error listener does, instead of being discarded while the session keeps running (#397).
+- **Root cause:** Pi adds an error listener to process.stdout and process.stderr that exits 129 through emergencyTerminalExit when the error is EIO, EPIPE, ENOTCONN or ENOTTY. ProcessTerminal.write discarded its error, so a session on a hung-up or revoked terminal kept running. The handler runs the exit once: the exit's own restore writes fail on the same terminal.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1c1b349dbd` (2026-11-02, #397)
+- **Tests:** None recorded.
+- **Release note:** A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the session with exit 129, as Pi's stdout error listener does, instead of being discarded while the session keeps running (#397).
+
 ### BF-1c6b864
 
 **A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns…**
@@ -3550,6 +3569,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2359a0a7b8` (2026-11-02, #402)
 - **Tests:** `internal/codingagent/interactive_queue_hint_test.go::TestQueuedHintAndTipNameTheConfiguredDequeueKey`, `internal/codingagent/interactive_queue_hint_test.go::TestQueuedHistoryRecallTipShowsOnceAndGoesWithTheQueue`, `internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun`, `internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage`, `internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState`, `internal/codingagent/option_up_encodings_test.go::TestOptionUpEncodingsPerTerminalAgainstTheKeyDecoder`
 - **Release note:** In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty editor and a queued message now restores the queued messages to the editor and clears the queue, as Option+Up does in other terminals; before, Up recalled history while the message stayed queued and was still sent after the tool, even after you deleted the recalled copy. The queued-message hint names Up in that state. Elsewhere (tmux, ssh, other terminals), when Up recalls history while a message is queued, PiG shows one dim line under the editor, once per run, saying the text is a copy and which key edits the queue; tmux, ssh and unknown terminals also get the Terminal.app mapping of Option+Up to `\033[1;3A`. Pi 1.5.0 behaves as PiG did before (D228).
+
+### BF-23841dc
+
+**The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.
+- **Root cause:** documentation-audit.eval.ts:15-21 writes `verdict: Type.Union([Type.Literal("match"), Type.Literal("mismatch"), Type.Literal("inconclusive")])`, which TypeBox serializes as `{"anyOf":[{"type":"string","const":"match"},...]}`. The Go port used ai.StringEnum, so the model saw `{"type":"string","enum":[...]}`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `23841dce31` (2026-11-02)
+- **Tests:** `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`
+- **Release note:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.
 
 ### BF-23ee6e1
 
@@ -7526,6 +7559,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5d36a5821d` (2026-10-09)
 - **Tests:** `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow`
 
+### BF-5d4c432
+
+**A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every provider with their members in the order the author wrote them, as Pi sends them: `{"type":"string","enum":[...]}` and properties in declaration order, where PiG sorted them by name for the Anthropic, OpenAI (completions and responses), Azure, Mistral, Google and Bedrock requests.
+- **Root cause:** ai.StringEnum returned a Go map, so every provider wrote `{"enum":[...],"type":"string"}` where Pi's StringEnum gives `{"type":"string","enum":[...]}` and a property object sorted by name where Pi keeps insertion order. StringEnum now returns an ordered pi-schema object whose enum is the caller's slice, as Pi's is the caller's array.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d4c43241b` (2026-11-02)
+- **Tests:** `ai/providers/bedrock/bedrock_tool_schema_order_test.go::TestBedrockToolConfigKeepsTheAuthoredSchemaOrder`, `ai/string_enum_test.go::TestStringEnumSharesTheCallersValues`, `ai/string_enum_test.go::TestStringEnumWritesTheMembersInPiOrder`, `ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests`, `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`, `internal/evals/harness_run_test.go::TestRunPiCodingAgentCustomToolSchemaKeepsAuthoredOrderToTheModel`, `internal/evals/harness_run_test.go::TestRunPiCodingAgentServesCustomToolsThroughTheBridge`, `test/pipeline-diff/tool_schema_test.go::TestToolSchemaBytesMatchPi`
+- **Release note:** A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every provider with their members in the order the author wrote them, as Pi sends them: `{"type":"string","enum":[...]}` and properties in declaration order, where PiG sorted them by name for the Anthropic, OpenAI (completions and responses), Azure, Mistral, Google and Bedrock requests. `ai.StringEnum` returns an ordered schema object and shares the caller's enum slice, as Pi does.
+
 ### BF-5d6bb25
 
 **The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or…**
@@ -10645,6 +10692,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1278df8e33` (2026-10-10), `6ee6eae918` (2026-10-10)
 - **Tests:** `coding/codemode_session_upstream_test.go::TestUpstreamCodemodeModels`, `coding/session_boundaries_drafts_upstream_test.go::TestUpstreamSessionBoundariesDrafts`, `coding/session_event_listener_upstream_test.go::TestSessionNotifyListenersWalksTheLiveListenerListAsPi`, `coding/session_event_listener_upstream_test.go::TestSessionSubscribeNotifiesEveryListenerInOrderAndUnsubscribeLeavesTheOthers`, `coding/session_sections_test.go::TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce`, `mcp/errors_abort_test.go::TestMcpAbortErrorHasPiDefaultsNameAndNoCause`, `mcp/mcptest/inmemory_test.go::TestInMemoryTransportDropsQueuedMessagesOfAClosedEndAndReportsPlacement`, `mcp/oauth/callback_server_options_test.go::TestOAuthCallbackServerNamesTheRedirectMixUpAndReturnsTheContextCause` and 2 more in docs/bug-ledger.json
 - **Release note:** A Session delivers each event to its listeners the way Pi's `AgentSession` does. A listener that unsubscribes itself or another listener during delivery changes which listeners that delivery still reaches, and a listener subscribed during delivery receives the same event. Before, every delivery used the list as it was when the delivery began.
+
+### BF-6f165a2
+
+**After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted system call`: raw-mode entry and exit retry an ioctl that a stop and continue interrupted, as Node's libuv does (#397).
+- **Root cause:** Raw-mode entry and exit retry EINTR as libuv's uv__tcsetattr does (deps/uv/src/unix/tty.c). Without it a stop and continue inside the ioctl ended the session with "interrupted system call" where the kernel reports EINTR to the continued call (macOS).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f165a205c` (2026-11-02, #397)
+- **Tests:** None recorded.
+- **Release note:** After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted system call`: raw-mode entry and exit retry an ioctl that a stop and continue interrupted, as Node's libuv does (#397).
 
 ### BF-6f26a84
 
@@ -16680,6 +16741,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b607c35564` (2026-10-13)
 - **Tests:** `coding/cli/startup_physical_cwd_test.go::TestStartupWorkingDirectoryIsThePhysicalPath`, `internal/codingagent/file_processor_oracle_test.go::TestProcessCLIFileArgumentsMatchesPi`
 - **Release note:** Started from a directory reached through a symlink (a `$PWD` naming a link), pig now uses the physical working directory as Pi does, so `@file` arguments are named by their physical path.
+
+### BF-b65e288
+
+**A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D227)
+- **Symptom:** A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`.
+- **Root cause:** A SIGCONT that reaches a process group that does not own the terminal stops the session again with SIGTSTP before raw mode and before a frame, and waits for the SIGCONT that fg sends. A terminal that went away answers the tcgetpgrp check with EIO or ENOTTY and ends the session through the dead-terminal exit (129). Pi restarts its UI on any SIGCONT (interactive-mode.ts handleCtrlZ). Numbered divergence D227, owner approved.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi checks the foreground process group before it restarts the UI on SIGCONT, or an equivalent that keeps a background resume from touching the terminal.
+- **Fix commits:** `5ba2840d24` (2026-11-02), `843e04d837` (2026-11-02, #397), `b65e288aca` (2026-11-02), `f33e07a23f` (2026-11-02)
+- **Tests:** `internal/codingagent/suspend_foreground_test.go::TestSuspendedSessionResumedInTheBackgroundStaysParkedUntilFg`, `internal/codingagent/suspend_foreground_test.go::TestSuspendedSessionWhoseTerminalIsGoneDoesNotRestart`, `internal/codingagent/suspend_foreground_unix_test.go::TestSuspendWaiterKeepsWaitingAfterAParkedContinuation`, `internal/codingagent/suspend_return_review_test.go::TestPairReview4SuspendReturnsBeforeContinue`, `internal/codingagent/suspend_upstream_test.go::TestInteractiveSuspendUpstream`, `internal/codingagent/suspend_upstream_test.go::TestSuspendCancellationCleansUpWithoutRestart`, `tui/terminal_foreground_pty_test.go::TestStdinForegroundHelper`, `tui/terminal_foreground_pty_test.go::TestStdinInForegroundFollowsTheTerminalProcessGroup`
+- **Release note:** A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`. A terminal that went away while the session was stopped now ends it with the dead-terminal exit (129) instead of an `interrupted system call` error (#396, #397, D227).
 
 ### BF-b684b81
 
@@ -23097,6 +23174,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D224 | A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow… | deliberate difference |
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
 | D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
+| D227 | A suspended session resumed in the background stays parked until `fg` | [BF-b65e288](#bf-b65e288) |
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 
 ## Fix-titled commits that are not bugs in a release

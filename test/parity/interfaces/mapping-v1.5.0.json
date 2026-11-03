@@ -33000,13 +33000,47 @@
     },
     {
       "id": "pkg:ai/.#StringEnum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:30bcc80bd7621b289a44e4a75a00f57cf5a517eff501f83d3a1ba84bede7059d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:30bcc80bd7621b289a44e4a75a00f57cf5a517eff501f83d3a1ba84bede7059d",
+      "rationale": "Derived by the interface gap detector: StringEnum is Go ai/string_enum.go#StringEnum (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/string_enum.go#StringEnum"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/string_enum.go#StringEnum"
+      ],
+      "evidence": [
+        "test:ai/providers/bedrock/bedrock_tool_schema_order_test.go#TestBedrockToolConfigKeepsTheAuthoredSchemaOrder",
+        "test:ai/string_enum_test.go#TestStringEnumSharesTheCallersValues",
+        "test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"
+      ]
     },
     {
       "id": "pkg:ai/.#StringEnum::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2fc21404dcf7aa4e8f7222822fcf454a173d5e11ab3f66bf1806ae0adaa7f1b0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2fc21404dcf7aa4e8f7222822fcf454a173d5e11ab3f66bf1806ae0adaa7f1b0",
+      "rationale": "Derived by the interface gap detector: StringEnum::call:0 is Go ai/string_enum.go#StringEnum (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/string_enum.go#StringEnum"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/string_enum.go#StringEnum"
+      ],
+      "evidence": [
+        "test:ai/providers/bedrock/bedrock_tool_schema_order_test.go#TestBedrockToolConfigKeepsTheAuthoredSchemaOrder",
+        "test:ai/string_enum_test.go#TestStringEnumSharesTheCallersValues",
+        "test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"
+      ]
     },
     {
       "id": "pkg:ai/.#SystemMessage",
@@ -78645,13 +78679,47 @@
     },
     {
       "id": "pkg:ai/compat#StringEnum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:30bcc80bd7621b289a44e4a75a00f57cf5a517eff501f83d3a1ba84bede7059d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:30bcc80bd7621b289a44e4a75a00f57cf5a517eff501f83d3a1ba84bede7059d",
+      "rationale": "Derived by the interface gap detector: StringEnum is Go ai/string_enum.go#StringEnum (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/string_enum.go#StringEnum"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/string_enum.go#StringEnum"
+      ],
+      "evidence": [
+        "test:ai/providers/bedrock/bedrock_tool_schema_order_test.go#TestBedrockToolConfigKeepsTheAuthoredSchemaOrder",
+        "test:ai/string_enum_test.go#TestStringEnumSharesTheCallersValues",
+        "test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"
+      ]
     },
     {
       "id": "pkg:ai/compat#StringEnum::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2fc21404dcf7aa4e8f7222822fcf454a173d5e11ab3f66bf1806ae0adaa7f1b0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2fc21404dcf7aa4e8f7222822fcf454a173d5e11ab3f66bf1806ae0adaa7f1b0",
+      "rationale": "Derived by the interface gap detector: StringEnum::call:0 is Go ai/string_enum.go#StringEnum (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/string_enum.go#StringEnum"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/string_enum.go#StringEnum"
+      ],
+      "evidence": [
+        "test:ai/providers/bedrock/bedrock_tool_schema_order_test.go#TestBedrockToolConfigKeepsTheAuthoredSchemaOrder",
+        "test:ai/string_enum_test.go#TestStringEnumSharesTheCallersValues",
+        "test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"
+      ]
     },
     {
       "id": "pkg:ai/compat#SystemMessage",
@@ -100524,13 +100592,47 @@
     },
     {
       "id": "pkg:ai/utils/string-enum#StringEnum",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:30bcc80bd7621b289a44e4a75a00f57cf5a517eff501f83d3a1ba84bede7059d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:30bcc80bd7621b289a44e4a75a00f57cf5a517eff501f83d3a1ba84bede7059d",
+      "rationale": "Derived by the interface gap detector: StringEnum is Go ai/string_enum.go#StringEnum (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/string_enum.go#StringEnum"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/string_enum.go#StringEnum"
+      ],
+      "evidence": [
+        "test:ai/providers/bedrock/bedrock_tool_schema_order_test.go#TestBedrockToolConfigKeepsTheAuthoredSchemaOrder",
+        "test:ai/string_enum_test.go#TestStringEnumSharesTheCallersValues",
+        "test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"
+      ]
     },
     {
       "id": "pkg:ai/utils/string-enum#StringEnum::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2fc21404dcf7aa4e8f7222822fcf454a173d5e11ab3f66bf1806ae0adaa7f1b0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2fc21404dcf7aa4e8f7222822fcf454a173d5e11ab3f66bf1806ae0adaa7f1b0",
+      "rationale": "Derived by the interface gap detector: StringEnum::call:0 is Go ai/string_enum.go#StringEnum (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/string_enum.go#StringEnum"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/string_enum.go#StringEnum"
+      ],
+      "evidence": [
+        "test:ai/providers/bedrock/bedrock_tool_schema_order_test.go#TestBedrockToolConfigKeepsTheAuthoredSchemaOrder",
+        "test:ai/string_enum_test.go#TestStringEnumSharesTheCallersValues",
+        "test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"
+      ]
     },
     {
       "id": "pkg:ai/utils/text#contentText",
@@ -292796,9 +292898,9 @@
         "call:tui/terminal.go#ProcessTerminal.Write"
       ],
       "evidence": [
+        "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes",
-        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
+        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
       ]
     },
     {
@@ -292818,9 +292920,9 @@
         "call:tui/terminal.go#ProcessTerminal.Write"
       ],
       "evidence": [
+        "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
         "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes",
-        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
+        "test:tui/terminal_stream_text_test.go#TestProcessTerminalWritesALoneSurrogateAsNodeDoes"
       ]
     },
     {

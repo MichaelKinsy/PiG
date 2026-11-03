@@ -246395,6 +246395,17 @@
       "shapeHash": "sha256:9696b15930fe4323f453a7a903e8d9c05a77cd6492ec37f56f3467588b8109df"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.foregroundOrExit",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.foregroundOrExit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(probe func() (bool, error)) (bool, error)"
+      },
+      "shapeHash": "sha256:ec77194bcc202f82dd7cb138ce7bbdfcbd5768c79436fc8cbec977d03eaab21e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.formatContextPath",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.formatContextPath",
