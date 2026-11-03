@@ -94,6 +94,8 @@ macOS Terminal.app sends Option+Up as plain Up in its default profile, so `app.m
 - In Terminal.app (`TERM_PROGRAM=Apple_Terminal`), when the editor is empty, a message is queued and `app.message.dequeue` is bound to `alt+up`, plain Up runs `app.message.dequeue`. The queued-message hint then names `Up`. In every other state Up keeps Pi's behavior.
 - Everywhere else, when Up recalls history while a message is queued, PiG shows one dim line under the editor, once per run: `That's a copy. The queued message still sends. <key> edits the queue.` Here `<key>` is the key bound to `app.message.dequeue`. In tmux, over ssh, or in a terminal PiG does not know, the line also says how to map Option+Up to `\033[1;3A` in Terminal Settings > Profiles > Keyboard. Do not enable "Use Option as Meta key" for this: it makes Option+Up send Esc and then Up, and Esc aborts the turn.
 
+Both differences apply to PiG's own editor only. An extension's custom editor keeps Pi's Up (D228).
+
 Clipboard image helper commands reject stdout larger than 50 MiB. PiG cancels and joins an oversized helper instead of retaining its output. Unsupported image formats such as BMP are converted to PNG; a failed conversion produces no image.
 
 ### Models

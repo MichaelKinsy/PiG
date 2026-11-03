@@ -50,10 +50,20 @@ func (m *InteractiveMode) queuedMessageCount() int {
 	return len(steeringTexts) + len(followUpTexts)
 }
 
-// appleTerminalUpDequeues reports whether a plain Up key runs app.message.dequeue: Terminal.app delivers Option+Up as plain Up, the editor is
-// empty, a message is queued, and the action is bound to the key Option+Up stands for (a user who moved it elsewhere keeps Pi's Up).
+// builtInEditor reports whether keys reach the built-in editor. An extension's custom editor, whether it runs in the host or in an extension
+// process, keeps Pi's behavior exactly: D228 changes neither its Up key nor its history recall.
+// pig divergence (D228): both parts of the divergence are gated on this, the Terminal.app remap and the copy tip.
+func (m *InteractiveMode) builtInEditor() bool {
+	m.extComponentMu.Lock()
+	factory := m.editorFactory
+	m.extComponentMu.Unlock()
+	return factory == nil && !m.editor.IsRemote()
+}
+
+// appleTerminalUpDequeues reports whether a plain Up key runs app.message.dequeue: Terminal.app delivers Option+Up as plain Up, the built-in
+// editor is empty, a message is queued, and the action is bound to the key Option+Up stands for (a user who moved it elsewhere keeps Pi's Up).
 func (m *InteractiveMode) appleTerminalUpDequeues() bool {
-	if !termProgramIs(appleTerminalProgram) || m.editor == nil || m.editor.Text() != "" {
+	if !termProgramIs(appleTerminalProgram) || m.editor == nil || !m.builtInEditor() || m.editor.Text() != "" {
 		return false
 	}
 	return slices.Contains(dequeueKeys(), dequeueOptionUpKey) && m.queuedMessageCount() > 0
@@ -101,7 +111,7 @@ func queueCopyTipText(dequeueKey string, mappingHint bool) string {
 // watchQueuedHistoryRecall returns, for an Up key pressed while a message is queued and the tip not yet shown, a function to call after the
 // editor handled the key: it shows the copy tip when the key recalled a history entry (the editor text changed). Otherwise it returns nil.
 func (m *InteractiveMode) watchQueuedHistoryRecall(data string) func() {
-	if m.queueCopyTipShown {
+	if m.queueCopyTipShown || !m.builtInEditor() {
 		return nil
 	}
 	kb := tui.GetTUIKeybindings()
