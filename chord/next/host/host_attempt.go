@@ -536,6 +536,7 @@ func (a *attempt) Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[d
 	object := a.object
 	owner := followOwner{label: object.text, ctx: a.ctx, ended: a.followEnded}
 	source := newFollowSource(attach, owner, object.host.batch, object.host.loop())
+	source.enter = object.host.enter
 	a.follows = append(a.follows, source)
 	return Expose(source)
 }

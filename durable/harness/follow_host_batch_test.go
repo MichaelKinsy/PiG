@@ -1,14 +1,17 @@
 // A followed Harness on a Chord host: the calls one Durable commit makes to two followed sources reach a derive over both as one
 // batch (Pi follow.ts: "calls outside one are grouped into one batch on the next microtask, so a derive over two views of one
 // commit computes once with both changes"). Pi's Durable publishes a commit to every observer in one synchronous step of the
-// host's one thread; Go's Durable publishes from its Session writer goroutine, so an adapter gives the Harness a Storage whose
-// publication scope (durable.PublishingStorage, Pi's `Storage.publishing`) is a section of the host, Host.Section.
+// host's one thread; Go's Durable publishes from its Session writer goroutine and opens a step on the publication's context
+// (chordctx.WithStep) that the followed sources of a host leave their calls in, whatever the storage: memory, sqlite and
+// jsonl have no publication scope (Pi's `Storage.publishing`, StoreStorage's alone), and the one commit still reaches the
+// derive as one batch.
 
 package harness
 
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -18,19 +21,15 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	chordhost "github.com/MichaelKinsy/PiG/chord/next/host"
+	chordstore "github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
+	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
+	jsonlnode "github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
+	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
+	"github.com/MichaelKinsy/PiG/durable/storage/store"
 )
-
-// rrSectionStorage is a Storage whose publication scope is a section of host.
-type rrSectionStorage struct {
-	durable.Storage
-	host chordhost.Host
-}
-
-func (scoped rrSectionStorage) Publishing(_ context.Context, publish func()) {
-	scoped.host.Section(publish)
-}
 
 var rrBoth = rrMust(contracts.Local("app.both", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{
@@ -57,9 +56,63 @@ func rrFollowAttach[T any](harness chordhost.Native[any], observe func(opened Ha
 	}
 }
 
+// rrBatchStorage opens the storage of one case; chordStore is the store a StoreStorage lives in, attached to the host.
+type rrBatchStorage struct {
+	name  string
+	store func(t *testing.T) chordstore.Store
+	open  func(t *testing.T, ctx context.Context, store chordstore.Store) (durable.Storage, error)
+}
+
+var rrBatchStorages = []rrBatchStorage{
+	{name: "memory", open: func(*testing.T, context.Context, chordstore.Store) (durable.Storage, error) {
+		return storage.NewMemoryStorage(), nil
+	}},
+	{name: "sqlite", open: func(t *testing.T, _ context.Context, _ chordstore.Store) (durable.Storage, error) {
+		return sqlitenode.OpenNodeSqliteStorage(filepath.Join(t.TempDir(), "durable.sqlite"), sqlitenode.NodeSqliteStorageOptions{})
+	}},
+	{name: "jsonl", open: func(t *testing.T, ctx context.Context, _ chordstore.Store) (durable.Storage, error) {
+		directory := t.TempDir()
+		return jsonl.Open(ctx, directory, &jsonlnode.NodeFileSystem{Cwd: directory}, jsonl.JsonlStorageOptions{})
+	}},
+	{name: "store", store: func(t *testing.T) chordstore.Store {
+		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		opened, err := chordstore.OpenStore(chordstore.SqliteBackend(db), testContext, chordstore.StoreOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = opened.Close(testContext) })
+		return opened
+	}, open: func(_ *testing.T, ctx context.Context, opened chordstore.Store) (durable.Storage, error) {
+		opened2, err := store.Open(ctx, opened, "harness")
+		if err != nil {
+			return nil, err
+		}
+		return opened2, nil
+	}},
+}
+
 func TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch(t *testing.T) {
+	for _, variant := range rrBatchStorages {
+		t.Run(variant.name, func(t *testing.T) { rrOneCommitTwoViews(t, variant) })
+	}
+}
+
+func rrOneCommitTwoViews(t *testing.T, variant rrBatchStorage) {
 	done := rrDoneTask()
-	host := rrCreateHost(t)
+	var chosen chordstore.Store
+	options := chordhost.HostOptions{OnError: func(chordhost.HostError) {}}
+	if variant.store != nil {
+		chosen = variant.store(t)
+		options.Store = chosen
+	}
+	host, err := chordhost.CreateHost(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { rrBounded(t, "closing the host", func() { _ = host.Close(testContext) }) })
 	var mu sync.Mutex
 	var computed []string
 	rrLoad(t, host, func(facetHost chordhost.FacetHost, _ chordhost.FacetSelf) error {
@@ -70,7 +123,11 @@ func TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch(t *testing.T)
 					if err := registry.Install(&durable.Extension{Name: "app.ext", Tasks: []durable.AnyTask{done.Erased()}}); err != nil {
 						return nil, err
 					}
-					opened, err := OpenHarness(ctx, rrSectionStorage{Storage: storage.NewMemoryStorage(), host: host}, HarnessOptions{Models: ai.CreateModels(), Registry: registry})
+					backing, err := variant.open(t, ctx, chosen)
+					if err != nil {
+						return nil, err
+					}
+					opened, err := OpenHarness(ctx, backing, HarnessOptions{Models: ai.CreateModels(), Registry: registry})
 					if err != nil {
 						return nil, err
 					}
@@ -155,9 +212,11 @@ func TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch(t *testing.T)
 	mu.Lock()
 	computesBefore, framesBefore := len(computed), len(frames)
 	mu.Unlock()
-	if _, err := reference.Call("both", nil, testContext); err != nil {
-		t.Fatal(err)
-	}
+	rrBounded(t, "the call", func() {
+		if _, err := reference.Call("both", nil, testContext); err != nil {
+			t.Error(err)
+		}
+	})
 	rrWait(t, "both changes are shown", func() bool { return read() != start })
 	// The frame is delivered after the commit's publication: wait for the pair to settle on both changes.
 	rrWait(t, "the frame of the commit is delivered", func() bool {

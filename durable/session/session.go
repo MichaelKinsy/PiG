@@ -1970,6 +1970,10 @@ func (session *SessionImpl) endPublication() {
 func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes []durable.StorageWrite, documents adoptedDocuments) error {
 	// The watches the observers advance deliver once, for all the frames of this commit: upstream queues one microtask.
 	defer session.scheduler.Hold()()
+	// One synchronous turn, as Pi's publication is: the followed views (chord follow.ts) that observers of this commit
+	// advance are told together, when the loop below ends, and reach their host as one batch.
+	ctx, endStep := chordctx.WithStep(ctx)
+	defer endStep()
 	session.mu.Lock()
 	internal := append([]*internalListener(nil), session.internalOrder...)
 	hosts := len(session.commitOrder) > 0
