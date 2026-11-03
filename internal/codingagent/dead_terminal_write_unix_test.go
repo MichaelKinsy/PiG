@@ -73,7 +73,6 @@ func TestDeadRemoteEditorWriteChild(t *testing.T) {
 	_ = m.exitOnDeadTerminalWrite()
 	stdout := os.Stdout
 	os.Stdout = slave
-	defer func() { os.Stdout = stdout }()
 	switch path {
 	case "stopped":
 		m.tuiStopped.Store(true)
