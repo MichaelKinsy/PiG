@@ -45,7 +45,6 @@ func piToolBodies(t *testing.T) map[string]string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//nolint:gosec // G204 (class b): program is node from exec.LookPath; the script is this package's checked-in file and its input is on stdin.
 	cmd := exec.CommandContext(t.Context(), node, filepath.Join(testenv.ModuleRoot(t), "test", "pipeline-diff", "pi-tools.mjs"), piRoot(t))
 	cmd.Stdin = bytes.NewReader(input)
 	var stdout, stderr bytes.Buffer
