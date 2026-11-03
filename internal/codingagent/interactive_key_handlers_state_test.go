@@ -14,37 +14,38 @@ import (
 // Pi's onEscape (interactive-mode.ts:3050-3076) takes the first of five branches: a streaming run, a running `!` command, bash mode, a blank editor
 // with a double-Escape action configured. handleCtrlC (4229-4236) clears, then exits on a second press within 500 ms.
 type escapeWorld struct {
-	Editor          string
-	RunAborted      bool
-	RetryAborted    bool
-	CompactionAbort bool
-	BashCancelled   bool
-	Slash           []string
-	EscapeArmed     bool
-	Exit            bool
-	SigintArmed     bool
-	QueuedMessages  int
+	Editor           string
+	RunAborted       bool
+	RetryAborted     bool
+	CompactionAbort  bool
+	BashCancelled    bool
+	SummaryCancelled bool
+	Slash            []string
+	EscapeArmed      bool
+	Exit             bool
+	SigintArmed      bool
+	QueuedMessages   int
 }
 
 func (r *keyRig) escapeWorld(abortCtx context.Context) escapeWorld {
 	m := r.m
 	handle := m.opts.SessionHandle.(*recordingCompactHandle)
 	return escapeWorld{
-		Editor:          m.editor.Text(),
-		RunAborted:      abortCtx.Err() != nil,
-		RetryAborted:    handle.abortRetryCount > 0,
-		CompactionAbort: handle.abortCompactionCount > 0,
-		BashCancelled:   r.bashCancels > 0,
-		Slash:           r.world.Slash,
-		EscapeArmed:     !m.lastEscapeTime.IsZero(),
-		Exit:            m.requestExit.Load(),
-		SigintArmed:     !m.lastSigintTime.IsZero(),
-		QueuedMessages:  len(m.compactionQueue),
+		Editor:           m.editor.Text(),
+		RunAborted:       abortCtx.Err() != nil,
+		RetryAborted:     handle.abortRetryCount > 0,
+		CompactionAbort:  handle.abortCompactionCount > 0,
+		BashCancelled:    r.bashCancels > 0,
+		SummaryCancelled: r.summaryCancels > 0,
+		Slash:            r.world.Slash,
+		EscapeArmed:      !m.lastEscapeTime.IsZero(),
+		Exit:             m.requestExit.Load(),
+		SigintArmed:      !m.lastSigintTime.IsZero(),
+		QueuedMessages:   len(m.compactionQueue),
 	}
 }
 
 func TestSetupKeyHandlersEscapeAndClearBranches(t *testing.T) {
-	const window = 500 * time.Millisecond
 	cases := []struct {
 		name   string
 		action string // the double-Escape setting; empty keeps the default
@@ -69,6 +70,26 @@ func TestSetupKeyHandlersEscapeAndClearBranches(t *testing.T) {
 				r.m.compactionQueue = []compactionQueuedMessage{{text: "queued", mode: compactionQueueSteer}}
 			},
 			want: escapeWorld{RetryAborted: true, QueuedMessages: 1}},
+		{name: "a running bash command waits for the retry countdown's own Escape", keys: []string{"\x1b"},
+			setup: func(r *keyRig) {
+				r.m.isIdle = false
+				r.m.retryCountdownStop = func() {}
+				r.m.bashCancel = func() { r.bashCancels++ }
+			},
+			want: escapeWorld{RetryAborted: true}},
+		{name: "compaction aborts the compaction", keys: []string{"\x1b"},
+			setup: func(r *keyRig) { r.m.isIdle = true; r.m.isCompacting = true },
+			want:  escapeWorld{CompactionAbort: true}},
+		{name: "a branch summary cancels the summary instead of the compaction", keys: []string{"\x1b"},
+			setup: func(r *keyRig) {
+				r.m.isIdle = true
+				r.m.isCompacting = true
+				r.m.branchSummaryCancel = func() { r.summaryCancels++ }
+			},
+			want: escapeWorld{SummaryCancelled: true}},
+		{name: "without a settings manager the double Escape opens the tree", keys: []string{"\x1b", "\x1b"},
+			setup: func(r *keyRig) { r.m.isIdle = true; r.m.opts.SettingsManager = nil },
+			want:  escapeWorld{Slash: []string{"/tree"}}},
 		{name: "a running bash command is aborted and the editor kept", keys: []string{"\x1b"},
 			setup: func(r *keyRig) {
 				r.m.isIdle = true
@@ -98,7 +119,7 @@ func TestSetupKeyHandlersEscapeAndClearBranches(t *testing.T) {
 			setup: func(r *keyRig) { r.m.isIdle = true; r.m.lastEscapeTime = time.Now().Add(-400 * time.Millisecond) },
 			want:  escapeWorld{Slash: []string{"/tree"}}},
 		{name: "an Escape 600 ms after the first only arms again", keys: []string{"\x1b"},
-			setup: func(r *keyRig) { r.m.isIdle = true; r.m.lastEscapeTime = time.Now().Add(-2 * window) },
+			setup: func(r *keyRig) { r.m.isIdle = true; r.m.lastEscapeTime = time.Now().Add(-600 * time.Millisecond) },
 			want:  escapeWorld{EscapeArmed: true}},
 		{name: "a second Ctrl+C within the window exits", keys: []string{"\x03", "\x03"},
 			setup: func(r *keyRig) { r.m.isIdle = true; r.m.editor.SetText("draft") },
@@ -108,7 +129,7 @@ func TestSetupKeyHandlersEscapeAndClearBranches(t *testing.T) {
 			want:  escapeWorld{Exit: true}},
 		{name: "a Ctrl+C 600 ms after the first clears and arms again", keys: []string{"\x03"},
 			setup: func(r *keyRig) {
-				r.m.lastSigintTime = time.Now().Add(-2 * window)
+				r.m.lastSigintTime = time.Now().Add(-600 * time.Millisecond)
 				r.m.editor.SetText("draft")
 			},
 			want: escapeWorld{SigintArmed: true}},
@@ -182,5 +203,118 @@ func TestSetupKeyHandlersModelSelectOpensTheSelectorForItsDefaultAndRemappedKey(
 				t.Errorf("world %+v, want nothing else changed", w)
 			}
 		})
+	}
+}
+
+// Pi's CustomEditor.handleInput runs the first registered handler whose binding matches (custom-editor.ts:139-144, a Map in registration order), and
+// setupKeyHandlers registers the sixteen actions in the order of keyHandlerCases, so a key bound to two actions runs the earlier one, and a registered
+// action beats an action the handlers do not register (app.thinking.save, app.session.toggleNamedFilter).
+func TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings(t *testing.T) {
+	var registered []keyHandlerCase
+	for _, c := range keyHandlerCases {
+		switch c.action {
+		case "app.interrupt", "app.exit", "app.clipboard.pasteImage":
+			// CustomEditor checks these three before the registered actions.
+		default:
+			registered = append(registered, c)
+		}
+	}
+	_, wire := remapKey('z')
+	for i, first := range registered {
+		later := []string{"app.thinking.save", "app.session.toggleNamedFilter"}
+		for _, c := range registered[i+1:] {
+			later = append(later, c.action)
+		}
+		for _, other := range later {
+			t.Run(first.action+" over "+other, func(t *testing.T) {
+				id, _ := remapKey('z')
+				before, after := pressCase(t, first, map[string]string{first.action: id, other: id}, wire)
+				expected := before
+				first.want(&expected)
+				if !reflect.DeepEqual(after, expected) {
+					t.Errorf("world %+v, want the earlier action's %+v", after, expected)
+				}
+			})
+		}
+	}
+}
+
+// handleDequeue (interactive-mode.ts:4467-4474) restores every queued message to the editor and says how many, or that none were queued.
+func TestSetupKeyHandlersDequeueReportsTheRestoredCount(t *testing.T) {
+	for _, c := range []struct {
+		queued     []string
+		wantEditor string
+		wantStatus string
+	}{
+		{nil, "", "No queued messages to restore"},
+		{[]string{"one"}, "one", "Restored 1 queued message to editor"},
+		{[]string{"one", "two"}, "one\n\ntwo", "Restored 2 queued messages to editor"},
+	} {
+		r := newKeyRig(t, nil)
+		for _, text := range c.queued {
+			r.m.compactionQueue = append(r.m.compactionQueue, compactionQueuedMessage{text: text, mode: compactionQueueSteer})
+		}
+		r.press(t, "\x1b[1;3A")
+		if w := r.snapshot(); w.Editor != c.wantEditor || w.Status != c.wantStatus || len(r.m.compactionQueue) != 0 {
+			t.Errorf("%d queued: editor %q, status %q, queue %d; want %q, %q, 0", len(c.queued), w.Editor, w.Status, len(r.m.compactionQueue), c.wantEditor, c.wantStatus)
+		}
+	}
+}
+
+// handleFollowUp (interactive-mode.ts:4435-4464) ignores blank text, queues text typed during compaction with a history entry, and otherwise acts as Enter when idle.
+func TestSetupKeyHandlersFollowUpBranches(t *testing.T) {
+	t.Run("blank text keeps the editor", func(t *testing.T) {
+		r := newKeyRig(t, nil)
+		r.m.isCompacting = true
+		r.m.editor.SetText("  ")
+		r.press(t, "\x1b[13;3u")
+		if w := r.snapshot(); w.Editor != "  " || w.QueuedFollowUps != 0 || w.Status != "" {
+			t.Errorf("blank follow-up: editor %q, queued %d, status %q", w.Editor, w.QueuedFollowUps, w.Status)
+		}
+	})
+	t.Run("compaction queues the trimmed text and keeps it in the editor history", func(t *testing.T) {
+		r := newKeyRig(t, nil)
+		r.m.isCompacting = true
+		r.m.editor.SetText(" later ")
+		r.press(t, "\x1b[13;3u")
+		if len(r.m.compactionQueue) != 1 || r.m.compactionQueue[0].text != "later" || r.m.compactionQueue[0].mode != compactionQueueFollowUp {
+			t.Fatalf("queue = %+v, want one follow-up %q", r.m.compactionQueue, "later")
+		}
+		r.press(t, "\x1b[A")
+		if got := r.m.editor.Text(); got != "later" {
+			t.Errorf("Up after the queued follow-up recalls %q, want %q", got, "later")
+		}
+	})
+	t.Run("idle submits like Enter", func(t *testing.T) {
+		r := newKeyRig(t, nil)
+		var submitted []string
+		r.m.editor.OnSubmit = func(text string) { submitted = append(submitted, text) }
+		r.m.editor.SetText(" go ")
+		r.press(t, "\x1b[13;3u")
+		if !reflect.DeepEqual(submitted, []string{"go"}) || r.m.editor.Text() != "" {
+			t.Errorf("submitted %q, editor %q; want [go] and an empty editor", submitted, r.m.editor.Text())
+		}
+	})
+}
+
+// CustomEditor runs onCtrlD only for an empty editor (custom-editor.ts:121-129); otherwise app.exit reaches the editor, whose Ctrl+D deletes forward.
+func TestSetupKeyHandlersExitRunsOnlyForAnEmptyEditor(t *testing.T) {
+	for _, c := range []struct {
+		text     string
+		wantText string
+		wantExit bool
+	}{
+		{"", "", true},
+		{"ab", "b", false},
+		{" ", "", false},
+		{"\n", "\n", false},
+	} {
+		r := newKeyRig(t, nil)
+		r.m.editor.SetText(c.text)
+		r.press(t, "\x1b[H") // Home
+		r.press(t, "\x04")
+		if w := r.snapshot(); w.Exit != c.wantExit || w.Editor != c.wantText {
+			t.Errorf("Ctrl+D over %q: exit %v, editor %q; want %v, %q", c.text, w.Exit, w.Editor, c.wantExit, c.wantText)
+		}
 	}
 }

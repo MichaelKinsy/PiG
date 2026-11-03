@@ -23,6 +23,7 @@ import (
 // keyWorld is every effect the handlers have, so a key that reaches another action's handler, two handlers, or none shows as a different world.
 type keyWorld struct {
 	Editor          string
+	Status          string
 	SigintArmed     bool
 	Exit            bool
 	EscapeArmed     bool
@@ -45,6 +46,8 @@ type keyRig struct {
 	launched string
 	// bashCancels counts the cancellations of the running `!` command.
 	bashCancels int
+	// summaryCancels counts the cancellations of the running branch summary.
+	summaryCancels int
 }
 
 // remapKeyID is the unused key each action is remapped to: ctrl+alt+<letter>, which the terminal sends as a Kitty CSI-u sequence.
@@ -136,6 +139,7 @@ func (r *keyRig) snapshot() keyWorld {
 	m := r.m
 	w := r.world
 	w.Editor = m.editor.Text()
+	w.Status = m.lastStatusMessage
 	w.SigintArmed = !m.lastSigintTime.IsZero()
 	w.Exit = m.requestExit.Load()
 	w.EscapeArmed = !m.lastEscapeTime.IsZero()
@@ -181,7 +185,7 @@ var keyHandlerCases = []keyHandlerCase{
 		setup: func(t *testing.T, r *keyRig) { r.m.editor.SetText("draft") },
 		want:  func(w *keyWorld) { w.Editor = ""; w.SigintArmed = true }},
 	{action: "app.suspend", letter: 'b', key: "\x1a", noSettle: true, want: func(w *keyWorld) { w.Suspends = 1 }},
-	{action: "app.thinking.cycle", letter: 'c', key: "\x1b[Z", want: func(w *keyWorld) { w.ThinkingLevel = "minimal" }},
+	{action: "app.thinking.cycle", letter: 'c', key: "\x1b[Z", want: func(w *keyWorld) { w.ThinkingLevel = "minimal"; w.Status = "Thinking level: minimal" }},
 	{action: "app.interrupt", letter: 'q', key: "\x1b", want: func(w *keyWorld) { w.EscapeArmed = true }},
 	{action: "app.exit", letter: 'r', key: "\x04", want: func(w *keyWorld) { w.Exit = true }},
 	{action: "app.clipboard.pasteImage", letter: 's', key: "\x16",
@@ -197,10 +201,10 @@ var keyHandlerCases = []keyHandlerCase{
 				})
 		},
 		want: func(w *keyWorld) { w.Editor = "pasted text" }},
-	{action: "app.model.cycleForward", letter: 'd', key: "\x10", want: func(w *keyWorld) { w.CycleDirections = []string{"forward"} }},
-	{action: "app.model.cycleBackward", letter: 'e', key: "\x1b[112;6u", want: func(w *keyWorld) { w.CycleDirections = []string{"backward"} }},
-	{action: "app.tools.expand", letter: 'f', key: "\x0f", want: func(w *keyWorld) { w.ToolsExpanded = true }},
-	{action: "app.thinking.toggle", letter: 'g', key: "\x14", want: func(w *keyWorld) { w.HideThinking = true; w.HideSetting = true }},
+	{action: "app.model.cycleForward", letter: 'd', key: "\x10", want: func(w *keyWorld) { w.CycleDirections = []string{"forward"}; w.Status = "Switched to other" }},
+	{action: "app.model.cycleBackward", letter: 'e', key: "\x1b[112;6u", want: func(w *keyWorld) { w.CycleDirections = []string{"backward"}; w.Status = "Switched to other" }},
+	{action: "app.tools.expand", letter: 'f', key: "\x0f", want: func(w *keyWorld) { w.ToolsExpanded = true; w.Status = "Tool output: expanded" }},
+	{action: "app.thinking.toggle", letter: 'g', key: "\x14", want: func(w *keyWorld) { w.HideThinking = true; w.HideSetting = true; w.Status = "Thinking blocks: hidden" }},
 	{action: "app.editor.external", letter: 'h', key: "\x07", noSettle: true,
 		setup: func(t *testing.T, r *keyRig) {
 			t.Setenv("VISUAL", "")
@@ -210,17 +214,28 @@ var keyHandlerCases = []keyHandlerCase{
 			r.m.editor.SetText("seed")
 		},
 		want: func(w *keyWorld) { w.Editor = "seed"; w.EditorLaunches = 1 }},
-	{action: "app.message.copy", letter: 'i', key: "\x18", want: func(w *keyWorld) { w.Copied = []string{"last assistant text"} }},
+	{action: "app.message.copy", letter: 'i', key: "\x18", want: func(w *keyWorld) {
+		w.Copied = []string{"last assistant text"}
+		w.Status = "Copied last agent message to clipboard"
+	}},
 	{action: "app.message.followUp", letter: 'j', key: "\x1b\r",
 		setup: func(t *testing.T, r *keyRig) { r.m.isCompacting = true; r.m.editor.SetText("later") },
-		want:  func(w *keyWorld) { w.Editor = ""; w.QueuedFollowUps = 1 },
+		want: func(w *keyWorld) {
+			w.Editor = ""
+			w.QueuedFollowUps = 1
+			w.Status = "Queued message for after compaction"
+		},
 		// Alt+Enter without an app action is the legacy Shift+Enter: the editor inserts a line break.
 		oldKey: func(w *keyWorld) { w.Editor = "later\n" }},
 	{action: "app.message.dequeue", letter: 'k', key: "\x1b[1;3A",
 		setup: func(t *testing.T, r *keyRig) {
 			r.m.compactionQueue = []compactionQueuedMessage{{text: "queued", mode: compactionQueueSteer}}
 		},
-		want: func(w *keyWorld) { w.Editor = "queued"; w.QueuedSteering = 0 }},
+		want: func(w *keyWorld) {
+			w.Editor = "queued"
+			w.QueuedSteering = 0
+			w.Status = "Restored 1 queued message to editor"
+		}},
 	{action: "app.session.new", letter: 'l', want: func(w *keyWorld) { w.Slash = []string{"/new"} }},
 	{action: "app.session.tree", letter: 'm', want: func(w *keyWorld) { w.Slash = []string{"/tree"} }},
 	{action: "app.session.fork", letter: 'n', want: func(w *keyWorld) { w.Slash = []string{"/fork"} }},
