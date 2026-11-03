@@ -37,6 +37,8 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.editorContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
+	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
+	m.widgetContainerBelow = tui.NewContainer()
 	m.rendererOut = io.Discard
 	m.tuiInst = tui.NewWithOutput(m.rendererOut, 100, 30)
 	m.statusLine = NewFooterComponent(opts.Model, "", nil)
