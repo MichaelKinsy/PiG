@@ -91,7 +91,7 @@
     "tests": [
       "TestMcpServerRegistryKeepsOwnershipOrderAndCopies",
       "TestValidateMcpServerConfigMessages",
-      "TestIsLoopbackRedirectURI",
+      "TestValidateMcpServerConfigChecksTheSharedFieldsBeforePisOwn",
       "TestValidateMcpServerConfigAcceptsProviderAuthOnLoopbackHostsAsTheURLParserNormalizesThem",
       "TestValidateMcpServerConfigTrimsTheOAuthClientNameAsJavaScriptDoes",
       "TestValidateMcpServerConfigChecksTheDescriptionBeforeTheTimeout",
