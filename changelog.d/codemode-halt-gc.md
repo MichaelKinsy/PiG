@@ -1,3 +1,0 @@
-### Fixed
-
-- A code mode script in a loop can no longer freeze the whole process. Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes. Every guest loop, including the QuickJS loops that run JavaScript loops and recursion, now reaches Go at least every 1024 iterations, as Pi's worker `terminate()` reaches a runaway script, so the hard stop runs on time. A custom WebAssembly module that recurses without any loop still never reaches Go, as before.
