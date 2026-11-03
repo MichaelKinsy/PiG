@@ -1665,4 +1665,5 @@ Locked by: `TestParseArgsListen`, `TestPigCommandsListsListen` (`coding/cli`); `
 
 Remove when: Pi gains a multi-session RPC mode.
 
-Approval: pending owner review.
+Approval: PiG Discord, 2026-11-03: the --listen proposal was posted and approved there before PR #404 was opened; the review of that PR is the owner's sign-off of this record.
+SCRUTINIZED:approved

@@ -128,4 +128,4 @@ Memory evidence: a bench script under `bench/` starts `pig --mode rpc --listen` 
 
 ## Approval
 
-The D205 record's `Approval:` line is left to the owner. The implementation lands with `Approval: pending owner review` and the owner replaces it.
+The `--listen` proposal was posted on the PiG Discord and approved there on 2026-11-03, before PR #404 was opened. The D205 record carries that approval; the review of the PR is the owner's sign-off.
