@@ -165,7 +165,6 @@ RULES: list[tuple[str, object, str | None]] = [
     ("durable/interop/package.json", package_deps(INTEROP), "durable/interop"),
     ("durable/core/host/cf/package.json", package_deps(CF_HOST), "durable/core/host/cf"),
     ("bench/k8s/image/pi-durable/package.json", package_deps(INTEROP), "bench/k8s/image/pi-durable"),
-    ("bench/k8s/image/pi-agent/package.json", lambda p, t: package_deps(["@earendil-works/pi-coding-agent"])(p, regex_rule(r'^(\t"version": ")[^"]+(")', r'\g<1>{v}\g<2>', "package_version")(p, t)), "bench/k8s/image/pi-agent"),
     ("coding/extension/host/subprocess/runtime-node/harness/package.json", regex_rule(r'^(  "version": ")[^"]+(")', r'\g<1>{v}\g<2>', "package_version"), None),
 ]
 
@@ -177,6 +176,16 @@ def derived(pin: Pin) -> dict[str, str]:
         text = path.read_text(encoding="utf-8")
         out[rel] = transform(pin, text)
     return out
+
+
+def copy_install_lock(pin: Pin) -> None:
+    """bench/k8s/image/pi-agent holds Pi's release-published install pair unmodified: copy it byte for byte from the pinned
+    source's packages/coding-agent/install-lock (npm would rewrite the lock, and k8sbench pins the published hashes)."""
+    source = ROOT / ".upstream" / pin.mirror_dir / "packages" / "coding-agent" / "install-lock"
+    if not source.is_dir():
+        raise PinError(f"{source} is missing; run `make upstream-mirror` so pin-sync can copy Pi's install lock")
+    for name in ("package.json", "package-lock.json"):
+        (ROOT / "bench/k8s/image/pi-agent" / name).write_bytes((source / name).read_bytes())
 
 
 def cmd_sync(args: argparse.Namespace) -> None:
@@ -198,6 +207,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
             raise PinError("derived from .upstream/pin but stale (run `make pin-sync`): " + ", ".join(stale))
         print(f"pin-check: {len(wanted)} derived files match Pi {pin.version}")
         return
+    copy_install_lock(pin)
     for directory in sorted(changed_locks):
         npm = "npm"
         print(f"+ npm install --package-lock-only in {directory}", file=sys.stderr, flush=True)
