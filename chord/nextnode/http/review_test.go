@@ -837,22 +837,22 @@ func serverSideSocket(t *testing.T) *WebSocket {
 // what the check read. Pi's revoke of V1 ran before that check read V2, so it ends nothing; had the check read V0, V1's revoke
 // ends the connection at its delivery.
 func TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead(t *testing.T) {
-	withHost := func() *Router {
-		return &Router{Hosts: NewStringSet("t.example"), SocketHandlers: map[*HttpSocket]struct{}{}}
+	router := func(order uint64, host ...string) *Router {
+		return &Router{Hosts: NewStringSet(host...), SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
 	}
 	for _, read := range []string{"V0", "V2"} {
 		t.Run("the check read "+read, func(t *testing.T) {
 			u := NewUpgrades()
-			v0, v1, v2 := withHost(), &Router{Hosts: NewStringSet(), SocketHandlers: map[*HttpSocket]struct{}{}}, withHost()
+			v0, v1, v2 := router(1, "t.example"), router(2), router(3, "t.example")
 			u.delivered(v0)
 			seen := u.admitting()
 			defer u.settled(seen)
 			u.delivered(v1)
 			u.delivered(v2)
 			socket := serverSideSocket(t)
-			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, seen: seen}
 			checked := map[string]*Router{"V0": v0, "V2": v2}[read]
-			u.keep(connection, checked)
+			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, checked: checked.order}
+			u.keep(connection)
 			u.recheck(connection)
 			if ended := socket.ReadyState() == WebSocketClosedState; ended != (read == "V0") {
 				t.Fatalf("after reading %s the connection ended = %v", read, ended)
@@ -861,8 +861,8 @@ func TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead(t 
 	}
 }
 
-// The count of a keep that finds the router its check read in the deliveries is that router's number: the identity the
-// component's reads and the follower's deliveries must share.
+// The router the component reads and the one the follower delivers are the same composition (its order is what an upgrade's
+// connection is judged from).
 func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.T) {
 	var last atomic.Pointer[Router]
 	gone := make(chan struct{}, 8)
@@ -942,8 +942,8 @@ func TestReviewAnUpgradeWhoseCheckReadAnUndeliveredRouterIsJudgedOnlyByLaterComp
 				u.delivered(router(4))
 			}
 			socket := serverSideSocket(t)
-			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, seen: seen}
-			u.keep(connection, read)
+			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, checked: read.order}
+			u.keep(connection)
 			u.recheck(connection)
 			if ended := socket.ReadyState() == WebSocketClosedState; ended != laterGone {
 				t.Fatalf("the connection ended = %v, want %v", ended, laterGone)
