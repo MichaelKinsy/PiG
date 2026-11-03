@@ -93,8 +93,13 @@ func TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage(t *testing.T) {
 	}
 	pair.harness.Do(func() { pair.harness.SetEditorText("") })
 	finishTool(t, pair, release)
-	if n := len(pair.provider.requestLog()); n != 2 {
-		t.Fatalf("model requests = %d, want 2 (prompt and tool result): the dequeued message must not be sent", n)
+	// A queued steering message rides in the request that carries the tool result, so a request count cannot tell it from the dequeued case:
+	// no request body may contain the text.
+	requests := pair.provider.requestLog()
+	for i, body := range requests {
+		if strings.Contains(body, "also update the docs") {
+			t.Errorf("model request %d of %d carries the dequeued message: %s", i+1, len(requests), body)
+		}
 	}
 }
 

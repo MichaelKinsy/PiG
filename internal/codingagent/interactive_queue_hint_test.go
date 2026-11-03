@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -100,5 +101,55 @@ func TestQueuedHistoryRecallTipShowsOnceAndGoesWithTheQueue(t *testing.T) {
 	recall()
 	if rows := m.widgetContainerBelow.Render(200); len(rows) != 0 {
 		t.Fatalf("second recall in the same run showed a tip: %q", rows)
+	}
+}
+
+// inertEditorRemote is an extension editor component that takes every call and does nothing.
+type inertEditorRemote struct{}
+
+func (inertEditorRemote) Input(string)              {}
+func (inertEditorRemote) SetText(string)            {}
+func (inertEditorRemote) InsertTextAtCursor(string) {}
+func (inertEditorRemote) AddToHistory(string)       {}
+func (inertEditorRemote) Mouse(tui.TuiMouseEvent)   {}
+func (inertEditorRemote) StateChanged()             {}
+
+// D228 changes the built-in editor only. An extension's custom editor, in an extension process (a delegated remote editor, whose keys reach the
+// host through AsBase) or in the host (an installed editor factory), keeps Pi's behavior exactly: plain Up neither dequeues in Terminal.app nor
+// shows the copy tip.
+func TestExtensionEditorKeepsPiUpBehavior(t *testing.T) {
+	for _, program := range []string{"Apple_Terminal", "tmux"} {
+		for _, kind := range []string{"delegated remote editor", "installed editor factory"} {
+			t.Run(program+"/"+kind, func(t *testing.T) {
+				t.Setenv("TERM_PROGRAM", program)
+				m := newPendingDisplayHarness(t)
+				m.widgetContainer, m.widgetContainerBelow = tui.NewContainer(), tui.NewContainer()
+				switch kind {
+				case "delegated remote editor":
+					m.editor.SetDelegatedRemote(inertEditorRemote{})
+				default:
+					m.editorFactory = func(tui.TUI, tui.EditorTheme, extension.KeybindingsManager) tui.EditorComponent { return nil }
+				}
+				m.compactionQueue = []compactionQueuedMessage{{text: "queued", mode: compactionQueueSteer}}
+				m.updatePendingMessagesDisplay()
+				var err error
+				m.editor.AsBase(func() {
+					m.editor.AddToHistory("older prompt")
+					err = m.handleEditorAction(t.Context(), actionInsert, "\x1b[A")
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(m.compactionQueue) != 1 {
+					t.Fatalf("queue after Up = %v, want the message still queued (Pi's Up is not dequeue in an extension editor)", m.compactionQueue)
+				}
+				if rows := m.widgetContainerBelow.Render(200); len(rows) != 0 {
+					t.Fatalf("copy tip under an extension editor: %q", rows)
+				}
+				if hint := queuedHintRow(m); strings.Contains(hint, "↳ Up ") {
+					t.Fatalf("queued hint names Up under an extension editor: %q", hint)
+				}
+			})
+		}
 	}
 }
