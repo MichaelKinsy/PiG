@@ -779,19 +779,20 @@ func (session *SessionImpl) failure() error {
 // Failure returns the first error that failed the Session, or nil.
 func (session *SessionImpl) Failure() error { return session.failure() }
 
-// ClosedSession is the error a synchronous observer fails with when the Session closes without having failed (session.ts closeEnds:
-// "session closed"); an adapter following the Session reads it as a reason to follow the next one.
-var ClosedSession = errors.New("session closed")
+// ErrSessionClosedEnd is the error a synchronous observer fails with when the Session closes without having failed (session.ts
+// closeEnds: "session closed"); an adapter following the Session reads it as a reason to follow the next one. Each close
+// makes its own error wrapping it, as Pi makes a new Error per close.
+var ErrSessionClosedEnd = errors.New("session closed")
 
 // CloseEnds is how a Session's close ends what follows it (session.ts closeEnds, decision "Slice 8 S1"), made once per close.
 // An app's watch ends ended; a synchronous observer (an adapter following the Session, which may open it again) fails with
-// ClosedSession, so it follows the next Session. A failed Session ends both failed with its error.
+// ErrSessionClosedEnd, so it follows the next Session. A failed Session ends both failed with its error.
 func CloseEnds(failure error) (watch, observer durable.WatchEnd) {
 	if failure != nil {
 		failed := durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
 		return failed, failed
 	}
-	return durable.WatchEnd{Kind: durable.WatchEnded}, durable.WatchEnd{Kind: durable.WatchFailed, Error: ClosedSession}
+	return durable.WatchEnd{Kind: durable.WatchEnded}, durable.WatchEnd{Kind: durable.WatchFailed, Error: fmt.Errorf("%w", ErrSessionClosedEnd)}
 }
 
 // Failed returns a channel closed the moment the Session fails, before work underway has ended.
