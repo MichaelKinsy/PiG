@@ -1,5 +1,7 @@
 package evalsuites
 
+// pi: packages/evals/evals/documentation-audit.eval.ts
+
 import (
 	"encoding/json"
 	"os"
