@@ -1,4 +1,5 @@
 # Behavior family: selectors
+# Upstream evidence: Pi 1.5.0 config-selector.ts:492-501, 632-640 and the runner's Pi 1.5.0 run of `config --local --approve` with these keys in tmux 100x35.
 # Surface: `pi config --local` / `pig config --local` project scope through the real TUI (ResourceList.handleInput space/enter, renderCheckbox)
 #
 # config-selector.ts:492-501 toggles the highlighted item in the project scope by cycling its override: an inherited enabled item goes

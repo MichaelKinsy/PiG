@@ -6268,6 +6268,31 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/project-trust/24-trust-selector-keys.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\.pig",
+          "with": ".pi",
+          "reason": "D2: the selector's rows and saved-decision text contain only the product-owned configuration name, not user content."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Project trust",
+            "capture_start_last": true,
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: Both binaries move the /trust selector highlight with Down, k and j, clamp at the last row and ignore other keys.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/providers-registry/03-copilot-headers.toml",
       "transforms": [
         {
@@ -8838,6 +8863,90 @@
             "capture_start": "Global Resources"
           },
           "reason": "Owned visible surface: Escape closes pi config / pig config with status 0 and leaves the same screen.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Custom summarization instructions",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: Both binaries send typed keys and Ctrl+J to the extension editor, which shows the text on two lines without submitting.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/selectors/17-extension-editor-cancel.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Summarize branch?",
+            "capture_end": "cancel",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries cancel the extension editor with Escape, discard the typed text and show the summary choice again.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "~/\\.pig/agent/",
+          "with": "~/.pi/agent/",
+          "reason": "D2: the selector subtitle names the host configuration directory."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\.pig/settings\\.json",
+          "with": ".pi/settings.json",
+          "reason": "D2: the project scope's subtitle names the host configuration directory."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(User \\()/[^\\n)]*/parity-snap-(?:PIG_HOME-[0-9]+/agent|PI_CODING_AGENT_DIR-[0-9]+)/",
+          "with": "${1}<agent>/",
+          "reason": "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n {6}\\[x\\] pig-login[^\\n]*",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Project Local Resources",
+            "capture_end": "zinc.json"
+          },
+          "reason": "Owned visible surface: Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

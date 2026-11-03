@@ -1,4 +1,5 @@
 # Behavior family: project-trust
+# Upstream evidence: Pi 1.5.0 trust-selector.ts:117-133 (keys) and the runner's Pi 1.5.0 run of these keys through `/trust` at 180x35, compared byte for byte.
 # Surface: TrustSelectorComponent.handleInput through the real TUI (trust-selector.ts:117-133)
 #
 # Escape cancels the startup trust prompt (scenario 09), then `/trust` opens the trust selector. Four Downs move the highlight to the last

@@ -1,4 +1,5 @@
 # Behavior family: selectors
+# Upstream evidence: Pi 1.5.0 extension-editor.ts:113-116 and the runner's Pi 1.5.0 run of these keys in tmux 100x35, compared byte for byte.
 # Surface: ExtensionEditorComponent.handleInput cancel branch through the real TUI (extension-editor.ts:113-116)
 #
 # Same flow as 10-extension-editor, then text is typed and Escape (tui.select.cancel) is pressed. The cancel branch runs before the
