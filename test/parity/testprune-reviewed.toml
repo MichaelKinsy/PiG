@@ -829,3 +829,10 @@ commit = "e6e85cd392"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Pi's onPayload answer is whatever JSON.parse read; PiG's core driver hands the providers that answer as validated JSON text (a json.RawMessage, which the providers already take through payloadReplacement) instead of a decoded any, so it keeps the member order the chain wrote. Only the Go representation the test compares changed (sent holds the chain's text, not decoded maps); no Pi behavior changed."
+
+[[entry]]
+path = "ai/anthropic_federation_number_oracle_test.go"
+commit = "a6031910443edc527eff04f199b11bc4e099e215"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test's expectation is unchanged: it still compares jsnumber.FromJSON with Number(JSON.parse(text)) on the same inputs. The commit deletes the one-line jsNumberFromJSON alias, so the test calls internal/jsnumber.FromJSON directly and its failure messages and comment name that function; the comment also drops the \"inf\" example, which was never accepted (the infinite result was rejected by the finiteness check)."
