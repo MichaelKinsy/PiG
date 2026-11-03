@@ -19012,9 +19012,8 @@
     },
     {
       "id": "pkg:ai/.#JsonChange",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167",
-      "rationale": "utils/streaming-json.ts JsonChange = {kind: 'set', path, value} | {kind: 'append', path, text} is a union alias of two object types discriminated by kind. Go has no unions: ai.JSONChange (ai/streaming_json_parser.go) is the one struct of the discriminant and both variants' members (Kind \"set\" or \"append\", Path, Value for a set, Text for an append), returned by StreamingJSONParser.Append and read by durable.PartialChanges, so the alias has no separate Go declaration. Designed out as a TypeScript union alias, as chord/delta#PathRef is; TestStreamingJSONParserMatchesPi compares every change with Pi's."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167"
     },
     {
       "id": "pkg:ai/.#JsonObject",
@@ -51876,25 +51875,13 @@
     },
     {
       "id": "pkg:ai/compat#AuthOperationOptions",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:6f8eb7c34c3ed93638baa7cf3ab1de5c583eb10f9ca9e902b833c10234e4e23a",
-      "rationale": "auth/types.ts:46-48 declares only `signal?: AbortSignal`, an options bag whose single member is the cancellation signal of the auth storage operations read/list/modify/delete (:70-93). Go carries cancellation as the context.Context first parameter of every such operation (AGENTS.md: AbortSignal and request/session lifetime map to context.Context), so the bag has no Go counterpart: ModelsStore.Read/Write/Delete and the Auth storage methods take ctx. Designed out by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
-      "pigTargets": [
-        "ai/models_runtime_auth.go#Models.CheckAuth",
-        "ai/models_runtime_auth.go#Models.GetAvailable",
-        "ai/auth.go#AuthStorage.Delete"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:6f8eb7c34c3ed93638baa7cf3ab1de5c583eb10f9ca9e902b833c10234e4e23a"
     },
     {
       "id": "pkg:ai/compat#AuthOperationOptions::property:signal",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "auth/types.ts:46-48 declares only `signal?: AbortSignal`, an options bag whose single member is the cancellation signal of the auth storage operations read/list/modify/delete (:70-93). Go carries cancellation as the context.Context first parameter of every such operation (AGENTS.md: AbortSignal and request/session lifetime map to context.Context), so the bag has no Go counterpart: ModelsStore.Read/Write/Delete and the Auth storage methods take ctx. Designed out by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
-      "pigTargets": [
-        "ai/models_runtime_auth.go#Models.CheckAuth",
-        "ai/models_runtime_auth.go#Models.GetAvailable",
-        "ai/auth.go#AuthStorage.Delete"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be"
     },
     {
       "id": "pkg:ai/compat#AuthPrompt",
@@ -63337,9 +63324,8 @@
     },
     {
       "id": "pkg:ai/compat#JsonChange",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167",
-      "rationale": "utils/streaming-json.ts JsonChange = {kind: 'set', path, value} | {kind: 'append', path, text} is a union alias of two object types discriminated by kind. Go has no unions: ai.JSONChange (ai/streaming_json_parser.go) is the one struct of the discriminant and both variants' members (Kind \"set\" or \"append\", Path, Value for a set, Text for an append), returned by StreamingJSONParser.Append and read by durable.PartialChanges, so the alias has no separate Go declaration. Designed out as a TypeScript union alias, as chord/delta#PathRef is; TestStreamingJSONParserMatchesPi compares every change with Pi's."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167"
     },
     {
       "id": "pkg:ai/compat#JsonObject",
@@ -100182,9 +100168,8 @@
     },
     {
       "id": "pkg:ai/utils/streaming-json#JsonChange",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167",
-      "rationale": "utils/streaming-json.ts JsonChange = {kind: 'set', path, value} | {kind: 'append', path, text} is a union alias of two object types discriminated by kind. Go has no unions: ai.JSONChange (ai/streaming_json_parser.go) is the one struct of the discriminant and both variants' members (Kind \"set\" or \"append\", Path, Value for a set, Text for an append), returned by StreamingJSONParser.Append and read by durable.PartialChanges, so the alias has no separate Go declaration. Designed out as a TypeScript union alias, as chord/delta#PathRef is; TestStreamingJSONParserMatchesPi compares every change with Pi's."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f2c3b53af588a804db635733acf0d7e8b9ebee3787cc410f475729bafc996167"
     },
     {
       "id": "pkg:ai/utils/streaming-json#JsonPath",
@@ -100618,15 +100603,13 @@
     },
     {
       "id": "pkg:ai/utils/text#ownedSlice",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:9838a34aaba9c258c0a0eebf0458a67fc0796d7a189d20b632c3ef3deeece9f0",
-      "rationale": "Pi f715a15c1 and d8d99950a add ownedSlice(text, start, end?) to utils/text.ts and to chord's delta entry: `${text.slice(start, end)} `.slice(0, -1), a copy of the slice. V8 represents a slice of 13 or more characters as a view that keeps the whole source string alive, so an append op or an error excerpt cut from a long string would retain that string; the copy ends the retention and returns the same string value. Go strings have no such view-versus-copy distinction visible to a program (a substring shares memory with its source, a retention Go code avoids with strings.Clone where it keeps a cut of a larger string: delta.AppendText clones its text), and no Go behavior depends on it, so there is no Go function to port. Designed out as a JavaScript engine representation detail."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:9838a34aaba9c258c0a0eebf0458a67fc0796d7a189d20b632c3ef3deeece9f0"
     },
     {
       "id": "pkg:ai/utils/text#ownedSlice::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:936f7b411c48a20cffc4e2105fb2f3f3d9021dc1dd6c07ae810b00d76876a97a",
-      "rationale": "Pi f715a15c1 and d8d99950a add ownedSlice(text, start, end?) to utils/text.ts and to chord's delta entry: `${text.slice(start, end)} `.slice(0, -1), a copy of the slice. V8 represents a slice of 13 or more characters as a view that keeps the whole source string alive, so an append op or an error excerpt cut from a long string would retain that string; the copy ends the retention and returns the same string value. Go strings have no such view-versus-copy distinction visible to a program (a substring shares memory with its source, a retention Go code avoids with strings.Clone where it keeps a cut of a larger string: delta.AppendText clones its text), and no Go behavior depends on it, so there is no Go function to port. Designed out as a JavaScript engine representation detail."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:936f7b411c48a20cffc4e2105fb2f3f3d9021dc1dd6c07ae810b00d76876a97a"
     },
     {
       "id": "pkg:ai/utils/text#renderSystemMessageUpdate",
@@ -108002,12 +107985,8 @@
     },
     {
       "id": "pkg:chord/.#Ref",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:9dd8a496eb86b8d4fba9265c037b1244047ec653f8c9cc4ece24e267f5a4b000",
-      "rationale": "TL: Ref<C> is a TypeScript type-level computation over its type parameters (C extends RemoteContract<infer D> ? { [K in keyof D[\"variants\"]]: VariantRef<C, K, D[\"variants\"][K]> }[keyof D[\"variants...); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/host/contract.go#Contract. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
-      "pigTargets": [
-        "chord/host/contract.go#Contract"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:9dd8a496eb86b8d4fba9265c037b1244047ec653f8c9cc4ece24e267f5a4b000"
     },
     {
       "id": "pkg:chord/.#ReferencedServeOptions",
@@ -113514,12 +113493,8 @@
     },
     {
       "id": "pkg:chord/delta#PathRef",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:79c60d65af3d28d137c25115b9a991cd373da3ec6cd05eae8b7c0584df3b34a9",
-      "rationale": "chord/src/delta/index.ts:19 PathRef<P> = P | number is a generic alias that only computes a type from its parameter: a path written inline, or the id the encoder assigned on its second use. Go carries the same two forms in the path slot of a WireOp ([]any, delta.go:61) and the Encoder and Decoder read and write both (codec.go:20-100: an id is defined by a [\"#\", id, path] op and referenced by its number), so no Go type of its own stands for the union (LEAD-RULINGS-1520 principle: language mechanics with no Go meaning are designed out with a citation, naming the Go type that carries the shape).",
-      "pigTargets": [
-        "chord/delta/delta.go#WireOp"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:79c60d65af3d28d137c25115b9a991cd373da3ec6cd05eae8b7c0584df3b34a9"
     },
     {
       "id": "pkg:chord/delta#PendingOps",
@@ -113677,9 +113652,8 @@
     },
     {
       "id": "pkg:chord/delta#PendingTake",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:214b78578b68f9b6ce15a86f11e4615a2555c7828041c73ae1b6cb6ba90207d8",
-      "rationale": "delta/pending.ts PendingTake = {kind: 'ops', ops} | {kind: 'replace'} is a union alias of two object types discriminated by kind. Go has no unions: delta.PendingTake (chord/delta/pending.go) is the one struct of both variants (Replace true for 'replace', with nil Ops; false for 'ops', whose Ops are the folded ops), returned by PendingOps.Take, so the alias has no separate Go declaration. Designed out as a TypeScript union alias, as chord/delta#PathRef is; the PendingOps cap and fuzz tests read both variants."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:214b78578b68f9b6ce15a86f11e4615a2555c7828041c73ae1b6cb6ba90207d8"
     },
     {
       "id": "pkg:chord/delta#Prepared",
@@ -115795,13 +115769,8 @@
     },
     {
       "id": "pkg:chord/next#Claimant",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:31e2e1f8873384f406a57412de056e19257a40b66641d5e7a026d8f82e30c139",
-      "rationale": "Pi chord/src/next/store/claims.ts:9 Claimant (Pi 1.5.0): is a TypeScript object-literal type { readonly label: string } that any object with a label satisfies with no Go counterpart: Go has no unions or object-literal types, so a claimant is the one-method interface store.Claimant (ClaimLabel() string; store/claims.go:22), and NamedClaimant is the value that is only a label. Designed out as a language mechanic (owner 2026-10-29/30: type-level mechanics). Exercised by TestClaims (chord/next/store/claims_test.go).",
-      "pigTargets": [
-        "chord/next/store/claims.go#Claimant",
-        "chord/next/store/claims.go#NamedClaimant"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:31e2e1f8873384f406a57412de056e19257a40b66641d5e7a026d8f82e30c139"
     },
     {
       "id": "pkg:chord/next#coalesce",
@@ -116061,13 +116030,8 @@
     },
     {
       "id": "pkg:chord/next#ColumnRef::property:column",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:f607a2efc91ff641b4d11fa6951de12101f27d4784e4429862b9d73f754353e0",
-      "rationale": "Pi chord/src/next/store/expression.ts:67 ColumnRef::property:column (Pi 1.5.0): ColumnRef is a class holding the column name; Go's store.ColumnRef = Expression (store/expression.go:169) is the expression of operator ExprCol whose only argument is the column name (NewColumnRef(column) builds it, isRef reads it back), so the member is Args[0] of the one expression value Pi's class is. Exercised by TestExample20Tables (chord/next/host/host_examples_test.go).",
-      "pigTargets": [
-        "chord/next/store/expression.go#NewColumnRef",
-        "chord/next/store/expression.go#ColumnRef"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f607a2efc91ff641b4d11fa6951de12101f27d4784e4429862b9d73f754353e0"
     },
     {
       "id": "pkg:chord/next#ColumnRef::property:op",
@@ -117356,12 +117320,8 @@
     },
     {
       "id": "pkg:chord/next#EncodedRow",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:ff4d7f526a548ca9eb091f89cef5527ecf51b89932a268f6b7158257e02ab59a",
-      "rationale": "Pi chord/src/next/store/rows.ts:19 EncodedRow (Pi 1.5.0): is a TypeScript object type with a computed member [column: string] that keys the written json columns' versions with no Go counterpart: Go has no unions or object-literal types, so store.EncodedRow carries them in Columns, a *delta.JsonObject keyed by column name, beside Params, Row and ID (store/rows.go:38). Designed out as a language mechanic (owner 2026-10-29/30: type-level mechanics). Exercised by TestJsonl (chord/next/store/jsonl_test.go).",
-      "pigTargets": [
-        "chord/next/store/rows.go#EncodedRow"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:ff4d7f526a548ca9eb091f89cef5527ecf51b89932a268f6b7158257e02ab59a"
     },
     {
       "id": "pkg:chord/next#encodeJsonl",
@@ -117637,12 +117597,8 @@
     },
     {
       "id": "pkg:chord/next#Facet",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:f28903f3c81c20cf6a4b3ea6209f0a49df2dfd95e9a9b1b4b4983ac727946f77",
-      "rationale": "Pi chord/src/next/host/facet.ts:73 Facet (Pi 1.5.0): Facet is the object { readonly setup(host, self); readonly \"~principal\"? } that defineFacet returns, compared by identity (a reload keeps a plugin whose Facet is the same object); Go's host.Facet is the opaque value DefineFacet returns, holding its definition behind an unexported pointer so that every copy of a facet is the same facet and no literal can make a different one (host/host_facet.go:93-108), which a Go struct with an exported setup field could not guarantee; `~principal` is the phantom brand of the principal type parameter (type-level). Exercised by TestConsumerGC (chord/next/host/remote_consumer_test.go).",
-      "pigTargets": [
-        "chord/next/host/host_facet.go#Facet"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f28903f3c81c20cf6a4b3ea6209f0a49df2dfd95e9a9b1b4b4983ac727946f77"
     },
     {
       "id": "pkg:chord/next#FacetHost",
@@ -118723,12 +118679,8 @@
     },
     {
       "id": "pkg:chord/next#HostError",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:24f2df8523d7640ff73586157f141af8112b4cc5ba24f2ef8a0425f235c922a8",
-      "rationale": "Pi chord/src/next/host/host.ts:121 HostError (Pi 1.5.0): is a TypeScript union alias of object types discriminated by kind with no Go counterpart: Go has no unions or object-literal types, so host.HostError is the one struct of the discriminant Kind (HostErrorKind) with the members of every variant (host/host_error.go:79). Designed out as a language mechanic (owner 2026-10-29/30: type-level mechanics). Exercised by TestRelayWindow (chord/next/host/remote_relay_test.go).",
-      "pigTargets": [
-        "chord/next/host/host_error.go#HostError"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:24f2df8523d7640ff73586157f141af8112b4cc5ba24f2ef8a0425f235c922a8"
     },
     {
       "id": "pkg:chord/next#hostKind",
@@ -118869,12 +118821,8 @@
     },
     {
       "id": "pkg:chord/next#Implementation",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:e9b8aa86b817ff75a14c302c03950b60a2d171bc11de8ac298b33780509d9f0f",
-      "rationale": "Pi chord/src/next/contracts/contract.ts:48 Implementation (Pi 1.5.0): Implementation<C, X> = ImplementationOf<...> is the record of a contract's members computed from the contract's shape (state as Watchables, methods as functions, keyed members as KeyedWatchables), a type-level computation; Go's contracts.Implementation struct (contracts/contract.go:185) carries the Variant and the Members (VariantImplementation: State, methods and Keyed by member name), which the host checks against the contract at run time. Exercised by TestHoldGC (chord/next/host/remote_hold_test.go).",
-      "pigTargets": [
-        "chord/next/contracts/contract.go#Implementation"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e9b8aa86b817ff75a14c302c03950b60a2d171bc11de8ac298b33780509d9f0f"
     },
     {
       "id": "pkg:chord/next#importStore",
@@ -119323,23 +119271,13 @@
     },
     {
       "id": "pkg:chord/next#isChordError",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:823beb1c80c125c8c68b8d69a26938046c0228af1329d17b6e5e25f76895060c",
-      "rationale": "Pi chord/src/next/data/errors.ts isChordError (Pi 1.5.0): `isChordError(error, code?)` is one function whose optional second parameter picks between two questions (is it a ChordError; is it one with this code). Go has no optional parameter, so the function is two: data.IsChordError(err) and data.IsChordErrorCode(err, code) (data/errors.go); the ledger's name rule bound the chord v1 isChordError of the same name, which is not this function. Designed out as an overload folded into two Go functions. Go: chord/next/data/errors.go#IsChordError. Exercised by TestErrorHelpers (chord/next/data/errors_test.go).",
-      "pigTargets": [
-        "chord/next/data/errors.go#IsChordError",
-        "chord/next/data/errors.go#IsChordErrorCode"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:823beb1c80c125c8c68b8d69a26938046c0228af1329d17b6e5e25f76895060c"
     },
     {
       "id": "pkg:chord/next#isChordError::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:1c2a58dbe2494ed3e179367610d2723a9930c4da57b70acad3dad3490bdeb524",
-      "rationale": "Pi chord/src/next/data/errors.ts isChordError::call:0 (Pi 1.5.0): `isChordError(error, code?)` answers for any ChordError and, with a code, for that code only; the optional second parameter picks between the two questions. Go has no optional parameter, so the call is two functions of data/errors.go: IsChordError(err) and IsChordErrorCode(err, code). Designed out as an overload folded into two Go functions. Go: chord/next/data/errors.go#IsChordError. Exercised by TestErrorHelpers (chord/next/data/errors_test.go).",
-      "pigTargets": [
-        "chord/next/data/errors.go#IsChordError",
-        "chord/next/data/errors.go#IsChordErrorCode"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:1c2a58dbe2494ed3e179367610d2723a9930c4da57b70acad3dad3490bdeb524"
     },
     {
       "id": "pkg:chord/next#isNull",
@@ -119409,12 +119347,8 @@
     },
     {
       "id": "pkg:chord/next#JobCtx",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:13403a272b5f05e66158d1d213adf05e0c8391591123d52e8529895a88734020",
-      "rationale": "TL: JobCtx<P, S> is a TypeScript type-level computation over its type parameters (Ctx<P> & { readonly jobId: string } & ([S] extends [undefined] ? unknown : { readonly state: RunState<S> })); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/host/types.go#Principal. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
-      "pigTargets": [
-        "chord/host/types.go#Principal"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:13403a272b5f05e66158d1d213adf05e0c8391591123d52e8529895a88734020"
     },
     {
       "id": "pkg:chord/next#JobDefinition",
@@ -119975,12 +119909,8 @@
     },
     {
       "id": "pkg:chord/next#JsonColumnSchema::property:json",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:19ab67e9e1a04e7fbf3aebaaea7559ac7073fe748326fb9839c482a299af97f0",
-      "rationale": "Pi chord/src/next/store/json-column.ts:24 JsonColumnSchema::property:json (Pi 1.5.0): `readonly json: JsonColumn` is the column definition json() attaches to the schema it returns so the table reads it; Go's store.ColumnSchema carries the JsonColumn in its Json field (store/columns.go:35, store/json_column.go:46), which Json returns. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/store/columns.go#ColumnSchema. Exercised by TestDefineTable (chord/next/store/table_test.go).",
-      "pigTargets": [
-        "chord/next/store/columns.go#ColumnSchema"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:19ab67e9e1a04e7fbf3aebaaea7559ac7073fe748326fb9839c482a299af97f0"
     },
     {
       "id": "pkg:chord/next#JsonObject",
@@ -120916,12 +120846,8 @@
     },
     {
       "id": "pkg:chord/next#lit::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:e6d353229a9abc27c3aca93ebb592333ec16e966a9c2c244cd9f04691751f185",
-      "rationale": "Pi chord/src/next/contracts/schema.ts:111 lit::call:0 (Pi 1.5.0): `lit<const V extends Literal>(value: V): Schema<V>` returns `{ type: typeof value, const: value }` typed with the literal's static type through a const type parameter; Schema<V> carries V as a phantom brand and Go cannot compute the static type from a value; Go's Lit[V Literal](value V) Schema returns the one schema value, the same node (type and const members in that order). Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#Lit. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
-      "pigTargets": [
-        "chord/next/contracts/schema.go#Lit"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e6d353229a9abc27c3aca93ebb592333ec16e966a9c2c244cd9f04691751f185"
     },
     {
       "id": "pkg:chord/next#loadContent",
@@ -123134,12 +123060,8 @@
     },
     {
       "id": "pkg:chord/next#PluginError::property:name",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51",
-      "rationale": "Error.name is the class name string the JavaScript constructor assigns; D103 records that the inherited name is the error type's Name() method, so a class without that method is a port that adds Name(), not a design-out.",
-      "pigTargets": [
-        "chord/next/data/errors.go#PluginError"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:801e53f1d388232eae4e330db41edb2aab932c0909e2849026eeebfd0e76ec51"
     },
     {
       "id": "pkg:chord/next#PluginError::property:stack",
@@ -123656,12 +123578,8 @@
     },
     {
       "id": "pkg:chord/next#Reference",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:58e8939ca23fa3d666161da379746be82f9f9e0ec014639641cde9c88f0a2090",
-      "rationale": "TL: Reference<C> is a TypeScript type-level computation over its type parameters (ShapeOf<C>[\"kind\"] extends \"local\" ? Implementation<C> & Lifecycle : InVariants<C, never>); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/host/contract.go#Contract. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
-      "pigTargets": [
-        "chord/host/contract.go#Contract"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:58e8939ca23fa3d666161da379746be82f9f9e0ec014639641cde9c88f0a2090"
     },
     {
       "id": "pkg:chord/next#RefIn",
@@ -125112,12 +125030,8 @@
     },
     {
       "id": "pkg:chord/next#SetOf",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:855bae9aa50a770633357711518c4f1c405149bbb6bd9d633f257569d7c169d2",
-      "rationale": "TL: SetOf<C, K> is a TypeScript type-level computation over its type parameters ({ readonly [P in Exclude<keyof C & string, K[number]>]?: C[P] extends TOptional<TSchema> ? ValueOf<C[P]> | Expression<Va...); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here chord/next/contracts/schema.go#Schema. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
-      "pigTargets": [
-        "chord/next/contracts/schema.go#Schema"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:855bae9aa50a770633357711518c4f1c405149bbb6bd9d633f257569d7c169d2"
     },
     {
       "id": "pkg:chord/next#SingletonHandle",
@@ -125704,12 +125618,8 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:schema",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:ae92c71a80e474fa86e7fe81dc4eec787364317f1f967d37f79acc7abd64c7b4",
-      "rationale": "Pi chord/src/next/documents/definition.ts:92 StateDefinition::property:schema (Pi 1.5.0): `readonly schema: Schema` is pi-schema's Schema<T>, the brand-typed JSON Schema object (a type-level carrier of T, designed out as pkg:chord/next#Schema); Go's StateDefinition.Schema is the contracts.Schema the definition was declared with (documents/definition.go:90), the same schema node. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/documents/definition.go#StateDefinition.Schema. Exercised by TestDefineStateTakesARestrictedNameOnly (chord/next/documents/definition_test.go).",
-      "pigTargets": [
-        "chord/next/documents/definition.go#StateDefinition.Schema"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:ae92c71a80e474fa86e7fe81dc4eec787364317f1f967d37f79acc7abd64c7b4"
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:version",
@@ -246424,15 +246334,13 @@
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:213d94733ac6bd5066f3c3b15f75aad7969587c993bdc6f33ce76ce8f2c65772",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:213d94733ac6bd5066f3c3b15f75aad7969587c993bdc6f33ce76ce8f2c65772"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0fc4c7e097a3243f969510a69e35ecdf4b52b1a581fc88959f2bf9fcdf0e9fd6",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0fc4c7e097a3243f969510a69e35ecdf4b52b1a581fc88959f2bf9fcdf0e9fd6"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit",
@@ -246446,183 +246354,153 @@
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:776e7c4fce7dce538f8a66f255fb514dbe27851333b16557b43dd185bd77667e",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:776e7c4fce7dce538f8a66f255fb514dbe27851333b16557b43dd185bd77667e"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:c57dad45f9720daa945c148c855590e3f016a2ace5d65dcd5e5091e59750a78b",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:c57dad45f9720daa945c148c855590e3f016a2ace5d65dcd5e5091e59750a78b"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:document",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:c5f9658e4951abedfd6ed8bb4e3f5fdf1ee790d90aaa0d33d485f0f9dc98ad22",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:c5f9658e4951abedfd6ed8bb4e3f5fdf1ee790d90aaa0d33d485f0f9dc98ad22"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:document::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:a0b624f6294ef31f08c528e7114aeac81599c53637380693782f39d2f56d6c11",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:a0b624f6294ef31f08c528e7114aeac81599c53637380693782f39d2f56d6c11"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:5e206af481213cf3df6dc19321fb0ba14f26046c80a8a83681ab26e3f924f63a",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:5e206af481213cf3df6dc19321fb0ba14f26046c80a8a83681ab26e3f924f63a"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0b4d63eae08cb0d71be9818db74bac13e2e7c1cc0a48414488196934f4169c9b",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0b4d63eae08cb0d71be9818db74bac13e2e7c1cc0a48414488196934f4169c9b"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:1",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:ba18ba5287b9f377c4a7c7237784a974d1bf82689d8d91ab117b5145d9afa501",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:ba18ba5287b9f377c4a7c7237784a974d1bf82689d8d91ab117b5145d9afa501"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:af6df4a2c2848ea5e36e2dc991c7663ff3b3e5a7ee87dd1b5ecdb04fd49038e5",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:af6df4a2c2848ea5e36e2dc991c7663ff3b3e5a7ee87dd1b5ecdb04fd49038e5"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:1b2fef09bc1a3de2f9c62fa3f92ecde759878bd0dc5c5fbad489d09047570e26",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:1b2fef09bc1a3de2f9c62fa3f92ecde759878bd0dc5c5fbad489d09047570e26"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:8439d8bfb4af870b3391be8cf8e43c2d7282cdff6eda5d595efc568ab8d932eb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:8439d8bfb4af870b3391be8cf8e43c2d7282cdff6eda5d595efc568ab8d932eb"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:b63a79b2367e60d38767969bd2bfa6f76f393f1a4f794643d8bd706c72fe2ea5",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:b63a79b2367e60d38767969bd2bfa6f76f393f1a4f794643d8bd706c72fe2ea5"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:00c85136cc9372b9d5258d44c612d5e7ec444383a72bced09ddcdc191b5c9cc1",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:00c85136cc9372b9d5258d44c612d5e7ec444383a72bced09ddcdc191b5c9cc1"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:fe2fab4b855eb0cd51f66f24b038a2d8e82327ff03778359820965bb750cfb88",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:fe2fab4b855eb0cd51f66f24b038a2d8e82327ff03778359820965bb750cfb88"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:1b5cef48a8d490ed248e40fc48d47d182622a22a9d83cc4929b8a6f0189214d8",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:1b5cef48a8d490ed248e40fc48d47d182622a22a9d83cc4929b8a6f0189214d8"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:b1331577616ff53934b819d024d9e5a3b4e792f3573f7078c3075a29d09884c9",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:b1331577616ff53934b819d024d9e5a3b4e792f3573f7078c3075a29d09884c9"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:d639e7e2c4392b85af035c881198ea209ba469e9f8fad844f8dcd9498c61cb86",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:d639e7e2c4392b85af035c881198ea209ba469e9f8fad844f8dcd9498c61cb86"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:dd53c0cbe8a3fe5a6d7569ee9fc9dce971fb95607ba520a4eebdcfee66ef6831",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:dd53c0cbe8a3fe5a6d7569ee9fc9dce971fb95607ba520a4eebdcfee66ef6831"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:85a803dfd0accce520f3aa10f7078ac48356fe4b3933134693d82f4e341bb1fa",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:85a803dfd0accce520f3aa10f7078ac48356fe4b3933134693d82f4e341bb1fa"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:a00bb1538eae98af57b1abf6fef5fef38a5a3c5d74c0ffa25f5cc8799bae262f",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:a00bb1538eae98af57b1abf6fef5fef38a5a3c5d74c0ffa25f5cc8799bae262f"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:7f89609b1fa4814501156e4ecbf2e5e27571ee0779d3def871c3bcbcdf773bf6",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:7f89609b1fa4814501156e4ecbf2e5e27571ee0779d3def871c3bcbcdf773bf6"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:c599f81352cd06a6497881eb7299df14b7e83ac175c57cb90fc74b4ef7bf990e",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:c599f81352cd06a6497881eb7299df14b7e83ac175c57cb90fc74b4ef7bf990e"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:e25756f187b0b85dac665be77d56927cd587f1db6e171a93ee35962c3374c4fb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e25756f187b0b85dac665be77d56927cd587f1db6e171a93ee35962c3374c4fb"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:8c42348226d2bfa44ea73ef18e68d88fbc0755bb44d2bc828b40d926a45917b7",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:8c42348226d2bfa44ea73ef18e68d88fbc0755bb44d2bc828b40d926a45917b7"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:f88cc011560c22a92a962865ec5ca5066a432d98924c249e78a3832f75d5f690",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:f88cc011560c22a92a962865ec5ca5066a432d98924c249e78a3832f75d5f690"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:62370d5266007297868f66f05f7ca414eae772ae00ff9253af31c1f6d49bcbeb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:62370d5266007297868f66f05f7ca414eae772ae00ff9253af31c1f6d49bcbeb"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:task",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:b88f2957d612b3485979ba395d9e92dc67bbdefb4bda475454a31a80fec54291",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:b88f2957d612b3485979ba395d9e92dc67bbdefb4bda475454a31a80fec54291"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:task::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:e4de47192a104aa8e4bdd065c073314f095650de40d7f9896bc3e67aeff66c7d",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:e4de47192a104aa8e4bdd065c073314f095650de40d7f9896bc3e67aeff66c7d"
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorageOptions",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:81b8be63847b81014eb2290dd1322101ea0093ce89c3525bcc12ffbc8d9cb645",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The options type carries one field, indexedDB?: IDBFactory (indexeddb.ts:137-139), the browser factory the storage opens its database through; Go has no IDBFactory to pass. PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:81b8be63847b81014eb2290dd1322101ea0093ce89c3525bcc12ffbc8d9cb645"
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage",
@@ -262967,30 +262845,18 @@
     },
     {
       "id": "pkg:mcp/.#ListToolsResult::property:_meta",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68",
-      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.5.0: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
-      "pigTargets": [
-        "mcp/types.go#ListToolsResult.Meta"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:14517786ae9846499cf051b7eea5b021d41397e4489753e1f3a088e5fd374f68"
     },
     {
       "id": "pkg:mcp/.#ListToolsResult::property:nextCursor",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:bed2bcfe640948d6e05d8bb4fc546c4182cf7198bcfe4e36c29ead5f00488f6b",
-      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.5.0: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
-      "pigTargets": [
-        "mcp/types.go#ListToolsResult.NextCursor"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:bed2bcfe640948d6e05d8bb4fc546c4182cf7198bcfe4e36c29ead5f00488f6b"
     },
     {
       "id": "pkg:mcp/.#ListToolsResult::property:tools",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:dfb27eaa65ad762725f24bda67bf99eba40c426f3de7a1aafe228d781d8a0f77",
-      "rationale": "ListToolsResult (packages/mcp/src/protocol/types.ts:87) is a type-only export of Pi 1.5.0: grep of packages/*/src finds only the declaration and the index re-export (mcp/src/index.ts:45), no Pi code produces or consumes it, and client.ts listTools (:296-298) returns Tool[] through the untyped listAll/listPage. Go mcp.ListToolsResult (mcp/types.go:207) carries the same three members and TestListToolsResultKeepsEveryToolMember round-trips them, but no non-test Go code reads the type, because Pi has no reader to port. Designed out under reason class a (no Pi reader, proven by the probe above). The design-out audit proposed a rebind; autobind P1(b) L5 refuses it, since a rebind needs a production reader of the member that neither implementation has. It becomes a port the day Pi reads the type (as listResourcesPage does for ListResourcesResult).",
-      "pigTargets": [
-        "mcp/types.go#ListToolsResult.Tools"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:dfb27eaa65ad762725f24bda67bf99eba40c426f3de7a1aafe228d781d8a0f77"
     },
     {
       "id": "pkg:mcp/.#LlmContent",
@@ -263059,12 +262925,8 @@
     },
     {
       "id": "pkg:mcp/.#McpAbortError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "ER: mcp/jsonrpc.go#McpAbortError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
-      "pigTargets": [
-        "mcp/jsonrpc.go#McpAbortError.Cause"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/.#McpAbortError::property:message",
@@ -264376,12 +264238,8 @@
     },
     {
       "id": "pkg:mcp/.#McpConnectionClosedError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "ER: mcp/jsonrpc.go#McpConnectionClosedError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
-      "pigTargets": [
-        "mcp/jsonrpc.go#McpConnectionClosedError.Cause"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/.#McpConnectionClosedError::property:message",
@@ -264478,12 +264336,8 @@
     },
     {
       "id": "pkg:mcp/.#McpError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "ER: mcp/jsonrpc.go#McpError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
-      "pigTargets": [
-        "mcp/jsonrpc.go#McpError.Cause"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/.#McpError::property:code",
@@ -265080,12 +264934,8 @@
     },
     {
       "id": "pkg:mcp/.#McpTimeoutError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "ER: mcp/jsonrpc.go#McpTimeoutError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
-      "pigTargets": [
-        "mcp/jsonrpc.go#McpTimeoutError.Cause"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/.#McpTimeoutError::property:message",
@@ -269198,12 +269048,8 @@
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthAuthorizationRequiredError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap().",
-      "pigTargets": [
-        "mcp/oauth/errors.go#McpOAuthAuthorizationRequiredError"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthAuthorizationRequiredError::property:message",
@@ -272159,12 +272005,8 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap().",
-      "pigTargets": [
-        "mcp/oauth/errors.go#OAuthError"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/oauth#OAuthError::property:code",
@@ -272558,12 +272400,8 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthInsecureEndpointError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap().",
-      "pigTargets": [
-        "mcp/oauth/errors.go#OAuthInsecureEndpointError"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/oauth#OAuthInsecureEndpointError::property:endpoint",
@@ -272681,12 +272519,8 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthIssuerMismatchError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap().",
-      "pigTargets": [
-        "mcp/oauth/errors.go#OAuthIssuerMismatchError"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/oauth#OAuthIssuerMismatchError::property:expected",
@@ -272934,12 +272768,8 @@
     },
     {
       "id": "pkg:mcp/oauth#OAuthRegistrationError::property:cause",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054",
-      "rationale": "ER: mcp/oauth/errors.go#OAuthRegistrationError.Cause returns only a constant, the value Pi's runtime leaves unset. Error.cause is unset: no constructor of the class passes ErrorOptions, so Pi's .cause is always undefined (Pi 1.5.0) and no Pi reader sees a value; the Go error wraps nothing, and callers match the error by its Go type with errors.As. Designed out as reason class a of the design-out audit (no Pi reader, proven by a probe of the 1.5.0 source); D103 maps a cause that a Go error does carry to Unwrap(). Applied to a constant Go stand-in by LEAD-RULINGS-1520 (lg-imla-2 census 4: inherited Error members as D103).",
-      "pigTargets": [
-        "mcp/oauth/errors.go#OAuthRegistrationError.Cause"
-      ]
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ded3a5da484c0bd945c74e50b05b90f5fca69d849d99b4d1caa17e429415054"
     },
     {
       "id": "pkg:mcp/oauth#OAuthRegistrationError::property:message",
