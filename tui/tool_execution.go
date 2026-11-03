@@ -774,7 +774,8 @@ func (c *ToolExecutionComponent) renderToolImages(width int) []string { return c
 // renderLegacyHeader draws the call header, wrapped across rows like upstream's Text.
 func (c *ToolExecutionComponent) renderLegacyHeader(width int) []string {
 	if c.isUnregisteredTool() {
-		return wrapText(c.formatToolExecution(), width)
+		// text.ts renders tabs as three spaces before it wraps.
+		return wrapText(strings.ReplaceAll(c.formatToolExecution(), "\t", "   "), width)
 	}
 	return wrapText(c.renderHeaderInner(width), width)
 }

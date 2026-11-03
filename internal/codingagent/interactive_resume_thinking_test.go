@@ -85,6 +85,11 @@ func TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream(t *test
 					m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "tool-8611", ToolName: "bash", Args: args})
 					m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "tool-8611", ToolName: "bash", PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "first"}}}})
 					component = m.toolByID["tool-8611"]
+					// The shell card ticks its elapsed time (bash.ts setInterval) until a final result renders; end it so the ticker does not outlive the bubble.
+					t.Cleanup(func() {
+						m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "tool-8611", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}}})
+						component.Render(120)
+					})
 				}
 				before := m.chatContainer.Render(120)
 				if chat := stripANSITest(strings.Join(before, "\n")); !strings.Contains(chat, "first") {
