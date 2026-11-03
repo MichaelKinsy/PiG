@@ -74,6 +74,9 @@ func TestExample16PresenceAndActivity(t *testing.T) {
 	exGet(t, ada2.Host, doc, jsonObject("id", "d1"))
 	exGet(t, bob.Host, doc, jsonObject("id", "d1"))
 	scopeEventually(t, "viewers seen by ada", func() bool { return exValue(t, adaDoc, "viewers") == float64(3) })
+	// The supervisor's watch is given the counts as they are when it runs, a slow one the newest only (`[["r", counts]]`):
+	// the three holds are published for it once it ran, which the test waits for as it waits for the count.
+	scopeEventually(t, "the supervisor saw the three holds", func() bool { return published.sawFrame(`"references":3`) })
 	var present []string
 	for _, ref := range exReferences(t, server, doc) {
 		incarnation := ref.Value("incarnation").(string)
@@ -92,6 +95,7 @@ func TestExample16PresenceAndActivity(t *testing.T) {
 	if got := exActivity(t, server).Calls; got != 1 {
 		t.Fatalf("activity while thinking: %d calls", got)
 	}
+	scopeEventually(t, "the supervisor saw the running call", func() bool { return published.sawFrame(`"calls":1`) })
 	close(release)
 	if got := <-thought; got != float64(42) {
 		t.Fatalf("think = %v", got)

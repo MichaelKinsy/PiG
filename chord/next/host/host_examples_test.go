@@ -3,6 +3,8 @@ package host
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -261,6 +263,11 @@ func (c *exCollector) all() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return append([]string(nil), c.items...)
+}
+
+// sawFrame reports whether a collected item contains part.
+func (c *exCollector) sawFrame(part string) bool {
+	return slices.ContainsFunc(c.all(), func(item string) bool { return strings.Contains(item, part) })
 }
 
 // exFrames is a watch started on `watch` that records its calls as `value ops`.
