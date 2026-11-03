@@ -1033,19 +1033,24 @@
     },
     {
       "id": "BF-08edd46",
-      "title": "A terminal that went away while an extension's remote editor, an extension terminal write, the window title…",
-      "symptom": "A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).",
+      "title": "A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)…",
+      "symptom": "A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).",
       "rootCause": "",
       "rootCauseSource": "",
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).",
+      "releaseNote": "A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).",
       "origin": "release note",
       "commits": [
         {
           "hash": "08edd46dfc",
+          "date": "2026-11-03",
+          "pr": "397"
+        },
+        {
+          "hash": "3cc0c71d33",
           "date": "2026-11-03",
           "pr": "397"
         }
@@ -42408,6 +42413,48 @@
         "internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes",
         "internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi"
       ]
+    },
+    {
+      "id": "BF-f2aed24",
+      "title": "A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or…",
+      "symptom": "A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or `ENOTTY`) now restores the terminal, records a crash and exits 1 as Pi's uncaught-exception handler does, instead of being dropped (#397).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or `ENOTTY`) now restores the terminal, records a crash and exits 1 as Pi's uncaught-exception handler does, instead of being dropped (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2aed24c0d",
+          "date": "2026-11-03",
+          "pr": "397"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-f2aed24-2",
+      "title": "An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title…",
+      "symptom": "An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2aed24c0d",
+          "date": "2026-11-03",
+          "pr": "397"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f2c00f9",

@@ -55,7 +55,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08bf076](#bf-08bf076) | An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension terminal write, the window title… | PiG's own defect | All platforms | Unreleased |
+| [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | Unreleased |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -1470,6 +1470,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f288d69-4](#bf-f288d69-4) | Crash attribution reads Go goroutine traces as well as JavaScript stacks, so a crash in the PiG process… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f29e906](#bf-f29e906) | OpenAI Completions, OpenAI Responses and Codex request bodies list their fields in the order Pi writes them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f2a2b34](#bf-f2a2b34) | An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f2aed24](#bf-f2aed24) | A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or… | PiG's own defect | All platforms | Unreleased |
+| [BF-f2aed24-2](#bf-f2aed24-2) | An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title… | PiG's own defect | All platforms | Unreleased |
 | [BF-f2c00f9](#bf-f2c00f9) | A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-2](#bf-f2c00f9-2) | Extensions' `ui_prompt_start` and `ui_prompt_end` notifications are recorded in order when the host is slow… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-3](#bf-f2c00f9-3) | A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer… | PiG's own defect | Windows | 0.5.3 |
@@ -2075,17 +2077,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-08edd46
 
-**A terminal that went away while an extension's remote editor, an extension terminal write, the window title…**
+**A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
+- **Symptom:** A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
 - **Root cause:** Not recorded.
 - **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `08edd46dfc` (2026-11-03, #397)
+- **Fix commits:** `08edd46dfc` (2026-11-03, #397), `3cc0c71d33` (2026-11-03, #397)
 - **Tests:** None recorded.
-- **Release note:** A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
+- **Release note:** A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
 
 ### BF-093cf5c
 
@@ -21657,6 +21659,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `f2a2b3409b` (2026-10-07)
 - **Tests:** `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`
 - **Release note:** An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of `[tool]`.
+
+### BF-f2aed24
+
+**A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or `ENOTTY`) now restores the terminal, records a crash and exits 1 as Pi's uncaught-exception handler does, instead of being dropped (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f2aed24c0d` (2026-11-03, #397)
+- **Tests:** None recorded.
+- **Release note:** A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or `ENOTTY`) now restores the terminal, records a crash and exits 1 as Pi's uncaught-exception handler does, instead of being dropped (#397).
+
+### BF-f2aed24-2
+
+**An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f2aed24c0d` (2026-11-03, #397)
+- **Tests:** None recorded.
+- **Release note:** An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).
 
 ### BF-f2c00f9
 
