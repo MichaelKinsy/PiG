@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -218,7 +219,8 @@ func (s *serverStore) WithRefreshLock(ctx context.Context, fn func(ctx context.C
 
 // withRefreshLock takes a lock file per server. When the process exits, its
 // locks are removed; when it is killed, the lock goes stale because it is no
-// longer renewed, and the next process takes it over.
+// longer renewed, and the next process takes it over. It returns [oauth.McpRefreshLockBusyError] when another process
+// holds the lock for the whole wait.
 func (c *McpOAuthCredentialStore) withRefreshLock(ctx context.Context, key string, fn func(ctx context.Context) error) error {
 	if c.lockDir == "" {
 		c.mu.Lock()
@@ -246,6 +248,10 @@ func (c *McpOAuthCredentialStore) withRefreshLock(ctx context.Context, key strin
 		OnCompromised: func(error) {},
 	})
 	if err != nil {
+		// proper-lockfile reports a lock held by another process as `ELOCKED`.
+		if errors.Is(err, pilock.ErrLocked) {
+			return oauth.NewMcpRefreshLockBusyError()
+		}
 		return err
 	}
 	defer func() { _ = lock.Release() }()

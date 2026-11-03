@@ -127,6 +127,67 @@ func TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejecte
 	}
 }
 
+// noPrompt is a sign-in prompt that shows nothing and gives up the redirect URL.
+type noPrompt struct{}
+
+func (noPrompt) ShowAuthorizationURL(oauth.URL) {}
+
+func (noPrompt) PromptForRedirectURL(context.Context) (string, error) { return "", nil }
+
+// lockRecorder is a sign-in's store, recording its waits for the refresh lock.
+type lockRecorder struct {
+	oauth.McpOAuthServerStore
+	runs sync.WaitGroup
+}
+
+func (r *lockRecorder) WithRefreshLock(ctx context.Context, fn func(ctx context.Context) error) error {
+	r.runs.Add(1)
+	defer r.runs.Done()
+	return r.McpOAuthServerStore.WithRefreshLock(ctx, fn)
+}
+
+// pig mapping: the wait for the lock ends with the sign-in's context, so the cancelled sign-in never takes the lock;
+// upstream takes it once it is free and releases it without refreshing.
+func TestMCPOAuthRefreshCancelsASignInThatWaitsForAnotherProcessesRefresh(t *testing.T) {
+	h := signedIn(t)
+	holder, _ := h.process()
+	entered, release, held := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	go func() {
+		held <- holder.WithRefreshLock(t.Context(), func(context.Context) error {
+			close(entered)
+			<-release
+			return nil
+		})
+	}()
+	<-entered
+	store, _ := h.process()
+	recording := &lockRecorder{McpOAuthServerStore: store}
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	err := mcpext.SignInMcpServer(ctx, mcpext.SignInOptions{ServerURL: h.server.URL, Store: recording, Prompt: noPrompt{}})
+	if !isSignInCancelled(err) {
+		t.Fatalf("sign-in error = %v, want McpSignInCancelledError", err)
+	}
+
+	close(release)
+	if err := <-held; err != nil {
+		t.Fatal(err)
+	}
+	recording.runs.Wait()
+	for _, entry := range h.server.logEntries() {
+		if entry == "token refresh" {
+			t.Fatalf("the cancelled sign-in refreshed: log = %v", h.server.logEntries())
+		}
+	}
+	entries, err := os.ReadDir(h.lockDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("lock dir = %v", entries)
+	}
+}
+
 // hookFetch reports the first request a refresh sends, which proves the refresh is running.
 type hookFetch struct {
 	once    sync.Once

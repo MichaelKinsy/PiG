@@ -68,7 +68,9 @@ type McpClientMetadataDocuments struct {
 type McpOAuthServerStore interface {
 	McpOAuthStateStore
 	// WithRefreshLock runs fn while no other process refreshes the server's tokens. It is not reentrant:
-	// [StartMcpSignIn] and [CreateMcpAuthProvider] take it themselves, so never call them from fn.
+	// [StartMcpSignIn] and [CreateMcpAuthProvider] take it themselves, so never call them from fn. Return
+	// [McpRefreshLockBusyError] when another process holds the lock for the whole wait: [StartMcpSignIn] then goes to
+	// the browser step. Any other error fails the sign-in or refresh.
 	WithRefreshLock(ctx context.Context, fn func(ctx context.Context) error) error
 }
 

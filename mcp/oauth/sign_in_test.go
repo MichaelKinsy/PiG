@@ -224,20 +224,38 @@ func TestSignInRefreshesUnderTheStoresRefreshLock(t *testing.T) {
 	}
 }
 
-// mutation-checked: failing the sign-in when the lock cannot be taken fails it.
-func TestSignInGoesToTheBrowserStepWhenTheRefreshLockCannotBeTaken(t *testing.T) {
+// mutation-checked: failing the sign-in on McpRefreshLockBusyError fails it.
+func TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong(t *testing.T) {
 	server := startAuthorizationServer(t, authorizationServerOptions{})
 	store := &recordingStore{}
 	options := signInOptions(server, oauth.McpOAuthSettings{})
 	options.Store = store
 	signIn(t, options)
-	store.lockFails = true
+	store.lockError = oauth.NewMcpRefreshLockBusyError()
 
 	started, err := oauth.StartMcpSignIn(t.Context(), options)
 	if err != nil || started.Kind != "redirect" {
 		t.Fatalf("started = %+v, %v, want the browser step", started, err)
 	}
 	expectGrantTypes(t, server, "authorization_code")
+}
+
+// mutation-checked: treating every error of the lock as McpRefreshLockBusyError fails it.
+func TestSignInFailsWhenTheRefreshLockFailsForAnotherReason(t *testing.T) {
+	server := startAuthorizationServer(t, authorizationServerOptions{})
+	lockError := errors.New("EACCES: permission denied")
+	options := signInOptions(server, oauth.McpOAuthSettings{})
+	options.Store = &recordingStore{lockError: lockError}
+
+	if _, err := oauth.StartMcpSignIn(t.Context(), options); !errors.Is(err, lockError) {
+		t.Fatalf("err = %v, want %v", err, lockError)
+	}
+	if got := server.Registrations(); len(got) != 0 {
+		t.Fatalf("registrations = %v, want none", got)
+	}
+	if got := server.Authorizations(); len(got) != 0 {
+		t.Fatalf("authorizations = %v, want none", got)
+	}
 }
 
 // mutation-checked: dropping the redirect URI comparison of the flow (AuthorizationRedirectURL) sends the code.
@@ -447,6 +465,45 @@ func TestSignInAppendsTheServerSpecificPathWithoutDoublingATrailingSlash(t *test
 	}
 }
 
+// routeDocuments list only the application's https callback route.
+var routeDocuments = &oauth.McpClientMetadataDocuments{
+	BaseURL:          "https://app.example/oauth",
+	ListsRedirectURL: func(redirectURL string) bool { return redirectURL == route },
+}
+
+// mutation-checked: refreshing with the loopback redirect URI of the settings, which the documents do not list, sends the user to the browser.
+func TestSignInRefreshesTheTokensOfADocumentThatListsOnlyAnHTTPSRoute(t *testing.T) {
+	for _, registration := range []string{"auto", "cimd"} {
+		t.Run(registration, func(t *testing.T) {
+			server := startAuthorizationServer(t, authorizationServerOptions{cimd: true, issParameter: true})
+			options := signInOptions(server, oauth.McpOAuthSettings{ClientRegistration: registration})
+			options.ClientMetadataDocuments = routeDocuments
+			authorization := signIn(t, options)
+			if got := queryOf(t, authorization.AuthorizationURL).Get("client_id"); got != "https://app.example/oauth/client.json" {
+				t.Fatalf("client_id = %q, want the document", got)
+			}
+			if got := loadState(t, options.Store).ClientInformation; got != nil {
+				t.Fatalf("stored client = %+v, want none", got)
+			}
+
+			started, err := oauth.StartMcpSignIn(t.Context(), options)
+			if err != nil || started.Kind != "authorized" {
+				t.Fatalf("started = %+v, %v, want authorized", started, err)
+			}
+			if got := len(server.Authorizations()); got != 1 {
+				t.Fatalf("authorizations = %d, want 1", got)
+			}
+			refresh := server.TokenRequests()[1]
+			if refresh.Get("grant_type") != "refresh_token" || refresh.Get("client_id") != "https://app.example/oauth/client.json" {
+				t.Fatalf("refresh request = %v, want a refresh_token grant by the document", refresh)
+			}
+			if got := loadState(t, options.Store).Tokens.AccessToken; got != "access-2" {
+				t.Fatalf("access token = %q, want access-2", got)
+			}
+		})
+	}
+}
+
 func TestSignInRegistersDynamicallyWhenTheServerDoesNotSupportDocuments(t *testing.T) {
 	server := startAuthorizationServer(t, authorizationServerOptions{issParameter: true})
 	signIn(t, loopbackSignIn(server, oauth.McpOAuthSettings{}))
@@ -523,6 +580,38 @@ func TestSignInCancelsACompletionWhoseTokenRequestDoesNotAnswer(t *testing.T) {
 	defer cancel()
 	time.AfterFunc(50*time.Millisecond, cancel)
 	expectCancelled(t, complete(ctx, options, authorization, response))
+}
+
+// mutation-checked: waiting for the lock without regard to the context, or running the refresh after the cancellation, fails it.
+func TestSignInCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing(t *testing.T) {
+	server := startAuthorizationServer(t, authorizationServerOptions{})
+	store := &recordingStore{}
+	options := signInOptions(server, oauth.McpOAuthSettings{})
+	options.Store = store
+	signIn(t, options)
+
+	release := store.Hold()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	entered := store.Entered()
+	go func() {
+		// The sign-in waits for the lock.
+		<-entered
+		cancel()
+	}()
+	_, err := oauth.StartMcpSignIn(ctx, options)
+	expectCancelled(t, err)
+
+	// The lock arrives after the cancellation: nothing runs under it, and it is released.
+	release()
+	store.WaitForLockRuns()
+	if store.IsLocked() {
+		t.Fatal("the refresh lock is still held")
+	}
+	expectGrantTypes(t, server, "authorization_code")
+	if got := len(server.Authorizations()); got != 1 {
+		t.Fatalf("authorizations = %d, want 1", got)
+	}
 }
 
 func TestSignInFailsAtOnceWithAnEndedContext(t *testing.T) {

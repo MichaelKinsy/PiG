@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -250,14 +249,19 @@ type recordedSave struct {
 }
 
 // recordingStore is an in-memory store that records whether each save happened while the refresh lock was held. With
-// lockFails, taking the lock fails like a lock that timed out.
+// lockError, taking the lock fails with it; Hold stands for another process holding the lock until the returned
+// function releases it. Entered is closed when WithRefreshLock is first called after Hold, and WaitForLockRuns waits for its calls to
+// return.
 type recordingStore struct {
 	memory    oauth.MemoryOAuthStateStore
-	lockFails bool
+	lockError error
 
-	mu     sync.Mutex
-	saves  []recordedSave
-	locked bool
+	mu       sync.Mutex
+	saves    []recordedSave
+	locked   bool
+	held     chan struct{}
+	entered  chan struct{}
+	lockRuns []chan struct{}
 }
 
 func (s *recordingStore) Load(ctx context.Context) (*oauth.McpOAuthState, error) {
@@ -275,9 +279,27 @@ func (s *recordingStore) Save(ctx context.Context, state oauth.McpOAuthState) er
 	return s.memory.Save(ctx, state)
 }
 
+// WithRefreshLock waits for Hold's release without regard to ctx, like the lock of another process.
 func (s *recordingStore) WithRefreshLock(ctx context.Context, fn func(ctx context.Context) error) error {
-	if s.lockFails {
-		return errors.New("Lock file is already being held")
+	run := make(chan struct{})
+	defer close(run)
+	s.mu.Lock()
+	s.lockRuns = append(s.lockRuns, run)
+	if s.entered == nil {
+		s.entered = make(chan struct{})
+	}
+	select {
+	case <-s.entered:
+	default:
+		close(s.entered)
+	}
+	held := s.held
+	s.mu.Unlock()
+	if held != nil {
+		<-held
+	}
+	if s.lockError != nil {
+		return s.lockError
 	}
 	s.mu.Lock()
 	s.locked = true
@@ -288,6 +310,41 @@ func (s *recordingStore) WithRefreshLock(ctx context.Context, fn func(ctx contex
 		s.mu.Unlock()
 	}()
 	return fn(ctx)
+}
+
+func (s *recordingStore) Hold() (release func()) {
+	held := make(chan struct{})
+	s.mu.Lock()
+	s.held = held
+	s.entered = make(chan struct{})
+	s.mu.Unlock()
+	return func() { close(held) }
+}
+
+// Entered is closed when WithRefreshLock is first called.
+func (s *recordingStore) Entered() <-chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.entered == nil {
+		s.entered = make(chan struct{})
+	}
+	return s.entered
+}
+
+// WaitForLockRuns waits for the calls of WithRefreshLock made so far to return.
+func (s *recordingStore) WaitForLockRuns() {
+	s.mu.Lock()
+	runs := slices.Clone(s.lockRuns)
+	s.mu.Unlock()
+	for _, run := range runs {
+		<-run
+	}
+}
+
+func (s *recordingStore) IsLocked() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.locked
 }
 
 func (s *recordingStore) Saves() []recordedSave {

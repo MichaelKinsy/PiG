@@ -67,10 +67,12 @@ func (e *McpSignInCancelledError) Name() string { return "McpSignInCancelledErro
 
 // StartMcpSignIn is the first half of a sign-in. Without a step-up (`insufficient_scope`), it first tries to refresh
 // the stored tokens with the stored client, whatever RedirectURL is ("authorized"). The refresh takes the store's
-// refresh lock, so never call this while holding it; when the lock cannot be taken (for example it timed out), the
-// refresh is skipped. Otherwise it prepares the browser step ("redirect"): a fresh `state`, and a stored client that
-// cannot use RedirectURL is dropped with its tokens. Requests to the authorization server are time-limited. Ending ctx
-// stops the sign-in with [McpSignInCancelledError]; a refresh already sent still completes.
+// refresh lock, so never call this while holding it; when another process holds the lock for the whole wait
+// ([McpRefreshLockBusyError]), the refresh is skipped, and any other failure of the lock fails the sign-in. Otherwise it
+// prepares the browser step ("redirect"): a fresh `state`, and a stored client that cannot use RedirectURL is dropped
+// with its tokens. Requests to the authorization server are time-limited. Ending ctx stops the sign-in at once with
+// [McpSignInCancelledError], also while it waits for the store's refresh lock. A refresh already sent still completes
+// and saves its tokens.
 func StartMcpSignIn(ctx context.Context, options McpSignInOptions) (McpSignInStart, error) {
 	if ctx.Err() != nil {
 		return McpSignInStart{}, &McpSignInCancelledError{}
@@ -93,36 +95,53 @@ func StartMcpSignIn(ctx context.Context, options McpSignInOptions) (McpSignInSta
 	return McpSignInStart{Kind: "redirect", Redirect: &redirect}, nil
 }
 
-// refreshBeforeSignIn refreshes the stored tokens, unless `cimd` is to replace a registered client. The refresh is not
-// cancellable: a refresh the server answered may have rotated the refresh token, so its answer must be saved.
+// refreshBeforeSignIn refreshes the stored tokens, unless `cimd` is to replace a registered client. The refresh uses
+// RedirectURL when the tokens came from a Client ID Metadata Document whose documents list it. Ending ctx returns at
+// once; the refresh keeps running, since a refresh the server answered may have rotated the refresh token, so its
+// answer must be saved.
 func refreshBeforeSignIn(ctx context.Context, options McpSignInOptions) (OAuthFlowResult, error) {
 	settings := options.Settings
-	flowCtx := context.WithoutCancel(ctx)
-	locked := false
-	result := OAuthRedirect
-	err := options.Store.WithRefreshLock(flowCtx, func(ctx context.Context) error {
-		locked = true
-		state, err := options.Store.Load(ctx)
-		if err != nil {
+	type outcome struct {
+		result OAuthFlowResult
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		result := OAuthRedirect
+		err := options.Store.WithRefreshLock(ctx, func(lockCtx context.Context) error {
+			// The lock may arrive after the sign-in was cancelled: return at once, so it is released.
+			if ctx.Err() != nil {
+				return nil
+			}
+			flowCtx := context.WithoutCancel(lockCtx)
+			state, err := options.Store.Load(flowCtx)
+			if err != nil {
+				return err
+			}
+			if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == "" {
+				return nil
+			}
+			if settings.ClientRegistration == "cimd" && state.ClientInformation != nil && settings.ClientID == "" {
+				return nil
+			}
+			result, err = refreshStoredTokens(flowCtx, options.McpOAuthClientOptions, state, refreshOptions{challenge: options.Challenge, redirectURL: options.RedirectURL})
 			return err
-		}
-		if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == "" {
-			return nil
-		}
-		if settings.ClientRegistration == "cimd" && state.ClientInformation != nil && settings.ClientID == "" {
-			return nil
-		}
-		result, err = refreshStoredTokens(ctx, options.McpOAuthClientOptions, state, refreshOptions{challenge: options.Challenge})
-		return err
-	})
-	if err != nil {
-		// The lock's own failure: another process holds it too long. The user signs in instead.
-		if !locked {
+		})
+		done <- outcome{result, err}
+	}()
+	select {
+	case o := <-done:
+		// Another process is refreshing and took too long. The user signs in instead.
+		if _, busy := errors.AsType[*McpRefreshLockBusyError](o.err); busy {
 			return OAuthRedirect, nil
 		}
-		return "", err
+		if o.err != nil {
+			return "", o.err
+		}
+		return o.result, nil
+	case <-ctx.Done():
+		return "", &McpSignInCancelledError{}
 	}
-	return result, nil
 }
 
 func startBrowserStep(ctx context.Context, options McpSignInOptions, stepUp bool) (McpSignInRedirect, error) {

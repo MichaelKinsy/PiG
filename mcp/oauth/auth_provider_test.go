@@ -118,6 +118,38 @@ func TestCreateMcpAuthProviderDoesNotRegisterAClientToRefresh(t *testing.T) {
 	}
 }
 
+// mutation-checked: ignoring the redirect URI the provider is given, which the documents list while the loopback one of the settings is not listed, fails it.
+func TestCreateMcpAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed(t *testing.T) {
+	for _, registration := range []string{"auto", "cimd"} {
+		t.Run(registration, func(t *testing.T) {
+			server := startAuthorizationServer(t, authorizationServerOptions{cimd: true, issParameter: true})
+			settings := oauth.McpOAuthSettings{ClientRegistration: registration}
+			options := signInOptions(server, settings)
+			options.ClientMetadataDocuments = routeDocuments
+			signIn(t, options)
+			if got := loadState(t, options.Store).ClientInformation; got != nil {
+				t.Fatalf("stored client = %+v, want none", got)
+			}
+
+			provider := oauth.CreateMcpAuthProvider(oauth.McpAuthProviderOptions{
+				ServerURL: options.ServerURL, Store: options.Store, ClientName: options.ClientName, ClientMetadataDocuments: routeDocuments,
+				Settings:    func() (oauth.McpOAuthSettings, error) { return settings, nil },
+				OnChallenge: func(oauth.OAuthChallenge) {}, RedirectURL: route,
+			})
+			if err := provider.OnUnauthorized(t.Context(), rejectedRequest(t, server, "access-1", nil)); err != nil {
+				t.Fatal(err)
+			}
+			expectToken(t, provider, "access-2")
+			if got := server.TokenRequests()[1].Get("client_id"); got != "https://app.example/oauth/client.json" {
+				t.Fatalf("refresh client_id = %q, want the document", got)
+			}
+			if got := len(server.Authorizations()); got != 1 {
+				t.Fatalf("authorizations = %d, want 1", got)
+			}
+		})
+	}
+}
+
 // pendingSignIn is signed in, with a step-up sign-in waiting for the browser, which keeps the tokens meanwhile.
 type pendingSignInFixture struct {
 	server   *authorizationServer
