@@ -137,6 +137,63 @@ func TestResolveStartupSessionSelectionReportsMissingStoredCWD(t *testing.T) {
 	}
 }
 
+// Pi main.ts:707-721 checks every session manager that has a session file, a new Session's included: SessionManager.create gives
+// it a file (session-manager.ts:1079-1082) and its cwd is the launch directory, so a launch directory that no longer exists is a
+// missing session cwd (session-cwd.ts:14-33) and not a failure of the runtime that builds the Session later.
+func TestResolveStartupSessionSelectionReportsAMissingLaunchCWDForANewSession(t *testing.T) {
+	for name, flags := range map[string]Args{
+		"new session":           {},
+		"new session with id":   {SessionID: "fresh-id"},
+		"continue with nothing": {Continue: true},
+		"explicit new path":     {Session: "fresh.jsonl"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			launchCWD := filepath.Join(root, "removed")
+			sessionDir := filepath.Join(root, "sessions")
+			got, err := resolveStartupSessionSelection(flags, launchCWD, sessionDir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			issue := got.missingCWD
+			if issue == nil {
+				t.Fatal("missingCWD issue is nil")
+			}
+			want := canonicalStartupDir(launchCWD)
+			if issue.storedCWD != want || issue.fallbackCWD != want {
+				t.Errorf("missingCWD = %+v, want stored and fallback %q", issue, want)
+			}
+			if filepath.Dir(issue.sessionFile) != sessionDir && flags.Session == "" || !strings.HasSuffix(issue.sessionFile, ".jsonl") {
+				t.Errorf("session file = %q, want a .jsonl file in %q", issue.sessionFile, sessionDir)
+			}
+			if got.resumePath != issue.sessionFile {
+				t.Errorf("resumePath = %q, want the session file %q for the continue-in-current-cwd choice", got.resumePath, issue.sessionFile)
+			}
+			message := issue.Error()
+			if !strings.HasPrefix(message, "Stored session working directory does not exist: "+want+"\nSession file: "+issue.sessionFile+"\nCurrent working directory: "+want) {
+				t.Errorf("message = %q", message)
+			}
+		})
+	}
+}
+
+func TestResolveStartupSessionSelectionKeepsAnExistingLaunchCWDForANewSession(t *testing.T) {
+	root := t.TempDir()
+	for name, flags := range map[string]Args{"new session": {}, "no session": {NoSession: true}, "help": {Help: true}} {
+		got, err := resolveStartupSessionSelection(flags, root, filepath.Join(root, "sessions"))
+		if err != nil || got.missingCWD != nil || got.resumePath != "" {
+			t.Errorf("%s: missingCWD = %+v, resumePath = %q, err = %v", name, got.missingCWD, got.resumePath, err)
+		}
+	}
+	removed := filepath.Join(root, "removed")
+	for name, flags := range map[string]Args{"no session": {NoSession: true}, "help": {Help: true}, "list models": {ListModelsAll: true}} {
+		got, err := resolveStartupSessionSelection(flags, removed, filepath.Join(root, "sessions"))
+		if err != nil || got.missingCWD != nil {
+			t.Errorf("%s in a missing cwd: missingCWD = %+v, err = %v (Pi's session manager is in memory and has no session file)", name, got.missingCWD, err)
+		}
+	}
+}
+
 func TestResolveStartupSessionSelectionNoSessionDoesNotReadSelectedFile(t *testing.T) {
 	launchCWD := t.TempDir()
 	got, err := resolveStartupSessionSelection(Args{NoSession: true, Session: "missing.jsonl"}, launchCWD, "")
