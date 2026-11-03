@@ -66,6 +66,9 @@ type Editor struct {
 	asyncCancel            context.CancelFunc
 	asyncSeq               uint64
 	scheduleAsyncApply     func(func())
+	// pendingAutocompleteApply publishes the latest local suggestion result the host has scheduled but not yet run.
+	pendingAutocompleteApply func()
+	pendingApplySeq          uint64
 	// nativeAutocomplete is the request of the terminal read in progress, started by FlushAutocomplete.
 	nativeAutocomplete *nativeAutocompleteRequest
 	// autocompleteHold holds the host's terminal input for a request of the extension provider chain.
@@ -1283,21 +1286,18 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	if len(e.autocompleteItems) == 0 || e.autocomplete == nil {
 		return false
 	}
-	// Accept the published menu without re-querying; only a moved cursor needs a synchronous refresh or rejection of an awaited result.
-	if !e.autocompleteFromAwaited && e.cursor != e.autocompleteQueryCursor {
-		res := e.getAutocompleteSuggestions(e.autocompleteForced)
-		if res == nil || len(res.Items) == 0 {
-			e.setAutocompleteItems(nil)
-			e.autocompleteCursor = 0
-			e.autocompletePrefix = ""
-			e.Invalidate()
-			return false
-		}
-		e.setAutocompleteItems(res.Items)
-		e.autocompletePrefix = res.Prefix
-		e.autocompleteQueryCursor = e.cursor
-		e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
-	} else if e.cursor != e.autocompleteQueryCursor {
+	// The popup the editor last published is applied as it stands: Pi's confirm handler does not query the provider again,
+	// so an edit that does not refresh the popup leaves its suggestion applied at the new cursor. A result the host has not
+	// yet published is published first, the way Pi's awaited result lands before the next terminal read.
+	if e.pendingAutocompleteApply != nil {
+		apply := e.pendingAutocompleteApply
+		e.pendingAutocompleteApply = nil
+		apply()
+	}
+	if len(e.autocompleteItems) == 0 {
+		return false
+	}
+	if e.autocompleteFromAwaited && e.cursor != e.autocompleteQueryCursor {
 		// An awaited command result cannot be recomputed on the input loop. Reject a popup whose cursor belongs to older text.
 		e.setAutocompleteItems(nil)
 		e.autocompleteCursor = 0
@@ -1520,7 +1520,15 @@ func (e *Editor) refreshAutocomplete() {
 	// Upstream awaits even local suggestions. Paint the input before a popup
 	// can grow the viewport, and reject results superseded by submit/cancel.
 	if e.scheduleAsyncApply != nil {
-		e.scheduleAsyncApply(apply)
+		e.pendingApplySeq++
+		sequence := e.pendingApplySeq
+		e.pendingAutocompleteApply = apply
+		e.scheduleAsyncApply(func() {
+			if sequence == e.pendingApplySeq {
+				e.pendingAutocompleteApply = nil
+			}
+			apply()
+		})
 	} else {
 		apply()
 	}
@@ -1762,8 +1770,16 @@ func (e *Editor) HandleInput(data string) {
 	if kb.Matches(data, KBInputCopy) {
 		return
 	}
+	if kb.Matches(data, KBEditorUndo) {
+		e.lastAction = ""
+		e.undo()
+		return
+	}
 	if len(e.autocompleteItems) > 0 {
 		switch {
+		case kb.Matches(data, KBSelectCancel):
+			e.AutocompleteCancel()
+			return
 		case kb.Matches(data, KBSelectUp):
 			e.AutocompleteMove(-1)
 			return
@@ -1775,9 +1791,6 @@ func (e *Editor) HandleInput(data string) {
 				e.autocompleteCursor = index
 				e.Invalidate()
 			}
-			return
-		case kb.Matches(data, KBSelectCancel):
-			e.AutocompleteCancel()
 			return
 		case kb.Matches(data, KBInputTab):
 			if e.AutocompleteAccept() {
@@ -1796,35 +1809,114 @@ func (e *Editor) HandleInput(data string) {
 			e.refreshAutocomplete()
 			return
 		}
-		if e.forceFileAutocomplete() {
-			return
-		}
+		e.forceFileAutocomplete()
+		return
 	}
 
-	// Dedicated history actions always browse entries instead of moving the
-	// cursor. Upstream checks them after the copy, undo, tab, deletion, and
-	// kill-ring actions and before cursor movement, newline, and submit
-	// (editor.ts handleInput), so a key bound to both keeps the earlier action.
-	if !e.matchesActionBeforeHistory(kb, data) {
-		if kb.Matches(data, KBEditorHistoryPrevious) {
-			e.AutocompleteCancel()
-			e.navigateHistory(-1)
-			return
-		}
-		if kb.Matches(data, KBEditorHistoryNext) {
-			e.AutocompleteCancel()
-			e.navigateHistory(1)
-			return
-		}
+	// Upstream editor.ts handleInput checks the remaining actions in this fixed order, so a key bound to two of them performs the earlier one.
+	if kb.Matches(data, KBEditorDeleteToLineEnd) {
+		e.deleteToLineEnd()
+		return
 	}
-
-	// ─── Editor dispatch ─────────────────────────────────────────────────
-	// All editing actions go through the keybinding registry so user
-	// overrides take effect. Mirrors upstream editor.ts handleInput chain
-	// (editor.ts:585-820). Each branch corresponds to one keybinding ID;
-	// the registry knows which raw terminal sequences map to each ID.
-	switch {
-	case kb.Matches(data, KBEditorCursorUp):
+	if kb.Matches(data, KBEditorDeleteToLineStart) {
+		e.deleteToLineStart()
+		return
+	}
+	if kb.Matches(data, KBEditorDeleteWordBack) {
+		e.deleteWordBackward()
+		return
+	}
+	if kb.Matches(data, KBEditorDeleteWordForward) {
+		e.deleteWordForward()
+		return
+	}
+	if matchesDeleteCharBackward(kb, data) {
+		e.backspace()
+		e.refreshAutocomplete()
+		return
+	}
+	if matchesDeleteCharForward(kb, data) {
+		e.forwardDelete()
+		e.refreshAutocomplete()
+		return
+	}
+	if kb.Matches(data, KBEditorYank) {
+		if e.killRing.Len() > 0 {
+			e.saveHistory()
+			text := e.killRing.Peek()
+			e.insert(text)
+			e.notifyChange()
+			e.lastAction = "yank"
+		}
+		return
+	}
+	if kb.Matches(data, KBEditorYankPop) {
+		if e.lastAction == "yank" && e.killRing.Len() > 1 {
+			e.saveHistory()
+			e.deleteYankedText()
+			e.killRing.Rotate()
+			text := e.killRing.Peek()
+			e.insert(text)
+			e.notifyChange()
+			e.lastAction = "yank"
+		}
+		return
+	}
+	if kb.Matches(data, KBEditorHistoryPrevious) {
+		e.AutocompleteCancel()
+		e.navigateHistory(-1)
+		return
+	}
+	if kb.Matches(data, KBEditorHistoryNext) {
+		e.AutocompleteCancel()
+		e.navigateHistory(1)
+		return
+	}
+	if kb.Matches(data, KBEditorCursorLineStart) {
+		e.lastAction = ""
+		e.setCursorCol(0)
+		e.Invalidate()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorLineEnd) {
+		e.lastAction = ""
+		e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
+		e.Invalidate()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorWordLeft) {
+		e.cursorWordBackward()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorWordRight) {
+		e.cursorWordForward()
+		return
+	}
+	if matchesEditorNewLine(data, kb) {
+		if e.shouldSubmitOnBackslashEnter(data, kb) {
+			e.backspace()
+			e.submitValue()
+			return
+		}
+		e.AutocompleteCancel()
+		e.insertNewline()
+		return
+	}
+	if kb.Matches(data, KBInputSubmit) {
+		if e.DisableSubmit {
+			return
+		}
+		line := e.lines[e.cursor[0]]
+		if e.cursor[1] > 0 && jsstring.Slice(line, e.cursor[1]-1, e.cursor[1]) == "\\" {
+			e.backspace()
+			e.AutocompleteCancel()
+			e.insertNewline()
+			return
+		}
+		e.submitValue()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorUp) {
 		switch {
 		case e.isOnFirstVisualLine() && (e.isEditorEmpty() || e.inputHistIdx >= 0 || e.cursor[1] == 0):
 			e.navigateHistory(-1)
@@ -1835,7 +1927,9 @@ func (e *Editor) HandleInput(data string) {
 		default:
 			e.moveCursor(-1, 0)
 		}
-	case kb.Matches(data, KBEditorCursorDown):
+		return
+	}
+	if kb.Matches(data, KBEditorCursorDown) {
 		switch {
 		case e.inputHistIdx >= 0 && e.isOnLastVisualLine():
 			e.navigateHistory(1)
@@ -1846,141 +1940,46 @@ func (e *Editor) HandleInput(data string) {
 		default:
 			e.moveCursor(1, 0)
 		}
-	case kb.Matches(data, KBEditorCursorWordRight):
-		// alt+right / ctrl+right / alt+f: cursor word forward
-		// Mirrors upstream `tui.editor.cursorWordRight` (keybindings.ts:128).
-		e.cursorWordForward()
-	case kb.Matches(data, KBEditorCursorWordLeft):
-		// alt+left / ctrl+left / alt+b: cursor word backward
-		// Mirrors upstream `tui.editor.cursorWordLeft` (keybindings.ts:124).
-		e.cursorWordBackward()
-	case kb.Matches(data, KBEditorCursorRight):
+		return
+	}
+	if kb.Matches(data, KBEditorCursorRight) {
 		e.moveCursor(0, 1)
-	case kb.Matches(data, KBEditorCursorLeft):
+		return
+	}
+	if kb.Matches(data, KBEditorCursorLeft) {
 		e.moveCursor(0, -1)
-	case matchesEditorNewLine(data, kb):
-		if e.shouldSubmitOnBackslashEnter(data, kb) {
-			e.backspace()
-			e.submitValue()
-			return
-		}
-		e.insertNewline()
-		e.refreshAutocomplete()
-	case kb.Matches(data, KBInputSubmit):
-		if e.DisableSubmit {
-			return
-		}
-		line := e.lines[e.cursor[0]]
-		if e.cursor[1] > 0 && jsstring.Slice(line, e.cursor[1]-1, e.cursor[1]) == "\\" {
-			e.backspace()
-			e.insertNewline()
-			e.refreshAutocomplete()
-			return
-		}
-		e.submitValue()
-	case kb.Matches(data, KBEditorDeleteWordBack):
-		// alt+backspace / ctrl+w: delete word backward
-		// Mirrors upstream `tui.editor.deleteWordBackward`
-		// (.upstream/current/packages/tui/src/keybindings.ts:100).
-		e.deleteWordBackward()
-	case kb.Matches(data, KBEditorDeleteWordForward):
-		// alt+d / alt+delete: delete word forward
-		// Mirrors upstream `tui.editor.deleteWordForward` (keybindings.ts:104).
-		e.deleteWordForward()
-	case matchesDeleteCharBackward(kb, data):
-		// backspace: delete char backward
-		e.backspace()
-		e.refreshAutocomplete()
-	case matchesDeleteCharForward(kb, data):
-		// Delete key / Ctrl+D: forward delete
-		// Mirrors upstream editor.ts::forwardDelete (keybindings.ts:92).
-		e.forwardDelete()
-		e.refreshAutocomplete()
-	case kb.Matches(data, KBEditorCursorLineStart):
-		// Home / Ctrl+A: start of line
-		e.lastAction = ""
-		e.setCursorCol(0)
-		e.Invalidate()
-	case kb.Matches(data, KBEditorCursorLineEnd):
-		// End / Ctrl+E: end of line
-		e.lastAction = ""
-		e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
-		e.Invalidate()
-	case kb.Matches(data, KBEditorDeleteToLineStart):
-		// Ctrl+U: kill to line start
-		// Mirrors upstream editor.ts::deleteToStartOfLine.
-		e.deleteToLineStart()
-	case kb.Matches(data, KBEditorDeleteToLineEnd):
-		// Ctrl+K: kill to end of line
-		// Mirrors upstream editor.ts::deleteToEndOfLine.
-		e.deleteToLineEnd()
-	case kb.Matches(data, KBEditorYank):
-		// Ctrl+Y: yank
-		// Mirrors upstream editor.ts::yank.
-		if e.killRing.Len() > 0 {
-			e.saveHistory()
-			text := e.killRing.Peek()
-			e.insert(text)
-			e.notifyChange()
-			e.lastAction = "yank"
-		}
-	case kb.Matches(data, KBEditorYankPop):
-		// Alt+Y: yank-pop; cycles kill ring after a yank
-		// Mirrors upstream editor.ts::yankPop.
-		if e.lastAction == "yank" && e.killRing.Len() > 1 {
-			e.saveHistory()
-			// Delete the previously yanked text.
-			e.deleteYankedText()
-			// Rotate: move last entry to front; new Peek is the previous second.
-			e.killRing.Rotate()
-			// Re-insert the new top.
-			text := e.killRing.Peek()
-			e.insert(text)
-			e.notifyChange()
-			e.lastAction = "yank"
-		}
-	case kb.Matches(data, KBEditorUndo):
-		// Ctrl+- (default): undo. Upstream binds undo to `ctrl+-` (which
-		// emits \x1f on most terminals); user can rebind via
-		// ~/.pig/keybindings.json.
-		e.lastAction = ""
-		e.undo()
-	case kb.Matches(data, KBEditorPageUp):
+		return
+	}
+	if kb.Matches(data, KBEditorPageUp) {
 		e.pageScroll(-1)
-	case kb.Matches(data, KBEditorPageDown):
+		return
+	}
+	if kb.Matches(data, KBEditorPageDown) {
 		e.pageScroll(1)
-	case kb.Matches(data, KBEditorJumpForward):
+		return
+	}
+	if kb.Matches(data, KBEditorJumpForward) {
 		e.jumpMode = "forward"
-	case kb.Matches(data, KBEditorJumpBackward):
+		return
+	}
+	if kb.Matches(data, KBEditorJumpBackward) {
 		e.jumpMode = "backward"
-	default:
-		if len(data) > 0 && data[0] >= 0x20 {
-			e.insertCharacter(data)
-			e.refreshAutocomplete()
-		} else if ch, ok := DecodePrintableKey(data); ok {
-			e.insertCharacter(ch)
-			e.refreshAutocomplete()
-		}
+		return
 	}
-}
-
-// actionsBeforeHistory are the editor actions upstream's handleInput checks
-// before tui.editor.historyPrevious/historyNext.
-var actionsBeforeHistory = []TUIKeybinding{
-	KBInputCopy, KBEditorUndo, KBInputTab,
-	KBEditorDeleteToLineEnd, KBEditorDeleteToLineStart,
-	KBEditorDeleteWordBack, KBEditorDeleteWordForward,
-	KBEditorDeleteCharBack, KBEditorDeleteCharForward,
-	KBEditorYank, KBEditorYankPop,
-}
-
-func (e *Editor) matchesActionBeforeHistory(kb *TUIKeybindingsManager, data string) bool {
-	for _, action := range actionsBeforeHistory {
-		if kb.Matches(data, action) {
-			return true
-		}
+	if MatchesKeyID(data, "shift+space") {
+		e.insertCharacter(" ")
+		e.refreshAutocomplete()
+		return
 	}
-	return matchesDeleteCharBackward(kb, data) || matchesDeleteCharForward(kb, data)
+	if ch, ok := DecodePrintableKey(data); ok {
+		e.insertCharacter(ch)
+		e.refreshAutocomplete()
+		return
+	}
+	if len(data) > 0 && data[0] >= 0x20 {
+		e.insertCharacter(data)
+		e.refreshAutocomplete()
+	}
 }
 
 // matchesDeleteCharBackward is upstream editor.ts handleInput's `tui.editor.deleteCharBackward || matchesKey(data, "shift+backspace")`.
