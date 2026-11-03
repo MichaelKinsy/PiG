@@ -1,9 +1,92 @@
+pkg:ai/.#JsonChange	ai	type-mismatch	ai/streaming_json_parser.go#JSONChange
 pkg:ai/.#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
 pkg:ai/.#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
+pkg:ai/compat#AuthOperationOptions	ai	held	ai/operation_options.go#AuthOperationOptions
+pkg:ai/compat#AuthOperationOptions::property:signal	ai	held	ai/operation_options.go#AuthOperationOptions
+pkg:ai/compat#JsonChange	ai	type-mismatch	ai/streaming_json_parser.go#JSONChange
 pkg:ai/compat#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
 pkg:ai/compat#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
+pkg:ai/utils/streaming-json#JsonChange	ai	type-mismatch	ai/streaming_json_parser.go#JSONChange
 pkg:ai/utils/string-enum#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
 pkg:ai/utils/string-enum#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
+pkg:ai/utils/text#ownedSlice	ai	not-exercised	internal/modelgen/jsparse.go#ownedSlice
+pkg:ai/utils/text#ownedSlice::call:0	ai	signature-mismatch	internal/modelgen/jsparse.go#ownedSlice
+pkg:chord/.#Ref	chord	type-mismatch	chord/host/contract.go#Ref
+pkg:chord/delta#PathRef	chord	type-mismatch	chord/delta/delta.go#PathRef
+pkg:chord/delta#PendingTake	chord	type-mismatch	chord/delta/pending.go#PendingTake
+pkg:chord/next#Claimant	chord	type-mismatch	chord/next/store/claims.go#Claimant
+pkg:chord/next#ColumnRef	chord	child-gap	chord/next/store/expression.go#ColumnRef
+pkg:chord/next#ColumnRef::property:column	chord	member-missing	chord/next/store/expression.go#ColumnRef
+pkg:chord/next#EncodedRow	chord	type-mismatch	chord/next/store/rows.go#EncodedRow
+pkg:chord/next#Facet	chord	type-mismatch	chord/next/host/host_facet.go#Facet
+pkg:chord/next#HostError	chord	type-mismatch	chord/next/host/host_error.go#HostError
+pkg:chord/next#Implementation	chord	type-mismatch	chord/next/contracts/contract.go#Implementation
+pkg:chord/next#JobCtx	chord	type-mismatch	chord/next/host/jobs_job.go#JobCtx
+pkg:chord/next#JsonColumnSchema::property:json	chord	held	
+pkg:chord/next#PluginError	chord	child-gap	chord/next/data/errors.go#PluginError
+pkg:chord/next#PluginError::property:name	chord	held	chord/next/data/errors.go#PluginError
+pkg:chord/next#Reference	chord	type-mismatch	chord/next/host/host_reference.go#Reference
+pkg:chord/next#SetOf	chord	undecidable	chord/next/store/expression.go#SetOf
+pkg:chord/next#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
+pkg:chord/next#StateDefinition::property:schema	chord	held	chord/next/documents/definition.go#StateDefinition.Schema
+pkg:chord/next#isChordError	chord	child-gap	chord/next/data/errors.go#IsChordError
+pkg:chord/next#isChordError::call:0	chord	signature-mismatch	chord/next/data/errors.go#IsChordError
+pkg:chord/next#lit	chord	child-gap	chord/next/contracts/schema.go#Lit
+pkg:chord/next#lit::call:0	chord	held	chord/next/contracts/schema.go#Lit
 pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:close	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:close::call:0	durable	child-gap	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:document	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:document::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:1	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:task	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:task::call:0	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorageOptions	durable	no-go-symbol	
+pkg:mcp/.#ListToolsResult	mcp	child-gap	mcp/types.go#ListToolsResult
+pkg:mcp/.#ListToolsResult::property:_meta	mcp	not-exercised	mcp/types.go#ListToolsResult.Meta
+pkg:mcp/.#ListToolsResult::property:nextCursor	mcp	not-exercised	mcp/types.go#ListToolsResult.NextCursor
+pkg:mcp/.#ListToolsResult::property:tools	mcp	not-exercised	mcp/types.go#ListToolsResult.Tools
+pkg:mcp/.#McpAbortError	mcp	child-gap	mcp/jsonrpc.go#McpAbortError
+pkg:mcp/.#McpAbortError::property:cause	mcp	held	mcp/jsonrpc.go#McpAbortError.Cause
+pkg:mcp/.#McpConnectionClosedError	mcp	child-gap	mcp/jsonrpc.go#McpConnectionClosedError
+pkg:mcp/.#McpConnectionClosedError::property:cause	mcp	held	mcp/jsonrpc.go#McpConnectionClosedError.Cause
+pkg:mcp/.#McpError	mcp	child-gap	mcp/jsonrpc.go#McpError
+pkg:mcp/.#McpError::property:cause	mcp	held	mcp/jsonrpc.go#McpError.Cause
+pkg:mcp/.#McpTimeoutError	mcp	child-gap	mcp/jsonrpc.go#McpTimeoutError
+pkg:mcp/.#McpTimeoutError::property:cause	mcp	held	mcp/jsonrpc.go#McpTimeoutError.Cause
+pkg:mcp/oauth#McpOAuthAuthorizationRequiredError	mcp	child-gap	mcp/oauth/errors.go#McpOAuthAuthorizationRequiredError
+pkg:mcp/oauth#McpOAuthAuthorizationRequiredError::property:cause	mcp	held	mcp/oauth/errors.go#McpOAuthAuthorizationRequiredError
+pkg:mcp/oauth#OAuthError	mcp	child-gap	mcp/oauth/errors.go#OAuthError
+pkg:mcp/oauth#OAuthError::property:cause	mcp	held	mcp/oauth/errors.go#OAuthError
+pkg:mcp/oauth#OAuthInsecureEndpointError	mcp	child-gap	mcp/oauth/errors.go#OAuthInsecureEndpointError
+pkg:mcp/oauth#OAuthInsecureEndpointError::property:cause	mcp	held	mcp/oauth/errors.go#OAuthInsecureEndpointError
+pkg:mcp/oauth#OAuthIssuerMismatchError	mcp	child-gap	mcp/oauth/errors.go#OAuthIssuerMismatchError
+pkg:mcp/oauth#OAuthIssuerMismatchError::property:cause	mcp	held	mcp/oauth/errors.go#OAuthIssuerMismatchError
+pkg:mcp/oauth#OAuthRegistrationError	mcp	child-gap	mcp/oauth/errors.go#OAuthRegistrationError
+pkg:mcp/oauth#OAuthRegistrationError::property:cause	mcp	held	mcp/oauth/errors.go#OAuthRegistrationError.Cause
