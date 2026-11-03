@@ -912,3 +912,10 @@ commit = "0c8f09f42d"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "PiG's own audit tool, not a port of a Pi test: the carry test went with the carry of reviewed rows (a manifest now audits against the exact earlier pin, so no row survives a pin move unchanged), and a new test requires the from mirror to exist. No Pi behavior is involved."
+
+[[entry]]
+path = "internal/codingagent/code_highlighter_rows_test.go"
+commit = "2932ec2a1ac5f16beff647f9fd4ab841da877947"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi behavior changed and no PiG behavior changed. The commit adds only the writeHighlightCode seam in write_highlight_cache.go (a variable initialised to tui.HighlightCode, used at the three places the write cache highlights code) and replaces the streaming test's assertion: it compared cached line strings by value, which cannot fail because highlighting is deterministic. It now records what the cache highlights, as Pi's test spies on its highlight function (code-highlighter.test.ts:54-71, a test file): the 60-line update highlights exactly the changed last line. The mutants that re-highlight the leading 50 lines or rebuild the whole cache on every update fail it."
