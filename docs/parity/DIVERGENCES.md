@@ -2838,11 +2838,11 @@ Why: Replicating the Pi behavior makes the output depend on which identical bloc
 
 Pi bug: not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`): both cases above, run against the pinned Pi, with the rows Pi and PiG render.
 
-Scope: `tui.Markdown` rendering (`tui/markdown.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
+Scope: `tui.Markdown` rendering (`tui/markdown_blocks.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
 
 Owner decision: 2026-11-01, owner approved recording this as a numbered divergence (D220).
 
-Call-site markers: `tui/markdown.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
+Call-site markers: `tui/markdown_blocks.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
 
 Parity allowance: `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`) runs the pinned Pi for both cases and a control, and states both sides of each row: Pi autolinks the URL inside the open `<a>` and PiG does not. It fails when either side changes.
 
