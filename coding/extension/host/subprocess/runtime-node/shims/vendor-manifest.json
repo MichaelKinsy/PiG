@@ -6450,6 +6450,16 @@
       "rewrite": "module specifiers"
     },
     {
+      "path": "pi-dist/pi-agent-core/dist/index.js",
+      "package": {
+        "name": "@earendil-works/pi-agent-core",
+        "version": "1.4.0",
+        "integrity": "sha512-PoKY84SKUwnt7S5QBZaGUqfNO1kjP3KHpHUA9QpFTj4cOjaVWMYIcBPJ6FDRCdE8Zen9OSECQUd0uUfVgtSmgA=="
+      },
+      "sha256": "27372779f3db636aa3b5e8b65bf1a24a0cd9f077d46fa95a91972b630f5d8bda",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
       "path": "pi-dist/pi-agent-core/index.js",
       "package": {
         "name": "@earendil-works/pi-agent-core",
@@ -6459,6 +6469,17 @@
       "source": "dist/index.js",
       "sourceSha256": "40cb358d7f05594e9b67845a78ae50ad05e8375f0cfa8cee8a74801556c09afd",
       "sha256": "40cb358d7f05594e9b67845a78ae50ad05e8375f0cfa8cee8a74801556c09afd"
+    },
+    {
+      "path": "pi-dist/pi-agent-core/package.json",
+      "package": {
+        "name": "@earendil-works/pi-agent-core",
+        "version": "1.4.0",
+        "integrity": "sha512-PoKY84SKUwnt7S5QBZaGUqfNO1kjP3KHpHUA9QpFTj4cOjaVWMYIcBPJ6FDRCdE8Zen9OSECQUd0uUfVgtSmgA=="
+      },
+      "source": "package.json",
+      "sourceSha256": "d4c7f5d637f2091503aadf9db2cc3af417387d764e0f707347a3233ccc993585",
+      "sha256": "d4c7f5d637f2091503aadf9db2cc3af417387d764e0f707347a3233ccc993585"
     },
     {
       "path": "pi-dist/pi-agent-core/proxy.js",
@@ -7235,6 +7256,56 @@
       "sha256": "2c46620284590b553d57375ddac9aa1ef3361448a3db883c2c58793be68242e7"
     },
     {
+      "path": "pi-dist/pi-ai/dist/cli.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "29e9180eff991d5671fa746f8d10393db4cc69abecf701826dba498051ff591c",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
+      "path": "pi-dist/pi-ai/dist/index.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "e0d93fade64c1f0dbea2b1753843f1d96a82f495368b65433f24c5a672e0fd3a",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
+      "path": "pi-dist/pi-ai/dist/models.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "b055cb08e1dda8ebe88eb548a92df8d2475c7bb41bfd4766d42f1ec3e3de12e9",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
+      "path": "pi-dist/pi-ai/dist/oauth.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "df7a5d007dce48a9f23e6de92148ae62c0413488866cc5cd437ae9d9ea40f533",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
+      "path": "pi-dist/pi-ai/dist/providers/all.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "5416238324795c3c6e155d21e24d85ed494f338ec6d1007b151984f9b02451f6",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
       "path": "pi-dist/pi-ai/env-api-keys.js",
       "package": {
         "name": "@earendil-works/pi-ai",
@@ -7354,6 +7425,17 @@
       "source": "dist/oauth.js",
       "sourceSha256": "bcdee371a91250a4d60f56b272d03959c9f6c401e73c3a1065d0a0dd002eec1a",
       "sha256": "bcdee371a91250a4d60f56b272d03959c9f6c401e73c3a1065d0a0dd002eec1a"
+    },
+    {
+      "path": "pi-dist/pi-ai/package.json",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "source": "package.json",
+      "sourceSha256": "843009f0f6e627978f429292df391fae1001a8e8bbaab91926ed5c8605a78c71",
+      "sha256": "843009f0f6e627978f429292df391fae1001a8e8bbaab91926ed5c8605a78c71"
     },
     {
       "path": "pi-dist/pi-ai/providers/all.js",
@@ -10926,6 +11008,16 @@
       "sourceSha256": "83f1a9caa7bcd4cbf1ac84c157b0eeb2d5009f85a7f6f4265383b5e2edc323a5",
       "sha256": "4ab335b775231ad2b88e8c85d9ec07043cf34bf0ab48c0068c2ac25fdd8ecc73",
       "rewrite": "module specifiers"
+    },
+    {
+      "path": "pi-dist/pi-coding-agent/dist/cli.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "5fecc2ce57cf09725a8918a194e3f0be84d3e26152b2ca0d6ba0379adb07f6c9",
+      "rewrite": "CLI entry -> the extension harness"
     },
     {
       "path": "pi-dist/pi-coding-agent/dist/index.js",
@@ -15153,6 +15245,16 @@
       "sha256": "7b6e6f6e1fbb037f33a8238ab02ec9e6e5f65fe49029bb430acd59c40148bfa4"
     },
     {
+      "path": "pi-dist/pi-tui/dist/index.js",
+      "package": {
+        "name": "@earendil-works/pi-tui",
+        "version": "1.4.0",
+        "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
+      },
+      "sha256": "fd60c44f71d62edaebd4fbed4783d2d373531d7692cd1c0ed30bca0b55f56dbc",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
       "path": "pi-dist/pi-tui/editor-component.js",
       "package": {
         "name": "@earendil-works/pi-tui",
@@ -15493,6 +15595,17 @@
       "source": "dist/oklab.js",
       "sourceSha256": "9aa1e62e9770e7f6f81b204c9d0f039d5f0b5cef017920f6d3e5368520428bfe",
       "sha256": "9aa1e62e9770e7f6f81b204c9d0f039d5f0b5cef017920f6d3e5368520428bfe"
+    },
+    {
+      "path": "pi-dist/pi-tui/package.json",
+      "package": {
+        "name": "@earendil-works/pi-tui",
+        "version": "1.4.0",
+        "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
+      },
+      "source": "package.json",
+      "sourceSha256": "f21cdaa529e2d049e70a8408b2294b280eab7c24a8ca664ef8952018549a74f7",
+      "sha256": "f21cdaa529e2d049e70a8408b2294b280eab7c24a8ca664ef8952018549a74f7"
     },
     {
       "path": "pi-dist/pi-tui/program-status.js",

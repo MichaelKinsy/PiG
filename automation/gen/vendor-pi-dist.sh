@@ -235,6 +235,8 @@ done
 
 node "$root/automation/gen/bundle-pi-libraries.mjs" "$shims"
 node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
+# After the bundles: a package root entry may forward to a bundled module.
+node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
 
 version() { node -p "require('$1/package.json').version"; }

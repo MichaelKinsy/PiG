@@ -19,6 +19,13 @@ func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
 		}
 		return
 	}
+	if file == "dist/cli.js" {
+		// The harness is the CLI an extension starts: process.argv[1] in its process (process-identity.mjs).
+		if string(got) != "import \"../../../../harness/cli.mjs\";\n" {
+			t.Fatalf("CLI entry = %s", got)
+		}
+		return
+	}
 	parts := append([]string{"dist"}, strings.Split(file, "/")...)
 	if file == "package.json" || file == "README.md" || file == "CHANGELOG.md" || strings.HasPrefix(file, "docs/") || strings.HasPrefix(file, "examples/") {
 		parts = strings.Split(file, "/")

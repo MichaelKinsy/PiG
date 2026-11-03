@@ -180,6 +180,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27b7a4e](#bf-27b7a4e) | Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail… | A fix Pi shipped that PiG ported | Windows, WSL | Unreleased |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-27e9bc8](#bf-27e9bc8) | `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`… | PiG's own defect | All platforms | Unreleased |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f6a7e](#bf-27f6a7e) | The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then… | PiG's own defect | Windows | Unreleased |
 | [BF-2843d60](#bf-2843d60) | Starting `pig` from a working directory that has been deleted now prints "Error: The current working… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -1266,6 +1267,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d91ce8f](#bf-d91ce8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d943286](#bf-d943286) | A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d943286-2](#bf-d943286-2) | `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a… | PiG's own defect | All platforms | Unreleased |
+| [BF-d94e83f](#bf-d94e83f) | Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of… | PiG's own defect | All platforms | Unreleased |
 | [BF-d983b74](#bf-d983b74) | Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | Unreleased |
@@ -3761,6 +3763,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `27ddc30867` (2026-10-13), `5d2eb77efe` (2026-10-13), `a98ed4d6ae` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_events_stream_args_test.go::TestInteractiveStreamedToolArgsDeltaCostIsFlat`, `internal/codingagent/interactive_events_write_stream_oracle_test.go::TestInteractiveStreamedWriteCardMatchesPiOracle`, `internal/codingagent/tool_builtin_renderers_args_cost_test.go::TestEditRenderersDoNotReencodeUnchangedArgs`, `tui/bash_execution_append_cost_test.go::TestBashExecutionAppendOutputDoesNotCopyCleanChunks`, `tui/tool_execution_streamed_args_test.go::TestStreamedArgsEncodeOncePerDraw`
 - **Release note:** A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its first lines and the "(N more lines, M total" hint as the content arrives, instead of a bare `write ...` header until the last delta. The card reads the arguments the provider's streaming JSON parser has already decoded and encodes them only when it draws, so a delta costs the same however long the arguments are (10 allocations and 1.7 KB per delta at 1 KB and at 504 KB received).
+
+### BF-27e9bc8
+
+**`@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`, `pi-ai/providers/all`) now resolve, in an extension, to files of a package root laid out like Pi's: a `package.json` named for the package above the entry, the entry at the path Pi's `main` or `exports` gives (`dist/index.js` and the like), and `pi-ai`'s `dist/cli.js`.
+- **Root cause:** The runtime served @earendil-works/pi-agent-core from shims/pi-agent-core.mjs, outside any package root, so an extension that resolves the package and walks up to its package.json, or reads ../package.json beside its entry, found no package. The package now resolves to shims/pi-dist/pi-agent-core/dist/index.js, Pi's main entry, which re-exports the same module; shims/pi-dist/pi-agent-core/package.json is the pinned package's.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `27e9bc8860` (2026-11-02), `5b6dce98de` (2026-11-02), `fa330d4b2d` (2026-11-02)
+- **Tests:** `coding/extension/host/subprocess/node_pi_package_layout_test.go::TestNodeServesEachPiPackageWithPisLayout`, `coding/extension/host/subprocess/runtime_node_package_roots_test.go::TestVendoredPiPackageRootsMatchThePinnedPackages`, `coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage`
+- **Release note:** `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`, `pi-ai/providers/all`) now resolve, in an extension, to files of a package root laid out like Pi's: a `package.json` named for the package above the entry, the entry at the path Pi's `main` or `exports` gives (`dist/index.js` and the like), and `pi-ai`'s `dist/cli.js`. An extension that resolves one of these packages and walks up to its `package.json`, reads `../package.json` beside the entry, or computes a `dist/` file from the root found nothing in the runtime's shim directory before.
 
 ### BF-27f3324
 
@@ -18794,6 +18810,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d943286774` (2026-10-27)
 - **Tests:** `durable/core/driver/harness_inbox_core_test.go::TestInboxHandoff`, `durable/core/turn/tool_round_controls_pi_test.go::TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates`
 - **Release note:** `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`.
+
+### BF-d94e83f
+
+**Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG.
+- **Root cause:** They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d94e83f2ac` (2026-11-02)
+- **Tests:** `coding/extension/host/subprocess/node_pi_package_root_test.go::TestNodeExtensionStartsThePiCLIFromTheResolvedPackageRoot`
+- **Release note:** Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG. They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist. The package now resolves to `dist/index.js` of the vendored package root, as it does in Pi, and that root's `dist/cli.js` starts PiG with the arguments it is given, as `process.execPath process.argv[1]` does.
 
 ### BF-d983b74
 
