@@ -269,8 +269,8 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		if err := aborting.wait(t); err != nil {
 			t.Fatal(err)
 		}
-		// Cancellation is checked when a job starts: the submit touches nothing the mark writes, so it starts before the
-		// mark is published and lands. The mark's cascade then aborts the run it started in the owned conversation.
+		// Cancellation is checked when a job starts: the submit's job started, and passed its check, before the mark is
+		// published, so it lands. The mark's cascade then aborts the run it started in the owned conversation.
 		var late submitted
 		select {
 		case late = <-submitting:
