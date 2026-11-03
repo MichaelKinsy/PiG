@@ -38,7 +38,7 @@ pig --mode rpc --listen /run/user/1000/pig.sock [--model <provider/model>] [opti
 - The server ignores its own standard input and runs until a termination signal. The signal shuts every live session down, then PiG exits with `128 +` the signal number.
 - Every session has the server's working directory, agent directory, flags, model and tool selection. Start another server for a different working directory.
 - The socket path must not exist. PiG creates the socket with mode 0600 and removes it at exit. It does not remove a path it did not create.
-- Sessions that load the same extensions share the extension processes. Each session still has its own extension instance, registration, replicated state and events. Module-level state is shared with the other sessions' instances in the same process: an extension that keeps a client, a cache or a timer in a module variable, in `process.env` or in `globalThis` sees the other sessions' writes. Only state kept in the factory closure or in the instance is per session. A `/reload` from one connection re-evaluates edited modules for the next generation of every session.
+- Sessions that load the same extensions share the extension processes. Each session still has its own extension instance, registration, replicated state and events. Module-level state is shared with the other sessions' instances in the same process: an extension that keeps a client, a cache or a timer in a module variable, in `process.env` or in `globalThis` sees the other sessions' writes. Exact standalone extensions and quarantined cells keep a process of their own, so their module-level state stays per session. Only state kept in the factory closure or in the instance is per session. A `/reload` from one connection re-evaluates edited modules for the next generation of every session.
 - `SIGINT` (Ctrl+C), `SIGTERM` and `SIGHUP` end the server as described above, and a further signal during the shutdown terminates the extension processes and exits at once. On Windows only the console-close events and Ctrl+C reach the server.
 - A crash or a kill leaves the socket file behind, and the next start refuses the path as existing until you delete it by hand. Mode 0600 applies on Unix only; on Windows the socket's access follows the permissions of its directory.
 
@@ -59,9 +59,13 @@ prompt(fa, "Name one prime number.")
 prompt(fb, "Name one even number.")
 for f in (fa, fb):
     for line in f:
-        if json.loads(line).get("type") == "agent_settled":
-            break
-a.close(); b.close()
+        r = json.loads(line)
+        if r.get("type") == "agent_settled":
+            break  # the run ended
+        if r.get("type") == "response" and r.get("command") == "prompt" and (not r.get("success") or r["data"].get("disposition") == "handled"):
+            break  # refused (no model, bad auth), or handled without a run: no agent_settled follows
+for s, f in ((a, fa), (b, fb)):
+    f.close(); s.close()
 ```
 
 ## Framing
