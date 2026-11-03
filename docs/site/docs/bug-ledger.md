@@ -15927,9 +15927,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `a967e74352` (2026-11-03)
-- **Tests:** None recorded.
-- **Release note:** A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs). It is now built whole before it is attached and fires at most once, as Node's `once` does. An upgrade whose router changed between its last check and its keep was also never ended when its host, relay or socket handler had left in that window (the peer's connection stayed open, seen as a 30 s wait in a soak); it is now checked against the newest router once kept.
+- **Fix commits:** `a967e74352` (2026-11-03), `cc090466aa` (2026-11-03), `f75fc15cac` (2026-11-03)
+- **Tests:** `chord/nextnode/http/review_test.go::TestReviewAOnceListenerRunsOnceUnderAReentrantEmitAndLeavesBeforeItsFunctionRuns`, `chord/nextnode/http/review_test.go::TestReviewARouterChangeBetweenAPluginSocketUpgradesCheckAndItsKeepStillEndsTheConnection`, `chord/nextnode/http/review_test.go::TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits`
+- **Release note:** A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs). It is now built whole before it is attached and fires at most once, as Node's `once` does. An upgrade whose router changed between its last check and its keep was also never ended when its host, relay or socket handler had left in that window (the peer's connection stayed open, seen as a 30 s wait in a soak); a revoke now ends only a connection whose upgrade checked before that revoke's router was delivered, and a connection kept after a later delivery is checked against the newest router, so a lagging revoke against an older router no longer ends a connection the newest one admits.
 
 ### BF-a9757c8
 
