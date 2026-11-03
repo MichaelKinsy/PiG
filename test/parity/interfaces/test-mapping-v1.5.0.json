@@ -2037,8 +2037,12 @@
     },
     {
       "path": "packages/chord/test/boundary.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c62752eb8e2a5410af29cb656ec793cf8f2a93a4b0e84a06aae9c673b4fcfcab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c62752eb8e2a5410af29cb656ec793cf8f2a93a4b0e84a06aae9c673b4fcfcab",
+      "evidence": [
+        "chord/host/boundary_upstream_test.go#TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord"
+      ],
+      "rationale": "The one case, with pi-telemetry (the dependency of Context.telemetry) allowed as upstream 1402973a does: the Go test accepts the telemetry package as the only Pi-package dependency of chord and rejects any other. Pi v1.5.0 adds pi-schema to the allowed Pi packages (a leaf, decision \"A schema package beneath pi-ai and Chord\"): the Go test accepts the schema package (and its ecmaregex helper) beside telemetry and rejects any other."
     },
     {
       "path": "packages/chord/test/cluster.test.ts",
@@ -3739,16 +3743,14 @@
     },
     {
       "path": "packages/chord/test/sqlite/cloudflare.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:0df03ae98b7f79e3af15f8f1eb6f839b5c34ec2bde550739abcc8b1f9070d61a",
       "evidence": [
         "chord/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteDriver",
-        "chord/sqlite/cloudflare/transaction_outcome_test.go#TestDurableObjectSqliteTransactionOutcome"
+        "chord/sqlite/cloudflare/transaction_outcome_test.go#TestDurableObjectSqliteTransactionOutcome",
+        "chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage"
       ],
-      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported, lane D0) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store (lane D3): pending there.",
-      "missingCases": [
-        "the outcome of a transaction (slice 6b D4) › a store on it tells a CHECK refusal by its message, its error having no extended code"
-      ]
+      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported, lane D0) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store (lane D3): pending there. Pi v1.5.0 adds the case 'a store on it tells a CHECK refusal by its message, its error having no extended code': the Go subtest of that name in TestStoreOnDurableObjectTellsCheckByMessage opens a store over a message-only storage, refuses an insert violating a CHECK, and expects refusal kind check and a working store afterwards."
     },
     {
       "path": "packages/chord/test/sqlite/migrations.test.ts",
@@ -3818,8 +3820,18 @@
     },
     {
       "path": "packages/chord/test/state.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0a4eb9983c5dd97c900847aace4b7b63ea7600a402e142d15ff660dfc7554818"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0a4eb9983c5dd97c900847aace4b7b63ea7600a402e142d15ff660dfc7554818",
+      "evidence": [
+        "chord/host/state_upstream_test.go#TestStatePublishesSnapshotsThenExactOpsDerivationsFollow",
+        "chord/host/state_upstream_test.go#TestStateSupportsPrimitiveCellsAndValueReturningChanges",
+        "chord/host/state_upstream_test.go#TestStateRejectsAReturnedValueThatDoesNotFitTheSchemaEvenOutsideDevMode",
+        "chord/host/state_upstream_test.go#TestStateValidatesInitialValuesAlwaysAndWritesOnlyInDevMode",
+        "chord/host/state_upstream_test.go#TestStateRejectsWritesFromInsideAFactoryAndPlaceholderUseBeforeActivation",
+        "chord/host/state_upstream_test.go#TestStateListenersRunEachEventInAFreshRootTasksGetAnAbortableCtx",
+        "chord/host/state_upstream_test.go#TestStateReEntrantWritesPublishInAdoptionOrderDerivationsNeverGoStale"
+      ],
+      "rationale": "All seven cases with the b45e0ebc change: a listener added while loading gets its snapshot once the reference is live. Pi v1.5.0 only moves the schemas from typebox to pi-schema's open objects (obj(..., { open: true })); the Go test's object schemas (tObject) are open JSON Schema objects, so the seven cases keep the same inputs and expected results."
     },
     {
       "path": "packages/chord/test/telemetry-sqlite-store.test.ts",
@@ -8799,18 +8811,32 @@
     },
     {
       "path": "packages/durable/test/sqlite-cloudflare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ff0cc7b2736162ac93808939f23959c0847d5a6ea4d229b00617e906647ae21b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ff0cc7b2736162ac93808939f23959c0847d5a6ea4d229b00617e906647ae21b",
+      "evidence": [
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectStorageConformance",
+        "durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter"
+      ],
+      "rationale": "At Pi c268154c the file keeps the storage cases on the Durable Object adapter (unprefixed by default, prefixed pi tables beside host tables, prefixes isolated on one object, invalid and reserved prefixes rejected) and the conformance suite; its driver cases moved to chord/test/sqlite/cloudflare.test.ts. Pi f75b3240ab: the default schema is at version 2 (:18, asserted). Pi v1.5.0 only routes the commits through the commitWrites helper (src/testing/commit-writes.ts), which the Go test already calls as durabletest.CommitWrites."
     },
     {
       "path": "packages/durable/test/sqlite-facade.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e4f4d1180663100314b89e7ca77c6ca543cb1fa082093886e9269aecddc42a70"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e4f4d1180663100314b89e7ca77c6ca543cb1fa082093886e9269aecddc42a70",
+      "evidence": [
+        "durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement",
+        "durable/storage/sqlite/node/sqlite_facade_test.go#TestDurableReExportsTheChordDriver"
+      ],
+      "rationale": "At Pi c268154c the file keeps the storage cases (statements prepared once per connection, storage commits read in call order, admitted reads finishing before close, async settlement adopting IDs only after success, a document read from one committed state) as subtests of TestPortableSQLiteFacadeSettlement, and adds the re-export identity case as TestDurableReExportsTheChordDriver; its driver cases moved to chord/test/sqlite/node.test.ts. Pi v1.5.0 routes the commits through commitWrites (durabletest.CommitWrites in Go) and forwards runCounted in the controlled-settlement database (the Go controlledSettlementDatabase embeds the node database, so RunCounted is forwarded)."
     },
     {
       "path": "packages/durable/test/sqlite-migrations.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a1a654e68924bf36e436b25cf02f3c3206b1c9a4d0c76449f5eea3cd6223c8fa"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a1a654e68924bf36e436b25cf02f3c3206b1c9a4d0c76449f5eea3cd6223c8fa",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_migrations_test.go#TestDurableSQLiteMigrations"
+      ],
+      "rationale": "At Pi c268154c the file keeps the durable schema cases (current schema applied repeatedly, a newer database rejected, a failed migration rolled back with stored data kept for the retry); the bootstrap rollback case moved to chord/test/sqlite/migrations.test.ts. Pi f75b3240ab adds :47 'migrates a version 1 database to store sleeping tasks, keeping its tasks and indexes', a subtest of TestDurableSQLiteMigrations. Pi v1.5.0 only routes the commit of the rollback case through commitWrites (durabletest.CommitWrites in Go)."
     },
     {
       "path": "packages/durable/test/sqlite-storage.test.ts",
