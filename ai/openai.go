@@ -1290,16 +1290,18 @@ func (p *openAIProvider) convertTools(tools []ToolSchema) ([]oaiTool, error) {
 			Parameters:     t.Parameters,
 			parameterOrder: t.parameterOrder,
 		}
+		// Upstream resolves strict sampling for every tool, so strict "require" fails on
+		// a provider without strict mode; strict is only sent when supported.
+		strict, err := resolveJSONSchemaStrictSampling(t, supportsStrict, nil)
+		if err != nil {
+			return nil, err
+		}
+		toolParameters, err := getJSONSchemaToolParameters(t, strict)
+		if err != nil {
+			return nil, err
+		}
+		fn.Parameters, fn.parameterOrder = toolParameters.Schema, toolParameters.order
 		if supportsStrict {
-			strict, err := resolveJSONSchemaStrictSampling(t, supportsStrict, nil)
-			if err != nil {
-				return nil, err
-			}
-			toolParameters, err := getJSONSchemaToolParameters(t, strict)
-			if err != nil {
-				return nil, err
-			}
-			fn.Parameters, fn.parameterOrder = toolParameters.Schema, toolParameters.order
 			v := strict != nil && *strict
 			fn.Strict = &v
 		}
