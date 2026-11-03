@@ -154,9 +154,15 @@ func recordCell(value any) (any, error) {
 // unquoteJS decodes a JSON string with JavaScript string semantics: a lone surrogate escape becomes its WTF-8 form.
 func unquoteJS(raw []byte, text *string) error { return sdkjson.Unmarshal(raw, text) }
 
+// storedRecord is a record type of the store's tables: what parseJSON decodes a cell into (a concrete set, so no decode targets an
+// interface tree).
+type storedRecord interface {
+	durable.DocumentRecord | durable.ConversationRecord | durable.EntryRecord | durable.SubmissionRecord | storedTask
+}
+
 // parseJSON parses a stored record cell into T, a JsonValue member holding the stored text's objects in order, as
 // JSON.parse gives Pi.
-func parseJSON[T any](text string) (T, error) {
+func parseJSON[T storedRecord](text string) (T, error) {
 	var value T
 	if err := sdkjson.Unmarshal([]byte(text), &value); err != nil {
 		return value, err

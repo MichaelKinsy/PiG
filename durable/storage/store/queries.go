@@ -149,7 +149,7 @@ func (queries *TableQueries) rowOf(row sqlite.SqliteRow, byID bool) (*RecordRow,
 }
 
 // recordOf is a row's record, read as its column's (version checked, migrated on access).
-func recordOf[T any](queries *TableQueries, row RecordRow, ctx context.Context) (T, error) {
+func recordOf[T storedRecord](queries *TableQueries, row RecordRow, ctx context.Context) (T, error) {
 	if queries.versioned == nil {
 		// The cell holds a record of this table the storage wrote; at version 1 it is that JSON (`OwnerTable.reader`).
 		return parseJSON[T](row.Record)
@@ -168,7 +168,7 @@ func recordOf[T any](queries *TableQueries, row RecordRow, ctx context.Context) 
 }
 
 // appendRecords appends the records of rows to into, in order, each read as recordOf reads it.
-func appendRecords[T any](queries *TableQueries, rows []RecordRow, into []T, ctx context.Context) ([]T, error) {
+func appendRecords[T storedRecord](queries *TableQueries, rows []RecordRow, into []T, ctx context.Context) ([]T, error) {
 	for _, row := range rows {
 		value, err := recordOf[T](queries, row, ctx)
 		if err != nil {

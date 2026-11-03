@@ -558,7 +558,7 @@ func reading[T any](storage *StoreStorage, ctx context.Context, read func(execut
 }
 
 // recordPointer is the record of row as a pointer.
-func recordPointer[T any](queries *TableQueries, row RecordRow, ctx context.Context) (*T, error) {
+func recordPointer[T storedRecord](queries *TableQueries, row RecordRow, ctx context.Context) (*T, error) {
 	value, err := recordOf[T](queries, row, ctx)
 	if err != nil {
 		return nil, err
@@ -567,7 +567,7 @@ func recordPointer[T any](queries *TableQueries, row RecordRow, ctx context.Cont
 }
 
 // byID is the record with id in queries' table; nil when absent.
-func byID[T any](storage *StoreStorage, ctx context.Context, queries *TableQueries, id int64) (*T, error) {
+func byID[T storedRecord](storage *StoreStorage, ctx context.Context, queries *TableQueries, id int64) (*T, error) {
 	return reading(storage, ctx, func(executor sqlite.SqliteExecutor) (*T, error) {
 		row, err := queries.ByID(executor, id)
 		if err != nil || row == nil {
@@ -578,7 +578,7 @@ func byID[T any](storage *StoreStorage, ctx context.Context, queries *TableQueri
 }
 
 // scanTable is a page of a table scan: up to limit records of queries' table whose conditions hold, from start.
-func scanTable[T any](storage *StoreStorage, ctx context.Context, queries *TableQueries, conditions []Condition, start scan.Start, limit int, id func(T) int64) (durable.Page[T, durable.Cursor], error) {
+func scanTable[T storedRecord](storage *StoreStorage, ctx context.Context, queries *TableQueries, conditions []Condition, start scan.Start, limit int, id func(T) int64) (durable.Page[T, durable.Cursor], error) {
 	var none durable.Page[T, durable.Cursor]
 	rows, err := chordstore.Read(storage.store, func(executor sqlite.SqliteExecutor) ([]RecordRow, error) {
 		return queries.Select(executor, conditions, orderOf(start.Order), int64(limit)+1)
