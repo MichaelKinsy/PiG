@@ -918,3 +918,36 @@ func TestReviewTheDeliveriesKeptForUpgradesAreBoundedByTheOnesInFlight(t *testin
 		t.Fatalf("after %d admit, deliver, settle rounds the history holds %d and %d are in flight, want 1 and 0", deliveries, len(u.history), len(u.inflight))
 	}
 }
+
+// The router an upgrade's check read can be composed and still undelivered when the connection is kept (the check composed it
+// on read). The deliveries composed before it are older than the check (Pi's revoke of them ran before it): they judge
+// nothing. One composed after it judges the connection, whether or not the router the check read is ever delivered.
+func TestReviewAnUpgradeWhoseCheckReadAnUndeliveredRouterIsJudgedOnlyByLaterCompositions(t *testing.T) {
+	router := func(order uint64, host ...string) *Router {
+		return &Router{Hosts: NewStringSet(host...), SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
+	}
+	for _, laterGone := range []bool{false, true} {
+		name := "only an older composition was delivered since the count"
+		if laterGone {
+			name = "a later composition without the host was delivered before the keep"
+		}
+		t.Run(name, func(t *testing.T) {
+			u := NewUpgrades()
+			u.delivered(router(1, "t.example"))
+			seen := u.admitting()
+			defer u.settled(seen)
+			u.delivered(router(2))
+			read := router(3, "t.example")
+			if laterGone {
+				u.delivered(router(4))
+			}
+			socket := serverSideSocket(t)
+			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, seen: seen}
+			u.keep(connection, read)
+			u.recheck(connection)
+			if ended := socket.ReadyState() == WebSocketClosedState; ended != laterGone {
+				t.Fatalf("the connection ended = %v, want %v", ended, laterGone)
+			}
+		})
+	}
+}
