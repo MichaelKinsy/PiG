@@ -631,6 +631,13 @@
    "new": "getenv(\"WSLENV\") == \"\""
   }
  ],
+ "packages/evals/evals/documentation-audit.eval.ts": [
+  {
+   "file": "internal/evals/evalsuites/audit.go",
+   "old": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"match\")",
+   "new": "chordjson.ObjectOf(\"type\", \"string\", \"const\", \"mutant\")"
+  }
+ ],
  "packages/tui/src/word-navigation.ts": [
   {
    "file": "tui/word_navigation.go",
