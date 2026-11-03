@@ -8228,6 +8228,50 @@
       ]
     },
     {
+      "id": "BF-3f82770",
+      "title": "A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no…",
+      "symptom": "A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3f8277020b",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/signal_restore_write_error_test.go::TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock"
+      ]
+    },
+    {
+      "id": "BF-3f82770-2",
+      "title": "On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and…",
+      "symptom": "On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and `ERROR_NOT_CONNECTED` on the terminal now exit 129 as Pi does, instead of a crash report and exit 1 (#397).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and `ERROR_NOT_CONNECTED` on the terminal now exit 129 as Pi does, instead of a crash report and exit 1 (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3f8277020b",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/signal_restore_write_error_test.go::TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock"
+      ]
+    },
+    {
       "id": "BF-3fa6e63",
       "title": "MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large…",
       "symptom": "MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large drive) kept their tools out of the first prompt.",

@@ -299,6 +299,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-3ee123c](#bf-3ee123c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | 0.5.2 |
 | [BF-3f46dee](#bf-3f46dee) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-3f82770](#bf-3f82770) | A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no… | PiG's own defect | All platforms | Unreleased |
+| [BF-3f82770-2](#bf-3f82770-2) | On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and… | PiG's own defect | Windows | Unreleased |
 | [BF-3fa6e63](#bf-3fa6e63) | MCP servers with resources registered no tools until every resource was listed, so a slow listing (a large… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fbdfd2](#bf-3fbdfd2) | A configured number in settings text prints as JavaScript's `String(number)`: `-0` is `0`, and a magnitude of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | Unreleased |
@@ -5433,6 +5435,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2d23f814c2` (2026-10-28), `3f46dee992` (2026-10-28)
 - **Tests:** `internal/codingagent/llama/client_http_oracle_test.go::TestLlamaClientRequestsMatchPi`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandAgainstLlamaSwapExplainsTheMissingEndpoints`, `internal/codingagent/llama/llamaswap_test.go::TestLlamaCommandKeepsPisTextForARouter404`, `internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadKeepPisTextForA404ThatIsNotLlamaSwap`, `internal/codingagent/llama/llamaswap_test.go::TestLoadAndUnloadRecognizeLlamaSwapByItsErrorEnvelope`
 - **Release note:** `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload a model (#380). llama-swap lists its models like a llama.cpp router but has no load or unload endpoint, because it loads a model when a request names it, and Pi shows the same 404. PiG now recognises llama-swap (its error envelope, or a `GET /running` that answers like it) and says to add it to `models.json` as an `openai-completions` provider and pick models with `/model`; a 404 from a real llama.cpp router keeps Pi's text (D212). The llama.cpp docs page has a new llama-swap section with the `models.json` setup.
+
+### BF-3f82770
+
+**A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3f8277020b` (2026-11-03)
+- **Tests:** `tui/signal_restore_write_error_test.go::TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock`
+- **Release note:** A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).
+
+### BF-3f82770-2
+
+**On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and `ERROR_NOT_CONNECTED` on the terminal now exit 129 as Pi does, instead of a crash report and exit 1 (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `3f8277020b` (2026-11-03)
+- **Tests:** `tui/signal_restore_write_error_test.go::TestSignalRestoreFromAWriteErrorHandlerDoesNotWaitForTheOutputLock`
+- **Release note:** On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and `ERROR_NOT_CONNECTED` on the terminal now exit 129 as Pi does, instead of a crash report and exit 1 (#397).
 
 ### BF-3fa6e63
 
