@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,30 +23,137 @@ import (
 //
 // GetSize, GetState and IsTerminal are queries that never sleep and so never see EINTR; they are not audited.
 func TestTerminalSyscallsThatCanSleepRetryEINTR(t *testing.T) {
-	dirs := []string{".", "../internal/codingagent", "../coding/cli"}
-	fset := token.NewFileSet()
-	var findings []string
-	for _, dir := range dirs {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			t.Fatal(err)
+	findings, audited, err := auditEINTRTree("..", eintrAuditExcluded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rel, reason := range eintrAuditExcluded {
+		if reason == "" {
+			t.Errorf("%s is excluded from the EINTR audit without a stated reason", rel)
 		}
-		for _, entry := range entries {
-			name := entry.Name()
-			if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-				continue
-			}
-			path := filepath.Join(dir, name)
-			file, err := parser.ParseFile(fset, path, nil, 0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			findings = append(findings, auditEINTR(fset, path, file)...)
-		}
+	}
+	if audited == 0 {
+		t.Fatal("the audit found no file that touches the user's terminal; its file selection is broken")
 	}
 	if len(findings) > 0 {
 		t.Fatalf("terminal syscalls that can be interrupted by a stop and continue without a retry:\n%s", strings.Join(findings, "\n"))
 	}
+}
+
+// auditEINTRTree audits every non-test Go file under root that touches the user's terminal, except the files in excluded (slash paths
+// relative to root). It returns the findings and how many files it audited.
+func auditEINTRTree(root string, excluded map[string]string) (findings []string, audited int, err error) {
+	fset := token.NewFileSet()
+	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			switch entry.Name() {
+			case ".git", "node_modules", ".upstream", "vendor", "testdata":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if _, skip := excluded[filepath.ToSlash(rel)]; skip {
+			return nil
+		}
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			return err
+		}
+		if !touchesUserTerminal(file) {
+			return nil
+		}
+		audited++
+		findings = append(findings, auditEINTR(fset, path, file)...)
+		return nil
+	})
+	return findings, audited, err
+}
+
+// A syscall outside the directories the audit first covered must fail it too: a planted file under an unrelated path, and the same file with the
+// retry (clean), and a file that never names a stream (not audited).
+func TestEINTRAuditCoversTheWholeRepository(t *testing.T) {
+	const unguarded = "package p\nimport (\n\t\"os\"\n\t\"golang.org/x/sys/unix\"\n)\nfunc f() (int, error) {\n\tfds := []unix.PollFd{{Fd: int32(os.Stdin.Fd()), Events: unix.POLLIN}}\n\treturn unix.Poll(fds, -1)\n}\n"
+	const guarded = "package p\nimport (\n\t\"os\"\n\t\"golang.org/x/sys/unix\"\n)\nfunc isEINTR(error) bool { return false }\nfunc f() (int, error) {\n\tfds := []unix.PollFd{{Fd: int32(os.Stdin.Fd()), Events: unix.POLLIN}}\n\tfor {\n\t\tn, err := unix.Poll(fds, -1)\n\t\tif isEINTR(err) {\n\t\t\tcontinue\n\t\t}\n\t\treturn n, err\n\t}\n}\n"
+	const unrelated = "package p\nimport \"golang.org/x/sys/unix\"\nfunc f() (int, error) { return unix.Poll(nil, 0) }\n"
+	for _, tc := range []struct {
+		name, path, source string
+		excluded           map[string]string
+		audited, findings  int
+	}{
+		{"mutant: unguarded Poll on stdin far from the old directories", "extensions/host/deep/poll.go", unguarded, nil, 1, 1},
+		{"the same call with a retry", "extensions/host/deep/poll.go", guarded, nil, 1, 0},
+		{"a file that names no stream or descriptor", "extensions/host/deep/poll.go", unrelated, nil, 0, 0},
+		{"mutant excluded by a stated path", "env/daemon/pty_unix.go", unguarded, map[string]string{"env/daemon/pty_unix.go": "a pty PiG owns"}, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			full := filepath.Join(root, filepath.FromSlash(tc.path))
+			if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(full, []byte(tc.source), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			findings, audited, err := auditEINTRTree(root, tc.excluded)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if audited != tc.audited || len(findings) != tc.findings {
+				t.Fatalf("audited %d files with findings %v, want %d files and %d findings", audited, findings, tc.audited, tc.findings)
+			}
+		})
+	}
+}
+
+// eintrAuditExcluded names the files that import x/term or x/sys/unix and name a standard stream or a tty descriptor, and still are not
+// the user's terminal, with the reason. Each entry must say why; an empty reason fails the test.
+var eintrAuditExcluded = map[string]string{
+	"env/daemon/pty_unix.go":  "ioctls and reads on a pty master the environment daemon allocated for its own child; a stop and continue of the user's terminal never interrupts them",
+	"env/daemon/pty_linux.go": "ioctls (TIOCGPTN, TIOCSPTLCK) on a pty master the environment daemon allocated for its own child, not the user's terminal",
+}
+
+// touchesUserTerminal reports whether file imports x/term or x/sys/unix and names a standard stream, a tty path or an Fd call: the files whose
+// syscalls can reach the user's terminal. A file that imports neither cannot issue the audited calls, and one that never names a stream or a
+// descriptor is working on something else (sockets, pipes it opened itself).
+func touchesUserTerminal(file *ast.File) bool {
+	imports := false
+	for _, spec := range file.Imports {
+		switch strings.Trim(spec.Path.Value, `"`) {
+		case "golang.org/x/term", "golang.org/x/sys/unix":
+			imports = true
+		}
+	}
+	if !imports {
+		return false
+	}
+	touches := false
+	ast.Inspect(file, func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.SelectorExpr:
+			if x, ok := n.X.(*ast.Ident); ok && x.Name == "os" && (n.Sel.Name == "Stdin" || n.Sel.Name == "Stdout" || n.Sel.Name == "Stderr") {
+				touches = true
+			}
+			if n.Sel.Name == "Fd" {
+				touches = true
+			}
+		case *ast.BasicLit:
+			if n.Kind == token.STRING && (strings.Contains(n.Value, "/dev/tty") || strings.Contains(n.Value, "/dev/ptmx")) {
+				touches = true
+			}
+		}
+		return !touches
+	})
+	return touches
 }
 
 func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
