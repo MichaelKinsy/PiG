@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -222,7 +223,7 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{ownCall("delegate", map[string]any{}, "c1")})
 		// Holds the storage call that writes the abort mark, so the mark is published only once the test lets it.
-		store := &holdMarkStorage{MemoryStorage: storage.NewMemoryStorage(), stored: deferred()}
+		store := &holdMarkStorage{MemoryStorage: storage.NewMemoryStorage(), entered: deferred(), stored: deferred()}
 		harness, root := openChat(t, store, setup)
 		ownSubmit(t, root, ownInput("go"))
 		eventually(t, readyValue.isSet)
@@ -258,14 +259,18 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		if err := holding.wait(t); err != nil {
 			t.Fatal(err)
 		}
-		// The submit starts while the mark's storage call is in flight.
-		flush()
+		// The submit starts while the mark's storage call is in flight: once the call is held, the submit's job waits for the
+		// mark's publication, which it does only after its start check passed. Nothing else takes the task's gate meanwhile.
+		if err := store.entered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		eventually(t, func() bool { return line.GateTouches(session.TaskKey(info.taskId)) > 0 })
 		store.stored.resolve()
 		if err := aborting.wait(t); err != nil {
 			t.Fatal(err)
 		}
-		// Cancellation is checked when a job starts: the submit touches nothing the mark writes, so it starts before the
-		// mark is published and lands. The mark's cascade then aborts the run it started in the owned conversation.
+		// Cancellation is checked when a job starts: the submit's job started, and passed its check, before the mark is
+		// published, so it lands. The mark's cascade then aborts the run it started in the owned conversation.
 		var late submitted
 		select {
 		case late = <-submitting:
@@ -749,12 +754,14 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 	})
 }
 
-// holdMarkStorage holds the storage call that writes the abort mark of one task until stored resolves.
+// holdMarkStorage holds the storage call that writes the abort mark of one task until stored resolves; entered resolves
+// once the call is held.
 type holdMarkStorage struct {
 	*storage.MemoryStorage
-	mu     sync.Mutex
-	target durable.TaskId
-	stored *deferredGate
+	mu      sync.Mutex
+	target  durable.TaskId
+	entered *deferredGate
+	stored  *deferredGate
 }
 
 func (store *holdMarkStorage) hold(id durable.TaskId) {
@@ -775,6 +782,7 @@ func (store *holdMarkStorage) Commit(ctx context.Context, batches [][]durable.St
 	}
 	store.mu.Unlock()
 	if marks {
+		store.entered.resolve()
 		_ = store.stored.wait(testContext)
 	}
 	return store.MemoryStorage.Commit(ctx, batches, receive)
