@@ -852,12 +852,14 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 					listSpaceEnd = len(out)
 				}
 			}
-			if lazyRun := markdownTrailingLazyRun(quoted, lazyLines); !bordered && lazyRun > 0 && markdownLazyLinesRelexList(quoted, lazyRun, quoteListEnd) && j < len(lines) && lines[j] == "" {
-				// Lazy lines follow a list: marked's blockquote tokenizer lexes the list again with them and its raw ends in a newline, so with a single blank line after the quote the text that follows (or the end of the text) has no space token. A quote with a border adds a blank row of its own when a block follows, so only the narrow quote shows the difference.
-				j++
-				if j == len(lines)-1 && lines[j] == "" {
-					j++
+			if lazyRun := markdownTrailingLazyRun(quoted, lazyLines); lazyRun > 0 && markdownLazyLinesRelexList(quoted, lazyRun, quoteListEnd) && j < len(lines) && lines[j] == "" {
+				// Lazy lines follow a list: marked's blockquote tokenizer lexes the list again with them and its raw ends in a newline, so with a single blank line after the quote the end of the text has no space token, and neither has the text that follows a quote too narrow for a border (a quote with a border adds a blank row of its own when a block follows).
+				switch {
+				case j == len(lines)-2 && lines[j+1] == "":
+					j += 2
 					listSpaceEnd = len(out)
+				case !bordered:
+					j++
 				}
 			}
 			if bordered && !markedBlankLine(spacingNextLine(j-1)) {
