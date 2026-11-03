@@ -28,8 +28,8 @@ import os
 import re
 import shlex
 import subprocess
-import tarfile
 import sys
+import tarfile
 import tomllib
 from pathlib import Path
 
