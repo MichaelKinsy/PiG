@@ -951,3 +951,18 @@ func TestReviewAnUpgradeWhoseCheckReadAnUndeliveredRouterIsJudgedOnlyByLaterComp
 		})
 	}
 }
+
+// Every upgrade that was in flight is settled once it is over, handed out or refused, so the deliveries kept for it are
+// released (the component's own `admitting` and `settled`, not the Upgrades' alone).
+func TestReviewAnUpgradeIsSettledWhetherItWasHandedOutOrRefused(t *testing.T) {
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	server := serving(t, []plugin{sockets}, servedOptions{})
+	mustRefused(t, server.port, "/nowhere", owner, 404)
+	socket := mustSocketTo(t, server.port, "/echo", owner)
+	t.Cleanup(func() { socket.Close(0, "") })
+	eventually(t, "every upgrade settled and its deliveries released", func() bool {
+		server.http.upgrades.mu.Lock()
+		defer server.http.upgrades.mu.Unlock()
+		return len(server.http.upgrades.inflight) == 0 && len(server.http.upgrades.history) == 1
+	})
+}
