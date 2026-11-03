@@ -220,14 +220,12 @@ func TestStoreStorageCommitsInsideTheHostsBatch(t *testing.T) {
 		var group sync.WaitGroup
 		committed := make(chan error, 2)
 		for _, kind := range []string{"a", "b"} {
-			group.Add(1)
-			go func() {
-				defer group.Done()
+			group.Go(func() {
 				_, err := kernel.Commit(background, func(tx durable.Tx) (any, error) {
 					return tx.AppendEntry(durable.ROOT_CONVERSATION_ID, durable.EntryDraft{Kind: kind})
 				})
 				committed <- err
-			}()
+			})
 		}
 		group.Wait()
 		close(committed)
