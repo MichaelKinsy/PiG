@@ -6,11 +6,13 @@ import (
 	"encoding/binary"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const maxRenderWriteChars = 1024 * 1024
 
-// boundedTerminalWriter bounds each buffered render write in UTF-16 units, the upstream JavaScript string unit. A Unicode code point is never split across writes.
+// boundedTerminalWriter bounds each buffered render write in UTF-16 units, the upstream JavaScript string unit. A Unicode code point is never split across writes, and an unpaired surrogate (three WTF-8 bytes) counts as one unit.
 type boundedTerminalWriter struct {
 	buffer      strings.Builder
 	bufferChars int
@@ -47,7 +49,7 @@ func renderPrefixWithinUTF16(value string, capacity int) (end, units int) {
 		}
 		size, cost := 1, 1
 		if value[end] >= utf8.RuneSelf {
-			r, n := utf8.DecodeRuneInString(value[end:])
+			r, n := jsstring.DecodeRuneInString(value[end:])
 			size = n
 			if r > 0xffff {
 				cost = 2
