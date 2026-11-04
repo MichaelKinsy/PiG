@@ -371,6 +371,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-495f017-2](#bf-495f017-2) | A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0bc3d](#bf-4a0bc3d) | The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
+| [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4b9f5f8](#bf-4b9f5f8) | `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer | PiG's own defect | All platforms | Unreleased |
@@ -6440,6 +6441,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `4a0d619a07` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-4a70ed5
+
+**`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted.
+- **Root cause:** a Host with two or more extension connections, packed or isolated, synced them concurrently against one run numbering, and each sync read the run before it took the numbering's lock, so a sync that read the end of a run could apply it after another connection's sync numbered the next run.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4a70ed5306` (2026-11-03), `a3a71c520c` (2026-11-03)
+- **Tests:** `coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale`, `test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK`
+- **Release note:** `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every connection, and a connection's sync that had read the end of the previous run could apply that older state after another connection's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. A Host with one extension connection never raced, and a Node runtime aborts the signal it holds itself.
 
 ### BF-4ac21c8
 

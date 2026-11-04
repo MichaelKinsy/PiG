@@ -10376,6 +10376,33 @@
       "tests": []
     },
     {
+      "id": "BF-4a70ed5",
+      "title": "`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell…",
+      "symptom": "`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted.",
+      "rootCause": "a Host with two or more extension connections, packed or isolated, synced them concurrently against one run numbering, and each sync read the run before it took the numbering's lock, so a sync that read the end of a run could apply it after another connection's sync numbered the next run.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every connection, and a connection's sync that had read the end of the previous run could apply that older state after another connection's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. A Host with one extension connection never raced, and a Node runtime aborts the signal it holds itself.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a70ed5306",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "a3a71c520c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale",
+        "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK"
+      ]
+    },
+    {
       "id": "BF-4ac21c8",
       "title": "fix(jsloop): run a tick whose tool call already ended at once, though no wait is open",
       "symptom": "fix(jsloop): run a tick whose tool call already ended at once, though no wait is open",
