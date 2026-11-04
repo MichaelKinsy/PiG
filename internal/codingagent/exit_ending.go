@@ -33,6 +33,7 @@ import (
 
 // hangupGrace bounds how long a dead-terminal exit waits for the kernel's SIGHUP to reach the signal goroutine. The
 // signal normally arrives within microseconds; this bound is a liveness backstop, not a delay the exit relies on.
+// pig additive (D102): Pi has no such wait; its single thread orders the signal and the write error itself.
 const hangupGrace = 500 * time.Millisecond
 
 // processEnding is the process's single exit record. claimed closes when a path owns the record, flushed when its line
