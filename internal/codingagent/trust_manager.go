@@ -306,6 +306,9 @@ func (s *ProjectTrustStore) GetEntry(cwd string) (entry *ProjectTrustStoreEntry,
 		if readErr != nil {
 			return readErr
 		}
+		if len(data) == 0 {
+			return nil // nothing is saved, so no path has a decision, and the realpath of cwd would only name the keys to look for
+		}
 		for current := normalizeTrustCwd(cwd); ; current = filepath.Dir(current) {
 			for _, key := range trustFileKeys(data, current) {
 				if value := data[key]; value != nil {
