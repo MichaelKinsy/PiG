@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -459,6 +460,15 @@ func TestDetectRegisteredContributedSourceKind(t *testing.T) {
 	}
 }
 
+// localIdentityPath is the path part of a local package identity: Pi's getPathComparisonKey (packages/coding-agent/src/utils/paths.ts, used by
+// getPackageIdentity in package-manager.ts) lower-cases the resolved path on win32 and leaves it as is elsewhere.
+func localIdentityPath(path string) string {
+	if runtime.GOOS == "windows" {
+		return strings.ToLower(path)
+	}
+	return path
+}
+
 func TestPackageSourceIdentityUsesSharedTypedContract(t *testing.T) {
 	base := t.TempDir()
 	cases := []struct {
@@ -471,7 +481,7 @@ func TestPackageSourceIdentityUsesSharedTypedContract(t *testing.T) {
 		{"https://github.com/acme/tools.git@v2", "git:github.com/acme/tools"},
 		{"git:https://github.com/acme/tools.git@v2#subdirectory=plugins%2Freview", "git:github.com/acme/tools#subdirectory=plugins/review"},
 		{"marketplace:example/tools", "marketplace:example/tools"},
-		{"./resources/tool", "local:" + filepath.Join(base, "resources", "tool")},
+		{"./resources/tool", "local:" + localIdentityPath(filepath.Join(base, "resources", "tool"))},
 	}
 	for _, tc := range cases {
 		if got := packagemanager.PackageSourceIdentity(base, tc.source); got != tc.want {

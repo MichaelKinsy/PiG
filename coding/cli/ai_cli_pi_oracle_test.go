@@ -10,11 +10,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -154,8 +156,10 @@ func runPiAICLI(t *testing.T, c aiCLICase) aiCLIOutcome {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// --import takes a module specifier, not a path: Node reads D:\... as a URL with scheme "d:" and refuses it, so it needs a file:// URL.
+	hooks := nodeurl.PathToFileURL(filepath.Join(testdata, "ai_cli_oracle_hooks.mjs"), runtime.GOOS == "windows")
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning",
-		"--import", filepath.Join(testdata, "ai_cli_oracle_hooks.mjs"),
+		"--import", hooks,
 		filepath.Join(root, ".upstream", "current", "packages", "ai", "src", "cli.ts"), "login", c.provider)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "PI_AI_CLI_PROVIDERS="+filepath.Join(testdata, "ai_cli_oracle_providers.mjs"))

@@ -421,9 +421,12 @@ func TestProjectConfigCyclesInheritedMissingMemberToUnload(t *testing.T) {
 func TestConfigItemKeyFoldsPathCasingOnWindows(t *testing.T) {
 	global := tui.ResourceItem{ResourceType: tui.ResourceSkills, Path: `C:\Users\Me\skills\demo\SKILL.md`}
 	project := tui.ResourceItem{ResourceType: tui.ResourceSkills, Path: `c:\users\me\skills\demo\skill.md`}
+	restore := resolvepath.OverridePlatform("linux")
 	if configItemKey(global) == configItemKey(project) {
+		restore()
 		t.Fatal("case-sensitive platform: two casings of one path share a key")
 	}
+	restore()
 	t.Cleanup(resolvepath.OverridePlatform("windows"))
 	if configItemKey(global) != configItemKey(project) {
 		t.Fatalf("Windows: keys %q and %q differ", configItemKey(global), configItemKey(project))
