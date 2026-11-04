@@ -30360,6 +30360,28 @@
       ]
     },
     {
+      "id": "BF-ad0c167",
+      "title": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and…",
+      "symptom": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero.",
+      "rootCause": "Pi's theme.bold, italic, underline, inverse and strikethrough are chalk calls, which return their text unchanged at chalk stdout color level 0 (CI=1, TERM=dumb, stdout not a terminal), while theme.fg writes escape sequences directly and still colors.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero. With `CI` set (outside a known CI service), `TERM=dumb` or stdout redirected, PiG kept drawing them while Pi 1.5.0 drew only the theme colors.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad0c1678f6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/chalk_modifiers_test.go::TestChalkModifiersOffDrawNoMarkdownStyles"
+      ]
+    },
+    {
       "id": "BF-ad49f9f",
       "title": "`pig status` no longer reports a shared extension name as an unhealthy duplicate",
       "symptom": "`pig status` no longer reports a shared extension name as an unhealthy duplicate.",

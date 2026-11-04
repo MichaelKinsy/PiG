@@ -292,7 +292,7 @@ func sessionFg(color, text string) string {
 	return color + text + tui.FgClose(color)
 }
 
-func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
+func sessionBold(text string) string { return tui.ChalkBold(text) }
 
 // CapturesViewportInput is session-selector.ts capturesViewportInput: the list takes the fullscreen viewport keys except while renaming.
 func (s *SessionSelectorComponent) CapturesViewportInput() bool { return !s.renameMode }

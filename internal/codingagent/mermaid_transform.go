@@ -288,7 +288,7 @@ func styleSpan(span mermaid.Span, theme *tui.Theme) string {
 	case mermaid.ClsEdgeLabel:
 		return theme.Fg("muted", span.Text)
 	case mermaid.ClsTitle:
-		return theme.Fg("accent", "\x1b[1m"+span.Text+tui.SGRBoldDimReset)
+		return theme.Fg("accent", tui.ChalkBold(span.Text))
 	}
 	return span.Text
 }

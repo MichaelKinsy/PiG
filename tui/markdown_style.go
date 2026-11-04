@@ -15,8 +15,8 @@ func markdownForeground(open, text string) string {
 	return open + text + FgClose(open)
 }
 func markdownDecoration(open, close, text string) string {
-	if text == "" {
-		return ""
+	if text == "" || chalkModifiersOff.Load() {
+		return text
 	}
 	return ansiSpan(open, close, text)
 }

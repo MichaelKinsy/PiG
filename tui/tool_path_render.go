@@ -80,6 +80,9 @@ func boldText(s string) string {
 	if s == "" {
 		return ""
 	}
+	if chalkModifiersOff.Load() {
+		return s
+	}
 	const open = "\x1b[1m"
 	s = strings.ReplaceAll(s, SGRBoldDimReset, open)
 	if strings.Contains(s, "\n") {

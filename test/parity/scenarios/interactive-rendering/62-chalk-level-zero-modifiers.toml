@@ -1,0 +1,39 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: Pi 1.5.0 theme.ts:314-331 draws theme.bold, italic, underline, inverse and strikethrough
+# through chalk, which returns its text unchanged at stdout color level 0; theme.fg writes its escape
+# sequences directly and still colors. markdown.ts:550-552 (heading bold/underline), :644 (quote italic),
+# :796 (link underline) and :1079 (table header bold) therefore draw only the theme colors.
+# CI=1 (not a known CI service) puts supports-color at level 0: the runner clears CI, so the scenario sets it after.
+# Probe: real Pi 1.5.0, resumed session with a Markdown reply, escape-preserving capture.
+name = "62-chalk-level-zero-modifiers"
+description = "With CI=1 (chalk level 0) Markdown headings, quotes, table headers and links draw no bold, italic or underline."
+covers = [
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "packages/tui/src/components/markdown.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "CI=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "CI=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/chalk-off-cwd"
+capture_start = "Chalk level zero"
+capture_end = "Chalk answer end"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Chalk Heading", "quoted line", "Read docs", "Chalk answer end"]
+escaped_output_equal = true
+runs = 3

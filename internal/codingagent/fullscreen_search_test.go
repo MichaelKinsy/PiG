@@ -102,6 +102,29 @@ func TestFullscreenTuiOptionsStyleIndicatorAndMatches(t *testing.T) {
 	}
 }
 
+// upstream tui-renderer.ts:27-29 builds the search styles with theme.underline,
+// theme.bold and theme.inverse, which are chalk calls: at chalk level 0 they
+// draw nothing while the searchMatch colors still apply.
+func TestFullscreenTuiOptionsSearchStylesFollowChalkLevel(t *testing.T) {
+	t.Cleanup(func() { tui.SetChalkModifiers(true) })
+	tui.SetChalkModifiers(false)
+	opts := fullscreenTuiOptions()
+	for name, got := range map[string]string{
+		"match":   opts.SearchMatchStyle("hit"),
+		"current": opts.SearchCurrentMatchStyle("hit"),
+		"button":  opts.SearchNavigationButtonStyle("↓", true),
+	} {
+		for _, code := range []string{"\x1b[1m", "\x1b[4m", "\x1b[7m"} {
+			if strings.Contains(got, code) {
+				t.Errorf("%s style at chalk level 0 holds %q: %q", name, code, got)
+			}
+		}
+	}
+	if bg := tui.ActiveTheme().GetBgAnsi("searchMatchBg"); bg != "" && !strings.Contains(opts.SearchMatchStyle("hit"), bg) {
+		t.Errorf("match style lost the searchMatchBg background at chalk level 0")
+	}
+}
+
 // TestReadClipboardTextCommandOrder ports upstream readClipboardText's Linux
 // command chain; macOS and Windows read only through the native helper.
 func TestReadClipboardTextCommandOrder(t *testing.T) {

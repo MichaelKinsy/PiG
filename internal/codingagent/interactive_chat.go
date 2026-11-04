@@ -266,7 +266,7 @@ func (m *InteractiveMode) addCacheMissNotice(notice string) {
 // theme.bold (chalk.bold) do: each closes only its own attribute.
 func noticeFg(color, text string) string { return color + text + tui.FgClose(color) }
 
-func noticeBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
+func noticeBold(text string) string { return tui.ChalkBold(text) }
 
 // binaryUpdateNoticeBody builds the heading+instruction line for the
 // self-update notification, mirroring upstream showNewVersionNotification:
