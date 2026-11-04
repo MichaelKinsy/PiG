@@ -89,7 +89,7 @@ type recordChange struct {
 	fields  runFields
 	outcome AnyOutcome
 	reason  BlockedReason
-	// phase is the phase a changeUnblock returns the run to (finishing with its outcome, or to be invoked).
+	// phase names the state a changeUnblock returns the run to (finishing with its outcome, or to be invoked).
 	phase Phase
 }
 

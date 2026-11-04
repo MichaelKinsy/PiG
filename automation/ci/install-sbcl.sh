@@ -17,7 +17,10 @@ case "$(uname -m)" in x86_64|amd64) arch=amd64 ;; arm64|aarch64) arch=arm64 ;; *
 
 sha256_stdin() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
 src_row=$(row sbcl-source any any); boot_row=$(row sbcl "$os" "$arch")
-[ -n "$src_row" ] && [ -n "$boot_row" ] || { echo "install-sbcl.sh: toolchains.lock has no sbcl row for $os/$arch" >&2; exit 1; }
+if [ -z "$src_row" ] || [ -z "$boot_row" ]; then
+  echo "install-sbcl.sh: toolchains.lock has no sbcl row for $os/$arch" >&2
+  exit 1
+fi
 version=$(cut -f2 <<<"$src_row")
 pin=$(printf '%s\n%s\n' "$src_row" "$boot_row" | sha256_stdin | cut -c1-16)
 prefix=${1:-${PIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}/pig-sbcl/$version-$pin}
