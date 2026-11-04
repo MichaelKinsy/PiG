@@ -638,6 +638,8 @@ func TestGroupedFastRunReportsTheSerialGroupAfterAFailedParallelGroup(t *testing
 	argsLog := filepath.Join(root, "args")
 	t.Setenv("ARGS_LOG", argsLog)
 	t.Setenv("FAIL_PACKAGE", "./alpha")
+	// CI sets TEST_FAST_PARALLEL for its 4-CPU runners; this test is about the script's own default.
+	t.Setenv("TEST_FAST_PARALLEL", "")
 	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/test-grouped.sh"), "fast-parallel")
 	output, err := cmd.CombinedOutput()
 	if exitErr, ok := errors.AsType[*exec.ExitError](err); !ok || exitErr.ExitCode() != 1 {
