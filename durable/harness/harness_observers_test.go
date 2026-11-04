@@ -277,18 +277,30 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		committing := make(chan struct{})
 		go func() { appendPlainNote(t, root); close(committing) }()
 		_ = held.entered.wait(testContext)
-		ctx, cancel := context.WithCancelCause(testContext)
-		jobs := harness.(*harnessImpl).LineJobs()
-		attachingView := make(chan error, 1)
-		attachingGraph := make(chan error, 1)
-		go func() { _, err := harness.ObserveConversation(ctx, root.Id(), view, nil); attachingView <- err }()
-		go func() { _, err := harness.ObserveTaskGraph(ctx, graph); attachingGraph <- err }()
-		eventually(t, func() bool { return harness.(*harnessImpl).LineJobs() >= jobs+2 })
-		cancel(errors.New("gone"))
+		cancelled, cancel := cancelledContext(errors.New("gone"))
+		// Each attachment holds its position on the line before the cancellation, as a TypeScript call that extended the line's chain
+		// synchronously does (internal/lineadmission). A count of line jobs cannot say so: the commit's own job releases the line
+		// concurrently with the storage entry the test waited for.
+		var attachingView, attachingGraph *future[struct{}]
+		queueOnLineAdmittedFrom(t, cancelled, func(ctx context.Context) <-chan struct{} {
+			attachingView = asyncErr(func() error {
+				_, err := harness.ObserveConversation(ctx, root.Id(), view, nil)
+				return err
+			})
+			return attachingView.done
+		})
+		queueOnLineAdmittedFrom(t, cancelled, func(ctx context.Context) <-chan struct{} {
+			attachingGraph = asyncErr(func() error {
+				_, err := harness.ObserveTaskGraph(ctx, graph)
+				return err
+			})
+			return attachingGraph.done
+		})
+		cancel()
 		held.release()
 		<-committing
-		for _, attaching := range []chan error{attachingView, attachingGraph} {
-			if err := <-attaching; err == nil || !strings.Contains(err.Error(), "gone") {
+		for _, attaching := range []*future[struct{}]{attachingView, attachingGraph} {
+			if _, err := attaching.wait(); err == nil || !strings.Contains(err.Error(), "gone") {
 				t.Fatalf("attach error %v", err)
 			}
 		}
