@@ -8337,7 +8337,7 @@
         "durable/harness/harness_after_run_test.go#TestAfterRun",
         "durable/harness/harness_after_run_test.go#TestEndRun"
       ],
-      "rationale": "All 29 upstream cases are subtests of TestAfterRun and TestEndRun under Pi's names (lane C, Pi 7e15f960). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema, a TypeScript schema builder; Go tool schemas are JSON-schema maps), so no case input or expectation changed. Every body was compared with Go line by line (v1.5.0 bodies equal e7a0df27's); the only Go-inexpressible fragment is the 'not-a-list' extension of 'reports broken requests and hooks and creates the rest' (`{ tasks: \"x\" as unknown as RunEndTask[] }`): RunEndTasks.Tasks is a slice of RunEndTask, so the type system rejects it and the case runs with the other broken request and hook (two reports, five AggregateError messages, hook failed, empty live doc); the third extension_error info has no Go counterpart. killableStorage stands in for the Proxy crash."
+      "rationale": "All 29 upstream cases are subtests of TestAfterRun and TestEndRun under Pi's names (Pi 7e15f960). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema, a TypeScript schema builder; Go tool schemas are JSON-schema maps), so no case input or expectation changed. Every body was compared with Go line by line (v1.5.0 bodies equal e7a0df27's); the only Go-inexpressible fragment is the 'not-a-list' extension of 'reports broken requests and hooks and creates the rest' (`{ tasks: \"x\" as unknown as RunEndTask[] }`): RunEndTasks.Tasks is a slice of RunEndTask, so the type system rejects it and the case runs with the other broken request and hook (two reports, five AggregateError messages, hook failed, empty live doc); the third extension_error info has no Go counterpart. killableStorage stands in for the Proxy crash."
     },
     {
       "path": "packages/durable/test/harness-blocked.test.ts",
@@ -8435,7 +8435,7 @@
       "evidence": [
         "durable/harness/harness_continue_test.go#TestContinue"
       ],
-      "rationale": "All 13 upstream cases are subtests of TestContinue under Pi's names (lane C, #11043). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema); no case input or expectation changed. Bodies compared line by line (the submit span's link must carry no attributes, as Pi's {context, attributes: {}})."
+      "rationale": "All 13 upstream cases are subtests of TestContinue under Pi's names (#11043). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema); no case input or expectation changed. Bodies compared line by line (the submit span's link must carry no attributes, as Pi's {context, attributes: {}})."
     },
     {
       "path": "packages/durable/test/harness-conversations.test.ts",
@@ -9281,7 +9281,7 @@
         "durable/harness/document_retention_test.go#TestHarnessDocumentRetentionFollowsSettings",
         "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
       ],
-      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the owner ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Lane C2. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged.",
+      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the owner ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged.",
       "designedOutCases": [
         "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
       ]
@@ -9651,7 +9651,7 @@
         "env/list_files_test.go#TestListFilesIsNotSupportedByDaemonsReleasedBeforeIt",
         "env/list_files_test.go#TestListFilesCancelsAListingInTheDaemon"
       ],
-      "rationale": "Watch hunks of Pi 5f312dac and the daemon-kill hunk (lane E, TestConnectionCloseKillsRunningCommands)."
+      "rationale": "Watch hunks of Pi 5f312dac and the daemon-kill hunk (TestConnectionCloseKillsRunningCommands)."
     },
     {
       "path": "packages/env/test/ssh-external.test.ts",

@@ -1,6 +1,6 @@
 # Chord v2 in Go: how `host`, `jobs` and `remote` share one package
 
-Status: decided by lane D5b (Pi `e7a0df27`). D5a (host core: `host`, `attempt`, `object`, `reference`), D6 (`jobs`, `remote`) and D4 (`documents`) build on it. Change it only with a note to those lanes.
+Status: decided by the D5b port (Pi `e7a0df27`). D5a (host core: `host`, `attempt`, `object`, `reference`), D6 (`jobs`, `remote`) and D4 (`documents`) build on it. Change it only with a note to those ports.
 
 ## 1. The cycle
 
@@ -46,7 +46,7 @@ AGENTS.md "TypeScript async/Promise parity" governs. In this package:
 - Intentionally unawaited Promises (`void this.#resolve(...)` in `route.ts`, the handler calls and the `watch.closed` waiter of `routines.ts`) are owned background goroutines started with `Loop.Go(fn)`, joined by `Loop.Wait()` in the host's close (shutdown draining), never naked `go`. Where the unawaited call is only a state machine step (`void new OnRoutine(...).start()`, `void live(...)`), it is an in-section callback queued with `Loop.Queue` instead, so Pi's ordering is kept (`d5b-async.md`).
 - `Promise.withResolvers` + `Promise.race` between a work promise and a close promise (`root.ts`) is a `select` over the work's result channel, the close channel and the caller's `ctx.Done()`.
 
-## 5. Seams between D5b files and the files of later lanes
+## 5. Seams between D5b files and the files of later ports
 
 D5b ports its 25 files before D5a/D6 exist, so a helper never names a concrete type of `host.ts`, `attempt.ts`, `object.ts`, `reference.ts`, `jobs/*`, `remote/*` or `documents`. It names a small consumer-owned interface with the Pi member names of what it uses (AGENTS.md: "a small consumer-owned Go interface only for a real behavioral contract"). D5a/D6 add a compile-time assertion (`var _ routeHost = (*chordHost)(nil)`) next to each concrete type and may replace a seam by the concrete type only if every D5b test still passes against the fakes (fakes live in the D5b tests and stay as the unit tests of the helper).
 
@@ -83,7 +83,7 @@ Ported: `activity`, `backoff`, `deadline`, `uuid`, `sleep`, `revocation`, `unbou
 - The batch's `*chord.DeliveryScheduler` is a constructor argument (`referenceState`, `memberSource`, `keyedMembers`): `state.Batch.deliveries` is unexported and the host owns both.
 - Name collisions between helper files are resolved by suffixing the internal name (`routineFailed`, `retrySourceType`, `settledRefusal`); the suffixed names are the ones in `chord/next/host`.
 
-## 9. Amendments by lane D5a (host core, jobs and remote in one lane)
+## 9. Amendments by the D5a port (host core, jobs and remote together)
 
 - **Scope.** D5a owns `host/**`, `jobs/**` and `remote/**` of Pi on one branch, one package, concrete types (no seam layer, no injected constructors): `chordHost`, `chordObject`, `attempt`, `Binding`, `Job`, `JobRecords`, `Path`, `HostLink`, `RemoteObject`, `ProviderSide`, `Upstream` are real types that call each other as Pi's classes do. D5b's consumer-owned seam interfaces (section 5) are kept where a D5b test fakes something Pi itself fakes; a seam with a single production implementation and no Pi fake is replaced by the concrete type (each replacement keeps every D5b test green, with the fake replaced by the real type).
 - **Milliseconds.** One rule: every Pi millisecond number is a `time.Duration`; a Pi option that may be omitted (`undefined`) is `*time.Duration`, where `nil` is `undefined` and a pointer to `0` is Pi's `0` (`GetOptions.ReadyTimeout`, `ServeOptions.Linger`, `HostOptions.CloseTimeout/ReadyTimeout/Heartbeat.Ping/Close`, `NativeOptions.CloseTimeout`, `RootOptions`...). A value Pi stores after defaulting (`timeouts.close`, `heartbeat.ping`, a deadline budget, a parked deadline) is a plain `time.Duration`. `Date.now()` stays `int64` unix milliseconds (`Loop.Now`); a wire field Pi sends as a number stays the number the `link`/`data` packages declare. `Infinity` is `math.MaxInt64` nanoseconds (`time.Duration(math.MaxInt64)`), which `Loop.AfterFunc` treats as never.
