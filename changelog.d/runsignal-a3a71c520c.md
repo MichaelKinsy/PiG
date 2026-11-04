@@ -1,0 +1,3 @@
+### Fixed
+
+- `coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every runtime of the cell, and a runtime's sync that had read the end of the previous run could apply that older state after another runtime's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. An isolated runtime has one connection and was never affected, and a Node runtime aborts the signal it holds itself. <!-- fix: a3a71c520c -->
