@@ -933,3 +933,10 @@ commit = "a1582c46c8f448e211a3b20970b3cdc1577fa6da"
 class = "CITE"
 cite = "packages/ai/src/api/openai-completions.ts:1500"
 reason = "Pi sends the tool parameters of a strict sampling tool as getJsonSchemaToolParameters returns them (openai-completions.ts:1500), in the key order of the decoded schema: type, properties, required. The expected request body of the plain-tool case now lists the keys in that order; the fixture builds the tool from JSON so it records the key order a decoded tool does."
+
+[[entry]]
+path = "internal/codingagent/exit_ending_test.go"
+commit = "c680df851c4349559df4868954a0675ad02fcaee"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "exit.log is PiG-only (D102, additive): Pi leaves no trace at an exit, so no Pi line governs these tests. The file is new on this branch; 3d3f4215ac added it for a first design in which a dead-terminal exit waited up to 500 ms for a SIGHUP to claim the line. The commit under review drops that wait, because it delayed the exit against Pi, and makes a second emergency exit block forever as Pi's never-returning emergencyTerminalExit does. The expectations move with that rule: the wait-for-claim and claim-after-the-bound tests are gone, a loser of the claim returns only after the owner's line is on disk, a second emergency exit never returns, and a crash exit yields to a running one. Pi's exit status (129) and terminal restore are unchanged; the tests pin one exit.log line and exit 129."

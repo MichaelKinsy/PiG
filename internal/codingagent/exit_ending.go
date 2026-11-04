@@ -33,9 +33,10 @@ import "sync"
 
 // processEnding is the process's single exit record. flushed closes once the owner's line is on disk.
 type processEnding struct {
-	mu      sync.Mutex
-	taken   bool
-	flushed chan struct{}
+	mu        sync.Mutex
+	taken     bool
+	flushOnce sync.Once
+	flushed   chan struct{}
 }
 
 func newProcessEnding() *processEnding {
@@ -47,6 +48,11 @@ var ending = newProcessEnding()
 
 // recordExit writes the owner's line. Tests replace it to hold the owner inside the write.
 var recordExit = RecordExit
+
+// flush marks the owner's line as on disk. It releases every waiter, once.
+func (e *processEnding) flush() {
+	e.flushOnce.Do(func() { close(e.flushed) })
+}
 
 // claim reports whether the caller owns the record. Only the first caller does.
 func (e *processEnding) claim() bool {
@@ -75,7 +81,7 @@ func RecordEnding(agentDir, reason string) bool {
 		<-e.flushed
 		return false
 	}
-	defer close(e.flushed)
+	defer e.flush()
 	recordExit(agentDir, reason)
 	return true
 }
