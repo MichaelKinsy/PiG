@@ -38,7 +38,7 @@ func TestModelStreamRequestKeepsRequestMetadataOrder(t *testing.T) {
 
 // The host sends requestMetadata to an extension provider in the same order.
 func TestProviderOptionsWireKeepsRequestMetadataOrder(t *testing.T) {
-	encoded, err := json.Marshal(providerOptionsWire(ai.StreamOptions{RequestMetadata: map[string]string{"zeta": "1", "alpha": "2", "mid": "4", "10": "3"}, RequestMetadataOrder: []string{"zeta", "missing", "alpha", "zeta"}}))
+	encoded, err := json.Marshal(encodeProviderOptions(ai.StreamOptions{RequestMetadata: map[string]string{"zeta": "1", "alpha": "2", "mid": "4", "10": "3"}, RequestMetadataOrder: []string{"zeta", "missing", "alpha", "zeta"}}))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -146,6 +146,76 @@ func TestStatusRedactsCredentialsInPackageSources(t *testing.T) {
 	}
 }
 
+// The redacted form is Pi's redactUrl, byte for byte: user information dropped, a sensitive query value replaced by `<redacted>` and form-encoded, the rest
+// of the URL as written. Status prints it in the JSON report, the text report and its errors.
+func TestStatusPrintsRedactedPackageSourcesAsPisRedactUrlSpellsThem(t *testing.T) {
+	const gitSource = "git:https://deploy:S3CRET-PASSWORD@example.invalid/org/repo.git"
+	const querySource = "git:https://example.invalid/org/other.git?access_token=S3CRET-QUERY&ref=main"
+	const wantGit = "git:https://example.invalid/org/repo.git"
+	const wantQuery = "git:https://example.invalid/org/other.git?access_token=%3Credacted%3E&ref=main"
+	setup := func(t *testing.T, sources ...string) {
+		root := t.TempDir()
+		agentDir := filepath.Join(root, "agent")
+		cwd := filepath.Join(root, "workspace")
+		if err := os.MkdirAll(cwd, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PIG_HOME", root)
+		t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+		t.Chdir(cwd)
+		var packages []codingagent.PackageSource
+		for _, source := range sources {
+			packages = append(packages, codingagent.PackageSource{Source: source})
+		}
+		if err := codingagent.NewSettingsManager(cwd, agentDir).SetPackages(packages); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Run("an installed Package's resources carry the source", func(t *testing.T) {
+		setup(t, gitSource)
+		writeStatusSkillPackage(t, filepath.Join(os.Getenv("PIG_CODING_AGENT_DIR"), "git", "example.invalid", "org", "repo"))
+		stdout, stderr, code := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status", "--json"}) })
+		if code != 0 || stderr != "" {
+			t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout, stderr)
+		}
+		var report statusOutput
+		if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+			t.Fatal(err)
+		}
+		if len(report.Resources.Items) == 0 {
+			t.Fatalf("no resources in %s", stdout)
+		}
+		for _, item := range report.Resources.Items {
+			if item.Source != wantGit {
+				t.Errorf("resource source = %q, want %q", item.Source, wantGit)
+			}
+		}
+	})
+	t.Run("an error names the source without credentials", func(t *testing.T) {
+		setup(t, gitSource, querySource)
+		stdout, stderr, code := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status", "--json"}) })
+		if code != 1 || stderr != "" {
+			t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout, stderr)
+		}
+		var report statusOutput
+		if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+			t.Fatal(err)
+		}
+		errors := strings.Join(report.Errors, "\n")
+		for _, want := range []string{wantGit, wantQuery} {
+			if !strings.Contains(errors, want) {
+				t.Errorf("errors = %q, want one naming %q", report.Errors, want)
+			}
+		}
+		text, textErr, _ := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status"}) })
+		for _, want := range []string{wantGit, wantQuery} {
+			if !strings.Contains(text+textErr, want) {
+				t.Errorf("text report does not name %q:\n%s%s", want, text, textErr)
+			}
+		}
+	})
+}
+
 // A password may hold any character a URL's user information allows, a quote
 // included; the redaction of a message must not stop at it and print the rest.
 func TestStatusRedactsAPasswordThatHoldsAQuote(t *testing.T) {

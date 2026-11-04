@@ -638,3 +638,26 @@ func TestSampleLinkerCopiesRepositoryFilesOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestPiIssueURLLinksOnlyMatchesAURLThatStartsAtAWordBoundary(t *testing.T) {
+	text := "See https://github.com/earendil-works/pi-mono/issues/12, (https://github.com/earendil-works/pi/pull/7)\n" +
+		"https://github.com/earendil-works/pi-mono/pull/3 and <https://github.com/earendil-works/pi/issues/99>.\n" +
+		"Not these: https://example.org/https://github.com/earendil-works/pi/issues/1 and " +
+		"https://github.com.evil.test/earendil-works/pi/issues/2 and xhttps://github.com/earendil-works/pi/issues/4 " +
+		"and user@https://github.com/earendil-works/pi/issues/5\n"
+	want := []Link{
+		{Label: "Pi issues #12", URL: "https://github.com/earendil-works/pi-mono/issues/12"},
+		{Label: "Pi pull #7", URL: "https://github.com/earendil-works/pi/pull/7"},
+		{Label: "Pi pull #3", URL: "https://github.com/earendil-works/pi-mono/pull/3"},
+		{Label: "Pi issues #99", URL: "https://github.com/earendil-works/pi/issues/99"},
+	}
+	got := piIssueURLLinks(text)
+	if len(got) != len(want) {
+		t.Fatalf("piIssueURLLinks = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("link %d = %v, want %v", i, got[i], want[i])
+		}
+	}
+}

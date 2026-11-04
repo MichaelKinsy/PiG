@@ -508,7 +508,19 @@ func logHTTPSigningInfo(ctx context.Context, options SignerOptions, r signedRequ
 		signedURLMsg = fmt.Sprintf(logSignedURLMsg, r.Request.URL.String())
 	}
 	logger := logging.WithContext(ctx, options.Logger)
-	logger.Logf(logging.Debug, logSignInfoMsg, r.CanonicalString, r.StringToSign, signedURLMsg)
+	logger.Logf(logging.Debug, logSignInfoMsg, redactSigningLog(r.CanonicalString), r.StringToSign, signedURLMsg)
+}
+
+// redactSigningLog hides the values of the credential headers in a canonical request before it is logged: a signed x-amz-security-token is
+// the session token, and the debug log of a request signature is not the place to print it.
+func redactSigningLog(canonicalString string) string {
+	lines := strings.Split(canonicalString, "\n")
+	for i, line := range lines {
+		if name, _, found := strings.Cut(line, ":"); found && (name == "x-amz-security-token" || name == "authorization") {
+			lines[i] = name + ":<redacted>"
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 type signedRequest struct {
