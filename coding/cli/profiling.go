@@ -28,5 +28,7 @@ func exitProcess(code int) {
 	codingagent.EndSessionMarker()
 	// Pi's process 'exit' handler restores the terminal modes of a TUI that exits without stop() (9df819de, #11170); os.Exit runs no handlers.
 	tui.RestoreTerminalOnExit()
+	// pig additive (D102): an emergency exit in flight ends the process with its 129, and a claimed exit.log line is flushed first.
+	codingagent.BeforeExit()
 	os.Exit(code)
 }
