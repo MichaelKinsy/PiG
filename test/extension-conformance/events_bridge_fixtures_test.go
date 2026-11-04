@@ -446,9 +446,9 @@ const lispBusFixture = `(defpackage %[2]q (:use "COMMON-LISP"))
     (nreverse parts)))
 
 (defun append-line (path line)
-  "One log line as one write at the end of the file, even when another process appends at the same time."
+  "One log line as one write at the end of the file, even when another process appends at the same time. On Windows the C runtime's open writes a newline as a carriage return and a newline unless the file is opened binary (_O_BINARY, #x8000), and the log holds the line as given."
   (let ((octets (sb-ext:string-to-octets line :external-format :utf-8))
-        (fd (sb-posix:open path (logior sb-posix:o-wronly sb-posix:o-append sb-posix:o-creat) #o600)))
+        (fd (sb-posix:open path (logior sb-posix:o-wronly sb-posix:o-append sb-posix:o-creat #+win32 #x8000) #o600)))
     (unwind-protect
          (sb-sys:with-pinned-objects (octets)
            (let ((written (sb-posix:write fd (sb-sys:vector-sap octets) (length octets))))
