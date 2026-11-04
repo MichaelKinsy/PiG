@@ -90,3 +90,71 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 		})
 	}
 }
+
+// A stdout write error cancels the run before the final disposal. The signal handlers must outlive that cancellation: a repeated SIGTERM during the final disposal still exits at once (print-mode.ts keeps its handlers until disposeRuntime() returns, D231).
+func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping signal shutdown test in short mode")
+	}
+	bin := buildPigBinaryForSignalTest(t)
+	fixture, err := filepath.Abs(filepath.Join("testdata", "rpc-shutdown.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := filepath.Join(t.TempDir(), "report.txt")
+	cmd := exec.Command(bin, "--mode", "json", "--model", "test-faux/faux-1", "--no-session", "--no-extensions", "-e", fixture, "--print", "What is 20+22?")
+	cmd.Dir = t.TempDir()
+	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic",
+		"RPC_SHUTDOWN_REPORT="+report, "RPC_SHUTDOWN_SLOW=2500", "RPC_SHUTDOWN_RECORD_DONE=1")
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The reader end is closed before the process writes: its first JSON line fails.
+	_ = reader.Close()
+	cmd.Stdout = writer
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	_ = writer.Close()
+	defer func() { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }()
+	waited := make(chan error, 1)
+	go func() { waited <- cmd.Wait() }()
+	deadline := time.Now().Add(testbudget.Wait(t))
+	for {
+		data, _ := os.ReadFile(report)
+		if slices.Contains(strings.Fields(string(data)), "session_shutdown") {
+			break
+		}
+		select {
+		case err := <-waited:
+			t.Fatalf("process ended (%v) before the final disposal started", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the final disposal never started")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	began := time.Now()
+	for i := range 2 {
+		if i > 0 {
+			time.Sleep(100 * time.Millisecond)
+		}
+		if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			t.Fatal(err)
+		}
+	}
+	select {
+	case err := <-waited:
+		if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != 143 {
+			t.Fatalf("wait = %v, want exit status 143", err)
+		}
+		if took := time.Since(began); took > 2*time.Second {
+			t.Fatalf("exit took %s, want it before the 2.5 s handler ended", took)
+		}
+	case <-time.After(3500 * time.Millisecond):
+		t.Fatal("a repeated SIGTERM did not exit at once")
+	}
+}
