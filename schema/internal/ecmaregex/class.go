@@ -121,10 +121,11 @@ func parseRangeList(list string) runeSet {
 	out := make([]runeRange, 0, len(parts))
 	for _, part := range parts {
 		lo, hi, _ := strings.Cut(part, "-")
-		first, _ := strconv.ParseUint(lo, 16, 32)
+		// A code point is at most 21 bits (U+10FFFF), so a rune holds every value of the list.
+		first, _ := strconv.ParseUint(lo, 16, 21)
 		last := first
 		if hi != "" {
-			last, _ = strconv.ParseUint(hi, 16, 32)
+			last, _ = strconv.ParseUint(hi, 16, 21)
 		}
 		out = append(out, runeRange{rune(first), rune(last)})
 	}

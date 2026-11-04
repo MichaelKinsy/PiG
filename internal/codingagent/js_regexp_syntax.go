@@ -714,11 +714,12 @@ func (p *jsRegExpTranslator) escapedCharacter(inClass bool) rune {
 	return c
 }
 
+// hexDigits reads n hex digits (n is at most 4: \xHH and \uHHHH) as one UTF-16 code unit; a longer run that overflows 16 bits is not a match.
 func (p *jsRegExpTranslator) hexDigits(n int) (rune, bool) {
 	if p.pos+n > len(p.in) {
 		return 0, false
 	}
-	v, err := strconv.ParseUint(string(p.in[p.pos:p.pos+n]), 16, 32)
+	v, err := strconv.ParseUint(string(p.in[p.pos:p.pos+n]), 16, 16)
 	if err != nil || strings.ContainsAny(string(p.in[p.pos:p.pos+n]), "+-_") {
 		return 0, false
 	}
