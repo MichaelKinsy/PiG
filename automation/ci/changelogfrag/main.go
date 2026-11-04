@@ -303,8 +303,9 @@ func fold(changelog string, fragments []fragment, version string) (string, error
 }
 
 // foldInto folds the fragments of dir into the version section of changelogPath, then deletes the folded fragments and
-// their lines in legacyPath.
-func foldInto(dir, changelogPath, legacyPath, version string, fragments []fragment) error {
+// their lines in legacyPath. When that leaves dir empty it also drops dir's entry from the version records at recordsPath
+// (records.go).
+func foldInto(dir, changelogPath, legacyPath, recordsPath, version string, fragments []fragment) error {
 	data, err := os.ReadFile(changelogPath)
 	if err != nil {
 		return err
@@ -340,7 +341,13 @@ func foldInto(dir, changelogPath, legacyPath, version string, fragments []fragme
 	if text != "" {
 		text += "\n"
 	}
-	return os.WriteFile(legacyPath, []byte(text), 0o644)
+	if err := os.WriteFile(legacyPath, []byte(text), 0o644); err != nil {
+		return err
+	}
+	if left, err := os.ReadDir(dir); err != nil && !errors.Is(err, fs.ErrNotExist) || len(left) > 0 {
+		return err
+	}
+	return dropRecordEntryFile(recordsPath, filepath.ToSlash(dir)+"/")
 }
 
 func run(args []string, stdout *os.File) error {
@@ -375,7 +382,7 @@ func run(args []string, stdout *os.File) error {
 	}
 	switch {
 	case version != "":
-		return foldInto(dir, "CHANGELOG.md", filepath.Join("automation", "ci", "changelogfrag", "legacy.txt"), version, fragments)
+		return foldInto(dir, "CHANGELOG.md", filepath.Join("automation", "ci", "changelogfrag", "legacy.txt"), filepath.Join("automation", "ci", "version-records.toml"), version, fragments)
 	case !check:
 		_, err := fmt.Fprint(stdout, render(fragments))
 		return err

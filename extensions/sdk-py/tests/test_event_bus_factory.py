@@ -140,8 +140,13 @@ def test_the_host_dispatches_to_a_factory_listener_while_a_call_waits_and_run_do
     assert fake.accepted == 1
 
 
-def test_a_shutdown_read_during_a_factory_call_ends_the_run_after_it_registers(host) -> None:
-    """A shutdown the host sends while a factory-time call waits does not fail the call: it returns the host's result, and the run that takes the connection registers and then ends on the shutdown."""
+@pytest.mark.parametrize("package_attribute", [True, False], ids=["package-attribute-bound", "package-attribute-unbound"])
+def test_a_shutdown_read_during_a_factory_call_ends_the_run_after_it_registers(host, monkeypatch: pytest.MonkeyPatch, package_attribute: bool) -> None:
+    """A shutdown the host sends while a factory-time call waits does not fail the call: it returns the host's result, and the run that takes the connection registers and then ends on the shutdown.
+
+    The run reads the shutdown through ``host_helpers.take_shutdown``, so the run's registering step imports ``host_helpers`` itself instead of relying on the import that bound it as an attribute of the package; the unbound case removes that attribute."""
+    if not package_attribute:
+        monkeypatch.delattr(pig_sdk, "host_helpers")
     ext = pig_sdk.Extension("bus")
     fake = host(None)
 

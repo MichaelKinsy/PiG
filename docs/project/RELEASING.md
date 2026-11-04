@@ -30,7 +30,7 @@ The release metadata identifies both the PiG version and the Pi version that def
 
 Change the version only with `make set-version VERSION=x.y.z`.
 
-`internal/coding/pigversion/pigversion.go` is the version authority. The command updates its PiG pin, the Standard development version, the newest changelog heading, and the versions of the Python SDK (`extensions/sdk-py/pyproject.toml`) and the TypeScript declarations (`extensions/sdk-ts/package.json` and `package-lock.json`). It leaves the Rust `pig-sdk` crate on 0.1.x, because Pig resolves an extension's un-pathed `pig-sdk` requirement through a Cargo patch that applies only within semver. An ordinary version bump preserves every `go.mod` and `go.sum`. Dependency versions describe published modules, not the next PiG release. Workspace builds use the developing SDK through `go.work`.
+`internal/coding/pigversion/pigversion.go` is the version authority. The command updates its PiG pin, the Standard development version, the newest changelog heading, the PiG half of the `pig --version` example in `README.md`, and the versions of the Python SDK (`extensions/sdk-py/pyproject.toml`) and the TypeScript declarations (`extensions/sdk-ts/package.json` and `package-lock.json`). It leaves the Rust `pig-sdk` crate on 0.1.x, because Pig resolves an extension's un-pathed `pig-sdk` requirement through a Cargo patch that applies only within semver. An ordinary version bump preserves every `go.mod` and `go.sum`. Dependency versions describe published modules, not the next PiG release. Workspace builds use the developing SDK through `go.work`.
 
 ```bash
 make set-version VERSION=0.3.0 SET_VERSION_ARGS=--dry-run
@@ -52,7 +52,7 @@ A commit that moves or renames a test a fix commit added to another file keeps t
 
 ## Changelog fragments and the bug ledger
 
-Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI).
+Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI). A fold that empties `changelog.d/` also removes the `changelog.d/` entries from `automation/ci/version-records.toml`: they excuse a fragment's statement about an earlier Pi release, the folded bullets sit in a released `CHANGELOG.md` section that the public-claims check does not read for such statements, and an entry that excuses nothing fails that check.
 
 `make changelog-check` fails a release candidate when:
 
