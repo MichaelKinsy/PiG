@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1600,7 +1601,8 @@ func updateString(dst *string, section ini.Section, key string) {
 // is present in the section.
 //
 // Down casts the INI integer value from a int64 to an int, which could be
-// different bit size depending on platform.
+// different bit size depending on platform. A value outside the 32-bit range
+// is rejected on every platform instead of wrapping on a 32-bit one.
 func updateInt(dst *int, section ini.Section, key string) error {
 	if !section.Has(key) {
 		return nil
@@ -1609,6 +1611,10 @@ func updateInt(dst *int, section ini.Section, key string) error {
 	v, ok := section.Int(key)
 	if !ok {
 		return fmt.Errorf("invalid value %s=%s, expect integer", key, section.String(key))
+	}
+
+	if v < math.MinInt32 || v > math.MaxInt32 {
+		return fmt.Errorf("invalid value %s=%s, out of range for an integer setting", key, section.String(key))
 	}
 
 	*dst = int(v)

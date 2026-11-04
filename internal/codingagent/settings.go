@@ -21,6 +21,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -3790,7 +3791,7 @@ func mergeSettingsExtra(global, project map[string]json.RawMessage) map[string]j
 	if len(project) == 0 {
 		return global
 	}
-	merged := make(map[string]json.RawMessage, len(global)+len(project))
+	merged := make(map[string]json.RawMessage, allocsize.Add(len(global), len(project)))
 	maps.Copy(merged, global)
 	for name, value := range project {
 		merged[name] = deepMergeJSONObjects(merged[name], value)

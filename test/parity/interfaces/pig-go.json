@@ -219544,6 +219544,17 @@
       "shapeHash": "sha256:8450d6f70ee32323c3129101833ee4462d4a0537b7bd4f619b679a7a2d4801df"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#addSize",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "addSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a int, b int) int"
+      },
+      "shapeHash": "sha256:36774914a4425ade866dabe8bb7203e893bebcf3f5e50dee77e115b9bac9a560"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#addrMarshalerEncoder",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "addrMarshalerEncoder",
@@ -220961,6 +220972,17 @@
         "type": "func(b []byte, quoted bool) []byte"
       },
       "shapeHash": "sha256:d72aa6768c45a0dc3d0239ba7125e813f3d341c3fee1f15515d77e0de60d247b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#mulSize",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "mulSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a int, b int) int"
+      },
+      "shapeHash": "sha256:36774914a4425ade866dabe8bb7203e893bebcf3f5e50dee77e115b9bac9a560"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#newArrayEncoder",

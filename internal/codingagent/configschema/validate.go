@@ -6,6 +6,7 @@ package configschema
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -117,7 +118,7 @@ func jsKeyOrder(keys []string) []string {
 	slices.SortStableFunc(indexes, func(a, b string) int {
 		x, _ := arrayIndexKey(a)
 		y, _ := arrayIndexKey(b)
-		return int(max(-1, min(1, int64(x)-int64(y))))
+		return cmp.Compare(x, y)
 	})
 	return append(indexes, rest...)
 }

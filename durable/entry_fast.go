@@ -363,6 +363,18 @@ func (scanner *fastScanner) integer() (int64, bool) {
 	return value, err == nil
 }
 
+// count scans a number that decodes into an int field: digits only, in range of int. A count outside the platform's int (a 32-bit
+// build, as TinyGo's wasm32 core is) is declined, so the general codec rules on it as it does for any field the fast path declines,
+// rather than the count wrapping.
+func (scanner *fastScanner) count() (int, bool) {
+	text, integral, ok := scanner.number()
+	if !ok || !integral {
+		return 0, false
+	}
+	value, err := strconv.ParseInt(string(text), 10, strconv.IntSize)
+	return int(value), err == nil
+}
+
 // float scans a number that decodes into a float64 field.
 func (scanner *fastScanner) float() (float64, bool) {
 	text, _, ok := scanner.number()
@@ -790,28 +802,22 @@ func (scanner *fastScanner) usage() (ai.Usage, bool) {
 		}
 		scanner.skipSpace()
 		var bit uint16
-		var count int64
 		switch string(key) {
 		case "input":
 			bit = 1
-			count, ok = scanner.integer()
-			usage.Input = int(count)
+			usage.Input, ok = scanner.count()
 		case "output":
 			bit = 2
-			count, ok = scanner.integer()
-			usage.Output = int(count)
+			usage.Output, ok = scanner.count()
 		case "cacheRead":
 			bit = 4
-			count, ok = scanner.integer()
-			usage.CacheRead = int(count)
+			usage.CacheRead, ok = scanner.count()
 		case "cacheWrite":
 			bit = 8
-			count, ok = scanner.integer()
-			usage.CacheWrite = int(count)
+			usage.CacheWrite, ok = scanner.count()
 		case "totalTokens":
 			bit = 16
-			count, ok = scanner.integer()
-			usage.TotalTokens = int(count)
+			usage.TotalTokens, ok = scanner.count()
 		case "cost":
 			bit = 32
 			usage.Cost, ok = scanner.cost()

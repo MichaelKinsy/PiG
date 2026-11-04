@@ -84,7 +84,8 @@ func (frames *ipcFrames) Write(data []byte) (int, error) {
 	if uint64(len(data)) > uint64(^uint32(0)) {
 		return 0, errors.New("IPC message too large")
 	}
-	frame := make([]byte, ipcFrameHeaderBytes+len(data))
+	// len(data) is at most MaxUint32 here, so the sum is exact in uint64; on a 32-bit build make panics for a size beyond int.
+	frame := make([]byte, uint64(ipcFrameHeaderBytes)+uint64(len(data)))
 	if len(data) > 0 {
 		binary.LittleEndian.PutUint32(frame[0:], ipcFrameHasData)
 		binary.LittleEndian.PutUint32(frame[8:], uint32(len(data)))

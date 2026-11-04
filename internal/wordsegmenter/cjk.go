@@ -17,6 +17,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
@@ -87,8 +88,8 @@ func cjkBoundaries(text string) []int {
 	offsets = append(offsets, len(normalized))
 	n := len(chars)
 	const unreachable = ^uint32(0)
-	best := make([]uint32, n+1)
-	previous := make([]int, n+1)
+	best := make([]uint32, allocsize.Add(n, 1))
+	previous := make([]int, allocsize.Add(n, 1))
 	for i := range n + 1 {
 		best[i] = unreachable
 		previous[i] = -1

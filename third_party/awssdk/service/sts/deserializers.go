@@ -2688,7 +2688,7 @@ func awsAwsquery_deserializeOpDocumentAssumeRoleOutput(v **AssumeRoleOutput, dec
 			}
 			{
 				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
+				i64, err := strconv.ParseInt(xtv, 10, 32)
 				if err != nil {
 					return err
 				}
@@ -2805,7 +2805,7 @@ func awsAwsquery_deserializeOpDocumentAssumeRoleWithSAMLOutput(v **AssumeRoleWit
 			}
 			{
 				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
+				i64, err := strconv.ParseInt(xtv, 10, 32)
 				if err != nil {
 					return err
 				}
@@ -2922,7 +2922,7 @@ func awsAwsquery_deserializeOpDocumentAssumeRoleWithWebIdentityOutput(v **Assume
 			}
 			{
 				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
+				i64, err := strconv.ParseInt(xtv, 10, 32)
 				if err != nil {
 					return err
 				}
@@ -3261,7 +3261,7 @@ func awsAwsquery_deserializeOpDocumentGetDelegatedAccessTokenOutput(v **GetDeleg
 			}
 			{
 				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
+				i64, err := strconv.ParseInt(xtv, 10, 32)
 				if err != nil {
 					return err
 				}
@@ -3326,7 +3326,7 @@ func awsAwsquery_deserializeOpDocumentGetFederationTokenOutput(v **GetFederation
 			}
 			{
 				xtv := string(val)
-				i64, err := strconv.ParseInt(xtv, 10, 64)
+				i64, err := strconv.ParseInt(xtv, 10, 32)
 				if err != nil {
 					return err
 				}

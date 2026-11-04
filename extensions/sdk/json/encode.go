@@ -401,7 +401,7 @@ func (e *encodeState) WriteByte(c byte) error {
 // Grow makes room for n more bytes, doubling the capacity rather than growing by append's smaller steps.
 func (e *encodeState) Grow(n int) {
 	if cap(e.buf)-len(e.buf) < n {
-		grown := make([]byte, len(e.buf), 2*cap(e.buf)+n)
+		grown := make([]byte, len(e.buf), addSize(mulSize(2, cap(e.buf)), n))
 		copy(grown, e.buf)
 		e.buf = grown
 	}

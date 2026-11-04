@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math/rand"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -192,6 +193,22 @@ func TestFastEntryDecodeRefusesWhatTheGeneralCodecReadsLeniently(t *testing.T) {
 	} {
 		if _, ok := decodeEntryFast([]byte(text)); ok {
 			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+// TestFastEntryDecodeUsageCountsFollowTheGeneralCodecAtTheIntBoundary pins each usage count that straddles a 32-bit int: the fast decoder
+// accepts such a count only where int holds it, and the general codec reads the same value, so a 32-bit build (TinyGo's wasm32 core) never
+// wraps a count the general codec rejects.
+func TestFastEntryDecodeUsageCountsFollowTheGeneralCodecAtTheIntBoundary(t *testing.T) {
+	for _, field := range []string{"input", "output", "cacheRead", "cacheWrite", "totalTokens"} {
+		for _, count := range []string{"2147483647", "2147483648", "4294967296", "9223372036854775807", "-2147483648", "-2147483649"} {
+			text := `{"model":[{"role":"assistant","content":[],"api":"a","provider":"p","model":"m","usage":{"` + field + `":` + count + `},"stopReason":"stop","timestamp":1}],"kind":"k","id":7,"conversationId":1}`
+			accepted := checkAgainstGeneral(t, text)
+			fits := strconv.IntSize == 64 || count == "2147483647" || count == "-2147483648"
+			if accepted != fits {
+				t.Errorf("usage.%s %s: fast path accepted = %v, want %v on a %d-bit int", field, count, accepted, fits, strconv.IntSize)
+			}
 		}
 	}
 }

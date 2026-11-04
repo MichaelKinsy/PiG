@@ -15,7 +15,7 @@ func reset(t *testing.T) string {
 	byName = map[string]class{}
 	adj = map[class]map[class]struct{}{}
 	seen = map[edge]string{}
-	holding = map[int64][]held{}
+	holding = map[uint64][]held{}
 	reports = map[string]bool{}
 	instAdj = map[uintptr]map[uintptr]struct{}{}
 	instRev = map[uintptr]map[uintptr]struct{}{}
