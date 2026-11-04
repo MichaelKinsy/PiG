@@ -264,7 +264,7 @@ export default function (pi) {
 	}
 	h.expectContains(startupReadyWait, interactiveReadyMarker, "[Extensions]", "startup-probe")
 	h.send("/hotkeys\r")
-	h.expectContains(3*time.Second, "Ctrl+R            : Rename session")
+	h.expectContains(3*time.Second, hotkeysLastRow)
 }
 
 // TestExt_StartupWithoutConfig proves pig starts with no configured or discovered extensions.
