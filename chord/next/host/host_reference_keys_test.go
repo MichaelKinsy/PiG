@@ -1110,7 +1110,7 @@ func (f *fakeKeysTarget) become(instance *fakeInstance, failNext bool) {
 // fakeKeysHolder is the reference whose keys these are.
 type fakeKeysHolder struct {
 	h      *memberHarness
-	object *fakeKeysTarget
+	object target
 }
 
 func (f *fakeKeysHolder) none() error                             { return notReady("test: not live yet") }
@@ -1154,5 +1154,190 @@ func TestReferenceKeysKeysAcrossARestartAndAFailedRePinAKeysRePinOnANewInstanceT
 	h.loop.Run(held.release)
 	if released := object.released.Load(); released != 2 {
 		t.Fatalf("pins released = %d, want the replaced pin and the last", released)
+	}
+}
+
+// gatedInstance is an instance of a gated object: its notes key's source, and its pin of the key, which loads once the test
+// lets it (fails with err when set).
+type gatedInstance struct {
+	fakeInstance
+	entered  chan struct{}
+	loaded   chan struct{}
+	letOnce  sync.Once
+	err      error
+	released atomic.Int32
+}
+
+func newGatedInstance(source state.DeriveSource) *gatedInstance {
+	return &gatedInstance{fakeInstance: fakeInstance{source: source}, entered: make(chan struct{}), loaded: make(chan struct{})}
+}
+
+// let loads the instance's pin.
+func (g *gatedInstance) let() { g.letOnce.Do(func() { close(g.loaded) }) }
+
+// gatedKeysTarget is the object a reference's keys pin on: one live instance at a time, whose `pinKey` is entered when it
+// starts and returns when the test lets that instance's pin load (a cold load held open, as Pi's `persistence.read` is).
+type gatedKeysTarget struct {
+	target
+	mu   sync.Mutex
+	live *gatedInstance
+}
+
+func (g *gatedKeysTarget) current() *gatedInstance {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.live
+}
+
+func (g *gatedKeysTarget) become(instance *gatedInstance) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.live = instance
+}
+
+func (g *gatedKeysTarget) instance() any {
+	if live := g.current(); live != nil {
+		return live
+	}
+	return nil
+}
+
+func (g *gatedKeysTarget) attachable() attachable {
+	if live := g.current(); live != nil {
+		return live
+	}
+	return nil
+}
+
+func (g *gatedKeysTarget) state() *RefState { return refLive }
+func (g *gatedKeysTarget) label() string    { return "app.keys" }
+
+func (g *gatedKeysTarget) pinKey(_, _ string, _ int, _ context.Context) (pinnedKey, error) {
+	instance := g.current()
+	close(instance.entered)
+	<-instance.loaded
+	if instance.err != nil {
+		return pinnedKey{}, instance.err
+	}
+	return pinnedKey{source: instance.source, release: func() { instance.released.Add(1) }}, nil
+}
+
+// listenedContext is a context that tells when a waiter listens for its abort (a `context.AfterFunc`, as an
+// `addEventListener("abort")` is seen in Pi): the wait of a hold on a pin is such a listener, so a test sees when a hold went
+// on waiting without a clock.
+type listenedContext struct {
+	*scopeCounting
+	listened chan struct{}
+}
+
+func (c *listenedContext) AfterFunc(f func()) func() bool {
+	stop := c.scopeCounting.AfterFunc(f)
+	c.listened <- struct{}{}
+	return stop
+}
+
+// gatedHold is a `hold` of key `k` started on a goroutine, on an object whose live instance is `first`: its pin has started
+// loading and the hold waits for it. Pi's `await hold` is the same wait; the test's turns are the channels.
+type gatedHold struct {
+	first    *gatedInstance
+	h        *memberHarness
+	keys     *referenceKeys
+	object   *gatedKeysTarget
+	listened chan struct{}
+	holding  chan gatedHeld
+}
+
+type gatedHeld struct {
+	pin pinnedKey
+	err error
+}
+
+func startGatedHold(t *testing.T, first *gatedInstance) *gatedHold {
+	t.Helper()
+	h := newMemberHarness(t)
+	g := &gatedHold{first: first, h: h, object: &gatedKeysTarget{live: first}, listened: make(chan struct{}, 8), holding: make(chan gatedHeld, 1)}
+	g.keys = newReferenceKeys(&fakeKeysHolder{h: h, object: g.object})
+	signal, _ := newScopeCounting()
+	// Registered after the harness's cleanup, so it runs first: a pin still held when a case ends would keep its task, and
+	// the harness waits for the tasks.
+	t.Cleanup(func() {
+		if live := g.object.current(); live != nil {
+			live.let()
+		}
+		first.let()
+	})
+	go func() {
+		pin, err := g.keys.hold("notes", "k", &listenedContext{scopeCounting: signal, listened: g.listened})
+		g.holding <- gatedHeld{pin: pin, err: err}
+	}()
+	<-first.entered
+	<-g.listened
+	return g
+}
+
+// move is the object going live on instance, the key following it (`keys.follow`): its pin there starts loading.
+func (g *gatedHold) move(t *testing.T, instance *gatedInstance) {
+	t.Helper()
+	g.object.become(instance)
+	g.h.within(t, func() { g.keys.follow(background) })
+	<-instance.entered
+}
+
+// letLoad lets the first instance's pin load and returns once the hold settled it: the hold it returned, or nil when it went
+// on waiting, on another pin.
+func (g *gatedHold) letLoad() (held *gatedHeld) {
+	g.first.let()
+	select {
+	case got := <-g.holding:
+		return &got
+	case <-g.listened:
+		return nil
+	}
+}
+
+// reference-keys.test.ts › a key whose first pin still loads › the object fails and re-binds meanwhile: the consumer retries
+// on the new member, the late pin is released. Pi's test lets the late pin load once the new member's pin has landed, which
+// its turn order guarantees; here the late pin loads first, and the hold goes on waiting for the pin on the new instance.
+func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceWaitsForThePinOnTheNewInstance(t *testing.T) {
+	first := newGatedInstance(nil)
+	g := startGatedHold(t, first)
+	second := newGatedInstance(newMemberDoc(g.h.batch, kmN(2)))
+	g.move(t, second)
+	if held := g.letLoad(); held != nil {
+		t.Fatalf("the hold returned (%v) with its source not loaded: the pin on the new instance had not landed", held.err)
+	}
+	second.let()
+	got := <-g.holding
+	must(t, got.err)
+	nexttest.RequireJSONEqual(t, g.h.read(t, got.pin.source), kmN(2))
+	if released := first.released.Load(); released != 1 {
+		t.Fatalf("late pins released = %d, want the one", released)
+	}
+	g.h.loop.Run(got.pin.release)
+	if released := second.released.Load(); released != 1 {
+		t.Fatalf("pins on the new instance released = %d, want the one", released)
+	}
+}
+
+// The pin on the new instance fails to load: the hold fails with it, as a hold on a first pin that fails does, and lets the
+// key go.
+func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceFailsWithThePinOnTheNewInstanceThatFailedToLoad(t *testing.T) {
+	first := newGatedInstance(nil)
+	g := startGatedHold(t, first)
+	second := newGatedInstance(nil)
+	second.err = errors.New("disk")
+	g.move(t, second)
+	if held := g.letLoad(); held != nil {
+		t.Fatalf("the hold returned (%v) before the pin on the new instance settled", held.err)
+	}
+	second.let()
+	got := <-g.holding
+	if got.err == nil || got.err.Error() != "disk" {
+		t.Fatalf("the hold = %v, want the failed pin's error", got.err)
+	}
+	var kept int
+	g.h.loop.Run(func() { kept = g.keys.entries.len() })
+	if kept != 0 {
+		t.Fatalf("keys held = %d, want none", kept)
 	}
 }

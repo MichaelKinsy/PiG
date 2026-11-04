@@ -63,6 +63,13 @@ func newReferenceKeys(holder keyHolder) *referenceKeys { return &referenceKeys{h
 // hold holds key of keyed member: its source once pinned and loaded on the live instance; ctx ends only this caller's
 // wait. release (once, in a section) lets it go with its last holder. It blocks, outside a section: its sections are
 // the lookup and the resumption after the pin loaded.
+//
+// The pin it waits for may leave its instance while it loads (the object failed and went live again): its load then
+// ends without a pin for the key, and the entry follows the pin on the instance it points at now. Pi's `hold` awaits the
+// first pin only: its test holds the old pin open until the new instance's pin, an in-memory one, has settled, which
+// Pi's turn order guarantees (reference-keys.test.ts "the object fails and re-binds meanwhile"). Pins here are tasks, so
+// nothing orders the two, and a source returned before the new pin landed has no value to read; hold waits for that pin
+// too, which is what Pi's contract says it returns (a source pinned and loaded on the live instance, reference-keys.ts).
 func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey, error) {
 	loop := k.holder.keysLoop()
 	var entry *keyEntry
@@ -83,7 +90,7 @@ func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey
 			wait = k.pin(entry)
 		}
 	})
-	if wait != nil {
+	for wait != nil {
 		result := make(chan error, 1)
 		loop.Run(func() {
 			wait.thenWithContext(ctx, func(_ struct{}, err error) { result <- err })
@@ -93,6 +100,14 @@ func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey
 			loop.Run(release)
 			return pinnedKey{}, err
 		}
+		waited := wait
+		wait = nil
+		loop.Run(func() {
+			// A pin the entry followed has set entry.pin; one it left leaves the pin of the new instance, in flight.
+			if entry.pin == nil && entry.loading != waited {
+				wait = entry.loading
+			}
+		})
 	}
 	return pinnedKey{source: entry.source, release: release}, nil
 }
