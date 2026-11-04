@@ -712,6 +712,25 @@
       ]
     },
     {
+      "id": "BF-06a8890",
+      "title": "fix(bug): tell the reporter exactly what to do with the /bug archive",
+      "symptom": "fix(bug): tell the reporter exactly what to do with the /bug archive",
+      "rootCause": "The closing /bug message said only \"open a PiG issue and attach\" the archive. It now says to open the link, drag the archive into the issue and submit, and that the link fills the versions and report ID so \"What happened\" is the only field to write. The form label says an error message or a sentence is plenty. (D62 wording is PiG-only; the crash hint stays Pi's.)",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "06a8890d60",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-06cb94f",
       "title": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no…",
       "symptom": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
