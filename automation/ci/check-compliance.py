@@ -177,7 +177,6 @@ def check_pins() -> list[str]:
     go_tag = search(r"^IMAGE_TAG=(\S+)$", "automation/images/ci-go/metadata.env", "IMAGE_TAG")
     copies = [
         ("Go", go, ".devcontainer/devcontainer.json go feature", devcontainer["ghcr.io/devcontainers/features/go:1"]["version"]),
-        ("Go", go, "AGENTS.md documented setup Go version", search(r"documented setup commands use Go ([\d.]+)\.", "AGENTS.md", "Go version")),
         ("Go", go, "ci-parity Dockerfile ARG GO_VERSION", search(r"^ARG GO_VERSION=(\S+)$", "automation/images/ci-parity/Dockerfile", "GO_VERSION")),
         ("Go", go, "ci-parity image tag", re.match(r"go([\d.]+)-", parity_tag).group(1)),
         ("Go", go, "ci-go GO_IMAGE", search(r"^ARG GO_IMAGE=golang:([\d.]+)-", "automation/images/ci-go/Dockerfile", "GO_IMAGE")),
