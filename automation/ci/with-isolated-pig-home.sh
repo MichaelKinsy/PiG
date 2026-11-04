@@ -21,7 +21,8 @@ export RUSTUP_HOME="${RUSTUP_HOME:-$rust_base/.rustup}"
 export CARGO_HOME="${CARGO_HOME:-$rust_base/.cargo}"
 
 directory=$(mktemp -d "${TMPDIR:-${TMP:-/tmp}}/pig-validation.XXXXXXXX")
-trap 'rm -rf -- "$directory"' EXIT
+# The pinned Pi build the program installs under this home is made read-only on purpose (automation/pin/oracle.py protect, so an npm ci through a link cannot empty it), and rm cannot remove an entry of a directory without its write bit, as with Go's module cache. oracle.py thaw is the inverse; this is the same step for the whole home.
+trap 'chmod -R u+w -- "$directory" 2>/dev/null || true; rm -rf -- "$directory"' EXIT
 home=$directory
 # Native Windows programs need drive-qualified paths, not MSYS mount paths.
 case "$OSTYPE" in
