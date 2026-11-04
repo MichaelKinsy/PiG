@@ -352,6 +352,22 @@ func (g *gcHost) appendEntry(conv int) *commitRun {
 	return run
 }
 
+// flush is Pi's `await flush()` before `held.release()` (packages/durable/test/session-group-commit.test.ts, session-support.ts: pending
+// microtasks and one macrotask turn): it returns once the line has admitted every commit whose end was sent, so the call the release lets
+// go sends them all. Admission is a hops chain of the host's owner after the end, and the release races it through the Storage's own
+// goroutine, so a commit whose end was sent last can miss the call and join the next one, which a failed call rejects as SessionFailed. A
+// job takes the line only after the job before it admitted its part (session/loop.go workReturned, LineRelease), so a transaction that has
+// begun proves the commits before it are admitted. It is aborted as a callback that threw, which admits no part (loop.go End), and its
+// answer comes in line order after the publications this flush precedes, so it is not waited for. The line must be free: not while a
+// job waits at a gate, and not once the Session closes.
+func (g *gcHost) flush() {
+	g.t.Helper()
+	probe := g.beginTx()
+	if err := g.host.Send(g.ctx, abi.Event{Kind: abi.EventTx, ID: probe.id, Payload: []byte(`{"op":"abort","error":{"name":"Error","message":"flush"}}`)}); err != nil {
+		g.t.Fatal(err)
+	}
+}
+
 func (g *gcHost) publishedSeqs() []int64 {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -398,6 +414,13 @@ func (g *gcHost) callCount() int {
 	return len(g.calls)
 }
 
+// callBatches is the number of batches Storage call number index carried.
+func (g *gcHost) callBatches(index int) int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.calls[index].batches
+}
+
 // The commits admitted while a call is in flight leave in one call, each with its own seq, published in order; the line runs their
 // callbacks meanwhile, because a Storage call holds the writer, not the line.
 func TestCommitsAdmittedDuringACallLeaveInOneCall(t *testing.T) {
@@ -413,6 +436,7 @@ func TestCommitsAdmittedDuringACallLeaveInOneCall(t *testing.T) {
 	if pubs := len(g.publishedSeqs()); pubs != before {
 		t.Fatalf("%d commits published while the call was in flight, want the %d before it", pubs, before)
 	}
+	g.flush()
 	release()
 	for i, run := range []*commitRun{first, second, third} {
 		if res := g.result(run); res != `{"result":null}` {
@@ -484,6 +508,7 @@ func TestARefusedBatchRejectsWithTheRefusalAndFailsTheSession(t *testing.T) {
 	g.script(index+1, &storageScript{refuseAt: &refuseAt})
 	ok := g.appendEntry(b)
 	refused := g.appendEntry(c)
+	g.flush()
 	release()
 	if res := g.result(hold); res != `{"result":null}` {
 		t.Fatalf("the held commit ended with %s", res)
@@ -544,6 +569,7 @@ func failedCall(t *testing.T, n int, script *storageScript, noWriteAfter int) []
 			runs = append(runs, run)
 		}
 	}
+	g.flush()
 	release()
 	if res := g.result(hold); res != `{"result":null}` {
 		t.Fatalf("the held commit ended with %s", res)
@@ -551,6 +577,9 @@ func failedCall(t *testing.T, n int, script *storageScript, noWriteAfter int) []
 	out := make([]string, len(runs))
 	for i, run := range runs {
 		out[i] = g.result(run)
+	}
+	if got := g.callBatches(index + 1); got != n {
+		t.Fatalf("the failing call carried %d batches, want the %d parts admitted before the held call ended", got, n)
 	}
 	return out
 }
@@ -624,6 +653,7 @@ func TestThePartsOfOneCallArePublishedAMacrotaskApart(t *testing.T) {
 	g.waitFor("the held call", func() bool { return len(g.calls) > index })
 	second := g.appendEntry(b)
 	third := g.appendEntry(c)
+	g.flush()
 	release()
 	for _, run := range []*commitRun{first, second, third} {
 		if res := g.result(run); res != `{"result":null}` {
