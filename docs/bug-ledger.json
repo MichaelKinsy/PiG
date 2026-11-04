@@ -7744,6 +7744,30 @@
       ]
     },
     {
+      "id": "BF-3afef80",
+      "title": "RPC mode no longer lets a stdin end, a second shutdown request or a single SIGTERM or SIGHUP cut off a…",
+      "symptom": "RPC mode no longer lets a stdin end, a second shutdown request or a single SIGTERM or SIGHUP cut off a shutdown that already started: closing stdin and sending SIGTERM together, as Paseo and systemd do, lets the `session_shutdown` handlers finish, and the process exits with the status of the first trigger.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode no longer lets a stdin end, a second shutdown request or a single SIGTERM or SIGHUP cut off a shutdown that already started: closing stdin and sending SIGTERM together, as Paseo and systemd do, lets the `session_shutdown` handlers finish, and the process exits with the status of the first trigger. A second signal exits at once with 128 plus its number. Print mode likewise keeps handling signals until its final disposal is done, instead of dying from a signal during it. Pi 1.5.0 behaves as before; PiG follows Pi main ace560c30 (Pi #11599, D231).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3afef80fa0",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndSettlesBeforeShutdownStarts",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownRepeatedSignalKeepsItsExitStatus",
+        "coding/cli/rpc_shutdown_test.go::TestRPCShutdownTriggers"
+      ]
+    },
+    {
       "id": "BF-3b009a3",
       "title": "`chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK`",
       "symptom": "A child host that forked its own children passed its lock on, and children without a lock of their own failed to start with `locked` (Pi a4d040d3).",
@@ -8082,6 +8106,42 @@
       ],
       "tests": [
         "internal/codingagent/tree_branching_oracle_test.go::TestTreeListBranchingRenderMatchesPiOracle"
+      ]
+    },
+    {
+      "id": "BF-3d3f421",
+      "title": "A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129",
+      "symptom": "A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129.",
+      "rootCause": "The kernel's SIGHUP, the input reader's EOF and a failed terminal write each recorded an ending of their own and raced `os.Exit`, so a hangup wrote three lines or two lines without the signal's, never the one line D102 promises.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129. The kernel's SIGHUP, the input reader's EOF and a failed terminal write each recorded an ending of their own and raced `os.Exit`, so a hangup wrote three lines or two lines without the signal's, never the one line D102 promises. The first path now owns the record and names the first cause observed (`received SIGHUP` when pig leads its session, `terminal gone` when it runs under a shell); the line is flushed before the process exits; a second dead-terminal exit blocks behind the first, as Pi's `emergencyTerminalExit` never returns; and no other exit overtakes a running one. Run's error return and an extension's `ctx.shutdown()` claim the same line (D102).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3d3f4215ac",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "c680df851c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/exit_ending_test.go::TestBeforeExitWaitsForTheLineInFlight",
+        "internal/codingagent/exit_ending_test.go::TestConcurrentEmergencyExitsLeaveOneLine",
+        "internal/codingagent/exit_ending_test.go::TestCrashExitYieldsToARunningEmergencyExit",
+        "internal/codingagent/exit_ending_test.go::TestDeadTerminalExitAfterTheSignalAddsNoLine",
+        "internal/codingagent/exit_ending_test.go::TestExtensionShutdownAndDeadTerminalLeaveOneLine",
+        "internal/codingagent/exit_ending_test.go::TestRecordEndingLeavesOneLineForConcurrentEndings",
+        "internal/codingagent/exit_ending_test.go::TestRecordEndingLoserBlocksUntilTheOwnersLineIsOnDisk",
+        "internal/codingagent/exit_ending_test.go::TestSecondDeadTerminalExitBlocksBehindTheFirst",
+        "internal/codingagent/exit_ending_test.go::TestSecondEmergencyExitNeverReturns",
+        "internal/codingagent/exit_record_test.go::TestExitRecordChild",
+        "test/integration/hangup_exitlog_test.go::TestHangupWritesOneExitLogLine"
       ]
     },
     {
@@ -10241,6 +10301,49 @@
       "tests": [
         "coding/extension/host/subprocess/native_provider_models_test.go::TestNativeProviderModelsKeepTheirMemberOrder",
         "internal/codingagent/native_provider_filter_order_test.go::TestNativeProviderFilterAllModelsSeesTheProvidersOwnModels"
+      ]
+    },
+    {
+      "id": "BF-48a903e",
+      "title": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting…",
+      "symptom": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command.",
+      "rootCause": "The owner asked for both fixes to ship in 0.7.0.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D231",
+      "removeWhen": "the pin reaches a Pi release containing both 1708b4788 and ace560c30. Part 1 alone is removed when the pin reaches one containing 1708b4788; part 2 likewise for ace560c30.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command. A request made during startup (for example from `session_start`) is handled once input is attached, and a shutdown requested by an extension command waits until the command's `prompt` response is written. Pi 1.5.0 behaves as before; PiG follows Pi main 1708b4788 (Pi #11599, D231).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "48a903ebee",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "585f1faf43",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "c779a26fb1",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/print_final_disposal_signal_test.go::TestPrintModeSignalDuringFinalDisposalWaitsForIt",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownFromSessionStartExits",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWaitsForCommandOfSameChunk",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand",
+        "coding/cli/rpc_repeated_signal_test.go::TestRPCInputEndDuringSignalShutdownLetsItFinish",
+        "coding/cli/rpc_repeated_signal_test.go::TestRPCRepeatedSignalDuringShutdownExitsAtOnce",
+        "coding/cli/rpc_repeated_signal_test.go::TestRPCSingleSignalDuringInputEndShutdownLetsItFinish",
+        "coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate",
+        "coding/cli/rpc_shutdown_regression_test.go::TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder",
+        "coding/cli/rpc_shutdown_test.go::TestRPCExtensionShutdownRequestExits",
+        "coding/cli/rpc_shutdown_test.go::TestRPCShutdownTriggers"
       ]
     },
     {
@@ -21999,6 +22102,25 @@
       "tests": [
         "durable/harness/harness_inbox_test.go::TestInbox"
       ]
+    },
+    {
+      "id": "BF-818ba64",
+      "title": "fix(codingagent): mark the hangup grace as D102's",
+      "symptom": "fix(codingagent): mark the hangup grace as D102's",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "818ba64253",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-81e1a45",
@@ -37914,7 +38036,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -37979,7 +38100,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38044,7 +38164,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38109,7 +38228,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38174,7 +38292,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38239,7 +38356,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38304,7 +38420,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38369,7 +38484,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38434,7 +38548,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38499,7 +38612,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38564,7 +38676,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38629,7 +38740,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38694,7 +38804,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38759,7 +38868,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38824,7 +38932,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38889,7 +38996,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38954,7 +39060,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39019,7 +39124,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39084,7 +39188,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39149,7 +39252,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39214,7 +39316,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -42601,6 +42702,32 @@
       ],
       "tests": [
         "coding/packagecontent/packagecontent_test.go::TestAgentPluginsV1DescriptionLimitCountsUTF16Units"
+      ]
+    },
+    {
+      "id": "BF-f0a9d01",
+      "title": "An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line",
+      "symptom": "An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line.",
+      "rootCause": "An interactive session that had drawn its screen but not yet reached run() had no SIGINT handler: the signal killed it by Go's default action, with no exit.log line. Pi's init() registers its signal handlers as its first step (interactive-mode.ts:974-977), so the SIGINT handler now goes in at the top of Init.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line. The handler was installed only after the first screen was drawn, so a SIGINT in that window killed the session by the default action with no line, and once installed it also asked the session to unwind, which let the process exit 0 before the handler's own exit 130. The handler now goes in first, as Pi registers its signal handlers first in `init()`, and it ends the process without unwinding the session.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0a9d013e1",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine",
+        "internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreen",
+        "internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild",
+        "internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended",
+        "internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning"
       ]
     },
     {
@@ -46936,6 +47063,11 @@
       "id": "D228",
       "title": "Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy",
       "entry": "BF-2359a0a"
+    },
+    {
+      "id": "D231",
+      "title": "PiG follows Pi main 1708b4788 and ace560c30 ahead of the v1.5.0 pin: RPC mode acts on an idle…",
+      "entry": "BF-48a903e"
     },
     {
       "id": "D233",
