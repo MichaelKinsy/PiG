@@ -43,7 +43,7 @@ func observeOf[T any](ctx context.Context, m *mountSource[T], observer durable.O
 		if value, ok := m.advance(f); ok {
 			guarded.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: value, Ops: f.ops})
 		}
-	}, func() { guarded.End(durable.WatchEnd{Kind: durable.WatchEnded}) })
+	}, func(_, ended durable.WatchEnd) { guarded.End(ended) })
 	if err := ctx.Err(); err != nil {
 		guarded.Detach()
 		return nil, context.Cause(ctx)

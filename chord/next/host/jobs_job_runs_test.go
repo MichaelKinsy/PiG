@@ -891,6 +891,9 @@ func TestRunningFramesRecordChangesAsSplicesAndSetsOfTheList(t *testing.T) {
 
 // job.test.ts › keep-alive › keeps an object without holders while runs run, and ends it after the last one and its linger
 func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOneAndItsLinger(t *testing.T) {
+	// The linger (20 ms) is a window the test polls for: on the fake clock (Pi's `fakeTimers()` of its other describes, the
+	// clock Pi's own sleeps here stand for) it lasts until the test moves the clock, however long the poll takes.
+	loop := newVirtualLoop()
 	g := newJobGate()
 	var job JobHandle
 	ended := make(chan struct{})
@@ -910,7 +913,7 @@ func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOn
 				State: map[string]chord.Watchable[delta.JsonValue]{"log": log.Member()},
 			}}, nil
 		}, ServeOptions{Linger: new(20 * time.Millisecond)})
-	}, jobHostOptions{})
+	}, jobHostOptions{Loop: loop})
 	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	jobStart(t, job, textArgs("a"), background)
@@ -921,8 +924,8 @@ func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOn
 		t.Fatalf("references = %d", refs)
 	}
 	item.Release()
-	// The linger passes (real time, 2x its length) while the run keeps the object.
-	time.Sleep(40 * time.Millisecond)
+	// The linger passes (2x its length) while the run keeps the object.
+	loop.fake.Advance(40)
 	select {
 	case <-ended:
 		t.Fatal("the object ended while a run ran")
@@ -938,6 +941,7 @@ func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOn
 	eventually(t, "the object to linger", func() bool {
 		return activityCount(t, host, "jobs") == 0 && activityCount(t, host, "lingering") == 1
 	})
+	loop.fake.Advance(40)
 	<-ended
 	eventually(t, "the linger to end", func() bool {
 		return activityCount(t, host, "jobs") == 0 && activityCount(t, host, "lingering") == 0

@@ -122,6 +122,7 @@ var fileSymlinkCallers = map[string]string{
 	"internal/codingagent/context_files_oracle_test.go::compareContextTrees":                                                                                   "file link; a context file reached through a link",
 	"internal/codingagent/skills_oracle_test.go::skillFixture":                                                                                                 "file link and a link to a missing target",
 	"internal/codingagent/prompt_templates_oracle_test.go::promptFixture":                                                                                      "file link and a link to a missing target",
+	"automation/ci/fixtureguard/main_test.go::TestTermsFileSymlinkAndBOM":                                                                                      "file link; the test passes a terms file that is a link to a file inside the repository, which the guard must reject",
 	"internal/codingagent/resources_test.go::TestDedupFallbackOnBrokenSymlink":                                                                                 "link to a missing target",
 	"internal/codingagent/resources_test.go::TestDedupSymlinkLoopGuarded":                                                                                      "cyclic links",
 	"internal/codingagent/resources_test.go::TestResourceSymlinkDedup":                                                                                         "file link",

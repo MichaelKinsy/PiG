@@ -44,6 +44,11 @@ var nodeFiles embed.FS
 const minimumNode = "v22.19.0"
 
 // defaultReadyTimeout is how long Load waits for the process to start and connect (chord/host's loader waits as long).
+// SocketOwnerEnv names the environment variable that tells a process who started it, for the directories its NodeHosts make:
+// the process that starts a worker sets it to a NewSocketOwner and removes what the worker left (RemoveSocketDirsOf); the worker
+// takes it out of its environment at start (AdoptSocketOwner).
+const SocketOwnerEnv = "PIG_CHORD_SOCKET_OWNER"
+
 const defaultReadyTimeout = 30 * time.Second
 
 // defaultStopGrace is NodeOptions.StopGrace's default: Pi's workers' GRACE (workers.ts), 5 s.

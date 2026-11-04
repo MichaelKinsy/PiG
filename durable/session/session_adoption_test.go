@@ -6,9 +6,10 @@ package session_test
 // observeCommits observers runs here right after the publication's scope, before the commit resolves for its caller, so
 // the order logs read "resolve" (Storage) before "observed" (the Session's own observers) and "host".
 //
-// Go cannot patch Transaction.prototype.adopt and .discard, so the adoption count is read from the storage's own order log and
-// from the adopted snapshot, "discard not called" is read from the Session failing with the storage's error while the adopted
-// value stays visible, and the case where adoption itself throws is in session_group_commit_internal_test.go.
+// Go cannot patch Transaction.prototype.adopt, so the adoption count is read from the storage's own order log and from the
+// adopted snapshot. The discard assertions are TestWriterDiscardsAPartOnlyWhenStorageRejectedBeforeItsReceipt
+// (session_adoption_internal_test.go), which counts a part's Discard on a real Writer, and the case where adoption itself
+// throws is TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage in the same file.
 
 import (
 	"context"
@@ -19,6 +20,7 @@ import (
 	"sync"
 	"testing"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -352,4 +354,33 @@ func TestPublicationAfterStorage(t *testing.T) {
 			t.Fatalf("end %+v", end)
 		}
 	})
+}
+
+// Own test: the publication step the Session's own observers get (chordctx.WithStep) ends once all of them ran, even when one
+// panics, and before the host listeners' dispatch: a call an own observer parks in the step runs after the later own
+// observers, and the host listeners see no live step.
+func TestPublicationStepEndsAfterEveryOwnObserverEvenWhenOneOfThemPanics(t *testing.T) {
+	kernel, faulty := openAdoption()
+	kernel.FollowCommits(func(ctx context.Context, _ session.ObservedCommit) {
+		if !chordctx.StepBatch(ctx, "step", func() { faulty.record("parked ran") }, func(items []func()) {
+			for _, item := range items {
+				item()
+			}
+		}) {
+			faulty.record("no step")
+		}
+	})
+	kernel.FollowCommits(func(context.Context, session.ObservedCommit) {
+		faulty.record("observed after")
+		panic(errors.New("observer bug"))
+	})
+	sessiontest.ObserveCommitsFunc(kernel, func(ctx context.Context, _ durable.CommitPublication) {
+		if chordctx.StepBatch(ctx, "step-host", func() {}, func([]func()) {}) {
+			faulty.record("host in a live step")
+		}
+		faulty.record("host")
+	})
+	must(t, bumpCounter(t, kernel))
+	<-kernel.Closed()
+	expectEqual(t, faulty.Order(), []string{"adopt", "adopted", "resolve", "observed after", "parked ran", "host"})
 }

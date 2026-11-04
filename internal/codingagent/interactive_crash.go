@@ -190,6 +190,9 @@ func (m *InteractiveMode) uncaughtOffLoop(value any, stack []byte) {
 		tui.RestoreTerminalFromSignal()
 	}
 	m.uncaughtCrash(value, stack, os.Stderr)
+	// This exit records a crash (crashes.json), not an exit.log line, so it does not claim the record. It still waits
+	// behind an emergency exit and for a line in flight (exit_ending.go).
+	BeforeExit()
 	EndSessionMarker()
 	os.Exit(1)
 }

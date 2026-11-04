@@ -3,6 +3,9 @@ package codemode
 import (
 	"bytes"
 	"context"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -44,7 +47,7 @@ func instantiateWithoutContextChecks(t *testing.T, wasm []byte) api.Module {
 	return mod
 }
 
-// A loop with the halt global set traps on its next iteration; with it clear, a loop runs unchanged.
+// A loop with the halt global set traps within haltPollInterval iterations; with it clear, a loop runs unchanged.
 func TestInstrumentHaltTrapsALoopWhenTheGlobalIsSet(t *testing.T) {
 	instrumented, err := instrumentHalt(haltTestModule)
 	if err != nil {
@@ -161,5 +164,85 @@ func TestHaltStopsAGuestThatNeverReachesTheInterruptCheck(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the script still runs 10s after halt")
+	}
+}
+
+const haltChildEnv = "PIG_CODEMODE_HALT_CHILD"
+
+// A guest loop must not hold the Go runtime hostage. Go can only stop the world (every garbage collection does) at a
+// Go call, and a compiled loop that never calls Go is not preemptible: if the halt check never leaves the guest, the
+// stop-the-world waits for the loop, no timer or goroutine runs, and the halt that would end the loop is never
+// delivered. The process cannot observe its own hang, so the scenario runs in a child under a deadline.
+func TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld(t *testing.T) {
+	if os.Getenv(haltChildEnv) != "" {
+		haltChild(t)
+		return
+	}
+	for _, procs := range []string{"1", "2"} {
+		t.Run("GOMAXPROCS="+procs, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld$", "-test.count=1")
+			cmd.Env = append(os.Environ(), haltChildEnv+"=1", "GOMAXPROCS="+procs)
+			out, err := cmd.CombinedOutput()
+			if ctx.Err() != nil {
+				t.Fatalf("the child was still running after 30s: a guest loop blocks the Go runtime, so the halt never runs\n%s", out)
+			}
+			if err != nil {
+				t.Fatalf("child: %v\n%s", err, out)
+			}
+		})
+	}
+}
+
+func haltChild(t *testing.T) {
+	instrumented, err := instrumentHalt(haltTestModule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := instantiateWithoutContextChecks(t, instrumented)
+	halt := mod.ExportedGlobal(haltExport).(api.MutableGlobal)
+	done := make(chan error, 1)
+	go func() {
+		_, err := mod.ExportedFunction("spin").Call(context.Background())
+		done <- err
+	}()
+	time.Sleep(50 * time.Millisecond)
+	runtime.GC()
+	halt.Set(1)
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "unreachable") {
+			t.Fatalf("spin() = %v, want an unreachable trap", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("spin() still running 10s after the halt global was set")
+	}
+}
+
+// A loop that runs for many poll intervals still finishes with its result while the halt global is clear, and traps at
+// a poll once it is set.
+func TestInstrumentHaltPollsRepeatedlyAcrossALongLoop(t *testing.T) {
+	// count: a loop that adds one until 100000 and returns the total.
+	module := []byte{
+		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+		0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+		0x03, 0x02, 0x01, 0x00,
+		0x07, 0x09, 0x01, 0x05, 'c', 'o', 'u', 'n', 't', 0x00, 0x00,
+		0x0a, 0x19, 0x01, 0x17, 0x01, 0x01, 0x7f,
+		0x03, 0x40, 0x20, 0x00, 0x41, 0x01, 0x6a, 0x22, 0x00, 0x41, 0xa0, 0x8d, 0x06, 0x49, 0x0d, 0x00, 0x0b, 0x20, 0x00, 0x0b,
+	}
+	instrumented, err := instrumentHalt(module)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := instantiateWithoutContextChecks(t, instrumented)
+	out, err := mod.ExportedFunction("count").Call(t.Context())
+	if err != nil || len(out) != 1 || out[0] != 100000 {
+		t.Fatalf("count() = %v, %v with the halt global clear, want 100000", out, err)
+	}
+	mod.ExportedGlobal(haltExport).(api.MutableGlobal).Set(1)
+	if _, err := mod.ExportedFunction("count").Call(t.Context()); err == nil || !strings.Contains(err.Error(), "unreachable") {
+		t.Fatalf("count() = %v with the halt global set, want an unreachable trap", err)
 	}
 }

@@ -839,6 +839,29 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(must(storage.SubmissionByRequest(ctx, rootId, "passive-failed"))).toEqual(unanswered)
 		}),
 
+		createCase(options, "stores continue submissions, which have no entry and are never queued", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
+			rootId := createRoot(storage)
+			doneId := mint[durable.SubmissionId](storage)
+			failedId := mint[durable.SubmissionId](storage)
+			placedDone := durable.SubmissionRecord{Id: doneId, ConversationId: rootId, RequestId: new("continue-done"), Type: durable.SubmissionTypeContinue, Status: durable.SubmissionPlaced}
+			placedFailed := durable.SubmissionRecord{Id: failedId, ConversationId: rootId, RequestId: new("continue-failed"), Type: durable.SubmissionTypeContinue, Status: durable.SubmissionPlaced}
+			commit(storage, submissionWrite(placedDone), submissionWrite(placedFailed))
+			expect(must(storage.Submission(ctx, doneId))).toEqual(placedDone)
+			expect(must(storage.ScanSubmissions(ctx, durable.SubmissionQuery{Status: new(durable.SubmissionPlaced)}, 10, nil)).Items).toEqual([]durable.SubmissionRecord{placedDone, placedFailed})
+
+			done := placedDone
+			done.Status = durable.SubmissionDone
+			done.Answer = new(mint[durable.EntryId](storage))
+			unanswered := placedFailed
+			unanswered.Status = durable.SubmissionUnanswered
+			unanswered.Reason = new("nothing_to_answer")
+			commit(storage, submissionWrite(done), submissionWrite(unanswered))
+			expect(must(storage.Submission(ctx, doneId))).toEqual(done)
+			expect(must(storage.SubmissionByRequest(ctx, rootId, "continue-done"))).toEqual(done)
+			expect(must(storage.Submission(ctx, failedId))).toEqual(unanswered)
+			expect(must(storage.SubmissionByRequest(ctx, rootId, "continue-failed"))).toEqual(unanswered)
+		}),
+
 		createCase(options, "reconstructs rewindable documents and preserves half-open incarnations", func(storage durable.Storage, expect func(any) expectation, _ func(error, string)) {
 			rootId := createRoot(storage)
 			firstId := mint[durable.DocumentId](storage)
@@ -1125,6 +1148,24 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(must(storage.Document(ctx, emptyId, durable.CurrentPoint))).toBeUndefined()
 			expect(must(storage.Document(ctx, emptyId, durable.AtSeq(emptyAt)))).toBeUndefined()
 			expect(must(storage.FindDocument(ctx, durable.DocumentAddress{Kind: record.Kind, Scope: conversationScope(rootId), Key: new("empty")}, durable.AtSeq(emptyAt)))).toBeUndefined()
+		}),
+
+		createCase(options, "refuses a creation and a change of one document in one commit, in either order", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {
+			createRoot(storage)
+			for _, order := range []string{"create first", "change first"} {
+				id := mint[durable.DocumentId](storage)
+				create := durable.DocumentCreateWrite{
+					Record:  durable.DocumentCreate{Id: id, Kind: "twice", Key: new(order), Scope: sessionScope},
+					Content: base(1, chorddelta.JsonObjectOf("x", 1)),
+				}
+				change := durable.DocumentChangeWrite{Id: id, Content: delta(1, op("s", path("x"), 2))}
+				writes := []durable.StorageWrite{create, change}
+				if order == "change first" {
+					writes = []durable.StorageWrite{change, create}
+				}
+				rejects(commitErr(storage, writes...), "more than one content command")
+				expect(must(storage.Document(ctx, id, durable.CurrentPoint))).toBeUndefined()
+			}
 		}),
 
 		createCase(options, "rolls back record tables and secondary indexes when a document command fails", func(storage durable.Storage, expect func(any) expectation, rejects func(error, string)) {

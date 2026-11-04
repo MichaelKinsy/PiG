@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -498,6 +499,110 @@ func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsR
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("Close ignores its context: it waits for an app hook that never returns")
+	}
+}
+
+// workerTmp is a temporary directory for the workers of a test, which is not the server's (the test process's) own, and
+// a lister of the NodeHost socket directories left in it. It is short: the socket's path in it must fit a unix address.
+func workerTmp(t *testing.T) (env map[string]string, socketDirs func() []string) {
+	t.Helper()
+	scratch, err := os.MkdirTemp("", "w")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(scratch) })
+	return map[string]string{"TMPDIR": scratch}, func() []string {
+		entries, err := os.ReadDir(scratch)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var found []string
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "chord-plugins-") {
+				found = append(found, entry.Name())
+			}
+		}
+		return found
+	}
+}
+
+// startingWorker is a fleet whose worker S1 is in the middle of starting its NodeHost: the host's socket directory is made
+// (in the worker's own TMPDIR) and its Node subprocess is held back, until the test is over.
+func startingWorker(t *testing.T) (f *fleet, socketDirs func() []string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("a named pipe leaves no directory")
+	}
+	env, socketDirs := workerTmp(t)
+	f = newFleet(t, fleetOptions{env: env})
+	gate := filepath.Join(t.TempDir(), "node-may-start")
+	f.behaviours.set("S1", workerBehaviour{HoldNodeStart: gate})
+	// Whatever the test left running goes on to start its Node host and end.
+	t.Cleanup(func() { _ = os.WriteFile(gate, nil, 0o600) })
+	notes := f.hold(fixtureNotes, "S1")
+	t.Cleanup(notes.Release)
+	until(t, func() bool { return len(socketDirs()) > 0 })
+	if state := f.stateOf("S1"); state == nil || state.Status != WorkerStarting {
+		t.Fatalf("worker = %+v, want one starting its host", state)
+	}
+	return f, socketDirs
+}
+
+// Not upstream's: Pi evaluates plugins in-process, so it has no socket directory to leave behind. PiG's NodeHost listens on a
+// socket in a directory of its own, and a worker that ends while that host is still starting (stopped by Close here, which
+// asks it to shut down) has no host to close it: the directory must not outlive the worker, whichever temporary directory
+// the worker has.
+func TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting(t *testing.T) {
+	f, socketDirs := startingWorker(t)
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if left := socketDirs(); len(left) != 0 {
+		t.Fatalf("left behind by the stopped worker: %v", left)
+	}
+}
+
+// The owner variable is the server's to tell the worker who started it: the worker takes it out of its environment at start, as
+// it does the channel's, so no program it spawns sees it.
+func TestAWorkerDoesNotPassItsSocketOwnerToTheProgramsItSpawns(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the probe is a /bin/sh program")
+	}
+	f := newFleet(t, fleetOptions{})
+	f.behaviours.set("S1", workerBehaviour{SpawnProbe: true})
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	const prefix = "session|S1 owner seen by a spawned program: "
+	var line string
+	until(t, func() bool {
+		for _, output := range f.output.all() {
+			if strings.HasPrefix(output, prefix) {
+				line = output
+				return true
+			}
+		}
+		return false
+	})
+	if line != prefix+"unset" {
+		t.Fatalf("output = %q, want the variable unset", line)
+	}
+}
+
+// The same for a worker that is killed (Pi's `child.process.kill()` of a failed start, a crash, the start timeout), which has no
+// chance to clean up at all: the server removes what its process left, once it is gone.
+func TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory(t *testing.T) {
+	f, socketDirs := startingWorker(t)
+	process, err := os.FindProcess(f.stateOf("S1").Pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	// The server's state follows the exit, which comes after the removal.
+	until(t, func() bool { state := f.stateOf("S1"); return state != nil && state.Status == WorkerFailed })
+	if left := socketDirs(); len(left) != 0 {
+		t.Fatalf("left behind by the killed worker: %v", left)
 	}
 }
 

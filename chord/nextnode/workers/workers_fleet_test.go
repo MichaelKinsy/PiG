@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -38,6 +39,8 @@ type fleetOptions struct {
 	authorize func() (bool, error)
 	// onAuthorize runs for every hold the route authorizes, inside the server's section (the route's `authorize` runs there).
 	onAuthorize func(address contracts.Address)
+	// env is added to the workers' environment.
+	env map[string]string
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -120,7 +123,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
 		Kind:  "worker",
 		Entry: fixtureEntry(t),
-		Env:   fixtureEnvironment("worker"),
+		Env:   withEnv(fixtureEnvironment("worker"), options.env),
 		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
 			if options.onAuthorize != nil {
 				options.onAuthorize(address)
@@ -493,4 +496,10 @@ func (f *fleet) reloadOutstanding(id string) bool {
 		}
 	})
 	return outstanding
+}
+
+// withEnv is env with extra added.
+func withEnv(env, extra map[string]string) map[string]string {
+	maps.Copy(env, extra)
+	return env
 }

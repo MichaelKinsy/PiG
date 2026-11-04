@@ -41,7 +41,7 @@ func (recorder *createdDocs) Commit(ctx context.Context, batches [][]durable.Sto
 	return recorder.Storage.Commit(ctx, batches, receive)
 }
 
-// harness-nested-tools.test.ts:99 it("stores one document per nested call, keyed by its key, written only by that call")
+// harness-nested-tools.test.ts:102 it("stores one document per nested call, keyed by its key, written only by that call")
 func TestOneDocumentPerNestedCallKeyedByItsKey(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, echoRegistration())
@@ -78,7 +78,7 @@ func TestOneDocumentPerNestedCallKeyedByItsKey(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:134 it("rejects a nested call of an aborted caller and leaves no document for it"): a nested
+// harness-nested-tools.test.ts:137 it("rejects a nested call of an aborted caller and leaves no document for it"): a nested
 // call's admission is a commit of the calling task, so once the caller has its abort mark executeTool rejects, and no
 // nested-call document exists for the call.
 func TestANestedCallOfAnAbortedCallerRejectsAndLeavesNoDocumentForIt(t *testing.T) {

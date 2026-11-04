@@ -4,12 +4,14 @@ import (
 	"os"
 	"os/exec"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
 // Ports packages/chord/src/next-node/workers/process.ts. A worker process as the server sees it (slice 10 §3, Chord v1's
@@ -82,7 +84,9 @@ type WorkerProcess struct {
 func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess, error) {
 	//nolint:gosec // G204 (class b): the program is the app's own worker entry and its arguments, with no shell.
 	cmd := exec.Command(options.Entry, options.ExecArgv...)
-	cmd.Env = environment(options.Env)
+	// Unique to this start: what the worker's NodeHosts leave of their socket directories is named by it (SocketOwnerEnv).
+	owner := plugins.NewSocketOwner()
+	cmd.Env = append(environment(options.Env), plugins.SocketOwnerEnv+"="+owner)
 	detach(cmd)
 	parent, afterStart, fail, err := prepareChannel(cmd)
 	if err != nil {
@@ -138,9 +142,23 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 	//portlint:allow golifetime the waiter returns when the leader exits
 	go func() { //portlint:allow asyncorder process.ts:79 child.once("exit", ...) is an event of the child with no ordering against other work; the exit handler runs inside it
 		state, _ := cmd.Process.Wait()
+		// The worker's NodeHost, if it was still starting when the worker ended, left its socket directory behind: Pi evaluates
+		// plugins in-process and has no such directory, so there is nothing to port, only to clean up (a kill gives the worker
+		// no chance to).
+		plugins.RemoveSocketDirsOf(tempDirOf(cmd.Env), owner)
 		process.ended(exitOf(state), events)
 	}()
 	return process, nil
+}
+
+// tempDirOf is the temporary directory a process with environment env uses (os.TempDir's, for env instead of this process's).
+func tempDirOf(env []string) string {
+	for _, entry := range slices.Backward(env) {
+		if dir, ok := strings.CutPrefix(entry, "TMPDIR="); ok && dir != "" {
+			return dir
+		}
+	}
+	return os.TempDir()
 }
 
 // environment is this process's environment overlaid with env.

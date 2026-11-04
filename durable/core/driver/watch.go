@@ -48,7 +48,7 @@ type watchHub struct {
 	next    uint32
 	sinks   map[uint32]func(rawFrame)
 	early   map[uint32][]rawFrame
-	ends    []func() // end of each open watch
+	ends    []func(watch, observer durable.WatchEnd) // end of each open watch, given the ends the Session's close makes for each kind of follower
 	bg      sync.WaitGroup
 	spawnMu sync.Mutex // guards shut; apart from mu because sinks run under mu and spawn
 	shut    bool       // closeSession ran: no further background work starts
@@ -126,7 +126,7 @@ func (h *watchHub) reserve() uint32 {
 }
 
 // bind installs the sink of an opened watch and hands it the frames held for it, in order, before any later frame.
-func (h *watchHub) bind(id uint32, advance func(rawFrame), end func()) {
+func (h *watchHub) bind(id uint32, advance func(rawFrame), end func(watch, observer durable.WatchEnd)) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	held := h.early[id]
@@ -175,14 +175,16 @@ func (h *watchHub) notice(n abi.Notice) {
 	}
 }
 
-// closeSession ends every open watch as Session.close does (kind ended) and waits for the watch.close requests.
-func (h *watchHub) closeSession() {
+// closeSession ends every open watch and observer as Session.close does (session.CloseEnds: a watch ended, an observer failed
+// with session.ErrSessionClosedEnd, both failed with the failure that failed the Session) and waits for the watch.close requests.
+func (h *watchHub) closeSession(failure error) {
 	h.mu.Lock()
 	ends := h.ends
 	h.ends = nil
 	h.mu.Unlock()
+	watch, observer := session.CloseEnds(failure)
 	for _, end := range ends {
-		end()
+		end(watch, observer)
 	}
 	h.spawnMu.Lock()
 	h.shut = true
@@ -347,7 +349,7 @@ func watchOf[T any](ctx context.Context, m *mountSource[T]) *chord.Watch[T] {
 				watch.Advance(m.hub.deliveryContext(), chord.WatchCall[T]{Kind: chord.WatchCallValue, Value: value, Ops: f.ops})
 			}
 		}
-	}, func() { watch.EndWith(chord.WatchEnd{Kind: chord.WatchEnded}) })
+	}, func(ended, _ durable.WatchEnd) { watch.EndWith(ended) })
 	if ctx.Done() != nil {
 		watch.ObserveAbort(ctx)
 	}
@@ -396,7 +398,7 @@ func (s *coreSession) ObserveDocErased(ctx context.Context, token durable.AnyDoc
 				guarded.Advance(m.hub.deliveryContext(), durable.WatchCall[durable.JsonObject]{Kind: durable.WatchCallValue, Value: value, Ops: f.ops})
 			}
 		}
-	}, func() { guarded.End(durable.WatchEnd{Kind: durable.WatchEnded}) })
+	}, func(_, ended durable.WatchEnd) { guarded.End(ended) })
 	return session.NewObservation(m.first, guarded), nil
 }
 

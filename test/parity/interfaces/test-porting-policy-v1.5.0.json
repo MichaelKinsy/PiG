@@ -6917,7 +6917,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: a tool call that restarts mid-run settles its nested calls; every model tool call and restart of a durable session reaches it."
     },
     {
       "path": "packages/durable/test/harness-nested-tools.test.ts",
@@ -6926,7 +6926,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: the built-in tool task and its nested calls (version 3 records, migration of stored version 1 and 2 tasks); every tool call of a durable session runs through it."
     },
     {
       "path": "packages/durable/test/harness-observers.test.ts",
@@ -6935,7 +6935,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: Harness.observeConversation, observeTaskGraph and task document watches, and how a Session's close ends them (S1); every adapter that follows a durable session reaches them."
     },
     {
       "path": "packages/durable/test/harness-ownership.test.ts",
@@ -6944,7 +6944,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: task and conversation ownership, abort cascades and queued handle operations; every subagent and background task of a durable session depends on it."
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
@@ -6962,7 +6962,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: system prompt and tool loadout preparation of every generation request."
     },
     {
       "path": "packages/durable/test/harness-read-only.test.ts",
@@ -6980,7 +6980,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Durable on the Chord v2 store (Pi 14b4c56e, 6eb99ad6); area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: the registry reader that wakes the scheduler when a Chord host recomposes the extensions registry, and the Harness views other objects follow."
     },
     {
       "path": "packages/durable/test/harness-registry.test.ts",
@@ -6989,7 +6989,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: extension registry resolution (tools, sections, hooks, wrappers); every durable generation reads it."
     },
     {
       "path": "packages/durable/test/harness-reports.test.ts",
@@ -6998,7 +6998,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.3.0+482c1381: onReport receives a typed ReportInfo naming the source and reason of each report (types.ts ReportInfo, harness.ts); reached by every durable session that reports a failure."
+      "rationale": "Production-path review at Pi 1.5.0: onReport with a typed ReportInfo naming the source and reason of each failure; reached by every durable session that reports a failure."
     },
     {
       "path": "packages/durable/test/harness-restart-failure.test.ts",
@@ -7007,7 +7007,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 1.4.0+b3a29f11; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: crash recovery: the restart limit, interrupted generations and the run failure a renderer shows; reached whenever a durable host restarts."
     },
     {
       "path": "packages/durable/test/harness-run-failure.test.ts",
@@ -7016,7 +7016,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 1.4.0+f3255de7; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: pi.live.runFailure, why the newest run ended without an answer; read by every renderer."
     },
     {
       "path": "packages/durable/test/harness-scheduler-indexes.test.ts",
@@ -7025,7 +7025,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: the scheduler's owner and mark indexes and cascade reasons; every task end and abort passes through them."
     },
     {
       "path": "packages/durable/test/harness-scheduler-retention.test.ts",
@@ -7034,7 +7034,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: the scheduler's retention of ended owners and the chains it reloads; every long-lived durable session depends on it."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -7066,7 +7066,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New with the Durable 1.1.0 line; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: structured tool output and what callers of executeTool get; every tool with an output schema reaches it."
     },
     {
       "path": "packages/durable/test/harness-structured.test.ts",
@@ -7075,7 +7075,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "Production-path review at Pi 1.5.0: task ownership, waiting and completing, tool rounds as the view shows them, and failed-commit recovery; the core of a durable session's task runs."
     },
     {
       "path": "packages/durable/test/harness-submissions.test.ts",
@@ -7362,7 +7362,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by owner 2026-10-29 class approval (Promise/thenable mechanics, Go callbacks return no value; verified per row): the designed-out case tests a JS promise returned by an observer's call; a Go observer's Advance returns no value, so a failing observer is a panic that the Session reports once, detaches and ends listener_error, asserted by session TestObserveDoc (reports a throwing observer, detaches it and ends it with the error). [observeDoc throwing asynchronously \u203a reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`] The call returns a Promise upstream and Go has none, so the rejection has no counterpart.",
+      "designedOutCases": [
+        "observeDoc throwing asynchronously \u203a reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`"
+      ]
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",
