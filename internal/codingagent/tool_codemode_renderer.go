@@ -110,7 +110,7 @@ func codemodeRenderCall(args json.RawMessage, _ extension.Theme, context extensi
 	startToolTimer(context)
 	// The code includes the `// @options:` line, so options show as part of the script.
 	code, valid := codemodeCodeArg(args)
-	title := codemodeFg("toolTitle", "\x1b[1mcodemode\x1b[22m")
+	title := codemodeFg("toolTitle", tui.ChalkBold("codemode"))
 	component := codemodeContainer(context.LastComponent)
 	if !valid {
 		component.Add(codemodeTextComponent(title + " " + codemodeFg("error", "[invalid arg]")))

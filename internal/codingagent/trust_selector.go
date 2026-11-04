@@ -60,7 +60,7 @@ func NewTrustSelectorComponent(options TrustSelectorOptions) *TrustSelectorCompo
 	}
 	selector.Add(tui.NewDynamicBorder())
 	selector.Add(tui.NewSpacer(1))
-	selector.Add(text(theme.Fg("accent", "\x1b[1mProject trust\x1b[22m")))
+	selector.Add(text(theme.Fg("accent", tui.ChalkBold("Project trust"))))
 	selector.Add(text(theme.Fg("muted", options.Cwd)))
 	selector.Add(tui.NewSpacer(1))
 	selector.Add(text(theme.Fg("muted", "Saved decision: "+saved)))

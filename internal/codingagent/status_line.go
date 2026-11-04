@@ -739,7 +739,7 @@ func dim(s string) string {
 // are \x1b[1m<warning>text\x1b[39m\x1b[22m.
 func boldWarning(s string) string {
 	th := tui.ActiveTheme()
-	return "\x1b[1m" + th.Warning + s + "\x1b[39m" + tui.SGRBoldDimReset
+	return tui.ChalkBold(th.Warning + s + "\x1b[39m")
 }
 
 // stripANSI removes ANSI escape sequences (delegates to widthx.StripAnsi).

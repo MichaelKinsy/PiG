@@ -107,7 +107,7 @@ func (m *InteractiveMode) handleHotkeysCommand() {
 	body.AddChild(hotkeys)
 	m.appendChatBlock(tui.NewContainer(
 		tui.NewDynamicBorder(),
-		tui.NewPaddedText("\x1b[1m"+tui.ActiveTheme().Fg("accent", "Keyboard Shortcuts")+"\x1b[22m", 1, 0, nil),
+		tui.NewPaddedText(tui.ChalkBold(tui.ActiveTheme().Fg("accent", "Keyboard Shortcuts")), 1, 0, nil),
 		tui.NewSpacer(1),
 		body,
 		tui.NewDynamicBorder(),

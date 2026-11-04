@@ -1045,7 +1045,7 @@ func sessionInfoRenderer(sc *SlashContext) func() string {
 		selectedModelKey = sc.SelectedModelKey()
 	}
 	return func() string {
-		bold := func(s string) string { return "\033[1m" + s + "\033[22m" }
+		bold := tui.ChalkBold
 		dim := func(s string) string { return tui.ActiveTheme().Fg("dim", s) }
 
 		var b strings.Builder
