@@ -58,6 +58,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | Unreleased |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a51e9d](#bf-0a51e9d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-0aa31c4](#bf-0aa31c4) | Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -294,6 +295,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3ce6bcb](#bf-3ce6bcb) | fix(changelog,source): /i scheme tests fold as JavaScript does, not as RE2's (?i) | PiG's own defect | All platforms | Unreleased |
 | [BF-3cf03c0](#bf-3cf03c0) | A faux provider error message that carries a response id writes `responseId` after `errorMessage` in session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d12e48](#bf-3d12e48) | fix(tui): tree selector cursor follows Pi's selectedIndex over an empty list | PiG's own defect | All platforms | Unreleased |
+| [BF-3d3f421](#bf-3d3f421) | A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129 | PiG's own defect | All platforms | Unreleased |
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
@@ -380,6 +382,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c7ccf2](#bf-4c7ccf2) | A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4d04134](#bf-4d04134) | The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4d2f44e](#bf-4d2f44e) | A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4d32556](#bf-4d32556) | `Math.exp` in `internal/jsmath` returns Node's bits on arm64 | PiG's own defect | All platforms | Unreleased |
 | [BF-4d33f78](#bf-4d33f78) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
 | [BF-4d965e3](#bf-4d965e3) | The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>`… | PiG's own defect | All platforms | 0.5.0 |
@@ -478,6 +481,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f03fa4-2](#bf-5f03fa4-2) | The contexts of those extensions read the child session: `ctx.model`, `ctx.scopedModels` (the session's… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-5f22b85](#bf-5f22b85) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
+| [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-60c4c6f](#bf-60c4c6f) | A tool call whose finished arguments are not a valid JSON object no longer runs with the parsed prefix: its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-612955a](#bf-612955a) | The Rust and Go SDKs keep an unpaired surrogate through `prepareBranchEntries`… | PiG's own defect | All platforms | 0.5.0 |
@@ -788,6 +792,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-80bb522-3](#bf-80bb522-3) | Amazon Bedrock Converse requests merge adjacent messages that have the same role | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-80c797d](#bf-80c797d) | Text that holds ill-formed UTF-8 is written with one U+FFFD for each ill-formed sequence, as Node decodes it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8153bc7](#bf-8153bc7) | A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's… | PiG's own defect | All platforms | Unreleased |
+| [BF-818ba64](#bf-818ba64) | fix(codingagent): mark the hangup grace as D102's | PiG's own defect | All platforms | Unreleased |
 | [BF-81e1a45](#bf-81e1a45) | Streaming a tool call's arguments allocates less per delta | PiG's own defect | All platforms | Unreleased |
 | [BF-81e584b](#bf-81e584b) | anthropic-messages payload now matches Pi for four cases found by the new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-81e584b-2](#bf-81e584b-2) | Live-Pi oracle `TestMistralMessagesPayloadMatchesPi` (`ai/mistral_messages_payload_oracle_test.go`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1102,6 +1107,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aff6631](#bf-aff6631) | A code mode script in a loop can no longer freeze the whole process | PiG's own defect | All platforms | Unreleased |
 | [BF-affc944](#bf-affc944) | Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b02876b](#bf-b02876b) | `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b04bb32](#bf-b04bb32) | fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers… | PiG's own defect | All platforms | Unreleased |
 | [BF-b0608a9](#bf-b0608a9) | OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b06ad92](#bf-b06ad92) | An MCP server `url` can use environment variables (`"url": "${TOOLS_URL}"`): PiG checks and connects to the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b1642ac](#bf-b1642ac) | fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear… | PiG's own defect | All platforms | Unreleased |
@@ -1471,6 +1477,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f08ffe9](#bf-f08ffe9) | A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for… | PiG's own defect | All platforms | Unreleased |
+| [BF-f0a9d01](#bf-f0a9d01) | An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line | PiG's own defect | All platforms | Unreleased |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f193c36](#bf-f193c36) | The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -2134,6 +2141,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38b0f0c036` (2026-10-05), `098e33da91` (2026-10-06), `70d13f2863` (2026-10-06)
 - **Tests:** `extensions/sdk/surface_parity_test.go::TestHasUIAndUIThemeFollowReplicatedState`, `extensions/sdk/ui_theme_style_test.go::TestUIThemeFgAndBgPanicForAnUnknownToken`, `test/extension-conformance/theme_test.go::TestThemeFaintForegroundAcrossSDKs`, `tui/highlight_test.go::TestCliHighlightThemeColorsSubstitutionsWithTheTextColor`, `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor`, `tui/theme_unknown_token_test.go::TestThemeTextAttributeMethodsWrapInChalkPairs` and 1 more in docs/bug-ledger.json
 - **Release note:** Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.
+
+### BF-0a3094a
+
+**fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function
+- **Root cause:** The recordExit function variable that the tests used to hold the owner inside its write let gosec's taint analysis (G704) connect the install-telemetry request URL to a dynamic call: make lint failed on install_telemetry.go:112 and :118 from on. A nil-able channel field gives the tests the same hold with no dynamic call.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a3094a85a` (2026-11-03)
+- **Tests:** `internal/codingagent/exit_ending_test.go::TestBeforeExitWaitsForTheLineInFlight`, `internal/codingagent/exit_ending_test.go::TestRecordEndingLoserBlocksUntilTheOwnersLineIsOnDisk`
 
 ### BF-0a3e8ce
 
@@ -5382,6 +5402,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3d12e48493` (2026-10-10)
 - **Tests:** `internal/codingagent/tree_branching_oracle_test.go::TestTreeListBranchingRenderMatchesPiOracle`
 
+### BF-3d3f421
+
+**A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129**
+
+- **Source:** PiG's own defect
+- **Symptom:** A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129.
+- **Root cause:** The kernel's SIGHUP, the input reader's EOF and a failed terminal write each recorded an ending of their own and raced `os.Exit`, so a hangup wrote three lines or two lines without the signal's, never the one line D102 promises.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3d3f4215ac` (2026-11-03), `c680df851c` (2026-11-03)
+- **Tests:** `internal/codingagent/exit_ending_test.go::TestBeforeExitWaitsForTheLineInFlight`, `internal/codingagent/exit_ending_test.go::TestConcurrentEmergencyExitsLeaveOneLine`, `internal/codingagent/exit_ending_test.go::TestCrashExitYieldsToARunningEmergencyExit`, `internal/codingagent/exit_ending_test.go::TestDeadTerminalExitAfterTheSignalAddsNoLine`, `internal/codingagent/exit_ending_test.go::TestExtensionShutdownAndDeadTerminalLeaveOneLine`, `internal/codingagent/exit_ending_test.go::TestRecordEndingLeavesOneLineForConcurrentEndings`, `internal/codingagent/exit_ending_test.go::TestRecordEndingLoserBlocksUntilTheOwnersLineIsOnDisk`, `internal/codingagent/exit_ending_test.go::TestSecondDeadTerminalExitBlocksBehindTheFirst` and 3 more in docs/bug-ledger.json
+- **Release note:** A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129. The kernel's SIGHUP, the input reader's EOF and a failed terminal write each recorded an ending of their own and raced `os.Exit`, so a hangup wrote three lines or two lines without the signal's, never the one line D102 promises. The first path now owns the record and names the first cause observed (`received SIGHUP` when pig leads its session, `terminal gone` when it runs under a shell); the line is flushed before the process exits; a second dead-terminal exit blocks behind the first, as Pi's `emergencyTerminalExit` never returns; and no other exit overtakes a running one. Run's error return and an extension's `ctx.shutdown()` claim the same line (D102).
+
 ### BF-3d475c4
 
 **Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`…**
@@ -6566,6 +6600,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d1f258f335` (2026-10-06), `4d041349a7` (2026-10-07), `ccaade27af` (2026-10-07)
 - **Tests:** `internal/codingagent/thinking_selector_oracle_test.go::TestThinkingSelectorInputMatchesPi`, `test/parity/scenarios/settings/06-thinking-selector-search-editing.toml`, `test/parity/scenarios/settings/08-settings-search-editing.toml`, `tui/bordered_loader_oracle_test.go::TestBorderedLoaderMatchesPi`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelFollowsTheBindingAndCallsOnAbortEachPress`, `tui/cancellable_loader_input_test.go::TestCancellableLoaderCancelWithoutOnAbortOnlyAborts`, `tui/settings_list_input_test.go::TestSettingsListAnyDelegatedKeyResetsTheSelectionToTheFirstMatch`, `tui/settings_list_input_test.go::TestSettingsListBoundActionsRunInUpstreamOrder` and 5 more in docs/bug-ledger.json
 - **Release note:** The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of always `escape/ctrl+c`.
+
+### BF-4d2f44e
+
+**A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready` ("app.exposer: not live yet") when that object failed and went live again, in memory, while the key's first pin still loaded from the store: the key was handed back before its pin on the new instance had landed, and the factory's derive read it with no value.
+- **Root cause:** TestReferenceKeys...TheObjectFailsAndRebindsMeanwhile...TheLatePinIsReleased failed in the final-2 gate with "app.exposer: not live yet" (host_reference_keys_test.go:547, the get of the viewer), and on the base 4 times in 5000 runs on 2 CPUs with 8 busy loops.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4d2f44e5e2` (2026-11-03), `83216dc40b` (2026-11-03), `b478485936` (2026-11-03)
+- **Tests:** `chord/next/host/host_reference_keys_store_test.go::TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectRebindsToAKeyInTheStoreOnlyTheConsumerIsRejectedNotReadyAsInPi`, `chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWaitingForThePinOnTheNewInstanceEndsWithItsContext`, `chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceDoesNotWaitForAPinOnTheNewInstanceThatReadsTheStore`, `chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceReturnsItsSourceOnceThePinOnTheNewInstanceFailedToLoad`, `chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceWaitsForThePinOnTheNewInstance`
+- **Release note:** A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready` ("app.exposer: not live yet") when that object failed and went live again, in memory, while the key's first pin still loaded from the store: the key was handed back before its pin on the new instance had landed, and the factory's derive read it with no value. In Pi a new pin whose load has finished when the old pin settles has landed by then; here the key is now handed back after the new pin has settled when its load has finished. A new pin whose load has not finished when the old pin settles is not waited for, as in Pi, where the consumer's get is then rejected with `not_ready` and `activation_failed`. In the few steps between a load's end and the key being marked loaded the two can differ either way: PiG fails where Pi succeeds, or succeeds where Pi fails. Seen once in a gate run, and 4 times in 5000 runs on 2 CPUs with 8 busy loops.
 
 ### BF-4d32556
 
@@ -7912,6 +7960,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `5f4a0b297f` (2026-10-27)
+- **Tests:** None recorded.
+
+### BF-6018935
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `601893581e` (2026-11-03)
 - **Tests:** None recorded.
 
 ### BF-609d2bd
@@ -12221,6 +12282,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8153bc7a9e` (2026-10-24)
 - **Tests:** `durable/harness/harness_inbox_test.go::TestInbox`
 - **Release note:** A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's `pi.reset` entry is written and the same run continues with a new generation in the new context, so the submission settles with the eventual answer. Queued writes and selected steers are placed after the handoff text, follow-ups wait for the run's final boundary, and a queued reset still ends the run `unanswered` with reason `reset`. A round whose every result also sets `Terminate` ends the run after the handoff.
+
+### BF-818ba64
+
+**fix(codingagent): mark the hangup grace as D102's**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): mark the hangup grace as D102's
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `818ba64253` (2026-11-03)
+- **Tests:** None recorded.
 
 ### BF-81e1a45
 
@@ -16587,6 +16661,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b02876b1d5` (2026-10-13)
 - **Tests:** `chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName`, `chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger`
 - **Release note:** `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a connection. Before, a route that returned a dead link (a child that exited before its link was wrapped) made every later call to that host name fail with `unavailable` until restart, and started a ping timer for the dead connection (Pi 7f022043).
+
+### BF-b04bb32
+
+**fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers apply in the order of the reads
+- **Root cause:** The extension answers getSignal on its own thread, so two reads of the run can be in flight together and answer in either order. The tracker took its lock only to apply an answer, so an "aborted" answer could land before an older "live" one and the live one then began a run of its own: a live context that nothing would abort, while the run was aborted. The lock is now held across the request and the apply, so answers are applied in read order and a read waits for the one before it.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b04bb32856` (2026-11-03)
+- **Tests:** `coding/session_graph_signal_test.go::TestGraphGetSignalAppliesAnswersInReadOrder`
 
 ### BF-b0608a9
 
@@ -21690,6 +21777,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f08ffe97f4` (2026-11-02)
 - **Tests:** `coding/packagecontent/packagecontent_test.go::TestAgentPluginsV1DescriptionLimitCountsUTF16Units`
 - **Release note:** A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills. The limit counts UTF-16 units like Pi's skill validation, so 513 astral characters are over it.
+
+### BF-f0a9d01
+
+**An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line**
+
+- **Source:** PiG's own defect
+- **Symptom:** An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line.
+- **Root cause:** An interactive session that had drawn its screen but not yet reached run() had no SIGINT handler: the signal killed it by Go's default action, with no exit.log line. Pi's init() registers its signal handlers as its first step (interactive-mode.ts:974-977), so the SIGINT handler now goes in at the top of Init.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0a9d013e1` (2026-11-03)
+- **Tests:** `coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreen`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning`
+- **Release note:** An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line. The handler was installed only after the first screen was drawn, so a SIGINT in that window killed the session by the default action with no line, and once installed it also asked the session to unwind, which let the process exit 0 before the handler's own exit 130. The handler now goes in first, as Pi registers its signal handlers first in `init()`, and it ends the process without unwinding the session.
 
 ### BF-f12896b
 
