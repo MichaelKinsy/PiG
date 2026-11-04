@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -45,6 +46,30 @@ func continueAnswering(text string, seen *continueSeen) ai.FauxResponseStep {
 		seen.mu.Unlock()
 		return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText(text)}}.AssistantMessage(), nil
 	})
+}
+
+// continueModels is the Harness's models with a hold on the next model lookup. A run resolves its model in its prepare phase,
+// before it finds a context with nothing to answer, so the hold keeps a run that never calls the model busy.
+type continueModels struct {
+	*ai.Models
+	held atomic.Pointer[continueHold]
+}
+
+type continueHold struct{ reached, release *deferredGate }
+
+// hold makes the next GetModel call wait until release is resolved; reached is resolved when that call arrives.
+func (models *continueModels) hold() *continueHold {
+	held := &continueHold{reached: deferred(), release: deferred()}
+	models.held.Store(held)
+	return held
+}
+
+func (models *continueModels) GetModel(provider, id string) *ai.Model {
+	if held := models.held.Swap(nil); held != nil {
+		held.reached.resolve()
+		_ = held.release.wait(testContext)
+	}
+	return models.Models.GetModel(provider, id)
 }
 
 func continueDraft(requestId ...string) durable.SubmissionDraft {
@@ -381,15 +406,27 @@ func TestContinue(t *testing.T) {
 	// #11043
 	t.Run("starts the inputs queued behind a continue with nothing to answer under afterFailedRun continue", func(t *testing.T) {
 		setup := chatSetup(t)
+		models := &continueModels{Models: setup.Models}
+		setup.HarnessModels = models
 		setup.SetSettings(func(settings *HarnessSettings) { settings.AfterFailedRun = durable.AfterFailedRunContinue })
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("answered"), fauxAnswer("second answered")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		must(submitInput(t, root, "one").Wait(testContext))
+		// The continue calls no model, so nothing in its run keeps the conversation busy while the input is admitted.
+		// Upstream's loop admits the caller's next submit before that run's commits; a run on its own goroutine (D181) races
+		// it, and an input admitted after the run ended is placed, not queued. So the run is held where it resolves its
+		// model, until the input is admitted.
+		held := models.hold()
+		defer held.release.resolve()
 		resumed := submit(t, root, continueDraft())
+		if err := held.reached.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
 		queued := submit(t, root, inputDraft("two", durable.WhenBusyFollowUp))
 		if status := must(queued.Status(testContext)).Status; status != durable.SubmissionQueued {
 			t.Fatalf("queued = %s", status)
 		}
+		held.release.resolve()
 		if settled := must(resumed.Wait(testContext)); settled.Status != durable.SubmissionUnanswered || *settled.Reason != "nothing_to_answer" {
 			t.Fatalf("resumed = %s", jsonText(t, settled))
 		}
