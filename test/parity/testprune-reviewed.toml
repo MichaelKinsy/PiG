@@ -954,3 +954,10 @@ commit = "c680df851c4349559df4868954a0675ad02fcaee"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "exit.log is PiG-only (D102, additive): Pi leaves no trace at an exit, so no Pi line governs these tests. The file is new on this branch; 3d3f4215ac added it for a first design in which a dead-terminal exit waited up to 500 ms for a SIGHUP to claim the line. The commit under review drops that wait, because it delayed the exit against Pi, and makes a second emergency exit block forever as Pi's never-returning emergencyTerminalExit does. The expectations move with that rule: the wait-for-claim and claim-after-the-bound tests are gone, a loser of the claim returns only after the owner's line is on disk, a second emergency exit never returns, and a crash exit yields to a running one. Pi's exit status (129) and terminal restore are unchanged; the tests pin one exit.log line and exit 129."
+
+[[entry]]
+path = "chord/next/host/host_reference_keys_test.go"
+commit = "b478485936430504d20b2c167683b20ff6ab3891"
+class = "CITE"
+cite = "packages/chord/src/next/host/reference-keys.ts:55"
+reason = "Pi hold (reference-keys.ts:55) returns the key source once the pin settles and does not fail with the pin failure: a failed pin shows on the key, which never had a value. The unit test of the failing pin now expects that not_ready key, the result Pi shows to its caller."
