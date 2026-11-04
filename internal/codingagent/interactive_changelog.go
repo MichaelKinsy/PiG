@@ -137,10 +137,10 @@ func (m *InteractiveMode) showStartupChangelog(newEntries []ChangelogEntry, exte
 			if match := changelogVersionRE.FindStringSubmatch(changelog); match != nil {
 				latestVersion = match[1]
 			}
-			m.chatContainer.Add(tui.NewPaddedText("Updated to v"+latestVersion+". Use \x1b[1m/changelog\x1b[22m to view full changelog.", 1, 0, nil))
+			m.chatContainer.Add(tui.NewPaddedText("Updated to v"+latestVersion+". Use "+tui.ChalkBold("/changelog")+" to view full changelog.", 1, 0, nil))
 		} else {
 			m.chatContainer.Add(tui.NewThemedText(func() string {
-				return "\x1b[1m" + tui.ActiveTheme().Fg("accent", "What's New") + tui.SGRBoldDimReset
+				return tui.ChalkBold(tui.ActiveTheme().Fg("accent", "What's New"))
 			}, 1, 0))
 			m.chatContainer.Add(tui.NewSpacer(1))
 			m.chatContainer.Add(tui.NewMarkdownWithOptions(jsstring.Trim(changelog), 1, 0, m.markdownThemeWithSettings(), nil, nil))
@@ -159,7 +159,7 @@ func (m *InteractiveMode) showStartupChangelog(newEntries []ChangelogEntry, exte
 			m.chatContainer.Add(tui.NewPaddedText(strings.Join(lines, "\n"), 1, 0, nil))
 		} else {
 			m.chatContainer.Add(tui.NewThemedText(func() string {
-				return "\x1b[1m" + tui.ActiveTheme().Fg("accent", "Extension Updates") + tui.SGRBoldDimReset
+				return tui.ChalkBold(tui.ActiveTheme().Fg("accent", "Extension Updates"))
 			}, 1, 0))
 			m.chatContainer.Add(tui.NewSpacer(1))
 			markdowns := make([]string, len(extensionUpdates))
@@ -183,7 +183,7 @@ func (m *InteractiveMode) handleChangelogCommand() {
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(tui.NewDynamicBorder())
 	m.chatContainer.Add(tui.NewThemedText(func() string {
-		return "\x1b[1m" + tui.ActiveTheme().Fg("accent", "What's New") + tui.SGRBoldDimReset
+		return tui.ChalkBold(tui.ActiveTheme().Fg("accent", "What's New"))
 	}, 1, 0))
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(body)

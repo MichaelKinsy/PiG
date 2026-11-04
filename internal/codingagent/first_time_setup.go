@@ -111,7 +111,7 @@ func (c *FirstTimeSetupComponent) update() {
 	c.Add(tui.NewPaddedText(strings.Join(piglogin.HeadLines(c.logoSprite(), t.GetColorMode()), "\n"), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
 	// pig divergence (D88): the welcome names PiG where Pi's names APP_NAME.
-	c.Add(tui.NewPaddedText(t.Fg("accent", "\x1b[1mWelcome to PiG, the minimal coding agent.\x1b[22m"), 1, 0, nil))
+	c.Add(tui.NewPaddedText(t.Fg("accent", tui.ChalkBold("Welcome to PiG, the minimal coding agent.")), 1, 0, nil))
 	c.Add(tui.NewSpacer(1))
 
 	switch c.step {

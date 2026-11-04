@@ -277,7 +277,7 @@ func (h configSelectorHeader) Render(width int) []string {
 		scopeHint = ".pig/settings.json · inherited global resources are dimmed"
 		action = "cycle inherit/+/-"
 	}
-	title := "\x1b[1m" + titleText + "\x1b[22m"
+	title := ChalkBold(titleText)
 	sep := t.Muted + " · " + "\x1b[39m"
 	hint := RawKeyHint("space", action) + sep + RawKeyHint("esc", "close")
 	if cs.projectModeAvailable {
@@ -330,7 +330,7 @@ func (l configResourceList) Render(width int) []string {
 					label += " · inherited global"
 					color = t.Dim
 				}
-				gl := color + "\x1b[1m" + label + "\x1b[22m\x1b[39m"
+				gl := color + ChalkBold(label) + "\x1b[39m"
 				lines = append(lines, fit("  "+gl))
 			case "subgroup":
 				color := t.Muted
@@ -370,7 +370,7 @@ func (l configResourceList) Render(width int) []string {
 				}
 				name := e.item.DisplayName
 				if isSelected && !dimmed {
-					name = "\x1b[1m" + name + "\x1b[22m"
+					name = ChalkBold(name)
 				}
 				if dimmed {
 					name = t.Dim + name + "\x1b[39m"
