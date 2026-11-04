@@ -99,7 +99,7 @@ func hangUpOnePig(t *testing.T, bin string, setup hangupSetup) (cause, problem s
 	if err != nil {
 		t.Fatalf("open pseudo-terminal: %v", err)
 	}
-	defer master.Close()
+	defer func() { _ = master.Close() }()
 	out := &syncBuffer{}
 	readerDone := make(chan struct{})
 	go func() {

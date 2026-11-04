@@ -152,7 +152,7 @@ func emergencyChildHolding(m *InteractiveMode) (release func()) {
 		write(dir, reason)
 	}
 	go m.emergencyTerminalExit("terminal gone: write /dev/stdout: input/output error")
-	for !(emergencyExiting.Load() && ending.claimed()) {
+	for !emergencyExiting.Load() || !ending.claimed() {
 		runtime.Gosched()
 	}
 	return func() { close(gate) }

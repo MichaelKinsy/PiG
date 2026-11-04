@@ -12,6 +12,7 @@ import (
 // SIGINT ends the process through handleInterruptSignal's os.Exit(130). If the owner loop were asked to return from Run as well, main would reach exit 0 on
 // its own and, under load, win against that os.Exit: the session ended with status 0 instead of 130.
 func TestInterruptShutdownLeavesTheOwnerLoopRunning(t *testing.T) {
+	freshEnding(t)
 	agentDir := t.TempDir()
 	disposals := 0
 	runner := inproc.NewRunner([]extension.Extension{{Path: "cleanup", Handlers: map[string][]extension.HandlerFn{
