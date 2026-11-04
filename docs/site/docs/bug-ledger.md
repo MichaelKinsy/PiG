@@ -429,6 +429,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-570f857](#bf-570f857) | Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-5732479](#bf-5732479) | `auth.json` keeps each credential's properties in the order they were read or returned by an extension's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-57347b2](#bf-57347b2) | A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the… | PiG's own defect | All platforms | Unreleased |
 | [BF-576065f](#bf-576065f) | A stream of appends to one text costs the appended bytes instead of the whole text so far | PiG's own defect | All platforms | Unreleased |
 | [BF-576065f-2](#bf-576065f-2) | Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does… | PiG's own defect | All platforms | Unreleased |
 | [BF-5774749](#bf-5774749) | A Piglet found by name in `<project>/.pig/piglets` now follows project trust: it is used only when the… | PiG's own defect | All platforms | 0.5.0 |
@@ -440,6 +441,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-598e27f](#bf-598e27f) | Escape over an open autocomplete list during compaction now closes the list and lets compaction continue, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59b5dae](#bf-59b5dae) | OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base… | PiG's own defect | All platforms | Unreleased |
+| [BF-59e2efb](#bf-59e2efb) | A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then… | PiG's own defect | All platforms | Unreleased |
 | [BF-59fb623](#bf-59fb623) | fix(requestvalidity): one Responses assistant turn holds all its items, in any order | PiG's own defect | All platforms | Unreleased |
 | [BF-5a093cd](#bf-5a093cd) | In print and JSON mode, Node extensions that share one process now keep Pi's order at disposal | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5aab94c](#bf-5aab94c) | The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name… | PiG's own defect | All platforms | 0.5.0 |
@@ -7233,6 +7235,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/auth_credential_payload_test.go::TestOAuthCredentialCustomJSONRetainsUTF16Payload`, `ai/credential_key_order_test.go::TestAuthStorageStoresALoginCredentialInItsOwnKeyOrder`, `ai/credential_key_order_test.go::TestAuthStorageWritesCredentialsInTheirDecodedKeyOrder`, `ai/credential_key_order_test.go::TestCredentialFromOAuthPlacesTheDiscriminatorAsPiDoes`, `ai/credential_key_order_test.go::TestCredentialInCodecOrderCarriesNoKeyOrder`, `coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins` and 15 more in docs/bug-ledger.json
 - **Release note:** `auth.json` keeps each credential's properties in the order they were read or returned by an extension's login, as Pi keeps the object it stores and writes it with `JSON.stringify`. Before, PiG rewrote every credential in a fixed key order whenever `auth.json` was saved, including credentials of providers that were not changed. A `config.oauth` login's credential gets its `type` after the flow's own properties, as Pi's `{ ...credential, type: "oauth" }` does. A credential that one of PiG's built-in logins creates still uses PiG's own key order, not the order of Pi's object literal.
 
+### BF-57347b2
+
+**A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the connection was kept could be ended by a delivery that was older than that router, which Pi never does.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `57347b2237` (2026-11-03)
+- **Tests:** `chord/nextnode/http/review_test.go::TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead`
+- **Release note:** A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the connection was kept could be ended by a delivery that was older than that router, which Pi never does. Routers now carry the order of their composition, and a connection is judged only by the routers composed after the one its check read, whether or not that one is ever delivered; a router composed later than the check still ends it.
+
 ### BF-576065f
 
 **A stream of appends to one text costs the appended bytes instead of the whole text so far**
@@ -7384,6 +7400,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `59b5daed63` (2026-10-27)
 - **Tests:** `ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream`, `ai/opencode_endpoints_upstream_test.go::TestOpenCodeCatalogUsesProtocolSpecificEndpoints`
 - **Release note:** OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base: OpenAI-compatible models at `/inference/openai/v1`, Anthropic models at `/inference/anthropic`, Google models at `/inference/google/v1beta` and Jev at `/inference/systemone/v1` (the same paths under `/inference/go` for OpenCode Go). Ports Pi's #11434.
+
+### BF-59e2efb
+
+**A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `59e2efb012` (2026-11-03)
+- **Tests:** `chord/nextnode/http/review_test.go::TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead`, `chord/nextnode/http/review_test.go::TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers`
+- **Release note:** A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives. Every router delivered after the check now judges the connection, from the router the check read, so the removal ends it. A router delivered between the check's count and its read no longer ends a connection the router it read admits once that router's delivery is listed.
 
 ### BF-59fb623
 
