@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// Alt+Up restores queued messages to the editor and removes them from the
+// The dequeue key (Alt+Up; Alt+Q with Windows keybindings, as upstream keybindings.ts) restores queued messages to the editor and removes them from the
 // queue (upstream handleDequeue → restoreQueuedMessagesToEditor → clearAllQueues),
-// so the queued message is neither shown as pending nor sent when the turn ends.
+// so the queued message is neither shown as pending nor sent when the turn ends. The follow-up key is Alt+Enter, or Ctrl+Q with Windows keybindings.
 func TestInteractiveAltUpDequeuesQueuedMessages(t *testing.T) {
-	for _, queue := range []struct{ name, submit string }{{"steer", "\r"}, {"followUp", "\x1b[13;3u"}} {
-		for _, key := range []string{"\x1b[1;3A", "\x1bp"} {
+	for _, queue := range []struct{ name, submit string }{{"steer", "\r"}, {"followUp", icodingagent.HostFollowUpInput()}} {
+		for _, key := range icodingagent.HostDequeueInputs() {
 			t.Run(queue.name+strings.NewReplacer("\x1b", "ESC").Replace(key), func(t *testing.T) {
 				requested := make(chan struct{})
 				release := make(chan struct{})
