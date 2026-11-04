@@ -289,11 +289,15 @@ run_cli_shards() {
   return "$status"
 }
 
-# run_sharded_pkg <label> <parallel> <package> <shards>: run each shard of the package as its own go test process, continuing past a failing shard, after proving the shard patterns select every listed test exactly once.
+# run_sharded_pkg <label> <parallel> <package> <shards> [<first> <last>]: run each shard of the package, or the shards first..last, as its own go test process, continuing past a failing shard, after proving the shard patterns select every listed test exactly once.
 run_sharded_pkg() {
-  local label="$1" parallel="$2" pkg="$3" shards="$4" shard status=0 pattern
+  local label="$1" parallel="$2" pkg="$3" shards="$4" first="${5:-1}" last="${6:-$4}" shard status=0 pattern
+  if ! [[ "$first" =~ ^[0-9]+$ && "$last" =~ ^[0-9]+$ ]] || (( first < 1 || last > shards || first > last )); then
+    echo "[test-grouped] $pkg: shard range $first..$last is not within 1..$shards" >&2
+    return 2
+  fi
   "$ROOT/automation/ci/check-shard-union.sh" "$pkg" "$shards" || return $?
-  for ((shard = 1; shard <= shards; shard++)); do
+  for ((shard = first; shard <= last; shard++)); do
     pattern=$("$ROOT/automation/ci/test-shard-pattern.sh" "$shard" "$shards" "$pkg")
     RUN_FLAG=(-run "$pattern")
     run_group "$label $pkg shard $shard of $shards" "$parallel" "$pkg" || status=$?
@@ -382,8 +386,12 @@ case "$MODE" in
       conformance) selected=./test/extension-conformance ;;
     esac
     selected=$(go list "$selected")
+    # subprocess|conformance [<first> <last>]: CI runs the conformance shards in two jobs; make test-conformance runs all of them.
     if shard_count_get "$selected" >/dev/null; then
-      run_sharded "$SUBPROCESS_PARALLEL" "$selected"
+      run_sharded_pkg sharded "$SUBPROCESS_PARALLEL" "$selected" "$(shard_count_get "$selected")" "${2:-1}" "${3:-$(shard_count_get "$selected")}"
+    elif [[ $# -gt 1 ]]; then
+      echo "[test-grouped] $MODE is not sharded; a shard range does not apply" >&2
+      exit 2
     else
       run_group "$MODE" "$SUBPROCESS_PARALLEL" "$selected"
     fi
@@ -458,7 +466,7 @@ case "$MODE" in
     if [[ ${#SERIAL_PKGS[@]} -eq 0 ]]; then echo '  (none)'; else printf '  %s\n' "${SERIAL_PKGS[@]}"; fi
     ;;
   *)
-    echo "usage: $0 [default|fast|fast-parallel|fast-sharded|cli [<first> <last>]|subprocess|conformance|changed|stress|report]" >&2
+    echo "usage: $0 [default|fast|fast-parallel|fast-sharded|cli [<first> <last>]|subprocess [<first> <last>]|conformance [<first> <last>]|changed|stress|report]" >&2
     exit 2
     ;;
 esac

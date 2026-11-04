@@ -71,7 +71,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Node loader / ubuntu-24.04, windows-latest, macos-15 | pr | 9 | |
 | Linux / parity-2 | queue | 12 | The other hermetic parity hash shard |
 | Linux / portmap-1, portmap-2, portmap-3 | queue | 44 | |
-| Linux / test-conformance | queue | 18 | Conformance of every SDK |
+| Linux / test-conformance-1, test-conformance-2 | queue | 30 | Conformance of every SDK, in two halves of four shards |
 | Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |
 | Durable Cloudflare host | queue | 25 | |

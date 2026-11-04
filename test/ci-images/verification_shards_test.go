@@ -72,8 +72,8 @@ func gateLeaves(t *testing.T) func(string) []string {
 		switch name {
 		case "check", "check-core", "check-contracts-fast":
 		case "test":
-			// CI runs test-fast and test-cli in halves (fast-parallel and fast-sharded; two cmd/pig shard ranges), which together are make test.
-			return []string{"test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance"}
+			// CI runs test-fast and test-cli in halves (fast-parallel and fast-sharded; two cmd/pig shard ranges; two conformance shard ranges), which together are make test.
+			return []string{"test-fast-parallel", "test-fast-sharded", "test-cli-1", "test-cli-2", "test-subprocess", "test-conformance-1", "test-conformance-2"}
 		case "portmap-check":
 			// CI runs the PORT_MAP evidence check as PORTMAP_SHARDS shards (PORTMAP_SHARD=N/M), which together are portmap-check.
 			var halves []string

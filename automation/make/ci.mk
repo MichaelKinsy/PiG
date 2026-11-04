@@ -31,7 +31,8 @@ sdk-vectors-changed:
 ci-test-cli-1: test-cli-1
 ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
-ci-test-conformance: test-conformance
+ci-test-conformance-1: test-conformance-1
+ci-test-conformance-2: test-conformance-2
 ci-sdk: test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts
 ci-extensions: typescript-extension-corpus examples-check standard-check
 ci-race: test-race
@@ -108,6 +109,14 @@ test-subprocess: test-prereqs interface-deps parity-deps durable-interop-deps
 test-conformance: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh conformance
 
+# CI runs the conformance shards in two jobs; the two ranges together are test-conformance. The shards run one after another and took about 55
+# minutes together on a 4-CPU runner, past the 60 minutes of one job with its setup; the Lisp rows (an SBCL image built for each fixture, about 15 s) are most of what the suite gained.
+test-conformance-1: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh conformance 1 4
+
+test-conformance-2: test-prereqs interface-deps parity-deps durable-interop-deps
+	@./automation/ci/test-grouped.sh conformance 5 8
+
 # A golden or snapshot file declares where its expected values come from (test/testdata-provenance.toml).
 test-provenance: ## Fail on a golden or snapshot file without declared Pi provenance
 	@go run ./test/parity/cmd/testprune lint -provenance
@@ -119,4 +128,4 @@ test-expectation-lint: ## Fail on test expectations edited with their code and n
 
 TEST_EXPECT_BASE ?= main
 
-.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance
+.PHONY: sdk-vectors-changed ci-durable-contract test-provenance test-expectation-lint ci-preflight ci-test-changed ci-bookkeeping autofix-check ci-startup ci-build ci-build-pr ci-checks ci-checks-pr ci-toolchains ci-test-fast ci-test-fast-sharded ci-test-cli-1 ci-test-cli-2 ci-test-subprocess ci-test-conformance-1 ci-test-conformance-2 ci-sdk ci-extensions ci-race ci-term-engines ci-integration ci-parity ci-parity-1 ci-parity-2 parity-fast-1 parity-fast-2 ci-drift ci-drift-pr ci-contracts ci-portmap-1 ci-portmap-2 ci-portmap-3 portmap-check-1 portmap-check-2 portmap-check-3 ci-closure test-fast test-fast-parallel test-fast-sharded test-cli test-cli-1 test-cli-2 test-subprocess test-conformance test-conformance-1 test-conformance-2
