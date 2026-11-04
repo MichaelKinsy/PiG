@@ -11,6 +11,8 @@ var markedLexerSurvivorDocs = []string{
 	"- [X] c\n- [X] c\n|-|", "- [ ] \U0001F642\n- [ ] \U0001F642\n|-|", "- [x] a\n- | [x] b |\n  |-|", "- [x] a\n  | [x] b |\n  |-|\n- c",
 	// A quote whose first line is a list item and whose lazy lines continue it: the quote's text loses the lazy line's length (markedWithoutTail).
 	">>2)\n>  ===\ntwo words\ta  ", ">>2)\n>  ===\nx", "> - a\n>  ===\nb  ", ">- a\n> ---\nb",
+	// Characters at the edges of the ranges the lexer tests with comparisons: U+FFFF is one UTF-16 unit when markedConsumed counts the units of a quote's raw, and a tag name begins with a letter from a to z (the line of a list item that opens an HTML block).
+	"> \uFFFF", ">\uFFFF\nx", "- a\n<a>", "- a\n<z>", "- a\n<z>x</z>", "- a\n<A>", "- a\n<Z>", "- a\n<@>", "- a\n<`>", "- a\n<{>",
 }
 
 // TestMarkedBlockLexerSurvivorDocsMatchMarked requires PiG's block tokens to equal marked's on markedLexerSurvivorDocs.
