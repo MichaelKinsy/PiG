@@ -37,6 +37,10 @@ type processEnding struct {
 	taken     bool
 	flushOnce sync.Once
 	flushed   chan struct{}
+	// hold, when non-nil, keeps the owner from writing until it is closed. Tests use it to hold the owner inside its claim. It is a
+	// channel and not a function, so no dynamic call hides the write from the static analyzers (a replaceable write function made
+	// gosec's taint analysis (G704) connect the install-telemetry request URL to it).
+	hold <-chan struct{}
 }
 
 func newProcessEnding() *processEnding {
@@ -45,9 +49,6 @@ func newProcessEnding() *processEnding {
 
 // ending is the process-wide record. Tests that exercise several endings in one process replace it.
 var ending = newProcessEnding()
-
-// recordExit writes the owner's line. Tests replace it to hold the owner inside the write.
-var recordExit = RecordExit
 
 // flush marks the owner's line as on disk. It releases every waiter, once.
 func (e *processEnding) flush() {
@@ -82,7 +83,10 @@ func RecordEnding(agentDir, reason string) bool {
 		return false
 	}
 	defer e.flush()
-	recordExit(agentDir, reason)
+	if e.hold != nil {
+		<-e.hold
+	}
+	RecordExit(agentDir, reason)
 	return true
 }
 
