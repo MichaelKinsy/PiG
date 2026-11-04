@@ -136,7 +136,7 @@ func launchSystem(t *testing.T, cfg systemConfig) (session string, cleanup func(
 	if err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").Run(); err != nil {
 		t.Fatal(err)
 	}
-	cleanup = func() { _ = tmuxCommand("kill-session", "-t", session).Run() }
+	cleanup = func() { _ = killSession(t, session) }
 
 	// Build the launch command.
 	envPrefix := strings.Join(cfg.env, " ")
