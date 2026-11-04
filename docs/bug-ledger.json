@@ -1539,6 +1539,41 @@
       ]
     },
     {
+      "id": "BF-0cced6a",
+      "title": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting…",
+      "symptom": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command.",
+      "rootCause": "The owner asked for the fix to ship in 0.7.0.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D231",
+      "removeWhen": "the pin reaches a Pi release containing 1708b4788.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command. A request made during startup (for example from `session_start`) is handled once input is attached, and a shutdown requested by an extension command waits until the command's `prompt` response is written. Pi 1.5.0 behaves as before; PiG follows Pi main 1708b4788 (Pi #11599, D231).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0cced6a687",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "873466a467",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_go_idle_shutdown_test.go::TestRPCGoSDKIdleShutdownReturnsBeforeSessionShutdown",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownFromSessionStartExits",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWaitsForCommandOfSameChunk",
+        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand",
+        "coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate",
+        "coding/cli/rpc_shutdown_regression_test.go::TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder",
+        "coding/cli/rpc_shutdown_test.go::TestRPCExtensionShutdownRequestExits"
+      ]
+    },
+    {
       "id": "BF-0cd1934",
       "title": "fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed",
       "symptom": "fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed",
@@ -46913,6 +46948,11 @@
       "id": "D228",
       "title": "Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy",
       "entry": "BF-2359a0a"
+    },
+    {
+      "id": "D231",
+      "title": "PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`",
+      "entry": "BF-0cced6a"
     },
     {
       "id": "D233",
