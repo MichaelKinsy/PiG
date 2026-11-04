@@ -7,14 +7,15 @@ import "sync"
 //
 // Async contract (Pi main 1708b4788, D231): ctx.shutdown() sets the request and schedules the check with setImmediate, so the requesting handler finishes first; nobody waits for the check and it cannot fail. The check re-reads its conditions when it runs: a request is pending, input is attached, no command is being handled and the session is idle. Each of those ending runs it again: a command's completion (for a prompt, when it settles), agent_settled and the input's attach. A shutdown that already started is left alone. Cancellation is the mode's: a started shutdown, a stopped mode or a closed executor drops the check.
 //
-// The check runs as a macrotask of the stdin executor (rpcResponseTurn), which is Pi's check phase: after the microtasks of the stdin iteration that is running.
+// The check runs as a macrotask of the stdin executor (rpcResponseTurn), which is Pi's check phase: after the microtasks of the stdin iteration that is running. Every caller hands the scheduling to an owned task and returns at once, so that an extension's synchronous host call (a Go, Python, Rust or Lisp ctx.shutdown()) is answered before the check can run on its goroutine and wait for the session_shutdown handlers: Pi's setImmediate is a deferral nobody waits for.
 // pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin; Pi 1.5.0 only checks the request after a stdin command and at agent_settled.
 type rpcShutdownGate struct {
 	mu         sync.Mutex
 	requested  bool
 	inputReady bool
 	active     int
-	// schedule runs fn on the executor's next tick; idle is session.isIdle; started reports that shutdown() began; fire starts it.
+	// spawn runs fn on an owned task; schedule runs fn on the executor's next tick; idle is session.isIdle; started reports that shutdown() began; fire starts it.
+	spawn    func(fn func())
 	schedule func(fn func())
 	idle     func() bool
 	started  func() bool
@@ -24,9 +25,9 @@ type rpcShutdownGate struct {
 func newRPCShutdownGate() *rpcShutdownGate { return &rpcShutdownGate{} }
 
 // bind attaches the executor and the session views. A request made before it waits for InputReady, which follows it.
-func (g *rpcShutdownGate) bind(schedule func(func()), idle, started func() bool, fire func()) {
+func (g *rpcShutdownGate) bind(spawn, schedule func(func()), idle, started func() bool, fire func()) {
 	g.mu.Lock()
-	g.schedule, g.idle, g.started, g.fire = schedule, idle, started, fire
+	g.spawn, g.schedule, g.idle, g.started, g.fire = spawn, schedule, idle, started, fire
 	g.mu.Unlock()
 }
 
@@ -66,17 +67,25 @@ func (g *rpcShutdownGate) End() {
 	g.Check()
 }
 
-// Check schedules checkShutdownRequested() on the next tick. A nil gate, or one not bound yet, schedules nothing.
+// Check schedules checkShutdownRequested() on the next tick, from an owned task. A nil gate, or one not bound yet, schedules nothing.
 func (g *rpcShutdownGate) Check() {
 	if g == nil {
 		return
 	}
+	// spawn does not block, so it runs under the lock: after unbind no task starts.
 	g.mu.Lock()
-	schedule := g.schedule
-	g.mu.Unlock()
-	if schedule != nil {
-		schedule(g.check)
+	defer g.mu.Unlock()
+	if g.spawn != nil {
+		schedule := g.schedule
+		g.spawn(func() { schedule(g.check) })
 	}
+}
+
+// unbind stops new checks from starting, for the end of the mode, before the tasks are joined.
+func (g *rpcShutdownGate) unbind() {
+	g.mu.Lock()
+	g.spawn = nil
+	g.mu.Unlock()
 }
 
 func (g *rpcShutdownGate) check() {

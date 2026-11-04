@@ -524,6 +524,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	var shutdownTasks sync.WaitGroup
 	defer shutdownTasks.Wait()
 	shutdownGate.bind(
+		func(fn func()) { shutdownTasks.Go(fn) },
 		responses.Macrotask,
 		func() bool { return sess().IsIdle() },
 		func() bool {
@@ -543,6 +544,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}
 		},
 	)
+	defer shutdownGate.unbind()
 	host.afterSettled = shutdownGate.Check
 	// pig divergence (D231): follows Pi main ace560c30 ahead of the v1.5.0 pin. Main's handler takes the first signal; the watcher takes the repeated ones.
 	repeated := watchRepeatedTermination(shutdown.repeatedSignal)
