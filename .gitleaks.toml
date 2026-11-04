@@ -14,6 +14,10 @@ regexes = [
   '''^(?:interleaved-thinking|oidc-federation|oauth)-\d{4}-\d{2}-\d{2}$''',
   # Prose in the upstream test mapping.
   '''^SSE-and-UTF-8-chunk-splitting$''',
+  # Fake Bedrock bearer token in bedrock_oracle_env_test.go: "ABSK" + base64("BedrockAPIKey-example-token").
+  '''^ABSKQmVkcm9ja0FQSUtleS1leGFtcGxlLXRva2Vu$''',
+  # WebSocket handshake nonces in chord/nextnode/http/upgrades_test.go: sixteen zero bytes, and the RFC 6455 sample nonce.
+  '''^(?:AAAAAAAAAAAAAAAAAAAAAA|dGhlIHNhbXBsZSBub25jZQ)==$''',
   # Fake ed25519 key blobs ("...One", "...Two") in env's known_hosts tests.
   '''^AAAAC3NzaC1lZDI1NTE5AAAAI(?:One|Two)$''',
   # env's fixed test session token, a counting pattern.
@@ -26,6 +30,8 @@ regexes = [
   '''^(?i)(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/)(?:/(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/))+$''',
 ]
 paths = [
+  # Stored archive fixture: "key" fields are UUIDv7 document keys, not credentials.
+  '''^chord/next/host/testdata/schema-switch/stored/archive\.jsonl$''',
   # Upstream test-file SHA-256 digests.
   '''^test/parity/upstream-sync/[^/]+\.tsv$''',
   # Pi's vendored, compiled SDK bundle (upstream code shipped verbatim).
