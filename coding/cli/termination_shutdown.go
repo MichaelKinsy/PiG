@@ -64,7 +64,7 @@ func noteTerminationSignal(sig os.Signal) (syscall.Signal, bool) {
 			prelude()
 		}
 		// pig additive (D102): Pi exits on SIGTERM and SIGHUP without a trace. RecordEnding claims the process's one
-		// exit.log line; a hung-up terminal's dead-terminal exit waits for this claim (internal/codingagent/exit_ending.go).
+		// exit.log line for the first cause observed, and a later ending adds none (internal/codingagent/exit_ending.go).
 		codingagent.RecordEnding(codingagent.AgentDir(), "received "+codingagent.SignalName(sig))
 	})
 	sysSig, ok := sig.(syscall.Signal)

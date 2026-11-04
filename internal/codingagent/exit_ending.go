@@ -3,54 +3,50 @@ package codingagent
 // exit_ending.go makes the process's ending leave exactly one exit.log line, whichever paths see it first.
 //
 // pig additive (D102): exit.log is PiG's own; Pi keeps no such log, so none of this changes what Pi does at the exit
-// (exit code, terminal restore, output).
+// (exit code, terminal restore, output, timing).
 //
 // A hung-up terminal is seen by three paths at once: the kernel's SIGHUP (the signal goroutine in coding/cli), the input
 // reader's EOF (exitIfDeadTerminal) and a terminal write that fails with EIO (exitOnDeadTerminalWrite). Pi has the same
 // three events: its SIGHUP handler starts a graceful shutdown whose terminal writes meet EIO and take
-// emergencyTerminalExit (interactive-mode.ts registerSignalHandlers). Pi's JavaScript runs them one after another on one
-// thread; Go runs them on three goroutines, each ending in os.Exit. Before this file each path appended its own line,
-// and the exit of whichever came first killed the others mid-record: 30 hangups of a real pig in a tmux pane wrote
-// three lines (17) or two lines without the signal's (13), never one.
+// emergencyTerminalExit (interactive-mode.ts registerSignalHandlers), and a stdout or stderr error takes it at once.
+// Pi's JavaScript runs them one after another on one thread, in the order libuv returns them, and the first to reach
+// process.exit ends the process. Go runs them on three goroutines, each ending in os.Exit. Before this file each path
+// appended its own line, and the exit of whichever came first killed the others mid-record: 30 hangups of a real pig in
+// a tmux pane wrote three lines (17) or two lines without the signal's (13), never one.
 //
 // Async contract (the ordering Pi's single thread gave for free):
 //
 //  1. Claim. RecordEnding claims the record atomically; the first caller owns it, and its reason is the line's cause.
-//  2. SIGHUP outranks the dead terminal. The kernel posts SIGHUP before it wakes the reader, but the Go runtime hands
-//     the signal to its goroutine later, so the EOF and the EIO write can arrive first. A dead-terminal exit therefore
-//     waits for another path's claim (awaitEndingClaim) before claiming itself. The wait ends the moment the signal
-//     goroutine claims, which is why it is an event wait and not a sleep. Its hangupGrace bound only keeps a terminal
-//     that died without a signal (a session in the background process group, SIGHUP blocked from outside) from never
-//     exiting: then the dead terminal is the cause.
-//  3. One exit. emergencyTerminalExit runs once; a second caller returns, because the first is exiting.
-//  4. Flush before exit. The owner returns from RecordEnding only after the line is appended and closed, and a caller that
-//     lost the claim blocks until then, so os.Exit never overtakes the record, whichever path calls it.
+//     The cause is the first one observed: a pig that leads its session sees the kernel's SIGHUP first, a pig started
+//     from a shell sees the dead terminal first, because the shell forwards the hangup later. No path waits for another
+//     to name the cause, so the exit is as prompt as Pi's.
+//  2. One emergency exit. emergencyTerminalExit runs once. Pi's is `never`, so a second caller never returns either: it
+//     blocks behind the first, which ends the process with 129. Every caller was written for a call that does not
+//     return (a crash on a dead terminal, Run's unwinding to exit 1).
+//  3. The emergency exit outranks the other exits. A path about to call os.Exit (BeforeExit) blocks behind a running
+//     emergency exit, so the status is Pi's 129, and otherwise waits for the line that is in flight, so os.Exit never
+//     overtakes the record.
+//  4. Flush before exit. The owner returns from RecordEnding only after the line is appended and closed, and a caller
+//     that lost the claim blocks until then.
 
-import (
-	"sync"
-	"time"
-)
+import "sync"
 
-// hangupGrace bounds how long a dead-terminal exit waits for the kernel's SIGHUP to reach the signal goroutine. The
-// signal normally arrives within microseconds; this bound is a liveness backstop, not a delay the exit relies on.
-// pig additive (D102): Pi has no such wait; its single thread orders the signal and the write error itself.
-const hangupGrace = 500 * time.Millisecond
-
-// processEnding is the process's single exit record. claimed closes when a path owns the record, flushed when its line
-// is on disk.
+// processEnding is the process's single exit record. flushed closes once the owner's line is on disk.
 type processEnding struct {
 	mu      sync.Mutex
 	taken   bool
-	claimed chan struct{}
 	flushed chan struct{}
 }
 
 func newProcessEnding() *processEnding {
-	return &processEnding{claimed: make(chan struct{}), flushed: make(chan struct{})}
+	return &processEnding{flushed: make(chan struct{})}
 }
 
 // ending is the process-wide record. Tests that exercise several endings in one process replace it.
 var ending = newProcessEnding()
+
+// recordExit writes the owner's line. Tests replace it to hold the owner inside the write.
+var recordExit = RecordExit
 
 // claim reports whether the caller owns the record. Only the first caller does.
 func (e *processEnding) claim() bool {
@@ -60,8 +56,14 @@ func (e *processEnding) claim() bool {
 		return false
 	}
 	e.taken = true
-	close(e.claimed)
 	return true
+}
+
+// claimed reports whether some path owns the record.
+func (e *processEnding) claimed() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.taken
 }
 
 // RecordEnding appends the one exit.log line for the ending that ends this process and reports whether reason is it. A
@@ -74,18 +76,19 @@ func RecordEnding(agentDir, reason string) bool {
 		return false
 	}
 	defer close(e.flushed)
-	RecordExit(agentDir, reason)
+	recordExit(agentDir, reason)
 	return true
 }
 
-// awaitEndingClaim blocks until a path claims the record or hangupGrace passes. A dead-terminal exit calls it before
-// claiming, so a SIGHUP that is on its way names the cause (step 2 of the contract).
-func awaitEndingClaim() {
-	e := ending
-	timer := time.NewTimer(hangupGrace)
-	defer timer.Stop()
-	select {
-	case <-e.claimed:
-	case <-timer.C:
+// BeforeExit is called by a path that is about to end the process with os.Exit and did not claim the record through
+// RecordEnding, or that lost the claim. It never returns while an emergency exit is running, because that exit ends the
+// process with 129 as Pi's does (step 3 of the contract); otherwise it returns once the line another path claimed is on
+// disk. With no ending in flight it returns at once.
+func BeforeExit() {
+	if emergencyExiting.Load() {
+		select {}
+	}
+	if e := ending; e.claimed() {
+		<-e.flushed
 	}
 }

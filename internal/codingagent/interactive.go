@@ -1488,7 +1488,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// sees the error that handler returns; a crash has its own record.
 	defer func() {
 		if err != nil && !errors.Is(err, ErrInteractiveCrashed) {
-			RecordExit(m.opts.AgentDir, interactiveExitReason(err))
+			RecordEnding(m.opts.AgentDir, interactiveExitReason(err))
 		}
 	}()
 	// Registered before the deferred TUI teardown so it runs last, after the terminal has been restored. Mirrors

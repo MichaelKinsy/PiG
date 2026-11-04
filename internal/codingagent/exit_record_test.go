@@ -82,6 +82,40 @@ func TestExitRecordChild(t *testing.T) {
 		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
 		RecordEnding(agentDir, "received SIGHUP")
 		m.emergencyTerminalExit("terminal gone: EOF (hung up)")
+	case "dead-terminal-while-emergency":
+		// A goroutine fails on the dead terminal while the first emergency exit is held inside its write: the production
+		// uncaughtOffLoop handler reaches emergencyTerminalExit as a second caller, which must block behind the first.
+		m := emergencyChildMode(agentDir)
+		release := emergencyChildHolding(m)
+		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
+		m.backgroundTasks.Go(func() { panic(&os.PathError{Op: "write", Path: "/dev/tty", Err: syscall.EIO}) })
+		waitParked(1)
+		release()
+		select {}
+	case "second-emergency-never-returns":
+		// Pi's emergencyTerminalExit is `never`: a second caller that returned would end the process with status 3.
+		m := emergencyChildMode(agentDir)
+		release := emergencyChildHolding(m)
+		go func() {
+			m.emergencyTerminalExit("terminal gone: EOF (hung up)")
+			os.Exit(3)
+		}()
+		waitParked(1)
+		release()
+		select {}
+	case "crash-while-emergency":
+		// A crash that is not a dead terminal ends in os.Exit(1); with an emergency exit in flight it must wait behind it.
+		m := emergencyChildMode(agentDir)
+		release := emergencyChildHolding(m)
+		SetUncaughtGoroutineHandler(m.uncaughtOffLoop)
+		m.backgroundTasks.Go(func() { panic("boom while an emergency exit runs") })
+		waitParked(1)
+		release()
+		select {}
+	case "extension-shutdown-then-dead-terminal":
+		m := emergencyChildMode(agentDir)
+		m.requestExtensionShutdown()
+		m.emergencyTerminalExit("terminal gone: EOF (hung up)")
 	case "dead-terminal-off-loop":
 		// A goroutine fails because the terminal is gone: Pi's uncaughtCrash takes emergencyTerminalExit, which kills the
 		// detached children.

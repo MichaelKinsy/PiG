@@ -494,6 +494,7 @@ func (m *InteractiveMode) handleInterruptSignal() {
 	// The exit handler of Pi's process.exit (9df819de, #11170): a shutdown that timed out left the alternate screen and its modes on.
 	tui.RestoreTerminalOnExit()
 	tui.RestoreTerminalFromSignal()
+	BeforeExit()
 	EndSessionMarker()
 	os.Exit(130)
 }
@@ -506,6 +507,6 @@ func (m *InteractiveMode) handleInterruptSignal() {
 // in exit.log; an extension's timer can end an idle session this way.
 // pig additive (D102): Pi leaves no trace.
 func (m *InteractiveMode) requestExtensionShutdown() {
-	RecordExit(m.opts.AgentDir, "extension requested shutdown (ctx.shutdown())")
+	RecordEnding(m.opts.AgentDir, "extension requested shutdown (ctx.shutdown())")
 	m.requestShutdown()
 }

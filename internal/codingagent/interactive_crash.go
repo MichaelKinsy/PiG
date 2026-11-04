@@ -156,9 +156,7 @@ func (m *InteractiveMode) requestedExitError() error {
 func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Writer) {
 	// A dead terminal is not a pig crash. Do not report or record it.
 	if failure, ok := value.(error); ok && isDeadTerminalError(failure) {
-		// Returns only when another emergency exit is already ending the process: this panic has nothing left to report.
 		m.emergencyTerminalExit("terminal gone: " + failure.Error())
-		return
 	}
 	// Upstream kills the tracked detached children before it reports: the exit skips the cancellation that stops them.
 	tools.KillTrackedDetachedChildren()
@@ -192,6 +190,9 @@ func (m *InteractiveMode) uncaughtOffLoop(value any, stack []byte) {
 		tui.RestoreTerminalFromSignal()
 	}
 	m.uncaughtCrash(value, stack, os.Stderr)
+	// This exit records a crash (crashes.json), not an exit.log line, so it does not claim the record. It still waits
+	// behind an emergency exit and for a line in flight (exit_ending.go).
+	BeforeExit()
 	EndSessionMarker()
 	os.Exit(1)
 }

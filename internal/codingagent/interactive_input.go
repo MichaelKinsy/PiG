@@ -62,6 +62,11 @@ func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
 		if !exiting.CompareAndSwap(false, true) {
 			return
 		}
+		if emergencyExiting.Load() {
+			// The exiting goroutine's own restore writes (RestoreTerminalOnExit writes through this handler). A caller
+			// that blocked here would stall the owner.
+			return
+		}
 		if isDeadTerminalError(err) {
 			m.emergencyTerminalExit("terminal gone: " + err.Error())
 			return
@@ -79,16 +84,15 @@ func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
 // directories.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
 //
-// The input reader, a failed terminal write and a crash on a dead terminal can all arrive here at once, and the kernel's
-// SIGHUP races them (exit_ending.go has the ordering contract). The first caller exits; a later caller returns, because
-// the first is already exiting. pig additive (D102): the first waits for a SIGHUP that is on its way to claim the exit.log
-// line, so a hangup is recorded as `received SIGHUP` and any other dead terminal as `terminal gone`, and the line is
-// flushed before os.Exit. The exit code, the restore writes and the output are Pi's.
+// The input reader, a failed terminal write and a crash on a dead terminal can all arrive here at once (exit_ending.go has
+// the ordering contract). Pi's is `never`: the first caller ends the process with 129, and a later caller blocks behind it
+// and never returns either, because its callers (uncaughtCrash, Run's unwinding to exit 1) assume the call does not return.
+// pig additive (D102): the exit.log line is the first cause observed and is flushed before os.Exit. The exit code, the restore
+// writes, the output and the timing are Pi's.
 func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 	if !emergencyExiting.CompareAndSwap(false, true) {
-		return
+		select {}
 	}
-	awaitEndingClaim()
 	// pig additive (D102): Pi exits here with no trace.
 	RecordEnding(m.opts.AgentDir, reason+" (exit 129)")
 	tools.KillTrackedDetachedChildren()
