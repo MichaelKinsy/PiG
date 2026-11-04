@@ -356,6 +356,16 @@ func gcEntered(t *testing.T, held gate) {
 	}
 }
 
+// gcAwaited blocks until the gate settles, and fails the test with what did not happen when it does not within gcTimeout.
+func gcAwaited(t *testing.T, gate *deferredGate, what string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(testContext, gcTimeout)
+	defer cancel()
+	if err := gate.wait(ctx); err != nil {
+		t.Fatalf("%s: %v", what, err)
+	}
+}
+
 // gcStatus is the status of the task, "" when absent.
 func gcStatus(t *testing.T, harness Harness, id durable.TaskId) string {
 	t.Helper()
