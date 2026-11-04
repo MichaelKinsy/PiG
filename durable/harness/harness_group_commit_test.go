@@ -6,7 +6,10 @@
 // Go mappings. `harness as SessionImpl` is *harnessImpl, whose embedded Session line has ReadOnLine and AwaitTouch;
 // `SCHEDULER_INDEX_SIZES` is the scheduler's indexSizes; upstream's `setTask(tx, record)` is the scheduler's setTask over
 // the Session's transaction. Where upstream reads a task right after an `eventually` for another one, the test waits for the
-// state it expects with eventually, as a state set by another goroutine has no order against the test's read.
+// state it expects with eventually, as a state set by another goroutine has no order against the test's read. Where upstream
+// reads a task as `running` and then acts on its handler, which Pi has started by then, the handler resolves a gate when it
+// starts and the test waits for that: an invocation runs on its own goroutine (D181), and a Close that begins before its first
+// step ends it before its handler runs.
 
 package harness
 
@@ -896,6 +899,7 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 	// harness-group-commit.test.ts:758 it("signals an invocation when it closes during a call in flight, and stores that call before Storage closes")
 	t.Run("signals an invocation when it closes during a call in flight, and stores that call before Storage closes", func(t *testing.T) {
 		store := newControlledStorage()
+		entered := deferred()
 		signalled := deferred()
 		type none = struct{}
 		listens := durable.DefineTask(durable.TaskDefinition[none, stepState, durable.JsonValue, any]{
@@ -904,6 +908,7 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 			Initial: func(none) stepState { return stepState{Phase: "wait"} },
 			Phases: map[string]durable.PhaseHandler[none, stepState, durable.JsonValue, any]{
 				"wait": func(_ context.Context, _ durable.RunningTask[none, stepState, durable.JsonValue], runtime durable.TaskRuntime[none, stepState, durable.JsonValue, any]) error {
+					entered.resolve()
 					err := abortedBy(runtime.Signal())
 					signalled.resolve()
 					return err
@@ -918,13 +923,12 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 		}))
 		harness.Resume()
 		eventually(t, func() bool { return gcStatus(t, harness, id) == "running" })
+		gcAwaited(t, entered, "the handler of the running task did not start")
 		held := store.holdCommits()
 		entry := gcGo(gcAppendNote(root))
 		gcEntered(t, held)
 		closing := gcGo(func() (struct{}, error) { return struct{}{}, harness.Close(testContext) })
-		if err := signalled.wait(testContext); err != nil {
-			t.Fatal(err)
-		}
+		gcAwaited(t, signalled, "the closing invocation was not signalled")
 		if closing.settled(t) {
 			t.Fatal("close settled while a call was in flight")
 		}
