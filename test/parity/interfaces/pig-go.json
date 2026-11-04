@@ -90019,17 +90019,6 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#dieBySignal",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "dieBySignal",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(sig os.Signal)"
-      },
-      "shapeHash": "sha256:95a5155162afcb167d2c507127d7de2e8827231b7b949e176ae42a4f29791dd0"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#discoverAuthContributions",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "discoverAuthContributions",
@@ -91260,28 +91249,6 @@
         "type": "func(host *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.Host, registry *github.com/MichaelKinsy/PiG/coding.ModelRegistry) []github.com/MichaelKinsy/PiG/internal/codingagent.AgentSessionRuntimeDiagnostic"
       },
       "shapeHash": "sha256:bba9efcc3bd420bd01ff05c3f4b676827f2e57613b666ef43042a6e30d2629eb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#forcedTermination",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "forcedTermination",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "forcedTermination"
-      },
-      "shapeHash": "sha256:df89784ef384547e69952fdfe098f68b9156d796630f14adff145d1ff202fb39"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#forcedTermination.Stop",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "forcedTermination.Stop",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#formatProjectTrustPrompt",
@@ -92973,9 +92940,20 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(removeSignalHandlers func(), detach func(), dispose func(), flush func(), exit func(code int), die func(os.Signal)) *rpcShutdown"
+        "type": "func(detach func(), dispose func(), flush func(), exit func(code int)) *rpcShutdown"
       },
-      "shapeHash": "sha256:e8ecb0dc6304b59c4e43228e1de86818ce620bd49612c87e71b2b9820073a676"
+      "shapeHash": "sha256:be23adef2b1f4b6849c4c717a896090c66e04e5bddb55475afbe7d3fdaf73092"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newRPCShutdownGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "newRPCShutdownGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *rpcShutdownGate"
+      },
+      "shapeHash": "sha256:df077ca3f7392831a43edde9d800c7d48ad6247e98a544c7bcbdcc6386951df6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newRPCUIContext",
@@ -94868,6 +94846,28 @@
         "type": "func(status statusOutput)"
       },
       "shapeHash": "sha256:e4c29c9a6b1767b6dce91fe943b4782c9644414499977f82b19d05f92401af79"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTermination",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTermination",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "repeatedTermination"
+      },
+      "shapeHash": "sha256:5a9cbac6910e2d05bfbaceb99ff6cbb6e62d3a237b545ac036dc3762580346b1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#repeatedTermination.Stop",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "repeatedTermination.Stop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#reportActivePigBinary",
@@ -97180,26 +97180,26 @@
       "shapeHash": "sha256:69073fe59a1b4b221d3a63d4983932e34c85d7664d58e96f7ade045215b8ad04"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdown.forceDie",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcShutdown.forceDie",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(sig os.Signal)"
-      },
-      "shapeHash": "sha256:95a5155162afcb167d2c507127d7de2e8827231b7b949e176ae42a4f29791dd0"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdown.inputEnd",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "rpcShutdown.inputEnd",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func()"
+        "type": "func() bool"
       },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdown.repeatedSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdown.repeatedSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sig syscall.Signal)"
+      },
+      "shapeHash": "sha256:d22bb4ecffc24f01e32f5f6f27dbfeda8c4ca5f29f10a80dca0b36e541e5ef59"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdown.requested",
@@ -97219,9 +97219,97 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(sig syscall.Signal)"
+        "type": "func(sig syscall.Signal) bool"
       },
-      "shapeHash": "sha256:d22bb4ecffc24f01e32f5f6f27dbfeda8c4ca5f29f10a80dca0b36e541e5ef59"
+      "shapeHash": "sha256:46cfebdae13c358248b28da47998bf43707dc5af15fc9e2d5986455189796b7a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "rpcShutdownGate"
+      },
+      "shapeHash": "sha256:ef0fe244fa63453a5b58f2f945e43e0a7c350aec79ef88870b6d4d45946cd95e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Begin",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.Begin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Check",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.Check",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.End",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.End",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.InputReady",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.InputReady",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Request",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.Request",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.bind",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.bind",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(schedule func(func()), idle func() bool, started func() bool, fire func())"
+      },
+      "shapeHash": "sha256:ccc06876880cb183d439ea67a553d1a588d5ca5faae44b2e602b7ea47c77df89"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.check",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.check",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcStartup",
@@ -101470,15 +101558,15 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#watchForcedTermination",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#watchRepeatedTermination",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "watchForcedTermination",
+      "name": "watchRepeatedTermination",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(die func(os.Signal)) *forcedTermination"
+        "type": "func(repeat func(syscall.Signal)) *repeatedTermination"
       },
-      "shapeHash": "sha256:b16703b2003b44bb251961a587a9ed489b96a6ec55f0815548531aa3f232c154"
+      "shapeHash": "sha256:530a62c2763299e005cc9325e612dc6ea0ef5247af6734060459555a5d657e89"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#wazeroCacheDir",

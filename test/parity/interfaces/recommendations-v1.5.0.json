@@ -149041,7 +149041,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "5 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -149052,6 +149052,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.bind",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.bind",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#editorProxy.Bind",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#xrefHub.bind",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#componentEditor.Bind"
@@ -364782,7 +364783,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -364792,6 +364793,8 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Check",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.check",
         "go:github.com/MichaelKinsy/PiG/coding/piglet/signature#Check",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Session.check",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema.check",
