@@ -11,6 +11,7 @@ import (
 // Pi 1be312b4 (#10488): with a custom session directory, --continue, resume by id and the session list hid sessions recorded with different cwd casing on Windows;
 // sessionCwdMatches, the default-directory test and usesDefaultSessionDir compare with pathsEqual.
 func TestSessionCwdAndDefaultDirectoryComparisonsIgnoreCaseOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	cwd := filepath.Join(t.TempDir(), "Project")
 	t.Run("sessionCwdMatches", func(t *testing.T) {
 		if sessionCwdMatches(strings.ToLower(cwd), cwd) {

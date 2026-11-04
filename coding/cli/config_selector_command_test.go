@@ -419,6 +419,7 @@ func TestProjectConfigCyclesInheritedMissingMemberToUnload(t *testing.T) {
 // Pi 1be312b4 (#11588) config-selector.ts getResourceItemKey: a global and a project resource whose paths differ in casing only are one item on Windows, and
 // two on a case-sensitive platform.
 func TestConfigItemKeyFoldsPathCasingOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	global := tui.ResourceItem{ResourceType: tui.ResourceSkills, Path: `C:\Users\Me\skills\demo\SKILL.md`}
 	project := tui.ResourceItem{ResourceType: tui.ResourceSkills, Path: `c:\users\me\skills\demo\skill.md`}
 	if configItemKey(global) == configItemKey(project) {

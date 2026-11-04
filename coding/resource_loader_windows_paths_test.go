@@ -12,6 +12,7 @@ import (
 // Pi 1be312b4 (#10488) resource-loader.ts: findSourceInfoForPath matches a resource to the source that contains it with isPathWithin, and mergePaths deduplicates by
 // getResourcePathKey; on Windows both ignore case, and a synthetic identifier keeps its own.
 func TestResourceLoaderPathMatchingIgnoresCaseOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	root := filepath.Join(t.TempDir(), "Pkg")
 	resource := filepath.Join(strings.ToLower(root), "skills", "s", "SKILL.md")
 	metadata := icodingagent.PathMetadata{Source: "npm:x", Scope: "user", Origin: "package", BaseDir: root}

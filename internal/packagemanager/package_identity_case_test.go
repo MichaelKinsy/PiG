@@ -8,6 +8,7 @@ import (
 
 // Pi 1be312b4 (#10488): local package matching (`pi remove c:\pkg` against a configured `C:\pkg`) and package identity across global and project settings ignore case on Windows.
 func TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	if match, err := PackageSourcesMatch(`C:\work`, `C:\work`, `C:\pkg`, `c:\PKG`); err != nil || match {
 		t.Fatalf("match = %v, %v; want no match on a case-sensitive platform", match, err)
 	}
