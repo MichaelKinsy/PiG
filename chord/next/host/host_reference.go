@@ -1314,7 +1314,7 @@ func (a *KeyedMemberAt) Watch(ctx context.Context) (chord.WatchHandle[delta.Json
 	return watch, nil
 }
 
-// pin holds the key through b (once), loaded; nothing once released (a hold that lands then is released). It blocks.
+// pin holds the key through b, loaded; it holds nothing after release (a hold that arrives after release is released). It blocks.
 func (a *KeyedMemberAt) pin(b *binding, ctx context.Context) error {
 	var unpinned bool
 	b.loop.Run(func() { unpinned = a.state == atUnpinned })
