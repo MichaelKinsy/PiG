@@ -139,7 +139,7 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	for shard := 1; shard <= shards; shard++ {
 		wantUnits = append(wantUnits, "cli-"+strconv.Itoa(shard))
 	}
-	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "extension-conformance-1", "extension-conformance-2")
+	wantUnits = append(wantUnits, "extension-host-1", "extension-host-2", "extension-host-3", "extension-conformance-1", "extension-conformance-2", "extension-conformance-3", "extension-conformance-4")
 	var gotUnits []string
 	for _, entry := range planFor(t, "merge_group", "").shards("windows") {
 		units := strings.Fields(entry)
@@ -232,8 +232,8 @@ func TestWindowsShardsTestEverySelectedPackage(t *testing.T) {
 	if !droppedCLI {
 		t.Errorf("native shards test %s whole as well as in its shards", cliPkg)
 	}
-	// The two jobs of each extension pair split the package's tests with test-shard-pattern.sh, so each test runs once.
-	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess shards=3`, `extension-conformance-*) package=./test/extension-conformance shards=2`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
+	// The jobs of each extension package split its tests with test-shard-pattern.sh, so each test runs once.
+	for _, want := range []string{`extension-host-*) package=./coding/extension/host/subprocess shards=3`, `extension-conformance-*) package=./test/extension-conformance shards=4`, `test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package"`} {
 		found := false
 		for _, step := range job.Steps {
 			if strings.Contains(step.Run, want) && step.If == "startsWith(matrix.shard, 'extension-')" {
