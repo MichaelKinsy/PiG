@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"reflect"
 	"slices"
 	"sync"
@@ -693,7 +692,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 
 func (u *ExtUIContext) SetTitle(title string) {
 	if u.m.tuiInst != nil {
-		_, _ = fmt.Fprintf(os.Stdout, "\033]0;%s\007", title)
+		u.m.tuiInst.Terminal().SetTitle(title)
 	}
 }
 

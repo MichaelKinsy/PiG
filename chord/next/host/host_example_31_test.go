@@ -105,6 +105,11 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	})
 	live := exGet(t, tab, panel, jsonObject("id", float64(1)))
 	exEqual(t, "panel live, count", exValue(t, live, "count"), float64(0))
+	// Pi's `await tab.get(...)` and the awaits after it run the queued microtasks, so the `live` frame the panel's state
+	// watch was advanced with has reached its listener before the references are released. A release ends a watch and drops
+	// the frames it has not delivered (ref-state.ts `released`: `watch.end`; watch.ts `#terminate`: "drop what is pending").
+	// The read above ran in a section of the tab, so the section that made the panel live has advanced every frame.
+	deliveredOn(tab)
 	panelMu.Lock()
 	if panels != 1 {
 		t.Fatalf("factory runs: %d", panels)

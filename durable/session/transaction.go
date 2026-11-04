@@ -12,6 +12,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/internal/strictjson"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -634,9 +635,11 @@ func copyEntryRecord(record durable.EntryRecord) (durable.EntryRecord, error) {
 	if record.Model == nil && record.Edits == nil {
 		return record, nil
 	}
+	// upstream's copyJson of the assembled record rejects a value strict JSON cannot carry with chord's text, which a
+	// faulted run reports as its detail.
 	encoded, err := json.Marshal(record)
 	if err != nil {
-		return durable.EntryRecord{}, err
+		return durable.EntryRecord{}, strictjson.Error(err)
 	}
 	var copied durable.EntryRecord
 	if err := json.Unmarshal(encoded, &copied); err != nil {

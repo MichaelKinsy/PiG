@@ -518,13 +518,16 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 	// route answered. The Go route blocks on a gate of the test that ignores the scope.
 	stuckGate := newGate()
 	t.Cleanup(stuckGate.resolve)
+	quickEntered, stuckEntered := newGate(), newGate()
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
 		RouteFunc("GET /quick", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			quickEntered.resolve()
 			time.Sleep(30 * time.Millisecond)
 			return htmlOf("done"), nil
 		}),
 		RouteFunc("GET /stuck", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			sealed.add(ctx)
+			stuckEntered.resolve()
 			<-stuckGate.done()
 			return HttpResponse{}, nil
 		}),
@@ -541,7 +544,9 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 	}
 	quick := request("/quick")
 	stuck := request("/stuck")
-	time.Sleep(10 * time.Millisecond)
+	// Both are running when close begins (a request still on its way would be refused 503 instead).
+	receive(t, quickEntered.done(), "the quick route")
+	receive(t, stuckEntered.done(), "the stuck route")
 	closing := httpAsync(func() struct{} {
 		server.http.Close(background)
 		return struct{}{}
@@ -678,8 +683,8 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 			var bornSealed atomic.Bool
 			server := serving(t, []plugin{{"@app/b", contributing(HttpContribution{Routes: []HttpRouteEntry{
 				RouteFunc("GET /", func(_ HttpRequest, scope host.Ctx) (HttpResponse, error) {
-					entered.resolve()
 					if when == "inside the route" {
+						entered.resolve()
 						abort(errors.New("client gone"))
 						// An AbortSignal's abort reaches the scope's signal at once; Go links contexts on a goroutine of its own,
 						// so the route waits for the link before it reads the scope.
@@ -689,6 +694,9 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 						}
 					}
 					bornSealed.Store(scope.Err() != nil)
+					// The abort that follows reaches a route that has read its scope (else it could land before the read, and the
+					// stream would be born sealed after all).
+					entered.resolve()
 					return HttpResponse{Kind: KindBytes, Mime: "application/octet-stream", Read: func(int64, int, host.Ctx) ([]byte, error) {
 						reads.Add(1)
 						return []byte{1}, nil

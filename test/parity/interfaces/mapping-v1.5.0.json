@@ -115175,7 +115175,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/session/store_storage_publication_test.go#TestStoreStoragePublishesEachCommitOfACallInAHostBatchOfItsOwn",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
       ]
     },
     {
@@ -118078,7 +118079,9 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118099,7 +118102,9 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118120,9 +118125,9 @@
         "call:chord/next/host/host_follow.go#followSource.attach"
       ],
       "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
     },
     {
@@ -118142,9 +118147,9 @@
         "public-api:chord/next/host/host_follow.go#FollowObserver"
       ],
       "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
     },
     {
@@ -123952,10 +123957,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
+        "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
-        "test:chord/next/registries/value_test.go#TestRegistryValue"
+        "test:chord/next/registries/value_test.go#TestRegistryValue",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost"
       ]
     },
     {
@@ -123972,10 +123978,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
+        "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
-        "test:chord/next/registries/value_test.go#TestRegistryValue"
+        "test:chord/next/registries/value_test.go#TestRegistryValue",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost"
       ]
     },
     {
@@ -224849,7 +224856,7 @@
       "evidence": [
         "test:durable/commit_change_test.go#TestDocumentCommitChangeVariantsCarryTheirDiscriminators",
         "test:durable/harness/view_incarnation_test.go#TestAdvanceViewFollowsOnlyTheMountedIncarnation",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint"
       ]
     },
     {
@@ -224913,7 +224920,7 @@
       "evidence": [
         "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
         "test:durable/session/session_group_commit_test.go#TestGroupCommitUpkeepThroughTheWriter",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ]
     },
     {
@@ -224935,7 +224942,7 @@
       "evidence": [
         "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
         "test:durable/session/session_group_commit_test.go#TestGroupCommitUpkeepThroughTheWriter",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ]
     },
     {
@@ -225196,8 +225203,8 @@
       ],
       "evidence": [
         "test:durable/harness/live_pi_oracle_test.go#TestLiveDocHelpersMatchPi",
-        "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook",
-        "test:durable/harness/compaction_reason_test.go#TestCompactionReasonConstantsAreTheUpstreamUnionMembers"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources",
+        "test:durable/core/driver/hook_test.go#TestHooksReturnTheResultObjectOfEachHook"
       ]
     },
     {
@@ -229050,9 +229057,9 @@
         "call:durable/harness/agent.go#ResolveSettings"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"
       ]
     },
     {
@@ -229771,7 +229778,7 @@
       "evidence": [
         "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox",
         "test:durable/harness/harness_input_entries_test.go#TestInputEntries",
-        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode"
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage"
       ]
     },
     {
@@ -229876,7 +229883,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/checkpoint_decode.go#checkDecodes"
+        "call:durable/checkpoint_decode.go#checkAssistantOps"
       ],
       "evidence": [
         "test:durable/doc_token_definition_upstream_test.go#TestDocTokensCarryTheirDefinitionAndValidateTheVersion",
@@ -230066,7 +230073,7 @@
       "id": "pkg:durable/.#MemoryStorage::property:commit",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
-      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/storage/memory.go#MemoryStorage.Commit"
       ],
@@ -230079,7 +230086,7 @@
         "call:durable/storage/memory.go#MemoryStorage.Commit"
       ],
       "evidence": [
-        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+        "test:durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -230087,7 +230094,7 @@
       "id": "pkg:durable/.#MemoryStorage::property:commit::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
-      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit::call:0 is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit::call:0 is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/storage/memory.go#MemoryStorage.Commit"
       ],
@@ -230100,7 +230107,7 @@
         "call:durable/storage/memory.go#MemoryStorage.Commit"
       ],
       "evidence": [
-        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+        "test:durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -231028,6 +231035,7 @@
         "call:durable/harness/harness.go#harnessImpl.ObserveConversation"
       ],
       "evidence": [
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources",
         "test:durable/session/session_observers_test.go#TestObserveDoc",
         "test:durable/session/session_observers_test.go#TestObserveDocDetachedDuringACommit"
       ]
@@ -231183,9 +231191,9 @@
         "call:durable/harness/harness.go#harnessImpl.conversationCreated"
       ],
       "evidence": [
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage",
         "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompaction"
+        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes"
       ]
     },
     {
@@ -231205,9 +231213,9 @@
         "call:durable/harness/provider.go#ensureProviderSessionId"
       ],
       "evidence": [
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage",
         "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompaction"
+        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes"
       ]
     },
     {
@@ -231651,6 +231659,8 @@
         "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231693,6 +231703,8 @@
         "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231950,7 +231962,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself"
       ]
     },
     {
@@ -231971,7 +231984,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself"
       ]
     },
     {
@@ -232677,7 +232691,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232698,7 +232713,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232719,7 +232735,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232740,7 +232757,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232761,7 +232779,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232782,7 +232801,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232803,7 +232823,8 @@
         "public-api:durable/documents.go#ObserveDoc"
       ],
       "evidence": [
-        "test:durable/harness/harness_observers_test.go#TestTaskDocuments"
+        "test:durable/harness/harness_observers_test.go#TestTaskDocuments",
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -234496,9 +234517,9 @@
         "call:durable/harness/harness.go#boundConversation.Submit"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -234633,9 +234654,9 @@
         "call:durable/harness/harness.go#boundSubmission.Wait"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream",
-        "test:coding/model_runtime_durable_models_test.go#TestModelRuntimeAnswersDurableHarnessGeneration"
+        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -234656,9 +234677,9 @@
         "call:durable/harness/harness.go#boundSubmission.Wait"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream",
-        "test:coding/model_runtime_durable_models_test.go#TestModelRuntimeAnswersDurableHarnessGeneration"
+        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -239461,7 +239482,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/util.go#sessionEnd"
+        "call:durable/session/observation.go#guard.Advance"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
@@ -248705,7 +248726,7 @@
       "id": "pkg:durable/storage/memory#MemoryStorage::property:commit",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
-      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/storage/memory.go#MemoryStorage.Commit"
       ],
@@ -248718,7 +248739,7 @@
         "call:durable/storage/memory.go#MemoryStorage.Commit"
       ],
       "evidence": [
-        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+        "test:durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -248726,7 +248747,7 @@
       "id": "pkg:durable/storage/memory#MemoryStorage::property:commit::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
-      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit::call:0 is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit::call:0 is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "durable/storage/memory.go#MemoryStorage.Commit"
       ],
@@ -248739,7 +248760,7 @@
         "call:durable/storage/memory.go#MemoryStorage.Commit"
       ],
       "evidence": [
-        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+        "test:durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252023,7 +252044,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252046,7 +252067,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageClosedStorageIsCollected"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252069,7 +252090,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageClosedStorageIsCollected"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252092,7 +252113,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252115,7 +252136,7 @@
       "evidence": [
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageGC"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -252423,7 +252444,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
       ]
     },
     {
@@ -252443,7 +252464,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
       ]
     },
     {
@@ -298877,11 +298898,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/terminal.go#Terminal.SetTitle"
+        "call:internal/codingagent/ext_ui_context.go#ExtUIContext.SetTitle"
       ],
       "evidence": [
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
@@ -298897,11 +298918,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/terminal.go#Terminal.SetTitle"
+        "call:internal/codingagent/ext_ui_context.go#ExtUIContext.SetTitle"
       ],
       "evidence": [
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
@@ -303353,9 +303374,9 @@
         "call:tui/tui.go#NewTuiMainScreen"
       ],
       "evidence": [
-        "test:internal/codingagent/interactive_signals_resize_test.go#TestResizeHandlerFrameSeesTheNewSize",
-        "test:tui/renderer_size_race_test.go#TestRendererWidthAndHeightAreReadableWhileFramesTakeTheSize",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
+        "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadRemoteEditorWriteChild",
+        "test:internal/codingagent/ext_ui_set_title_test.go#TestExtensionSetTitleReplacesControlCharacters",
+        "test:internal/codingagent/interactive_signals_resize_test.go#TestResizeHandlerFrameSeesTheNewSize"
       ]
     },
     {

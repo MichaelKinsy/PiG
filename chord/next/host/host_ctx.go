@@ -175,6 +175,23 @@ type linkedAbort struct {
 	context context.Context
 	// release is the call's, run when it settles; it removes both listeners.
 	release func()
+	// sources are the two signals the child follows, the caller's first; zero when the child is the signal itself.
+	sources [2]context.Context
+}
+
+// aborted is the reason the child aborted for, read from its sources at once: Pi's `AbortSignal.any` aborts its result in the
+// same synchronous step as the input, where the child's own Done follows on a goroutine of its own (context.AfterFunc). Nil
+// while neither source nor the child is aborted.
+func (l linkedAbort) aborted() error {
+	if l.context.Err() != nil {
+		return context.Cause(l.context)
+	}
+	for _, source := range l.sources {
+		if source != nil && source.Err() != nil {
+			return linkedCause(l.sources)
+		}
+	}
+	return nil
 }
 
 // withLinkedAbortSignal is a child of ctx aborted by signal and by the caller's signal (the caller's reason first) until
@@ -220,7 +237,7 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 	// A source aborted while the listeners were added runs its listener on a goroutine of its own, which waits here for
 	// the stops.
 	mu.Unlock()
-	return linkedAbort{context: linked, release: release}
+	return linkedAbort{context: linked, release: release, sources: sources}
 }
 
 // linkedCause is the reason of the source that aborted first (`AbortSignal.any`): the listeners of the sources run on

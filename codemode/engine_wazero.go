@@ -241,8 +241,8 @@ func (e *engine) newVM(ctx context.Context, options vmOptions) (result *vm, err 
 // clockChanged does nothing: the instance's clock functions read the virtual clock themselves.
 func (i *wazeroInstance) clockChanged(*virtualClock) {}
 
-// halt makes the instance trap at its next loop iteration, whatever native code the script is in. An instance of a
-// module without the halt global is closed by wazero at its next loop iteration instead.
+// halt makes the instance trap within haltPollInterval loop iterations, whatever native code the script is in. An
+// instance of a module without the halt global is closed by wazero at its next loop iteration instead.
 func (i *wazeroInstance) halt() {
 	if i.halted != nil {
 		i.halted.Set(1)

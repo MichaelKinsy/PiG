@@ -1398,7 +1398,9 @@ type relayed struct {
 	Route RouteHandle
 	// Workers is the worker of each resolved session address, the latest one per key.
 	Workers sync.Map
-	mu      sync.Mutex
+	// loads is the channel closed when the latest worker's `host.load` returned, per key.
+	loads sync.Map
+	mu    sync.Mutex
 	// routeLinks are the server's end of each resolved route link, in order.
 	routeLinks []*link.MemoryLink
 	// TabLink is the server's end of the tab's link.
@@ -1418,6 +1420,21 @@ func (r *relayed) Transported() {
 	ends = append(ends, r.peers...)
 	r.mu.Unlock()
 	transported(ends...)
+}
+
+// WorkerLoaded blocks until the latest worker of an address key finished its `host.load`, which the relay does not
+// await (`void host.load(...)`): the worker serves its facet's objects from then on.
+func (r *relayed) WorkerLoaded(t testing.TB, key string) {
+	t.Helper()
+	loaded, ok := r.loads.Load(key)
+	if !ok {
+		t.Fatalf("no worker resolved for %s", key)
+	}
+	select {
+	case <-loaded.(chan struct{}):
+	case <-time.After(10 * time.Second):
+		t.Fatalf("never happened: the worker of %s finished loading", key)
+	}
 }
 
 // RouteLinks is a copy of the route links so far.
@@ -1520,8 +1537,14 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			}
 			return nil
 		})
-		// `void host.load(...)`: an unawaited promise.
-		go func() { _, _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx) }()
+		// `void host.load(...)`: an unawaited promise. Pi's `transported()` lets it settle (it drains every microtask); a Go
+		// goroutine is not drained by a link's queue, so WorkerLoaded is the wait on it.
+		loaded := make(chan struct{})
+		go func() {
+			defer close(loaded)
+			_, _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx)
+		}()
+		result.loads.Store(address.Key, loaded)
 		result.Workers.Store(address.Key, host)
 		result.mu.Lock()
 		result.routeLinks = append(result.routeLinks, a)

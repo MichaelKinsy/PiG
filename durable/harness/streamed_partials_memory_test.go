@@ -2,13 +2,9 @@
 // new text, and a watcher's retained memory. Pi measures V8's heap (GCProfiler, getHeapStatistics); these measure Go's: the bytes
 // the process allocates (runtime.MemStats.TotalAlloc, which collections do not reduce) and the heap in use after a full collection.
 //
-// Go mappings forced by language mechanics. A Go string is flat, so extending a streamed text by one token copies the text once per
-// commit where V8 concatenates in O(1): the allocation per commit grows with the text in Pi's regression and here alike, and
-// the bound is on what the copies are of. Each commit may copy a growing string a constant number of times, so the bytes per commit
-// per byte of the strings stay flat as the strings grow, where comparing, re-encoding or resending the whole message per commit
-// makes them grow with the commits. A watcher that records frames holds each frame's value, which Go does not share between
-// revisions either, so the watcher records the operations of its frames (a substring of a growing text would pin each revision's
-// array: the regression the case protects) and keeps its latest value.
+// The cost case has Pi's bounds. Go mapping for the watcher case: a watcher that records frames holds each frame's value, which Go does
+// not share between revisions, so the watcher records the operations of its frames (a substring of a growing text would pin each
+// revision's array: the regression the case protects) and keeps its latest value.
 //
 // The watcher case streams its response itself, one chunk per commit. Pi's faux stream emits a chunk a millisecond and the case waits for
 // more than 500 frames, which is what makes its bound on the watcher's memory a test of proportionality to the commits: an
@@ -43,7 +39,7 @@ import (
 
 // streamedTextAndCall answers with a text of size bytes and a tool call whose content argument is as long, streamed in 64-token
 // chunks.
-func streamedTextAndCall(t *testing.T, size int, tokens int, tokensPerSecond int) *chatState {
+func streamedTextAndCall(t testing.TB, size int, tokens int, tokensPerSecond int) *chatState {
 	t.Helper()
 	setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: tokensPerSecond, TokenSize: &ai.FauxTokenSize{Min: new(tokens), Max: new(tokens)}})
 	setup.SetSettings(func(settings *HarnessSettings) {
@@ -60,7 +56,7 @@ func streamedTextAndCall(t *testing.T, size int, tokens int, tokensPerSecond int
 	return setup
 }
 
-// harness-view-run.test.ts:567 "commits a growing text and tool call at a cost that follows the new text, not the string lengths".
+// harness-view-run.test.ts:547 "commits a growing text and tool call at a cost that follows the new text, not the string lengths".
 func TestStreamedPartialsCommitAtACostThatFollowsTheNewText(t *testing.T) {
 	// stream returns the bytes allocated while streaming one answer of size characters of text and as much tool-call content, and the
 	// commits made.
@@ -84,26 +80,20 @@ func TestStreamedPartialsCommitAtACostThatFollowsTheNewText(t *testing.T) {
 		defer mu.Unlock()
 		return after.TotalAlloc - before.TotalAlloc, commits
 	}
-	smallBytes, smallCommits := stream(40_000)
-	largeBytes, largeCommits := stream(400_000)
-	// NOT Pi's bound (harness-view-run.test.ts:587,589: large.commits > 5*small.commits, raw bytes per commit ratio < 2). Go measured
-	// 185 commits / 168760528 bytes (40 KB) and 551 commits / 3351220456 bytes (400 KB): 3.0x the commits, 6.7x the bytes per commit.
-	// Each commit marshals and re-decodes the whole in-flight message (checkDecodes/partsDecode decode the touched top-level part, which
-	// here is the message), so the cost per commit grows with the text; Pi's check does not copy. The row stays partial for this case.
-	// Pi's faux stream commits a partial per token, hundreds of times more for the larger text; a Go run commits the newest partial once
-	// per interval, so the commits of the two streams are compared as they come.
-	if smallCommits < 20 || largeCommits < smallCommits {
-		t.Fatalf("%d commits for the large stream, %d for the small one: want at least 20 and not fewer for the larger text", largeCommits, smallCommits)
+	var small, large struct {
+		bytes   uint64
+		commits int
 	}
-	perCommit := func(bytes uint64, commits, size int) float64 {
-		return float64(bytes) / float64(commits) / float64(size)
+	small.bytes, small.commits = stream(40_000)
+	large.bytes, large.commits = stream(400_000)
+	t.Logf("small: %d bytes over %d commits; large: %d bytes over %d commits", small.bytes, small.commits, large.bytes, large.commits)
+	// harness-view-run.test.ts:576.
+	if large.commits <= small.commits*5 {
+		t.Fatalf("%d commits for the large stream, %d for the small one: want more than 5x", large.commits, small.commits)
 	}
-	small, large := perCommit(smallBytes, smallCommits, 40_000), perCommit(largeBytes, largeCommits, 400_000)
-	t.Logf("small: %d bytes over %d commits, %.2f per commit per byte of text; large: %d bytes over %d commits, %.2f", smallBytes, smallCommits, small, largeBytes, largeCommits, large)
-	// Per commit and per byte of the strings, the cost stays flat: comparing the whole strings on every commit made it grow with their
-	// length.
-	if large/small >= 2 {
-		t.Fatalf("the cost per commit per byte of text grew %.1fx from 40 KB to 400 KB", large/small)
+	// Per commit, the cost stays flat: comparing the whole strings on every commit made it grow with their length (harness-view-run.test.ts:578).
+	if ratio := float64(large.bytes) / float64(large.commits) / (float64(small.bytes) / float64(small.commits)); ratio >= 2 {
+		t.Fatalf("the bytes allocated per commit grew %.1fx from 40 KB to 400 KB", ratio)
 	}
 }
 

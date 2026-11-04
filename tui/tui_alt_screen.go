@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"slices"
@@ -477,7 +476,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 	if keyboardProtocolPushed.Load() {
 		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
 	}
-	_, _ = fmt.Fprint(t.out, enter)
+	WriteToTerminal(t.out, enter)
 	registerExitRestoreAltScreen(t)
 	if t.colorSchemeNotificationsEnabled() {
 		writeColorSchemeNotifications(t.out, true)
@@ -555,7 +554,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	if t.mouseEnabled {
 		mouse = altDisableMouse
 	}
-	_, _ = fmt.Fprint(t.out, altBeginSynchronizedOutput+t.deleteKittyImages()+mouse+altEnableAutowrap+altEndSynchronizedOutput)
+	WriteToTerminal(t.out, altBeginSynchronizedOutput+t.deleteKittyImages()+mouse+altEnableAutowrap+altEndSynchronizedOutput)
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.altScreenActive = false
@@ -576,7 +575,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		exit = keyboardProtocolPop + altExitAltScreen + kittyKeyboardProtocolPush
 	}
 	if options.PreserveScreen {
-		_, _ = fmt.Fprint(t.out, altBeginSynchronizedOutput+exit+"\x1b[?25h"+altEndSynchronizedOutput)
+		WriteToTerminal(t.out, altBeginSynchronizedOutput+exit+"\x1b[?25h"+altEndSynchronizedOutput)
 		t.unlockAndApplyHover()
 		if restore != nil {
 			SetCapabilities(*restore)
@@ -599,7 +598,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	buf.WriteString("\x1b[0m" + altEnableAutowrap + "\r\n\x1b[?25h" + altEndSynchronizedOutput)
 	t.lastDocument = document
 	t.unlockAndApplyHover()
-	_, _ = fmt.Fprint(t.out, buf.String())
+	WriteToTerminal(t.out, buf.String())
 	// Restore suppressed iTerm2 capabilities after the exit document is written
 	// (the dump renders with images suppressed, matching upstream afterTerminalStop).
 	if restore != nil {
@@ -1038,7 +1037,7 @@ func (t *TuiAltScreen) doRender() {
 	}
 	buf.WriteString(altEndSynchronizedOutput)
 	t.previousFrameBytes = buf.Len()
-	_, _ = io.WriteString(t.out, buf.String())
+	WriteToTerminal(t.out, buf.String())
 
 	if t.previousScreenWidth > 0 && t.previousScreenWidth != width && t.onWidthChange != nil {
 		t.pendingWidth = width

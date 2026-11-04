@@ -1152,6 +1152,35 @@ func TestHoldFailuresWhileTheWindowIsFull(t *testing.T) {
 type rhCountingLink struct {
 	link.Link
 	retries *rhRetryCount
+	// held, when set, keeps the `hold` messages sent through the link until it is released.
+	held *rhHeldHolds
+}
+
+// rhHeldHolds keeps the `hold` messages of a link: what a host sends while its first objects start, which Pi's
+// microtask queue delivers only after every host's `load` ran its synchronous part.
+type rhHeldHolds struct {
+	mu      sync.Mutex
+	open    bool
+	pending [][]byte
+}
+
+// queued reports whether a hold waits.
+func (h *rhHeldHolds) queued() bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.pending) > 0
+}
+
+// release sends the held holds, in order, through l, and lets later ones pass.
+func (h *rhHeldHolds) release(l link.Link) {
+	h.mu.Lock()
+	h.open = true
+	pending := h.pending
+	h.pending = nil
+	h.mu.Unlock()
+	for _, bytes := range pending {
+		l.Send(bytes)
+	}
 }
 
 type rhRetryCount struct {
@@ -1166,10 +1195,23 @@ func (c *rhRetryCount) get() []int {
 }
 
 func (l *rhCountingLink) Send(bytes []byte) {
-	if message, err := link.BinaryCodec.Decode(bytes); err == nil && message.Kind() == "retry" {
-		l.retries.mu.Lock()
-		l.retries.hops = append(l.retries.hops, message.(*link.RetryMessage).Hops)
-		l.retries.mu.Unlock()
+	if message, err := link.BinaryCodec.Decode(bytes); err == nil {
+		switch message.Kind() {
+		case "retry":
+			l.retries.mu.Lock()
+			l.retries.hops = append(l.retries.hops, message.(*link.RetryMessage).Hops)
+			l.retries.mu.Unlock()
+		case "hold":
+			if h := l.held; h != nil {
+				h.mu.Lock()
+				if !h.open {
+					h.pending = append(h.pending, bytes)
+					h.mu.Unlock()
+					return
+				}
+				h.mu.Unlock()
+			}
+		}
 	}
 	l.Link.Send(bytes)
 }
@@ -1201,16 +1243,22 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 			missing := local("app.missing")
 			retries := &rhRetryCount{}
 			var factories atomic.Int64
+			// Pi's two `load` calls run their synchronous parts one after the other before any message of either arrives (they
+			// are microtasks), so each host's objects start with no knowledge of the other's: the first holds of both hosts are
+			// kept until both loads started its objects, the server's sent first.
 			down, up := link.MemoryLinkPair()
+			serverHolds, workerHolds := &rhHeldHolds{}, &rhHeldHolds{}
+			serverLink := &rhCountingLink{Link: down, retries: retries, held: serverHolds}
+			workerLink := &rhCountingLink{Link: up, retries: retries, held: workerHolds}
 			server := rhCreate(t, HostOptions{Address: new(serverKind.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 			worker := rhCreate(t, HostOptions{Address: new(workerKind.Address(nil)), Principal: workerPrincipal("1"), OnError: func(HostError) {}})
 			mustRoute(t)(server.Route(workerKind, RouteOptions{
 				Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 				Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
-					return ResolvedLink{Link: &rhCountingLink{Link: down, retries: retries}, Principal: workerPrincipal("1"), Trusted: true, Codec: testCodec()}, nil
+					return ResolvedLink{Link: serverLink, Principal: workerPrincipal("1"), Trusted: true, Codec: testCodec()}, nil
 				},
 			}, background))
-			must(t, worker.Connect(&rhCountingLink{Link: up, retries: retries}, LinkOptions{Principal: serverPrincipal(), Trusted: true, Codec: testCodec()}, background))
+			must(t, worker.Connect(workerLink, LinkOptions{Principal: serverPrincipal(), Trusted: true, Codec: testCodec()}, background))
 			readerImpl := func(member chord.Watchable[delta.JsonValue]) contracts.Implementation {
 				return contracts.Implementation{Variant: "reader", Members: contracts.VariantImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": member},
@@ -1239,6 +1287,7 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 					}, ServeOptions{})
 				})}}, background)
 			}()
+			rhWaitFor(t, serverHolds.queued)
 			go func() {
 				defer wg.Done()
 				_, rightErr = worker.Load([]HostFacet{{Name: "@test/b", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
@@ -1255,6 +1304,9 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 					}, ServeOptions{})
 				})}}, background)
 			}()
+			rhWaitFor(t, workerHolds.queued)
+			serverHolds.release(serverLink.Link)
+			workerHolds.release(workerLink.Link)
 			wg.Wait()
 			must(t, leftErr)
 			must(t, rightErr)

@@ -75,6 +75,7 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{".github/workflows/npm-publish.yml", "0.2.0", "example in an input description"},
 	{"Makefile", "0.163.0", "example in a target's help text"},
 	{"automation/gen/mirror-upstream.sh", "0.70.5", "example in the usage text"},
+	{"automation/gen/mirror-upstream.sh", "1.4.0+b556cfe5", "example in the usage text, and the commit build an earlier commit pin named in the ledgers that --version mirrors for upstream-delta"},
 	{"automation/release/gen-update-manifest.py", "0.2.0", "example in the usage text"},
 	{"automation/release/gen-update-manifest.py", "0.2.1", "example in the usage text"},
 	{"automation/release/module-tags.sh", "0.2.0", "example in a comment"},

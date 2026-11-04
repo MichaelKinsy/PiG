@@ -467,8 +467,9 @@ func TestAfterRun(t *testing.T) {
 		}
 		eventually(t, func() bool { return len(state.runList()) == 1 })
 		live := liveOf(t, harness, root.Id())
-		if len(live.Run.Inputs) != 0 {
-			t.Fatalf("run inputs = %v, want none", live.Run.Inputs)
+		// toEqual([]): an empty list, not a missing one.
+		if live.Run.Inputs == nil || len(live.Run.Inputs) != 0 {
+			t.Fatalf("run inputs = %#v, want an empty list", live.Run.Inputs)
 		}
 		if live.Run.AfterRun == nil || len(live.Run.AfterRun.Tasks) != 1 {
 			t.Fatalf("run.afterRun = %+v, want one task", live.Run.AfterRun)

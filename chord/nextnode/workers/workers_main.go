@@ -124,6 +124,7 @@ type processPort interface {
 
 // serve runs the worker on port; it does not return.
 func serve(port processPort, fn func(start WorkerStart, ctx context.Context) (*WorkerResult, error), options WorkerMainOptions) {
+	plugins.AdoptSocketOwner()
 	newWorker(port, options).run(fn)
 	select {}
 }

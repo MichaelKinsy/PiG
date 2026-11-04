@@ -2401,7 +2401,7 @@ func (t *TuiMainScreen) doRender() {
 			t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 			return
 		}
-		buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
+		buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 		buf.WriteString("\x1b[?2026h")
 		buf.WriteString(buf0)
 		lineDiff := computeLineDiff(targetRow, hardwareCursorRow, viewportTop(prevViewportTop), prevViewportTop)
@@ -2469,7 +2469,7 @@ func (t *TuiMainScreen) doRender() {
 		}
 	}
 
-	buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
+	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 	buf.WriteString("\x1b[?2026h")
 	buf.WriteString(t.deleteChangedKittyImages(firstChanged, lastChanged))
 
@@ -2620,7 +2620,7 @@ func (t *TuiMainScreen) fullRender(newLines []string, width, height int, clear b
 	bufLen := max(len(newLines), height)
 	viewportTop := max(0, bufLen-height)
 
-	buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
+	buf := boundedTerminalWriter{write: func(data string) { WriteToTerminal(t.out, data) }}
 	buf.WriteString("\x1b[?2026h")
 	if clear {
 		// Delete previously tracked Kitty images before wiping the screen
@@ -2686,7 +2686,7 @@ func isTermuxSession() bool {
 // the relative row delta is stable across viewport shifts.
 func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, totalLines int) {
 	if !ok || totalLines <= 0 {
-		_, _ = fmt.Fprint(t.cursorOut(), "\x1b[?25l")
+		WriteToTerminal(t.cursorOut(), "\x1b[?25l")
 		return
 	}
 	targetRow := max(0, min(cursorPos.Row, totalLines-1))
@@ -2700,7 +2700,7 @@ func (t *TuiMainScreen) positionHardwareCursor(cursorPos widthx.CursorPosition, 
 	}
 	fmt.Fprintf(&buf, "\x1b[%dG", targetCol+1)
 	if buf.Len() > 0 {
-		_, _ = t.out.Write([]byte(buf.String()))
+		WriteToTerminal(t.out, buf.String())
 	}
 	t.hardwareCursorRow = targetRow
 	// Upstream shows or hides the cursor through terminal.showCursor/hideCursor, which bypass PI_TUI_WRITE_LOG.
@@ -2723,18 +2723,18 @@ func (t *TuiMainScreen) RepaintAll() {
 
 // HideCursor hides the terminal cursor.
 func (t *tuiBase) HideCursor() {
-	_, _ = fmt.Fprint(t.cursorOut(), "\033[?25l")
+	WriteToTerminal(t.cursorOut(), "\033[?25l")
 }
 
 // WriteRaw writes data to the terminal as is, as upstream's
 // terminal.write does for a component that drives the terminal itself.
 func (t *tuiBase) WriteRaw(data string) {
-	_, _ = io.WriteString(t.out, data)
+	WriteToTerminal(t.out, data)
 }
 
 // ShowCursor shows the terminal cursor.
 func (t *tuiBase) ShowCursor() {
-	_, _ = fmt.Fprint(t.cursorOut(), "\033[?25h")
+	WriteToTerminal(t.cursorOut(), "\033[?25h")
 }
 
 // cursorOut is where cursor visibility goes: upstream's terminal.hideCursor and showCursor write to stdout directly, not through
@@ -2839,15 +2839,15 @@ func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 		// Overwrite the inverted software cursor with a normal space so it
 		// does not leave a highlighted-cell artifact after the hardware
 		// cursor is restored on exit (mirrors upstream tui.ts stop()).
-		_, _ = fmt.Fprint(t.out, " ")
+		WriteToTerminal(t.out, " ")
 		targetRow := len(t.prevLines)
 		lineDiff := targetRow - t.hardwareCursorRow
 		if lineDiff > 0 {
-			_, _ = fmt.Fprintf(t.out, "\033[%dB", lineDiff)
+			WriteToTerminal(t.out, fmt.Sprintf("\033[%dB", lineDiff))
 		} else if lineDiff < 0 {
-			_, _ = fmt.Fprintf(t.out, "\033[%dA", -lineDiff)
+			WriteToTerminal(t.out, fmt.Sprintf("\033[%dA", -lineDiff))
 		}
-		_, _ = fmt.Fprint(t.out, "\r\n")
+		WriteToTerminal(t.out, "\r\n")
 	}
 	t.ShowCursor()
 }

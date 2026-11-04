@@ -919,3 +919,17 @@ commit = "f33e07a23f"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The two expected values are the hung-up-terminal answer of TestStdinInForegroundFollowsTheTerminalProcessGroup, a test this unreleased branch added for D227 (Pi has no foreground check and no test of it). ENOTTY, a terminal that is not the controlling terminal, now answers foreground like Pi's unconditional restart instead of an error, so the hung-up case accepts EIO (Linux) or the no-controlling-terminal answer. No shipped Pi behavior and no existing test changed."
+
+[[entry]]
+path = "internal/codingagent/code_highlighter_rows_test.go"
+commit = "2932ec2a1ac5f16beff647f9fd4ab841da877947"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "No Pi behavior changed and no PiG behavior changed. The commit adds only the writeHighlightCode seam in write_highlight_cache.go (a variable initialised to tui.HighlightCode, used at the three places the write cache highlights code) and replaces the streaming test's assertion: it compared cached line strings by value, which cannot fail because highlighting is deterministic. It now records what the cache highlights, as Pi's test spies on its highlight function (code-highlighter.test.ts:54-71, a test file): the 60-line update highlights exactly the changed last line. The mutants that re-highlight the leading 50 lines or rebuild the whole cache on every update fail it."
+
+[[entry]]
+path = "ai/openai_completions_strict_require_test.go"
+commit = "a1582c46c8f448e211a3b20970b3cdc1577fa6da"
+class = "CITE"
+cite = "packages/ai/src/api/openai-completions.ts:1500"
+reason = "Pi sends the tool parameters of a strict sampling tool as getJsonSchemaToolParameters returns them (openai-completions.ts:1500), in the key order of the decoded schema: type, properties, required. The expected request body of the plain-tool case now lists the keys in that order; the fixture builds the tool from JSON so it records the key order a decoded tool does."

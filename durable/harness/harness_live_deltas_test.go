@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
-	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -364,7 +363,11 @@ func TestLiveDeltas(t *testing.T) {
 		mu.Unlock()
 		bases, deltas := 0, 0
 		for seq, kind := range written {
-			if (kind == "base") != nothingRuns(observed[seq]) {
+			value, seen := observed[seq]
+			if !seen {
+				t.Fatalf("commit %d wrote pi.live as a %s but published no pi.live value", seq, kind)
+			}
+			if (kind == "base") != nothingRuns(value) {
 				t.Fatalf("commit %d wrote a %s for %s", seq, kind, jsonText(t, observed[seq]))
 			}
 			if kind == "base" {
@@ -385,10 +388,9 @@ func TestLiveDeltas(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "bad", Description: "bad", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
-			// Not strict JSON: the result commit fails and the scheduler faults the task. A Go value cannot hold a
-			// function, so a non-finite number stands for upstream's function.
+			// Not strict JSON: the result commit fails and the scheduler faults the task.
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": math.NaN()}, HasDetails: true}, nil
+				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": func() int { return 1 }}, HasDetails: true}, nil
 			},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("ghost", map[string]any{}, &ai.FauxToolCallOptions{ID: "g"}), ai.FauxToolCall("bad", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})

@@ -7,6 +7,7 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -163,7 +164,7 @@ func TestInputEntries(t *testing.T) {
 	t.Run("queues busy inputs with their entries in the inbox and places them as those entries at boundaries", func(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
-		holdTool(t, setup, gate)
+		holdTool(t, setup, gate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "held"}}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{holdStep(), fauxAnswer("after tools"), fauxAnswer("follow-up")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
@@ -259,10 +260,15 @@ func TestInputEntries(t *testing.T) {
 		closeHarness(t, harness)
 
 		harness, root = openAt(t, path, setup)
+		queuedItem := false
 		for _, item := range inboxItemsOf(t, harness, root) {
 			if item.Id == f {
+				queuedItem = true
 				expectEqualJSON(t, item.Entry, `{"kind":"chat.mention","data":{"author":"ann","text":"f"}}`)
 			}
+		}
+		if !queuedItem {
+			t.Fatalf("the reopened inbox has no item %d", f)
 		}
 		settled := must(submissionOfHarness(t, harness, f).Wait(testContext))
 		var placed durable.EntryRecord
@@ -447,7 +453,20 @@ func TestDataOnlyWrites(t *testing.T) {
 		if ids := inboxIds(inboxItemsOf(t, harness, root)); len(ids) != 1 || ids[0] != f.Id() {
 			t.Fatalf("inbox = %v, want [%d]", ids, f.Id())
 		}
-		expectMatch(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request", "first": *failed.Entry}}))
+		// toEqual: the whole pi.live is exactly this runFailure (taskId and first any numbers), nothing else.
+		var live map[string]any
+		if err := json.Unmarshal([]byte(jsonText(t, liveOf(t, harness, root.Id()))), &live); err != nil {
+			t.Fatal(err)
+		}
+		failure, _ := live["runFailure"].(map[string]any)
+		if _, ok := failure["taskId"].(float64); !ok || len(live) != 1 || len(failure) != 5 {
+			t.Fatalf("pi.live = %s, want exactly a runFailure of taskId, inputs, reason, detail and first", jsonText(t, live))
+		}
+		if _, ok := failure["first"].(float64); !ok {
+			t.Fatalf("runFailure.first = %v, want a number", failure["first"])
+		}
+		delete(failure, "taskId")
+		expectEqualJSON(t, live, jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request", "first": *failed.Entry}}))
 		if calls := setup.Faux.CallCount(); calls != 1 {
 			t.Fatalf("calls = %d, want 1", calls)
 		}
