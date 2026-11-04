@@ -1,0 +1,3 @@
+### Fixed
+
+- A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready` ("app.exposer: not live yet") when that object failed and went live again while the key's first pin still loaded: the key was handed back before its pin on the new instance had landed, and the factory's derive read it with no value. The key is now handed back once the pin on the instance the object points at has landed, or fails with that pin's failure. Seen once in a gate run, and 4 times in 5000 runs on 2 CPUs with 8 busy loops. <!-- fix: 4d2f44e5e269bec44a7e33ac14b0fa3c4dd2d091 -->
