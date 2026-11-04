@@ -93000,6 +93000,17 @@
       "shapeHash": "sha256:e8ecb0dc6304b59c4e43228e1de86818ce620bd49612c87e71b2b9820073a676"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newRPCShutdownGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "newRPCShutdownGate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *rpcShutdownGate"
+      },
+      "shapeHash": "sha256:df077ca3f7392831a43edde9d800c7d48ad6247e98a544c7bcbdcc6386951df6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newRPCUIContext",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "newRPCUIContext",
@@ -97244,6 +97255,105 @@
         "type": "func(sig syscall.Signal)"
       },
       "shapeHash": "sha256:d22bb4ecffc24f01e32f5f6f27dbfeda8c4ca5f29f10a80dca0b36e541e5ef59"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "rpcShutdownGate"
+      },
+      "shapeHash": "sha256:ef0fe244fa63453a5b58f2f945e43e0a7c350aec79ef88870b6d4d45946cd95e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Begin",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.Begin",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Check",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.Check",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.End",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.End",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.InputReady",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.InputReady",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Request",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.Request",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.bind",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.bind",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(spawn func(func()), schedule func(func()), idle func() bool, started func() bool, fire func())"
+      },
+      "shapeHash": "sha256:fd451f5800b454dc9460671aee7b236c338365aeacf659a9cfaf60ebefe7419b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.check",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.check",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.unbind",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "rpcShutdownGate.unbind",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcStartup",

@@ -106,10 +106,10 @@ type rpcHost struct {
 	detached atomic.Bool
 	// forwarding counts running event forwarders; shutdown flushes only while one runs.
 	forwarding atomic.Int32
-	// requestShutdown is an extension's ctx.shutdown(); afterSettled and commandDone are where upstream checks for it.
+	// requestShutdown is an extension's ctx.shutdown(); shutdown counts the commands in flight, and afterSettled is where upstream checks for the request again (D231).
 	requestShutdown func()
+	shutdown        *rpcShutdownGate
 	afterSettled    func()
-	commandDone     func()
 	// settle holds stdin between a published agent_end and agent_settled.
 	settle rpcSettleGate
 	// turns models where Pi's event loop turns (D189); loop reports the run's chain to it.
@@ -324,7 +324,7 @@ func (h *rpcHost) newAdmission(session *coding.Session, runner *inproc.Runner, c
 	registry := services.Registry()
 	return &rpcAdmission{
 		ctx: h.ctx, turn: h.responses, session: session, runner: runner, catalog: catalog,
-		write: h.responses.write, turns: &h.turns, runs: h.promptWG, shared: h.tasks, commandDone: h.commandDone, commands: commands, commandsInFlight: &h.commandsInFlight, background: &h.background,
+		write: h.responses.write, turns: &h.turns, runs: h.promptWG, shared: h.tasks, shutdown: h.shutdown, commands: commands, commandsInFlight: &h.commandsInFlight, background: &h.background,
 		validateModel: func() error {
 			model := session.Model()
 			if model == nil {
