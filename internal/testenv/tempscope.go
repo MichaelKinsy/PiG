@@ -81,6 +81,29 @@ func KeepGoBuildCaches() error {
 	return nil
 }
 
+// DisableGoTelemetry turns the go command's telemetry off in the configuration directory of a test whose HOME is now home. Call it after setting HOME and before the test's first go command.
+//
+// A fresh configuration directory has no telemetry mode, so the first go command in it finds telemetry on, claims the upload token, and forks a detached sidecar ("** telemetry **", working directory in that configuration directory). The sidecar outlives the command and creates counter and report files there. A test whose cleanup removes home then fails with "directory not empty" when the sidecar writes during RemoveAll, or leaves a recreated tree behind when it writes after. In mode off a go command opens no counters and forks nothing.
+//
+// It writes only when the configuration directory lies inside home. Where XDG_CONFIG_HOME or APPDATA keeps it elsewhere the sidecar cannot write into home, and the mode of the user running `go test` must not change.
+func DisableGoTelemetry(t testing.TB, home string) {
+	t.Helper()
+	config, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel, err := filepath.Rel(home, config); err != nil || !filepath.IsLocal(rel) {
+		return
+	}
+	dir := filepath.Join(config, "go", "telemetry")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "mode"), []byte("off"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // RunScoped runs m with the process temporary directory scoped to a fresh directory named prefix+random under the real one, removes that directory afterwards, and returns the exit code for os.Exit. Removal failure turns a passing run into exit code 2 so a leak fails the package.
 func RunScoped(m *testing.M, prefix string) int {
 	root, err := os.MkdirTemp("", prefix)
