@@ -106,18 +106,17 @@ func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 	cmd.Dir = t.TempDir()
 	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic",
 		"RPC_SHUTDOWN_REPORT="+report, "RPC_SHUTDOWN_SLOW=2500", "RPC_SHUTDOWN_RECORD_DONE=1")
-	reader, writer, err := os.Pipe()
+	// Every write to /dev/full fails with ENOSPC; a closed pipe would end the process with SIGPIPE instead.
+	full, err := os.OpenFile("/dev/full", os.O_WRONLY, 0)
 	if err != nil {
-		t.Fatal(err)
+		t.Skipf("no /dev/full: %v", err)
 	}
-	// The reader end is closed before the process writes: its first JSON line fails.
-	_ = reader.Close()
-	cmd.Stdout = writer
+	defer full.Close()
+	cmd.Stdout = full
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	_ = writer.Close()
 	defer func() { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }()
 	waited := make(chan error, 1)
 	go func() { waited <- cmd.Wait() }()
