@@ -130,7 +130,7 @@ why = "Pi has no Piglets, so the text of `pig piglet tree` (D170) is PiG's own f
 paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/binding/testdata/*.events"]
 
 [[input]]
-paths = ["coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
+paths = ["coding/cli/testdata/go.mod", "coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
 
 [[golden]]
 paths = ["coding/cli/testdata/d82-w7/rpc-usage-pi.json", "coding/cli/testdata/d82-w7/rpc-usage-extension-pi.json"]
