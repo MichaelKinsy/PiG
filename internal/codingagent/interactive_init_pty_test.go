@@ -33,6 +33,17 @@ func TestInitFailingAfterTheTuiStartsStaysInitialized(t *testing.T) {
 // requires the child to pass, and returns everything the child wrote to the terminal. Init needs a terminal for raw mode.
 func runInitPTYChild(t *testing.T, child, envKey string) []byte {
 	t.Helper()
+	captured, report, waitErr := runInitPTYChildRaw(t, child, envKey)
+	if waitErr != nil || !bytes.Contains(captured, []byte("--- PASS: "+child)) {
+		failure, _ := os.ReadFile(report)
+		t.Fatalf("child failed: %v: %s\n%q", waitErr, failure, tailBytes(captured, 400))
+	}
+	return captured
+}
+
+// runInitPTYChildRaw is runInitPTYChild without the requirement that the child pass: it returns what the child wrote to the terminal, the report path (its directory is the child's to use) and the child's wait result.
+func runInitPTYChildRaw(t *testing.T, child, envKey string) (captured []byte, report string, waitErr error) {
+	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		t.Fatalf("open /dev/ptmx: %v", err)
@@ -60,7 +71,7 @@ func runInitPTYChild(t *testing.T, child, envKey string) []byte {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^"+child+"$", "-test.count=1", "-test.v")
-	report := t.TempDir() + "/report"
+	report = t.TempDir() + "/report"
 	cmd.Env = append(os.Environ(), envKey+"="+report, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
@@ -68,24 +79,20 @@ func runInitPTYChild(t *testing.T, child, envKey string) []byte {
 		t.Fatal(err)
 	}
 	_ = slave.Close()
-	var captured bytes.Buffer
+	var output bytes.Buffer
 	copied := make(chan struct{})
 	go func() {
 		defer close(copied)
-		_, _ = io.Copy(&captured, master)
+		_, _ = io.Copy(&output, master)
 	}()
-	waitErr := cmd.Wait()
+	waitErr = cmd.Wait()
 	select {
 	case <-copied:
 	case <-time.After(5 * time.Second):
 		_ = master.Close()
 		<-copied
 	}
-	if waitErr != nil || !bytes.Contains(captured.Bytes(), []byte("--- PASS: "+child)) {
-		failure, _ := os.ReadFile(report)
-		t.Fatalf("child failed: %v: %s\n%q", waitErr, failure, tailBytes(captured.Bytes(), 400))
-	}
-	return captured.Bytes()
+	return output.Bytes(), report, waitErr
 }
 
 func tailBytes(b []byte, n int) []byte {
