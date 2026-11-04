@@ -1107,6 +1107,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aff6631](#bf-aff6631) | A code mode script in a loop can no longer freeze the whole process | PiG's own defect | All platforms | Unreleased |
 | [BF-affc944](#bf-affc944) | Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b02876b](#bf-b02876b) | `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b04bb32](#bf-b04bb32) | fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers… | PiG's own defect | All platforms | Unreleased |
 | [BF-b0608a9](#bf-b0608a9) | OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b06ad92](#bf-b06ad92) | An MCP server `url` can use environment variables (`"url": "${TOOLS_URL}"`): PiG checks and connects to the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b1642ac](#bf-b1642ac) | fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear… | PiG's own defect | All platforms | Unreleased |
@@ -16660,6 +16661,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b02876b1d5` (2026-10-13)
 - **Tests:** `chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName`, `chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger`
 - **Release note:** `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a connection. Before, a route that returned a dead link (a child that exited before its link was wrapped) made every later call to that host name fail with `unavailable` until restart, and started a ping timer for the dead connection (Pi 7f022043).
+
+### BF-b04bb32
+
+**fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers apply in the order of the reads
+- **Root cause:** The extension answers getSignal on its own thread, so two reads of the run can be in flight together and answer in either order. The tracker took its lock only to apply an answer, so an "aborted" answer could land before an older "live" one and the live one then began a run of its own: a live context that nothing would abort, while the run was aborted. The lock is now held across the request and the apply, so answers are applied in read order and a read waits for the one before it.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b04bb32856` (2026-11-03)
+- **Tests:** `coding/session_graph_signal_test.go::TestGraphGetSignalAppliesAnswersInReadOrder`
 
 ### BF-b0608a9
 

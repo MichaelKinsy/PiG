@@ -31074,6 +31074,27 @@
       ]
     },
     {
+      "id": "BF-b04bb32",
+      "title": "fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers…",
+      "symptom": "fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers apply in the order of the reads",
+      "rootCause": "The extension answers getSignal on its own thread, so two reads of the run can be in flight together and answer in either order. The tracker took its lock only to apply an answer, so an \"aborted\" answer could land before an older \"live\" one and the live one then began a run of its own: a live context that nothing would abort, while the run was aborted. The lock is now held across the request and the apply, so answers are applied in read order and a read waits for the one before it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b04bb32856",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/session_graph_signal_test.go::TestGraphGetSignalAppliesAnswersInReadOrder"
+      ]
+    },
+    {
       "id": "BF-b0608a9",
       "title": "OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL…",
       "symptom": "OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL with media type parameters, an empty media type or a line break in the payload is skipped, and a payload that is not valid base64 is kept instead of dropped.",

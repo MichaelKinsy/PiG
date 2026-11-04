@@ -81307,6 +81307,28 @@
       "shapeHash": "sha256:55b01e0c824dbe8c9e529d5f164ba30e7814481fdbd7dc434be5c58544874386"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#graphSignal",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "graphSignal",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "graphSignal"
+      },
+      "shapeHash": "sha256:ae828556f005abc4b4532da8a1b8d3a82d6bd324c0aa982ca42521102db250f6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#graphSignal.read",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "graphSignal.read",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ask func() (*graphSignalState, error)) context.Context"
+      },
+      "shapeHash": "sha256:ce81e1b5aa77fbde89f29977f449dbb6108fef81debc34fe9ec2d5c9e6383678"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#graphSignalState",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "graphSignalState",
