@@ -401,9 +401,9 @@ func (slot *KeyedSlot) Cold(key string) bool {
 	return slot.persistence != nil && !present
 }
 
-// InMemory reports whether pinning key settles without a read of the store: the slot is not persisted, or the key's source
-// was loaded since it was pinned, or (not pinned) the document is in memory. Pi's `ensure` reads the store for a pinned key
-// whose source is not `ready`, and only then (keyed-slot.ts `pin`, `ensure`).
+// InMemory reports whether the load of a pin of key has finished, or needs none: the slot is not persisted, or the key's
+// source was loaded since it was pinned, or (not pinned) the document is in memory. Pi's `ensure` loads a pinned key whose
+// source is not `ready`, and only then (keyed-slot.ts `pin`, `ensure`).
 func (slot *KeyedSlot) InMemory(raw string) bool {
 	key, err := slot.Key(raw)
 	if err != nil {

@@ -1358,8 +1358,8 @@ func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceReturnsItsSourceOnce
 	}
 }
 
-// A new pin that must read the store lands after the old pin settled in Pi (a read of the store is a later turn), so Pi's
-// hold has returned by then, with the key's source as it is: the hold does not wait for it.
+// A new pin whose load has not finished when the old pin settles has not landed in Pi either, so Pi's hold has returned
+// by then, with the key's source as it is: the hold does not wait for it.
 func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceDoesNotWaitForAPinOnTheNewInstanceThatReadsTheStore(t *testing.T) {
 	first := newGatedInstance(nil)
 	g := startGatedHold(t, first)

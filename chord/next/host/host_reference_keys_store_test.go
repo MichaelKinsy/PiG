@@ -13,11 +13,11 @@ import (
 )
 
 // Own test of reference-keys.test.ts › a key whose first pin still loads › the object fails and re-binds meanwhile, for a
-// new member whose key is in the store only. Pi's test re-binds to a member in memory, whose pin lands in the turns that
-// started it, before the old pin's load settles. A pin that reads the store settles in a later turn, after the old one:
-// Pi's hold has returned by then with the key's source, which has no value, and the consumer's derive reads it: its get
-// rejects with `not_ready`, "app.exposer: not live yet", and the failure is reported as `activation_failed` (run against
-// Pi v1.5.0 by the review of this fix).
+// new member whose key is in the store only. Pi's test re-binds to a member in memory, whose pin has landed when the old
+// pin's load settles. Here the new pin's load has not finished when the old pin settles: Pi's hold has returned by then
+// with the key's source, which has no value, and the consumer's derive reads it: its get rejects with `not_ready`,
+// "app.exposer: not live yet", and the failure is reported as `activation_failed` (run against Pi v1.5.0 by the review of
+// this fix).
 
 // kmColdOther is a second provider with a persisted key `k`, to which the exposer re-binds.
 var kmColdOther = mustContract(contracts.Local("app.cold-other", contracts.LocalDeclaration{
