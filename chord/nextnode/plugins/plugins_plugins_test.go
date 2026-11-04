@@ -190,7 +190,18 @@ func (c *pcComponent) reload(t *testing.T, h pcLoaded, built *Built) host.Reload
 // a file took 17 s on a Windows runner running this package with the workers' (an idle one takes under a second).
 func (c *pcComponent) waitMarks(t *testing.T, what string, check func(PluginsState) bool) {
 	t.Helper()
-	eventually(t, 30*time.Second, what, func() bool { return check(c.Marks()) })
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		marks := c.Marks()
+		// Windows marks the directories tempRoot filled that the test did not write to (withoutCopyStamps).
+		if check(marks) || runtime.GOOS == "windows" && check(withoutCopyStamps(t, marks)) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out after 30s waiting for %s; the marks are %+v", what, marks)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	settle(t, c.Plugins)
 }
 
