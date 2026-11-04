@@ -2132,6 +2132,28 @@
       ]
     },
     {
+      "id": "BF-12d5c56",
+      "title": "A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine…",
+      "symptom": "A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine while a reload composes them.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine while a reload composes them. The read recomposed a changed registry beside the commit that changed it: data races, and a reload that failed with \"reload inside a commit or a derive compute\" (2 of 5 runs of a reload loop beside readers). Pi reads `registries.router.value` on its one JavaScript thread, between the turns of the host's loop; the reads are now sections of the host's loop, which give the same interleaving.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "12d5c56025",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/review_test.go::TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers"
+      ]
+    },
+    {
       "id": "BF-1356aae",
       "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
       "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",

@@ -106,6 +106,24 @@ type registrySet struct {
 	authenticators *registries.RegistryValueSource
 }
 
+// routerNow is `registries.router.value` (Pi's http.ts reads it for every request and upgrade): read in a section of the host.
+// Pi reads it on the one JavaScript thread, between the turns of the host's loop; a request or an upgrade here runs on a
+// goroutine of its own, and a read there recomposes a changed registry beside the commit that changed it (a data race, and a
+// reload that fails "inside a commit or a derive compute"). The section is that thread: it waits for the running turn, and
+// is inline when the caller is on the loop already.
+func (s *registrySet) routerNow() *Router {
+	var router *Router
+	s.router.Batch().Section(func() { router = s.router.Value().(*Router) })
+	return router
+}
+
+// authenticatorsNow is `registries.authenticators.value`, read in a section of the host (see routerNow).
+func (s *registrySet) authenticatorsNow() []AuthenticatorEntry {
+	var authenticators []AuthenticatorEntry
+	s.authenticators.Batch().Section(func() { authenticators = s.authenticators.Value().([]AuthenticatorEntry) })
+	return authenticators
+}
+
 // running is a request or an upgrade from its arrival to its end: what `close` waits for, then seals.
 type running struct {
 	cancel context.CancelCauseFunc
@@ -382,7 +400,7 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	if err != nil || c.isClosing() {
 		return served{answer: c.refusal(503, nil, nil, head)}
 	}
-	router := registrySet.router.Value().(*Router)
+	router := registrySet.routerNow()
 	admission := admit(request, connection, router.Hosts, router.Relays)
 	if refused, ok := isRefused(admission); ok {
 		if refused.Failed != nil {
@@ -408,7 +426,7 @@ func (c *HttpComponent) serveSteps(request Incoming, connection Connection, cont
 	}
 	var principal data.Principal
 	// Foreign requests are never authenticated but a top-level navigation to a page; a cross-site route never is.
-	authenticators := registrySet.authenticators.Value().([]AuthenticatorEntry)
+	authenticators := registrySet.authenticatorsNow()
 	if len(authenticators) > 0 && !match.CrossSite && (!foreign || (match.Page && isNavigation(request.Method(), request))) {
 		principal = c.principal(authenticators, webRequest, controller)
 		if c.isClosing() || controller.Err() != nil {
@@ -626,7 +644,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		refuse(w, 503)
 		return
 	}
-	before := registrySet.router.Value().(*Router)
+	before := registrySet.routerNow()
 	admission := admit(request, connectionOf(r), before.Hosts, before.Relays)
 	if refused, ok := isRefused(admission); ok {
 		if refused.Failed != nil {
@@ -642,7 +660,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		return
 	}
 	webRequest := newWebRequest(request, admitted, c.nonces.Next())
-	principal := c.principal(registrySet.authenticators.Value().([]AuthenticatorEntry), webRequest, signal)
+	principal := c.principal(registrySet.authenticatorsNow(), webRequest, signal)
 	if c.isClosing() || signal.Err() != nil {
 		refuse(w, 503)
 		return
@@ -655,7 +673,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 	seen := c.upgrades.admitting()
 	defer c.upgrades.settled(seen)
 	// The router now: a host, a relay or a socket removed while authenticating refuses the upgrade.
-	router := registrySet.router.Value().(*Router)
+	router := registrySet.routerNow()
 	if (admitted.Allowed != "" && !router.Hosts.Has(admitted.Allowed)) || (admitted.Relay != nil && !containsRelay(router.Relays, admitted.Relay)) {
 		refuse(w, 403)
 		return
