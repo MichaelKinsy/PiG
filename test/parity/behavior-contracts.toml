@@ -2976,6 +2976,19 @@ evidence = [
   "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
   "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
   "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownStreamedRenderResumesFromTheSecondLastPoint",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownResumePointsOfCraftedDocuments",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownKeepsNoResumePointForAnImpureTheme",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownFinishStreamingAfterAnUndrawnDelta",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownSetDefaultColorRepaints",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownNegativePaddingYRendersAsNone",
+  "tui/markdown_lexer_pool_allocs_norace_test.go#TestMarkdownRenderReusesPooledLexerState",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
 ]
 
 [contract.upstream]
@@ -3019,6 +3032,19 @@ evidence = [
   "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
   "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
   "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownStreamedRenderResumesFromTheSecondLastPoint",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownResumePointsOfCraftedDocuments",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownKeepsNoResumePointForAnImpureTheme",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownFinishStreamingAfterAnUndrawnDelta",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownSetDefaultColorRepaints",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownNegativePaddingYRendersAsNone",
+  "tui/markdown_lexer_pool_allocs_norace_test.go#TestMarkdownRenderReusesPooledLexerState",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
 ]
 
 [contract.upstream]
@@ -3068,6 +3094,12 @@ evidence = [
   "tui/markdown_memo_state_contract_test.go#TestMarkdownStreamedStateEqualsAFreshComponents",
   "tui/markdown_memo_state_contract_test.go#TestMarkdownFinishedStateKeepsNoMemos",
   "tui/markdown_memo_state_contract_test.go#TestMarkdownInlineMemoIsNotUsedForReferencesAcrossDefinitions",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
 ]
 
 [contract.upstream]
@@ -3111,6 +3143,10 @@ evidence = [
   "tui/markdown_spans_contract_test.go#TestMarkdownDefaultColorEqualsAColorTextStyle",
   "tui/markdown_commonmark_contract_test.go#TestMarkdownCommonmarkDocsMatchPi",
   "tui/markdown_residual_contract_test.go#TestMarkdownResidualDocsMatchPi",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownBracketTextIsMemoizedWithoutDefinitions",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownDefaultStyleWithoutColorKeepsInlineRenderings",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownThemeStyleChangedBetweenRendersIsReadAgain",
+  "tui/markdown_memo_work_contract_test.go#TestMarkdownInlineMarkdownAfterRenderStartsClean",
 ]
 
 [contract.upstream]
@@ -3147,6 +3183,12 @@ evidence = [
   "tui/markdown_marked_lexer_oracle_test.go#TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
   "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockTokenizersEqualTheirPatterns",
   "tui/markdown_marked_tokenizers_contract_test.go#TestMarkedBlockLexerReuseEqualsFresh",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockLexerSurvivorDocsMatchMarked",
+  "tui/markdown_marked_lexer_survivors_test.go#TestMarkedBlockTokenOffsetsLocateTheirTokens",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerFillsItsSlabsInOrderAndReusesThem",
+  "tui/markdown_marked_lexer_pool_test.go#TestMarkedBlockLexerResetsItsQueueAndKeepsItsTokenList",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPartialClosingFencesMatchPi",
+  "tui/markdown_partial_fence_markers_oracle_test.go#TestMarkdownPreservedListMarkersMatchPi",
 ]
 
 [contract.upstream]
