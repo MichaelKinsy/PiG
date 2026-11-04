@@ -431,7 +431,7 @@ Use `/export` instead when the session holds anything private. When the upload f
  Bug report exported to:
  /home/you/project/pig-bug-report-01a12bca-2b63-7109-98f6-d549300404d0.zip
  Report ID: 01a12bca-2b63-7109-98f6-d549300404d0
-To report it, open a PiG issue and attach pig-bug-report-01a12bca-2b63-7109-98f6-d549300404d0.zip:
+To report it, open this link, drag pig-bug-report-01a12bca-2b63-7109-98f6-d549300404d0.zip into the issue and submit. The link fills in your versions and report ID, and "What happened" is the only field you need:
 https://github.com/MichaelKinsy/PiG/issues/new?template=bug.yml&title=bug%3A+the+footer+shows+the+wrong+model&version=...
 ```
 
