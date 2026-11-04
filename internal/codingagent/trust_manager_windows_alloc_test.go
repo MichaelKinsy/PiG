@@ -38,3 +38,28 @@ func TestHasTrustRequiringProjectResourcesLevelAllocatesTheSameOnWindowsAsElsewh
 		t.Fatalf("a directory level allocates %.2f objects with Windows path comparison, %.2f without", windows, posix)
 	}
 }
+
+// Pi 1.5.0 (#10947) asks the trust store for a saved decision at startup even when the project has nothing that needs trust. With nothing saved the answer
+// is "none" whatever the path, so the store must not spend a realpath of the working directory, one more allocation per directory level, to find it.
+func TestProjectTrustStoreGetWithNoSavedDecisionsCostsNothingPerDirectoryLevel(t *testing.T) {
+	root := t.TempDir()
+	store := NewProjectTrustStore(filepath.Join(root, "agent"))
+	shallow := filepath.Join(root, "work")
+	deep := shallow
+	for level := range 32 {
+		deep = filepath.Join(deep, "l"+string(rune('a'+level%26)))
+	}
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	allocs := func(cwd string) float64 {
+		return testing.AllocsPerRun(10, func() {
+			if decision, err := store.Get(cwd); err != nil || decision != nil {
+				t.Fatalf("Get(%q) = %v, %v; want no decision", cwd, decision, err)
+			}
+		})
+	}
+	if shallowAllocs, deepAllocs := allocs(shallow), allocs(deep); deepAllocs > shallowAllocs {
+		t.Fatalf("Get allocates %.0f objects at 32 levels deeper, %.0f at the shallow directory", deepAllocs, shallowAllocs)
+	}
+}
