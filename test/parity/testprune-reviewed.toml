@@ -961,3 +961,10 @@ commit = "b478485936430504d20b2c167683b20ff6ab3891"
 class = "CITE"
 cite = "packages/chord/src/next/host/reference-keys.ts:55"
 reason = "Pi hold (reference-keys.ts:55) returns the key source once the pin settles and does not fail with the pin failure: a failed pin shows on the key, which never had a value. The unit test of the failing pin now expects that not_ready key, the result Pi shows to its caller."
+
+[[entry]]
+path = "internal/testenv/tempscope_test.go"
+commit = "599e3ddb3157cf09ae67c58c0fa659612c2edac6"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "A test-helper expectation for the isolated home: Go telemetry is switched off there so no sidecar writes into a removed home. No Pi behavior is involved."
