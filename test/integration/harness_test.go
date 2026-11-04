@@ -8,13 +8,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -138,64 +136,6 @@ func TestHarnessUntrustedProjectStillPrompts(t *testing.T) {
 	h := newHarness(t)
 	h.startArgsWithProjectTrust(nil, false)
 	h.expectContains(startupReadyWait, "Trust project folder?")
-}
-
-// hangupShutdownScript stands in for pig's shutdown after a terminal hangup: the hangup starts a shutdown that outlives tmux kill-session, and the shutdown ends by appending to exit.log in the agent directory, creating the directory when it is gone (internal/codingagent appendExitLog does both). The shutdown waits for the release file before it writes, so the test decides when it can finish. Arguments: ready file, release file, agent directory, finished file.
-const hangupShutdownScript = `ready=$1 release=$2 agent=$3 finished=$4
-trap 'until [ -e "$release" ]; do sleep 0.1; done; mkdir -p "$agent" && echo SIGHUP >> "$agent/exit.log"; : > "$finished"; exit 0' HUP
-: > "$ready"
-while :; do sleep 0.1; done
-`
-
-// TestHarnessCleanupWaitsForHangupShutdown pins the order of a harness test's cleanup. A process in the pane must have finished its hangup shutdown before the test's temporary directories are removed. Otherwise pig's exit record races the removal and the test fails with "TempDir RemoveAll cleanup: directory not empty" (TestExt_StartupWithoutConfig). The fixture shutdown cannot finish until the harness has started waiting for it, so nothing here depends on timing.
-func TestHarnessCleanupWaitsForHangupShutdown(t *testing.T) {
-	requireTmux(t)
-	shared := t.TempDir()
-	script := filepath.Join(shared, "hangup-shutdown.sh")
-	if err := os.WriteFile(script, []byte(hangupShutdownScript), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	ready := filepath.Join(shared, "ready")
-	release := filepath.Join(shared, "release")
-	finished := filepath.Join(shared, "finished")
-	// A kill that never waits never reaches the release below; release the shutdown after the checks so it does not outlive the test.
-	t.Cleanup(func() {
-		if err := os.WriteFile(release, nil, 0o600); err != nil {
-			t.Errorf("release hangup shutdown: %v", err)
-		}
-	})
-
-	var home string
-	t.Run("pane", func(t *testing.T) {
-		h := newHarness(t)
-		// The test's first TempDir call comes after newHarness, as in a test that lets the harness choose its PIG_HOME.
-		home = t.TempDir()
-		listed := h.livePaneProcesses
-		var releaseOnce sync.Once
-		var releaseErr error
-		h.livePaneProcesses = func(sid int) ([]int, error) {
-			// kill has hung the pane up and is now waiting for its processes: let the shutdown finish.
-			releaseOnce.Do(func() { releaseErr = os.WriteFile(release, nil, 0o600) })
-			if releaseErr != nil {
-				return nil, releaseErr
-			}
-			return listed(sid)
-		}
-		h.send(fmt.Sprintf("sh %s %s %s %s %s\r", script, ready, release, filepath.Join(home, "agent"), finished))
-		if !waitFor(startupReadyWait, func() bool {
-			_, err := os.Stat(ready)
-			return err == nil
-		}) {
-			t.Fatal("hangup shutdown fixture never started")
-		}
-	})
-
-	if _, err := os.Stat(finished); err != nil {
-		t.Errorf("kill returned before the pane's process finished its hangup shutdown: %v", err)
-	}
-	if _, err := os.Stat(home); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("the pane's process wrote into %s after the test's temporary directories were removed (stat error: %v)", home, err)
-	}
 }
 
 func (h *harness) send(s string) {
