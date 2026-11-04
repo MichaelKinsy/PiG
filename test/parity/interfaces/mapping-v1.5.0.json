@@ -18303,10 +18303,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/provider_operations.go#imagesOptionsWire"
+        "call:coding/extension/host/subprocess/provider_operations.go#encodeImagesOptions"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/provider_operations.go#imagesOptionsWire"
+        "reach:coding/extension/host/subprocess/provider_operations.go#encodeImagesOptions"
       ]
     },
     {
@@ -62662,10 +62662,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/provider_operations.go#imagesOptionsWire"
+        "call:coding/extension/host/subprocess/provider_operations.go#encodeImagesOptions"
       ],
       "evidence": [
-        "reach:coding/extension/host/subprocess/provider_operations.go#imagesOptionsWire"
+        "reach:coding/extension/host/subprocess/provider_operations.go#encodeImagesOptions"
       ]
     },
     {

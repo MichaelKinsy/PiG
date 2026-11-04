@@ -139981,17 +139981,6 @@
       "shapeHash": "sha256:070228e3f0f54132549dda4b44ea56034ea2bf77a91784ddb31c4134301c8664"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#classifierOptionsWire",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "classifierOptionsWire",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(o github.com/MichaelKinsy/PiG/ai.ClassifierOptions) map[string]any"
-      },
-      "shapeHash": "sha256:fc77b40b9009818f1a5865020ecd25ba187ed4cd70834f522bd22d5de283d637"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#clipboardCopier",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "clipboardCopier",
@@ -141554,6 +141543,17 @@
       "shapeHash": "sha256:441e3153826a970c1bb0b725fa9c09bfb433b72f659d464bef25f7e1df1ff363"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodeClassifierOptions",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "encodeClassifierOptions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(o github.com/MichaelKinsy/PiG/ai.ClassifierOptions) map[string]any"
+      },
+      "shapeHash": "sha256:fc77b40b9009818f1a5865020ecd25ba187ed4cd70834f522bd22d5de283d637"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodeFileURLPath",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "encodeFileURLPath",
@@ -141574,6 +141574,17 @@
         "type": "func(env *Envelope) (*encodedFrame, error)"
       },
       "shapeHash": "sha256:ba998effd5443e501806c7ab5cd51f5d1f5a06ee8b1a6c61c95fd70434b74ece"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodeImagesOptions",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "encodeImagesOptions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(o github.com/MichaelKinsy/PiG/ai.ImagesOptions) map[string]any"
+      },
+      "shapeHash": "sha256:ff5361aad7e6af5b4572f971ddca34a3e8a580147101a985dc84c4bd1e656343"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodeKeptProjection",
@@ -141607,6 +141618,28 @@
         "type": "func(members []objectMember) (encoding/json.RawMessage, error)"
       },
       "shapeHash": "sha256:46966e422f51dcad90af936ad424a728983b3304ed0b965143e59368034cd0cc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodeProviderOptions",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "encodeProviderOptions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(o github.com/MichaelKinsy/PiG/ai.StreamOptions) map[string]any"
+      },
+      "shapeHash": "sha256:e0e2a41f3c6d3a895339c7bc63489bc18995f6e68e24438ee23a17ef49d898a4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodeReadFrame",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "encodeReadFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(shell []byte, args []byte, suffixLen int, length int) []byte"
+      },
+      "shapeHash": "sha256:1493cf45032d5ecd3eb0736e36190648956186dd46d373da2e83eb876def2d57"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#encodedEnvelope",
@@ -143994,17 +144027,6 @@
         "type": "func(text string) string"
       },
       "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#imagesOptionsWire",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "imagesOptionsWire",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(o github.com/MichaelKinsy/PiG/ai.ImagesOptions) map[string]any"
-      },
-      "shapeHash": "sha256:ff5361aad7e6af5b4572f971ddca34a3e8a580147101a985dc84c4bd1e656343"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#incomingLoop",
@@ -148053,17 +148075,6 @@
         "type": "func(names []string) map[string]struct{}"
       },
       "shapeHash": "sha256:12b5cec9906184786370f6736207a6547c937e9cd6e300eb5667c951d0707e93"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#providerOptionsWire",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "providerOptionsWire",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(o github.com/MichaelKinsy/PiG/ai.StreamOptions) map[string]any"
-      },
-      "shapeHash": "sha256:e0e2a41f3c6d3a895339c7bc63489bc18995f6e68e24438ee23a17ef49d898a4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#providerOwner",

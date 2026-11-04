@@ -793,6 +793,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-80bb522-2](#bf-80bb522-2) | Gemini 2.x models (Google Generative AI and Vertex) no longer reject a conversation in which a parallel tool… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-80bb522-3](#bf-80bb522-3) | Amazon Bedrock Converse requests merge adjacent messages that have the same role | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-80c797d](#bf-80c797d) | Text that holds ill-formed UTF-8 is written with one U+FFFD for each ill-formed sequence, as Node decodes it… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8101d67](#bf-8101d67) | With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed… | PiG's own defect | All platforms | Unreleased |
 | [BF-8153bc7](#bf-8153bc7) | A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's… | PiG's own defect | All platforms | Unreleased |
 | [BF-818ba64](#bf-818ba64) | fix(codingagent): mark the hangup grace as D102's | PiG's own defect | All platforms | Unreleased |
 | [BF-81e1a45](#bf-81e1a45) | Streaming a tool call's arguments allocates less per delta | PiG's own defect | All platforms | Unreleased |
@@ -12299,6 +12300,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `80c797da93` (2026-10-10), `afa1dd5185` (2026-10-10)
 - **Tests:** `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `coding/extension/host/subprocess/native_stream_options_union_test.go::TestNativeProviderOptionsKeepRawValuesAndNumericPresence`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestCompleteRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestModelStreamRequestKeepsRequestMetadataOrder`, `coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder`, `internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder`, `internal/jsparity/node_differential_test.go::TestAppendBoolAndOpt`, `internal/jsparity/node_differential_test.go::TestAppendNumberMatchesNode` and 2 more in docs/bug-ledger.json
 - **Release note:** Text that holds ill-formed UTF-8 is written with one U+FFFD for each ill-formed sequence, as Node decodes it, instead of one per byte (Durable core records and the new `internal/jsparity` writers).
+
+### BF-8101d67
+
+**With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed…**
+
+- **Source:** PiG's own defect
+- **Symptom:** With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed `x-amz-security-token` header, the session token, in clear text.
+- **Root cause:** go/clear-text-logging at third_party/awssdk/internal/v4a/v4a.go:511: with the signing client log mode on, the SigV4A canonical request was logged whole, and its signed x-amz-security-token line is the session token. redactSigningLog replaces the value of the x-amz-security-token and authorization lines with <redacted> before the log call. Recorded in FORK.md as difference 8.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8101d67c40` (2026-11-04)
+- **Tests:** `third_party/awssdk/internal/v4a/redact_signing_log_test.go::TestRedactSigningLogHidesTheCredentialHeaderValues`
+- **Release note:** With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed `x-amz-security-token` header, the session token, in clear text. The log now shows `<redacted>` for the `x-amz-security-token` and `authorization` header lines.
 
 ### BF-8153bc7
 

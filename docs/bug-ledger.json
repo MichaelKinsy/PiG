@@ -22171,6 +22171,28 @@
       ]
     },
     {
+      "id": "BF-8101d67",
+      "title": "With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed…",
+      "symptom": "With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed `x-amz-security-token` header, the session token, in clear text.",
+      "rootCause": "go/clear-text-logging at third_party/awssdk/internal/v4a/v4a.go:511: with the signing client log mode on, the SigV4A canonical request was logged whole, and its signed x-amz-security-token line is the session token. redactSigningLog replaces the value of the x-amz-security-token and authorization lines with \u003credacted\u003e before the log call. Recorded in FORK.md as difference 8.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "With the AWS client log mode for request signing on, the Bedrock signing debug log printed the signed `x-amz-security-token` header, the session token, in clear text. The log now shows `\u003credacted\u003e` for the `x-amz-security-token` and `authorization` header lines.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8101d67c40",
+          "date": "2026-11-04"
+        }
+      ],
+      "tests": [
+        "third_party/awssdk/internal/v4a/redact_signing_log_test.go::TestRedactSigningLogHidesTheCredentialHeaderValues"
+      ]
+    },
+    {
       "id": "BF-8153bc7",
       "title": "A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's…",
       "symptom": "A tool round whose results request `Handoff` no longer ends the run on the tool-calling answer: the handoff's `pi.reset` entry is written and the same run continues with a new generation in the new context, so the submission settles with the eventual answer.",
