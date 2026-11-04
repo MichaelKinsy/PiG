@@ -25,4 +25,5 @@
 /docs/threat-model.md @MichaelKinsy
 /test/parity/ @MichaelKinsy
 /automation/ci/check-dco.sh @MichaelKinsy
+/automation/ci/dco-identities.txt @MichaelKinsy
 /automation/release/validate-sbom.py @MichaelKinsy

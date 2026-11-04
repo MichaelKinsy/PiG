@@ -30,6 +30,24 @@ git commit --signoff
 
 The sign-off certifies that you have the right to submit the contribution under the project license. It is not a copyright assignment or a cryptographic signature.
 
+### Signing off a commit afterwards
+
+If a commit you authored lacks the sign-off and its history cannot be rewritten, add a later commit to the same pull request that signs it off. Author it as the same identity (name and email) as the unsigned commit, or as another identity that `automation/ci/dco-identities.txt` lists as the same person, with an empty change and a remediation block in the message:
+
+```text
+I, Jane Doe, retroactively sign off on these commits:
+0123456789abcdef0123456789abcdef01234567 fix the parser
+89abcdef01 add the flag
+
+Signed-off-by: Jane Doe <jane@example.com>
+```
+
+```bash
+git commit --allow-empty --signoff -S -F message.txt
+```
+
+Each row is a commit SHA (at least 10 hex characters) followed by its subject, and the block ends at the first blank line. `automation/ci/check-dco.sh` accepts an unsigned commit only if a later commit in the pull request has the same author (or a mapped identity of that person), names the unsigned commit in a block whose lead line carries the author's name, and has its own `Signed-off-by` line for its own author. `dco-identities.txt` lists one person per line, identities joined by ` = `; changing it needs the maintainer review CODEOWNERS requires. A remediation by someone else, or one that precedes the commit it names, does not count. Prefer amending the commit while the branch is still private.
+
 PiG does not require a Contributor License Agreement.
 
 ## Signed commits

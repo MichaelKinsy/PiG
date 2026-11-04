@@ -141,6 +141,8 @@ jobs:
           restore-keys: |
             gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       # Dependabot commits carry no Signed-off-by trailer; the maintainer's signed-off squash merge records the DCO for them.
+      - name: Test the sign-off check
+        run: python3 -B -m unittest automation/ci/test_check_dco.py
       - name: Check commit sign-offs
         if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         env:
