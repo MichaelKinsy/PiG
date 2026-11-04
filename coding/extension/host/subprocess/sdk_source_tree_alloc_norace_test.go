@@ -6,15 +6,19 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
-// An SDK source tree that a build reads in place (PIG_SDK_*_ROOT, or a checkout) costs the memoized cache key one stat per source file and one directory listing entry per file beside it. The bundles embed every source file gzipped, and the generator keeps each <name>.gz in the bundle's .gz directory, which the walk skips whole, not beside the source it stands for: 25bd4e0f34 wrote them beside the sources and every walk of the tree then listed, joined and filtered a second entry per source (Go 2122 -> 2687, Python 741 -> 932, Rust 741 -> 970 allocations per key). Before that commit one source cost 6.0 to 6.6 allocations; the budget is 7. The cost is turnCost's floor over samples, which a goroutine of an earlier test allocating during one sample cannot raise.
+// An SDK source tree that a build reads in place (PIG_SDK_*_ROOT, or a checkout) costs the memoized cache key one stat per source file and one directory listing entry per file beside it. The bundles embed every source file gzipped, and the generator keeps each <name>.gz in the bundle's .gz directory, which the walk skips whole, not beside the source it stands for: 25bd4e0f34 wrote them beside the sources and every walk of the tree then listed, joined and filtered a second entry per source (Go 2122 -> 2687, Python 741 -> 932, Rust 741 -> 970 allocations per key). Before that commit one source cost 6.0 to 6.6 allocations on Linux and macOS; the budget there is 7. On Windows the standard library allocates more for the same walk: os.Stat converts the path to UTF-16 and returns a fileStat that keeps the path, and a listing entry is a fileStat and a name decoded from UTF-16. One source costs 7.5 to 8.0 allocations there (Go 2605 for 346 sources, Python 959 for 126, Rust 922 for 115), and the budget is 9, which a second listed entry per source (three or more allocations each) still exceeds. The cost is turnCost's floor over samples, which a goroutine of an earlier test allocating during one sample cannot raise.
 //
 // The tree is measured as checked in: a copy without the directories a build or a run leaves in the working tree (an interpreter's __pycache__ is walked, and lists a file per module).
 func TestSDKSourceTreeKeyAllocationsStayPerSource(t *testing.T) {
-	const perSource = 7
+	perSource := 7
+	if runtime.GOOS == "windows" {
+		perSource = 9
+	}
 	for _, c := range []struct{ buildType, dir string }{
 		{"go", "../../../../extensions/sdk"},
 		{"python", "../../../../extensions/sdk-py"},

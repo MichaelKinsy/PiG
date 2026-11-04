@@ -12,7 +12,10 @@ func TestFinalSetOriginIgnoresPathCasingOnWindows(t *testing.T) {
 	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	loaded := ExtConfig{Name: "a", Path: "/Work/Ext/Index.ts"}
 	final := ExtConfig{Name: "a", Path: "/work/ext/index.ts"}
-	if finalSetOrigin("/cwd", loaded) == finalSetOrigin("/cwd", final) {
+	restore := resolvepath.OverridePlatform("linux")
+	caseSensitiveMatch := finalSetOrigin("/cwd", loaded) == finalSetOrigin("/cwd", final)
+	restore()
+	if caseSensitiveMatch {
 		t.Fatal("paths in other casing matched on a case-sensitive platform")
 	}
 	t.Cleanup(resolvepath.OverridePlatform("windows"))
