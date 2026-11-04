@@ -289611,7 +289611,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/markdown_list.go#Markdown.renderList"
+        "call:tui/markdown_blocks.go#Markdown.renderList"
       ],
       "evidence": [
         "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
