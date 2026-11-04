@@ -111,7 +111,7 @@ func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 	if err != nil {
 		t.Skipf("no /dev/full: %v", err)
 	}
-	defer full.Close()
+	defer func() { _ = full.Close() }()
 	cmd.Stdout = full
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
