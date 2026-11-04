@@ -52,7 +52,11 @@ func TestPrintModeSignalDuringFinalDisposalWaitsForIt(t *testing.T) {
 				time.Sleep(20 * time.Millisecond)
 			}
 			began := time.Now()
-			for range signals {
+			for i := range signals {
+				if i > 0 {
+					// Signals that arrive before the first is taken off the queue coalesce into one.
+					time.Sleep(100 * time.Millisecond)
+				}
 				if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 					t.Fatal(err)
 				}

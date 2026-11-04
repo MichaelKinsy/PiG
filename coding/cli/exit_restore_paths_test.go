@@ -16,8 +16,8 @@ import (
 func TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal(t *testing.T) {
 	// exempt: file:function -> why no TUI owns the terminal there.
 	exempt := map[string]string{
-		"coding/cli/guard.go:guardBinaryIdentity":        "runs before any mode starts",
-		"coding/cli/rpc_mode.go:serveRPCMode":            "RPC mode has no TUI: stdin and stdout are the JSONL protocol",
+		"coding/cli/guard.go:guardBinaryIdentity": "runs before any mode starts",
+		"coding/cli/rpc_mode.go:serveRPCMode":     "RPC mode has no TUI: stdin and stdout are the JSONL protocol",
 	}
 	fset := token.NewFileSet()
 	var seen int

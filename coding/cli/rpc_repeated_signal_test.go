@@ -23,7 +23,11 @@ func startSlowShutdownFixture(t *testing.T) (*rpcProcess, string) {
 
 func signalRPC(t *testing.T, p *rpcProcess, signals ...syscall.Signal) {
 	t.Helper()
-	for _, sig := range signals {
+	for i, sig := range signals {
+		if i > 0 {
+			// Signals that arrive before the first is taken off the queue coalesce into one.
+			time.Sleep(100 * time.Millisecond)
+		}
 		if err := p.cmd.Process.Signal(sig); err != nil {
 			t.Fatal(err)
 		}
@@ -61,8 +65,16 @@ func TestRPCInputEndDuringSignalShutdownLetsItFinish(t *testing.T) {
 
 func TestRPCRepeatedSignalDuringShutdownExitsAtOnce(t *testing.T) {
 	for name, start := range map[string]func(*rpcProcess){
-		"after input end":        func(p *rpcProcess) { p.closeInput(); awaitRPCShutdownStarted(p); signalRPC(t, p, syscall.SIGTERM, syscall.SIGTERM) },
-		"after the first signal": func(p *rpcProcess) { signalRPC(t, p, syscall.SIGTERM); awaitRPCShutdownStarted(p); signalRPC(t, p, syscall.SIGTERM) },
+		"after input end": func(p *rpcProcess) {
+			p.closeInput()
+			awaitRPCShutdownStarted(p)
+			signalRPC(t, p, syscall.SIGTERM, syscall.SIGTERM)
+		},
+		"after the first signal": func(p *rpcProcess) {
+			signalRPC(t, p, syscall.SIGTERM)
+			awaitRPCShutdownStarted(p)
+			signalRPC(t, p, syscall.SIGTERM)
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p, report := startSlowShutdownFixture(t)
