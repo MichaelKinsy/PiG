@@ -812,7 +812,7 @@ durable-core-host-deps: durable-interop-deps ## Install the locked npm tree of t
 	@python3 automation/ci/npm-locked.py durable/core/host/cf
 	@$(PIN_TOOL) link-durable-host durable/core/host/cf
 
-durable-core-host-check: durable-contract-setup durable-core-host-deps ## Typecheck and test the Cloudflare host and its pi-durable facade against the probe core built with TinyGo and Go
+durable-core-host-check: durable-contract-setup durable-core-host-deps upstream-mirror ## Typecheck and test the Cloudflare host and its pi-durable facade against the probe core built with TinyGo and Go; the upstream examples type-check against the pin's source mirror
 	@durable/core/host/cf/check.sh
 
 durable-core-budget: durable-core-host-deps ## Build the core and host bundle with TinyGo and Go and check their size budgets (durable/core/budget/budget.json) and the TinyGo heap policy (fixed step, ceiling trap)
