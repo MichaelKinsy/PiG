@@ -870,6 +870,11 @@ jobs:
           '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
           if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
+      - name: Install the pinned SBCL
+        # The Lisp SDK rows run in the extension jobs and in cmd/pig's TestReplacedSession2860AcrossSDKs, which starts every SDK's realization and fails without sbcl; SBCL's official Windows installer is checked against the lock's SHA-256.
+        if: startsWith(matrix.shard, 'extension-') || startsWith(matrix.shard, 'cli-')
+        shell: pwsh
+        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
       - name: Test every package with Windows tests
         # The extension-host shard runs the extension host packages, and the
         # cli-N shards run cmd/pig in shards. The package
@@ -901,11 +906,6 @@ jobs:
           # TestMain dumps every goroutine if its setup has not reached m.Run by then; the test alarm covers only m.Run.
           PIG_TEST_STALL_DUMP: 4m
         run: automation/ci/windows-cli-units.sh
-      - name: Install the pinned SBCL
-        # The Lisp SDK rows run in the extension jobs; SBCL's official Windows installer is checked against the lock's SHA-256.
-        if: startsWith(matrix.shard, 'extension-')
-        shell: pwsh
-        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
       - name: Select this job's extension tests
         # Each extension job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one job.
         if: startsWith(matrix.shard, 'extension-')
