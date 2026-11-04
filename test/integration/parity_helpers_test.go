@@ -156,8 +156,10 @@ export default function (pi) {
 		t.Fatalf("launcher returned after %s before session_start completed: %v\n%s", time.Since(start), err, capturePane(t, session))
 	}
 	t.Logf("extension-ready startup: %s", time.Since(start))
-	pane := sendSlashAndCapture(t, session, "/hotkeys", 3*time.Second)
-	if !strings.Contains(pane, "Ctrl+R            : Rename session") {
+	if err := tmuxCommand("send-keys", "-t", session, "-l", "/hotkeys\r").Run(); err != nil {
+		t.Fatal(err)
+	}
+	if pane, ok := waitForPaneContains(session, 3*time.Second, hotkeysLastRow); !ok {
 		t.Fatalf("launcher returned before command dispatch was ready:\n%s", pane)
 	}
 }
