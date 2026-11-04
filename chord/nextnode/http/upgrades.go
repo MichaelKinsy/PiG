@@ -169,11 +169,9 @@ func (u *Upgrades) recheck(connection *upgraded) {
 		}
 	}
 	u.mu.Unlock()
-	for _, router := range since {
-		if connection.gone(router) {
-			end(connection)
-			return
-		}
+	if slices.ContainsFunc(since, connection.gone) {
+		end(connection)
+		return
 	}
 }
 
