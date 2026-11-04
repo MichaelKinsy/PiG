@@ -14,10 +14,19 @@ var chalkModifiersOff atomic.Bool
 // enabled.
 func SetChalkModifiers(enabled bool) { chalkModifiersOff.Store(!enabled) }
 
-// Chalk-backed styles, upstream theme.bold, italic, underline, inverse and
-// strikethrough: they draw nothing when chalk's color level is 0.
-func ChalkBold(text string) string          { return markdownDecoration("\x1b[1m", SGRBoldDimReset, text) }
-func ChalkItalic(text string) string        { return markdownDecoration("\x1b[3m", SGRItalicReset, text) }
-func ChalkUnderline(text string) string     { return markdownDecoration("\x1b[4m", SGRUnderlineReset, text) }
-func ChalkInverse(text string) string       { return markdownDecoration("\x1b[7m", SGRInverseReset, text) }
-func ChalkStrikethrough(text string) string { return markdownDecoration("\x1b[9m", SGRStrikeReset, text) }
+// ChalkBold, ChalkItalic, ChalkUnderline, ChalkInverse and ChalkStrikethrough are
+// upstream theme.bold, italic, underline, inverse and strikethrough: chalk
+// calls that draw nothing when chalk's color level is 0.
+func ChalkBold(text string) string { return markdownDecoration("\x1b[1m", SGRBoldDimReset, text) }
+
+func ChalkItalic(text string) string { return markdownDecoration("\x1b[3m", SGRItalicReset, text) }
+
+func ChalkUnderline(text string) string {
+	return markdownDecoration("\x1b[4m", SGRUnderlineReset, text)
+}
+
+func ChalkInverse(text string) string { return markdownDecoration("\x1b[7m", SGRInverseReset, text) }
+
+func ChalkStrikethrough(text string) string {
+	return markdownDecoration("\x1b[9m", SGRStrikeReset, text)
+}
