@@ -947,3 +947,10 @@ commit = "d0d03879fef7f39c73e9b440fa79aa202669a3e5"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Release hygiene, no behavior change: the retired-divergence record format is now `- D<N>: text`, so the test fixtures use that format together with the parser change; no Pi behavior is involved."
+
+[[entry]]
+path = "internal/codingagent/exit_ending_test.go"
+commit = "c680df851c4349559df4868954a0675ad02fcaee"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "exit.log is PiG-only (D102, additive): Pi leaves no trace at an exit, so no Pi line governs these tests. The file is new on this branch; 3d3f4215ac added it for a first design in which a dead-terminal exit waited up to 500 ms for a SIGHUP to claim the line. The commit under review drops that wait, because it delayed the exit against Pi, and makes a second emergency exit block forever as Pi's never-returning emergencyTerminalExit does. The expectations move with that rule: the wait-for-claim and claim-after-the-bound tests are gone, a loser of the claim returns only after the owner's line is on disk, a second emergency exit never returns, and a crash exit yields to a running one. Pi's exit status (129) and terminal restore are unchanged; the tests pin one exit.log line and exit 129."

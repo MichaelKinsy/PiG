@@ -1488,7 +1488,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// sees the error that handler returns; a crash has its own record.
 	defer func() {
 		if err != nil && !errors.Is(err, ErrInteractiveCrashed) {
-			RecordExit(m.opts.AgentDir, interactiveExitReason(err))
+			RecordEnding(m.opts.AgentDir, interactiveExitReason(err))
 		}
 	}()
 	// Registered before the deferred TUI teardown so it runs last, after the terminal has been restored. Mirrors
@@ -1524,6 +1524,30 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	m.runEnded.Store(false)
 	m.runCtx = ctx
+	// SIGINT is taken before anything draws, as Pi's init() registers its signal handlers first (interactive-mode.ts:974-977): a screen on the
+	// terminal means the handler is in place. Installed after the first render, a SIGINT sent to a session that had already drawn got Go's
+	// default action: the process died by the signal with no exit.log line.
+	// Upstream registers no general SIGINT handler, so an external SIGINT
+	// terminates pi (interactive-mode.ts registers SIGTERM, plus SIGHUP off
+	// win32, and takes SIGINT only to ignore it while suspended). Terminate
+	// too, but hand the terminal back first: Node's default handler does not,
+	// so `kill -INT` leaves pi's user with ISIG off and a dead Ctrl+C at the
+	// shell. Ctrl+C itself never arrives here, because pig holds the terminal
+	// in raw mode and the keymap consumes \x03.
+	intCh := make(chan os.Signal, 1)
+	signal.Notify(intCh, syscall.SIGINT)
+	m.onStop(func() error { signal.Stop(intCh); return nil })
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-intCh:
+				m.handleInterruptSignal()
+			}
+		}
+	}()
+
 	removeWriteErrorHandler := m.exitOnDeadTerminalWrite()
 	m.onStop(func() error { removeWriteErrorHandler(); return nil })
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(ctx)
@@ -1893,27 +1917,6 @@ func (m *InteractiveMode) run(ctx context.Context) error {
 	go m.tickSpinner(ctx)
 
 	m.startGitBranchWatcher(ctx)
-
-	// Upstream registers no general SIGINT handler, so an external SIGINT
-	// terminates pi (interactive-mode.ts registers SIGTERM, plus SIGHUP off
-	// win32, and takes SIGINT only to ignore it while suspended). Terminate
-	// too, but hand the terminal back first: Node's default handler does not,
-	// so `kill -INT` leaves pi's user with ISIG off and a dead Ctrl+C at the
-	// shell. Ctrl+C itself never arrives here, because pig holds the terminal
-	// in raw mode and the keymap consumes \x03.
-	intCh := make(chan os.Signal, 1)
-	signal.Notify(intCh, syscall.SIGINT)
-	m.onStop(func() error { signal.Stop(intCh); return nil })
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-intCh:
-				m.handleInterruptSignal()
-			}
-		}
-	}()
 
 	// Terminal resize re-render. The TUI re-queries term.GetSize on every
 	// Render() but renders only fire on input/stream/flash events, so a resize
