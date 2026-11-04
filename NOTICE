@@ -36,7 +36,7 @@ The Node extension runtime embeds the third-party packages Pi 0.87.1 depends on 
 - `chalk` 6.0.0, Copyright (c) Sindre Sorhus, MIT.
 - `undici` 8.10.2, Copyright (c) Matteo Collina and Undici contributors, MIT.
 - `semver` 7.8.5, Copyright (c) Isaac Z. Schlueter and Contributors, ISC.
-- `minimatch` 10.2.6 and `lru-cache` 11.4.0, BlueOak-1.0.0; `brace-expansion` 5.0.9 and `balanced-match` 4.0.4, Copyright Julian Gruber and Isaac Z. Schlueter, MIT.
+- `minimatch` 11.0.3, `@isaacs/nonrecursive-glob-match` 1.0.3 and `lru-cache` 11.4.0, BlueOak-1.0.0; `brace-expansion` 5.0.12 and `balanced-match` 4.0.4, Copyright Julian Gruber and Isaac Z. Schlueter, MIT.
 - `hosted-git-info` 9.0.3, Copyright (c) 2015 Rebecca Turner, ISC.
 - `grok-mermaid` 0.2.3, Copyright 2023-2026 SpaceXAI and Copyright 2026 Alexey Zaytsev, Apache-2.0.
 - `@silvia-odwyer/photon-node` 0.3.4, Copyright 2023 Silvia O'Dwyer, Apache-2.0.

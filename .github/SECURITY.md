@@ -6,15 +6,15 @@ SPDX-License-Identifier: MIT
 
 ## Supported versions
 
-No PiG version is supported until the first public release.
-
-After that release, the latest released version receives security fixes. The `main` branch is development code. Older releases can require an upgrade to receive a fix.
+The latest released version receives security fixes. The `main` branch is development code. Older releases can require an upgrade to receive a fix.
 
 ## Security boundary
 
 PiG runs with the operating-system permissions of the user who starts it. PiG does not sandbox model output, shell commands, tools, extensions, skills, hooks, project instructions, or local configuration.
 
 Treat the user account, writable files, environment, shell configuration, PiG configuration, and trusted project files as one local trust boundary. Use a container, virtual machine, or another operating-system boundary when you need isolation.
+
+A Piglet Binary adds guarantees that stock PiG does not give, such as fused extensions, tool ceilings, strips, signatures, and a declared agent container. It runs as the user and is not a sandbox. The [security documentation](https://pi-in-go.dev/docs/latest/security) lists what it guarantees, what it does not, and which controls need the planned Piglet Image.
 
 A report must show how PiG grants access or crosses a security boundary. Expected behavior from already trusted local input is not a vulnerability by itself.
 

@@ -41,12 +41,12 @@ type scaffoldFile struct {
 	mode os.FileMode
 }
 
-var initLanguages = []string{"go", "python", "rust"}
+var initLanguages = []string{"go", "python", "rust", "lisp"}
 
 // runExtensionInit scaffolds a minimal, self-contained extension whose
 // versioned SDK dependency is resolved by Pig to the staged copy under the
 // active config root, so a clean, binary-only host needs no source checkout. Go is fully offline;
-// Python needs only python3; Rust needs cargo and (on a cold cache) crates.io
+// Python needs only python3; Lisp needs SBCL; Rust needs cargo and (on a cold cache) crates.io
 // for transitive dependencies.
 func runExtensionInit(args []string) int {
 	opts := parseExtensionInitOptions(args)
@@ -65,6 +65,9 @@ func runExtensionInit(args []string) int {
 	}
 	if opts.lang == "" {
 		opts.lang = "go"
+	}
+	if opts.lang == "common-lisp" {
+		opts.lang = "lisp"
 	}
 	if !isInitLanguage(opts.lang) {
 		return printExtensionInitReport(extensionInitReport{Language: opts.lang, Error: fmt.Sprintf("unsupported --lang %q; supported: %s", opts.lang, strings.Join(initLanguages, ", "))}, opts.jsonOutput)
@@ -155,6 +158,8 @@ func scaffoldFiles(lang, name, dirBase, sdkDir string, isolated, login bool) []s
 		switch lang {
 		case "python":
 			return []scaffoldFile{{rel: "main.py", body: pythonStandaloneTemplate(name), mode: 0o755}}
+		case "lisp":
+			return []scaffoldFile{{rel: "main.lisp", body: lispStandaloneTemplate(name), mode: 0o755}}
 		case "rust":
 			return []scaffoldFile{
 				{rel: "Cargo.toml", body: rustCargoTemplate(dirBase)},
@@ -169,6 +174,11 @@ func scaffoldFiles(lang, name, dirBase, sdkDir string, isolated, login bool) []s
 		}
 	}
 	switch lang {
+	case "lisp":
+		return []scaffoldFile{
+			{rel: name + ".asd", body: lispSystemTemplate(name)},
+			{rel: name + ".lisp", body: lispFactoryTemplate(name)},
+		}
 	case "python":
 		module := strings.ReplaceAll(name, "-", "_")
 		if module == "" || module[0] >= '0' && module[0] <= '9' {
@@ -460,6 +470,54 @@ ext.run()
 `, name)
 }
 
+// ── Lisp templates ───────────────────────────────────────────────────────────
+
+func lispSystemTemplate(name string) string {
+	return fmt.Sprintf(`;;;; %[1]s: a pig subprocess extension scaffolded by `+"`pig extension init`"+`.
+;;;; Pig builds this system into a cached SBCL image. The pig-sdk system is the staged SDK.
+
+(asdf:defsystem %[1]q
+  :depends-on ("pig-sdk")
+  :serial t
+  :components ((:file %[1]q)))
+`, name)
+}
+
+func lispFactoryTemplate(name string) string {
+	tool := strings.ReplaceAll(name, "-", "_") + "_ping"
+	return fmt.Sprintf(`;;;; Pig calls NEW-EXTENSION, which DEFINE-EXTENSION defines, to build this extension.
+
+(defpackage %[1]q (:use "COMMON-LISP"))
+(in-package %[1]q)
+
+(pig:define-extension %[1]q
+  (:tool %[2]q "Return a short pong so you can confirm the extension is wired up."
+         (pig:obj "type" "object")
+         (lambda (ctx params)
+           (declare (ignore ctx params))
+           "pong from %[1]s"))
+  (:command %[1]q "Say hello from the %[1]s extension."
+            (lambda (ctx args)
+              (declare (ignore args))
+              (pig:ctx-notify ctx "hello from %[1]s" "info")))
+  (:on :session-start
+       (lambda (ctx data)
+         (declare (ignore data))
+         (pig:ctx-set-status ctx %[1]q "%[1]s loaded"))))
+`, name, tool)
+}
+
+func lispStandaloneTemplate(name string) string {
+	return fmt.Sprintf(`#!/usr/bin/env -S sbcl --script
+;;;; Pig runs this script in its cached SBCL image, with the pig package loaded.
+
+(let ((ext (pig:make-extension %[1]q)))
+  (pig:tool ext "%[2]s_ping" "Return a short pong." (pig:obj "type" "object")
+            (lambda (ctx params) (declare (ignore ctx params)) "pong from %[1]s"))
+  (pig:run-extension ext))
+`, name, strings.ReplaceAll(name, "-", "_"))
+}
+
 // ── Rust templates ───────────────────────────────────────────────────────────
 
 func rustCargoTemplate(crate string) string {
@@ -514,14 +572,14 @@ func printExtensionInitReport(report extensionInitReport, jsonOut bool) int {
 }
 
 func printExtensionInitHelp() {
-	fmt.Print("Usage:\n  pig extension init <path> [--name <name>] [--lang go|python|rust] [--login] [--isolated] [--force] [--json]\n\n" +
+	fmt.Print("Usage:\n  pig extension init <path> [--name <name>] [--lang go|python|rust|lisp] [--login] [--isolated] [--force] [--json]\n\n" +
 		"Scaffold a new extension whose versioned SDK dependency Pig resolves to its\n" +
 		"staged copy, so it builds with no Pig source checkout or committed SDK path.\n" +
-		"Go builds fully offline; Python needs python3; Rust needs cargo (and crates.io\n" +
+		"Go builds fully offline; Python needs python3; Lisp needs SBCL 2.6.9; Rust needs cargo (and crates.io\n" +
 		"on a cold cache for transitive dependencies).\n\n" +
 		"Options:\n" +
 		"  --name <name>   Extension name; it must match the sanitized directory base name.\n" +
-		"  --lang <lang>   Language to scaffold: go (default), python, or rust.\n" +
+		"  --lang <lang>   Language to scaffold: go (default), python, rust, or lisp.\n" +
 		"  --login         Scaffold a conventional Go login factory with standard PiG art.\n" +
 		"  --isolated      Generate an exact standalone instead of a factory.\n" +
 		"  --force, -f     Overwrite existing files.\n" +

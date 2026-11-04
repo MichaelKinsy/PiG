@@ -37,6 +37,9 @@ replace('return new URL("./codemode-worker.js", moduleUrl);', 'return new URL(".
 writeFileSync(configPath, config);
 mkdirSync(join(output, "dist"), { recursive: true });
 writeFileSync(join(output, "dist/index.js"), 'export * from "../../../pi-coding-agent.mjs";\n');
+// Pi's tsc build writes dist/cli.js next to dist/index.js, and an extension that locates the CLI from the package root starts it from there
+// (pi-open-agents resolvePiEntryPoint: import.meta.resolve of the package, two directories up, dist/cli.js). PiG's CLI entry for an extension is the harness (process-identity.mjs).
+writeFileSync(join(output, "dist/cli.js"), 'import "../../../../harness/cli.mjs";\n');
 for (const file of ["package.json", "README.md", "CHANGELOG.md", "docs", "examples"]) {
   cpSync(join(pkg, file), join(output, file), { recursive: true });
 }

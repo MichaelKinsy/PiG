@@ -20,7 +20,11 @@ fn a_frame_is_one_write() {
     let mut writer = RecordingWriter { writes: Vec::new() };
     let env = serde_json::json!({"type": "pong", "pong": {"nonce": "n1"}});
     Connection::write_frame_to(&mut writer, &env).unwrap();
-    assert_eq!(writer.writes.len(), 1, "the header and the body were written apart");
+    assert_eq!(
+        writer.writes.len(),
+        1,
+        "the header and the body were written apart"
+    );
     let frame = &writer.writes[0];
     let length = u32::from_be_bytes(frame[..4].try_into().unwrap()) as usize;
     assert_eq!(length, frame.len() - 4);
@@ -58,12 +62,26 @@ fn respond_encodes_its_result_outside_the_writer_lock() {
     let (release_tx, release_rx) = mpsc::channel();
     let responder = {
         let conn = conn.clone();
-        std::thread::spawn(move || conn.respond_serialized("r1", Some(Slow { entered: entered_tx, release: std::sync::Mutex::new(release_rx) }), None))
+        std::thread::spawn(move || {
+            conn.respond_serialized(
+                "r1",
+                Some(Slow {
+                    entered: entered_tx,
+                    release: std::sync::Mutex::new(release_rx),
+                }),
+                None,
+            )
+        })
     };
-    entered_rx.recv_timeout(std::time::Duration::from_secs(5)).expect("the result was never encoded");
+    entered_rx
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("the result was never encoded");
     let free = conn.writer.try_lock().is_ok();
     release_tx.send(()).unwrap();
     responder.join().unwrap().unwrap();
-    assert!(free, "the writer lock was held while the result was being encoded");
+    assert!(
+        free,
+        "the writer lock was held while the result was being encoded"
+    );
     drop(theirs);
 }

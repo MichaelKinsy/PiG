@@ -33,8 +33,9 @@ var evidenceBuilds, mutantReplays atomic.Int64
 //
 // Each run is `<binary> -test.run ^(names)$`, the same selection and the same coverage profile `go test -run -coverprofile` produced.
 
-// evidenceTimeout is go test's default per-binary timeout, which the test binaries previously ran under.
-const evidenceTimeout = "10m0s"
+// evidenceTimeout bounds one evidence run: every test a row names, in one binary. The extension-conformance row names 104 tests that
+// run sequentially, 11 to 13 minutes unloaded, so the budget is 30 minutes.
+const evidenceTimeout = "30m0s"
 
 // cachedEntry returns the green record cached under digest, if any.
 func cachedEntry(root, digest string) (coverageEntry, bool) {
@@ -327,6 +328,7 @@ func buildTestBinary(root string, job *dirJob, bin string) bool {
 	}
 	sort.Strings(pkgs)
 	evidenceBuilds.Add(1)
+	//nolint:gosec // G204 (class a): program is literal go; args are fixed flags, coverpkg from repo package paths, "./"+job.dir, and a temp output path.
 	cmd := exec.Command("go", "test", "-c", "-coverpkg="+strings.Join(pkgs, ","), "-o", bin, "./"+job.dir)
 	cmd.Dir = root
 	out, err := cmd.CombinedOutput()
@@ -357,6 +359,7 @@ func runGroup(root, bin, scratchRoot string, g *group) {
 		g.failed = true
 		return
 	}
+	//nolint:gosec // G204 (class b): runs the bin built by go test -c just above; args are fixed -test.* flags and test names parsed from repo test files.
 	cmd := exec.Command(bin, "-test.count=1", "-test.timeout="+evidenceTimeout, "-test.paniconexit0", "-test.gocoverdir="+coverDir,
 		"-test.run=^("+strings.Join(g.names, "|")+")$", "-test.coverprofile="+profile)
 	cmd.Dir = filepath.Join(root, g.dir)

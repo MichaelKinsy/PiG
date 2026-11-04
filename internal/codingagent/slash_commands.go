@@ -85,7 +85,7 @@ type ReloadDiag struct {
 	Themes       int
 	// Diagnostics is one human-readable line per warning/error gathered
 	// during reload. Mirrors upstream's `[Extension issues]`,
-	// `[Skill conflicts]`, `[Prompt conflicts]` sections.
+	// `[Skill warnings]`, `[Prompt conflicts]` sections.
 	Diagnostics []string
 	// Cells is the placement summary produced by the subprocess host. Empty
 	// when no subprocess host is active (e.g. headless commands).
@@ -661,7 +661,7 @@ func defaultBuiltins() []BuiltinSlashCommand {
 		{Name: "thinking", Description: "Set thinking level", ArgumentHint: "<level>", TakesArguments: true, Handler: thinkingHandler},
 		{Name: "scoped-models", Description: "Enable/disable models for Ctrl+P cycling", Handler: scopedModelsHandler},
 		{Name: "export", Description: "Export session (HTML default, or specify path: .html/.jsonl)", TakesArguments: true, Handler: exportHandler},
-		{Name: "import", Description: "Import and resume a session from a JSONL file", TakesArguments: true, Handler: importHandler},
+		{Name: "import", Description: "Import a JSONL session, preserving its ID and working directory", TakesArguments: true, Handler: importHandler},
 		// pig divergence (D64): PiG shares through its own expiring gateway, not a GitHub gist.
 		{Name: "share", Description: "Share session with an unlisted 30-day link", Handler: shareHandler},
 		// pig divergence (D62): /bug exports a local archive for a PiG issue; it never uploads.
@@ -678,7 +678,7 @@ func defaultBuiltins() []BuiltinSlashCommand {
 		{Name: "logout", Description: "Remove provider authentication", Handler: logoutHandler},
 		{Name: "new", Description: "Start a new session", Handler: newHandler},
 		{Name: "compact", Description: "Manually compact the session context", TakesArguments: true, Handler: compactHandler},
-		{Name: "resume", Description: "Resume a different session", Handler: resumeHandler},
+		{Name: "resume", Description: "Resume another session", Handler: resumeHandler},
 		{Name: "reload", Description: "Reload keybindings, extensions, skills, prompts, themes, and context files", AdditiveArguments: func(rest string, _ bool) bool { return reloadExplainRequested(rest) }, Handler: reloadHandler},
 		{Name: "quit", Description: "Quit " + AppName, Handler: quitHandler},
 		// Hidden: dispatchable but absent from /help and autocomplete, matching
@@ -1045,7 +1045,7 @@ func sessionInfoRenderer(sc *SlashContext) func() string {
 		selectedModelKey = sc.SelectedModelKey()
 	}
 	return func() string {
-		bold := func(s string) string { return "\033[1m" + s + "\033[22m" }
+		bold := tui.ChalkBold
 		dim := func(s string) string { return tui.ActiveTheme().Fg("dim", s) }
 
 		var b strings.Builder

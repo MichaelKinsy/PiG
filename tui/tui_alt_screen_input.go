@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (viewport input and search focus handling)
+
 import (
 	"slices"
 	"sort"
@@ -119,7 +121,7 @@ func (t *TuiAltScreen) handleFocusOut() {
 
 // matchViewportAction returns the viewport action bound to data: search
 // always, the search keys while the search box has focus, and navigation
-// unless another overlay has focus. Mirrors the keybinding tail of upstream
+// unless the focused component captures viewport input or another overlay has focus. Mirrors the keybinding tail of upstream
 // handleViewportInput.
 func (t *TuiAltScreen) matchViewportAction(data string) (TUIKeybinding, bool) {
 	keybindings := GetKeybindings()
@@ -133,11 +135,7 @@ func (t *TuiAltScreen) matchViewportAction(data string) (TUIKeybinding, bool) {
 			}
 		}
 	}
-	if t.shouldDeferViewportInputToOverlay() {
-		return "", false
-	}
-	// pig divergence (D155): a focused selection that handles the selection page keys keeps them, even when they are also bound to a viewport action (Pi #7629).
-	if (keybindings.Matches(data, KBSelectPageUp) || keybindings.Matches(data, KBSelectPageDown)) && CapturesSelectPageInput(t.GetFocusedComponent()) {
+	if t.shouldDeferViewportInput() {
 		return "", false
 	}
 	for _, action := range altScreenScrollActions {
@@ -166,8 +164,10 @@ func (t *TuiAltScreen) performViewportAction(action TUIKeybinding) {
 	case KBAltScreenPageDown:
 		t.ScrollBy(max(1, viewportHeight-altPageScrollOverlap))
 	case KBAltScreenHalfPageUp:
+		//portlint:allow numbers tui-alt-screen.ts:776 Math.floor(viewportHeight / 2): viewportHeight is a non-negative row count, where truncation is floor
 		t.ScrollBy(-max(1, viewportHeight/2))
 	case KBAltScreenHalfPageDown:
+		//portlint:allow numbers tui-alt-screen.ts:780 Math.floor(viewportHeight / 2): viewportHeight is a non-negative row count, where truncation is floor
 		t.ScrollBy(max(1, viewportHeight/2))
 	case KBAltScreenLineUp:
 		t.ScrollBy(-1)
@@ -190,10 +190,13 @@ func (t *TuiAltScreen) getPrimaryScrollViewLocked() *ScrollView {
 	return t.getPrimaryScrollView()
 }
 
-// shouldDeferViewportInputToOverlay reports whether a focused overlay other
-// than the search box owns the viewport keys. Mirrors upstream
-// shouldDeferViewportInputToOverlay.
-func (t *TuiAltScreen) shouldDeferViewportInputToOverlay() bool {
+// shouldDeferViewportInput reports whether the focused component or a focused
+// overlay other than the search box owns the viewport keys. Mirrors upstream
+// shouldDeferViewportInput.
+func (t *TuiAltScreen) shouldDeferViewportInput() bool {
+	if CapturesViewportInput(t.GetFocusedComponent()) {
+		return true
+	}
 	return t.isOverlayFocused() && !t.IsSearchFocused()
 }
 
@@ -459,6 +462,7 @@ func revealSearchMatch(scrollView *ScrollView, match AltScreenSearchMatch) bool 
 	before := scrollView.ScrollTop()
 	target := before
 	if first.Row < before || last.Row > before+viewportHeight-1 {
+		//portlint:allow numbers tui-alt-screen.ts revealSearchMatch Math.floor(viewportHeight / 3): viewportHeight > 0 is checked above, where truncation is floor
 		target = first.Row - viewportHeight/3
 	}
 	scrollView.ScrollTo(target, ScrollViewScrollToOptions{DisableFollow: true})
@@ -505,7 +509,8 @@ type searchHighlightRange struct {
 // clipped to the transcript box and left of its scrollbar.
 func (t *TuiAltScreen) searchHighlightRanges(search *altActiveSearch, box *LayoutBox, scrollView *ScrollView, screenRows int) map[int][]searchHighlightRange {
 	rangesByRow := map[int][]searchHighlightRange{}
-	maxColumn := min(t.width, box.Rect.X+box.Rect.Width, box.Clip.X+box.Clip.Width)
+	columns, _ := t.size()
+	maxColumn := min(columns, box.Rect.X+box.Rect.Width, box.Clip.X+box.Clip.Width)
 	if geometry := GetScrollbarGeometry(box); geometry != nil {
 		maxColumn = min(maxColumn, geometry.Column)
 	}

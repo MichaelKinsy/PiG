@@ -45,6 +45,10 @@ A Piglet release pins the exact Resource closure and executable component plan f
 
 A Piglet Binary is a target-native PiG executable built for one immutable Piglet composition. It can contain fused Go extensions and prebuilt Go or Rust extension cells. External services, configuration, secrets, and interpreted runtimes remain external requirements unless the release states otherwise.
 
+## Piglet Image
+
+A Piglet Image is the planned OCI materialization of a Piglet and its runtime environment. It is not in this release. No PiG command produces one, and `pig piglet build --format image` fails.
+
 ## PiG Standard
 
 PiG Standard is the optional curated Piglet at

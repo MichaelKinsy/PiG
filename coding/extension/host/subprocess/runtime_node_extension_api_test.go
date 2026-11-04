@@ -270,6 +270,83 @@ assert.match(responses.at(-1)[2].message, /unknown virtual model p\/nope/);
 	}
 }
 
+// PiG-only ownThinkingRuns: the load-time value (last call wins, false sends nothing) travels in the register frame as owns_thinking_runs; once the register frame is out, each call is a host call carrying enabled.
+func TestNodeRuntimeOwnThinkingRuns(t *testing.T) {
+	path, err := filepath.Abs("runtime-node/runtime.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := fmt.Sprintf(`
+import assert from "node:assert/strict";
+import net from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { Runtime } from %q;
+
+let counter = 0;
+async function registerFrame(configure) {
+  const sock = process.platform === "win32"
+    ? "\\\\.\\pipe\\pig-own-thinking-" + process.pid + "-" + counter
+    : join(tmpdir(), "pig-own-thinking-" + process.pid + "-" + counter + ".sock");
+  counter++;
+  const frame = new Promise((resolve, reject) => {
+    const server = net.createServer((socket) => {
+      let buffer = Buffer.alloc(0);
+      socket.on("data", (chunk) => {
+        buffer = Buffer.concat([buffer, chunk]);
+        if (buffer.length < 4) return;
+        const size = buffer.readUInt32BE(0);
+        if (buffer.length < 4 + size) return;
+        resolve(JSON.parse(buffer.subarray(4, 4 + size).toString("utf8")));
+        socket.destroy();
+        server.close();
+      });
+    });
+    server.on("error", reject);
+    server.listen(sock);
+  });
+  process.env.PIG_EXT_SOCKET = sock;
+  const loading = new Runtime("/ext/own.mjs");
+  configure(loading.api);
+  await loading.connect();
+  const register = (await frame).register;
+  loading.conn.socket.destroy();
+  return register;
+}
+
+assert.equal((await registerFrame(() => {})).owns_thinking_runs, undefined);
+assert.equal((await registerFrame((api) => api.ownThinkingRuns(false))).owns_thinking_runs, undefined);
+assert.equal((await registerFrame((api) => api.ownThinkingRuns())).owns_thinking_runs, true);
+assert.equal((await registerFrame((api) => api.ownThinkingRuns(true))).owns_thinking_runs, true);
+assert.equal((await registerFrame((api) => { api.ownThinkingRuns(true); api.ownThinkingRuns(false); })).owns_thinking_runs, undefined);
+assert.equal((await registerFrame((api) => { api.ownThinkingRuns(false); api.ownThinkingRuns(true); })).owns_thinking_runs, true);
+
+const runtime = new Runtime("/ext/own.mjs");
+const calls = [];
+runtime.conn = {
+  closed: false,
+  callSync() { return null; },
+  call: async (method, args) => { calls.push([method, args]); return {}; },
+  requestState() {},
+  notify() {},
+};
+runtime.hostReady = true;
+runtime.providersSent = true;
+runtime.commitLoad();
+runtime.api.ownThinkingRuns(false);
+runtime.api.ownThinkingRuns();
+runtime.api.ownThinkingRuns(true);
+assert.deepEqual(calls, [["ownThinkingRuns", { enabled: false }], ["ownThinkingRuns", { enabled: true }], ["ownThinkingRuns", { enabled: true }]]);
+for (const bad of [null, 1, "true", {}]) {
+  assert.throws(() => runtime.api.ownThinkingRuns(bad), { name: "TypeError", message: "ownThinkingRuns requires a boolean" });
+}
+assert.equal(calls.length, 3);
+`, (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String())
+	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
+		t.Fatalf("%v\n%s", err, output)
+	}
+}
+
 // examples/sdk/14-codemode-mcp.ts is the unchanged Pi 0.99.1 SDK example: it builds a session with the codemode, tool-search and MCP built-in extension factories, activates the first two through the defaultTools setting and prints the active tools before it prompts. The SDK and its extension runtime are Pi's own vendored code running under PiG's module loader, so this proves the example loads and binds every 0.99.1 API it uses; it stops at the prompt, which needs an API key.
 //
 // upstream: .upstream/v0.99.1/packages/coding-agent/examples/sdk/14-codemode-mcp.ts:14-55

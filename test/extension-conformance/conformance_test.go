@@ -131,6 +131,7 @@ func allHarnessCases() []harnessCase {
 		{name: "subprocess-node-packed", make: makeSubprocessNodePackedHarness, extName: "node-sdk-fixture"},
 		{name: "subprocess-rust", make: makeSubprocessRustHarness, extName: "rust-sdk-fixture"},
 		{name: "subprocess-python", make: makeSubprocessPythonHarness, extName: "python-sdk-fixture"},
+		{name: "subprocess-lisp", make: makeSubprocessLispHarness, extName: lispFixtureName},
 		{name: "fused-go", make: makeFusedGoHarness, extName: "sdk-fixture"},
 	}
 }
@@ -140,12 +141,12 @@ func sdkHarnessCases() []harnessCase {
 	return cases[1:]
 }
 
-// packedSDKHarnessCases are the Go, Rust and Python SDKs loaded into one shared runtime cell beside a peer extension, through the production
+// packedSDKHarnessCases are the Go, Rust, Python and Lisp SDKs loaded into one shared runtime cell beside a peer extension, through the production
 // factory builder. Node's packed case is in allHarnessCases.
 func packedSDKHarnessCases() []harnessCase {
 	var cases []harnessCase
-	for _, language := range []string{"go", "rust", "python"} {
-		extName := map[string]string{"go": "sdk-fixture", "rust": "rust-sdk-fixture", "python": "python-sdk-fixture"}[language]
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
+		extName := map[string]string{"go": "sdk-fixture", "rust": "rust-sdk-fixture", "python": "python-sdk-fixture", "lisp": lispFixtureName}[language]
 		cases = append(cases, harnessCase{name: "subprocess-" + language + "-packed", extName: extName, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	return cases
@@ -1199,6 +1200,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 		Path:         "inproc-conformance-fixture",
 		ResolvedPath: "inproc-conformance-fixture",
 		MessageRenderers: map[string]extension.MessageRenderer{
+			// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the message options. The content is the keybinding id.
+			"keyhints-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
+				id, _ := message.Content.(string)
+				return &conformanceLinesComponent{lines: []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}}
+			},
 			"conformance-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
 				custom := message
 				if custom.Content == "padding-options" {
@@ -1209,6 +1215,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			},
 		},
 		EntryRenderers: map[string]extension.EntryRenderer{
+			// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the entry options. The data is the keybinding id.
+			"keyhints-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
+				id, _ := entry.Data.(string)
+				return &conformanceLinesComponent{lines: []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}}
+			},
 			"conformance-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
 				return &conformanceLinesComponent{lines: []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=72", entry.Data, options.Expanded)}}
 			},
@@ -1227,6 +1238,13 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			switch tool {
 			case "conformance_tool_renderer":
 				return &extension.ToolRenderers{RenderCall: line("resolved")}
+			case "conformance_keyhints":
+				return &extension.ToolRenderers{RenderCall: func(args json.RawMessage, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
+					var parsed map[string]any
+					_ = json.Unmarshal(args, &parsed)
+					id, _ := parsed["q"].(string)
+					return &conformanceLinesComponent{lines: []string{render.KeyText(id) + " | " + render.KeyHint(id, "to expand")}}
+				}}
 			case "conformance_no_renderer":
 				return nil
 			case "conformance_fill":
@@ -1939,6 +1957,11 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			// The in-process reference for exec_abort_test.go's SDK rows: the host's own ExecCommand under a cancelled context, which that test runs itself.
 			"exec-abort-probe": {
 				Name: "exec-abort-probe", Description: "Abort a running exec through its signal",
+				Handler: func(context.Context, string) error { return nil },
+			},
+			// The in-process reference for exec_limits_test.go's SDK rows: the host's own ExecCommand, which that test runs itself.
+			"exec-limits-probe": {
+				Name: "exec-limits-probe", Description: "Exec with a maxBuffer",
 				Handler: func(context.Context, string) error { return nil },
 			},
 			"exec-reject-probe": {
@@ -3620,7 +3643,7 @@ func TestConformance_TerminalInput(t *testing.T) {
 	t.Parallel()
 
 	cases := allHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 

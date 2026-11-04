@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/components/markdown.ts (the LaTeX tokenizer extensions and render seams)
+
 import (
 	"strings"
 	"unicode/utf8"
@@ -77,6 +79,7 @@ func tokenizeInlineLatex(source string) (latexToken, bool) {
 		opening, closing = "\\(", "\\)"
 	case strings.HasPrefix(source, "\\["):
 		opening, closing = "\\[", "\\]"
+	//portlint:allow utf16units markdown.ts tokenizeInlineLatex tests /^\$\s/ on source: only the first four bytes can hold "$" plus one JS space, so a four-byte prefix decides the same
 	case strings.HasPrefix(source, "$") && !reMdInlineDollarSpace.MatchString(source[:min(len(source), utf8.UTFMax)]):
 		opening, closing = "$", "$"
 	default:
@@ -198,16 +201,29 @@ func renderInlineLatex(tok latexToken) string {
 	return tok.raw
 }
 
-// renderBlockLatex mirrors the "latexBlock" render case: raw.trim() when
-// pending, else RenderLatex(text, display) with raw.trim() as fallback.
-func renderBlockLatex(tok latexToken) string {
-	if tok.pending {
-		return widthx.JSTrim(tok.raw)
-	}
-	if rendered, ok := latex.RenderLatex(tok.text, latex.RenderLatexOptions{Display: true}); ok {
-		return rendered
+// renderBlockLatex mirrors the "latexBlock" render case: raw.trim() when pending, else RenderLatex(text, display), with raw.trim() as the
+// fallback when it fails or a row of the 2D layout is wider than width, since a layout cannot be wrapped row by row.
+func renderBlockLatex(tok latexToken, width int) string {
+	if !tok.pending {
+		if rendered, ok := latex.RenderLatex(tok.text, latex.RenderLatexOptions{Display: true}); ok && !hasRowWiderThan(rendered, width) {
+			return rendered
+		}
 	}
 	return widthx.JSTrim(tok.raw)
+}
+
+// hasRowWiderThan reports whether a line of text has a visible width above width.
+func hasRowWiderThan(text string, width int) bool {
+	for {
+		line, rest, more := strings.Cut(text, "\n")
+		if widthx.VisibleWidth(line) > width {
+			return true
+		}
+		if !more {
+			return false
+		}
+		text = rest
+	}
 }
 
 // blockLatexStart reports whether a line begins a block latex token

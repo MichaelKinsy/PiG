@@ -9,6 +9,9 @@ import (
 // Mirrors upstream DEFAULT_TOOL_NAMES (settings-manager.ts:213).
 var defaultToolNames = []string{"read", "bash", "edit", "write"}
 
+// DefaultToolNames returns the tools enabled at startup when `defaultTools` does not change them.
+func DefaultToolNames() []string { return slices.Clone(defaultToolNames) }
+
 // IsToolModifier reports whether a defaultTools entry is a `+name` or `-name` modifier (settings-manager.ts:215-217).
 func IsToolModifier(entry string) bool {
 	return len(entry) > 0 && (entry[0] == '+' || entry[0] == '-')

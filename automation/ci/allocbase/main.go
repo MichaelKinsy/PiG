@@ -27,7 +27,7 @@ import (
 )
 
 // packages are the hot paths whose benchmarks the baseline covers.
-var packages = []string{"./agent", "./ai", "./coding", "./coding/cli", "./coding/extension/host/inproc", "./coding/extension/host/subprocess", "./internal/codingagent", "./internal/sessionentry", "./tui", "./tui/widthx"}
+var packages = []string{"./agent", "./ai", "./ai/providers/bedrock", "./coding", "./coding/cli", "./coding/extension/host/inproc", "./coding/extension/host/subprocess", "./internal/codingagent", "./internal/sessionentry", "./tui", "./tui/widthx"}
 
 // skipped benchmarks fail when run more than once, so they have no stable count to ratchet. Each names the reason.
 var skipped = map[string]string{}
@@ -109,6 +109,7 @@ func run(root string, pkgs []string, benchtime string) ([]entry, error) {
 			slices.Sort(names)
 			args = append(args, "-skip", strings.Join(names, "|"))
 		}
+		//nolint:gosec // G204 (class a): program is literal go; args are fixed test flags, -benchtime from its flag, and the package from -packages or the default list (the skipped map is empty).
 		command := exec.Command("go", append(args, pkg)...)
 		command.Dir = root
 		command.Env = append(os.Environ(), "GOMAXPROCS=1")

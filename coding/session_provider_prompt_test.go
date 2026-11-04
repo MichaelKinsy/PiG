@@ -91,6 +91,9 @@ func TestRegisteredToolPromptContributions(t *testing.T) {
 			t.Cleanup(func() { _ = session.Close() })
 			check := func(names []string, wantTools, wantRules string) {
 				t.Helper()
+				// The requested names are a set whose tools keep their current order (agent-session.ts _applyToolLoadout, b9e3eef6), so each
+				// check starts from no active tools to fix the order of the names it requests.
+				session.SetActiveToolsByName(nil)
 				session.SetActiveToolsByName(names)
 				sections := map[string]string{}
 				for _, s := range session.baseSystemSections {
@@ -98,7 +101,7 @@ func TestRegisteredToolPromptContributions(t *testing.T) {
 						sections[s.Name] = *s.Value
 					}
 				}
-				wantTools = "<tools>\n" + wantTools + "\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				wantTools = "<tools>\n" + wantTools + "\n\nAdditional tools may be available.\n</tools>"
 				wantRules = "<rules>\n" + wantRules + "- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
 				if sections["tools"] != wantTools || sections["rules"] != wantRules {
 					t.Fatalf("tools:\n%s\nrules:\n%s\nwant:\n%s\n%s", sections["tools"], sections["rules"], wantTools, wantRules)

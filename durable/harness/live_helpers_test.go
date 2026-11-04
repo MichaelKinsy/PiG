@@ -34,7 +34,7 @@ func busyLive() *delta.Object {
 	)
 }
 
-// endRun (live.ts:88-95): the run's inputs settle and `run` goes only when taskId owns the run, but `generation` and `tools` always go.
+// endRun (live.ts): the run's inputs settle and `run` goes only when taskId owns the run, and an end without an answer records runFailure there too; `generation` and `tools` always go.
 //
 // mutation-checked: ending any task's run, keeping generation, keeping tools, skipping the settlement and keeping run each fail a case.
 func TestEndRunSettlesAndRemovesTheRunOnlyForItsOwner(t *testing.T) {
@@ -50,11 +50,14 @@ func TestEndRunSettlesAndRemovesTheRunOnlyForItsOwner(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			live, tx := busyLive(), &settleRecorder{}
-			if err := EndRun(tx, live, tc.taskId, settlement); err != nil {
+			if err := EndRun(tx, live, tc.taskId, runUnanswered(RunFaulted, nil)); err != nil {
 				t.Fatal(err)
 			}
 			if !slices.Equal(tx.settled, tc.wantSettled) || (len(tx.settled) > 0 && tx.settlement != settlement) {
 				t.Fatalf("settled %v with %+v, want %v with %+v", tx.settled, tx.settlement, tc.wantSettled, settlement)
+			}
+			if live.Has("runFailure") == tc.wantRun {
+				t.Fatalf("runFailure present = %v, want %v", live.Has("runFailure"), !tc.wantRun)
 			}
 			if live.Has("run") != tc.wantRun {
 				t.Fatalf("run present = %v, want %v", live.Has("run"), tc.wantRun)

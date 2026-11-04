@@ -7,13 +7,13 @@ package harness
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/chord"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -160,16 +160,11 @@ func TestInputEntries(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	// harness-input-entries.test.ts:138 it("takes only kind and data from an untyped caller's entry")
-	t.Run("takes only kind and data from an untyped caller's entry", func(t *testing.T) {
-		t.Skip("Pi harness-input-entries.test.ts:138: the typed InputEntry carries only Kind and Data, so no caller can add model, head or edits; durable/core/inbox TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData ports the case on the JSON draft path")
-	})
-
 	// harness-input-entries.test.ts:172 it("queues busy inputs with their entries in the inbox and places them as those entries at boundaries")
 	t.Run("queues busy inputs with their entries in the inbox and places them as those entries at boundaries", func(t *testing.T) {
 		setup := chatSetup(t)
 		gate := deferred()
-		holdTool(t, setup, gate)
+		holdTool(t, setup, gate, durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "held"}}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{holdStep(), fauxAnswer("after tools"), fauxAnswer("follow-up")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		input := submit(t, root, inputDraft("a"))
@@ -265,10 +260,15 @@ func TestInputEntries(t *testing.T) {
 		closeHarness(t, harness)
 
 		harness, root = openAt(t, path, setup)
+		queuedItem := false
 		for _, item := range inboxItemsOf(t, harness, root) {
 			if item.Id == f {
+				queuedItem = true
 				expectEqualJSON(t, item.Entry, `{"kind":"chat.mention","data":{"author":"ann","text":"f"}}`)
 			}
+		}
+		if !queuedItem {
+			t.Fatalf("the reopened inbox has no item %d", f)
 		}
 		settled := must(submissionOfHarness(t, harness, f).Wait(testContext))
 		var placed durable.EntryRecord
@@ -302,15 +302,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		var mu sync.Mutex
 		setup.Faux.SetResponses([]ai.FauxResponseStep{requestLog(&requests, &mu, holdStep()), requestLog(&requests, &mu, fauxAnswer("done"))})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		var events []AgentEvent
-		stream := must(WatchEvents(testContext, harness, root.Id()))
-		stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-			batch := change.Value
-			mu.Lock()
-			events = append(events, batch...)
-			mu.Unlock()
-			return nil
-		})
+		history := viewHistory(t, harness, root.Id())
 		input := submit(t, root, inputDraft("a"))
 		toolRunning(t, harness, root)
 		chat := durable.EntryDraft{Kind: "chat.message", Data: map[string]any{"author": "bob", "text": "lunch?"}}
@@ -326,32 +318,19 @@ func TestDataOnlyWrites(t *testing.T) {
 			t.Fatalf("inbox = %v, want empty", items)
 		}
 		expectEqualJSON(t, dataTranscript(t, allEntries(t, root)), `["pi.user|a","pi.assistant","chat.message|{\"author\":\"bob\",\"text\":\"lunch?\"}"]`)
-		count := func(kind string) int {
-			mu.Lock()
-			defer mu.Unlock()
-			n := 0
-			for _, event := range events {
-				if event.EventType() == kind {
-					n++
-				}
-			}
-			return n
-		}
-		waitFor(t, func() bool { return count("entry_appended") > 0 })
-		mu.Lock()
-		var appended *EntryAppendedEvent
-		for _, event := range events {
-			if each, ok := event.(EntryAppendedEvent); ok {
-				appended = &each
+		// The view shows it while the run goes on.
+		var shown *ConversationView
+		for _, view := range history.All() {
+			if slices.ContainsFunc(view.Entries, func(entry durable.EntryRecord) bool { return entry.Kind == "chat.message" }) {
+				shown = &view
 				break
 			}
 		}
-		mu.Unlock()
-		if appended == nil || appended.Entry.Kind != "chat.message" || appended.Entry.Id != *settled.Entry {
-			t.Fatalf("entry_appended = %+v, want the chat.message entry %d", appended, *settled.Entry)
+		if shown == nil || shown.Entries[len(shown.Entries)-1].Kind != "chat.message" || shown.Entries[len(shown.Entries)-1].Id != *settled.Entry {
+			t.Fatalf("view = %+v, want the chat.message entry %d last", shown, *settled.Entry)
 		}
-		if count("run_end") != 0 {
-			t.Fatal("the run ended")
+		if run := liveValue(t, *shown).Run; run == nil || !slices.Equal(run.Inputs, []durable.SubmissionId{input.Id()}) {
+			t.Fatalf("run = %+v, want the run of %d", run, input.Id())
 		}
 		// A repeated request ID returns the same write without a second entry.
 		if again := submit(t, root, draft); again.Id() != write.Id() {
@@ -365,7 +344,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		got := requests
 		mu.Unlock()
 		expectEqualJSON(t, got, `[["system:","user:a"],["system:","user:a","assistant:","toolResult:held"]]`)
-		_, _ = stream.Stop()
+		history.Detach()
 		closeHarness(t, harness)
 	})
 
@@ -460,7 +439,8 @@ func TestDataOnlyWrites(t *testing.T) {
 		failing.awaitReached(t)
 		f := submit(t, root, inputWith("f", mention("f"), ""))
 		failing.release()
-		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionUnanswered, "model_error")
+		failed := must(input.Wait(testContext))
+		expectSettled(t, failed, durable.SubmissionUnanswered, "model_error")
 		mustOK(t, harness.WaitForIdle(testContext))
 		note := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note", Data: "n"}))
 		if got := status(t, note).Status; got != durable.SubmissionDone {
@@ -473,7 +453,20 @@ func TestDataOnlyWrites(t *testing.T) {
 		if ids := inboxIds(inboxItemsOf(t, harness, root)); len(ids) != 1 || ids[0] != f.Id() {
 			t.Fatalf("inbox = %v, want [%d]", ids, f.Id())
 		}
-		expectEqualJSON(t, liveOf(t, harness, root.Id()), `{}`)
+		// toEqual: the whole pi.live is exactly this runFailure (taskId and first any numbers), nothing else.
+		var live map[string]any
+		if err := json.Unmarshal([]byte(jsonText(t, liveOf(t, harness, root.Id()))), &live); err != nil {
+			t.Fatal(err)
+		}
+		failure, _ := live["runFailure"].(map[string]any)
+		if _, ok := failure["taskId"].(float64); !ok || len(live) != 1 || len(failure) != 5 {
+			t.Fatalf("pi.live = %s, want exactly a runFailure of taskId, inputs, reason, detail and first", jsonText(t, live))
+		}
+		if _, ok := failure["first"].(float64); !ok {
+			t.Fatalf("runFailure.first = %v, want a number", failure["first"])
+		}
+		delete(failure, "taskId")
+		expectEqualJSON(t, live, jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request", "first": *failed.Entry}}))
 		if calls := setup.Faux.CallCount(); calls != 1 {
 			t.Fatalf("calls = %d, want 1", calls)
 		}

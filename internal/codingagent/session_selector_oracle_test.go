@@ -242,8 +242,7 @@ func randomSessionSelectorProbes(bindings []map[string][]string) []sessionOracle
 	rng := rand.New(rand.NewSource(20261022))
 	names := []string{"", "", "", "named", "  padded  ", "\ufeff\u00a0spaced\u0085", "日本語", "e\u0301clair", "😀 party", "a very long session name that will not fit in a narrow terminal row"}
 	texts := []string{"fix the login bug", "deploy to staging", "日本語のメッセージ", "refactor", "e\u0301", "tab\there", "line\nbreak", "😀", "x", "a long first message with many words that has to be truncated in the row"}
-	// Page keys stay out: over an empty list Pig keeps the index valid (Pi PR #7680, D155) where Pi 1.1.0 leaves -1.
-	keys := []string{"\x1b[A", "\x1b[B", "\r", "\x1b", "\x03", "\t", "\x13", "\x0e", "\x10", "\x04", "\x12", "\x7f", "\x1b[3~", "\x08", "y", "n", "t", "o", "p", "i", "c", "日", " ", "d"}
+	keys := []string{"\x1b[A", "\x1b[B", "\x1b[5~", "\x1b[6~", "\r", "\x1b", "\x03", "\t", "\x13", "\x0e", "\x10", "\x04", "\x12", "\x7f", "\x1b[3~", "\x08", "y", "n", "t", "o", "p", "i", "c", "日", " ", "d"}
 	mkSessions := func(n int, cwd string, base int) []sessionOracleInfo {
 		out := make([]sessionOracleInfo, n)
 		for i := range out {

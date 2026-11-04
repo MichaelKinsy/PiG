@@ -52,7 +52,7 @@ func TestNodeExtensionModulesLoadLikePinnedPi(t *testing.T) {
 	entry := filepath.Join(modRoot, "test/parity", "scenarios", "extensions-runtime", "testdata", "module-loading", "index.ts")
 	pinnedJiti := filepath.Join(modRoot, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "jiti", "lib", "jiti.cjs")
 	if _, err := os.Stat(pinnedJiti); err != nil {
-		t.Fatalf("pinned Pi package missing (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("pinned Pi package missing (run make parity-deps; npm ci in extensions/sdk-ts empties the shared oracle build): %v", err)
 	}
 	script := `const createJiti = require(process.argv[1]);
 const jiti = createJiti(process.argv[1], { moduleCache: false, virtualModules: {}, tryNative: false });

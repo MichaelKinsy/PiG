@@ -19,7 +19,7 @@ func TestResourceKeyIsTheDeclaredName(t *testing.T) {
 
 // packages/chord/src/cell.ts:89 (Source.validate): dev mode checks a write against the schema; production skips it.
 func TestSourceValidateChecksSchemaInDevMode(t *testing.T) {
-	dev, err := NewCell[any]("n", Schema{"type": "number"}, 0.0, allowWrites, SourceOptions{Dev: true})
+	dev, err := NewCell[any]("n", kw("type", "number"), 0.0, allowWrites, SourceOptions{Dev: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestSourceValidateChecksSchemaInDevMode(t *testing.T) {
 	if err := dev.Validate("x"); err == nil {
 		t.Fatal("dev mode accepted a string for a number schema")
 	}
-	prod, err := NewCell[any]("n", Schema{"type": "number"}, 0.0, allowWrites, SourceOptions{})
+	prod, err := NewCell[any]("n", kw("type", "number"), 0.0, allowWrites, SourceOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

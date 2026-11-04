@@ -98,8 +98,8 @@ func (d *digester) goFiles(dir string) []string {
 	return files
 }
 
-// of hashes the cited Go files, every Go file of the packages that hold the evidence tests, the tests, and for a marker row the
-// mutants it must kill (a killed mutant is part of the record).
+// of hashes the cited Go files, every Go file of the packages that hold the evidence tests, the tests, the files the row's coverage
+// record must show executed, and for a marker row the mutants it must kill (a killed mutant is part of the record).
 func (d *digester) of(res result, mutants []mutant) string {
 	h := sha256.New()
 	h.Write([]byte(digestSalt + "\x00"))
@@ -116,6 +116,11 @@ func (d *digester) of(res result, mutants []mutant) string {
 	}
 	for _, t := range res.Tests {
 		h.Write([]byte(t + "\x00"))
+	}
+	// The files a record must show covered: rows of one package that name the same tests but map different cited files (every
+	// providers/*.models.ts row of ai) must not share a record that holds the coverage of only one of them.
+	for _, f := range coverageFiles(res) {
+		h.Write([]byte("covers\x00" + f + "\x00"))
 	}
 	if res.Marker {
 		b, _ := json.Marshal(mutants)
@@ -206,6 +211,7 @@ func evidenceEnv(scratch string) []string {
 	env := make([]string, 0, len(os.Environ())+len(agentDirVariables)+2)
 	for _, name := range []string{"GOCACHE", "GOMODCACHE"} {
 		if os.Getenv(name) == "" {
+			//nolint:gosec // G204 (class a): program is literal go; name iterates the literal {GOCACHE,GOMODCACHE} list.
 			if out, err := exec.Command("go", "env", name).Output(); err == nil {
 				env = append(env, name+"="+strings.TrimSpace(string(out)))
 			}

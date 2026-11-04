@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/evals/bridge"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
 )
@@ -79,6 +80,8 @@ type scriptedModel struct {
 	mu       sync.Mutex
 	replies  []scriptedReply
 	requests []map[string]any
+	// bodies holds each request's body as received.
+	bodies [][]byte
 	// authorizations holds each request's Authorization header.
 	authorizations []string
 	status         int
@@ -95,6 +98,7 @@ func newScriptedModel(t *testing.T, replies ...scriptedReply) *scriptedModel {
 		_ = json.Unmarshal(body, &decoded)
 		model.mu.Lock()
 		model.requests = append(model.requests, decoded)
+		model.bodies = append(model.bodies, body)
 		model.authorizations = append(model.authorizations, request.Header.Get("Authorization"))
 		reply := scriptedReply{text: "Paris"}
 		if len(model.replies) > 0 {
@@ -284,6 +288,52 @@ func TestRunPiCodingAgentTransformsTheSystemPromptThroughTheBridge(t *testing.T)
 	}
 }
 
+// A custom tool's schema reaches the model with its members in the order the harness author wrote them (a JavaScript object keeps insertion order). The schema crosses the spec file,
+// the bridge extension, the SDK, the Extension Host and the provider converter.
+func TestRunPiCodingAgentCustomToolSchemaKeepsAuthoredOrderToTheModel(t *testing.T) {
+	model := newScriptedModel(t, scriptedReply{tool: "submit_audit", arguments: `{"verdict":"match"}`})
+	options := harnessFixture(t, model)
+	options.Tools = []string{"read", "submit_audit"}
+	var tool bridge.Tool
+	if err := json.Unmarshal([]byte(`{"name":"submit_audit","description":"Submit the audit.","parameters":{"type":"object","required":["verdict","explanation"],"properties":{"verdict":{"type":"string","enum":["match","mismatch"]},"explanation":{"type":"string","minLength":1},"10":{"type":"number"},"2":{"type":"boolean"}},"additionalProperties":false}}`), &tool); err != nil {
+		t.Fatal(err)
+	}
+	options.CustomTools = []CustomTool{{Tool: tool, Execute: func(context.Context, string, map[string]any) (CustomToolResult, error) {
+		return CustomToolResult{Content: "Audit submitted.", Terminate: true}, nil
+	}}}
+	options.Output = func(_ context.Context, run AgentRun) (any, error) { return run.SuccessfulTools, nil }
+	if _, err := RunPiCodingAgent(t.Context(), PromptInput("Audit it."), options); err != nil {
+		t.Fatal(err)
+	}
+	model.mu.Lock()
+	defer model.mu.Unlock()
+	if len(model.bodies) == 0 {
+		t.Fatal("the model received no request")
+	}
+	var request struct {
+		Tools []struct {
+			Function struct {
+				Name       string          `json:"name"`
+				Parameters json.RawMessage `json:"parameters"`
+			} `json:"function"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(model.bodies[0], &request); err != nil {
+		t.Fatal(err)
+	}
+	for _, declared := range request.Tools {
+		if declared.Function.Name != "submit_audit" {
+			continue
+		}
+		const want = `{"type":"object","required":["verdict","explanation"],"properties":{"2":{"type":"boolean"},"10":{"type":"number"},"verdict":{"type":"string","enum":["match","mismatch"]},"explanation":{"type":"string","minLength":1}},"additionalProperties":false}`
+		if got := string(declared.Function.Parameters); got != want {
+			t.Errorf("submit_audit parameters sent to the model\n got: %s\nwant: %s", got, want)
+		}
+		return
+	}
+	t.Fatalf("the request declares no submit_audit tool: %s", model.bodies[0])
+}
+
 func TestRunPiCodingAgentServesCustomToolsThroughTheBridge(t *testing.T) {
 	model := newScriptedModel(t, scriptedReply{tool: "submit_audit", arguments: `{"verdict":"match"}`})
 	options := harnessFixture(t, model)
@@ -291,9 +341,9 @@ func TestRunPiCodingAgentServesCustomToolsThroughTheBridge(t *testing.T) {
 	var receivedID string
 	options.Tools = []string{"read", "submit_audit"}
 	options.CustomTools = []CustomTool{{
-		Tool: bridge.Tool{Name: "submit_audit", Description: "Submit the audit.", PromptSnippet: "Submit the audit verdict", Parameters: map[string]any{
-			"type": "object", "properties": map[string]any{"verdict": map[string]any{"type": "string"}}, "required": []string{"verdict"},
-		}},
+		Tool: bridge.Tool{Name: "submit_audit", Description: "Submit the audit.", PromptSnippet: "Submit the audit verdict", Parameters: chordjson.ObjectOf(
+			"type", "object", "properties", chordjson.ObjectOf("verdict", chordjson.ObjectOf("type", "string")), "required", []string{"verdict"},
+		)},
 		Execute: func(_ context.Context, toolCallID string, params map[string]any) (CustomToolResult, error) {
 			received, receivedID = params, toolCallID
 			return CustomToolResult{Content: "Audit submitted.", Details: params, Terminate: true}, nil

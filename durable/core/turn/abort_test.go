@@ -2,6 +2,7 @@ package turn_test
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -59,8 +60,9 @@ func TestAbortKeepsThePartialAsAnAbortedEntry(t *testing.T) {
 	if got := outcomeOf(t, r.tasks(turn.KindGeneration)[0]); got != `{"status":"aborted"}` {
 		t.Fatalf("outcome = %s", got)
 	}
-	if got := r.doc(turn.LiveDef, conv); got != `{}` {
-		t.Fatalf("live = %s", got)
+	// The run ended without an answer: the document says why.
+	if got, want := r.doc(turn.LiveDef, conv), fmt.Sprintf(`{"runFailure":{"taskId":%d,"inputs":[%d],"reason":"aborted"}}`, taskID(t, task), submission); got != want {
+		t.Fatalf("live = %s, want %s", got, want)
 	}
 	sub, _ := r.mem.Submission(submission)
 	if got := jv.Stringify(sub); !strings.Contains(got, `"status":"unanswered"`) || !strings.Contains(got, `"reason":"aborted"`) {
@@ -111,9 +113,9 @@ func TestAbortAfterASequentialRoundStartedEndsUnstartedCallsAborted(t *testing.T
 // its run's input unanswered in the settling transaction, with the error message as detail, after its partial turned
 // into an aborted entry (live.ts settleSchedulerOutcome).
 func TestSchedulerOutcomeSettlesTheRunUnanswered(t *testing.T) {
-	for _, tc := range []struct{ outcome, want string }{
-		{`{"status":"faulted","error":{"message":"boom"}}`, `"reason":"faulted","detail":"boom"`},
-		{`{"status":"orphaned","reason":"missing_task"}`, `"reason":"missing_task"`},
+	for _, tc := range []struct{ outcome, want, failure string }{
+		{`{"status":"faulted","error":{"message":"boom"}}`, `"reason":"faulted","detail":"boom"`, `"reason":"faulted","detail":"boom"`},
+		{`{"status":"orphaned","reason":"missing_task"}`, `"reason":"missing_task"`, `"reason":"orphaned","detail":"missing_task"`},
 	} {
 		r := newRig(t)
 		conv, submission := r.start("hi")
@@ -134,8 +136,8 @@ func TestSchedulerOutcomeSettlesTheRunUnanswered(t *testing.T) {
 		if got := lastEntryOf(r, "pi.assistant"); !strings.Contains(got, "half") || !strings.Contains(got, `"stopReason":"aborted"`) {
 			t.Fatalf("%s: partial entry = %s", tc.outcome, got)
 		}
-		if got := r.doc(turn.LiveDef, conv); got != `{}` {
-			t.Fatalf("%s: live = %s", tc.outcome, got)
+		if got, want := r.doc(turn.LiveDef, conv), fmt.Sprintf(`{"runFailure":{"taskId":%d,"inputs":[%d],%s}}`, taskID(t, task), submission, tc.failure); got != want {
+			t.Fatalf("%s: live = %s, want %s", tc.outcome, got, want)
 		}
 	}
 }

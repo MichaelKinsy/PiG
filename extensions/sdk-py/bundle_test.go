@@ -22,11 +22,11 @@ func TestSourceReadable(t *testing.T) {
 			t.Fatalf("embedded %s is empty", name)
 		}
 	}
-	// The package init is 300 KB of text, so the bundle embeds it as pig_sdk/__init__.py.gz.
-	if !slices.Contains(BundledFiles(), "pig_sdk/__init__.py.gz") {
+	// The package init is 300 KB of text, so the bundle embeds it as .gz/pig_sdk/__init__.py.gz.
+	if !slices.Contains(BundledFiles(), ".gz/pig_sdk/__init__.py.gz") {
 		t.Fatal("BundledFiles must include the pig_sdk package init so the staged SDK is importable")
 	}
-	compressed, err := Source.ReadFile("pig_sdk/__init__.py.gz")
+	compressed, err := Source.ReadFile(".gz/pig_sdk/__init__.py.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestSourceReadable(t *testing.T) {
 	}
 	data, err := io.ReadAll(reader)
 	if err != nil || !strings.Contains(string(data), "class Extension") {
-		t.Fatalf("embedded pig_sdk/__init__.py.gz is not the SDK module: err=%v", err)
+		t.Fatalf("embedded .gz/pig_sdk/__init__.py.gz is not the SDK module: err=%v", err)
 	}
 }
 
@@ -51,8 +51,8 @@ func TestEveryPackageSourceIsBundled(t *testing.T) {
 			return nil
 		}
 		name := filepath.ToSlash(path)
-		if _, err := os.Stat(path + ".gz"); err == nil {
-			name += ".gz" // the bundle embeds the gzip of this file
+		if _, err := os.Stat(".gz/" + name + ".gz"); err == nil {
+			name = ".gz/" + name + ".gz" // the bundle embeds the gzip of this file
 		}
 		if !slices.Contains(bundled, name) {
 			t.Errorf("%s is not in BundledFiles; run go generate in extensions/sdk-py", name)
@@ -64,15 +64,16 @@ func TestEveryPackageSourceIsBundled(t *testing.T) {
 	}
 }
 
-// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz.
+// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz/ and .gz.
 func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 	found := 0
-	err := filepath.WalkDir("pig_sdk", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".py.gz") {
+	err := filepath.WalkDir(".gz", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".gz") {
 			return err
 		}
 		found++
-		source, err := os.ReadFile(strings.TrimSuffix(path, ".gz"))
+		stand := strings.TrimSuffix(strings.TrimPrefix(filepath.ToSlash(path), ".gz/"), ".gz")
+		source, err := os.ReadFile(stand)
 		if err != nil {
 			return err
 		}
@@ -89,7 +90,7 @@ func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 			return err
 		}
 		if !bytes.Equal(text, source) {
-			t.Errorf("embedded %s differs from %s", path, strings.TrimSuffix(path, ".gz"))
+			t.Errorf("embedded %s differs from %s", path, stand)
 		}
 		return nil
 	})

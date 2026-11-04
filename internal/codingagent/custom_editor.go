@@ -92,8 +92,7 @@ func (e *CustomEditor) HandleInput(data string) {
 		return
 	}
 
-	// custom-editor.ts (Pi PR #7680): with the autocomplete list open the selection page keys reach it before any app action.
-	// pig divergence (D155): an open autocomplete list takes the selection page keys before any app action (Pi PR #7680).
+	// custom-editor.ts: selection page keys move an open autocomplete menu before app actions run, so a user can bind Ctrl+V even though it pastes images by default.
 	if e.AutocompleteOpen() && e.keybindings.MatchesSelectPage(data) {
 		e.superInput(data)
 		return

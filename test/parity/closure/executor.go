@@ -352,11 +352,13 @@ func createMutationCheckout(ctx context.Context, root, commit string) (string, e
 	// Evidence hashes the committed bytes, so the snapshot must not take a
 	// line-ending conversion from the host (Git for Windows sets
 	// core.autocrlf=true system-wide). Repository attributes still apply.
+	//nolint:gosec // G204 (class a): program is literal git; args are the repo root and a temp checkout dir, both computed.
 	command := exec.CommandContext(ctx, "git", "clone", "--quiet", "--shared", "--no-checkout", "--config", "core.autocrlf=false", root, checkout)
 	if output, cloneErr := command.CombinedOutput(); cloneErr != nil {
 		_ = os.RemoveAll(checkout)
 		return "", fmt.Errorf("create mutation checkout: %w: %s", cloneErr, strings.TrimSpace(string(output)))
 	}
+	//nolint:gosec // G204 (class a): program is literal git; args are a temp checkout dir and snapshot.TargetCommit, which the closure graph validates as a 40-hex commit.
 	command = exec.CommandContext(ctx, "git", "checkout", "--quiet", "--detach", commit)
 	command.Dir = checkout
 	if output, checkoutErr := command.CombinedOutput(); checkoutErr != nil {
@@ -398,6 +400,7 @@ func applyMutationEdit(root string, edit MutationEdit) ([]byte, error) {
 	if string(bytes.TrimSuffix(output, []byte{0})) != edit.Path {
 		return nil, fmt.Errorf("mutation changed files outside %s", edit.Path)
 	}
+	//nolint:gosec // G204 (class a): program is literal git; args are fixed diff flags with edit.Path after `--` from the mutation record.
 	command = exec.Command("git", "diff", "--binary", "--no-ext-diff", "--", edit.Path)
 	command.Dir = root
 	patch, err := command.Output()
@@ -805,6 +808,7 @@ func evidenceCommandHash(run, index int, command EvidenceCommand) (string, error
 func executeEvidenceCommand(parent context.Context, root string, timeoutSeconds int, environment []string, run, index int, command EvidenceCommand, commandHash string) (EvidenceCommandResult, []byte, []byte) {
 	ctx, cancel := context.WithTimeout(parent, time.Duration(timeoutSeconds)*time.Second)
 	defer cancel()
+	//nolint:gosec // G204 (class c): the program and args are an evidence command recorded in the committed closure store; the evidence runner executes what the reviewed record names, as the Makefile targets that run the same commands do, and the record format is checked for an empty name and NUL only.
 	process := exec.CommandContext(ctx, command.Name, command.Args...)
 	process.Dir = root
 	process.Env = environment
@@ -840,6 +844,7 @@ func CurrentToolchainHash(ctx context.Context) (string, error) {
 	for _, command := range commands {
 		// Each tool prints its version on stdout. Stderr carries host noise
 		// (go's telemetry warnings), so it must not enter the snapshot identity.
+		//nolint:gosec // G204 (class a): program comes from the literal table {go,node,python3,rustc} with literal args in CurrentToolchainHash.
 		output, err := exec.CommandContext(ctx, command[0], command[1:]...).Output()
 		if err != nil {
 			return "", fmt.Errorf("resolve toolchain %s: %w", command[0], err)

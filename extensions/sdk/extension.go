@@ -142,8 +142,10 @@ type Extension struct {
 	// loading is the connection the factory's first pi.events call opened before Run (loadingConnection), guarded by eventMu. Run adopts that connection and clears this.
 	loading *conn
 	// pump answers the host's dispatches on loading until Run takes the connection over; running is set from then until Run ends. Both are guarded by eventMu.
-	pump    *factoryPump
-	running bool
+	pump *factoryPump
+	// shutdownInFactory is set when the factory's pump read the host's shutdown, which Run acts on once it has registered.
+	shutdownInFactory atomic.Bool
+	running           bool
 
 	// run is the replicated signal of the run in progress (Context.Signal).
 	run runSignal
@@ -177,6 +179,7 @@ type Extension struct {
 	providers                []providerDef
 	providerMu               sync.RWMutex
 	autocomplete             autocompleteRegistry
+	tuiAlt                   tuiAltRegistry
 	nativeProviders          map[string]*Provider
 	// bashOperations holds the BashOperations objects a user_bash reply named by handle until the host releases them.
 	bashOperationsMu        sync.Mutex
@@ -188,6 +191,7 @@ type Extension struct {
 	renderers               []rendererDef
 	entryRenderers          []rendererDef
 	markdownTransform       MarkdownTransformerFunc
+	ownsThinkingRuns        bool // guarded by toolMu
 
 	// toolRenderMu guards toolRenderers and toolRenderCards: render requests
 	// run on their own goroutines.
@@ -354,6 +358,9 @@ type remoteOverlay struct {
 	stopCh      chan struct{}
 	stopped     chan struct{}
 	stopOnce    sync.Once
+
+	// lastCaptures is the capturesViewportInput the last frame carried; a change alone sends a frame.
+	lastCaptures bool
 
 	// frontend reports whether a frontend draws; nil reports none.
 	frontend func() bool
@@ -636,10 +643,12 @@ func (o *remoteOverlay) renderLocked(conn *conn, key string, width int) error {
 		}
 		lines := component.Render(renderWidth)
 		o.lastRender = time.Now()
-		if slices.Equal(lines, o.lastLines) {
+		captures := capturesViewportInput(component)
+		if slices.Equal(lines, o.lastLines) && captures == o.lastCaptures {
 			return nil
 		}
 		o.lastLines = append(o.lastLines[:0], lines...)
+		o.lastCaptures = captures
 		o.seq++
 		return conn.notify("ui.custom.render", o.frameArgs(map[string]any{"key": key, "lines": lines, "width": width, "seq": o.seq}))
 	}
@@ -658,10 +667,12 @@ func (o *remoteOverlay) renderViewLocked(conn *conn, key string, width int, comp
 		return err
 	}
 	force := o.forceView.Swap(false)
-	if !force && o.lastView != nil && width == o.lastWidth && bytes.Equal(encoded.View, o.lastView) && len(conn.images.unsent(encoded.Images)) == 0 {
+	captures := capturesViewportInput(component)
+	if !force && o.lastView != nil && width == o.lastWidth && captures == o.lastCaptures && bytes.Equal(encoded.View, o.lastView) && len(conn.images.unsent(encoded.Images)) == 0 {
 		return nil
 	}
 	o.lastView = encoded.View
+	o.lastCaptures = captures
 	o.lastWidth = width
 	refs := make([]string, len(encoded.Images))
 	for i, image := range encoded.Images {
@@ -677,10 +688,14 @@ func (o *remoteOverlay) renderViewLocked(conn *conn, key string, width int, comp
 }
 
 // frameArgs marks a frame of a component that takes the mouse, which the
-// host then hands mouse events inside its bounds.
+// host then hands mouse events inside its bounds, and of one that captures
+// the viewport's input (ViewportInputCapturer), as of when the frame is drawn.
 func (o *remoteOverlay) frameArgs(args map[string]any) map[string]any {
 	if _, ok := o.component.(MouseHandler); ok {
 		args["mouse"] = true
+	}
+	if capturesViewportInput(o.component) {
+		args["capturesViewportInput"] = true
 	}
 	return args
 }
@@ -1004,6 +1019,25 @@ func (e *Extension) MarkdownTransformer(transformer MarkdownTransformerFunc) {
 	e.markdownTransform = transformer
 }
 
+// OwnThinkingRuns declares that this extension owns the thinking runs of
+// assistant messages (PiG-only), so a hidden or zero-row thinking run leaves
+// no blank spacer rows. Before Run registers the extension the value is only
+// recorded and the last call wins; the register payload carries it when true.
+// Once the extension runs the call goes to the host at once.
+// pig additive (D214)
+func (e *Extension) OwnThinkingRuns(enabled bool) {
+	e.toolMu.Lock()
+	e.ownsThinkingRuns = enabled
+	conn := e.toolConn
+	e.toolMu.Unlock()
+	if conn != nil {
+		result, err := hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
+		if err = callResultError(result, err); err != nil {
+			panic(fmt.Errorf("ownThinkingRuns: %w", err))
+		}
+	}
+}
+
 // OnSessionStart registers a handler for the session_start event.
 func (e *Extension) OnSessionStart(handler EventFunc) func() {
 	return e.OnEvent("session_start", handler)
@@ -1155,6 +1189,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			Renderers:               e.renderers,
 			EntryRenderers:          e.entryRenderers,
 			MarkdownTransformer:     e.markdownTransform != nil,
+			OwnsThinkingRuns:        e.ownsThinkingRuns,
 			ToolRenderers:           e.toolRendererCount(),
 			McpServers:              e.mcpServerDecls,
 			VirtualModels:           e.virtualModelDecls,
@@ -1164,6 +1199,10 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		return fmt.Errorf("send register: %w", err)
 	}
 
+	// A shutdown the factory's pump read ends the run now, after the register frame, as one read below does.
+	if e.shutdownInFactory.Swap(false) {
+		return e.stopRequests()
+	}
 	// Wait for ready. A listener the Host dispatches to while the extension loads is served here, as a node runtime serves it during its factory.
 	var env envelope
 	for {
@@ -1174,9 +1213,11 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		}
 		if env.Type == msgRequest && env.Request != nil && env.Request.Method == methodEventsDispatch {
 			ctx, finish := e.armRequest(env.ID)
+			// env is the loop's: the next receive overwrites it while the handler runs.
+			dispatch := env
 			e.requestWG.Go(func() {
 				defer finish()
-				e.handleArmedRequest(env.ID, env.Request, ctx)
+				e.handleArmedRequest(dispatch.ID, dispatch.Request, ctx)
 			})
 			continue
 		}
@@ -1187,6 +1228,10 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			continue
 		}
 		break
+	}
+	// A shutdown before ready ends the run as one after ready does: no error, because Pi's session shutdown never fails an extension (runner.ts emitSessionShutdownEvent) and the Node runtime returns. The register frame is already sent, and the listener dispatches read before the shutdown have been started and are answered by stopRequests.
+	if env.Type == msgShutdown {
+		return e.stopRequests()
 	}
 	if env.Type != msgReady || env.Ready == nil {
 		return fmt.Errorf("expected ready message, got %s", env.Type)
@@ -1412,6 +1457,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		methodOAuthCredentialStatus, methodOAuthStoreCredentials, methodOAuthDeleteCredentials:
 		e.dispatchOAuth(id, req)
 
+	case "tui.alt.cb":
+		result, err := e.dispatchTuiAlt(ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
+
 	case "terminal_input":
 		e.dispatchTerminalInput(id, req)
 
@@ -1479,15 +1528,6 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		prepared, err := prepare(params)
 		_ = e.conn.respond(id, prepared, err)
-
-	case "tool_refine_arguments":
-		// validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the host's traversal asks for each call here.
-		if req.Refine == nil {
-			_ = e.conn.respond(id, nil, fmt.Errorf("tool_refine_arguments names no refinement"))
-			return
-		}
-		result, err := e.runRefinement(req.Tool, req.Refine)
-		_ = e.conn.respond(id, result, err)
 
 	case requestWithSession:
 		_ = e.conn.respond(id, nil, e.dispatchWithSession(ctx, req.Args))

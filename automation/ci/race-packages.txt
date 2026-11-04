@@ -5,12 +5,14 @@
 #
 # group   path   [reason, for exempt]
 ai    ./ai
+ai    ./ai/providers/bedrock
 rest  ./agent
 rest  ./tui
 rest  ./internal/codingagent
 rest  ./durable/harness
 rest  ./durable/core/driver
 rest  ./durable/core/sqlhost
+rest  ./durable/storage/store
 rest  ./coding/extension/host/subprocess
 host  ./coding/extension
 host  ./coding/extension/host/inproc
@@ -29,6 +31,15 @@ libs  ./chord
 libs  ./chord/host
 libs  ./chord/output
 libs  ./chord/telemetrysqlite
+libs  ./chord/internal/parking
+exempt ./internal/chord/winpipe Windows-only tests; the nightly race matrix has no Windows job
+libs  ./chord/next/documents
+libs  ./chord/next/host
+libs  ./chord/next/link
+libs  ./chord/next/store
+libs  ./chord/nextnode/http
+libs  ./chord/nextnode/plugins
+libs  ./chord/nextnode/workers
 libs  ./codemode
 libs  ./coding/extension/builtin/codemode
 libs  ./durable
@@ -45,6 +56,7 @@ libs  ./internal/sessionentry
 libs  ./mcp
 libs  ./mcp/oauth
 libs  ./cmd/gen-models
+libs  ./internal/modelgen
 libs  ./coding/extension/host/subprocess/internal/noderuntimepack
 libs  ./durable/core/cmd/corenative
 libs  ./durable/core/contracttest/guard
@@ -58,4 +70,7 @@ libs  ./piglets/aot
 libs  ./piglets/porter/extensions/pig-porter
 libs  ./piglets/standard
 libs  ./durable/images
+libs  ./internal/nodefs
 libs  ./internal/nativeplatform
+# The highlight.js port shares a Registry behind a mutex and compiled patterns behind package-level caches, and its tests run registries on one worker per CPU. It has its own group because it is CPU-bound under -race: one run of the package takes about 16 minutes on 4 CPUs and 10 on 16.
+hljs  ./tui/internal/hljs

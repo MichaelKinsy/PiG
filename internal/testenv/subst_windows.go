@@ -26,12 +26,14 @@ func SubstDrive(t testing.TB, dir string) string {
 			continue
 		}
 		drive := string(letter) + ":"
+		//nolint:gosec // G204 (class a): program is literal subst; args are a drive letter the test chooses and the t.TempDir path.
 		out, err := exec.CommandContext(t.Context(), "subst", drive, dir).CombinedOutput()
 		if err != nil {
 			failures = append(failures, "subst "+drive+": "+err.Error()+": "+string(out)+"\n"...)
 			continue
 		}
 		t.Cleanup(func() {
+			//nolint:gosec // G204 (class a): program is literal subst; args are the same drive letter with /d in a cleanup.
 			if out, err := exec.CommandContext(context.WithoutCancel(t.Context()), "subst", drive, "/d").CombinedOutput(); err != nil {
 				t.Errorf("subst %s /d: %v\n%s", drive, err, out)
 			}

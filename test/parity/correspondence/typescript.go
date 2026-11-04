@@ -13,6 +13,7 @@ func ExtractTypeScript(ctx context.Context, nodePath, scriptPath, sourceRoot, up
 	if nodePath == "" || scriptPath == "" || sourceRoot == "" || upstreamVersion == "" {
 		return nil, fmt.Errorf("node path, script path, source root, and upstream version are required")
 	}
+	//nolint:gosec // G204 (class b): program is nodePath, which callers obtain from exec.LookPath("node"); script path is a repo-fixed .mjs and values follow their flags as separate argv items.
 	command := exec.CommandContext(ctx, nodePath, scriptPath,
 		"--source-root", sourceRoot,
 		"--upstream-version", upstreamVersion,

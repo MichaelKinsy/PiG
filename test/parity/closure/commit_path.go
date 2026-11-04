@@ -15,6 +15,7 @@ func resolveCommitObject(root, commit, currentPrefix, relativePath string) (stri
 	candidates := prefixCandidates(currentPrefix)
 	for _, candidate := range candidates {
 		object := commit + ":" + candidate + relativePath
+		//nolint:gosec // G204 (class a): program is literal git; object is a schema-validated 40-hex commit plus ":" plus a repo path, so it cannot start with "-".
 		command := exec.CommandContext(context.Background(), "git", "cat-file", "-e", object)
 		command.Dir = root
 		if command.Run() == nil {

@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 func main() {
@@ -65,7 +66,7 @@ func main() {
 			return nil, captured
 		}
 		before := len(rows)
-		stream, err := ai.NewBedrockProvider("global.anthropic.claude-sonnet-4-5-20250929-v1:0", server.URL).Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Say hi.")}}}), opts)
+		stream, err := bedrock.NewBedrockProvider("global.anthropic.claude-sonnet-4-5-20250929-v1:0", server.URL).Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Say hi.")}}}), opts)
 		if err := requireCapturedPayload(stream, err, captured); err != nil {
 			panic(err)
 		}

@@ -106,8 +106,7 @@ for (const row of JSON.parse(rowsJSON)) {
 	});
 	server.close();
 }
-console.log(JSON.stringify(out));
-process.exit(0);
+process.stdout.write(JSON.stringify(out) + "\n", () => process.exit(0));
 })()`
 	encodedRows, err := json.Marshal(rows)
 	if err != nil {

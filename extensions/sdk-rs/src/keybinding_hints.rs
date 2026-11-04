@@ -1,6 +1,8 @@
 //! pi-coding-agent's keybinding hints (`modes/interactive/components/keybinding-hints.ts`): a key identifier as the interface shows it, and the dim key plus muted
 //! description of a hint such as "esc to interrupt". The keys come from the global keybindings the host published and the colors from the global theme.
 
+use crate::extension::{EntryRenderOptions, MessageRenderOptions};
+use crate::tool_render::ToolRenderContext;
 use crate::tui::{current_host_theme, get_keybindings};
 
 /// `KeyTextFormatOptions`.
@@ -28,7 +30,11 @@ fn is_darwin() -> bool {
 
 fn format_key_part(darwin: bool, part: &str, capitalize: bool) -> String {
     // `part.toLowerCase() === "alt"` holds only for the ASCII case variants of "alt".
-    let display = if darwin && part.eq_ignore_ascii_case("alt") { "option" } else { part };
+    let display = if darwin && part.eq_ignore_ascii_case("alt") {
+        "option"
+    } else {
+        part
+    };
     if !capitalize {
         return display.to_string();
     }
@@ -42,7 +48,13 @@ fn format_key_part(darwin: bool, part: &str, capitalize: bool) -> String {
 
 fn format_key_text_for(darwin: bool, key: &str, capitalize: bool) -> String {
     key.split('/')
-        .map(|alternative| alternative.split('+').map(|part| format_key_part(darwin, part, capitalize)).collect::<Vec<_>>().join("+"))
+        .map(|alternative| {
+            alternative
+                .split('+')
+                .map(|part| format_key_part(darwin, part, capitalize))
+                .collect::<Vec<_>>()
+                .join("+")
+        })
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -78,5 +90,47 @@ pub fn key_hint(keybinding: &str, description: &str) -> String {
 /// pi-coding-agent's `rawKeyHint`: a hint for a key identifier that is not a keybinding.
 pub fn raw_key_hint(key: &str, description: &str) -> String {
     let theme = current_host_theme();
-    theme.fg("dim", &format_key_text(key, KeyTextFormatOptions::default())) + &theme.fg("muted", &format!(" {description}"))
+    theme.fg(
+        "dim",
+        &format_key_text(key, KeyTextFormatOptions::default()),
+    ) + &theme.fg("muted", &format!(" {description}"))
+}
+
+// Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
+// entry options (KeybindingHints). Each method delegates to the module function, which reads the host's keybindings.
+
+impl ToolRenderContext {
+    /// `KeybindingHints.keyText` of the tool render context: [`key_text`].
+    pub fn key_text(&self, keybinding: &str) -> String {
+        key_text(keybinding)
+    }
+
+    /// `KeybindingHints.keyHint` of the tool render context: [`key_hint`].
+    pub fn key_hint(&self, keybinding: &str, description: &str) -> String {
+        key_hint(keybinding, description)
+    }
+}
+
+impl MessageRenderOptions {
+    /// `KeybindingHints.keyText` of the message render options: [`key_text`].
+    pub fn key_text(&self, keybinding: &str) -> String {
+        key_text(keybinding)
+    }
+
+    /// `KeybindingHints.keyHint` of the message render options: [`key_hint`].
+    pub fn key_hint(&self, keybinding: &str, description: &str) -> String {
+        key_hint(keybinding, description)
+    }
+}
+
+impl EntryRenderOptions {
+    /// `KeybindingHints.keyText` of the entry render options: [`key_text`].
+    pub fn key_text(&self, keybinding: &str) -> String {
+        key_text(keybinding)
+    }
+
+    /// `KeybindingHints.keyHint` of the entry render options: [`key_hint`].
+    pub fn key_hint(&self, keybinding: &str, description: &str) -> String {
+        key_hint(keybinding, description)
+    }
 }

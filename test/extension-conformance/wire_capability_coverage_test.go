@@ -106,12 +106,14 @@ var hostNotifyCapabilities = map[string]struct {
 		"go":   "case notifyUIViewEvent:",
 		"rust": `"ui.view.event" => {`,
 		"py":   `if method == "ui.view.event":`,
+		"lisp": `def-notify "ui.view.event"`,
 	}},
 	"ui.view.evicted": {hostConst: "NotifyUIViewEvicted", symbols: map[string]string{
 		"go":   "case notifyUIViewEvicted:",
 		"rust": `"ui.view.evicted" => {`,
 		"py":   `if method == "ui.view.evicted":`,
 		"node": `case "ui.view.evicted": {`,
+		"lisp": `def-notify "ui.view.evicted"`,
 	}},
 	// Fullscreen mouse events for a ui.custom component that takes the
 	// mouse, as Pi's renderer calls handleMouse.
@@ -120,6 +122,7 @@ var hostNotifyCapabilities = map[string]struct {
 		"rust": `"ui.custom.mouse" => {`,
 		"py":   `if method == "ui.custom.mouse":`,
 		"node": `case "ui.custom.mouse": {`,
+		"lisp": `def-notify "ui.custom.mouse"`,
 	}},
 }
 
@@ -229,6 +232,7 @@ func sdkSources(t *testing.T, root string) map[string]string {
 		"go":   readSDKSourceDir(t, filepath.Join(root, "extensions", "sdk"), ".go"),
 		"rust": readSDKSourceDir(t, filepath.Join(root, "extensions", "sdk-rs", "src"), ".rs"),
 		"py":   readSDKSourceDir(t, filepath.Join(root, "extensions", "sdk-py", "pig_sdk"), ".py"),
+		"lisp": readSDKSourceDir(t, filepath.Join(root, "extensions", "sdk-lisp", "src"), ".lisp"),
 		"node": readSDKSourceDir(t, filepath.Join(root, "coding", "extension", "host", "subprocess", "runtime-node"), ".mjs"),
 	}
 }
@@ -272,7 +276,7 @@ func readSDKSourceDir(t *testing.T, dir, suffix string) string {
 	return source.String()
 }
 
-func sdkNames() []string { return []string{"go", "node", "py", "rust"} }
+func sdkNames() []string { return []string{"go", "node", "py", "rust", "lisp"} }
 
 func TestModelAuthUsesOneWireShapeAcrossSDKs(t *testing.T) {
 	root := repoRoot(t)
@@ -285,6 +289,7 @@ func TestModelAuthUsesOneWireShapeAcrossSDKs(t *testing.T) {
 		"node": {required: `{ provider: providerIDFromModel(model), modelId: modelIDFromModel(model) }`, forbidden: `{ providerId: providerIDFromModel(model)`},
 		"py":   {required: `"provider": provider_id`, forbidden: `"providerId": provider_id`},
 		"rust": {required: `"provider": provider_id`, forbidden: `"providerId": provider_id`},
+		"lisp": {required: `"provider" provider-id`, forbidden: `"providerId" provider-id`},
 	}
 	for _, sdk := range sdkNames() {
 		check := checks[sdk]

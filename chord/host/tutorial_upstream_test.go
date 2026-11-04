@@ -47,7 +47,7 @@ var (
 			{"rows", tutorialRows},
 			{"openCount", tNumber()},
 			{"add", Method(tObject("text", tString()), nil)},
-			{"finish", Method(tObject("index", Schema{"type": "integer"}), nil)},
+			{"finish", Method(tObject("index", kw("type", "integer")), nil)},
 			{"reset", Method(tutorialRows, nil)},
 		},
 	})

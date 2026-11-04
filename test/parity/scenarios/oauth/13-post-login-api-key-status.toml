@@ -27,7 +27,7 @@ keys = ["openai", "Enter"]
 wait_contains = ["API key"]
 [[tmux.steps]]
 keys = ["parity-key", "Enter"]
-wait_visible_contains = ["Saved API key for OpenAI. Selected gpt-5.5. Credentials saved to"]
+wait_visible_contains = ["Saved API key for OpenAI. Selected gpt-6.1-sol. Credentials saved to"]
 [env]
 pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
 pi = ["PIG_CODING_AGENT_DIR=", "PIG_HOME=", "PI_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PATH={{FAKE_BIN}}:{{PATH}}"]
@@ -35,7 +35,7 @@ pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 pi_args = ["--session-dir", "{{TEMP}}/sessions"]
 [assert]
 both_reach_ready = true
-both_contain = ["Saved API key for OpenAI. Selected gpt-5.5. Credentials saved to"]
+both_contain = ["Saved API key for OpenAI. Selected gpt-6.1-sol. Credentials saved to"]
 output_normalized_equal = true
 runs = 3
 # normalize-rationale: the two credential files live in isolated agent-directory snapshots.

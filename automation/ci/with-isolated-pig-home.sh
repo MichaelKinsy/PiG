@@ -11,6 +11,14 @@ export PATH="$go_root/bin:$PATH"
 # Keep compiler caches separate from the validated program's runtime state.
 export GOCACHE="${GOCACHE:-$(go env GOCACHE)}"
 export GOMODCACHE="${GOMODCACHE:-$(go env GOMODCACHE)}"
+# rustup and cargo locate the installed toolchain, its default and the registry cache through these two directories, which default to the caller's home. Pin them
+# to the caller's directories before HOME moves, so a validated program that builds Rust finds the toolchain the caller installed; an explicit value is kept.
+rust_base="$HOME"
+case "$OSTYPE" in
+  msys*|cygwin*) rust_base=$(cygpath -m "${USERPROFILE:-$HOME}") ;;
+esac
+export RUSTUP_HOME="${RUSTUP_HOME:-$rust_base/.rustup}"
+export CARGO_HOME="${CARGO_HOME:-$rust_base/.cargo}"
 
 directory=$(mktemp -d "${TMPDIR:-${TMP:-/tmp}}/pig-validation.XXXXXXXX")
 trap 'rm -rf -- "$directory"' EXIT

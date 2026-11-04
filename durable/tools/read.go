@@ -16,7 +16,7 @@ import (
 
 // Ports packages/durable/src/tools/read.ts.
 
-const readParameters = `{"type":"object","required":["path"],"properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}}}`
+const readParameters = `{"type":"object","properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}},"required":["path"]}`
 
 // ReadToolInput is the arguments of the read tool. Offset and Limit are JSON
 // numbers, which need not be whole.
@@ -65,9 +65,29 @@ func CreateReadTool(options *ReadToolOptions) *durable.ToolRegistration {
 	}
 	description := fmt.Sprintf("Read the contents of a file. Supports text files and images (%s). Images are sent as attachments. For text files, output is truncated to %d lines or %dKB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.", formats, durable.DEFAULT_MAX_LINES, durable.DEFAULT_MAX_BYTES/1024)
 	return &durable.ToolRegistration{
-		ToolSchema: toolSchema("read", description, readParameters),
+		ToolSchema:             toolSchema("read", description, readParameters),
+		StructuredOutputSchema: readStructuredOutputSchema(),
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return executeRead(ctx, args, api, options.Images)
+		},
+	}
+}
+
+// readStructuredOutputSchema is what programs such as Code Mode scripts get from read: the text of a text file, or the
+// image block of an image, which Code Mode's image() shows (read.ts readStructuredOutputSchema).
+func readStructuredOutputSchema() map[string]any {
+	return map[string]any{
+		"anyOf": []any{
+			map[string]any{"type": "string"},
+			map[string]any{
+				"type":     "object",
+				"required": []any{"type", "data", "mimeType"},
+				"properties": map[string]any{
+					"type":     map[string]any{"const": "image"},
+					"data":     map[string]any{"type": "string"},
+					"mimeType": map[string]any{"type": "string"},
+				},
+			},
 		},
 	}
 }
@@ -321,7 +341,7 @@ func readText(ctx context.Context, reader env.BinaryReader, input ReadToolInput)
 		})
 	}
 
-	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Diagnostics: diagnostics}
+	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, StructuredOutput: outputText, HasStructuredOutput: true, Diagnostics: diagnostics}
 	if outputText != "" {
 		result.Output = []ai.ToolResultMessageContent{ai.TextContent{Text: outputText}}
 	}

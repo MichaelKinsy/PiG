@@ -3,7 +3,6 @@ package jsstring
 import (
 	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 // jsUpperSpecial holds every BMP character whose String.prototype.toUpperCase is longer than one UTF-16 unit (SpecialCasing.txt unconditional
@@ -118,20 +117,16 @@ func UpperRune(r rune) string {
 	if upper, ok := jsUpperSpecial[r]; ok {
 		return upper
 	}
-	return string(unicode.ToUpper(r))
+	return string(appendCodePoint(nil, unicode.ToUpper(r)))
 }
 
 // ToUpper is String.prototype.toUpperCase. Go's strings.ToUpper applies only the simple mapping, so it leaves ß as ß where JavaScript gives SS and
-// maps U+1F80 to U+1F88 where JavaScript gives U+1F08 U+0399. Unlike toLowerCase, toUpperCase has no context-dependent mapping.
+// maps U+1F80 to U+1F88 where JavaScript gives U+1F08 U+0399. Unlike toLowerCase, toUpperCase has no context-dependent mapping. A lone surrogate, kept as WTF-8, stays unchanged as in JavaScript.
 func ToUpper(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); {
-		r, size := utf8.DecodeRuneInString(s[i:])
-		if r == utf8.RuneError && size == 1 {
-			b.WriteString("\uFFFD")
-		} else {
-			b.WriteString(UpperRune(r))
-		}
+		r, size := DecodeRuneInString(s[i:])
+		b.WriteString(UpperRune(r))
 		i += size
 	}
 	return b.String()

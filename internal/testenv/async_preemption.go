@@ -36,6 +36,7 @@ func RerunWithoutAsyncPreemption(t *testing.T) bool {
 	for i, part := range parts {
 		parts[i] = "^" + regexp.QuoteMeta(part) + "$"
 	}
+	//nolint:gosec // G204 (class b): program is self from os.Executable; args are -test.run from t.Name() quoted with QuoteMeta plus fixed test flags.
 	command := exec.CommandContext(testbudget.DeadlineContext(t), self, "-test.run="+strings.Join(parts, "/"), "-test.count=1", "-test.v")
 	debug := "asyncpreemptoff=1"
 	if inherited := os.Getenv("GODEBUG"); inherited != "" {

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// pinnedPiPackages is where `npm ci` in extensions/sdk-ts installs the Pi
+// pinnedPiPackages is where `make parity-deps` installs the Pi
 // release named by coding.UpstreamVersion.
 var pinnedPiPackages = filepath.Join("..", "..", "..", "..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent")
 
@@ -22,7 +23,7 @@ func readPinned(t *testing.T, parts ...string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(append([]string{pinnedPiPackages}, parts...)...))
 	if err != nil {
-		t.Fatalf("read the pinned Pi package (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned Pi package (run make parity-deps): %v", err)
 	}
 	return data
 }
@@ -61,16 +62,14 @@ var vendoredImportRewrites = map[string][2]string{
 		`import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";`},
 	"pi-ai/utils/json-parse.js": {`import { parse as partialParse } from "partial-json";`,
 		`import { parse as partialParse } from "../../../partial-json/dist/index.js";`},
-	"pi-ai/providers/compat-schema.js": {`import { Type } from "typebox";`,
-		`import { Type } from "../../../typebox.mjs";`},
-	"pi-ai/providers/model-schema.js": {`import { Type } from "typebox";`,
-		`import { Type } from "../../../typebox.mjs";`},
-	"pi-ai/utils/typebox-helpers.js": {`import { Type } from "typebox";`,
-		`import { Type } from "../../../typebox.mjs";`},
+	"pi-ai/providers/schema-builders.js": {`import { obj, } from "@earendil-works/pi-schema";`,
+		`import { obj, } from "../../pi-schema/index.js";`},
+	"pi-ai/providers/compat-schema.js": {`import { arr, bool, nul, num, opt, str, union, } from "@earendil-works/pi-schema";`,
+		`import { arr, bool, nul, num, opt, str, union, } from "../../pi-schema/index.js";`},
+	"pi-ai/providers/model-schema.js": {`import { arr, int, nul, num, oneOf, opt, str, union, } from "@earendil-works/pi-schema";`,
+		`import { arr, int, nul, num, oneOf, opt, str, union, } from "../../pi-schema/index.js";`},
 	"pi-ai/telemetry.js": {`import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "@earendil-works/pi-telemetry";`,
 		`import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "../pi-telemetry/index.js";`},
-	"pi-ai/index.js": {`export { Type } from "typebox";`,
-		`export { Type } from "../../typebox.mjs";`},
 	"pi-coding-agent/utils/shell.js": {`import { getBinDir } from "../config.js";`,
 		`import { getBinDir } from "../../../pig-config.mjs";`},
 	"pi-coding-agent/utils/frontmatter.js": {`import { parse } from "yaml";`,
@@ -104,10 +103,10 @@ var vendoredBridgeStubs = func() map[string]string {
 	return stubs
 }()
 
-// validation.js rewrites two imports.
+// validation.js rewrites its two pi-schema imports.
 var vendoredValidationRewrites = [][2]string{
-	{`import { Compile } from "typebox/compile";`, `import { Compile } from "../../../typebox-compile.mjs";`},
-	{`import { Value } from "typebox/value";`, `import { Value } from "../../../typebox-value.mjs";`},
+	{`import { compile } from "@earendil-works/pi-schema";`, `import { compile } from "../../pi-schema/index.js";`},
+	{`import { formats } from "@earendil-works/pi-schema/formats";`, `import { formats } from "../../pi-schema/formats/index.js";`},
 }
 
 // pinnedPackageDist is where each vendored package's dist/ lives in the
@@ -121,6 +120,7 @@ var pinnedPackageDist = map[string][]string{
 	"pi-codemode":     {"node_modules", "@earendil-works", "pi-codemode", "dist"},
 	"pi-mcp":          {"node_modules", "@earendil-works", "pi-mcp", "dist"},
 	"pi-telemetry":    {"node_modules", "@earendil-works", "pi-telemetry", "dist"},
+	"pi-schema":       {"node_modules", "@earendil-works", "pi-schema", "dist"},
 }
 
 // closureVendoredPackages are copied as the module graph reachable from
@@ -167,7 +167,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			t.Fatal(err)
 		}
 		if manifest.Version != coding.UpstreamPackageVersion {
-			t.Fatalf("installed %s %s, pinned Pi %s: run npm ci in extensions/sdk-ts", pkg, manifest.Version, coding.UpstreamPackageVersion)
+			t.Fatalf("installed %s %s, pinned Pi %s: run make parity-deps", pkg, manifest.Version, coding.UpstreamPackageVersion)
 		}
 	}
 	shims := filepath.Join("runtime-node", "shims")
@@ -203,6 +203,9 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		if file, ok := strings.CutPrefix(rel, "pi-coding-agent/"); ok {
 			checkCodingAgentVendor(t, root, file, got)
 			continue
+		}
+		if _, ok := vendoredPackageRootEntries[rel]; ok || slices.Contains(vendoredPackageRoots, strings.TrimSuffix(rel, "/package.json")) {
+			continue // TestVendoredPiPackageRootsMatchThePinnedPackages checks these.
 		}
 		if stub, ok := vendoredBridgeStubs[rel]; ok {
 			// The pinned implementation imports a vendor SDK; PiG's host runs
@@ -318,7 +321,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		yamlFiles[filepath.ToSlash(filepath.Join("dist", rel))] = path
 		return err
 	}); err != nil {
-		t.Fatalf("read the pinned yaml build (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned yaml build (run make parity-deps): %v", err)
 	}
 	hljs := filepath.Join(nodeModules, "highlight.js")
 	hljsFiles := map[string]string{
@@ -334,7 +337,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		hljsFiles[filepath.ToSlash(filepath.Join("lib", rel))] = path
 		return err
 	}); err != nil {
-		t.Fatalf("read the pinned highlight.js (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned highlight.js (run make parity-deps): %v", err)
 	}
 	jiti := filepath.Join(nodeModules, "jiti")
 	jitiFiles := map[string]string{
@@ -351,7 +354,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			jitiFiles[filepath.ToSlash(rel)] = path
 			return err
 		}); err != nil {
-			t.Fatalf("read the pinned jiti (run npm ci in extensions/sdk-ts): %v", err)
+			t.Fatalf("read the pinned jiti (run make parity-deps): %v", err)
 		}
 	}
 	jsdiff := filepath.Join(nodeModules, "diff")
@@ -368,7 +371,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		diffFiles[filepath.ToSlash(filepath.Join("libesm", rel))] = path
 		return err
 	}); err != nil {
-		t.Fatalf("read the pinned diff (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("read the pinned diff (run make parity-deps): %v", err)
 	}
 	ignore := filepath.Join(nodeModules, "ignore")
 	marked := filepath.Join(nodeModules, "marked")
@@ -417,7 +420,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		for rel, path := range files {
 			want, err := os.ReadFile(path)
 			if err != nil {
-				t.Fatalf("read the pinned %s (run npm ci in extensions/sdk-ts): %v", dir, err)
+				t.Fatalf("read the pinned %s (run make parity-deps): %v", dir, err)
 			}
 			got, err := os.ReadFile(filepath.Join(shims, dir, filepath.FromSlash(rel)))
 			if err != nil || !bytes.Equal(got, want) {
@@ -619,7 +622,7 @@ async function scene(m) {
   return JSON.stringify(out);
 }
 const want = await scene(pi), got = await scene(pig);
-if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process.exit(1); }
+if (want !== got) { await new Promise((done) => process.stdout.write("pinned: " + want + "\npig:    " + got + "\n", done)); process.exit(1); }
 `)
 }
 
@@ -680,7 +683,7 @@ async function scene(m) {
   return JSON.stringify(out);
 }
 const want = await scene(pi), got = await scene(pig);
-if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process.exit(1); }
+if (want !== got) { await new Promise((done) => process.stdout.write("pinned: " + want + "\npig:    " + got + "\n", done)); process.exit(1); }
 `)
 }
 

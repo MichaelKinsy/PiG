@@ -57,7 +57,9 @@ build_go_fixture "$CONFORMANCE_SDK_FIXTURE_BIN" \
   CGO_ENABLED=0 \
   "$ROOT_GOWORK" "$ROOT_GOFLAGS"
 
-# Rust fixture: cargo handles its own incremental cache via target-dir.
+# Rust fixture: cargo handles its own incremental cache via target-dir. The exported CARGO_TARGET_DIR is the warm start of every packed-cell build in the run
+# (the cells link the pig_sdk and serde units this build compiles), and a unit is reused only when its dependencies resolved to the same versions, so the
+# fixture's Cargo.lock must stay the SDK's plus the fixture (test/ci-images: TestRustFixtureLockResolvesWhatTheSDKLockResolves).
 RUST_EXPORT=""
 RUST_TARGET_EXPORT=""
 RUST_REPORT=""

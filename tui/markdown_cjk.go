@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/components/markdown.ts (marked-cjk-friendly 0.1.2 emphasis class)
+
 import "sort"
 
 // markedCJKRanges is the character class marked-cjk-friendly 0.1.2 calls CJK (src/index.ts), sorted: the code points its

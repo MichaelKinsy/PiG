@@ -205,7 +205,13 @@ type loadedDoc struct {
 	valueVersion    int
 	deltasSinceBase int
 	tracker         *delta.Tracker
+	// epoch names the incarnation to a host (DocRevision); history is the changes adopted to it that a host can catch up with.
+	epoch   uint64
+	history docHistory
 	// unpublished is true from a load inside a line job until the job publishes: Pi sets its document cache only when the
 	// load resumes inside the job, so a caller that asks meanwhile (session.ts snapshot) still queues its own line job.
 	unpublished bool
+	// held is the changes deferred commits hold in memory for this incarnation (held.go), valid while isHeld.
+	held   heldDocument
+	isHeld bool
 }

@@ -1,42 +1,25 @@
 package extensionconformance
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
-// TestConformance_PackedRefinedToolArgumentsAcrossSDKs: two extensions of one language share one packed cell, each registering the tool "refine-packed" with a refined property. The
-// host asks each extension (not its neighbor) for the predicate calls of its own tool, and the answer and the order of the calls are Pi's (the "packed:" cases of
-// test/parity/sdk-vectors/pi-ai/validateToolArguments.json).
+// TestConformance_PackedRefinedToolArgumentsAcrossSDKs: two extensions of one language share one packed cell, each registering the tool "refine-packed" with a refined property.
+// The argument a refinement would reject validates unchanged and neither extension is asked to run a predicate (its call log stays empty).
 func TestConformance_PackedRefinedToolArgumentsAcrossSDKs(t *testing.T) {
 	root := findModuleRoot(t)
-	raw, err := os.ReadFile(filepath.Join("..", "parity", "sdk-vectors", "pi-ai", "validateToolArguments.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var file struct{ Cases []refineVectorCase }
-	if err := json.Unmarshal(raw, &file); err != nil {
-		t.Fatal(err)
-	}
-	var cases []refineVectorCase
-	for _, c := range file.Cases {
-		if strings.HasPrefix(c.Name, "packed: ") {
-			cases = append(cases, c)
-		}
-	}
-	if len(cases) == 0 {
-		t.Fatal("no packed cases in validateToolArguments.json")
-	}
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		t.Run(language, func(t *testing.T) {
 			t.Parallel()
 			h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
@@ -53,65 +36,49 @@ func TestConformance_PackedRefinedToolArgumentsAcrossSDKs(t *testing.T) {
 			}
 			for _, ext := range loaded {
 				tool, ok := ext.Tools["refine-packed"]
-				if !ok || len(tool.Definition.RefinementSites) == 0 || tool.Definition.RefineArguments == nil {
-					t.Fatalf("%s: the host does not know the refinements of refine-packed", ext.Name)
+				if !ok {
+					t.Fatalf("%s: refine-packed is not registered", ext.Name)
 				}
-				schema := tool.Definition.ValidationParameters
-				if len(schema) == 0 {
-					schema = tool.Definition.Parameters
+				assertNoRefinementProtocol(t, tool.Definition)
+				// The call goes through the host as the agent loop issues it (validation, hooks, execution of the tool), so a host that ran a refinement or failed the call fails here.
+				tools, errs := coding.BridgeNewRunnerTools([]extension.RegisteredTool{tool})
+				if len(errs) != 0 {
+					t.Fatal(errs)
 				}
-				readLog := func() []string {
-					if err := ext.Commands["refine_log"].Handler(t.Context(), ""); err != nil {
-						t.Fatal(err)
-					}
-					select {
-					case message := <-messages:
-						rest, _ := strings.CutPrefix(message, ext.Name+":")
-						var calls []string
-						if err := json.Unmarshal([]byte(rest), &calls); err != nil {
-							t.Fatalf("log %q: %v", message, err)
-						}
-						if calls == nil {
-							calls = []string{}
-						}
-						return calls
-					case <-time.After(30 * time.Second):
-						t.Fatal("refine_log: no report")
-					}
-					return nil
+				provider := ai.NewFauxProvider(ai.FauxConfig{})
+				provider.SetResponses([]ai.FauxResponseStep{
+					ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("refine-packed", map[string]any{"a": "x"}, &ai.FauxToolCallOptions{ID: "refine-packed-0"})}, StopReason: "toolUse"}),
+					ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+				})
+				a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
+				sent, err := a.Send(t.Context(), "call the tool")
+				if err != nil {
+					t.Fatal(err)
 				}
-				readLog()
-				for _, c := range cases {
-					var toolCall struct {
-						Arguments json.RawMessage `json:"arguments"`
+				answered := false
+				for _, message := range sent {
+					if message.ToolResult == nil {
+						continue
 					}
-					if err := json.Unmarshal(c.Args[1], &toolCall); err != nil {
-						t.Fatal(err)
+					answered = true
+					if message.ToolResult.IsError || message.ToolResult.Text() != "ok" {
+						t.Errorf("%s: the tool answered %q (error=%v), want \"ok\": Pi accepts the arguments, it does not run refinements", ext.Name, message.ToolResult.Text(), message.ToolResult.IsError)
 					}
-					validated, err := ai.ValidateToolArgumentsRefined(t.Context(), "t", schema, toolCall.Arguments, toolRefiner{tool.Definition})
-					calls := readLog()
-					want := c.Result.Calls
-					if want == nil {
-						want = []string{}
+				}
+				if !answered {
+					t.Errorf("%s: the tool call produced no result", ext.Name)
+				}
+				if err := ext.Commands["refine_log"].Handler(t.Context(), ""); err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case message := <-messages:
+					rest, _ := strings.CutPrefix(message, ext.Name+":")
+					if rest != "[]" {
+						t.Errorf("%s ran refinements: %q", ext.Name, rest)
 					}
-					switch {
-					case c.Result.Error != nil:
-						if err == nil || err.Error() != *c.Result.Error {
-							t.Errorf("%s %s: error %v\n want %q", ext.Name, c.Name, err, *c.Result.Error)
-						}
-					case err != nil:
-						t.Errorf("%s %s: error %v, Pi accepts", ext.Name, c.Name, err)
-					default:
-						var got, wantArgs any
-						_ = json.Unmarshal(validated, &got)
-						_ = json.Unmarshal(c.Result.Args, &wantArgs)
-						if !reflect.DeepEqual(got, wantArgs) {
-							t.Errorf("%s %s: arguments %s, Pi %s", ext.Name, c.Name, validated, c.Result.Args)
-						}
-					}
-					if !reflect.DeepEqual(calls, want) {
-						t.Errorf("%s %s: calls %v\n  Pi %v", ext.Name, c.Name, calls, want)
-					}
+				case <-time.After(30 * time.Second):
+					t.Fatal("refine_log: no report")
 				}
 			}
 		})
@@ -158,6 +125,23 @@ def new_extension():
  e.command("refine_log", "", report)
  return e
 `, name)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defun new-extension ()
+  (let ((e (pig:make-extension %q)) (log '()))
+    (pig:tool e "refine-packed" ""
+              (pig:type-object (pig:obj "a" (pig:type-refine (pig:type-string)
+                                                             (lambda (v) (push "check:p" log) (and (stringp v) (>= (length v) 3)))
+                                                             (lambda (v) (declare (ignore v)) (push "error:pm" log) "a is too short"))))
+              (lambda (ctx args) (declare (ignore ctx args)) (pig:tool-result "ok")))
+    (pig:command e "refine_log" "" (lambda (ctx args) (declare (ignore args))
+                                      (let ((calls (coerce (reverse log) 'simple-vector)))
+                                        (setf log '())
+                                        (pig:ctx-notify ctx (format nil "~A:~A" %q (pig:to-json calls)) "info"))))
+    e))
+`, name, name, name, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(`use pig_sdk::{Extension,Schema,ToolResult,CommandResult,Type};

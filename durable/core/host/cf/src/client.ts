@@ -1,8 +1,9 @@
 // The request side of the host: `api` requests (ABI section 8.1) and the extension transaction channel (section 8) as
 // promises. Answers arrive as notices after the step that carried the request; every pending request fails when the handle
 // is discarded.
+import type { Context } from "@earendil-works/chord/context"
 import { EVENT, NOTICE } from "./abi.ts"
-import { reviveError, SessionFailed } from "./errors.ts"
+import { reviveError, SessionFailed, type StorageFailure } from "./errors.ts"
 import { FatalError, RecycledError, RecycledUncertainError, RejectedError, type HostSession } from "./host.ts"
 import type { ApiAnswer, TxAnswer } from "./protocol.ts"
 import type { Notice, Step } from "./wire.ts"
@@ -14,7 +15,9 @@ import type { Notice, Step } from "./wire.ts"
  * sent again: the invocation ended with its handle.
  */
 type Sent = { kind: number; bytes: Uint8Array; idempotent: boolean; bound: boolean }
-type Pending = { resolve: (value: any) => void; reject: (error: Error) => void; sent?: Sent; waits?: boolean }
+type Pending = { resolve: (value: any) => void; reject: (error: Error) => void; sent?: Sent; waits?: boolean; signal?: AbortSignal }
+/** The message of the core's rejection of a request whose invocation signal aborted (session ErrAborted). */
+const ABORTED = "The operation was aborted"
 const dec = new TextDecoder()
 
 const split = (n: Notice): [number, unknown] => {
@@ -23,15 +26,15 @@ const split = (n: Notice): [number, unknown] => {
 }
 
 /** A step that came back rejected becomes the error Pi throws. */
-const rejection = (step: Step | undefined, failure?: Error): Error | undefined =>
-  step && step.status === 1 ? reviveError({ name: step.error?.name, message: step.error?.message ?? step.error?.raw }, failure) : undefined
+const rejection = (step: Step | undefined, failure?: StorageFailure): { error: Error } | undefined =>
+  step && step.status === 1 ? { error: reviveError({ name: step.error?.name, message: step.error?.message ?? step.error?.raw }, failure) } : undefined
 
 /** An answer to a rejected `api` request: the extra arguments to repeat it with, or undefined to reject. */
 export type ApiRetry = (error: Error) => Record<string, unknown> | undefined
 
 export class CoreClient {
   /** The Storage error that failed the Session, as the object the host's Storage threw (errors.ts reviveError). */
-  storageFailure?: Error
+  storageFailure?: StorageFailure
   host: HostSession
   private nextRequest = 1
   private nextTx = 1
@@ -42,12 +45,14 @@ export class CoreClient {
   /** HarnessOptions.conversationCreated: run by the transaction that created or forked a conversation, last in the creation hook (harness.ts conversationCreated). */
   onConversationCreated?: (tx: unknown, record: unknown) => unknown
   /** The sizes of a session-mode core's document cache, as its last doc_cache notice said (session.ts documentCacheSizes is synchronous). */
-  docCache: { readonly cached: number; readonly idle: number; readonly attached: number; readonly sweeps: number } = { cached: 0, idle: 0, attached: 0, sweeps: 0 }
+  docCache: { readonly cached: number; readonly idle: number; readonly attached: number; readonly sweeps: number; readonly held: number; readonly taskDocuments: number; readonly tails: number } = { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0, taskDocuments: 0, tails: 0 }
+  /** Told which documents the core's cache dropped, with the record IDs: the host forgets the values it holds of them (facade/harness.ts documentValues). */
+  onDropped: ((documents: { id: number; address: string }[]) => void) | undefined
   /** The last wake the core published, and the host's callback for each (HarnessOptions.onWake); the core arms no timer for sleeping tasks when the host takes it. */
   wake: { active: boolean; at?: number } | undefined
   onWake: ((wake: { active: boolean; at?: number }) => void) | undefined
   /** The sizes of the scheduler's ownership indexes, as the core's last index_sizes notice said (scheduler.ts indexSizes is synchronous). */
-  indexSizes: Readonly<Record<"live" | "settled" | "edges" | "below" | "roots" | "unloaded" | "dropQueue", number>> = { live: 0, settled: 0, edges: 0, below: 0, roots: 0, unloaded: 0, dropQueue: 0 }
+  indexSizes: Readonly<Record<"live" | "settled" | "edges" | "below" | "roots" | "unloaded" | "dropQueue" | "pins", number>> = { live: 0, settled: 0, edges: 0, below: 0, roots: 0, unloaded: 0, dropQueue: 0, pins: 0 }
   private off: () => void
 
   constructor(host: HostSession) {
@@ -91,8 +96,10 @@ export class CoreClient {
       }
       this.host.replay(sent.kind, sent.bytes, step => {
         const rejected = rejection(step, this.storageFailure)
-        if (rejected && this.requests.get(id) === p) { this.requests.delete(id); p.reject(rejected) }
+        if (rejected && this.requests.get(id) === p) { this.requests.delete(id); p.reject(rejected.error) }
       })
+      // The new core knows nothing of a context that aborted while the old one had the request.
+      if (p.signal?.aborted && !sent.bound) this.cancel(id)
     }
   }
 
@@ -114,7 +121,10 @@ export class CoreClient {
         return
       }
       case NOTICE.doc_cache: {
-        this.docCache = JSON.parse(dec.decode(n.payload))
+        const body = JSON.parse(dec.decode(n.payload)) as typeof this.docCache & { dropped?: { id: number; address: string }[] }
+        // Documents the core's cache dropped (core/sweep.go): the values this host holds of them go too.
+        if (body.dropped !== undefined) { this.onDropped?.(body.dropped); delete body.dropped }
+        this.docCache = body
         return
       }
       case NOTICE.index_sizes: {
@@ -155,9 +165,30 @@ export class CoreClient {
     return { waitId, settled: new Promise((resolve, reject) => this.ackWaiters.set(waitId, { resolve, reject })) }
   }
 
-  /** session.ts fail: the waits underway (waitForIdle, waitForTask, ...) reject with the Session's failure before anything the failure ends can cancel them. */
-  failWaits(error: Error): void {
-    for (const [id, request] of [...this.requests]) if (request.waits) { this.requests.delete(id); request.reject(error) }
+  /** session.ts fail: the waits underway (waitForIdle, waitForTask, ...) reject with the Session's failure before anything the failure ends can cancel them, but for the `answered` ones. */
+  failWaits(error: Error, answered: readonly number[] = []): void {
+    // A wait the core already answered, whose answer is on its way (the continuation of Pi's resolved promise), stays resolved.
+    for (const [id, request] of [...this.requests]) if (request.waits && !answered.includes(id)) { this.requests.delete(id); request.reject(error) }
+  }
+
+  /**
+   * awaitWithContext for a wait (waitForIdle, waitForTask): the caller's context cancels it, until the Session fails. The Session's failure rejects the wait
+   * itself (failWaits; Pi's Waiters reject at the failure and no longer listen to the signal), so the abort of the signal the failure then ends the task
+   * with, which arrives before the rejection reaches this wrapper, does not turn it into an AbortError.
+   */
+  awaitWait<T>(promise: Promise<T>, context: Context): Promise<T> {
+    const signal = context.abortSignal
+    if (signal === undefined) return promise
+    const aborted = (): Error => signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted", "AbortError")
+    if (signal.aborted) return Promise.reject(aborted())
+    return new Promise<T>((resolve, reject) => {
+      const onAbort = (): void => { if (this.storageFailure === undefined) reject(aborted()) }
+      signal.addEventListener("abort", onAbort, { once: true })
+      void promise.then(
+        value => { signal.removeEventListener("abort", onAbort); resolve(value) },
+        (error: unknown) => { signal.removeEventListener("abort", onAbort); reject(error) },
+      )
+    })
   }
 
   /** One `api` request. Rejects with Pi's error when the core answers `{error}` or rejects the event, and with the discard error when the handle dies first. */
@@ -167,12 +198,12 @@ export class CoreClient {
   apiNow<T = unknown>(op: string, args: Record<string, unknown> = {}, revive?: (value: T) => T, retry?: ApiRetry): { promise: Promise<T>; settled: boolean } {
     let settled = false
     const answer = new Promise<T>((resolve, reject) => {
-      // session.ts assertUsable: a failed Session answers every call with SessionFailed.
-      if (this.storageFailure !== undefined) { settled = true; return reject(new SessionFailed(this.storageFailure)) }
+      // session.ts assertUsable: a failed Session answers every call with SessionFailed. The writer's own protocol (a Storage's receipt, its publication scope's publish) still reaches the core: the call it serves is underway.
+      if (this.storageFailure !== undefined && op !== "publish" && op !== "receive") { settled = true; return reject(new SessionFailed(this.storageFailure.error)) }
       const id = this.nextRequest++
       const bytes = apiBytes(id, { op, ...args })
       // Every api op the host sends is a read, a wait, or a registration the new core takes again; the storage-mode writes run on hosts without a renewal.
-      this.requests.set(id, { waits: op.startsWith("waitFor"), sent: { kind: EVENT.api, bytes, idempotent: !op.startsWith("storage."), bound: args.invocation !== undefined }, resolve: value => { settled = true; resolve(revive ? revive(value as T) : value as T) }, reject: error => {
+      this.requests.set(id, { waits: op.startsWith("waitFor"), sent: { kind: EVENT.api, bytes, idempotent: !op.startsWith("storage.") && op !== "adopt", bound: args.invocation !== undefined }, resolve: value => { settled = true; resolve(revive ? revive(value as T) : value as T) }, reject: error => {
         // A rejection the caller answers by repeating the request (a read that needs the definition's migration) is settled by the repeat's answer, so a success spends no pass of its own.
         let again: Record<string, unknown> | undefined
         try { again = retry?.(error) } catch (e) { settled = true; return reject(e as Error) }
@@ -182,7 +213,7 @@ export class CoreClient {
       let step: Step | undefined
       try { step = this.host.send(EVENT.api, bytes, id) } catch (e) { this.requests.delete(id); settled = true; return reject(e as Error) }
       const rejected = rejection(step, this.storageFailure)
-      if (rejected) { this.requests.delete(id); settled = true; reject(rejected) }
+      if (rejected) { this.requests.delete(id); settled = true; reject(rejected.error) }
     })
     // A caller that stopped waiting (awaitWithContext settled on its context's abort) leaves this answer unobserved; its
     // later rejection (the core rejects an aborted invocation's wait) is not an unhandled rejection. Awaiters still see it.
@@ -200,41 +231,93 @@ export class CoreClient {
       let step: Step | undefined
       try { step = this.host.send(EVENT.inspect, bytes, id) } catch (e) { this.requests.delete(id); return reject(e as Error) }
       const rejected = rejection(step, this.storageFailure)
-      if (rejected) { this.requests.delete(id); reject(rejected) }
+      if (rejected) { this.requests.delete(id); reject(rejected.error) }
     })
   }
 
-  /** A `submit` event (ABI section 5, kind 3): resolves with the admitted submission's ID once the core has committed it, after the commit's `published` notice. `id` is the api_result key the core answers on. */
-  submit<T = { id: number }>(body: Record<string, unknown>, revive?: (placed: { id: number }) => T): Promise<T> {
+  /** An `inspect` the core answers in the step that carries it (`lineSizes`, `idleState`): the answer, read synchronously, for the getters Pi's tests read without awaiting. */
+  inspectNow<T = unknown>(query: Record<string, unknown>): T {
+    const answer: { done: boolean; value?: T; error?: Error } = { done: false }
+    const id = this.nextRequest++
+    this.requests.set(id, { resolve: value => { answer.done = true; answer.value = value as T }, reject: error => { answer.done = true; answer.error = error } })
+    let step: Step | undefined
+    try { step = this.host.send(EVENT.inspect, jsonBytes({ ...query, requestId: id }), id) } finally { this.requests.delete(id) }
+    const rejected = rejection(step, this.storageFailure)
+    if (rejected) throw rejected.error
+    if (answer.error !== undefined) throw answer.error
+    if (!answer.done) throw new Error(`the core did not answer the ${String(query.query)} query in its step`)
+    return answer.value as T
+  }
+
+  /**
+   * The abort of a request's context, as Pi runs it: the request's line job checks the context once, when it starts (session.ts
+   * #runCommit throwIfAborted), and a job that started ignores a later abort. A request of an invocation-bound handle carries
+   * `invocation`, and the core checks that invocation's signal; any other request with a `signal` is `cancellable`, and the
+   * core aborts the request's own signal on `cancel {request}`, which is sent here when `signal` aborts. A rejection by that
+   * check carries the signal's reason, as Pi's throw does.
+   */
+  private cancellable(id: number, body: Record<string, unknown>, signal: AbortSignal | undefined) {
+    const watch = signal !== undefined && body.invocation === undefined
+    let off: (() => void) | undefined
+    return {
+      fields: watch ? { cancellable: true } : {},
+      /** After the event was sent: the cancel of a context that aborted already, or that aborts while the request is unanswered. */
+      start: (pending: Pending) => {
+        pending.signal = signal
+        if (!watch) return
+        if (signal.aborted) return this.cancel(id)
+        const cancel = () => this.cancel(id)
+        signal.addEventListener("abort", cancel, { once: true })
+        off = () => signal.removeEventListener("abort", cancel)
+      },
+      /** The request was answered: the signal is not watched any more. */
+      done: () => off?.(),
+      reason: (error: Error): Error => signal?.aborted === true && (error.name === "AbortError" || error.message === ABORTED) ? signal.reason : error,
+    }
+  }
+
+  /** `cancel {request}` of the request `id`, when it is still unanswered. */
+  private cancel(id: number) {
+    if (this.requests.has(id)) void this.api("cancel", { request: id })
+  }
+
+  /** A `submit` event (ABI section 5, kind 3): resolves with the admitted submission's ID once the core has committed it, after the commit's `published` notice. `id` is the api_result key the core answers on; `signal` is the caller's context signal (`cancellable`). */
+  submit<T = { id: number }>(body: Record<string, unknown>, revive?: (placed: { id: number }) => T, signal?: AbortSignal): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const id = this.nextRequest++
-      const bytes = jsonBytes({ ...body, id })
+      const cancelled = this.cancellable(id, body, signal)
+      const bytes = jsonBytes({ ...body, ...cancelled.fields, id })
       // A request ID makes a second admission return the first (inbox.Admit); without one a second admission is a second submission.
       // `revive` runs as the answer routes, so the caller's promise resolves at the tick Pi's awaiting method resumes.
-      this.requests.set(id, { sent: { kind: EVENT.submit, bytes, idempotent: typeof body.requestId === "string", bound: body.invocation !== undefined }, resolve: value => resolve(revive ? revive(value as { id: number }) : value as T), reject })
+      const pending: Pending = { sent: { kind: EVENT.submit, bytes, idempotent: typeof body.requestId === "string", bound: body.invocation !== undefined }, resolve: value => { cancelled.done(); resolve(revive ? revive(value as { id: number }) : value as T) }, reject: error => { cancelled.done(); reject(cancelled.reason(error)) } }
+      this.requests.set(id, pending)
       let step: Step | undefined
       try { step = this.host.send(EVENT.submit, bytes, id) } catch (e) { this.requests.delete(id); return reject(e as Error) }
       const rejected = rejection(step, this.storageFailure)
-      if (rejected) { this.requests.delete(id); reject(rejected) }
+      if (rejected) { this.requests.delete(id); return reject(rejected.error) }
+      cancelled.start(pending)
     })
   }
 
-  /** An `abort` event that expects an answer (`abortSubmission`, `abortTask`): the core echoes `requestId` in an api_result notice. */
-  abort<T = unknown>(body: Record<string, unknown>, revive?: (answer: T) => T): Promise<T> {
+  /** An `abort` event that expects an answer (`abortSubmission`, `abortTask`): the core echoes `requestId` in an api_result notice. `signal` is the caller's context signal (`cancellable`). */
+  abort<T = unknown>(body: Record<string, unknown>, revive?: (answer: T) => T, signal?: AbortSignal): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const id = this.nextRequest++
-      const bytes = jsonBytes({ ...body, requestId: id })
+      const cancelled = this.cancellable(id, body, signal)
+      const bytes = jsonBytes({ ...body, ...cancelled.fields, requestId: id })
       // Aborting a task or a conversation again is harmless; withdrawing a submission again answers `settled` where the first answered `aborted`.
-      this.requests.set(id, { sent: { kind: EVENT.abort, bytes, idempotent: body.submissionId === undefined, bound: body.invocation !== undefined }, resolve: value => resolve(revive ? revive(value as T) : value as T), reject })
+      const pending: Pending = { sent: { kind: EVENT.abort, bytes, idempotent: body.submissionId === undefined, bound: body.invocation !== undefined }, resolve: value => { cancelled.done(); resolve(revive ? revive(value as T) : value as T) }, reject: error => { cancelled.done(); reject(cancelled.reason(error)) } }
+      this.requests.set(id, pending)
       let step: Step | undefined
       try { step = this.host.send(EVENT.abort, bytes, id) } catch (e) { this.requests.delete(id); return reject(e as Error) }
       const rejected = rejection(step, this.storageFailure)
-      if (rejected) { this.requests.delete(id); reject(rejected) }
+      if (rejected) { this.requests.delete(id); return reject(rejected.error) }
+      cancelled.start(pending)
     })
   }
 
   /** Open a transaction on the Session line. Resolves at `ready`; `waiting` only means the line is held and `ready` follows. */
-  begin(options: { invocation?: number; conversationId?: number } = {}): Promise<TxChannel> {
+  begin(options: { invocation?: number; conversationId?: number; span?: number; trace?: unknown; persistence?: { kind: "deferred"; withinMs?: number } } = {}): Promise<TxChannel> {
     const id = this.nextTx++
     const channel = new TxChannel(this, id)
     this.txs.set(id, channel)
@@ -276,7 +359,7 @@ export class CoreClient {
   /** Fail everything in flight: the handle was discarded. The request `keep` waits for its event to be fed again to a new session. */
   failAll(discarded: Error, keep?: number) {
     // Once the Session failed, what was in flight ends with SessionFailed, as the core would answer it (harness util closedError).
-    const error = this.storageFailure !== undefined ? new SessionFailed(this.storageFailure) : discarded
+    const error = this.storageFailure !== undefined ? new SessionFailed(this.storageFailure.error) : discarded
     for (const [id, p] of this.requests) if (id !== keep) { this.requests.delete(id); p.reject(error) }
     for (const c of this.txs.values()) c.fail(error)
     this.txs.clear()
@@ -306,11 +389,11 @@ export class TxChannel {
   private waiting?: Pending
   private ready?: Pending
   private chain: Promise<unknown> = Promise.resolve()
+  /** Operations queued on the chain that have not been sent yet. */
+  private pendingOps = 0
   private done = false
   /** True while the line is held by someone else: `begin` answered `waiting`. */
   queued = false
-  /** The core answered `end` with `gated`: the commit waits for the host's Storage. */
-  private gated = false
   /** The task record a transaction begun for an invocation read when it took the line (`ready.current`). */
   current: unknown
   /** Microtask passes since the line was granted (`ready`), counted by one self-requeuing microtask until `end`: the core holds the commit for Pi's job duration minus the passes the host's callback already spent. */
@@ -319,13 +402,14 @@ export class TxChannel {
 
   constructor(client: CoreClient, id: number) { this.client = client; this.id = id }
 
+  /** The core client this transaction runs on: the Session that owns it. */
+  get owner(): CoreClient { return this.client }
+
   /** Run the host's conversationCreated callback for a record this transaction created. */
   async created(tx: unknown, record: unknown): Promise<void> { await this.client.onConversationCreated?.(tx, record) }
 
   answer(body: TxAnswer) {
     if ("waiting" in body) { this.queued = true; return }
-    // The host's Storage holds this transaction's commit (PROTOCOL.md, "Storage gate"): the end is answered as a result or a rejection once the Storage settles it.
-    if ("gated" in body) { this.gated = true; return }
     if ("ready" in body) { this.queued = false; this.current = body.current; this.startCount(); const r = this.ready; this.ready = undefined; r?.resolve(this); return }
     // A begin the core refuses (the invocation's task is terminal, the Harness is closing) is answered as a rejection while the host waits for `ready`.
     const w = this.waiting ?? ("rejected" in body ? this.ready : undefined)
@@ -370,12 +454,14 @@ export class TxChannel {
   replayBegin() {
     this.client.host.replay(EVENT.tx, this.beginBytes, step => {
       const rejected = rejection(step, this.client.storageFailure)
-      if (rejected) { const r = this.ready; this.ready = undefined; r?.reject(rejected) }
+      if (rejected) { const r = this.ready; this.ready = undefined; r?.reject(rejected.error) }
     })
   }
 
-  private send(op: Record<string, unknown>, expect: "ready" | "result"): Promise<unknown> {
-    return new Promise((resolve, reject) => {
+  /** `settle` replaces the promise's own resolution: the answer settles the caller's promise directly, with no reaction in between (`end`). */
+  private send(op: Record<string, unknown>, expect: "ready" | "result", settle?: { resolve: (value: unknown) => void; reject: (error: Error) => void }): Promise<unknown> {
+    return new Promise((resolveOwn, rejectOwn) => {
+      const resolve = settle?.resolve ?? resolveOwn, reject = settle?.reject ?? rejectOwn
       if (this.failure) return reject(this.failure)
       if (expect === "ready") this.ready = { resolve, reject }
       else this.waiting = { resolve, reject }
@@ -384,17 +470,19 @@ export class TxChannel {
       let step: Step | undefined
       try { step = this.client.host.send(EVENT.tx, bytes, this.beginBytes === bytes ? true : undefined) } catch (e) { this.ready = this.waiting = undefined; return reject(e as Error) }
       const rejected = rejection(step, this.client.storageFailure)
-      if (rejected) { this.ready = this.waiting = undefined; reject(rejected) }
+      if (rejected) { this.ready = this.waiting = undefined; reject(rejected.error) }
     })
   }
 
-  begin(options: { invocation?: number; conversationId?: number }) {
+  begin(options: { invocation?: number; conversationId?: number; span?: number; trace?: unknown; persistence?: { kind: "deferred"; withinMs?: number } }) {
     return this.send({ op: "begin", ...options }, "ready")
   }
 
   /** One `Tx` operation (`conversation`, `doc`, `appendEntry`, `createTask`, ...). */
   op<T = unknown>(op: string, args: Record<string, unknown> = {}): Promise<T> {
+    this.pendingOps++
     const run = this.chain.then(() => {
+      this.pendingOps--
       if (this.done) throw new Error("the transaction has ended")
       return this.send({ op, ...args }, "result")
     })
@@ -402,31 +490,56 @@ export class TxChannel {
     return run as Promise<T>
   }
 
+  /**
+   * session.ts touch from this transaction's line job: the wait for `key`'s unpublished writer, or `undefined` when there is none (the core
+   * answered in the step that carried the op). A touch behind queued operations waits its turn on the chain.
+   */
+  touch(key: string): Promise<void> | undefined {
+    if (this.pendingOps > 0 || this.waiting !== undefined) return this.op("touch", { key }).then(() => undefined)
+    if (this.done) return Promise.reject(new Error("the transaction has ended"))
+    if (this.failure) return Promise.reject(this.failure)
+    let answered = false
+    const { promise, resolve, reject } = Promise.withResolvers<void>()
+    this.waiting = { resolve: () => { answered = true; resolve() }, reject }
+    let step: Step | undefined
+    try { step = this.client.host.send(EVENT.tx, apiBytes(this.id, { op: "touch", key })) } catch (e) { this.waiting = undefined; reject(e as Error); return promise }
+    const rejected = rejection(step, this.client.storageFailure)
+    if (rejected) { this.waiting = undefined; reject(rejected.error) }
+    return answered ? undefined : promise
+  }
+
   /** Wait for the operations queued so far: `end` is sent only after them. */
   quiesce(): Promise<unknown> { return this.chain }
 
   /**
-   * Commit: the callback's returned next task state goes with `end`. The core answers with `tx_result {result: null}` when the commit's line
-   * job completes, after the hops chain of its duration, and this promise settles on that ack with `value`: a caller's `api.commit` then resumes
-   * as it does in Pi after the job. It is not async: the one reaction on the ack is the only host hop before the caller's promise adopts it.
-   * A rejected `end` rejects at once; `onError` runs in that reaction and may replace the error.
+   * Commit: the callback's returned next task state goes with `end`. The core answers with `tx_result {result: null}` (or `{rejected}`) when the
+   * commit's job outcome is delivered, 2 passes before Pi's caller resumes (PROTOCOL.md, `end`): this promise is settled by the answer itself with
+   * `value`, and the one pass `runCommit`'s return adopting it takes and the caller's are the 2. It is not async; `onError` runs as the answer
+   * (or a rejection of `end`) arrives.
    */
   end<T>(state: unknown, value: T, onError?: (error: unknown) => void): Promise<T> {
     this.done = true
     this.endMark = this.client.host.counters.commits
     this.counting = false
-    return this.send({ op: "end", elapsed: this.elapsed, ...(state === undefined ? {} : { state }) }, "result").then(
-      () => { this.client.release(this.id); return value },
-      error => { this.client.release(this.id); onError?.(error); throw error },
-    )
+    return new Promise<T>((resolve, reject) => {
+      void this.send({ op: "end", elapsed: this.elapsed, ...(state === undefined ? {} : { state }) }, "result", {
+        resolve: () => { this.client.release(this.id); resolve(value) },
+        reject: error => { this.client.release(this.id); try { onError?.(error) } finally { reject(error) } },
+      })
+    })
   }
 
-  /** Roll back: the callback threw `error`. */
+  /** Roll back: the callback threw `error`. Settles with the job's outcome, which the core delivers in line order (session.ts #enqueue fences). */
   async abort(error: unknown): Promise<void> {
     await this.chain
     this.done = true
+    this.counting = false
     const body = { name: (error as Error)?.name ?? "Error", message: (error as Error)?.message ?? String(error) }
-    try { if (!this.failure) this.client.host.send(EVENT.tx, apiBytes(this.id, { op: "abort", error: body })) } finally { this.client.release(this.id) }
+    if (this.failure) { this.client.release(this.id); return }
+    await new Promise<void>(resolve => {
+      const settled = () => { this.client.release(this.id); resolve() }
+      void this.send({ op: "abort", error: body }, "result", { resolve: settled, reject: settled })
+    })
   }
 }
 

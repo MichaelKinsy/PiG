@@ -1,23 +1,24 @@
 // The `attach` of upstream harness/view.ts `conversationViews(harness)`, for the Pi tests that attach a view observer. Partial: no `state` or
-// `watch`, and each call builds its own instance where Pi keeps one per Harness. The core mounts the view.
-// The core mounts the view (a `view` watch with changes); this attaches one observer to it. An observer that throws is reported through
-// the Harness and the others still get the frame; the Session's close reaches `end` once.
-import type { Context, WatchChange } from "@earendil-works/chord"
+// `watch`, and each call builds its own instance where Pi keeps one per Harness. The core mounts the view; this attaches one observer to it,
+// with its own window. An observer that throws is reported through the Harness and the others still get the frame; the Session's close
+// reaches `end` once.
+import type { Context, WatchCall, WatchEnd } from "@earendil-works/chord"
+import type { ConversationWindow } from "@earendil-works/pi-durable"
 import { Harness } from "../harness.ts"
 
 type Observer = {
-  advance?(change: WatchChange<unknown>, context: Context): void
-  publication?(before: unknown, after: unknown, ops: readonly unknown[], publication: unknown, context: Context): void
-  end(failure: { readonly error: unknown } | undefined): void
+  advance?(call: WatchCall<unknown>, context: Context): void
+  end(end: WatchEnd): void
 }
 
 export class ConversationViews {
   readonly #harness: Harness
   constructor(harness: Harness) { this.#harness = harness }
 
-  /** Register an observer created from the current revision: it sees every later publication and nothing earlier. */
+  /** Register an observer created from the first revision of its window: it sees every later publication and nothing earlier. */
   async attach<O extends Observer>(
     id: number,
+    window: ConversationWindow | undefined,
     create: (value: unknown, release: () => void, storage: unknown) => O | Promise<O>,
     context: Context,
   ): Promise<{ observer: O; detach: () => void }> {
@@ -26,7 +27,7 @@ export class ConversationViews {
     let detach!: () => void
     const early: ((observer: O) => void)[] = []
     const deliver = (call: (observer: O) => void) => { if (observer !== undefined) call(observer); else early.push(call) }
-    const ready = await this.#harness.attachView(id, context, (value: unknown, release: () => void) => {
+    const ready = await this.#harness.attachView(id, window, context, (value: unknown, release: () => void) => {
       detach = release
       void Promise.resolve(create(value, release, this.#harness.storageOf())).then(created => {
         observer = created
@@ -34,9 +35,8 @@ export class ConversationViews {
         for (const call of early.splice(0)) { try { call(created) } catch (error) { this.#harness.report(error) } }
       }, error => made.reject(error))
       return {
-        advance: (change, frameContext) => deliver(o => o.advance?.(change, frameContext)),
-        publication: (before, after, ops, changes, frameContext) => deliver(o => o.publication?.(before, after, ops, { changes }, frameContext)),
-        end: failure => deliver(o => o.end(failure)),
+        advance: (call, frameContext) => deliver(o => o.advance?.(call, frameContext)),
+        end: end => deliver(o => o.end(end)),
       }
     })
     if (ready === undefined) throw new Error(`Conversation ${id} does not exist`)

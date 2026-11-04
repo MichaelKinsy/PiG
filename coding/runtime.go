@@ -1,5 +1,7 @@
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (the createAgentSession tool options: initialActiveToolNames, excludedToolNames, noTools).
+
 import (
 	"context"
 	"fmt"
@@ -81,6 +83,9 @@ type SessionStartOptions struct {
 
 	// AllowedTools restricts which tools may execute.
 	AllowedTools map[string]struct{}
+
+	// ToolScope is the Piglet tool scope; see SessionOptions.ToolScope.
+	ToolScope *extension.ToolScope
 
 	// InitialActiveToolNames are the tools active at start, in this order;
 	// see SessionOptions.InitialActiveToolNames (sdk.ts:274-276).
@@ -313,6 +318,7 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		NoTools:                opts.NoTools,
 		skipExtensionTools:     opts.SkipExtensionTools,
 		AllowedTools:           opts.AllowedTools,
+		ToolScope:              opts.ToolScope,
 		InitialActiveToolNames: opts.InitialActiveToolNames,
 		DefaultToolModifiers:   opts.DefaultToolModifiers,
 		ExcludedTools:          opts.ExcludedTools,

@@ -50,8 +50,7 @@ var cliLeakIncidental = map[string][]string{
 		"- bash: Execute bash commands (ls, grep, find, etc.)",
 		"- Use bash for file operations like ls, rg, find",
 		"PiG documentation (read only when the user asks",
-		"read the docs and examples",
-		"Always read pig .md files completely",
+		"read the relevant docs and examples in full",
 	},
 }
 

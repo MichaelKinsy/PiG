@@ -37,6 +37,8 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.editorContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
+	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
+	m.widgetContainerBelow = tui.NewContainer()
 	m.rendererOut = io.Discard
 	m.tuiInst = tui.NewWithOutput(m.rendererOut, 100, 30)
 	m.statusLine = NewFooterComponent(opts.Model, "", nil)
@@ -132,6 +134,35 @@ func (h *TestHarness) SubmitInitialMessages(messages []string) {
 func (h *TestHarness) Key(data string) {
 	_ = h.m.dispatchKey(h.ctx, data)
 }
+
+// PendingDisplay returns the pending-messages rows as plain text.
+func (h *TestHarness) PendingDisplay() string {
+	var text string
+	h.Do(func() {
+		lines := h.m.pendingMessagesContainer.Render(100)
+		for i, line := range lines {
+			lines[i] = widthx.StripAnsi(line)
+		}
+		text = strings.Join(lines, "\n")
+	})
+	return text
+}
+
+// BelowEditor returns the rows under the editor as plain text.
+func (h *TestHarness) BelowEditor() string {
+	var text string
+	h.Do(func() {
+		lines := h.m.widgetContainerBelow.Render(100)
+		for i, line := range lines {
+			lines[i] = widthx.StripAnsi(line)
+		}
+		text = strings.Join(lines, "\n")
+	})
+	return text
+}
+
+// SetEditorText replaces the editor's text. Call it on the owner loop.
+func (h *TestHarness) SetEditorText(text string) { h.m.editor.SetText(text) }
 
 // EditorText returns the editor's text.
 func (h *TestHarness) EditorText() string {

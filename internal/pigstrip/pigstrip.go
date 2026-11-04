@@ -52,12 +52,13 @@ const (
 	// NodeExtensions is the embedded Node runtime that runs TypeScript and
 	// JavaScript extensions.
 	NodeExtensions = "node-extensions"
-	// ExtensionSDKGo, ExtensionSDKRust and ExtensionSDKPython are the
-	// embedded SDK sources PiG stages to build Go and Rust source extensions
-	// and to run Python extensions.
+	// ExtensionSDKGo, ExtensionSDKRust, ExtensionSDKPython and ExtensionSDKLisp
+	// are the embedded SDK sources PiG stages to build Go and Rust source
+	// extensions, to run Python extensions and to build Lisp images.
 	ExtensionSDKGo     = "extension-sdk-go"
 	ExtensionSDKRust   = "extension-sdk-rust"
 	ExtensionSDKPython = "extension-sdk-python"
+	ExtensionSDKLisp   = "extension-sdk-lisp"
 	// SyntaxHighlight is highlight.js grammar highlighting in code blocks and
 	// tool output.
 	SyntaxHighlight = "syntax-highlight"
@@ -92,7 +93,7 @@ func Features() []string {
 // a pig_strip_<id> tag.
 func BinaryFeatures() []string {
 	return []string{
-		NodeExtensions, ExtensionSDKGo, ExtensionSDKRust, ExtensionSDKPython,
+		NodeExtensions, ExtensionSDKGo, ExtensionSDKRust, ExtensionSDKPython, ExtensionSDKLisp,
 		SyntaxHighlight, WordDictionaries, ExportHTML, SelfUpdate, Changelog,
 		Docs, Mermaid, PigletBuilder,
 	}

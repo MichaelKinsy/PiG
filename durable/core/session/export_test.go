@@ -8,3 +8,6 @@ func (s *Scheduler) BelowRecount() int {
 	}
 	return n
 }
+
+// Publish runs the Session's publication of a commit the test made up: the tails, the task documents and the commit listeners.
+func (s *Session) Publish(pub *Publication) { s.publish(pub) }

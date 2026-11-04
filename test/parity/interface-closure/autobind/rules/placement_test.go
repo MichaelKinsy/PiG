@@ -277,7 +277,7 @@ func TestBarrelsOfPinnedUpstream(t *testing.T) {
 	if dirs := p.Dirs("tui", "packages/tui/src/components/loader.ts"); len(dirs) == 0 || dirs[0] != "tui" {
 		t.Fatalf("loader.ts placed in %v", dirs)
 	}
-	if dirs := p.Dirs("tui", "packages/tui/src/stdin-buffer.ts"); !slices.Contains(dirs, "internal/codingagent") || !strings.HasPrefix(dirs[0], "tui") {
+	if dirs := p.Dirs("tui", "packages/tui/src/stdin-buffer.ts"); !slices.Equal(dirs, []string{"tui"}) {
 		t.Fatalf("stdin-buffer.ts placed in %v", dirs)
 	}
 }

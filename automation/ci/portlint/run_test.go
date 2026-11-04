@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -79,5 +80,87 @@ var ok = regexp.MustCompile("(?i)y")
 	}
 	if len(hits) != 1 || hits[0].Check != "regexfold" || hits[0].Line != 5 || hits[0].Func != "(decl)" {
 		t.Fatalf("hits = %+v, want one regexfold hit on line 5", hits)
+	}
+}
+
+// A scan loads the module a batch of packages at a time, at several batches at once, and finds what one load of the whole module finds: the
+// plain package, its internal test variant and its external test package all report, once each, wherever the batch edges fall.
+func TestScanBatchesFindWhatOneBatchFinds(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, content string) {
+		t.Helper()
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module example.com/m\n\ngo 1.26\n")
+	for _, pkg := range []string{"a", "b", "c", "d", "e"} {
+		write(pkg+"/"+pkg+".go", "package "+pkg+"\n\nimport \"regexp\"\n\nvar Bad = regexp.MustCompile(\"(?i)prod\")\n")
+	}
+	write("a/a_test.go", "package a\n\nimport \"regexp\"\n\nvar inTest = regexp.MustCompile(\"(?i)internal\")\n")
+	write("b/b_test.go", "package b_test\n\nimport \"regexp\"\n\nvar outTest = regexp.MustCompile(\"(?i)external\")\n")
+	oldBatch, oldWorkers := batchSize, scanWorkers
+	t.Cleanup(func() { batchSize, scanWorkers = oldBatch, oldWorkers })
+
+	batchSize, scanWorkers = 100, 1
+	want, err := scan(dir, "", []string{"./..."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]int{}
+	for _, h := range want {
+		files[h.File]++
+	}
+	for _, f := range []string{"a/a.go", "a/a_test.go", "b/b.go", "b/b_test.go", "c/c.go", "d/d.go", "e/e.go"} {
+		if files[f] != 1 {
+			t.Fatalf("one batch: %d hits in %s, want 1; hits = %+v", files[f], f, want)
+		}
+	}
+	if len(want) != 7 {
+		t.Fatalf("one batch: %d hits, want 7: %+v", len(want), want)
+	}
+	for _, c := range []struct{ batch, workers int }{{1, 1}, {2, 3}, {3, 2}, {4, 8}} {
+		batchSize, scanWorkers = c.batch, c.workers
+		got, err := scan(dir, "", []string{"./..."})
+		if err != nil {
+			t.Fatalf("batch %d, workers %d: %v", c.batch, c.workers, err)
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("batch %d, workers %d: hits = %+v, want %+v", c.batch, c.workers, got, want)
+		}
+	}
+}
+
+// A package that does not load fails the default scan, whichever batch it falls in.
+func TestScanBatchesReportALoadError(t *testing.T) {
+	dir := t.TempDir()
+	for name, content := range map[string]string{
+		"go.mod":        "module example.com/m\n\ngo 1.26\n",
+		"a/a.go":        "package a\n",
+		"b/b.go":        "package b\n\nvar x int = \"not an int\"\n",
+		"c/c.go":        "package c\n",
+		"c/c_test.go":   "package c\n",
+		"d/d.go":        "package d\n",
+		"d/d_x_test.go": "package d_test\n",
+	} {
+		path := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	oldBatch, oldWorkers := batchSize, scanWorkers
+	t.Cleanup(func() { batchSize, scanWorkers = oldBatch, oldWorkers })
+	for _, batch := range []int{1, 2, 100} {
+		batchSize, scanWorkers = batch, 2
+		if _, err := scan(dir, "", []string{"./..."}); err == nil || !strings.Contains(err.Error(), "load:") || !strings.Contains(err.Error(), "not an int") {
+			t.Fatalf("batch %d: err = %v, want the load error of package b", batch, err)
+		}
 	}
 }

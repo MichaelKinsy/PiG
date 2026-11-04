@@ -53,6 +53,7 @@ const (
 	EffectDeferred
 	EffectCallback
 	EffectHops
+	EffectMacrotask
 )
 
 // NoticeKind is the kind of a notice a step publishes (ABI section 7).
@@ -70,6 +71,7 @@ const (
 	NoticeIndexSizes
 	NoticeWake
 	NoticeOriginFree
+	NoticeTelemetry
 )
 
 // Status is the outcome of a step (ABI section 4.4).

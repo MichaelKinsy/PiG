@@ -540,7 +540,7 @@ func patternEntryTarget(entry string) string {
 }
 
 func configItemKey(item tui.ResourceItem) string {
-	return string(item.ResourceType) + "\x00" + canonicalStatusPath(item.Path)
+	return string(item.ResourceType) + "\x00" + codingagent.ResourcePathKey(item.Path)
 }
 
 func projectConfigOverride(sm *codingagent.SettingsManager, item *tui.ResourceItem) string {

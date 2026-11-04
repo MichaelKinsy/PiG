@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"math/rand/v2"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -12,35 +11,44 @@ import (
 	"testing"
 )
 
-// minimatchOracle runs minimatch(path, pattern) with minimatch's default options in Node for each pair and returns the result, or the message of the error it throws. Node's bundled minimatch, reachable only with --expose-internals (the test skips without it), equals Pi's npm minimatch 10.2.6 except in brace expansion, where it bundles an older brace-expansion. The pairs here expand alike in both; glob_braces_npm_test.go records the patterns that do not, from Pi's copy.
+// minimatchOracle runs minimatch(path, pattern) with minimatch's default options in Pi's installed minimatch (11.0.3, the copy Pi's own minimatch() calls run, not the one Node bundles) for each pair and returns the result, or "threw" where it throws.
 func minimatchOracle(t *testing.T, pairs any) []any {
 	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("node is not installed")
 	}
-	input, err := json.Marshal(pairs)
+	raw, err := json.Marshal(pairs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(node, "--expose-internals", "--eval", `
-let mm;
-try { mm = require("internal/deps/minimatch/index"); } catch { process.stdout.write("null"); process.exit(0); }
-const pairs = JSON.parse(require("fs").readFileSync(0, "utf8"));
-process.stdout.write(JSON.stringify(pairs.map((p) => { try { return mm.minimatch(p.Path, p.Pattern); } catch (e) { return String(e.message); } })));
-`)
+	var in []struct{ Path, Pattern string }
+	if err := json.Unmarshal(raw, &in); err != nil {
+		t.Fatal(err)
+	}
+	type probe struct {
+		Name    string `json:"name"`
+		Pattern string `json:"pattern"`
+	}
+	probes := make([]probe, len(in))
+	for i, p := range in {
+		probes[i] = probe{p.Path, p.Pattern}
+	}
+	input, err := json.Marshal(probes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(node, filepath.Join("..", "..", "internal", "minimatch", "testdata", "minimatch.mjs"), "11.0.3")
 	cmd.Stdin = bytes.NewReader(input)
-	cmd.Env = append(os.Environ(), "NODE_NO_WARNINGS=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	output, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("node: %v", err)
+		t.Fatalf("minimatch oracle: %v\n%s", err, &stderr)
 	}
 	var want []any
 	if err := json.Unmarshal(output, &want); err != nil {
-		t.Fatalf("node output %q: %v", output, err)
-	}
-	if want == nil {
-		t.Skip("node's bundled minimatch is not reachable")
+		t.Fatalf("minimatch oracle output %q: %v", output, err)
 	}
 	return want
 }
@@ -49,9 +57,9 @@ process.stdout.write(JSON.stringify(pairs.map((p) => { try { return mm.minimatch
 func minimatchMatch(path, pattern string) any {
 	m, err := newMinimatchFilter(pattern)
 	if err != nil {
-		return err.Error()
+		return "threw"
 	}
-	return m.match(path)
+	return m.Match(path)
 }
 
 // Pi's filters call minimatch(path, pattern) with its default options (package-manager.ts:661-685): globstars that do not cross dot parts, braces, extglobs, classes and POSIX classes, "#" comments, "!" negation, ".." folding, trailing slashes, and on Windows backslash paths, drives and "//?/" UNC roots. Random patterns and paths against Node's bundled minimatch, errors compared by message.
@@ -232,4 +240,26 @@ func TestMinimatchFilterGlobstarSectionsMatchMinimatch(t *testing.T) {
 		}
 	}
 	t.Logf("%d pairs: %d match", len(pairs), matched)
+}
+
+// Pi's minimatch builds its set from brace-expansion 5.0.12, so a filter whose sequence Node's bundled copy cannot hold still compiles and matches. Probed with Pi 1.1.0 (r25): {"prompts":["!x{1..134217729}"]} starts and lists the prompt, and minimatch("x5", "x{1..134217729}") is true.
+func TestMinimatchFilterExpandsBracesAsPi(t *testing.T) {
+	for _, tc := range []struct {
+		pattern, path string
+		want          bool
+	}{
+		{"x{1..134217729}", "x5", true},
+		{"x{1..134217729}", "x100001", false},
+		{"{a.md,}{},,}", "a.md", true},
+		{"{a.md,}{},,}", "a.md}", true},
+		{"x{9007199254740993..9007199254740995}", "x9007199254740992", true},
+	} {
+		m, err := newMinimatchFilter(tc.pattern)
+		if err != nil {
+			t.Fatalf("newMinimatchFilter(%q): %v", tc.pattern, err)
+		}
+		if got := m.Match(tc.path); got != tc.want {
+			t.Errorf("minimatch(%q, %q) = %t, want %t", tc.path, tc.pattern, got, tc.want)
+		}
+	}
 }

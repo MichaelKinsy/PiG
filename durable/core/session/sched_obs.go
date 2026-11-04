@@ -8,17 +8,36 @@ import (
 )
 
 func (s *Scheduler) scheduleReconcile() {
-	if s.reconcileScheduled || s.closing {
+	// A read-only reconcile could only fail: what it writes is refused.
+	if s.reconcileScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	s.reconcileScheduled = true
-	s.loop.Defer(s.reconcile)
+	s.microtask(s.reconcile)
+}
+
+// microtask is `queueMicrotask(fn)` as the scheduler's code calls it. Inside the commit observer (scheduler.ts #observe, which runs at the
+// publication, in the Storage's adopt) a microtask runs one tick after the publication: the job #kick queues to drain the reservations
+// enqueues its line job there (job 14 of the cold submit, 225 -> 226), and behind it the dispatch to the host's `subscribeCommits` listeners
+// (session.ts #notifyHosts) a listener registered at adoption queued first, so a commit such a listener makes is admitted to the line first.
+func (s *Scheduler) microtask(fn func()) {
+	if s.observing && s.loop.Hops != nil && s.loop.Hops(1, funcResumer(fn)) {
+		return
+	}
+	s.loop.Defer(fn)
+}
+
+// abortLater signals the run of inv: scheduler.ts #observe queues `invocation.controller.abort()` as a microtask inside the Storage's adopt, so it
+// runs one tick after the publication, behind the dispatch to the host's `subscribeCommits` listeners (queued first, in the same pass) when there
+// are any and alone when there are none (no closure: the invocation's own resumer is what the hops chain resumes).
+func (s *Scheduler) abortLater(inv *invocation) {
+	s.loop.Wait(1, inv.aborter.of(inv))
 }
 
 // scheduleReconcileAfterRead is scheduleReconcile for a chain load: Pi's #loadChain schedules it after its Storage read
 // resolved, so the microtask runs once the job's reads so far have taken their ticks, not at the job's start.
 func (s *Scheduler) scheduleReconcileAfterRead() {
-	if s.reconcileScheduled || s.closing {
+	if s.reconcileScheduled || s.closing || s.sess.ReadOnly {
 		return
 	}
 	if s.env.ReadTicks == nil || s.env.After == nil {
@@ -41,14 +60,25 @@ func (s *Scheduler) kick() {
 		return
 	}
 	s.draining = true
-	s.loop.Defer(s.drain)
+	s.microtask(s.drain)
 }
 
 // observe is the scheduler's commit listener (scheduler.ts #observe).
 func (s *Scheduler) observe(pub *Publication) {
+	s.observing = true
+	s.observeCommit(pub)
+	s.observing = false
+}
+
+func (s *Scheduler) observeCommit(pub *Publication) {
+	s.advanceContexts(pub)
 	var updated []*jv.Object
 	var failed []ID
 	changed := false
+	// The conversations whose idleness the commit's task changes can change; every conversation when a chain is not known.
+	dirty, everything := s.dirtyScopes, false
+	clear(dirty)
+	clear(s.dirtyTasks)
 	// Edges first, so the tasks a commit creates in a new conversation hang from it.
 	for _, ch := range pub.Changes {
 		if ch.Kind == ChangeTable && ch.Table == WriteConversation {
@@ -78,6 +108,13 @@ func (s *Scheduler) observe(pub *Publication) {
 			before = prev
 		}
 		s.track(before, rec)
+		// Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
+		// Collected before sweep, which may forget the chain of a task that ended. A new task whose chain is not loaded has its
+		// scopes settled once the chain is (loadChain), where Pi has loaded the chain of a new task in the commit that creates it.
+		pendingChain := !hadPrev && s.unloaded.Has(id)
+		if (!hadPrev || taskStatus(rec) == StatusTerminal) && !everything && !pendingChain && !s.addScopesAbove(rec, dirty, s.dirtyTasks) {
+			everything = true
+		}
 		if taskStatus(rec) == StatusTerminal {
 			delete(s.failedMigrations, id)
 			delete(s.migrations, id)
@@ -89,7 +126,9 @@ func (s *Scheduler) observe(pub *Publication) {
 		if getBool(rec, "abortRequested") && (!hadPrev || !getBool(prev, "abortRequested")) {
 			s.cascadePending = true
 			if inv := s.invocations[id]; inv != nil && !inv.abortMode {
-				inv.signal.Abort()
+				// scheduler.ts #observe: `queueMicrotask(() => invocation.controller.abort())`, queued inside the Storage's adopt behind the
+				// host listeners' dispatch, so the run is signalled after they saw the mark and outside the adoption.
+				s.abortLater(inv)
 			}
 		}
 		// A request replacing a restart mark upgrades the marks of the work below.
@@ -161,7 +200,10 @@ func (s *Scheduler) observe(pub *Publication) {
 	if !changed {
 		return
 	}
-	s.settleIdle()
+	if everything {
+		dirty = nil
+	}
+	s.settleIdle(dirty)
 	s.kick()
 }
 
@@ -185,121 +227,192 @@ func (s *Scheduler) reconcile() {
 	if work {
 		s.reconcilingWork++
 	}
-	cascade := s.cascadePending
-	s.cascadePending = false
 	checks := slices.Clone(s.failFastChecks)
 	s.failFastChecks = nil
-	// The job runs again from its start when a Storage gate or a read answers, so the checks the first run took stay with this
-	// reconcile: Pi's callback runs once and clears them as it takes them (#finalize).
-	var round []ID
-	taken := false
-	s.commit(func(tx *Tx) error {
-		if s.closing {
-			return nil
+	j := &reconcileJob{s: s, work: work, checks: checks}
+	j.rn = j
+	s.loop.QueueInternal(&j.job)
+}
+
+// reconcileJob is the commit of one reconcile pass queued on the Session line: the line job and the state of its callback in one
+// allocation, since a task graph's commits queue one each, thousands at a time.
+type reconcileJob struct {
+	job
+	s *Scheduler
+	// cascade is whether the pass loads the queued inputs: read once, when the callback first runs (Pi reads #cascadePending there). A
+	// run again after a gate keeps it, as Pi's callback waits in place.
+	cascade, started bool
+	work             bool
+	// taken is set when the callback took the finalize checks into round: the job runs again from its start when a Storage gate or a
+	// read answers, so the checks the first run took stay with this reconcile, as Pi's callback runs once and clears them as it takes
+	// them (#finalize).
+	taken  bool
+	checks []ID
+	round  []ID
+}
+
+// RunJob is the reconcile pass's commit.
+func (j *reconcileJob) RunJob() error {
+	_, err := j.s.sess.RunCommit(j.change, TxScope{})
+	return err
+}
+
+// DoneJob continues the pass once its commit is done.
+func (j *reconcileJob) DoneJob(err error) {
+	s := j.s
+	if err != nil {
+		s.failSession(err)
+	}
+	if j.work {
+		s.reconcilingWork--
+	}
+	s.scheduleWake()
+	s.settleAfterReconcile()
+}
+
+func (j *reconcileJob) change(tx *Tx) error {
+	s, checks := j.s, j.checks
+	if s.closing {
+		return nil
+	}
+	if !j.started {
+		j.cascade, j.started = s.cascadePending, true
+	}
+	cascade := j.cascade
+	before := 0
+	if s.env.ReadTicks != nil {
+		before = s.env.ReadTicks()
+	}
+	queued, awaits, err := s.loadScopesAwaiting(cascade)
+	if err != nil {
+		return err
+	}
+	// Pi clears #cascadePending once the load returned: a publication while the load waits still finds it set and schedules another pass.
+	if cascade {
+		s.cascadePending = false
+	}
+	// The transaction's ticks replace the job's Store reads, so charge the Storage reads #loadScopes made and a tick for
+	// each call it awaited (scheduler.ts:680-693).
+	loaded := 0
+	if s.env.ReadTicks != nil {
+		loaded = s.env.ReadTicks() - before
+	}
+	// `await #loadScopes` also returns once (1); `await #marks()` awaits its region and returns (the region's tick is charged by endRegion, 1 more); the withdrawn
+	// inputs' region and `await #finalize(tx)`, whose rounds each await a region, add theirs.
+	tx.charge(loaded + awaits + 1)
+	s.beginRegion()
+	s.record(IntentKey)
+	for _, id := range s.intent.Values() {
+		s.liveRecord(id)
+		s.walkDown(taskTreeNode(id), walkOptions{enter: func(below ID) bool { return !s.intent.Has(below) }}, func(below ID, n taskNode, rec *jv.Object) bool {
+			if rec != nil {
+				s.liveRecord(below)
+			}
+			return true
+		})
+	}
+	for _, id := range checks {
+		if waiter, ok := s.liveRecord(id); ok && taskStatus(waiter) == StatusWaiting {
+			for _, member := range idsOf(getObj(waiter, "state"), "on") {
+				s.liveRecord(member)
+			}
 		}
-		before := 0
-		if s.env.ReadTicks != nil {
-			before = s.env.ReadTicks()
+	}
+	if err := s.endRegion(tx); err != nil {
+		return err
+	}
+	tx.charge(1)
+	// A cascade from an abandoned owner passes its restart reason on; any other intent marks, or upgrades a restart mark, as
+	// a request. Collected first, so a request wins over a restart mark of the same pass.
+	marks := abortMarks{byID: map[ID]stagedMark{}}
+	// Every live foreground task below a live owner with cancellation intent, which is its nearest one: a walk down from
+	// each owner with intent does not enter another, whose own walk covers what is below it. Derived again on every
+	// pass, as loading edges can reveal a cancelled owner.
+	for _, id := range s.intent.Values() {
+		owner, _ := s.live.get(id)
+		// Only an owner abandoned after a restart, and nothing else, passes its reason on.
+		reason := ""
+		if abortReasonOf(owner) == "restart" && !failedOutcome(owner) {
+			reason = "restart"
 		}
-		queued, awaits, err := s.loadScopesAwaiting(cascade)
+		s.walkDown(taskTreeNode(id), walkOptions{enter: func(below ID) bool { return !s.intent.Has(below) }}, func(_ ID, n taskNode, rec *jv.Object) bool {
+			if rec != nil && !n.background {
+				marks.add(rec, reason)
+			}
+			return true
+		})
+	}
+	for _, id := range checks {
+		waiter, ok := s.live.get(id)
+		if !ok || taskStatus(waiter) != StatusWaiting {
+			continue
+		}
+		on := idsOf(getObj(waiter, "state"), "on")
+		any, err := s.anyFailed(on)
 		if err != nil {
 			return err
 		}
-		// The transaction's ticks replace the job's Store reads, so charge the Storage reads #loadScopes made and a tick for
-		// each call it awaited (scheduler.ts:680-693).
-		loaded := 0
-		if s.env.ReadTicks != nil {
-			loaded = s.env.ReadTicks() - before
+		if !any {
+			continue
 		}
-		tx.charge(loaded + awaits)
-		// Pi's #reconcile callback awaits #loadScopes (1) and `await #finalize(tx)` (an async call with nothing to finalize: 1),
-		// which makes the no-write job 8 ticks (E23 jobs 40, 49, 68); marks, fail-fast reads and withdrawals add their own awaits.
-		tx.charge(2)
-		// A cascade from an abandoned owner passes its restart reason on; any other intent marks, or upgrades a restart mark, as
-		// a request. Collected first, so a request wins over a restart mark of the same pass.
-		type staged struct {
-			rec    *jv.Object
-			reason string
-		}
-		marks := map[ID]staged{}
-		var markOrder []ID
-		mark := func(rec *jv.Object, reason string) {
-			id := mustInt(rec, "id")
-			found, ok := marks[id]
-			if ok && found.reason == "" {
-				return
-			}
-			if getBool(rec, "abortRequested") && (!rec.Has("abortReason") || reason != "") {
-				return
-			}
-			if !ok {
-				markOrder = append(markOrder, id)
-			}
-			marks[id] = staged{rec, reason}
-		}
-		// Every live foreground task below a live owner with cancellation intent, which is its nearest one: a walk down from
-		// each owner with intent does not enter another, whose own walk covers what is below it. Derived again on every
-		// pass, as loading edges can reveal a cancelled owner.
-		for _, id := range s.intent.Values() {
-			owner, _ := s.live.get(id)
-			// Only an owner abandoned after a restart, and nothing else, passes its reason on.
-			reason := ""
-			if abortReasonOf(owner) == "restart" && !failedOutcome(owner) {
-				reason = "restart"
-			}
-			s.walkDown(taskTreeNode(id), walkOptions{enter: func(below ID) bool { return !s.intent.Has(below) }}, func(_ ID, n taskNode, rec *jv.Object) bool {
-				if rec != nil && !n.background {
-					mark(rec, reason)
-				}
-				return true
-			})
-		}
-		for _, id := range checks {
-			waiter, ok := s.live.get(id)
-			if !ok || taskStatus(waiter) != StatusWaiting {
-				continue
-			}
-			on := idsOf(getObj(waiter, "state"), "on")
-			any, err := s.anyFailed(on)
-			if err != nil {
-				return err
-			}
-			if !any {
-				continue
-			}
-			for _, member := range on {
-				if rec, ok := s.live.get(member); ok && !failedOutcome(rec) {
-					mark(rec, "")
-				}
+		for _, member := range on {
+			if rec, ok := s.live.get(member); ok && !failedOutcome(rec) {
+				marks.add(rec, "")
 			}
 		}
-		for _, id := range markOrder {
-			if err := tx.stageTask(withAbortMark(marks[id].rec, marks[id].reason)); err != nil {
+	}
+	for _, id := range marks.order {
+		if err := tx.stageTask(withAbortMark(marks.byID[id].rec, marks.byID[id].reason)); err != nil {
+			return err
+		}
+	}
+	s.beginRegion()
+	for _, id := range queued {
+		s.belowCancelled(up{id: id})
+	}
+	if err := s.endRegion(tx); err != nil {
+		return err
+	}
+	for _, id := range queued {
+		if s.belowCancelled(up{id: id}) {
+			if err := s.env.WithdrawInputs(tx, id); err != nil {
 				return err
 			}
 		}
-		for _, id := range queued {
-			if s.belowCancelled(up{id: id}) {
-				if err := s.env.WithdrawInputs(tx, id); err != nil {
-					return err
-				}
-			}
-		}
-		if !taken {
-			round, taken = s.finalizeChecks.Values(), true
-			s.finalizeChecks.Clear()
-		}
-		return s.finalize(tx, round)
-	}, TxScope{}, func(err error) {
-		if err != nil {
-			s.failSession(err)
-		}
-		if work {
-			s.reconcilingWork--
-		}
-		s.scheduleWake()
-		s.settleIdle()
-	})
+	}
+	if !j.taken {
+		j.round, j.taken = s.finalizeChecks.Values(), true
+		s.finalizeChecks.Clear()
+	}
+	return s.finalize(tx, j.round)
+}
+
+// stagedMark is the record a reconcile pass marks for abort, and the restart reason it passes on.
+type stagedMark struct {
+	rec    *jv.Object
+	reason string
+}
+
+// abortMarks collects the tasks a reconcile pass marks, in the order they were found.
+type abortMarks struct {
+	byID  map[ID]stagedMark
+	order []ID
+}
+
+// add marks rec: a request wins over a restart mark of the same pass.
+func (m *abortMarks) add(rec *jv.Object, reason string) {
+	id := mustInt(rec, "id")
+	found, ok := m.byID[id]
+	if ok && found.reason == "" {
+		return
+	}
+	if getBool(rec, "abortRequested") && (!rec.Has("abortReason") || reason != "") {
+		return
+	}
+	if !ok {
+		m.order = append(m.order, id)
+	}
+	m.byID[id] = stagedMark{rec, reason}
 }
 
 // reconcileWork reports whether a reconcile pass would have work: a cascade to derive, held outcomes to check, or failFast
@@ -328,7 +441,26 @@ func (s *Scheduler) finalize(tx *Tx, round []ID) error {
 	round = slices.Clone(round)
 	done := map[ID]bool{}
 	o := overlayOf(tx)
-	for len(round) > 0 {
+	// `await #finalize` returns once more after its last region.
+	defer tx.charge(1)
+	for {
+		// Each round is one decision region.
+		s.beginRegion()
+		for _, id := range round {
+			rec, ok := o.tasks[id]
+			if !ok {
+				rec, ok = s.liveRecord(id)
+			}
+			if ok && taskStatus(rec) == StatusCompleting && !done[id] {
+				s.hasOwnedLive(id, o, done)
+			}
+		}
+		if err := s.endRegion(tx); err != nil {
+			return err
+		}
+		if len(round) == 0 {
+			return nil
+		}
 		next := newOrderedSet[ID]()
 		for _, id := range round {
 			rec, ok := o.tasks[id]
@@ -342,7 +474,7 @@ func (s *Scheduler) finalize(tx *Tx, round []ID) error {
 				continue
 			}
 			outcome := getObj(getObj(rec, "state"), "outcome")
-			staged, err := tx.setTask(withState(rec, obj("status", StatusTerminal, "outcome", outcome)), false)
+			staged, err := tx.setTask(withState(rec, obj("status", StatusTerminal, "outcome", outcome)), false, true)
 			if err != nil {
 				return err
 			}
@@ -361,38 +493,77 @@ func (s *Scheduler) finalize(tx *Tx, round []ID) error {
 			}
 		}
 		round = next.Values()
+		if len(round) == 0 {
+			return nil
+		}
 	}
-	return nil
 }
 
 // drain reserves and starts every runnable task until nothing is dirty.
 func (s *Scheduler) drain() {
-	var loop func()
-	finish := func() {
-		s.draining = false
-		if s.dirty {
-			s.kick()
-		}
+	d := &drainer{s: s}
+	d.loop()
+}
+
+// drainer is one drain: its passes run one after the other, so the pass's state stays in it.
+type drainer struct {
+	s   *Scheduler
+	res []*reservation
+	// again: the next Resume is the pass that follows an abort handler's start, not the start of res.
+	again bool
+}
+
+func (d *drainer) finish() {
+	s := d.s
+	s.draining = false
+	if s.dirty {
+		s.kick()
 	}
-	loop = func() {
-		if !s.dirty || !s.enabled || s.closing {
-			finish()
-			return
-		}
-		s.dirty = false
-		s.reserve(func(res []*reservation, err error) {
-			if err != nil {
-				s.failSession(err)
-				finish()
-				return
-			}
-			for _, r := range res {
-				s.start(r)
-			}
-			loop()
-		})
+}
+
+func (d *drainer) loop() {
+	s := d.s
+	if !s.dirty || !s.enabled || s.closing {
+		d.finish()
+		return
 	}
-	loop()
+	s.dirty = false
+	s.reserve(d.reserved)
+}
+
+func (d *drainer) reserved(res []*reservation, err error) {
+	if err != nil {
+		d.s.failSession(err)
+		d.finish()
+		return
+	}
+	// `for (const reservation of await this.#reserve())` (scheduler.ts #drain): #reserve is an async function, so #drain resumes a tick after it
+	// returns, and then starts each reservation and asks for the next pass.
+	d.res = res
+	d.s.loop.NextTickResumer(d)
+}
+
+// Resume starts the reservations of the pass and asks for the next one.
+func (d *drainer) Resume() {
+	if d.again {
+		d.again = false
+		d.loop()
+		return
+	}
+	aborting := false
+	for _, r := range d.res {
+		d.s.start(r)
+		aborting = aborting || r.inv.abortMode
+	}
+	d.res = nil
+	if aborting {
+		// Pi starts an abort handler in this tick, synchronously: a commit it makes first reaches the line before the next pass. The host runs the
+		// handler after this step, so the pass follows a hop later.
+		d.again = true
+		d.s.loop.NextTickResumer(d)
+		return
+	}
+	d.loop()
 }
 
 func (s *Scheduler) reserve(then func([]*reservation, error)) {
@@ -407,12 +578,29 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		}
 		reservations = nil
 	}
-	s.commit(func(tx *Tx) error {
+	s.commitInternal(func(tx *Tx) error {
 		cleanup()
 		abandoned = nil
 		faulted = nil
-		if !s.enabled || s.closing {
+		// The job runs again from its start when a Storage gate or a read answers; Pi's callback runs once and decides at its start
+		// (scheduler.ts #reserve), so a close that sealed meanwhile does not undo a reservation the first run made.
+		if s.reserveSkip == pinUnset {
+			s.reserveSkip = pinRun
+			if !s.enabled || s.closing {
+				s.reserveSkip = pinSkip
+			}
+		}
+		if s.reserveSkip == pinSkip {
 			return nil
+		}
+		if s.abandoned.Len() > 0 {
+			s.beginRegion()
+			for _, id := range s.abandoned.Values() {
+				s.liveRecord(id)
+			}
+			if err := s.endRegionPlain(tx); err != nil {
+				return err
+			}
 		}
 		for _, id := range s.abandoned.Values() {
 			if rec, live := s.live.get(id); live && !getBool(rec, "abortRequested") {
@@ -436,13 +624,29 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a deadline,
 		// and the wake it schedules no longer keeps a timer for a due sleep.
 		s.wakeDue()
-		s.unparkRaised()
 		// Pi's #reserve callback awaits only #loadScopes(false) (scheduler.ts #reserve): one tick, plus the Storage reads of
 		// the chain loads and a tick for each #loadChain call it awaited (scheduler.ts:680-684).
 		ticks := 1 + awaits
 		if s.env.ReadTicks != nil {
 			ticks += s.env.ReadTicks() - before
 		}
+		// The candidates are scanned in a decision region, one tick of its own.
+		s.beginRegion()
+		for _, id := range s.runnable.Values() {
+			if s.invocations[id] != nil {
+				continue
+			}
+			if rec, live := s.liveRecord(id); live && taskStatus(rec) != StatusCompleting {
+				s.waitingOn(rec, true)
+				if !getBool(rec, "abortRequested") && !getBool(rec, "background") {
+					s.belowCancelled(parentOf(nodeOf(rec)))
+				}
+			}
+		}
+		if err := s.endRegion(tx); err != nil {
+			return err
+		}
+		ticks++
 		defer func() { tx.ticks = ticks }()
 		var snapshot Snapshot
 		for _, id := range s.runnable.Values() {
@@ -461,16 +665,6 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				s.runnable.Delete(id)
 				continue
 			}
-			// It returns when Retry clears its restart count, or at a pass after settings.restartLimit rose.
-			if s.parked(rec) {
-				s.runnable.Delete(id)
-				// Newly parked without a commit, as after a lowered limit: the graph must hear it.
-				if !s.parkedTasks.Has(id) {
-					s.loop.Defer(s.notifyBlocked)
-				}
-				s.parkedTasks.Add(id)
-				continue
-			}
 			abortMode := getBool(rec, "abortRequested")
 			// Work below an owner with cancellation intent waits for its cascade mark instead of running a phase; schedule the
 			// cascade, which may not have run yet.
@@ -479,10 +673,15 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 				s.scheduleReconcile()
 				continue
 			}
-			// An abort handler cut off restartLimit times in a row would run forever; nothing is left to park it for.
-			if abortMode && restartsOf(rec) >= s.restartLimit() {
+			// Work cut off restartLimit times in a row would run forever: an abort handler, or a phase of a task that does not
+			// end itself at the limit, ends the task faulted instead. The settings are read only for a task that was cut off
+			// at all.
+			if restartsOf(rec) > 0 && restartsOf(rec) >= s.restartLimit() && (abortMode || !s.limitsRestarts(rec)) {
 				kind, _ := getStr(rec, "kind")
-				message := sprintf("Abort handler of task %d (%s) was cut off %d times", id, kind, restartsOf(rec))
+				message := sprintf("Task %d (%s) was cut off %d times without progress", id, kind, restartsOf(rec))
+				if abortMode {
+					message = sprintf("Abort handler of task %d (%s) was cut off %d times", id, kind, restartsOf(rec))
+				}
 				if err := s.terminate(tx, rec, obj("status", "faulted", "error", obj("message", message, "detail", obj("reason", "restart_limit")))); err != nil {
 					return err
 				}
@@ -508,7 +707,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 			state := getObj(res.record, "state")
 			if res.record != rec || taskStatus(rec) != StatusRunning {
 				cp, _ := state.Get("checkpoint")
-				if err := tx.stageTask(withState(res.record, obj("status", StatusRunning, "checkpoint", cp))); err != nil {
+				if err := tx.stageFresh(withState(res.record, obj("status", StatusRunning, "checkpoint", cp))); err != nil {
 					return err
 				}
 			}
@@ -520,6 +719,7 @@ func (s *Scheduler) reserve(then func([]*reservation, error)) {
 		}
 		return nil
 	}, TxScope{}, func(err error) {
+		s.reserveSkip = pinUnset
 		if err != nil {
 			cleanup()
 			then(nil, err)
@@ -667,30 +867,13 @@ type faultedTask struct {
 	message string
 }
 
-// unparkRaised makes the parked tasks that a raised settings.restartLimit no longer parks candidates again, and tells the
-// graph (scheduler.ts #unparkRaised).
-func (s *Scheduler) unparkRaised() {
-	unparked := false
-	for _, id := range s.parkedTasks.Values() {
-		rec, live := s.live.get(id)
-		if live && s.parked(rec) {
-			continue
-		}
-		s.parkedTasks.Delete(id)
-		if !live {
-			continue
-		}
-		s.runnable.Add(id)
-		unparked = true
-	}
-	if unparked {
-		s.loop.Defer(s.notifyBlocked)
-	}
-}
-
 func (s *Scheduler) createInvocation(rec *jv.Object, abortMode bool, extension string) *invocation {
 	kind, _ := getStr(rec, "kind")
-	inv := &invocation{taskID: mustInt(rec, "id"), kind: kind, extension: extension, conversationID: mustInt(rec, "conversationId"), abortMode: abortMode, signal: &Cancel{}}
+	inv := &invocation{taskID: mustInt(rec, "id"), kind: kind, extension: extension, conversationID: mustInt(rec, "conversationId"), abortMode: abortMode, loop: s.loop, record: rec}
+	if _, started := rec.Get("startedAt"); !started && s.env.Telemetry != nil {
+		inv.telemetry().links, _ = rec.Get("links")
+	}
+	inv.s = s
 	s.invocations[inv.taskID] = inv
 	return inv
 }

@@ -140,6 +140,7 @@ func runCmdWithInput(ctx context.Context, name string, args, env, inputLines []s
 	subCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	//nolint:gosec // G204 (class c): program name is the bin.Path passed by drivers (pig/pi under test or a test shell); args are scenario args.
 	cmd := exec.CommandContext(subCtx, name, args...)
 	cmd.Env = append(hermeticEnviron(), env...)
 	if cwd != "" {

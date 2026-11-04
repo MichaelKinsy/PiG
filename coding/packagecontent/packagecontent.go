@@ -76,6 +76,16 @@ type piManifest struct {
 	Themes     *[]string `json:"themes"`
 }
 
+// declaresPiResources is package-manager.ts hasManifestResourceFields (b4b72a35): a "pi" object counts as an explicit resource manifest
+// only when it lists resources. A package whose "pi" object holds only metadata (changelogPath, gallery image/video) still uses
+// directory auto-discovery. It is false for a nil manifest.
+func (m *packageManifest) declaresPiResources() bool {
+	if m == nil || m.PI == nil {
+		return false
+	}
+	return m.PI.Extensions != nil || m.PI.Skills != nil || m.PI.Prompts != nil || m.PI.Themes != nil
+}
+
 type pigManifest struct {
 	Hooks             *[]string `json:"hooks"`
 	MCPServers        *[]string `json:"mcpServers"`
@@ -198,7 +208,7 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest, co
 	// hooks/ or mcp/ directory another agent's tooling ships is not read.
 	pigEntries := func(kind Kind) *[]string {
 		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
-		if entries == nil && manifest != nil && manifest.PI != nil && manifest.Pig == nil {
+		if entries == nil && manifest.declaresPiResources() && manifest.Pig == nil {
 			return &[]string{}
 		}
 		return entries
@@ -207,7 +217,7 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest, co
 	// collectPackageResources, addManifestEntries): a kind it does not
 	// declare loads nothing, and plugin metadata never adds to it.
 	piEntries := func(kind Kind) *[]string {
-		if manifest != nil && manifest.PI != nil {
+		if manifest.declaresPiResources() {
 			entries := manifestEntries(manifest, kind)
 			if conventionFor != nil && conventionFor(kind, entries) {
 				return nil
@@ -222,7 +232,7 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest, co
 	skillEntries := piEntries(Skills)
 	if plugin != nil && plugin.AgentPlugins {
 		skillEntries = manifestEntries(manifest, Skills)
-		if skillEntries == nil && manifest != nil && manifest.PI != nil {
+		if skillEntries == nil && manifest.declaresPiResources() {
 			skillEntries = &[]string{}
 		}
 	}
@@ -1720,6 +1730,7 @@ func normalizeJSONC(data []byte) ([]byte, error) {
 }
 
 // Collect expands files or conventional resource directories for kind.
+// Ports packages/coding-agent/src/core/package-manager.ts (collectFiles, collectAutoSkillEntries, collectAutoPromptEntries, collectAutoThemeEntries, collectAutoExtensionEntries, applyPatterns, isEnabledByOverrides).
 func Collect(paths []string, kind Kind) []string {
 	files := make([]string, 0)
 	for _, resourcePath := range paths {
@@ -2011,6 +2022,7 @@ func ApplyConfiguredDelta(kind Kind, relativePaths, basePatterns, deltaPatterns 
 		states[relativePath] = enabled
 	}
 	for _, patternValue := range deltaPatterns {
+		//portlint:allow utf16units PiG-only delta syntax: patternValue[0] must be ASCII + or -, so len < 2 is true exactly when the string is that single unit; a lone non-ASCII character fails the [0] test, so every input takes the same branch as JS length < 2
 		if len(patternValue) < 2 || patternValue[0] != '+' && patternValue[0] != '-' {
 			return nil, fmt.Errorf("%s project Package delta %q must be an exact + or - member path", kind, patternValue)
 		}
@@ -2193,7 +2205,7 @@ func validAgentPluginSkills(paths []string) []string {
 		metadata := frontmatter.Parse(string(data))
 		name := metadata.String("name")
 		description := metadata.String("description")
-		if !agentSkillNamePattern.MatchString(name) || len(description) == 0 || len(description) > 1024 {
+		if !agentSkillNamePattern.MatchString(name) || description == "" || jsstring.Length(description) > 1024 {
 			continue
 		}
 		valid = append(valid, skillDir)
@@ -2701,10 +2713,19 @@ func resolveExtensionEntries(dir string, python bool) []string {
 	return nil
 }
 
+// DiscoversExtensionRoot reports whether auto-discovery loads dir as an extension when it sits in an extensions directory: Pi's
+// package.json "pi.extensions", index.ts or index.js rule, or one of PiG's Go, Rust, Python or Lisp roots. A directory that holds only
+// other entry files, such as index.mjs, loads when a path names it but is not found by discovery.
+//
+// pig additive (D28): `pig install --validate-only` states what discovery would load.
+func DiscoversExtensionRoot(dir string) bool {
+	return len(resolveExtensionEntries(dir, true)) > 0
+}
+
 // isPythonFactoryRoot reports whether source.Resolve classifies dir as a Python extension by its one new_extension factory module or executable main.py.
 func isPythonFactoryRoot(dir string) bool {
 	definition, err := extsource.Resolve(dir)
-	return err == nil && definition.Language == "python"
+	return err == nil && (definition.Language == "python" || definition.Language == "lisp")
 }
 
 // hasChildExtensionEntry reports whether discoverExtensionEntries would find an entry among the children of dir. A child directory counts when it carries an index, a manifest entry, or a Go, Rust or Python root marker; go.work in a child is not searched further, which bounds the check to one level.
@@ -2801,10 +2822,10 @@ func matchesAnyPattern(filePath string, patterns *filterPatterns, baseDir string
 		if err != nil {
 			return false, err
 		}
-		if m.match(relative) || m.match(name) || m.match(absolute) {
+		if m.Match(relative) || m.Match(name) || m.Match(absolute) {
 			return true, nil
 		}
-		if isSkill && (m.match(parentRelative) || m.match(parentName) || m.match(parentAbsolute)) {
+		if isSkill && (m.Match(parentRelative) || m.Match(parentName) || m.Match(parentAbsolute)) {
 			return true, nil
 		}
 	}
@@ -2869,12 +2890,16 @@ func mustRel(baseDir, target string) string {
 	return relative
 }
 
-// hasBuildFile reports whether dir is a Go module, Rust crate or Python project root. A go.work-only root is decided by resolveExtensionEntries.
+// hasBuildFile reports whether dir is a Go module, Rust crate, Python project or Lisp ASDF system root. A go.work-only root is decided by resolveExtensionEntries.
 func hasBuildFile(dir string) bool {
 	for _, name := range []string{"go.mod", "Cargo.toml", "pyproject.toml"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 			return true
 		}
+	}
+	// pig additive (D19): an ASDF system definition marks a Lisp project root.
+	if matches, err := filepath.Glob(filepath.Join(dir, "*.asd")); err == nil && len(matches) > 0 {
+		return true
 	}
 	return false
 }

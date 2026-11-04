@@ -34,7 +34,7 @@ func TestPackageFiltersFollowMinimatch(t *testing.T) {
 	}{
 		{"braces", []string{"a", "b", "c"}, codingagent.PackageSource{Source: "./pkg", Prompts: []string{"prompts/{a,b}.md"}}, []string{"a", "b"}},
 		{"extglob", []string{"ab", "x"}, codingagent.PackageSource{Source: "./pkg", Prompts: []string{"prompts/+(a|b).md"}}, []string{"ab"}},
-		{"local throw", []string{"p"}, codingagent.PackageSource{Source: "./pkg", Skills: []string{"[[:alpha:]]-x"}}, nil},
+		{"local throw", []string{"p"}, codingagent.PackageSource{Source: "./pkg", Skills: []string{filterThrow}}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, agentDir, sm, pm := resolveFixture(t)
@@ -60,11 +60,11 @@ func TestPackageFiltersFollowMinimatch(t *testing.T) {
 		root := filepath.Join(codingagent.NPMInstallRoot(cwd, agentDir, false), "node_modules", "filterprobe")
 		writeResolveFile(t, filepath.Join(root, "package.json"), `{"name":"filterprobe","version":"1.0.0"}`)
 		writeResolveFile(t, filepath.Join(root, "prompts", "p.md"), "x\n")
-		if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:filterprobe", Prompts: []string{"[[:alpha:]]-x"}}}); err != nil {
+		if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:filterprobe", Prompts: []string{filterThrow}}}); err != nil {
 			t.Fatal(err)
 		}
 		_, err := pm.Resolve(nil)
-		if _, ok := errors.AsType[*packagecontent.PackagePatternError](err); !ok || !strings.HasSuffix(err.Error(), `[\p{L}\p{Nl}]\-x$/u: Invalid escape`) {
+		if _, ok := errors.AsType[*packagecontent.PackagePatternError](err); !ok || !strings.HasSuffix(err.Error(), tooLong) {
 			t.Fatalf("Resolve = %v, want the prompts filter's SyntaxError", err)
 		}
 	})
@@ -75,11 +75,11 @@ func TestPackageFiltersFollowMinimatch(t *testing.T) {
 		writeResolveFile(t, filepath.Join(root, "package.json"), `{"name":"orderprobe","version":"1.0.0","pi":{"skills":["skills"],"prompts":["prompts/[[:alpha:]]*,md"]}}`)
 		writeResolveFile(t, filepath.Join(root, "skills", "s1", "SKILL.md"), "---\nname: s1\ndescription: d\n---\nBody\n")
 		writeResolveFile(t, filepath.Join(root, "prompts", "a.md"), "x\n")
-		if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:orderprobe", Skills: []string{"[[:alpha:]]-*"}}}); err != nil {
+		if err := sm.SetPackages([]codingagent.PackageSource{{Source: "npm:orderprobe", Skills: []string{filterThrow + "*"}}}); err != nil {
 			t.Fatal(err)
 		}
 		_, err := pm.Resolve(nil)
-		if err == nil || !strings.HasSuffix(err.Error(), `[\p{L}\p{Nl}]\-[^/]*?$/u: Invalid escape`) {
+		if err == nil || !strings.HasSuffix(err.Error(), tooLong) {
 			t.Fatalf("Resolve = %v, want the skills filter's SyntaxError", err)
 		}
 	})

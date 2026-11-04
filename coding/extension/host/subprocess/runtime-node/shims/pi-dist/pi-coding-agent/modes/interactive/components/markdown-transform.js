@@ -1,5 +1,6 @@
+/** Applies extension Markdown transformers. `isStreaming` is read per transform, so a reused component sees a stream end. */
 export function createMarkdownTransform(messageType, isStreaming, transformers, messageId, timestamp) {
-    return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth, messageId, timestamp }, transformers);
+    return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming: isStreaming(), availableWidth, messageId, timestamp }, transformers);
 }
 function applyMarkdownTransformers(markdown, context, transformers) {
     let transformedMarkdown = markdown;

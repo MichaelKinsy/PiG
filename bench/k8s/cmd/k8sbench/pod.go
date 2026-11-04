@@ -466,6 +466,7 @@ func (s *session) step(ctx context.Context, kind string, t target, turns, sample
 	}
 	defer func() { _ = logFile.Close() }()
 	var stdout bytes.Buffer
+	//nolint:gosec // G204 (class c): argv is a benchmark profile's seed or sample command template (profile JSON, expanded with dir, turns, sample), prefixed by taskset from exec.LookPath .
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Stdout = &limitedWriter{w: &stdout, n: 16 << 20}
 	cmd.Stderr = logFile

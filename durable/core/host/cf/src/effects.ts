@@ -4,6 +4,7 @@
 // HostSession discards the handle (ADR D16).
 import { errorMessage } from "./errors.ts"
 import { expandRecipe } from "./recipe.ts"
+import { PartialPatcher } from "./partial.ts"
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context"
 import { copyJson, type Context, type JsonValue } from "@earendil-works/chord"
 import { EFFECT } from "./abi.ts"
@@ -18,7 +19,7 @@ import { nestedExecutor } from "./nested.ts"
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, OutputBuffer, type OutputLimits } from "./output.ts"
 import type { HostRegistry } from "./registry.ts"
 import type { Effect } from "./wire.ts"
-import { documentReader, invocationApi, invocationBinding, invocationCommit, type HostApiOptions } from "./facade/hostapi.ts"
+import { documentReader, invocationApi, invocationBinding, invocationCommit, type CommitOptions, type HostApiOptions } from "./facade/hostapi.ts"
 import { runCommit, type TxProxy } from "./facade/tx.ts"
 
 const dec = new TextDecoder()
@@ -44,7 +45,9 @@ export interface EffectRuntime {
   /** `HarnessOptions.env`; absent means tools and sections see `env: undefined`. */
   env?: (target: { conversationId: number; cwd?: string; read: unknown }, context: Context) => unknown | Promise<unknown>
   /** `HarnessOptions.onReport`: extension failures that do not fail the calling operation. */
-  report(error: unknown): void
+  report(error: unknown, info: { kind: string }, context?: Context): void
+  /** `HarnessOptions.now`, the Harness clock a tool's `api.now()` reads; `Date.now` when absent. */
+  now?: () => number
   /** Credentials for a wire-plane request (`model_http`'s `auth`): headers to add. */
   authorize?: (auth: unknown) => Record<string, string> | Promise<Record<string, string>>
   fetch?: typeof fetch
@@ -53,12 +56,14 @@ export interface EffectRuntime {
   /** A custom task's phase or abort handler: the Harness layer builds the TaskRuntime. */
   phase?: (effect: PhaseEffect, context: Context, effectId: number, settled?: (failure?: { error: unknown }) => void) => Promise<void>
   /** Hooks the host answers itself, by `hook` effect name: `resolveAgent` (wraps are host code), `conversationCreated`. They take no registry handler. */
-  hostHooks?: Record<string, (payload: any, context: Context) => unknown | Promise<unknown>>
+  hostHooks?: Record<string, (payload: any, context: Context, effect: HookEffect) => unknown | Promise<unknown>>
   /** The registry snapshot object tools and sections see as `api.registry` (the Harness layer's published state). */
   snapshot?: () => unknown
   /** The Harness itself: harness.ts buildEnv passes `read: this` to the environment builder. */
   readTarget?: () => unknown
   hostApi: HostApiOptions
+  /** The Context of a host effect under the span of a phase, by the host's handle (Context.telemetry); absent without telemetry. */
+  spanContext?: (span: number, base: Context) => Context
 }
 
 const thrown = (error: unknown) => wireError(error)
@@ -68,10 +73,12 @@ const MAX_BATCH = 64
 
 class EventBatch {
   private readonly events: any[] = []
+  private readonly patcher = new PartialPatcher()
   private armed = false
   private readonly deliver: (json: string) => void
   constructor(deliver: (json: string) => void) { this.deliver = deliver }
   push(event: any) {
+    this.patcher.observe(event)
     const terminal = event.type === "done" || event.type === "error"
     const partial = event.partial
     const slim = partial === undefined ? event : partial.content?.length === 0 ? { ...event, partial: { ...partial, content: [] } } : { ...event, partial: null, __partial: partial }
@@ -86,7 +93,7 @@ class EventBatch {
     const json = JSON.stringify(this.events.map((event, i) => {
       if (event.__partial === undefined) return event
       const { __partial, ...rest } = event
-      return i === last ? { ...rest, partial: __partial } : rest
+      return i === last ? { ...rest, partial: this.patcher.patch(__partial) } : rest
     }))
     this.events.length = 0
     this.deliver(json)
@@ -114,7 +121,11 @@ export function withSignal(options: Record<string, unknown> | undefined, signal:
 export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, EffectHandler>> {
   const kept = new KeptLists()
   const envs = new Map<number, unknown>()
-  const contextOf = (signal: AbortSignal): Context => withAbortSignal(signal, BACKGROUND_CONTEXT)
+  // The Context of a host effect: its invocation's signal, and the span of the phase that started it (Context.telemetry).
+  const contextOf = (signal: AbortSignal, span?: number): Context => {
+    const base = withAbortSignal(signal, BACKGROUND_CONTEXT)
+    return span === undefined ? base : rt.spanContext?.(span, base) ?? base
+  }
   const bytes = (v: Uint8Array | string) => typeof v === "string" ? enc.encode(v) : v
 
   const modelContext: EffectHandler = async (effect, { host, signal }) => {
@@ -145,7 +156,22 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     try {
       // Each request gets its own copy of the list, as Pi's generation does (generation.ts streamSimple call): the kept list grows
       // in place when a later request of the conversation extends it.
-      const stream = rt.models.streamSimple(model, { messages: [...messages] }, withSignal(p.options, signal, contextOf(signal).telemetry))
+      const options = withSignal(p.options, signal, contextOf(signal, p.span).telemetry)
+      if (p.onPayload) {
+        // generation.ts's last option: pi-ai calls it with each request body it builds, and the core answers with the beforeProviderRequest chain's result.
+        let next = 0
+        const calls = new Map<number, { resolve: (payload: unknown) => void; reject: (reason: unknown) => void }>()
+        payloadCalls.set(effect.id, calls)
+        options.onPayload = (body: unknown) => new Promise<unknown>((resolve, reject) => {
+          if (signal.aborted) return reject(signal.reason)
+          const call = next++
+          calls.set(call, { resolve, reject })
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true })
+          batch.flush()
+          host.modelEvents(effect.id, [{ type: "payload", call, payload: body }])
+        })
+      }
+      const stream = rt.models.streamSimple(model, { messages: [...messages] }, options)
       let terminal = false
       // Pi stores the final message through a strict-JSON copy in the answer commit; one that is not JSON faults the run there.
       const checked = (event: any): unknown => {
@@ -168,6 +194,8 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     } catch (error) {
       batch.flush()
       if (!signal.aborted) fail((error as Error)?.message ?? errorMessage(error))
+    } finally {
+      payloadCalls.delete(effect.id)
     }
   }
 
@@ -198,7 +226,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const tool: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<ToolEffect>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     const registration = rt.registry.tool(p.toolName, p.handler)
     let ended = false
     const live = () => { if (ended) throw new Error(`Tool call ${p.callId} has settled`) }
@@ -212,9 +240,12 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     const api = {
       ...base,
       callId: p.callId,
-      models: rt.models,
+      // The current models at each access (tool.ts: `get models()`).
+      get models() { return rt.models },
       registry: rt.snapshot?.(),
       env: envs.get(p.taskId),
+      // tool.ts now: the Harness clock, which throws once the invocation has ended (scheduler.ts runtime).
+      now: () => { invocation.binding.check(); return (rt.now ?? Date.now)() },
       outputWindow: p.outputWindow ?? undefined,
       output: (chunk: string | Uint8Array, skipped?: { bytes: number; newlines: number; endsWithNewline: boolean }) => {
         live()
@@ -243,9 +274,9 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
         await Promise.race([settled, abortion(detailsContext)])
       },
       // tool.ts commit: the call's own result is the caller's, never the task's next state.
-      commit: async <T>(change: (tx: TxProxy) => T | Promise<T>, commitContext: Context): Promise<T> => {
+      commit: async <T>(change: (tx: TxProxy) => T | Promise<T>, commitContext: Context, options?: CommitOptions): Promise<T> => {
         let result: T | undefined
-        await invocationCommit(rt.hostApi, { invocation: p.taskId, conversationId: p.conversationId }, invocation.binding)(async (tx: TxProxy) => { result = await change(tx); return undefined }, commitContext)
+        await invocationCommit(rt.hostApi, { invocation: p.taskId, conversationId: p.conversationId }, invocation.binding)(async (tx: TxProxy) => { result = await change(tx); return undefined }, commitContext, options)
         return result as T
       },
       // tool.ts createTask: a child the call owns is abandoned on restart unless the tool itself resumes.
@@ -281,15 +312,53 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     }
   }
 
+  /** generation.ts prepareRunEndTasks: the tasks one `afterRun` hook asked for, checked off the line. A request that passes goes to `tasks` with the installed definition's version and its `initial` checkpoint; one that fails to `rejected`, which the core reports against the hook's extension. */
+  const runEndAnswer = (registry: HostRegistry, hookResult: unknown): unknown => {
+    if (hookResult === undefined) return null
+    // The hook's HookResult<{ tasks: RunEndTask[] }>; a result without `tasks` throws here, as `asked.tasks` does in Pi, and the hook completes with outcome 1.
+    const asked: { readonly tasks: readonly { readonly task: { readonly definition: { readonly name: string } }; readonly input: JsonValue }[] } = hookResult as never
+    const tasks: { task: string; version: number; input: JsonValue; checkpoint: JsonValue }[] = []
+    const rejected: { name: string; message: string }[] = []
+    for (const request of asked.tasks) {
+      try {
+        const name = request.task.definition.name
+        if (name.startsWith("pi.")) throw new Error(`An afterRun hook cannot start the built-in task ${name}`)
+        const installed = registry.find(name)
+        if (installed === undefined) throw new Error(`Task ${name} is not installed`)
+        const input = copyJson(request.input, { omitUndefinedProperties: true })
+        const definition = installed.definition as unknown as { version?: number; phases: Record<string, unknown>; initial(input: JsonValue): JsonValue }
+        const checkpoint = copyJson(definition.initial(input), { omitUndefinedProperties: true }) as JsonValue & { phase: string }
+        if (!Object.hasOwn(definition.phases, checkpoint.phase)) throw new Error(`Task ${name} starts at the unknown phase ${String(checkpoint.phase)}`)
+        tasks.push({ task: name, version: definition.version ?? 1, input, checkpoint })
+      } catch (error) {
+        rejected.push({ name: wireError(error).name, message: wireError(error).message })
+      }
+    }
+    return tasks.length === 0 && rejected.length === 0 ? null : { tasks, ...(rejected.length === 0 ? {} : { rejected }) }
+  }
+
+  // The provider's open onPayload calls of the generation requests in flight, by effect and call number: the core's `modelPayload` hook answers them.
+  const payloadCalls = new Map<number, Map<number, { resolve: (payload: unknown) => void; reject: (reason: unknown) => void }>>()
+
   const hook: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<HookEffect>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
+    if (p.name === "modelPayload") {
+      // The core's answer to an onPayload call (generation.ts providerPayload): the body to send, or the abort that ended the chain.
+      const answer = p.payload as { effect: number; call: number; payload?: unknown; aborted?: boolean }
+      const calls = payloadCalls.get(answer.effect)
+      const call = calls?.get(answer.call)
+      calls?.delete(answer.call)
+      if (call !== undefined) { if (answer.aborted) call.reject(new DOMException("This operation was aborted", "AbortError")); else call.resolve(answer.payload) }
+      host.hookDone(effect.id, 0, null)
+      return
+    }
     const own = rt.hostHooks?.[p.name]
     if (own) {
       // A host hook that returns its answer answers in the tick it was asked: the core's caller is Pi code that runs the same
       // call synchronously (registry.snapshot() in a step's decide, scheduler.ts :955), so an `await` of a plain value would add a tick.
       try {
-        const answer = own(p.payload, context)
+        const answer = own(p.payload, context, p)
         host.hookDone(effect.id, 0, typeof (answer as PromiseLike<unknown> | undefined)?.then === "function" ? await answer : answer)
       } catch (error) { host.hookDone(effect.id, 1, thrown(error)) }
       return
@@ -300,11 +369,11 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     if (!argumentsOf) throw new Error(`hook effect ${effect.id} names unknown hook ${p.name}`)
     const fn = rt.registry.at<(...args: unknown[]) => unknown>(p.handler)
     if (typeof fn !== "function") throw new Error(`hook effect ${effect.id}: handler ${p.handler} of ${p.name} is not a function`)
-    const args = argumentsOf(p.payload)
+    const args = argumentsOf(p.payload, rt.models)
     const api = invocationApi(rt.hostApi, { taskId: p.taskId, conversationId: p.conversationId })
     try {
-      const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, models: rt.models, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf }, context)
-      host.hookDone(effect.id, 0, value)
+      const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, get models() { return rt.models }, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf, entry: api.entry, entries: api.entries }, context)
+      host.hookDone(effect.id, 0, p.name === "afterRun" ? runEndAnswer(rt.registry, value) : value)
     } catch (error) {
       host.hookDone(effect.id, 1, thrown(error))
     }
@@ -312,7 +381,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const section: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<SectionEffect & { handler?: number }>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     try {
       const target = p.handler !== undefined ? rt.registry.at<{ render: (...a: unknown[]) => unknown }>(p.handler) : await sectionOf(rt, p)
       // types.ts PromptInput: the section renders with the request's resolved agent (the codemode section lists its callable
@@ -327,7 +396,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
 
   const env: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<EnvEffect>(effect)
-    const context = contextOf(signal)
+    const context = contextOf(signal, p.span)
     try {
       const built = rt.env ? await rt.env({ conversationId: p.conversationId, ...(p.cwd === undefined ? {} : { cwd: p.cwd }), read: rt.readTarget?.() ?? documentReader(rt.client) }, context) : undefined
       if (p.taskId !== undefined) { if (built === undefined) envs.delete(p.taskId); else envs.set(p.taskId, built) }
@@ -343,11 +412,11 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       const model = rt.models.getModel(p.model.provider, p.model.modelId)
       if (model === undefined) throw new Error(`Model ${p.model.provider}/${p.model.modelId} is not available`)
       if (p.op === "cancel") {
-        await rt.models.cancelDeferred?.(model, p.handle, { signal, telemetry: contextOf(signal).telemetry })
+        await rt.models.cancelDeferred?.(model, p.handle, { signal, telemetry: contextOf(signal, p.span).telemetry })
         return host.hookDone(effect.id, 0, null)
       }
       if (!rt.models.fetchDeferred) throw new Error("the models object has no fetchDeferred")
-      const message = await rt.models.fetchDeferred(model, p.handle, { signal, telemetry: contextOf(signal).telemetry })
+      const message = await rt.models.fetchDeferred(model, p.handle, { signal, telemetry: contextOf(signal, p.span).telemetry })
       host.hookDone(effect.id, 0, message)
     } catch (error) {
       host.hookDone(effect.id, 1, thrown(error))
@@ -378,7 +447,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
       if (failure) host.phaseDone(effect.id, 1, thrown(failure.error)); else host.phaseDone(effect.id, 0, null)
     }
     try {
-      await rt.phase(p, contextOf(signal), effect.id, settled)
+      await rt.phase(p, contextOf(signal, p.span), effect.id, settled)
       if (!sent) settled()
     } catch (error) {
       if (!sent) settled({ error })

@@ -40,7 +40,7 @@ func TestProviderObjectsAcrossSDKs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, language := range []string{"go", "python", "rust"} {
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
 		placements := []string{"strict", "packed"}
 		if language == "go" {
 			placements = append(placements, "fused")
@@ -86,6 +86,10 @@ func testProviderObjectPair(t *testing.T, root, role, language, placement, call 
 		native.Factory = "new_extension"
 		native.SDKName = "pig-sdk"
 		native.Package = "provider-object-rust"
+	case "lisp":
+		native.Factory = "new-extension"
+		native.SDKName = "pig-sdk-lisp"
+		native.Package = "provider-object"
 	}
 	if placement == "packed" {
 		native.Isolation = "shared-ok"
@@ -260,6 +264,9 @@ func providerPeer(t *testing.T, root string, native subprocess.ExtConfig) subpro
 		peer.Package = "provider-peer"
 		write("Cargo.toml", fmt.Sprintf("[package]\nname=\"provider-peer\"\nversion=\"0.1.0\"\nedition=\"2024\"\n[dependencies]\npig-sdk={path=%q}\n", filepath.ToSlash(filepath.Join(root, "extensions/sdk-rs"))))
 		write("src/lib.rs", "pub fn new_extension()->pig_sdk::Extension{pig_sdk::Extension::new(\"provider-peer\")}\n")
+	case "lisp":
+		peer.Package = "provider-peer"
+		write("provider-peer.lisp", "(defpackage \"provider-peer\" (:use \"COMMON-LISP\"))\n(in-package \"provider-peer\")\n(defun new-extension () (pig:make-extension \"provider-peer\"))\n")
 	}
 	return peer
 }

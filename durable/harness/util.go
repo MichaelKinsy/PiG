@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 // Waiter is one pending wait registered with Waiters. It settles once: through Resolve, RejectAll, or cancellation of the context it was added with.
@@ -17,11 +18,32 @@ type Waiter[T any] struct {
 	done  chan struct{}
 	value T
 	err   error
+	line  *session.SessionImpl
+	ctx   context.Context
+	// parked is the wait registered with the Session before it blocks, so the publication that settles it waits for the
+	// goroutine to run again (Session.Park); nil until Park, or when the waiter was settled at once.
+	parked *session.Parked
 }
 
-// Wait blocks until the waiter settles.
+// Park registers the wait with the Session. Wait does it when it was not done; a caller that must be registered before it
+// releases a lock the settle needs calls it first. It must not be called inside a Session line job: that job's outcome is
+// delivered after the publication that waits for the registered wait to resume.
+func (waiter *Waiter[T]) Park() {
+	if waiter.parked == nil {
+		waiter.parked = waiter.line.Park(waiter.ctx, waiter.done)
+	}
+}
+
+// Wait blocks until the waiter settles, then acknowledges the wait to the Session: the goroutine runs again.
 func (waiter *Waiter[T]) Wait() (T, error) {
+	waiter.Park()
 	<-waiter.done
+	if waiter.err != nil {
+		// Rejected or cancelled, not woken by a publication: no continuation of it is ordered.
+		waiter.parked.Abandon()
+	} else {
+		waiter.parked.Resume()
+	}
 	return waiter.value, waiter.err
 }
 
@@ -35,9 +57,10 @@ type Waiters[K comparable, T any] struct {
 	sets map[K][]*Waiter[T]
 }
 
-// Add registers a wait for key. A cancelled ctx fails it with the cancellation cause, at once when ctx is already done.
-func (waiters *Waiters[K, T]) Add(ctx context.Context, key K) *Waiter[T] {
-	waiter := &Waiter[T]{done: make(chan struct{})}
+// Add registers a wait for key, which the caller then blocks in through Wait; line is the Session whose publications resume it
+// in order. A cancelled ctx fails it with the cancellation cause, at once when ctx is already done.
+func (waiters *Waiters[K, T]) Add(ctx context.Context, line *session.SessionImpl, key K) *Waiter[T] {
+	waiter := &Waiter[T]{done: make(chan struct{}), line: line, ctx: ctx}
 	if ctx.Err() != nil {
 		waiter.err = context.Cause(ctx)
 		close(waiter.done)
@@ -181,4 +204,10 @@ func jsonQuote(text string) string {
 	encoder.SetEscapeHTML(false)
 	_ = encoder.Encode(text)
 	return string(bytes.TrimSuffix(buffer.Bytes(), []byte("\n")))
+}
+
+// conversationEntries is the scan of conversation conversationId's history that query asks for, without fields an
+// untyped caller added: only the query's bounds and order are kept.
+func conversationEntries(conversationId durable.ConversationId, query durable.EntryQuery) durable.EntryQuery {
+	return durable.EntryQuery{ConversationId: conversationId, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
 }

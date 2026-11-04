@@ -7,6 +7,7 @@ package harness
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -53,27 +54,26 @@ func retentionSpawner(fixtures *ownFixtures, into *atomic.Int64) durable.Task[sp
 	})
 }
 
-// chainRead holds the read of one conversation record, from its nth read once armed, until released.
-type chainRead struct {
+// taskRead holds the read of one task record, once armed, until released.
+type taskRead struct {
 	durable.Storage
-	target  durable.ConversationId
+	target  durable.TaskId
 	armed   atomic.Bool
-	reads   atomic.Int64
-	nth     int64
+	once    sync.Once
 	reached chan struct{}
 	release chan struct{}
 }
 
-func (store *chainRead) Conversation(ctx context.Context, id durable.ConversationId) (*durable.ConversationRecord, error) {
-	if store.armed.Load() && id == store.target && store.reads.Add(1) == store.nth {
-		close(store.reached)
+func (store *taskRead) Task(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
+	if store.armed.Load() && id == store.target {
+		store.once.Do(func() { close(store.reached) })
 		select {
 		case <-store.release:
 		case <-ctx.Done():
 			return nil, context.Cause(ctx)
 		}
 	}
-	return store.Storage.Conversation(ctx, id)
+	return store.Storage.Task(ctx, id)
 }
 
 // retentionRawTask rewrites a task record through the Transaction, as upstream's raw setTask.
@@ -99,7 +99,7 @@ type forgottenTree struct {
 	conversation durable.ConversationId
 }
 
-func retentionForgotten(t *testing.T, fixtures *ownFixtures, opened ownOpened, twoLevels bool) forgottenTree {
+func retentionForgotten(t *testing.T, fixtures *ownFixtures, opened ownOpened, twoLevels bool, slowKeep ...bool) forgottenTree {
 	t.Helper()
 	tree, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (forgottenTree, error) {
 		var tree forgottenTree
@@ -121,7 +121,7 @@ func retentionForgotten(t *testing.T, fixtures *ownFixtures, opened ownOpened, t
 			return tree, err
 		}
 		tree.conversation = conversation.Id
-		tree.keep, err = durable.CreateTask(tx, fixtures.hold, holdInput{Name: "keep"}, durable.TaskOptions{Ownership: scaleOwnedBy(tree.p)})
+		tree.keep, err = durable.CreateTask(tx, fixtures.hold, holdInput{Name: "keep", SlowAbort: len(slowKeep) > 0 && slowKeep[0]}, durable.TaskOptions{Ownership: scaleOwnedBy(tree.p)})
 		return tree, err
 	})
 	if err != nil {
@@ -205,7 +205,9 @@ func TestSchedulerRetentionBelowAForgottenConversation(t *testing.T) {
 	t.Run("aborts work created in a forgotten conversation below an abort-marked owner before it runs", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		opened := ownOpenHarness(t, fixtures)
-		tree := retentionForgotten(t, fixtures, opened, false)
+		// keep's abort waits for its gate, so P holds while the work is created below it: goroutines, unlike upstream's
+		// microtasks, can finish keep's abort and P's before the creation otherwise.
+		tree := retentionForgotten(t, fixtures, opened, false, true)
 		// P cancels; its live child keeps it holding.
 		retentionRawTask(t, opened.root, tree.p, func(record *durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]) {
 			record.AbortRequested = true
@@ -225,10 +227,11 @@ func TestSchedulerRetentionBelowAForgottenConversation(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	t.Run("keeps a scope busy while the chain of new work below a forgotten conversation loads", func(t *testing.T) {
+	// harness-scheduler-retention.test.ts:292 (Pi e5c6182b)
+	t.Run("loads the chain of new work below a forgotten conversation before admitting it, and keeps the scope busy", func(t *testing.T) {
 		fixtures := newOwnFixtures()
-		store := &chainRead{Storage: storage.NewMemoryStorage(), nth: 2, reached: make(chan struct{}), release: make(chan struct{})}
-		opened := ownOpenHarness(t, fixtures, store)
+		memory := storage.NewMemoryStorage()
+		opened := ownOpenHarness(t, fixtures, memory)
 		type made struct {
 			b            durable.TaskId
 			conversation durable.ConversationId
@@ -246,26 +249,37 @@ func TestSchedulerRetentionBelowAForgottenConversation(t *testing.T) {
 		}
 		fixtures.open("b", "completed")
 		ownExpectOutcome(t, opened.harness, tree.b, durable.OutcomeCompleted)
-		// Hold the chain load's read of C: the second read once holding, after the creating commit's own.
-		store.target = tree.conversation
-		child := ownConversation(t, opened.harness, tree.conversation)
+		mustClose(t, opened.harness)
+		// Reopen, so that B is in no cache: the chain load reads it from Storage. Hold that read.
+		memory.Reopen()
+		store := &taskRead{Storage: memory, target: tree.b, reached: make(chan struct{}), release: make(chan struct{})}
+		second := ownOpenHarness(t, fixtures, store)
+		child := ownConversation(t, second.harness, tree.conversation)
 		store.armed.Store(true)
-		if _, err := durable.Commit(testContext, child, func(tx durable.Tx) (durable.TaskId, error) {
-			return durable.CreateTask(tx, fixtures.hold, holdInput{Name: "d"}, durable.TaskOptions{Ownership: conversationOwned})
-		}); err != nil {
-			t.Fatal(err)
-		}
+		committing := goCall(func() error {
+			_, err := durable.Commit(testContext, child, func(tx durable.Tx) (durable.TaskId, error) {
+				return durable.CreateTask(tx, fixtures.hold, holdInput{Name: "d"}, durable.TaskOptions{Ownership: conversationOwned})
+			})
+			return err
+		})
+		// Its admission loads the chain, for the memberships it writes: the commit waits for the read.
 		<-store.reached
-		idle := goCall(func() error { return opened.harness.WaitForIdle(testContext) })
-		if idle.settled() {
-			t.Fatal("WaitForIdle returned while the chain of the new work was loading")
+		if committing.settled() {
+			t.Fatal("the commit returned while the chain of the new work was loading")
 		}
 		close(store.release)
+		if err := committing.wait(t); err != nil {
+			t.Fatal(err)
+		}
+		idle := goCall(func() error { return second.harness.WaitForIdle(testContext) })
+		if idle.settled() {
+			t.Fatal("WaitForIdle returned while the new work was live")
+		}
 		fixtures.open("d", "completed")
 		if err := idle.wait(t); err != nil {
 			t.Fatal(err)
 		}
-		mustClose(t, opened.harness)
+		mustClose(t, second.harness)
 	})
 
 	t.Run("keeps a chain when one commit ends its last task and creates new work below it", func(t *testing.T) {
@@ -332,6 +346,9 @@ func TestSchedulerRetentionBelowAForgottenConversation(t *testing.T) {
 		ownBusy(t, child, tree.keep)
 		// Queued while nothing cancels: no withdrawal scan.
 		queued := ownSubmit(t, child, ownInput("later"))
+		// Pi's sweep runs inside the commit that ends the tasks, so its baseline already excludes what it dropped; the Go
+		// scheduler's sweep is asynchronous (scheduler.go dropQueue), so wait for the queue to drain before measuring: the sizes
+		// compared below then start from the same settled index as Pi's.
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		// P fails while its child runs: it holds the failed outcome, which is cancellation intent.
 		retentionRawTask(t, opened.root, tree.p, func(record *durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]) {

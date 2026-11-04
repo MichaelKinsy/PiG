@@ -42,6 +42,9 @@ func TestChangedPackagesSelectsTheReverseClosure(t *testing.T) {
 		"root.go":                  "package m\n\nimport \"embed\"\n\n//go:embed *.md\nvar Notes embed.FS\n",
 		"NOTES.md":                 "x\n",
 		"f/f.go":                   "package f\n\nimport \"example.com/m\"\n\nvar F = m.Notes\n",
+		"j/j_test.go":              "package j\n\nimport (\n\t\"os\"\n\t\"testing\"\n)\n\nfunc TestJ(t *testing.T) { _, _ = os.ReadDir(\"../changelog.d\") }\n",
+		"j/j.go":                   "package j\n",
+		"changelog.d/a.md":         "x\n",
 	}
 	for path, content := range files {
 		writeCIFixture(t, repo, path, content)
@@ -101,12 +104,15 @@ func TestChangedPackagesSelectsTheReverseClosure(t *testing.T) {
 			map[string][]string{"unmapped": {"docs/notes.md"}}},
 		{"untracked go file", map[string]string{"c/extra.go": "package c\n\nfunc Extra() {}\n"},
 			map[string][]string{"direct": {"c"}, "affected": {"c"}}},
+		// The changelog tools and tests list changelog.d by globbing it, so no Go source names a fragment; the package that names the directory is the one that reads it.
+		{"changelog fragment", map[string]string{"changelog.d/a.md": "y\n"},
+			map[string][]string{"direct": {"j"}, "affected": {"j"}}},
 		{"go.mod", map[string]string{"go.mod": "module example.com/m\n\ngo 1.26.0\n"},
-			map[string][]string{"affected": {"example.com/m", "a", "b", "c", "d", "e", "f", "g", "h", "i"}, "tagged": {"tagged"}}},
+			map[string][]string{"affected": {"example.com/m", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}, "tagged": {"tagged"}, "module-wide": {"go.mod"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := selection(t, tc.edits)
-			for _, kind := range []string{"direct", "affected", "tagged", "unmapped"} {
+			for _, kind := range []string{"direct", "affected", "tagged", "unmapped", "module-wide"} {
 				if !slices.Equal(got[kind], tc.want[kind]) {
 					t.Errorf("%s = %v, want %v", kind, got[kind], tc.want[kind])
 				}

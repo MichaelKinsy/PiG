@@ -39,6 +39,8 @@ type editorRemoteState struct {
 	frame           []string
 	frameWidth      int
 	wantsKeyRelease bool
+	// capturesViewportInput is the remote component's capturesViewportInput as its latest frame reported it.
+	capturesViewportInput bool
 	// expanded is the component's getExpandedText for the mirrored text.
 	expanded        string
 	expandedFor     string
@@ -188,6 +190,13 @@ func (e *Editor) SetRemoteFrame(lines []string, width int, wantsKeyRelease bool)
 	e.Invalidate()
 }
 
+// SetRemoteCapturesViewportInput records the remote component's capturesViewportInput (Component.capturesViewportInput) for the frame that follows.
+func (e *Editor) SetRemoteCapturesViewportInput(captures bool) {
+	if e.remote != nil {
+		e.remote.capturesViewportInput = captures
+	}
+}
+
 // ApplyRemoteChange mirrors the remote's text (its onChange) and the same
 // text with paste markers expanded.
 func (e *Editor) ApplyRemoteChange(text, expanded string) {
@@ -317,6 +326,10 @@ func NewAutocompleteQuery(provider AutocompleteProvider, lines []string, cursorL
 	}
 	return query
 }
+
+// AwaitsIO reports whether RunResult waits for work Pi awaits off the loop (a command's Promise-returning argument completer, the fd search):
+// the answer cannot settle in the microtask checkpoint after the read that asked.
+func (q *RemoteSuggestionQuery) AwaitsIO() bool { return q.argumentTask != nil || q.fileTask != nil }
 
 // RunResult awaits the query and preserves callback errors for its caller.
 func (q *RemoteSuggestionQuery) RunResult(ctx context.Context) (*AutocompleteSuggestions, error) {

@@ -1,4 +1,4 @@
-//go:build !pig_strip_mistral_conversations && !pig_strip_bedrock_converse_stream
+//go:build !pig_strip_mistral_conversations
 
 package ai
 
@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-
-	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 )
 
 // nonObjectCall is a stored tool call whose arguments parsed to a value that is not an object.
@@ -18,7 +16,7 @@ func nonObjectCall(text string) ToolCall {
 }
 
 // Each converter writes a stored call's arguments as Pi's does: anthropic-messages.ts:1444 and google-shared.ts:270 send `arguments ?? {}`,
-// mistral-conversations.ts:849 sends `JSON.stringify(arguments || {})`, bedrock-converse-stream.ts:1035 sends the value itself.
+// mistral-conversations.ts:849 sends `JSON.stringify(arguments || {})`.
 func TestNonObjectToolArgumentsReplayAsEachProviderDoes(t *testing.T) {
 	for _, tc := range []struct{ text, nullish, falsy string }{
 		{`[]`, `[]`, `[]`}, {`null`, `{}`, `{}`}, {`5`, `5`, `5`}, {`0`, `0`, `{}`}, {`"s"`, `"s"`, `"s"`}, {`""`, `""`, `{}`}, {`false`, `false`, `{}`}, {`true`, `true`, `true`},
@@ -72,25 +70,6 @@ func TestNonObjectToolArgumentsReplayAsEachProviderDoes(t *testing.T) {
 			}
 			if arguments != tc.falsy {
 				t.Errorf("mistral arguments = %s, want %s", arguments, tc.falsy)
-			}
-			converted, err := convertBedrockMessages(messages, "us.anthropic.claude-sonnet-4-5-20250929-v1:0", "Claude Sonnet 4.5 (US)", bedrockCacheNone, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var document string
-			for _, message := range converted {
-				for _, block := range message.Content {
-					if use, ok := block.(*btypes.ContentBlockMemberToolUse); ok {
-						encoded, err := use.Value.Input.MarshalSmithyDocument()
-						if err != nil {
-							t.Fatal(err)
-						}
-						document = string(encoded)
-					}
-				}
-			}
-			if document != tc.text {
-				t.Errorf("bedrock input = %s, want %s", document, tc.text)
 			}
 		})
 	}

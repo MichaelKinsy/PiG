@@ -13,17 +13,21 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 type statusOutput struct {
-	Healthy   bool            `json:"healthy"`
-	Paths     statusPaths     `json:"paths"`
-	Packages  statusPackages  `json:"packages"`
-	Resources statusResources `json:"resources"`
-	Piglets   statusPiglets   `json:"piglets"`
-	Errors    []string        `json:"errors"`
-	Warnings  []string        `json:"warnings"`
+	Healthy      bool                `json:"healthy"`
+	Paths        statusPaths         `json:"paths"`
+	Trust        projectTrustReport  `json:"trust"`
+	ActivePiglet *statusActivePiglet `json:"activePiglet,omitempty"`
+	Packages     statusPackages      `json:"packages"`
+	Resources    statusResources     `json:"resources"`
+	Piglets      statusPiglets       `json:"piglets"`
+	Errors       []string            `json:"errors"`
+	Warnings     []string            `json:"warnings"`
 }
 
 type statusPaths struct {
@@ -42,6 +46,7 @@ type statusResources struct {
 	Total    int                  `json:"total"`
 	Enabled  int                  `json:"enabled"`
 	Disabled int                  `json:"disabled"`
+	Ignored  int                  `json:"ignored"`
 	ByKind   map[string]int       `json:"byKind"`
 	Items    []statusResourceItem `json:"items"`
 }
@@ -54,6 +59,9 @@ type statusResourceItem struct {
 	Origin  string `json:"origin"`
 	Source  string `json:"source"`
 	Enabled bool   `json:"enabled"`
+	// Ignored is why this run does not load the resource although it exists: "untrusted" (its project is not trusted) or
+	// "piglet-discovery" (the active Piglet's discovery excludes its scope). Empty when it applies. An ignored resource is never enabled.
+	Ignored string `json:"ignored,omitempty"`
 	Health  string `json:"health"`
 }
 
@@ -61,6 +69,49 @@ type statusPiglets struct {
 	Total      int `json:"total"`
 	WithSource int `json:"withSource"`
 	WithBinary int `json:"withBinary"`
+}
+
+// statusActivePiglet is the Piglet the session that started this command runs, read from PIG_ACTIVE_PIGLET_SOURCE (or this
+// process's own Piglet Binary). Its discovery marks ambient extensions and skills as ignored.
+type statusActivePiglet struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+	Binary bool   `json:"binary"`
+}
+
+// statusResourceEntry is one inventory item with the reason this run ignores it, empty when it applies.
+type statusResourceEntry struct {
+	tui.ResourceItem
+	ignored string
+}
+
+// Reasons status gives for a resource the run does not load.
+const (
+	statusIgnoredUntrusted = "untrusted"
+	statusIgnoredPiglet    = "piglet-discovery"
+)
+
+// statusIgnoredReason reports why the active Piglet's discovery leaves resource out, or "".
+func statusIgnoredReason(active *inspectedPiglet, resource tui.ResourceItem) string {
+	if active.excludes(string(resource.ResourceType), resource.Scope) {
+		return statusIgnoredPiglet
+	}
+	return ""
+}
+
+// collectIgnoredProjectResources lists the project-scope resources an untrusted project holds, as ignored entries.
+func collectIgnoredProjectResources(cwd, agentDir string) ([]statusResourceEntry, error) {
+	items, err := collectConfigResourceItems(cwd, agentDir, codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, true))
+	if err != nil {
+		return nil, err
+	}
+	var ignored []statusResourceEntry
+	for _, item := range items {
+		if item.Scope == "project" {
+			ignored = append(ignored, statusResourceEntry{ResourceItem: item, ignored: statusIgnoredUntrusted})
+		}
+	}
+	return ignored, nil
 }
 
 func runStatusCommand(args []string) int {
@@ -98,6 +149,30 @@ func runStatusCommand(args []string) int {
 	return 0
 }
 
+// statusLoadHealth runs the loader a session uses on one skill or theme file and returns why it rejects the file, or "". Pi's
+// loader leaves out a skill without a description (core/skills.ts loadSkillFromFile) and rejects a theme that does not match
+// the theme schema, an unknown color role included (core/theme/theme-schema.ts); both only warn, so the file shows up as a
+// resource that the session does not have.
+func statusLoadHealth(kind packagecontent.Kind, path, cwd, agentDir string) string {
+	switch kind {
+	case packagecontent.Skills:
+		result, err := codingagent.LoadSkills(codingagent.LoadSkillsOptions{CWD: cwd, AgentDir: agentDir, SkillPaths: []string{path}})
+		switch {
+		case err != nil:
+			return "not loaded: " + err.Error()
+		case len(result.Skills) == 0 && len(result.Diagnostics) > 0:
+			return "not loaded: " + result.Diagnostics[0].Message
+		case len(result.Skills) == 0:
+			return "not loaded: the file is not a skill"
+		}
+	case packagecontent.Themes:
+		if _, err := tui.LoadThemeFile(path); err != nil {
+			return "invalid: " + err.Error()
+		}
+	}
+	return ""
+}
+
 func collectStatus() statusOutput {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -119,9 +194,23 @@ func collectStatus() statusOutput {
 		Errors:    []string{},
 		Warnings:  []string{},
 	}
-	settings := codingagent.NewSettingsManager(cwd, agentDir)
+	// pig additive (D41): the report follows the trust decision and the active Piglet of the run it describes. A project this
+	// process does not trust contributes no settings, Packages or errors; its resources are listed as ignored.
+	trust := reportProjectTrust(cwd, agentDir)
+	status.Trust = trust
+	if trust.Error != "" {
+		status.Warnings = append(status.Warnings, "project trust: "+trust.Error)
+	}
+	active := inspectActivePiglet(cwd)
+	if active != nil {
+		status.ActivePiglet = &statusActivePiglet{Name: active.Name, Source: active.Source, Binary: active.Baked}
+		if active.Err != nil {
+			status.Warnings = append(status.Warnings, active.Err.Error())
+		}
+	}
+	settings := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, trust.Trusted())
 	for _, settingsError := range settings.DrainErrors() {
-		status.Errors = append(status.Errors, fmt.Sprintf("%s settings: %v", settingsError.Scope, settingsError.Error))
+		status.Errors = append(status.Errors, fmt.Sprintf("%s settings: %s", settingsError.Scope, dropJSONSnippet(settingsError.Error.Error())))
 	}
 	packages := packagemanager.ConfiguredPackagesForResolution(cwd, settings.AgentDir(), settings)
 	status.Packages.Total = len(packages)
@@ -142,10 +231,22 @@ func collectStatus() statusOutput {
 			status.Errors = append(status.Errors, fmt.Sprintf("%s Package %q is invalid: %v", pkg.Scope, pkg.Source.Source, err))
 		}
 	}
-	if resources, err := collectConfigResourceItems(cwd, agentDir, settings); err != nil {
-		status.Errors = append(status.Errors, "resource inventory: "+err.Error())
+	resources, resourcesErr := collectConfigResourceItems(cwd, agentDir, settings)
+	if resourcesErr != nil {
+		status.Errors = append(status.Errors, "resource inventory: "+resourcesErr.Error())
 	} else {
-		status.Resources.Total = len(resources)
+		entries := make([]statusResourceEntry, 0, len(resources))
+		for _, resource := range resources {
+			entries = append(entries, statusResourceEntry{ResourceItem: resource, ignored: statusIgnoredReason(active, resource)})
+		}
+		if !trust.Trusted() {
+			ignoredProject, listErr := collectIgnoredProjectResources(cwd, agentDir)
+			if listErr != nil {
+				status.Warnings = append(status.Warnings, "the untrusted project's resources could not be listed: "+listErr.Error())
+			}
+			entries = append(entries, ignoredProject...)
+		}
+		status.Resources.Total = len(entries)
 		// The loader identifies an extension by its path, not its name:
 		// DisambiguateIdentities renames same-named copies ("ask:2", "ask:3")
 		// and loads them all, as upstream Pi loads every extension path. So a
@@ -155,23 +256,25 @@ func collectStatus() statusOutput {
 		// dedupePrompts/dedupeThemes), so a same-scope duplicate is unusable
 		// and stays an error. pig additive (D41)
 		seenIdentities := make(map[string]string, len(resources))
-		for _, resource := range resources {
+		for _, entry := range entries {
+			resource := entry.ResourceItem
 			kind := packagecontent.Kind(resource.ResourceType)
 			name := resource.DisplayName
 			if resource.Health == "" {
 				resolvedName, err := packagecontent.PublicName(kind, resource.Path, "")
-				if err != nil {
-					status.Errors = append(status.Errors, fmt.Sprintf("%s resource %s: %v", kind, resource.Path, err))
-				} else {
+				switch {
+				case err == nil:
 					name = resolvedName
+				case entry.ignored == "":
+					status.Errors = append(status.Errors, fmt.Sprintf("%s resource %s: %v", kind, resource.Path, err))
 				}
 			}
 			if name == "" {
 				name = filepath.Base(resource.Path)
 			}
 			identity := string(resource.ResourceType) + "\x00" + resource.Scope + "\x00" + name
-			// A disabled copy is never loaded, so it cannot collide at runtime; it stays in the inventory as disabled.
-			if !resource.Enabled {
+			// A disabled or ignored copy is never loaded, so it cannot collide at runtime; it stays in the inventory.
+			if !resource.Enabled || entry.ignored != "" {
 			} else if previous, exists := seenIdentities[identity]; exists {
 				if kind == packagecontent.Extensions {
 					//perf:ok one message per duplicate found, in a one-shot status command
@@ -182,15 +285,29 @@ func collectStatus() statusOutput {
 			} else {
 				seenIdentities[identity] = resource.Path
 			}
+			// pig additive (D41): health is what the loader says about a resource this run would load, not only whether the file exists.
+			// A resource the loader rejects is not enabled, so one field answers whether the session has it.
+			health := resource.Health
+			enabled := resource.Enabled && entry.ignored == ""
+			if health == "" && enabled {
+				if health = statusLoadHealth(kind, resource.Path, cwd, agentDir); health != "" {
+					enabled = false
+					//perf:ok one message per rejected resource, in a one-shot status command
+					status.Warnings = append(status.Warnings, fmt.Sprintf("%s %s: %s", kind, name, health))
+				}
+			}
 			status.Resources.Items = append(status.Resources.Items, statusResourceItem{
 				Kind: string(resource.ResourceType), Name: name, Path: canonicalStatusPath(resource.Path),
-				Scope: resource.Scope, Origin: resource.Origin, Source: resource.Source,
-				Enabled: resource.Enabled, Health: resource.Health,
+				Scope: resource.Scope, Origin: resource.Origin, Source: codingagent.RedactBugReportURL(resource.Source),
+				Enabled: enabled, Ignored: entry.ignored, Health: redactStatusText(health),
 			})
 			status.Resources.ByKind[string(resource.ResourceType)]++
-			if resource.Enabled {
+			switch {
+			case entry.ignored != "":
+				status.Resources.Ignored++
+			case enabled:
 				status.Resources.Enabled++
-			} else {
+			default:
 				status.Resources.Disabled++
 			}
 		}
@@ -216,6 +333,12 @@ func collectStatus() statusOutput {
 			}
 		}
 	}
+	for i, message := range status.Errors {
+		status.Errors[i] = redactStatusText(message)
+	}
+	for i, message := range status.Warnings {
+		status.Warnings[i] = redactStatusText(message)
+	}
 	status.Errors = deduplicateStatusErrors(status.Errors)
 	status.Warnings = deduplicateStatusErrors(status.Warnings)
 	status.Healthy = len(status.Errors) == 0
@@ -229,8 +352,17 @@ func renderStatus(status statusOutput) {
 	}
 	fmt.Printf("Pig status: %s\n", state)
 	fmt.Printf("  paths: home=%s agent=%s project=%s\n", status.Paths.Home, status.Paths.Agent, status.Paths.Project)
+	fmt.Printf("  project trust: %s (%s)\n", status.Trust.State, status.Trust.Reason)
+	if status.ActivePiglet != nil {
+		fmt.Printf("  active Piglet: %s (%s)\n", status.ActivePiglet.Name, status.ActivePiglet.Source)
+	}
 	fmt.Printf("  packages: %d (user=%d project=%d)\n", status.Packages.Total, status.Packages.User, status.Packages.Project)
-	fmt.Printf("  resources: %d (enabled=%d disabled=%d)\n", status.Resources.Total, status.Resources.Enabled, status.Resources.Disabled)
+	fmt.Printf("  resources: %d (enabled=%d disabled=%d ignored=%d)\n", status.Resources.Total, status.Resources.Enabled, status.Resources.Disabled, status.Resources.Ignored)
+	for _, item := range status.Resources.Items {
+		if item.Ignored != "" {
+			fmt.Printf("    ignored (%s): %s %s (%s scope) %s\n", item.Ignored, item.Kind, item.Name, item.Scope, item.Path)
+		}
+	}
 	fmt.Printf("  piglets: %d (source=%d binary=%d)\n", status.Piglets.Total, status.Piglets.WithSource, status.Piglets.WithBinary)
 	for _, message := range status.Errors {
 		printCLIError("%s", message)
@@ -240,15 +372,48 @@ func renderStatus(status statusOutput) {
 	}
 }
 
+// statusURL finds the URLs in a message: a scheme, "://", and everything up to a space or an unescaped double quote, which a %q-quoted
+// source ends with. A single quote is part of the URL: user information may hold one.
+var statusURL = lazyregexp.New(`[A-Za-z][A-Za-z0-9+.-]*://(?:\\.|[^\s"<>])+`)
+
+// redactStatusText strips credentials from the URLs a status message names. A Package source is the user's own configuration and
+// may carry them (https://user:token@host/repo.git, ?access_token=...), and the messages of the layers below name the source they
+// failed on. The report is built to be pasted and piped, so it names a URL as Pi's bug report does (redactUrl): without credentials.
+func redactStatusText(message string) string {
+	return statusURL.ReplaceAllStringFunc(message, codingagent.RedactBugReportURL)
+}
+
+// jsonSnippet is what JSON.parse quotes after an unexpected token: about twenty characters of the file around the error.
+var jsonSnippet = lazyregexp.New(`(?s)^(.*Unexpected token '.'), .* is not valid JSON$`)
+
+// dropJSONSnippet removes the text of the file that a syntax error quotes. A settings file may hold a credential, and a quote cut
+// out of the middle of one has no URL left for redactStatusText to find. Pi's own message keeps the snippet; the report is PiG's.
+func dropJSONSnippet(message string) string {
+	return jsonSnippet.ReplaceAllString(message, "${1} is not valid JSON")
+}
+
+// canonicalStatusPath is path made absolute with the symbolic links of its existing part resolved. The part that does not exist yet is
+// kept as written, so the answer for a directory does not change when something creates it: on macOS a temporary directory is
+// /var/... but /private/var/... once resolved, and a report that names the agent directory before the first run created it must name it
+// as the second run does.
 func canonicalStatusPath(path string) string {
-	absolute, err := filepath.Abs(path)
-	if err == nil {
+	if absolute, err := filepath.Abs(path); err == nil {
 		path = absolute
 	}
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		path = resolved
+	return filepath.Clean(resolveExistingPrefix(path))
+}
+
+// resolveExistingPrefix resolves the symbolic links of the longest existing leading part of the absolute path and appends the rest.
+func resolveExistingPrefix(path string) string {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
 	}
-	return filepath.Clean(path)
+	parent := filepath.Dir(path)
+	if parent == path {
+		return path
+	}
+	return filepath.Join(resolveExistingPrefix(parent), filepath.Base(path))
 }
 
 func deduplicateStatusErrors(errors []string) []string {

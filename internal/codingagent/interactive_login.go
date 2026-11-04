@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -77,7 +77,7 @@ func authSubscriptionArg(subscription *bool) []bool {
 }
 
 func sortAuthProviders(providers []tui.OAuthProvider) {
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(providers, func(a, b tui.OAuthProvider) int { return collator.CompareString(a.Name, b.Name) })
 }
 

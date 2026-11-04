@@ -1,7 +1,5 @@
 package codingagent
 
-// pi: packages/coding-agent/src/core/slash-commands.ts
-
 import (
 	"encoding/json"
 	"errors"

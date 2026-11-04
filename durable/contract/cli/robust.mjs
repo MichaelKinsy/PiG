@@ -22,6 +22,7 @@ import { mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { crash, induction, recycle, soak, timeTravel } from "../lib/robust.mjs"
+import { exitAfterFlush } from "../lib/exit.mjs"
 
 const [cmd, ...rest] = process.argv.slice(2)
 const opt = (name, fallback) => { const i = rest.indexOf(`--${name}`); return i < 0 ? fallback : rest[i + 1] }
@@ -40,7 +41,7 @@ if (cmd === "induction") {
 	if (json) writeFileSync(json, JSON.stringify(r, null, 1))
 	// The core's own metrics decide: the host's V8 heap and the process's resident set carry the shared model path (the
 	// scripted model and the context it is given), which grows with the transcript in Pi too.
-	process.exit(r.stopped || r.incomplete || ["heap", "reserved"].some(m => r.metrics[m] && !r.metrics[m].bounded) ? 1 : 0)
+	await exitAfterFlush(r.stopped || r.incomplete || ["heap", "reserved"].some(m => r.metrics[m] && !r.metrics[m].bounded) ? 1 : 0)
 } else if (cmd === "soak") {
 	const impl = opt("impl", "wasm-tinygo")
 	const r = await soak({ impl, objects: Number(opt("objects", "4")), rounds: Number(opt("rounds", "5000")), warmup: Number(opt("warmup", "1000")), every: Number(opt("every", "25")), window: Number(opt("window", "100000")), tools: Number(opt("tools", "8")), bound: Number(opt("bound", "1024")), out })
@@ -49,7 +50,7 @@ if (cmd === "induction") {
 	if (r.incomplete) console.log(`  incomplete: ${r.incomplete}`)
 	for (const [metric, m] of Object.entries(r.metrics)) console.log(`  ${metric.padEnd(8)} ${m.at.map(fmt).join(" -> ")}${m.step1 === undefined ? ` (rounds ${m.turns.join(" -> ")})` : `  step N->2N ${m.perTurn.step1.toFixed(1)} B/object-turn  step 2N->4N ${m.perTurn.step2.toFixed(1)} B/object-turn`}  slope ${m.perTurn.slope.toFixed(1)} B/object-turn  max ${fmt(m.max)}${["heap", "reserved"].includes(metric) ? (m.bounded ? "  bounded" : "  GROWS") : ""}`)
 	if (json) writeFileSync(json, JSON.stringify(r, null, 1))
-	process.exit(r.stopped || r.incomplete || ["heap", "reserved"].some(m => r.metrics[m] && !r.metrics[m].bounded) ? 1 : 0)
+	await exitAfterFlush(r.stopped || r.incomplete || ["heap", "reserved"].some(m => r.metrics[m] && !r.metrics[m].bounded) ? 1 : 0)
 } else if (cmd === "timetravel") {
 	const impls = opt("impls", "wasm-tinygo,wasm-go,native").split(",")
 	const r = await timeTravel({ impls, size: Number(opt("size", "3500")), atTurn: Number(opt("at-turn", "100")), scrub: Number(opt("scrub", "8")), out })
@@ -62,7 +63,7 @@ if (cmd === "induction") {
 		console.log([label.padEnd(12), ...names.map(n => (by[n] === undefined ? "-" : by[n].toFixed(1)).padStart(10))].join(" ") + (x.ok ? "" : `  FAIL ${x.problem}${x.reports ? " " + JSON.stringify(x.reports).slice(0, 400) : ""}`))
 	}
 	if (json) writeFileSync(json, JSON.stringify(r, null, 1))
-	process.exit(Object.values(r.runs).every(x => x.ok) ? 0 : 1)
+	await exitAfterFlush(Object.values(r.runs).every(x => x.ok) ? 0 : 1)
 } else if (cmd === "crash") {
 	const impls = opt("impls", "wasm-tinygo,wasm-go,native").split(",")
 	const points = opt("points")?.split(",").map(Number)
@@ -74,7 +75,7 @@ if (cmd === "induction") {
 		console.log(`  ${impl.padEnd(12)} ${rows.filter(p => p.ok).length}/${rows.length} crash points pass; ${rows.filter(p => p.identical).length} byte-identical to the uninterrupted run; failed ${r.failed[impl] ?? 0}`)
 	}
 	if (json) writeFileSync(json, JSON.stringify(r, null, 1))
-	process.exit(Object.entries(r.failed).some(([, n]) => n > 0) ? 1 : 0)
+	await exitAfterFlush(Object.entries(r.failed).some(([, n]) => n > 0) ? 1 : 0)
 } else if (cmd === "recycle") {
 	const impls = opt("impls", "wasm-tinygo,wasm-go").split(",")
 	const points = opt("points")?.split(",").map(Number)
@@ -86,7 +87,7 @@ if (cmd === "induction") {
 		console.log(`  ${impl.padEnd(12)} ${rows.filter(p => p.ok).length}/${rows.length} trap points pass; ${rows.filter(p => p.identical).length} byte-identical to the uninterrupted run; failed ${r.failed[impl] ?? 0}`)
 	}
 	if (json) writeFileSync(json, JSON.stringify(r, null, 1))
-	process.exit(Object.entries(r.failed).some(([, n]) => n > 0) ? 1 : 0)
+	await exitAfterFlush(Object.entries(r.failed).some(([, n]) => n > 0) ? 1 : 0)
 } else {
 	console.error("usage: robust induction --impl <name> [--n 500] [--warmup 50] [--tools 8]")
 	process.exit(2)

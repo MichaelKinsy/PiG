@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // referenceTail is the rolling tail as output-accumulator.ts keeps it: a string that each chunk is concatenated onto,
@@ -56,7 +58,7 @@ func TestOutputAccumulatorTailMatchesTheStringTail(t *testing.T) {
 		maxBytes := 8 + random.Intn(200)
 		accumulator := newOutputAccumulator(1<<20, maxBytes, "")
 		reference := &referenceTail{maxRollingBytes: max(maxBytes*2, 1), startsAtLineStart: true}
-		var decoder = utf8StreamDecoder{stripBOM: true}
+		var decoder = utf8stream.Decoder{StripBOM: true}
 		for step := range 120 {
 			var chunk []byte
 			for range 1 + random.Intn(4) {
@@ -69,7 +71,7 @@ func TestOutputAccumulatorTailMatchesTheStringTail(t *testing.T) {
 			if err := accumulator.Append(chunk); err != nil {
 				t.Fatal(err)
 			}
-			reference.add(decoder.decode(chunk, true))
+			reference.add(decoder.Decode(chunk, true))
 			if got, want := string(accumulator.snapshotText()), reference.snapshotText(); got != want {
 				t.Fatalf("seed %d step %d (maxBytes %d): snapshot text\n got %q\nwant %q", seed, step, maxBytes, got, want)
 			}

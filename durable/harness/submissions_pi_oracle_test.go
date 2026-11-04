@@ -41,6 +41,7 @@ type admitDraft struct {
 	Type      string          `json:"type"`
 	Content   json.RawMessage `json:"content"`
 	WhenBusy  string          `json:"whenBusy"`
+	WhenIdle  string          `json:"whenIdle"`
 	Entry     *admitEntry     `json:"entry"`
 }
 
@@ -81,7 +82,7 @@ func (e admitEntry) draft(t *testing.T, entries []int64) durable.EntryDraft {
 }
 
 func (d admitDraft) submission(t *testing.T, entries []int64) durable.SubmissionDraft {
-	draft := durable.SubmissionDraft{RequestId: d.RequestID, Type: durable.SubmissionType(d.Type), WhenBusy: durable.WhenBusy(d.WhenBusy)}
+	draft := durable.SubmissionDraft{RequestId: d.RequestID, Type: durable.SubmissionType(d.Type), WhenBusy: durable.WhenBusy(d.WhenBusy), WhenIdle: durable.WhenIdle(d.WhenIdle)}
 	if len(d.Content) > 0 {
 		var text string
 		if json.Unmarshal(d.Content, &text) == nil {
@@ -192,7 +193,12 @@ func runPigAdmission(t *testing.T, program []admitStep) []admitOutcome {
 				if users == nil {
 					users = []durable.SubmissionId{}
 				}
-				return map[string]any{"users": users, "reset": result.Reset}, nil
+				boundaryResult := map[string]any{"users": users, "reset": result.Reset}
+				// Pi's JSON drops an undefined first.
+				if result.First != nil {
+					boundaryResult["first"] = *result.First
+				}
+				return boundaryResult, nil
 			}, session.TransactionScope{})
 		case "withdraw":
 			_, err = line.CommitWith(ctx, func(tx *session.Transaction) (any, error) { return nil, WithdrawQueuedInputs(tx, conv) }, session.TransactionScope{})
@@ -300,15 +306,25 @@ func admissionProgramFor(seed int64) []admitStep {
 		if random.Intn(3) == 0 {
 			parts = append(parts, fmt.Sprintf(`"requestId":%q`, pick("r1", "r2", "r3")))
 		}
-		if random.Intn(4) == 0 {
+		switch random.Intn(8) {
+		case 0, 1:
 			parts = append(parts, `"type":"write"`, `"entry":`+entry())
 			if random.Intn(3) == 0 {
 				parts = append(parts, `"whenBusy":"reject"`) // Pi's type forbids it on a write; at runtime only an input honours it
 			}
-		} else {
+			if random.Intn(4) == 0 {
+				parts = append(parts, `"whenIdle":"reject"`) // likewise: only an input honours whenIdle
+			}
+		case 2:
+			// A continue starts a run without a user message; it carries no content, entry, or policy.
+			parts = append(parts, `"type":"continue"`)
+		default:
 			parts = append(parts, `"type":"input"`, `"content":`+content())
 			if w := pick("", "", "steer", "followUp", "reject"); w != "" {
 				parts = append(parts, fmt.Sprintf(`"whenBusy":%q`, w))
+			}
+			if random.Intn(3) == 0 {
+				parts = append(parts, `"whenIdle":"reject"`)
 			}
 		}
 		draft := "{"
@@ -373,7 +389,7 @@ func TestAdmitSubmissionMatchesPiOnSeededPrograms(t *testing.T) {
 		programs[i] = admissionProgramFor(int64(7770000 + i))
 	}
 	expected := piAdmissionOutcomes(t, programs)
-	differing, refused, placed, queued, busy := 0, 0, 0, 0, 0
+	differing, refused, placed, queued, busy, idle := 0, 0, 0, 0, 0, 0
 	seen := map[string]int{}
 	for i, program := range programs {
 		got := runPigAdmission(t, program)
@@ -395,8 +411,11 @@ func TestAdmitSubmissionMatchesPiOnSeededPrograms(t *testing.T) {
 				if strings.HasSuffix(want.Err, "is busy") {
 					busy++
 				}
+				if strings.HasSuffix(want.Err, "is idle") {
+					idle++
+				}
 			}
-			for _, marker := range []string{`"reason":"stale"`, `"reason":"aborted"`, `"type":"write","status":"done"`, `"type":"write","status":"queued"`, `already identifies`} {
+			for _, marker := range []string{`"reason":"stale"`, `"reason":"aborted"`, `"type":"write","status":"done"`, `"type":"write","status":"queued"`, `already identifies`, `"type":"continue","status":"placed"`} {
 				if bytes.Contains(want.State, []byte(marker)) || strings.Contains(want.Err, marker) {
 					seen[marker]++
 				}
@@ -412,10 +431,13 @@ func TestAdmitSubmissionMatchesPiOnSeededPrograms(t *testing.T) {
 	if differing > 0 {
 		t.Errorf("%d answers differ from Pi", differing)
 	}
-	t.Logf("%d refusals (%d busy); final states with placed %d, queued %d", refused, busy, placed, queued)
+	t.Logf("%d refusals (%d busy, %d idle); final states with placed %d, queued %d", refused, busy, idle, placed, queued)
 	t.Logf("%v", seen)
 	if seen[`"reason":"stale"`] < 5 || seen[`"reason":"aborted"`] < 50 || seen[`already identifies`] < 5 || seen[`"type":"write","status":"done"`] < 50 || seen[`"type":"write","status":"queued"`] < 20 {
 		t.Errorf("probes miss a case: %v", seen)
+	}
+	if idle < 10 || seen[`"type":"continue","status":"placed"`] < 20 {
+		t.Errorf("probes miss whenIdle or continue: %d idle refusals, %v", idle, seen)
 	}
 	if refused < 100 || busy < 20 || placed < 100 || queued < 50 {
 		t.Errorf("probes are one-sided: %d refusals, %d busy, %d placed, %d queued", refused, busy, placed, queued)
@@ -464,6 +486,9 @@ func inputEntryProgramFor(seed int64) []admitStep {
 		}
 		if w := pick("", "", "steer", "followUp", "reject"); w != "" {
 			parts = append(parts, fmt.Sprintf(`"whenBusy":%q`, w))
+		}
+		if random.Intn(4) == 0 {
+			parts = append(parts, `"whenIdle":"reject"`)
 		}
 		if random.Intn(5) != 0 {
 			kind := pick("note", "author.msg", "note", "pi.user", "pi.custom", "")

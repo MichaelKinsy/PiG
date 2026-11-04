@@ -23,9 +23,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 // oneStep is a one-phase task running run and completing with null.
@@ -95,10 +95,10 @@ func seedRunningTask(t *testing.T, store durable.Storage) {
 		Version:        1,
 		State:          durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskRunning, Checkpoint: &checkpoint},
 	}
-	if _, err := store.Commit(testContext, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(testContext, store, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ConversationId(conversationId)}},
 		durable.TaskWrite{Value: task},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -268,13 +268,7 @@ func TestHarnessClose(t *testing.T) {
 			push(fmt.Sprintf("end %d", mine))
 			return nil
 		})
-		openSqlite := func() durable.Storage {
-			store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			return store
-		}
+		openSqlite := func() durable.Storage { return openNodeSqliteStorage(t, path) }
 		first, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{stubborn.Erased()})
 		id := start(t, mustRoot(t, first, nil), stubborn)
 		first.Resume()
@@ -391,7 +385,7 @@ func TestHarnessClose(t *testing.T) {
 		if err != nil || docWatch == nil {
 			t.Fatalf("doc watch %v", err)
 		}
-		viewWatch, err := root.Watch(testContext)
+		viewWatch, err := root.Watch(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -406,9 +400,9 @@ func TestHarnessClose(t *testing.T) {
 			defer mu.Unlock()
 			frames = append(frames, name)
 		}
-		graphWatch.Start(func(context.Context, chord.WatchChange[TaskGraph]) error { frame("graphWatch"); return nil })
-		docWatch.Start(func(context.Context, chord.WatchChange[durable.JsonObject]) error { frame("docWatch"); return nil })
-		viewWatch.Start(func(context.Context, chord.WatchChange[ConversationView]) error { frame("viewWatch"); return nil })
+		graphWatch.Start(func(context.Context, chord.WatchCall[TaskGraph]) error { frame("graphWatch"); return nil })
+		docWatch.Start(func(context.Context, chord.WatchCall[durable.JsonObject]) error { frame("docWatch"); return nil })
+		viewWatch.Start(func(context.Context, chord.WatchCall[ConversationView]) error { frame("viewWatch"); return nil })
 		docValue := docWatch.Value()
 		viewValue := viewWatch.Value()
 
@@ -457,8 +451,8 @@ func TestHarnessClose(t *testing.T) {
 		<-docWatch.Closed()
 		<-viewWatch.Closed()
 		for name, end := range map[string]durable.WatchEnd{"graph": graphWatch.End(), "doc": docWatch.End(), "view": viewWatch.End()} {
-			if end.Reason != durable.WatchEnded {
-				t.Fatalf("%s watch ended %v", name, end.Reason)
+			if end.Kind != durable.WatchEnded {
+				t.Fatalf("%s watch ended %v", name, end.Kind)
 			}
 		}
 		// The commit itself settled.
@@ -486,7 +480,7 @@ func TestHarnessClose(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		// Count commit subscriptions of document observers: upstream wraps harness.subscribeCommits; the Session counts them.
+		// Count commit subscriptions of document observers: upstream wraps session.followCommits; the Session counts them.
 		impl := harness.(*harnessImpl)
 		baseline := impl.CommitSubscriptions()
 
@@ -512,7 +506,7 @@ func TestHarnessClose(t *testing.T) {
 		find = store.holdFindDocument()
 		cancelled, cancel = cancelledContext(errors.New("cancelled"))
 		viewWatch := asyncErr(func() error {
-			_, err := root.Watch(cancelled)
+			_, err := root.Watch(cancelled, nil)
 			return err
 		})
 		_ = find.entered.wait(testContext)
@@ -521,13 +515,13 @@ func TestHarnessClose(t *testing.T) {
 		_, err = viewWatch.wait()
 		expectError(t, err, "cancelled")
 		// No observer kept the mount: the next observer builds a new one, and the one after that another.
-		first, err := root.Watch(testContext)
+		first, err := root.Watch(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		firstValue := first.Value()
 		_, _ = first.Stop()
-		second, err := root.Watch(testContext)
+		second, err := root.Watch(testContext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -563,8 +557,8 @@ func TestHarnessClose(t *testing.T) {
 		})
 		_ = held.entered.wait(testContext)
 		var queuedInspect *future[HarnessInspection]
-		queueOnLineIn(t, "harnessImpl).Inspect", func() <-chan struct{} {
-			queuedInspect = async(func() (HarnessInspection, error) { return harness.Inspect(testContext) })
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
+			queuedInspect = async(func() (HarnessInspection, error) { return harness.Inspect(ctx) })
 			return queuedInspect.done
 		})
 		closeBegan := deferred()
@@ -597,7 +591,7 @@ func TestHarnessClose(t *testing.T) {
 			{"reset", func() error { return root.Reset(testContext, nil) }},
 			{"abort", func() error { return root.Abort(testContext, nil) }},
 			{"conversationIdle", func() error { return root.WaitForIdle(testContext) }},
-			{"watch", func() error { _, err := root.Watch(testContext); return err }},
+			{"watch", func() error { _, err := root.Watch(testContext, nil); return err }},
 			{"watchTaskGraph", func() error { _, err := harness.WatchTaskGraph(testContext); return err }},
 			{"status", func() error { _, err := submission.Status(testContext); return err }},
 			{"wait", func() error { _, err := submission.Wait(testContext); return err }},
@@ -696,29 +690,29 @@ func TestHarnessClose(t *testing.T) {
 		}
 		// Queue each read in upstream's order: each one enters the line before the next is issued.
 		names := []string{"context", "snapshot", "settledWait", "absentWatch", "waitForTask", "watchDoc", "watch", "watchTaskGraph"}
-		runs := map[string]func() (bool, error){
-			"context": func() (bool, error) { _, err := root.Context(testContext, nil); return true, err },
-			"snapshot": func() (bool, error) {
-				value, err := harness.SnapshotErased(testContext, notes)
+		runs := map[string]func(ctx context.Context) (bool, error){
+			"context": func(ctx context.Context) (bool, error) { _, err := root.Context(ctx, nil); return true, err },
+			"snapshot": func(ctx context.Context) (bool, error) {
+				value, err := harness.SnapshotErased(ctx, notes)
 				return value != nil, err
 			},
-			"settledWait": func() (bool, error) { _, err := write.Wait(testContext); return true, err },
-			"absentWatch": func() (bool, error) {
-				watch, err := harness.WatchDocErased(testContext, absent)
+			"settledWait": func(ctx context.Context) (bool, error) { _, err := write.Wait(ctx); return true, err },
+			"absentWatch": func(ctx context.Context) (bool, error) {
+				watch, err := harness.WatchDocErased(ctx, absent)
 				return watch != nil, err
 			},
-			"waitForTask": func() (bool, error) { _, err := harness.WaitForTask(testContext, taskId); return true, err },
-			"watchDoc": func() (bool, error) {
-				watch, err := harness.WatchDocErased(testContext, notes)
+			"waitForTask": func(ctx context.Context) (bool, error) { _, err := harness.WaitForTask(ctx, taskId); return true, err },
+			"watchDoc": func(ctx context.Context) (bool, error) {
+				watch, err := harness.WatchDocErased(ctx, notes)
 				return watch != nil, err
 			},
-			"watch":          func() (bool, error) { _, err := root.Watch(testContext); return true, err },
-			"watchTaskGraph": func() (bool, error) { _, err := harness.WatchTaskGraph(testContext); return true, err },
+			"watch":          func(ctx context.Context) (bool, error) { _, err := root.Watch(ctx, nil); return true, err },
+			"watchTaskGraph": func(ctx context.Context) (bool, error) { _, err := harness.WatchTaskGraph(ctx); return true, err },
 		}
 		queued := map[string]*future[string]{}
 		for _, name := range names {
-			queueOnLine(t, harness, func() <-chan struct{} {
-				queued[name] = settle(runs[name])
+			queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
+				queued[name] = settle(func() (bool, error) { return runs[name](ctx) })
 				return queued[name].done
 			})
 		}
@@ -835,7 +829,7 @@ func TestSchedulingOnAPausedHarness(t *testing.T) {
 		check(err)
 		_, err = root.Entries(testContext, durable.EntryQuery{}, 10, nil)
 		check(err)
-		viewWatch, err := root.Watch(testContext)
+		viewWatch, err := root.Watch(testContext, nil)
 		check(err)
 		_, err = viewWatch.Stop()
 		check(err)
@@ -923,7 +917,7 @@ func TestRegistryChangesBeforeResume(t *testing.T) {
 			t.Fatalf("tasks %+v", tasks)
 		}
 		installed := addTask(t, registry, define("v1").Erased())
-		if tasks := inspectOf(t, harness).Tasks; len(tasks) != 1 || tasks[0].State.Kind != TaskInspectionReady {
+		if tasks := inspectOf(t, harness).Tasks; len(tasks) != 1 || tasks[0].State.Kind != TaskInspectionPending {
 			t.Fatalf("tasks %+v", tasks)
 		}
 		// The same extension name replaces the definition in place, still before resume.

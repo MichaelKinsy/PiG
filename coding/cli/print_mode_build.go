@@ -37,6 +37,7 @@ func (b *cliRuntimeBuilder) printHost(owner context.Context, build *cliBuild, st
 			Model:                  build.Model,
 			ThinkingLevel:          ai.ModelThinkingLevel(build.Flags.Thinking),
 			AllowedTools:           build.Allowed,
+			ToolScope:              build.ToolScope,
 			InitialActiveToolNames: build.InitialActiveToolNames,
 			DefaultToolModifiers:   build.DefaultToolModifiers,
 			NoTools:                build.NoTools,

@@ -34,6 +34,12 @@ type Hooks struct {
 	// before it hands them to onData: the bytes are out of the pipe and in
 	// no one's hands yet.
 	BeforeDeliver func()
+	// AfterPeek runs in a reader that waits for its turn, once it has asked
+	// whether the pipe of the earlier reader at index earlier holds bytes and
+	// before it asks whether that reader has taken bytes it has not
+	// delivered. That reader can take the pipe's bytes between the two
+	// questions; a test plays that reader here.
+	AfterPeek func(earlier int)
 	// Released runs in Wait once the grace released the pipes and Wait closed
 	// them, before it waits for the readers to stop.
 	Released func()
@@ -66,6 +72,10 @@ type Pipes struct {
 	// stopped[i] is set once the reader of files[i] has returned: nothing more
 	// is taken from that pipe, so it holds no output a reader will deliver.
 	stopped []atomic.Bool
+
+	// inflight[i] is set from the moment the reader of files[i] has taken bytes until it has delivered them, so a reader of a later pipe can tell
+	// that earlier output is still on its way.
+	inflight []atomic.Bool
 }
 
 // Start reads each file until it fails or ends, calling onData with the index
@@ -82,6 +92,7 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks *Hooks)
 		activity: make(chan struct{}, 1),
 		done:     make(chan struct{}),
 		stopped:  make([]atomic.Bool, len(files)),
+		inflight: make([]atomic.Bool, len(files)),
 	}
 	var readers sync.WaitGroup
 	for index, file := range files {
@@ -107,6 +118,10 @@ func (p *Pipes) read(index int, file *os.File) {
 	// buffer per read cost a zeroed 64 KiB allocation each time.
 	buf := make([]byte, 64*1024)
 	for {
+		claimed, ok := p.awaitTurn(index, file)
+		if !ok {
+			return
+		}
 		n, err := file.Read(buf)
 		if n > 0 {
 			if p.hooks != nil && p.hooks.BeforeDeliver != nil {
@@ -125,10 +140,67 @@ func (p *Pipes) read(index int, file *os.File) {
 			default:
 			}
 		}
+		if claimed {
+			p.inflight[index].Store(false)
+		}
 		if err != nil {
 			return
 		}
 	}
+}
+
+// awaitTurn waits until the pipe is readable and no earlier pipe (stdout before stderr) holds output that is readable or already taken, then claims the
+// turn so that later pipes wait for this reader's delivery. Node's loop polls the pipes together and handles the readable ones in registration order, so
+// a child that writes stdout and then stderr is seen in that order, which a byte cap that spans both streams makes observable; reader goroutines that
+// each block in their own read would hand it to whichever the scheduler ran first. A pipe that holds nothing is not waited for. claimed is false where
+// poll(2) cannot answer; ok is false once the pipe is closed.
+func (p *Pipes) awaitTurn(index int, file *os.File) (claimed, ok bool) {
+	for {
+		readable, closed := pollReadable(file, 10)
+		if closed {
+			return false, false
+		}
+		if !readable {
+			if !pollSupported {
+				return false, true
+			}
+			continue
+		}
+		if !pollSupported {
+			return false, true
+		}
+		blocked := false
+		for earlier := range index {
+			if p.holdsOutput(earlier) {
+				blocked = true
+				break
+			}
+		}
+		if blocked {
+			time.Sleep(10 * time.Microsecond)
+			continue
+		}
+		p.inflight[index].Store(true)
+		return true, true
+	}
+}
+
+// holdsOutput reports whether the pipe of the earlier reader holds output that has not been delivered: bytes still in the pipe, or bytes its reader has taken
+// and not yet handed to onData.
+//
+// The pipe is asked first and the reader second, and the order is the point. A reader sets inflight before it takes bytes from its pipe and clears it
+// after it delivered them, so a pipe that has just been emptied by its reader has inflight set until the delivery is done. Asked the other way round, a
+// reader that claims its turn and empties the pipe between the two questions is seen by neither: its flag was clear when asked and the pipe is empty
+// when peeked, and the later reader delivers first.
+func (p *Pipes) holdsOutput(earlier int) bool {
+	if p.stopped[earlier].Load() {
+		return false
+	}
+	pending := pollPending(p.files[earlier])
+	if p.hooks != nil && p.hooks.AfterPeek != nil {
+		p.hooks.AfterPeek(earlier)
+	}
+	return pending || p.inflight[earlier].Load()
 }
 
 // graceVerdict is what Wait learns when the grace elapses.

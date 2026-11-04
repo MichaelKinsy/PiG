@@ -3,9 +3,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 	"time"
@@ -19,6 +22,7 @@ type repo struct{ root string }
 func (r repo) git(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
+	//nolint:gosec // G204 (class a): program is the literal git; args are each caller's subcommand and revisions, and resolve appends ^{commit} to a name taken from a commit trailer, so git rev-parse --verify cannot read it as an option.
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.root}, args...)...)
 	var out, errb bytes.Buffer
 	cmd.Stdout = &out
@@ -27,6 +31,44 @@ func (r repo) git(args ...string) (string, error) {
 		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errb.String()))
 	}
 	return out.String(), nil
+}
+
+// gitLines runs git and passes its standard output to fn one line at a time, without the newline, as strings.SplitSeq(out, "\n") would split what git returns (a final line the output does not end in a newline is passed too, and a trailing newline yields no empty last line). Unlike git it never holds the output: a command that prints every revision of a file with its whole text as context, as introductions does, is hundreds of megabytes, and buffering it, then copying it to a string, made the gate peak above 3 GB.
+func (r repo) gitLines(args []string, fn func(line string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
+	defer cancel()
+	//nolint:gosec // G204 (class a): program is the literal git; args are each caller's subcommand and revisions.
+	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", r.root}, args...)...)
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errb.String()))
+	}
+	in := bufio.NewReaderSize(pipe, 1<<16)
+	var readErr error
+	for {
+		line, err := in.ReadString('\n')
+		if line != "" {
+			fn(strings.TrimSuffix(line, "\n"))
+		}
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				readErr = err
+			}
+			break
+		}
+	}
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(errb.String()))
+	}
+	if readErr != nil {
+		return fmt.Errorf("git %s: %w", strings.Join(args, " "), readErr)
+	}
+	return nil
 }
 
 func (r repo) resolve(rev string) (string, bool) {

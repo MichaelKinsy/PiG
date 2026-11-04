@@ -45,6 +45,9 @@ type Models struct {
 	newest map[int64]uint32 // each conversation's newest kept list
 	total  int              // messages across kept
 
+	payloads map[payloadKey]chan payloadAnswer // the provider's open onPayload calls
+	nextCall map[uint32]int                    // the next onPayload call number of each effect
+
 	ranges     map[int64]*decodedRange // the messages each conversation's last request decoded
 	rangeOrder []int64                 // the conversations of ranges, oldest request first
 	rangeTotal int                     // messages across ranges
@@ -234,6 +237,9 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	}
 	// generation.ts passes the invocation's signal: an extension-owned provider callback (a faux step) reads options.Signal.
 	options.Signal = ctx
+	if p.OnPayload {
+		options.OnPayload = m.onPayload(ctx, call)
+	}
 	startedAt, started := m.now(), m.mono()
 	// The decoded messages are shared with the next request of the conversation and nothing modifies them, so the provider
 	// layer need not copy the whole history for each call.

@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+// Ports packages/agent/src/agent-loop.ts (the awaited event-sink continuations of the for-await loop in streamAssistantResponse).
+// Ports packages/ai/src/utils/event-stream.ts (the observation of events a consumer of EventStream sees, ObserveEvents and ForwardStream).
 // StreamObservation owns the synchronous part of a stream-consumer continuation. Await releases execution while an upstream asynchronous operation waits, then resumes through the same reaction queue. Its awaits are called by the callback it scopes, on the callback's goroutine.
 type StreamObservation struct {
 	turn *continuationTurn

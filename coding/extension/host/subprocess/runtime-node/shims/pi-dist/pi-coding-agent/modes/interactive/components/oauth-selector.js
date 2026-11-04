@@ -1,4 +1,4 @@
-import { Container, fuzzyFilter, getKeybindings, Input, Spacer, TruncatedText, } from "../../../../../pi-tui.mjs";
+import { Container, fuzzyFilter, getKeybindings, getSelectPageIndex, Input, Spacer, TruncatedText, } from "../../../../../pi-tui.mjs";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 export function formatAuthSelectorProviderType(authType, subscription) {
@@ -24,10 +24,12 @@ export function formatAuthSelectorProviderStatus(provider) {
         : provider.status.source;
     return theme.fg("success", ` ✓ ${source}`);
 }
+const MAX_VISIBLE = 8;
 /**
  * Component that renders an auth provider selector
  */
 export class OAuthSelectorComponent extends Container {
+    capturesViewportInput = true;
     searchInput;
     // Focusable implementation - propagate to search input for IME cursor positioning
     _focused = false;
@@ -91,9 +93,8 @@ export class OAuthSelectorComponent extends Container {
     }
     updateList() {
         this.listContainer.clear();
-        const maxVisible = 8;
-        const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(maxVisible / 2), this.filteredProviders.length - maxVisible));
-        const endIndex = Math.min(startIndex + maxVisible, this.filteredProviders.length);
+        const startIndex = Math.max(0, Math.min(this.selectedIndex - Math.floor(MAX_VISIBLE / 2), this.filteredProviders.length - MAX_VISIBLE));
+        const endIndex = Math.min(startIndex + MAX_VISIBLE, this.filteredProviders.length);
         for (let i = startIndex; i < endIndex; i++) {
             const provider = this.filteredProviders[i];
             if (!provider)
@@ -131,6 +132,7 @@ export class OAuthSelectorComponent extends Container {
     }
     handleInput(keyData) {
         const kb = getKeybindings();
+        const pageIndex = getSelectPageIndex(kb, keyData, this.selectedIndex, this.filteredProviders.length, MAX_VISIBLE);
         // Up arrow
         if (kb.matches(keyData, "tui.select.up")) {
             if (this.filteredProviders.length === 0)
@@ -143,6 +145,13 @@ export class OAuthSelectorComponent extends Container {
             if (this.filteredProviders.length === 0)
                 return;
             this.selectedIndex = Math.min(this.filteredProviders.length - 1, this.selectedIndex + 1);
+            this.updateList();
+        }
+        // Page up/down
+        else if (pageIndex !== undefined) {
+            if (this.filteredProviders.length === 0)
+                return;
+            this.selectedIndex = pageIndex;
             this.updateList();
         }
         // Enter

@@ -320,6 +320,12 @@ type API interface {
 	// upstream: types.ts:1287
 	RegisterMarkdownTransformer(transformer MarkdownTransformer)
 
+	// OwnThinkingRuns declares, or withdraws, that this extension owns the thinking runs of assistant messages: a run that is
+	// hidden or draws no rows then leaves no spacing around it. It may be called while loading and at any later time; the last
+	// call wins for this extension.
+	// pig additive (D214): Pi has no equivalent.
+	OwnThinkingRuns(enabled bool)
+
 	// =====================================================================
 	// Actions
 	// =====================================================================

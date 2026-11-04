@@ -101,9 +101,9 @@ func TestPackageNpmCommandOriginal(t *testing.T) {
 		want    []string
 	}{
 		// .upstream/v0.87.1/packages/coding-agent/test/package-manager.test.ts:702
-		{"should use npmCommand argv for npm installs", []string{"mise", "exec", "node@20", "--", "npm"}, false, []string{"exec", "node@20", "--", "npm", "install", "@scope/pkg", "--prefix", "ROOT", "--legacy-peer-deps"}},
+		{"should use npmCommand argv for npm installs", []string{"mise", "exec", "node@20", "--", "npm"}, false, []string{"exec", "node@20", "--", "npm", "install", "@scope/pkg", "--prefix", "ROOT", "--legacy-peer-deps", "--no-audit", "--no-fund"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/package-manager.test.ts:733
-		{"should pass legacy peer deps when uninstalling npm packages", nil, true, []string{"uninstall", "@scope/pkg", "--prefix", "ROOT", "--legacy-peer-deps"}},
+		{"should pass legacy peer deps when uninstalling npm packages", nil, true, []string{"uninstall", "@scope/pkg", "--prefix", "ROOT", "--legacy-peer-deps", "--no-audit", "--no-fund"}},
 		// .upstream/v0.87.1/packages/coding-agent/test/package-manager.test.ts:746
 		{"should use bun --cwd for npm package installs", []string{"mise", "exec", "bun@1", "--", "bun"}, false, []string{"exec", "bun@1", "--", "bun", "install", "@scope/pkg", "--cwd", "ROOT", "--omit=peer"}},
 	} {
@@ -289,7 +289,7 @@ func TestPackageLegacyNpmUpdateMigratesOriginal(t *testing.T) {
 	if installs != 1 {
 		t.Fatalf("installs=%d want1", installs)
 	}
-	requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "legacy-pkg@latest", "--prefix", realPathSync(t, filepath.Join(f.agent, "npm")), "--legacy-peer-deps"}, "")
+	requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "legacy-pkg@latest", "--prefix", realPathSync(t, filepath.Join(f.agent, "npm")), "--legacy-peer-deps", "--no-audit", "--no-fund"}, "")
 	if got := packagemanager.InstalledPathForSource(f.cwd, f.settings.AgentDir(), f.settings, "npm:legacy-pkg", false); got != managed {
 		t.Fatalf("installed=%s want=%s", got, managed)
 	}

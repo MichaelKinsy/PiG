@@ -46,6 +46,8 @@ class _State:
     call_seq: int = 0
     # The connections helpers opened before ``run``, by socket path; ``run`` takes its own.
     dialled: dict = {}
+    # The paths whose connection read the host's shutdown frame while a factory-time call waited; ``run`` ends on it once it has registered (``take_shutdown``).
+    shutdown: set = set()
     # The extensions that are running (a packed cell runs several), each with the socket it serves in ``_served_socket``: the first that is still running
     # answers a helper that has no Context and no socket of its own.
     running: list = []
@@ -203,12 +205,10 @@ def resize_image(input_bytes: bytes, mime_type: str, options: Optional[ImageResi
     ``options`` say otherwise), as the host's image code does it. None, as Pi's null, when the image cannot be made to fit. An image already within every limit comes back
     as it was. It may be called before ``run``."""
     return _decode_resized(_helper_call(_CALL_RESIZE_IMAGE, _resize_args(input_bytes, mime_type, options)))
-def highlight_code_lines(code: str, lang: str, markdown: bool, theme: Optional[dict]) -> list:
+def highlight_code_lines(code: str, lang: str, theme: Optional[dict]) -> list:
     """The lines the host's highlight.js port makes of ``code`` in ``lang``, drawn with ``theme`` (the palette of the theme ``init_theme`` installed) or, when
     None, with the host's active theme."""
     args: dict = {"code": code, "lang": lang}
-    if markdown:
-        args["markdown"] = True
     if theme is not None:
         args["theme"] = theme
     lines = _helper_call(_CALL_HIGHLIGHT_CODE, args).get("lines")
@@ -270,6 +270,8 @@ def loading_call(method: str, args: Any, owner: Any = None) -> Any:
                 _State.results[env.get("id")] = env.get("call_result") or {}
             elif kind == "ping":
                 _send_frame(sock, {"type": "pong", "pong": {"nonce": (env.get("ping") or {}).get("nonce", "")}})
+            elif kind == "shutdown":
+                _State.shutdown.add(path)
             elif kind == "request":
                 _answer_loading_request(sock, _State.owners.get(path), env)
             elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release" and _State.owners.get(path) is not None:
@@ -346,6 +348,15 @@ def _read_exact(sock: Any, count: int) -> bytes:
             raise EOFError("the host closed the connection")
         buffer.extend(chunk)
     return bytes(buffer)
+
+
+def take_shutdown(path: str) -> bool:
+    """Whether the connection a factory opened to ``path`` read the host's shutdown frame; ``run`` then ends on it once it has registered."""
+    with _State.lock:
+        if path in _State.shutdown:
+            _State.shutdown.discard(path)
+            return True
+        return False
 
 
 def take_helper_socket(path: str) -> Any:

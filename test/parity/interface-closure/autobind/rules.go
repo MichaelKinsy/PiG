@@ -65,7 +65,11 @@ type checker struct {
 	// plainContext reads an upstream chord Context parameter as an ordinary parameter (S1c fallback).
 	plainContext bool
 	pkg          string // upstream package of the row
-	bags         func(name string) bool
+	// srcPkg is the key of the row's declarations in the alias table when it is not pkg: the sources under a package's src/next/ declare
+	// a second set of names (chord's root and next entries both export ChordErrorCode, RegistryTable, ServeOptions), kept under
+	// "<pkg>/next" so that neither entry sees the other's declaration as a duplicate.
+	srcPkg string
+	bags   func(name string) bool
 	// resolve returns the Go type that an upstream interface, class or alias stands for under the name, rename and shape rules.
 	resolve func(name string) *types.TypeName
 	// propNames returns the property names of a named upstream interface or class.
@@ -97,15 +101,26 @@ type checker struct {
 	depth         int
 	// recv is the Go receiver of the accessor being judged; T3s reads a settled value from a sibling method.
 	recv types.Type
+	// neverSets reports whether the Pi factory whose call result is judged returns a value that never has the member (T12u); nil outside
+	// the result of a call row of a top-level function.
+	neverSets func(member string) bool
 }
 
-func (c *checker) alias(name string) *string { return c.aliases.lookup(c.pkg, name) }
+func (c *checker) alias(name string) *string { return c.aliases.lookup(c.sourcePkg(), name) }
+
+// sourcePkg is the alias-table key of the sources the row's declarations are read from.
+func (c *checker) sourcePkg() string {
+	if c.srcPkg != "" {
+		return c.srcPkg
+	}
+	return c.pkg
+}
 
 func (c *checker) sameName(up, goName string) bool {
 	if nameRule(up, goName) != "" {
 		return true
 	}
-	if original := c.aliases[importAsKey+c.pkg][up]; original != nil && nameRule(*original, goName) != "" {
+	if original := c.aliases[importAsKey+c.sourcePkg()][up]; original != nil && nameRule(*original, goName) != "" {
 		return true // `import { Name as Local }`: Local is the imported Name
 	}
 	return c.renames[up] != "" && c.renames[up] == goName
@@ -387,7 +402,7 @@ func (c *checker) allNameKeys(members []string) bool {
 
 // mergeSlot reports whether name is an upstream interface the pinned sources declare with no members.
 func (c *checker) mergeSlot(name string) bool {
-	body := c.aliases.iface(c.pkg, name)
+	body := c.aliases.iface(c.sourcePkg(), name)
 	return body != nil && strings.Join(strings.Fields(stripTypeNoise(*body)), "") == "{}"
 }
 
@@ -795,6 +810,9 @@ func (c *checker) single(up string, t types.Type) verdict {
 		if types.IsInterface(t) || isByteSlice(t) {
 			return yesV() // T4
 		}
+		if m, ok := t.Underlying().(*types.Map); ok && up == "object" && basicInfo(m.Key())&types.IsString != 0 && types.IsInterface(m.Elem()) {
+			return yesV() // T4o: an upstream object (a JSON Schema in Pi's tool parameters) is the Go map from string to any
+		}
 		return unknownV("T4: upstream %s, Go type is %s", up, typeLabel(t))
 	case up == "AbortSignal":
 		if isContext(t) {
@@ -919,7 +937,7 @@ func (c *checker) single(up string, t types.Type) verdict {
 			if v.ok == yes || c.instDepth >= maxInstDepth { // a generic alias judged by its unsubstituted body is a false verdict: instantiate first
 				return v
 			}
-			if body, ok := c.aliases.instantiate(c.pkg, name, g[2]); ok {
+			if body, ok := c.aliases.instantiate(c.sourcePkg(), name, g[2]); ok {
 				inner := *c
 				inner.instDepth++
 				return inner.agree(body, t) // A9: a generic alias instance is its body with the type arguments substituted
@@ -971,6 +989,9 @@ func (c *checker) objectLiteral(up string, t types.Type) verdict {
 	}
 	if it, ok := t.Underlying().(*types.Interface); ok && it.NumMethods() > 0 {
 		return c.literalAgainstInterface(up, it) // T12b
+	}
+	if v, ok := c.keywordObject(up, t); ok {
+		return v // T12i
 	}
 	st, ok := t.Underlying().(*types.Struct)
 	if m := mappedTypeRe.FindStringSubmatch(strings.TrimPrefix(stripTypeNoise(up), "{")); m != nil {
@@ -1043,6 +1064,9 @@ func (c *checker) objectLiteral(up string, t types.Type) verdict {
 			if n := namedOf(deref(t)); n != nil && c.discriminates(n.Obj(), name, lit[1]) {
 				continue // T12d: a string-literal member is a discriminator the Go type writes (M5 or its encoder)
 			}
+		}
+		if optionalMember(part) && isFuncType(typ) && c.neverSets != nil && c.neverSets(name) {
+			continue // T12u: an optional function member the factory's value never has needs no Go member
 		}
 		return noV("T12: Go struct %s has no field for %s", typeLabel(t), name)
 	}
@@ -1637,6 +1661,16 @@ func objectMember(part string) (name, typ string, ok bool) {
 	return strings.TrimSuffix(strings.TrimSpace(name), "?"), strings.TrimSpace(typ), ok
 }
 
+// optionalMember reports whether an object type member is declared optional (`name?: T` or `name?(...)`).
+func optionalMember(part string) bool {
+	head := strings.TrimSpace(part)
+	end := strings.IndexAny(head, ":(")
+	if end < 0 {
+		return false
+	}
+	return strings.HasSuffix(strings.TrimSpace(head[:end]), "?")
+}
+
 // methodFor returns the method of a Go type (or its pointer) whose name stands for an upstream member name.
 func methodFor(t types.Type, name string) *types.Func {
 	mset := types.NewMethodSet(types.NewPointer(deref(t)))
@@ -1975,7 +2009,7 @@ func (c *checker) named(name string, t types.Type) verdict {
 			return yesV() // T9a: the upstream type resolves, by documented rename or unique shape, to this Go type (or its underlying type)
 		}
 	}
-	if module := c.aliases[extImportKey+c.pkg][short]; module != nil && *module != "" {
+	if module := c.aliases[extImportKey+c.sourcePkg()][short]; module != nil && *module != "" {
 		if rep, ok := c.reps[*module+":"+short]; ok && rep == typeLabel(t) {
 			return yesV() // T9x: the package imports the name from an external module, whose type has a documented Go representation
 		}
@@ -2348,7 +2382,7 @@ func (c *checker) memberNames(m string, depth int, names *[]string, literals map
 		*names = append(*names, c.propNames(text)...)
 		return true
 	}
-	if body := c.aliases.iface(c.pkg, text); body != nil {
+	if body := c.aliases.iface(c.sourcePkg(), text); body != nil {
 		return c.memberNames(*body, depth+1, names, literals)
 	}
 	if body := c.alias(text); body != nil {
@@ -2596,4 +2630,25 @@ func (c *checker) overloadSet(up string, sig *types.Signature) (verdict, bool) {
 		vs = append(vs, c.agree(call.Returns, sig.Results().At(0).Type()))
 	}
 	return all(vs...), true
+}
+
+// openObjectRe matches an object literal type that is only an index signature, `{ readonly [keyword: string]: V }`.
+var openObjectRe = regexp.MustCompile(`^\{\s*(?:readonly\s+)?\[\s*\w+\s*:\s*string\s*\]\s*:\s*(.+?)\s*[;,]?\s*\}$`)
+
+// keywordObject applies T12i: an upstream object whose only member is a string index signature (pi-schema's Schema, a JSON Schema
+// node) is the repository's JSON object, the ordered chordjson.Object (the Go form of a pi-schema schema, schema.Object). A Go map is not
+// accepted: it loses the member order JSON.stringify keeps, and a map element type other than any cannot hold every value. Only the unknown or
+// any value type is judged here. It reports ok false for any other shape.
+func (c *checker) keywordObject(up string, t types.Type) (verdict, bool) {
+	m := openObjectRe.FindStringSubmatch(stripTypeNoise(up))
+	if m == nil {
+		return verdict{}, false
+	}
+	if v := strings.TrimSpace(m[1]); v != "unknown" && v != "any" {
+		return verdict{}, false // a typed index signature keeps its own rules (and reviewed decisions)
+	}
+	if n := namedOf(t); n != nil && n.Obj().Name() == "Object" && n.Obj().Pkg() != nil && strings.HasSuffix(n.Obj().Pkg().Path(), "/internal/chord/chordjson") {
+		return yesV(), true
+	}
+	return verdict{}, false
 }

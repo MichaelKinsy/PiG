@@ -27,8 +27,16 @@ import (
 
 var markedBlockSpace = lazyregexp.New(`^(?:[ \t]*(?:\n|$))+`)
 
-// Parse block ownership without inline rendering. The fence adapter applies Marked's token boundaries to every fence, so containment and the replacement body cannot disagree. The parser is built on first use, not on every start.
-var mermaidBlockParser = sync.OnceValue(newMermaidBlockParser)
+// Parse block ownership without inline rendering. The fence adapter applies Marked's token boundaries to every fence, so containment and the replacement body cannot disagree. The parser is built on first use, not on every start, by a sync.Once inside the function: the closure of a package-level sync.OnceValue is referenced by the package's init, which would link the Markdown parser into every program that links this package, whether or not it renders a message.
+func mermaidBlockParser() gmparser.Parser {
+	mermaidBlockParserOnce.Do(func() { mermaidBlockParserValue = newMermaidBlockParser() })
+	return mermaidBlockParserValue
+}
+
+var (
+	mermaidBlockParserOnce  sync.Once
+	mermaidBlockParserValue gmparser.Parser
+)
 
 func newMermaidBlockParser() gmparser.Parser {
 	blocks := append([]util.PrioritizedValue{util.Prioritized(&markedDefinitionParser{}, 0)}, gmparser.DefaultBlockParsers()...)
@@ -280,7 +288,7 @@ func styleSpan(span mermaid.Span, theme *tui.Theme) string {
 	case mermaid.ClsEdgeLabel:
 		return theme.Fg("muted", span.Text)
 	case mermaid.ClsTitle:
-		return theme.Fg("accent", "\x1b[1m"+span.Text+tui.SGRBoldDimReset)
+		return theme.Fg("accent", tui.ChalkBold(span.Text))
 	}
 	return span.Text
 }

@@ -28,16 +28,17 @@ type countHeldStorage struct {
 	held     int
 }
 
-func (s *countHeldStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (s *countHeldStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	if text := fmt.Sprintf("%+v", writes); strings.Contains(text, "firstIssued") || strings.Contains(text, "issuedAfter") {
 		s.mu.Lock()
 		s.held++
 		s.mu.Unlock()
 		if err := s.released.wait(ctx); err != nil {
-			return 0, err
+			return durable.CommitResult{}, err
 		}
 	}
-	return s.MemoryStorage.Commit(ctx, writes, adopt)
+	return s.MemoryStorage.Commit(ctx, batches, receive)
 }
 
 func (s *countHeldStorage) heldCommits() int {

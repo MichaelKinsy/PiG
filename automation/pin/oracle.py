@@ -400,7 +400,7 @@ def derive_closure(pin: Pin, source: Path, packed: dict[str, Path], work: Path, 
     root = root or AGENT
     roots = [root] + sorted(name for name in INTEROP if name != root) if root == DURABLE else [root]
     overrides = {name: "file:" + str(tgz) for name, tgz in packed.items() if name not in roots}
-    # The third-party packages the pinned pi-durable imports (typebox, ...) also sit at the top, where Pi's source resolves them for the Go tests that import it.
+    # The third-party packages the pinned pi-durable imports (diff, ...) also sit at the top, where Pi's source resolves them for the Go tests that import it.
     third_party = {}
     if root == DURABLE:
         workspaces = workspace_names(source)
@@ -530,9 +530,39 @@ def typescript_version() -> str:
     return json.loads((SDK_TS / "package.json").read_text())["devDependencies"]["typescript"]
 
 
+def installed(modules: Path, pin: Pin) -> bool:
+    """Whether `modules` holds the oracle package of the pin: its manifest is readable, names the pin's version and its `pi` bin
+    file exists, so `pi_version` can run it. An empty or partial node_modules (an interrupted or pruned build) is not an oracle."""
+    agent = modules / "@earendil-works" / "pi-coding-agent"
+    try:
+        manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+        binary = manifest["bin"]["pi"] if isinstance(manifest["bin"], dict) else manifest["bin"]
+        return manifest.get("version") == pin.package_version and (agent / binary).is_file()
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def protect(modules: Path) -> None:
+    """Make every directory of a published node_modules unwritable. The trees that link it (`extensions/sdk-ts/node_modules`) are
+    one `npm ci` away from emptying it for all of them: npm ci removes the contents of node_modules, through a link too, so a
+    hint to "run npm ci in extensions/sdk-ts" destroyed the shared build and every later `make parity-deps` reused the empty
+    directory. With no write bit the npm ci fails (EACCES) and the build stays whole. `thaw` undoes it, to delete a build."""
+    if os.name == "nt":  # a directory's mode is not enforced there
+        return
+    for directory, _names, _files in os.walk(modules, topdown=False):  # children first, so the walk never needs a write bit
+        os.chmod(directory, os.stat(directory).st_mode & ~0o222)
+
+
+def thaw(tree: Path) -> None:
+    """Give the owner write access to every directory under `tree` again (the inverse of `protect`), so `shutil.rmtree` can delete it."""
+    for directory, _names, _files in os.walk(tree):
+        with contextlib.suppress(OSError):
+            os.chmod(directory, os.stat(directory).st_mode | 0o700)
+
+
 def reusable(pin: Pin, build: Path | None) -> bool:
     """Whether `build` is a stamped source build of the pin made with the frozen inputs of this tree (any, where none are frozen)."""
-    if build is None or not (build / STAMP).is_file() or not (build / "node_modules").is_dir():
+    if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
         return False
     data = json.loads((build / STAMP).read_text())
     return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", ""))
@@ -560,6 +590,7 @@ def ensure(pin: Pin, *, force: bool = False) -> Path:
             build.chmod(0o755)
             name = build_into(pin, build)
         except BaseException:
+            thaw(build)
             shutil.rmtree(build, ignore_errors=True)
             raise
         for ref in (name, "current"):
@@ -585,6 +616,7 @@ def build_into(pin: Pin, build: Path) -> str:
         shutil.rmtree(build / scratch, ignore_errors=True)
     closure_sha = closure_digest(closure)
     write_replacing(build / STAMP, (json.dumps({"commit": pin.commit, "package_version": pin.package_version, "version": pin.version, "source": "build", "provider_data_sha256": data_sha, "closure_sha256": closure_sha}) + "\n").encode())
+    protect(modules)
     return f"oracle-{identity(data_sha, closure_sha)}"
 
 
@@ -750,7 +782,10 @@ def pi_version(modules: Path) -> str:
     layout and npm's, on every platform (Windows cannot execute the script that .bin/pi names)."""
     env = {k: v for k, v in os.environ.items() if k.lower() not in {"https_proxy", "http_proxy", "all_proxy"}}
     agent = modules / "@earendil-works" / "pi-coding-agent"
-    manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+    try:
+        manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise PinError(f"no {AGENT} at {agent} (resolves to {os.path.realpath(agent)}): the oracle build behind {modules} is empty or was never installed. An `npm ci` in extensions/sdk-ts empties a shared build through its link; run `make parity-deps` to rebuild it") from error
     binary = manifest["bin"]["pi"] if isinstance(manifest["bin"], dict) else manifest["bin"]
     node = shutil.which("node") or "node"
     return subprocess.run([node, str(agent / binary), "--version"], check=True, capture_output=True, text=True, env=env, timeout=120).stdout.strip()
@@ -904,11 +939,15 @@ def link_mirror(pin: Pin) -> Path | None:
 
 def freeze_closure(pin: Pin, published_lock: Path | None = None) -> Path:
     """Freeze the pin's dependency closure into automation/pin/frozen: a release's from the lock of the published install, a
-    commit's derived from its packs (a build of the commit must exist)."""
+    commit's derived from its packs. The packs come from a build of the commit, made here when none exists."""
     build = published(pin, "current")
     source = build / "src" if build is not None else entry(pin) / "src"
     if not (source / "packages").is_dir():
         extract_source(pin, source)
+    if not (source / "packages" / "coding-agent" / "dist").is_dir():
+        # The closure records the integrity of each pack. A pack of unbuilt source has no dist, so its integrity is not the one the
+        # oracle's build produces, and the later `npm ci` of the closure fails EINTEGRITY. Build with the pin's frozen model data first.
+        build_source(pin, source)
     if pin.kind == "tag":
         if published_lock is None:
             raise PinError("a release pin freezes the lock of the published install: pass --from-published-lock <package-lock.json>")

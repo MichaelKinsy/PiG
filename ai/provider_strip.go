@@ -86,10 +86,6 @@ func strippedAPIError(providerID string, api API) error {
 	return pigstrip.Error(fmt.Sprintf("Provider %s: API %s", providerID, api), pigstrip.ListAPIs, string(api))
 }
 
-func strippedBedrockError(model *Model) error {
-	return strippedAPIError(cmp.Or(modelProviderID(model), "amazon-bedrock"), APIBedrockConverseStream)
-}
-
 func strippedGoogleVertexError(cfg *GoogleVertexConfig) error {
 	return strippedAPIError(cmp.Or(cfg.ProviderID, string(APIGoogleVertex)), APIGoogleVertex)
 }

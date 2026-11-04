@@ -1,0 +1,12 @@
+[package]
+name = "pig-term-engine-wezterm"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT"
+description = "Replays the D205 terminal-engine corpus through wezterm-term, the engine of WezTerm"
+
+[dependencies]
+# wezterm-term is not published to crates.io; Cargo.lock pins this commit of the upstream repository (the resolved source records it).
+wezterm-term = { git = "https://github.com/wez/wezterm", rev = "e68a8ec27727fbbda15e07f0a0737cd5e16481f6" }
+serde_json = "1"

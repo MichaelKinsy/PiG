@@ -310,6 +310,9 @@ func (w *spanWriter) pop(level spanLevel) {
 
 // stockSpanTheme reports whether every emphasis function is the stock one, whose codes spanCodeTable lists.
 func stockSpanTheme(theme *MarkdownTheme) bool {
+	if chalkModifiersOff.Load() {
+		return false
+	}
 	return funcIdentity(theme.Bold) == stockSpanFuncs[spanBold] && funcIdentity(theme.Italic) == stockSpanFuncs[spanItalic] && funcIdentity(theme.Strikethrough) == stockSpanFuncs[spanStrike]
 }
 

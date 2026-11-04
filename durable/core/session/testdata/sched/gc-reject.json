@@ -1,0 +1,91 @@
+{
+ "storage": {
+  "ticks": 40,
+  "rejectAt": 3
+ },
+ "cmds": [
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "rootConversation"
+    }
+   ]
+  },
+  {
+   "cmd": "open"
+  },
+  {
+   "cmd": "resume"
+  },
+  {
+   "cmd": "commits",
+   "each": [
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ],
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ],
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ],
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ],
+    [
+     {
+      "op": "appendEntry",
+      "conversationId": 1,
+      "draft": {
+       "kind": "e",
+       "data": 1
+      }
+     }
+    ]
+   ]
+  },
+  {
+   "cmd": "commit",
+   "ops": [
+    {
+     "op": "appendEntry",
+     "conversationId": 1,
+     "draft": {
+      "kind": "e",
+      "data": 1
+     }
+    }
+   ]
+  }
+ ],
+ "clock": "fixed"
+}

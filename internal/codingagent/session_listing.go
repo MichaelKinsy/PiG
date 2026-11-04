@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
@@ -203,7 +203,7 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 }
 
 // localeCompare is String.prototype.localeCompare under the root locale, which orders Pi's session files.
-func localeCompare(a, b string) int { return jsstring.LocaleCompare(a, b) }
+func localeCompare(a, b string) int { return localecompare.Compare(a, b) }
 
 // compareSessionModifiedDesc is sortSessionInfos of Pi: modification time in milliseconds, newest first; equal times keep their order under a stable sort.
 func compareSessionModifiedDesc(a, b SessionInfo) int {

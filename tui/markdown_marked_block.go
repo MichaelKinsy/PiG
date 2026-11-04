@@ -1,15 +1,13 @@
 package tui
 
 // Ports node_modules/marked@18.0.11/src/Tokenizer.ts:514-543,545-606 (html, def and table), node_modules/marked@18.0.11/src/helpers.ts:38-78,112-124 (splitCells, trimTrailingBlankLines) and the GFM block rules of node_modules/marked@18.0.11/src/rules.ts:106-244 that end a paragraph, define a link or open an HTML block or table.
+// Ports packages/tui/src/components/markdown.ts (its marked block lexer rules).
 
 import (
 	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -185,6 +183,7 @@ func (s *markdownBlockSource) def(index int) (tag, href string, next int, ok boo
 	label, _ := markedGroup(match, 1)
 	destination, _ := markedGroup(match, 2)
 	// hrefBrackets, /^<(.*)>$/; the destination rule admits no line terminator for "." to reject.
+	//portlint:allow utf16units Tokenizer.ts hrefBrackets (/^<(.*)>$/): the first and last bytes tested are ASCII "<" and ">", so the trim removes one unit at each end
 	if len(destination) >= 2 && destination[0] == '<' && destination[len(destination)-1] == '>' {
 		destination = destination[1 : len(destination)-1]
 	}
@@ -213,7 +212,7 @@ func markedDefCandidate(line string) bool {
 
 // markedLinkLabel is a definition tag or reference key as marked forms it: lower-cased (String.prototype.toLowerCase) with every whitespace run replaced by one space (rules.ts multipleSpaceGlobal).
 func markedLinkLabel(label string) string {
-	label = cases.Lower(language.Und).String(label)
+	label = jsstring.ToLower(label)
 	var out strings.Builder
 	space := false
 	for _, r := range label {

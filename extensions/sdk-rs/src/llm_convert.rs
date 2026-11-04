@@ -6,7 +6,8 @@ use crate::compaction_estimate::{js_number_string, js_truthy};
 
 const COMPACTION_SUMMARY_PREFIX: &str = "The conversation history before this point was compacted into the following summary:\n\n<summary>\n";
 const COMPACTION_SUMMARY_SUFFIX: &str = "\n</summary>";
-const BRANCH_SUMMARY_PREFIX: &str = "The following is a summary of a branch that this conversation came back from:\n\n<summary>\n";
+const BRANCH_SUMMARY_PREFIX: &str =
+    "The following is a summary of a branch that this conversation came back from:\n\n<summary>\n";
 const BRANCH_SUMMARY_SUFFIX: &str = "</summary>";
 
 /// Pi's `convertToLlm`: `bashExecution`, `custom`, `branchSummary` and `compactionSummary` messages become user messages, `system`, `user`, `assistant` and
@@ -42,11 +43,17 @@ fn convert_message(message: &Value) -> Option<Value> {
         }
         "branchSummary" => Some(user_text_message(
             message,
-            format!("{BRANCH_SUMMARY_PREFIX}{}{BRANCH_SUMMARY_SUFFIX}", js_to_string(message.get("summary"))),
+            format!(
+                "{BRANCH_SUMMARY_PREFIX}{}{BRANCH_SUMMARY_SUFFIX}",
+                js_to_string(message.get("summary"))
+            ),
         )),
         "compactionSummary" => Some(user_text_message(
             message,
-            format!("{COMPACTION_SUMMARY_PREFIX}{}{COMPACTION_SUMMARY_SUFFIX}", js_to_string(message.get("summary"))),
+            format!(
+                "{COMPACTION_SUMMARY_PREFIX}{}{COMPACTION_SUMMARY_SUFFIX}",
+                js_to_string(message.get("summary"))
+            ),
         )),
         "system" | "user" | "assistant" | "toolResult" => Some(message.clone()),
         _ => None,
@@ -78,11 +85,20 @@ fn bash_execution_to_text(message: &Value) -> String {
     }
     if js_truthy(&message["cancelled"]) {
         text += "\n\n(command cancelled)";
-    } else if let Some(exit_code) = message.get("exitCode").filter(|code| !code.is_null() && code.as_f64() != Some(0.0)) {
-        text += &format!("\n\nCommand exited with code {}", js_to_string(Some(exit_code)));
+    } else if let Some(exit_code) = message
+        .get("exitCode")
+        .filter(|code| !code.is_null() && code.as_f64() != Some(0.0))
+    {
+        text += &format!(
+            "\n\nCommand exited with code {}",
+            js_to_string(Some(exit_code))
+        );
     }
     if js_truthy(&message["truncated"]) && js_truthy(&message["fullOutputPath"]) {
-        text += &format!("\n\n[Output truncated. Full output: {}]", js_to_string(message.get("fullOutputPath")));
+        text += &format!(
+            "\n\n[Output truncated. Full output: {}]",
+            js_to_string(message.get("fullOutputPath"))
+        );
     }
     text
 }
@@ -97,7 +113,13 @@ pub(crate) fn js_to_string(value: Option<&Value>) -> String {
         Some(Value::Number(number)) => js_number_to_string(number.as_f64().unwrap_or(f64::NAN)),
         Some(Value::Array(elements)) => elements
             .iter()
-            .map(|element| if element.is_null() { String::new() } else { js_to_string(Some(element)) })
+            .map(|element| {
+                if element.is_null() {
+                    String::new()
+                } else {
+                    js_to_string(Some(element))
+                }
+            })
             .collect::<Vec<_>>()
             .join(","),
         Some(Value::Object(_)) => "[object Object]".to_string(),

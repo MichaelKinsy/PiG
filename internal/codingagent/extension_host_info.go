@@ -174,7 +174,7 @@ func (c SlashCommandCatalog) recordedSourceInfo(path string) (PiSourceInfo, bool
 	// first, for the path or any directory above it.
 	for current := path; current != ""; {
 		if info, ok := c.SourceInfo[current]; ok && strings.HasPrefix(info.Source, "extension:") {
-			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir}, true
+			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir, ChangelogPath: info.ChangelogPath}, true
 		}
 		parent := filepath.Dir(current)
 		if parent == current {
@@ -198,7 +198,7 @@ func (c SlashCommandCatalog) recordedSourceInfo(path string) (PiSourceInfo, bool
 			}
 			// Upstream createSourceInfo: the recorded metadata's baseDir, which
 			// a settings entry does not have.
-			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir}, true
+			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir, ChangelogPath: info.ChangelogPath}, true
 		}
 	}
 	return PiSourceInfo{}, false
@@ -242,11 +242,13 @@ type SyntheticSourceInfoOptions struct {
 	Scope   string
 	Origin  string
 	BaseDir string
+	// ChangelogPath is the changelog file of the package the resource belongs to, if any.
+	ChangelogPath string
 }
 
 // CreateSyntheticSourceInfo is upstream's createSyntheticSourceInfo (source-info.ts:41): a SourceInfo for a resource without a file source, with scope "temporary" and origin "top-level" unless the options name others.
 func CreateSyntheticSourceInfo(path string, options SyntheticSourceInfoOptions) PiSourceInfo {
-	info := PiSourceInfo{Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir}
+	info := PiSourceInfo{Path: path, Source: options.Source, Scope: options.Scope, Origin: options.Origin, BaseDir: options.BaseDir, ChangelogPath: options.ChangelogPath}
 	if info.Scope == "" {
 		info.Scope = "temporary"
 	}
@@ -298,12 +300,20 @@ type ExtensionToolLister interface {
 // allowed is nil when no allowlist is in force; an empty allowlist admits
 // nothing, as --no-tools does.
 func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string]struct{}) []subprocess.ToolInfo {
+	return ExtensionToolInfosScoped(runner, allowed, excluded, nil)
+}
+
+// ExtensionToolInfosScoped is [ExtensionToolInfos] with the consumer's registry predicate (pig additive, D23): a tool
+// the scope rejects is unregistered, so it is not listed. A nil scope lists exactly what ExtensionToolInfos lists.
+func ExtensionToolInfosScoped(runner ExtensionToolLister, allowed, excluded map[string]struct{}, scope *extension.ToolScope) []subprocess.ToolInfo {
 	// Entries are names or `*` patterns, and MCP tools stay registered unless the allowlist filters them (agent-session.ts _isAllowedTool).
-	admitted := extension.NewToolFilter(allowed, excluded).Allows
+	filter := extension.NewToolFilter(allowed, excluded).WithScope(scope)
+	admitted := filter.AllowsTool
 	out := make([]subprocess.ToolInfo, 0)
 	index := make(map[string]int)
 	for _, schema := range tools.BuiltinToolSchemas() {
-		if !admitted(schema.Name) {
+		sourceInfo := CreateSyntheticSourceInfo(BuiltinPathPrefix+schema.Name, SyntheticSourceInfoOptions{Source: "builtin"})
+		if !admitted(extension.ToolInfo{Name: schema.Name, SourceInfo: sourceInfo, Source: "builtin"}) {
 			continue
 		}
 		parameters, err := schema.ParametersJSON()
@@ -315,7 +325,7 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		out = append(out, subprocess.ToolInfo{
 			Name: schema.Name, Description: schema.Description, Parameters: parameters,
 			PromptGuidelines: schema.PromptGuidelines,
-			SourceInfo:       CreateSyntheticSourceInfo(BuiltinPathPrefix+schema.Name, SyntheticSourceInfoOptions{Source: "builtin"}),
+			SourceInfo:       sourceInfo,
 			Exposure:         extension.ToolExposureDirect,
 			Source:           "builtin",
 		})
@@ -325,10 +335,10 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 	}
 	for _, tool := range runner.Tools() {
 		name := tool.Definition.Name
-		if !admitted(name) {
+		sourceInfo, _ := runner.ToolSourceInfo(name)
+		if !admitted(extension.ToolInfo{Name: name, SourceInfo: PiSourceInfoValue(sourceInfo), Source: tool.Source, Namespace: tool.Definition.Namespace}) {
 			continue
 		}
-		sourceInfo, _ := runner.ToolSourceInfo(name)
 		info := subprocess.ToolInfo{
 			Name: name, Description: tool.Definition.Description, Parameters: tool.Definition.Parameters,
 			PromptGuidelines: tool.Definition.PromptGuidelines, SourceInfo: PiSourceInfoValue(sourceInfo),

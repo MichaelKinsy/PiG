@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Object is a draft handle of a JSON object. It is usable only while its
@@ -179,7 +177,7 @@ func (object *Object) Set(key string, value any) error {
 
 // AppendText appends text to the string at key. The change is recorded as one append op (several appends to a key in one change join
 // into one op) without comparing the old and new strings, which a plain Set of the longer string makes the tracker do when it prepares
-// the change. Go strings are immutable, so the new revision still holds its own copy of the whole string. A Set or Delete of the key in the same change falls back to that comparison. A
+// the change. The new revision's string shares the bytes of the old one, so a text that grows one append per change costs the appended bytes, as it does with V8's ropes. A Set or Delete of the key in the same change falls back to that comparison. A
 // key that holds no string is an error and leaves the draft unchanged (tracker.ts appendText).
 func AppendText(object *Object, key, text string) error {
 	n, mu := object.ref.lock()
@@ -197,10 +195,11 @@ func AppendText(object *Object, key, text string) error {
 		return nil
 	}
 	text = strings.Clone(text)
+	concat := n.ctx.owner.texts.concat
 	appended, tracked := n.appends[key]
 	if !tracked {
 		if _, written := n.writes[key]; written {
-			n.objectWrite(key, jsstring.Concat(value, text))
+			n.objectWrite(key, concat(value, text))
 			n.markChanged()
 			return nil
 		}
@@ -208,8 +207,8 @@ func AppendText(object *Object, key, text string) error {
 			n.appends = map[string]string{}
 		}
 	}
-	n.objectWrite(key, jsstring.Concat(value, text))
-	n.appends[key] = appended + text
+	n.objectWrite(key, concat(value, text))
+	n.appends[key] = concat(appended, text)
 	n.markChanged()
 	return nil
 }

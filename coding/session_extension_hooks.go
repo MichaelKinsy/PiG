@@ -1,5 +1,8 @@
 package coding
 
+// Ports packages/coding-agent/src/core/agent-session.ts (_installAgentToolHooks).
+// Ports packages/coding-agent/src/core/sdk.ts (the context, before_provider_request and before_provider_headers hooks of createAgent).
+
 import (
 	"bytes"
 	"context"

@@ -1,6 +1,7 @@
 [
   {"package": "./ai", "tests": ["TestSSEIdleTrackerScanIsNotAPerByteLoop", "TestOpenAIStreamRecordsInOneValueAreLinear", "TestOpenAIStreamSplitRecordIsLinear", "TestAQuotedStringMissCostsTheSameInALargeCache", "TestUnmanagedProducerSnapshotsDoNotRevalidateTheArgumentAtEveryPush"]},
   {"package": "./bench/sessionscale/cmd/sessionscale", "tests": ["TestResumeMemoryAndPromptCostFollowTheContext"]},
+  {"package": "./coding/extension", "tests": ["TestScalingTrackedUnsubscribeIsConstantTime"]},
   {"package": "./coding/extension/host/subprocess", "tests": ["TestMessageUpdateDeltaCostDoesNotGrowWithTheText", "TestPushProxy_RenderNeverBlocks"]},
   {"package": "./coding/extension/host/subprocess", "goos": "windows", "tests": ["TestNodeConnectsToExtensionPipeWithoutWaiting"]},
   {"package": "./durable/codemode", "tests": ["TestJoinAdjacentTextIsLinearAtTheItemLimit"]},

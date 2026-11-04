@@ -10,6 +10,7 @@ import (
 	btypes "github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime/types"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
 )
 
 func main() {
@@ -54,7 +55,7 @@ func main() {
 		}
 		var captured *bedrockruntime.ConverseStreamInput
 		sentinel := errors.New("payload captured")
-		provider := ai.NewBedrockProviderWithModel(*model)
+		provider := bedrock.NewBedrockProviderWithModel(*model)
 		_, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{SystemPrompt: "You are helpful.", Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello"), Timestamp: 1}}}), ai.StreamOptions{
 			Thinking: row.Level, IsReasoning: model.ProviderMeta.Reasoning, Region: row.Options.Region, Env: env,
 			OnPayload: func(value any, _ *ai.Model) (any, error) {

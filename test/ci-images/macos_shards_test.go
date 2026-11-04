@@ -48,8 +48,8 @@ func TestMacOSShardsTestTheMacOSSensitivePackages(t *testing.T) {
 	if job.Strategy.FailFast == nil || *job.Strategy.FailFast {
 		t.Error("macos shards must all run when one fails")
 	}
-	if job.Timeout <= 0 || job.Timeout > 60 {
-		t.Errorf("macos timeout = %d minutes, want 1 to 60", job.Timeout)
+	if job.Timeout <= 0 || job.Timeout > 40 {
+		t.Errorf("macos timeout = %d minutes, want 1 to 40", job.Timeout)
 	}
 	steps := map[string]bool{}
 	for _, step := range job.Steps {

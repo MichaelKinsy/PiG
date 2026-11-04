@@ -14,14 +14,21 @@ import (
 type Runtime struct {
 	s     *Scheduler
 	inv   *invocation
-	task  func() *TaskImpl
-	snap  func() Snapshot
+	snap  *Snapshot
 	agent any
+	// ended is what the commit that last ended the task for crashes ended it for, until ReportEnded reports it.
+	ended interruption
+	// crashEnd is the message of a terminal state the commit's change marked as ending its task for crashes (MarkEndedByCrashes).
+	crashEnd string
 }
 
-func (s *Scheduler) newRuntime(inv *invocation, task func() *TaskImpl, snap func() Snapshot) *Runtime {
-	return &Runtime{s: s, inv: inv, task: task, snap: snap}
+func (s *Scheduler) newRuntime(inv *invocation, snap *Snapshot) *Runtime {
+	return &Runtime{s: s, inv: inv, snap: snap}
 }
+
+// MarkEndedByCrashes marks the terminal state the commit's change is about to return as ending its task for crashes: the scheduler
+// reports it task_interrupted with message, whatever its outcome (scheduler.ts endedByCrashes). Call it inside the change.
+func (r *Runtime) MarkEndedByCrashes(message string) { r.crashEnd = message }
 
 func (r *Runtime) agentReset() { r.agent = nil }
 
@@ -46,10 +53,10 @@ func (r *Runtime) ConversationID() ID { return r.inv.conversationID }
 
 // Signal is aborted when the run is signalled by AbortTask, the Harness closes
 // or the invocation ends.
-func (r *Runtime) Signal() *Cancel { return r.inv.signal }
+func (r *Runtime) Signal() *Cancel { return &r.inv.signal }
 
 // Snapshot is the registry snapshot of the current phase.
-func (r *Runtime) Snapshot() Snapshot { return r.snap() }
+func (r *Runtime) Snapshot() Snapshot { return *r.snap }
 
 // Now is the Harness clock.
 func (r *Runtime) Now() (float64, error) {
@@ -67,19 +74,19 @@ func (r *Runtime) Report(err error, from ...ReportFrom) error {
 		return endedError(r.inv)
 	}
 	if len(from) == 0 {
-		r.s.report(err, aboutInvocation("task_error", r.inv))
+		r.s.reportAt(err, aboutInvocation("task_error", r.inv), r.inv.span)
 		return nil
 	}
 	task := reportTask(r.inv.taskID, r.inv.kind, r.inv.conversationID)
 	if f := from[0]; f.Callback != "" {
-		r.s.report(err, obj("type", "host_error", "callback", f.Callback, "task", task))
+		r.s.reportAt(err, obj("kind", "host_error", "callback", f.Callback, "task", task), r.inv.span)
 		return nil
 	} else {
-		info := obj("type", "extension_error", "task", task)
+		info := obj("kind", "extension_error", "task", task)
 		if f.Extension != "" {
 			info.Set("extension", f.Extension)
 		}
-		r.s.report(err, info)
+		r.s.reportAt(err, info, r.inv.span)
 	}
 	return nil
 }
@@ -94,19 +101,52 @@ type ReportFrom struct{ Extension, Callback string }
 // invocation ended, the Harness is closing or, in a run invocation, the task
 // carries an abort mark.
 func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.commit(false, change, then)
+}
+
+// CommitDeferred is Commit with CommitOptions{persistence: {kind: "deferred"}} (harness/live.ts PROGRESS_COMMIT): a commit that
+// changes only latest, initial-fork conversation documents is adopted in memory and stored later (held.go), by the Session's
+// default window. A commit that returns a state is stored at once.
+func (r *Runtime) CommitDeferred(change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	r.commit(true, change, then)
+}
+
+func (r *Runtime) commit(deferred bool, change func(tx *Tx, current *jv.Object) (next *jv.Object, err error), then func(error)) {
+	// runtime.commit is an async function that awaits `#gated` (scheduler.ts, Pi 6c384aa3: it adds the checkpoint event after the await), where it
+	// returned the promise itself: its caller resumes a tick after the commit's resolution (the late job).
+	r.gatedWith(true, deferred, func(tx *Tx, current *jv.Object) error {
 		next, err := change(tx, current)
+		crashEnd := r.crashEnd
+		r.crashEnd = ""
 		if err != nil {
 			return err
 		}
-		u := tx.ticks
+		// The tick of the region the job decided in is GatedChange's own (hopcost.GatedRegion), not the change callback's.
+		u := tx.ticks - hopcost.GatedRegion
 		if next == nil {
 			tx.ticks = hopcost.RuntimeCommit(u, false, 0)
 			return nil
 		}
 		overlay := stagedTasks(tx)
 		err = r.s.commitState(tx, r.inv, current, next)
-		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay, r.s.stateAwaits))
+		if err == nil {
+			// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal: reported once the
+			// commit resolved, before its caller resumes (scheduler.ts runtime.commit).
+			r.ended = interruptionOf(current, next)
+			if status, _ := getStr(next, "status"); r.ended.reason == nil && crashEnd != "" && status == StatusTerminal {
+				// A task that ended for crashes with another outcome says so itself, as a generation whose run answered ends `completed`
+				// without its after-run tasks (scheduler.ts endedByCrashes).
+				restarts, ok := current.Get("restarts")
+				if !ok {
+					restarts = float64(0)
+				}
+				r.ended = interruption{reason: "restart_limit", message: crashEnd, restarts: restarts}
+			}
+			if r.ended.reason != nil {
+				r.s.loop.endedBy(r)
+			}
+		}
 		return err
 	}, then)
 }
@@ -114,7 +154,7 @@ func (r *Runtime) Commit(change func(tx *Tx, current *jv.Object) (next *jv.Objec
 // BeginHost opens a commit whose callback runs in the host, one operation per event (ABI section 8): the checks of Commit
 // run now, at the moment the host's transaction takes the Session line, and the returned transaction is scoped to the
 // task. The caller must hold the line until FinishHost or AbandonHost.
-func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
+func (r *Runtime) BeginHost(span uint32, trace any) (tx *Tx, current *jv.Object, err error) {
 	s, inv := r.s, r.inv
 	if inv.ended {
 		return nil, nil, endedError(inv)
@@ -132,20 +172,26 @@ func (r *Runtime) BeginHost() (tx *Tx, current *jv.Object, err error) {
 	if !inv.abortMode && getBool(found, "abortRequested") {
 		return nil, nil, errorf("Task %d has a durable abort mark", inv.taskID)
 	}
-	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID})
+	tx, err = s.sess.Begin(TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Span: span, Trace: trace, Host: true})
 	return tx, found, err
 }
 
 // FinishHost commits the host transaction of BeginHost: next, when not nil, is the state the task commits for itself.
 func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, error) {
 	u := tx.ticks
+	r.ended = interruption{}
 	if next != nil {
 		overlay := stagedTasks(tx)
 		if err := r.s.commitState(tx, r.inv, current, next); err != nil {
-			r.s.sess.Abandon(tx, err)
+			// A key an unpublished commit writes: the decision region staged nothing, so the transaction stays open and the host finishes
+			// it again once the key is published (Session.Finish does the same for the settle's keys).
+			if !restarts(err) {
+				r.s.sess.Abandon(tx, err)
+			}
 			return nil, err
 		}
-		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay))
+		tx.ticks = hopcost.RuntimeCommit(u, true, commitStateTicks(next, overlay, r.s.stateAwaits))
+		r.ended = interruptionOf(current, next)
 	} else {
 		tx.ticks = hopcost.RuntimeCommit(u, false, 0)
 	}
@@ -155,45 +201,59 @@ func (r *Runtime) FinishHost(tx *Tx, current, next *jv.Object) (*Publication, er
 	return r.s.sess.Finish(tx)
 }
 
-// FinishHostSettled commits again the host transaction of BeginHost whose commit returned a *NeedGate (Session.FinishSettled).
-func (r *Runtime) FinishHostSettled(tx *Tx) (*Publication, error) { return r.s.sess.FinishSettled(tx) }
-
 // AbandonHost ends the host transaction of BeginHost without a commit.
 func (r *Runtime) AbandonHost(tx *Tx, err error) { r.s.sess.Abandon(tx, err) }
 
 // gated runs change as a job guarded by the invocation (scheduler.ts #gated).
-func (r *Runtime) gated(change func(tx *Tx, current *jv.Object) error, then func(error)) {
+func (r *Runtime) gated(late bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
+	r.gatedWith(late, false, change, then)
+}
+
+// gatedWith is gated for a commit that may be deferred (CommitOptions.persistence).
+func (r *Runtime) gatedWith(late, deferred bool, change func(tx *Tx, current *jv.Object) error, then func(error)) {
 	s, inv := r.s, r.inv
 	if inv.ended {
-		s.loop.Defer(func() { then(endedError(inv)) })
+		s.loop.DeferDone(then, endedError(inv), late)
 		return
 	}
-	s.commitQueued(func(tx *Tx) error {
+	s.commitQueued(late, func(tx *Tx) error {
 		if inv.ended {
 			return endedError(inv)
 		}
 		if s.closing {
 			return s.closedErr()
 		}
-		found, ok := s.live.get(inv.taskID)
-		if !ok {
-			return errorf("Task %d is terminal", inv.taskID)
+		// The task's record is read in a decision region: a commit of the task that is not published yet makes the job wait.
+		s.beginRegion()
+		found, ok := s.liveRecord(inv.taskID)
+		var derr error
+		switch {
+		case !ok:
+			derr = errorf("Task %d is terminal", inv.taskID)
+		case taskStatus(found) != StatusRunning:
+			derr = errorf("Task %d is %s", inv.taskID, string(taskStatus(found)))
+		case !inv.abortMode && getBool(found, "abortRequested"):
+			derr = errorf("Task %d has a durable abort mark", inv.taskID)
 		}
-		if st := taskStatus(found); st != StatusRunning {
-			return errorf("Task %d is %s", inv.taskID, string(st))
+		if err := s.endRegionPlain(tx); err != nil {
+			return err
 		}
-		if !inv.abortMode && getBool(found, "abortRequested") {
-			return errorf("Task %d has a durable abort mark", inv.taskID)
+		if derr != nil {
+			return derr
+		}
+		// The step that ends it may have run while the region waited.
+		if inv.ended {
+			return endedError(inv)
 		}
 		return change(tx, found)
-	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID}, then)
+	}, TxScope{ConversationID: inv.conversationID, TaskID: inv.taskID, Deferred: deferred, WithinMs: -1, Span: inv.span, Trace: inv.carrier()}, then)
 }
 
 // Memo stores candidate unless a memo of that name exists and returns the
 // durable winner.
 func (r *Runtime) Memo(name string, candidate any, then func(winner any, err error)) {
 	var winner any
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		if w, ok := memoOf(current, name); ok {
 			winner = w
 			return nil
@@ -246,7 +306,7 @@ func (r *Runtime) WaitForTask(id ID, then func(rec *jv.Object, err error, waited
 		r.s.loop.Defer(func() { then(nil, endedError(r.inv), false) })
 		return
 	}
-	r.s.WaitForTaskFound(id, r.inv.signal, then)
+	r.s.WaitForTaskFound(id, &r.inv.signal, then)
 }
 
 // AbortOwned aborts a task this task owns and calls then once it is terminal (scheduler.ts abortOwned).
@@ -268,7 +328,7 @@ func (r *Runtime) AbortOwned(id ID, then func(error)) {
 			then(nil)
 			return
 		}
-		r.s.Abort(id, true, r.inv.signal, func(_ string, err error) {
+		r.s.Abort(id, true, &r.inv.signal, func(_ string, err error) {
 			if err != nil {
 				then(err)
 				return
@@ -288,25 +348,32 @@ func (r *Runtime) OwnedTasks(then func([]*jv.Object, error)) {
 	}
 	var out []*jv.Object
 	r.s.loop.ReadLine(func() error {
+		out = nil
 		// The step that ends the invocation may have run on the line before this.
 		if r.inv.ended {
 			return endedError(r.inv)
 		}
-		children := r.s.below[taskTreeNode(r.inv.taskID)]
-		if children == nil {
-			return nil
-		}
-		children.Range(func(node treeNode) bool {
-			if node.conversation {
-				return true
-			}
-			if rec, live := r.s.live.get(node.id); live {
-				if owner, _ := rec.Get("owner"); owner == float64(r.inv.taskID) {
-					out = append(out, jv.Clone(rec).(*jv.Object))
+		// Every live task is listed under its parent node, its owner task when it has one: a decision region, so a commit not published yet
+		// that changes the list makes the job wait.
+		s := r.s
+		s.beginRegion()
+		s.record(OwnedKey(nodeKey(taskTreeNode(r.inv.taskID))))
+		if children := s.below[taskTreeNode(r.inv.taskID)]; children != nil {
+			children.Range(func(node treeNode) bool {
+				if node.conversation {
+					return true
 				}
-			}
-			return true
-		})
+				if rec, live := s.liveRecord(node.id); live {
+					if owner, _ := rec.Get("owner"); owner == float64(r.inv.taskID) {
+						out = append(out, jv.Clone(rec).(*jv.Object))
+					}
+				}
+				return true
+			})
+		}
+		if err := s.endRegionPlain(nil); err != nil {
+			return err
+		}
 		sort.Slice(out, func(a, b int) bool { return idOfRecord(out[a]) < idOfRecord(out[b]) })
 		return nil
 	}, func(err error) { then(out, err) })
@@ -344,7 +411,7 @@ func (r *Runtime) Outcomes(ids []ID, then func([]*jv.Object, error)) {
 // SleepUntil commits a sleep: the task holds no invocation until the Harness clock reaches until, then resumes at checkpoint.
 // then runs once the sleep is stored, not when the time comes (scheduler.ts sleepUntil, a #gated #commitState).
 func (r *Runtime) SleepUntil(until float64, checkpoint any, then func(error)) {
-	r.gated(func(tx *Tx, current *jv.Object) error {
+	r.gated(false, func(tx *Tx, current *jv.Object) error {
 		tx.ticks = hopcost.GatedChange(1)
 		return r.s.commitState(tx, r.inv, current, obj("status", StatusSleeping, "checkpoint", jv.Clone(checkpoint), "until", until))
 	}, then)
@@ -378,15 +445,18 @@ func stagedTasks(tx *Tx) int {
 	return n
 }
 
-// commitStateTicks is the awaits of scheduler.ts #commitState beyond its own return: #validateWait for a waiting state
-// (loadChain and the async call's return: 2), and for a terminal state `await #loadScopes(false)` and one loadChain per
-// task the transaction staged before the state (overlay), at least one.
-func commitStateTicks(next *jv.Object, overlay int) int {
+// commitStateTicks is the awaits of scheduler.ts #commitState beyond its own return: `await #validateWait` for a waiting state (the
+// async call's return, and awaits more for a wait that checks a cycle), and for a terminal state `await #loadScopes(false)` (its own
+// return, and one `await #loadChain` per task still unloaded, awaits) and one loadChain per task the transaction staged before the state
+// (overlay). awaits is what commitState left in Scheduler.stateAwaits.
+func commitStateTicks(next *jv.Object, overlay, awaits int) int {
 	switch status, _ := getStr(next, "status"); status {
 	case StatusWaiting:
-		return 2
+		// await #validateWait: #loadScopes (its awaits and its own return), the region, and the call's return
+		return 2 + awaits + 1
 	case StatusTerminal:
-		return 1 + max(1, overlay)
+		// #loadScopes, one #loadChain per staged task, the region
+		return 1 + awaits + overlay + 1
 	}
 	return 0
 }

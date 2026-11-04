@@ -300,7 +300,7 @@ func TestNPMInstallArgsMatchUpstreamManagedInstallContract(t *testing.T) {
 		manager string
 		want    []string
 	}{
-		{manager: "npm", want: []string{"install", "@scope/pkg@1.2.3", "--prefix", root, "--legacy-peer-deps"}},
+		{manager: "npm", want: []string{"install", "@scope/pkg@1.2.3", "--prefix", root, "--legacy-peer-deps", "--no-audit", "--no-fund"}},
 		{manager: "bun", want: []string{"install", "@scope/pkg@1.2.3", "--cwd", root, "--omit=peer"}},
 		{manager: "pnpm", want: []string{"install", "@scope/pkg@1.2.3", "--prefix", root, "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}},
 	}
@@ -316,7 +316,7 @@ func TestNPMInstallArgsMatchUpstreamManagedInstallContract(t *testing.T) {
 func TestNPMInstallArgsPassCustomRegistryWithoutCredentials(t *testing.T) {
 	registry := "https://npm.example.com/team"
 	got := packagemanager.NpmInstallArgs("npm", "@scope/pkg@1.2.3", "/managed/npm", registry)
-	if !slices.Equal(got, []string{"install", "@scope/pkg@1.2.3", "--prefix", "/managed/npm", "--legacy-peer-deps", "--registry", registry}) {
+	if !slices.Equal(got, []string{"install", "@scope/pkg@1.2.3", "--prefix", "/managed/npm", "--legacy-peer-deps", "--no-audit", "--no-fund", "--registry", registry}) {
 		t.Fatalf("args = %v", got)
 	}
 	if strings.Contains(strings.Join(got, " "), "token") {
@@ -385,7 +385,7 @@ func TestInstallManagedNPMPassesCustomRegistryToPackageManager(t *testing.T) {
 // arguments follow the package manager the npmCommand names, and no manager auto-installs peer dependencies. The pnpm, bun and
 // wrapped rows are package-manager.test.ts:916-975, :977-1004 and :1096-1140.
 func TestGetGitDependencyInstallArgs(t *testing.T) {
-	npm := []string{"install", "--omit=dev", "--legacy-peer-deps"}
+	npm := []string{"install", "--omit=dev", "--legacy-peer-deps", "--no-audit", "--no-fund"}
 	pnpm := []string{"install", "--prod", "--config.auto-install-peers=false", "--config.strict-peer-dependencies=false", "--config.strict-dep-builds=false"}
 	for _, tc := range []struct {
 		name    string
@@ -1167,14 +1167,21 @@ func TestNormalizePackageSourceForSettings_UsesScopeBase(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	relative := filepath.Join("..", "ext", "sysmon")
 	for _, baseDir := range []string{filepath.Join(tmp, "home", ".pig"), filepath.Join(cwd, ".pig")} {
 		want, err := filepath.Rel(baseDir, pkg)
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: nil}).NormalizeSourceForSettings(baseDir, pkg)
-		if got != want {
-			t.Errorf("base %q: stored path = %q, want %q", baseDir, got, want)
+		manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: nil})
+		if got := manager.NormalizeSourceForSettings(baseDir, relative); got != want {
+			t.Errorf("base %q: stored path of %q = %q, want %q", baseDir, relative, got, want)
+		}
+		// pig divergence (D215): a path typed absolute, or from the home directory, is stored as typed (trimmed), not relative to baseDir.
+		for typed, want := range map[string]string{pkg: pkg, " " + pkg + " ": pkg, "~/ext/sysmon": "~/ext/sysmon"} {
+			if got := manager.NormalizeSourceForSettings(baseDir, typed); got != want {
+				t.Errorf("base %q: stored path of %q = %q, want %q", baseDir, typed, got, want)
+			}
 		}
 	}
 

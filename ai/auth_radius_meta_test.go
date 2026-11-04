@@ -1,6 +1,8 @@
 package ai
 
 // pi: packages/ai/src/auth/oauth/radius.ts
+// pi: packages/ai/src/providers/meta.ts
+// pi: packages/ai/src/providers/radius.ts
 
 import (
 	"context"

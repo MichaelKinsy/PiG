@@ -38,6 +38,14 @@ type customCall struct {
 	savedText string
 }
 
+// blockedStatusOf is the status an inline component reports while it is visible: nil for a component that did not opt in.
+func blockedStatusOf(blocked *extension.CustomBlocked) *BlockedStatus {
+	if blocked == nil {
+		return nil
+	}
+	return &BlockedStatus{Kind: blocked.Kind, Message: blocked.Message}
+}
+
 func customOptionsOf(opts *extension.CustomOptions) extension.CustomOptions {
 	if opts == nil {
 		return extension.CustomOptions{}
@@ -183,7 +191,8 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 			options.OnHandle(c.handle)
 		}
 	} else {
-		c.entry = &extensionDialog{component: component, dispose: c.dispose}
+		// upstream: interactive-mode.ts showExtensionCustom pushExtensionDialog(c, options?.blocked); an overlay is not in the dialog stack.
+		c.entry = &extensionDialog{component: component, dispose: c.dispose, blocked: blockedStatusOf(options.Blocked)}
 		m.pushExtensionDialog(c.entry)
 	}
 	c.mounted = true

@@ -22,7 +22,9 @@ import (
 // TrackedFiles lists Git-tracked paths relative to dir. Outside a Git checkout,
 // it lists all files: a release source archive is already tracked-only.
 func TrackedFiles(dir string) ([]string, error) {
+	//nolint:gosec // G204 (class a): program is literal git; args are -C of a computed module directory and fixed rev-parse --show-toplevel.
 	if err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Run(); err == nil {
+		//nolint:gosec // G204 (class a): program is literal git; args are -C of the same computed module directory and fixed ls-files -z -- .
 		out, err := exec.Command("git", "-C", dir, "ls-files", "-z", "--", ".").Output()
 		if err != nil {
 			return nil, fmt.Errorf("list tracked files: %w", err)

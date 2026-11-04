@@ -23,25 +23,25 @@ import (
 
 // nestedCoreHarness opens a native Harness over the core whose registry holds the given tools and whose model calls batch
 // once, then answers.
-func nestedCoreHarness(t *testing.T, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, durable.Submission) {
+func nestedCoreHarness(t testing.TB, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, durable.Submission) {
 	t.Helper()
 	return nestedCoreHarnessWith(t, &durable.Extension{Name: "nested", Tools: tools})
 }
 
 // nestedCoreHarnessWith is nestedCoreHarness over an extension that may also hold hooks.
-func nestedCoreHarnessWith(t *testing.T, extension *durable.Extension, onReport ...func(error, durable.ReportInfo)) (harness.Harness, harness.Conversation, durable.Submission) {
+func nestedCoreHarnessWith(t testing.TB, extension *durable.Extension, onReport ...func(durable.Report)) (harness.Harness, harness.Conversation, durable.Submission) {
 	t.Helper()
 	h, root, submit := nestedCoreOpen(t, extension, onReport...)
 	return h, root, submit()
 }
 
 // nestedCoreHarnessPaused is nestedCoreHarness that submits when told, so a test can watch events first.
-func nestedCoreHarnessPaused(t *testing.T, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, func() durable.Submission) {
+func nestedCoreHarnessPaused(t testing.TB, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, func() durable.Submission) {
 	t.Helper()
 	return nestedCoreOpen(t, &durable.Extension{Name: "nested", Tools: tools})
 }
 
-func nestedCoreOpen(t *testing.T, extension *durable.Extension, onReport ...func(error, durable.ReportInfo)) (harness.Harness, harness.Conversation, func() durable.Submission) {
+func nestedCoreOpen(t testing.TB, extension *durable.Extension, onReport ...func(durable.Report)) (harness.Harness, harness.Conversation, func() durable.Submission) {
 	t.Helper()
 	faux := ai.NewFauxProvider(ai.FauxConfig{})
 	models := ai.CreateModels()
@@ -405,15 +405,15 @@ func TestCoreABrokenStructuredOutputOfAModelIssuedCallIsReported(t *testing.T) {
 		return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{ai.TextContent{Text: "shown"}}, StructuredOutput: map[string]any{"n": "x"}, HasStructuredOutput: true}, nil
 	})
 	batch.StructuredOutputSchema = map[string]any{"type": "object", "properties": map[string]any{"n": map[string]any{"type": "number"}}, "required": []any{"n"}}
-	_, root, sub := nestedCoreHarnessWith(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{batch}}, func(err error, _ durable.ReportInfo) {
+	_, root, sub := nestedCoreHarnessWith(t, &durable.Extension{Name: "nested", Tools: []*durable.ToolRegistration{batch}}, func(report durable.Report) {
 		mu.Lock()
 		defer mu.Unlock()
-		reports = append(reports, err.Error())
+		reports = append(reports, report.Error.Error())
 	})
 	nestedCoreWait(t, sub, durable.SubmissionDone)
 	mu.Lock()
 	defer mu.Unlock()
-	if len(reports) != 1 || reports[0] != "Tool batch returned structuredOutput that does not match its schema: n: must be number" {
+	if len(reports) != 1 || reports[0] != "Tool batch returned structuredOutput that does not match its schema: n: expected number, got string" {
 		t.Fatalf("reports = %q", reports)
 	}
 	page, err := root.Entries(t.Context(), durable.EntryQuery{}, 100, nil)
@@ -490,13 +490,9 @@ func mustJSONCore(t *testing.T, value any) string {
 	return string(encoded)
 }
 
-// harness-nested-tools.test.ts "reports nested calls ... as tool events with their parent", over the core: agent events work on
-// driver.OpenHarness, the nested slots and the nested result reach them, and the events name the parent.
-func TestCoreNestedCallsAreToolEventsWithTheirParent(t *testing.T) {
-	var mu sync.Mutex
-	var summary []string
-	var nestedEnd *harness.ToolExecutionEndEvent
-	runEnded := false
+// harness-nested-tools.test.ts:429 "reports nested calls in pi.live.nestedTools with their parent", over the core: the nested
+// slots and the nested result reach a client of the view and of the commits, and the slots name the call's task and the calling one.
+func TestCoreNestedCallsAreListedInTheViewWithTheirParent(t *testing.T) {
 	h, root, submit := nestedCoreHarnessPaused(t,
 		nestedCoreTool("slow", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return nestedCoreText("slow done"), nil
@@ -506,51 +502,36 @@ func TestCoreNestedCallsAreToolEventsWithTheirParent(t *testing.T) {
 			text, _ := result.StructuredOutput.(string)
 			return nestedCoreText(text), err
 		}))
-	stream, err := harness.WatchEvents(t.Context(), h, root.Id())
-	if err != nil {
-		t.Fatal(err)
+	history := viewHistory(t, h, root.Id())
+	if first := history.Live()[0]; first.NestedTools != nil {
+		t.Fatalf("nestedTools of the first view = %+v, want none", first.NestedTools)
 	}
-	if stream.Snapshot.NestedTools == nil || len(stream.Snapshot.NestedTools) != 0 {
-		t.Fatalf("snapshot nestedTools = %#v, want an empty list", stream.Snapshot.NestedTools)
-	}
-	stream.Start(func(_ context.Context, change durable.NativeWatchChange[[]harness.AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			switch typed := event.(type) {
-			case harness.RunEndEvent:
-				runEnded = true
-			case harness.ToolExecutionStartEvent:
-				summary = append(summary, "start "+typed.ToolCallId+" <"+typed.ParentToolCallId+">")
-			case harness.ToolExecutionEndEvent:
-				summary = append(summary, "end "+typed.ToolCallId+" <"+typed.ParentToolCallId+">")
-				if typed.ToolCallId == "c1/1" {
-					nestedEnd = &typed
-				}
-			}
-		}
-		return nil
-	})
+	nested := nestedResults(t, h)
 	nestedCoreWait(t, submit(), durable.SubmissionDone)
 	if err := root.WaitForIdle(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	// The stream delivers on its own goroutine, so idle does not mean delivered: wait for the run's end before stopping,
-	// which drops undelivered batches.
-	pollUntil(t, "the run's end event", func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return runEnded
+	// The core delivers on its own goroutine, so idle does not mean delivered: wait for the end of the run.
+	pollUntil(t, "the end of the run", func() bool {
+		states := history.Live()
+		_, found := nested.nestedResultOf(states, "c1/1")
+		return found && endedAt(states, "c1") > 0
 	})
-	_, _ = stream.Stop()
-	mu.Lock()
-	defer mu.Unlock()
-	want := []string{"start c1 <>", "start c1/1 <c1>", "end c1/1 <c1>", "end c1 <>"}
-	if !slices.Equal(summary, want) {
-		t.Fatalf("tool events = %q, want %q", summary, want)
+	history.Detach()
+	states := history.Live()
+	if started := startOrder(states); !slices.Equal(started, []string{"c1", "c1/1"}) {
+		t.Fatalf("start order %v, want c1 then c1/1", started)
 	}
-	if nestedEnd == nil || nestedEnd.Result == nil || nestedEnd.Result.StructuredOutput != "slow done" || nestedEnd.TaskId == nil || nestedEnd.ParentTaskId == nil {
-		t.Fatalf("nested end = %+v", nestedEnd)
+	if endedAt(states, "c1/1") >= endedAt(states, "c1") {
+		t.Fatalf("the nested call ended at %d, its caller at %d", endedAt(states, "c1/1"), endedAt(states, "c1"))
+	}
+	if result, found := nested.nestedResultOf(states, "c1/1"); !found || result.StructuredOutput != "slow done" || result.IsError {
+		t.Fatalf("nested result = %+v, %v", result, found)
+	}
+	// Slots name the call's task and, for a nested call, the calling one.
+	parentSlot := firstSlot(slotsOf(states, "c1"), func(slot *slotView) bool { return slot.TaskId != nil })
+	childSlot := firstSlot(slotsOf(states, "c1/1"), func(*slotView) bool { return true })
+	if parentSlot == nil || childSlot == nil || childSlot.Nested == nil || *childSlot.TaskId == *parentSlot.TaskId || childSlot.Nested.ParentCallId != "c1" || childSlot.Nested.ParentTaskId != *parentSlot.TaskId {
+		t.Fatalf("slot of the nested call = %+v, of the calling one %+v", childSlot, parentSlot)
 	}
 }

@@ -4,23 +4,16 @@
 package images
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"image"
 	"image/color"
-	"image/jpeg"
 	"math"
 	"slices"
 
-	// The decoders of the formats read accepts: PNG and JPEG, GIF and WebP, and BMP, which is converted.
-	_ "image/gif"
-	_ "image/png"
-
-	_ "golang.org/x/image/bmp"
-	_ "golang.org/x/image/webp"
-
 	"github.com/MichaelKinsy/PiG/durable/tools"
+	"github.com/MichaelKinsy/PiG/internal/photonimage"
 )
 
 // jpegQualities are the JPEG qualities tried in order.
@@ -44,15 +37,20 @@ func CreatePhotonImages() tools.ImageProcessor { return newSequential(photon{}) 
 func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits tools.ImageLimits) (*tools.PreparedImage, error) {
 	orientation := ExifOrientation(data)
 	inline := tools.INLINE_IMAGE_TYPES[mimeType]
-	// pig divergence (D165): Go's image decoders stand for Photon's `new_from_byteslice`.
 	// Decoded even when it is returned as it is: a damaged file is an error, not an image the provider rejects.
-	decoded, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil || decoded.Bounds().Empty() {
+	decoded, err := photonimage.Decode(data)
+	if err != nil {
 		return nil, nil
 	}
 	if bounds := decoded.Bounds(); inline && orientation == 1 && bounds.Dx() <= limits.MaxWidth && bounds.Dy() <= limits.MaxHeight &&
 		tools.Base64Length(int64(len(data))) <= int64(limits.MaxBytes) {
 		return &tools.PreparedImage{Data: tools.ToBase64(data), MimeType: mimeType}, nil
+	}
+	// An image with no pixels is not given up: the target size is at least 1x1, so the resize makes pixels of it (Photon's `resize` of an image of
+	// width or height zero gives transparent black) and they are encoded. Only the rotation of such an image throws: `new PhotonImage(pixels, w, h)`
+	// of zero bytes is an exception (index.ts:57-62).
+	if decoded.Bounds().Empty() && orientation >= 5 {
+		return nil, nil
 	}
 	upright := orient(toNRGBA(decoded), orientation)
 	bounds := upright.Bounds()
@@ -64,6 +62,10 @@ func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits 
 			return nil, err
 		}
 		encoded, err := encodeWithin(ctx, upright, target, limits.MaxBytes, mimeType == "image/jpeg")
+		if errors.Is(err, errPhotonThrew) {
+			// An exception of the encoder leaves `prepare` through its catch (index.ts:84-86): no image.
+			return nil, nil
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -84,6 +86,9 @@ func (photon) Prepare(ctx context.Context, data []byte, mimeType string, limits 
 	}
 }
 
+// errPhotonThrew is an exception of Photon's encoders (an image with no pixels for PNG, a side over 65535 for JPEG).
+var errPhotonThrew = errors.New("images: photon threw")
+
 // jsRound is Math.round: halves round up.
 func jsRound(x float64) int { return int(math.Floor(x + 0.5)) } //portlint:allow numbers callers pass a finite image size (index.ts:66), so the floored value is an integer that fits an int
 
@@ -92,16 +97,16 @@ func jsRound(x float64) int { return int(math.Floor(x + 0.5)) } //portlint:allow
 func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, maxBytes int, jpegFirst bool) (*tools.PreparedImage, error) {
 	scaled := img
 	if bounds := img.Bounds(); size.Width != bounds.Dx() || size.Height != bounds.Dy() {
-		scaled = resizeLanczos3(img, size.Width, size.Height)
+		scaled = photonimage.ResizeLanczos3(img, size.Width, size.Height)
 	}
 	type candidate struct {
 		mimeType string
 		encode   func() ([]byte, error)
 	}
-	pngCandidate := candidate{"image/png", func() ([]byte, error) { return encodePhotonPNG(scaled), nil }}
+	pngCandidate := candidate{"image/png", func() ([]byte, error) { return photonimage.EncodePNG(scaled) }}
 	var jpegs []candidate
 	for _, quality := range jpegQualities {
-		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return encodeJPEG(scaled, quality) }})
+		jpegs = append(jpegs, candidate{"image/jpeg", func() ([]byte, error) { return photonimage.EncodeJPEG(scaled, uint8(quality)) }})
 	}
 	order := slices.Concat([]candidate{pngCandidate}, jpegs)
 	if jpegFirst {
@@ -113,26 +118,13 @@ func encodeWithin(ctx context.Context, img *image.NRGBA, size tools.ImageSize, m
 		}
 		encoded, err := c.encode()
 		if err != nil {
-			return nil, nil
+			return nil, errPhotonThrew
 		}
 		if tools.Base64Length(int64(len(encoded))) <= int64(maxBytes) {
 			return &tools.PreparedImage{Data: base64.StdEncoding.EncodeToString(encoded), MimeType: c.mimeType}, nil
 		}
 	}
 	return nil, nil
-}
-
-// pig divergence (D165): Go's JPEG encoder, not Photon's `get_bytes_jpeg(quality)`; the quantization differs.
-// encodeJPEG drops the alpha channel, as Photon's JPEG encoder does, rather than darkening transparent pixels.
-func encodeJPEG(img *image.NRGBA, quality int) ([]byte, error) {
-	opaque := image.NewNRGBA(img.Bounds())
-	copy(opaque.Pix, img.Pix)
-	for i := 3; i < len(opaque.Pix); i += 4 {
-		opaque.Pix[i] = 0xff
-	}
-	var out bytes.Buffer
-	err := jpeg.Encode(&out, opaque, &jpeg.Options{Quality: quality})
-	return out.Bytes(), err
 }
 
 func toNRGBA(img image.Image) *image.NRGBA {

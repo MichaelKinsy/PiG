@@ -1,11 +1,5 @@
 package coding
 
-// pi: packages/coding-agent/src/core/sdk.ts
-
-// pi: packages/coding-agent/src/core/agent-session.ts
-
-// pi: packages/coding-agent/src/core/agent-session-runtime.ts
-
 import (
 	"context"
 	"encoding/json"
@@ -596,6 +590,7 @@ func TestSessionAgentEndEventIncludesWillRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -656,27 +651,18 @@ func fakeModelWithProvider(prov ai.Provider) *ai.Model {
 	}
 }
 
-// TestSendDeadlocksWithoutEventDrainThenUnblocks reproduces the print-mode
-// deadlock: a turn that emits more events than the rawEvents+events buffers hold
-// (2×64) fills forwardAgentEvents' outbound channel; with no Events() consumer it
-// blocks, the agent's emit() blocks, and Send() never returns. Print mode hit this
-// on long findings output. Draining Events() (as print mode now does) unblocks it.
-func TestSendDeadlocksWithoutEventDrainThenUnblocks(t *testing.T) {
-	partial := sessionTestMessage("fake", "", ai.StopReasonPending, "")
-	evs := []ai.AssistantMessageEvent{ai.StartEvent{Partial: partial}}
-	for index := range 300 {
-		partial = sessionTestMessage("fake", strings.Repeat("x", index+1), ai.StopReasonPending, "")
-		evs = append(evs, ai.TextDeltaEvent{ContentIndex: 0, Delta: "x", Partial: partial})
-	}
-	final := sessionTestMessage("fake", strings.Repeat("x", 300), ai.StopReasonStop, "")
-	evs = append(evs, ai.DoneEvent{Reason: ai.StopReasonStop, Message: final})
-	prov := staticProviderForSessionTests{events: evs}
+// TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks pins the backpressure a subscribed consumer keeps: once Events was called, a turn that emits
+// more events than the rawEvents+events buffers hold (2×64) blocks Send until the consumer reads, as a slow synchronous Pi listener does. A Session whose
+// Events was never called does not block (TestRuntimeSessionWithoutEventsReaderSendReturns).
+func TestSendBlocksWhenEventsConsumerStopsReadingThenUnblocks(t *testing.T) {
+	prov := longTurnProvider(300)
 	svcs := newTestServices(t)
 	sess, err := NewSession(svcs, SessionOptions{Model: fakeModelWithProvider(prov)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = sess.Close() }()
+	events := sess.Events()
 
 	ctx := t.Context()
 
@@ -686,16 +672,16 @@ func TestSendDeadlocksWithoutEventDrainThenUnblocks(t *testing.T) {
 		done <- e
 	}()
 
-	// Without a drainer, Send must block: this is the deadlock condition.
+	// A subscribed consumer that reads nothing makes Send wait.
 	select {
 	case <-done:
-		t.Fatal("Send completed without draining events; the deadlock scenario was not reproduced")
+		t.Fatal("Send completed although the Events consumer read nothing")
 	case <-time.After(500 * time.Millisecond):
 	}
 
-	// Draining Events() must unblock Send and let the turn finish.
+	// Reading Events must unblock Send and let the turn finish.
 	go func() {
-		for range sess.Events() { //nolint:revive // intentional drain
+		for range events { //nolint:revive // intentional drain
 		}
 	}()
 	select {
@@ -1002,6 +988,7 @@ func drainEvents(t *testing.T, sess *Session) []agent.AgentEvent {
 func TestCompact_Smoke(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	sess.completer = &fakeCompleter{summary: "summary text"}
@@ -1130,6 +1117,7 @@ func TestCompact_ExtensionOverrideAndLifecycle(t *testing.T) {
 
 func TestCompact_ExtensionCancellationIsAborted(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	fallback := &fakeCompleter{summary: "fallback must not run"}
 	sess.completer = fallback
@@ -1238,6 +1226,7 @@ func TestSessionNotifyListenersDoesNotAllocate(t *testing.T) {
 
 func TestCompactCancelsSynchronouslyFromStartEvent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	completer := &fakeCompleter{summary: "must not run"}
 	sess.completer = completer
@@ -1270,6 +1259,7 @@ func TestCompactCancelsSynchronouslyFromStartEvent(t *testing.T) {
 
 func TestAutoCompactionCancelsSynchronouslyFromStartEvent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	completer := &fakeCompleter{summary: "must not run"}
 	sess.completer = completer
@@ -1326,6 +1316,7 @@ func TestAutoCompactionProviderErrorsAreNotCancellation(t *testing.T) {
 	for _, message := range []string{"Compaction cancelled", "auth failed"} {
 		t.Run(message, func(t *testing.T) {
 			sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+			_ = sess.Events()
 			defer func() { _ = sess.Close() }()
 			sess.completer = &fakeCompleter{err: errors.New(message)}
 
@@ -1373,6 +1364,7 @@ func TestAutoCompactionFailureAlwaysReportsWillRetryFalse(t *testing.T) {
 func TestAutoCompaction_NothingToCompactIsSilent(t *testing.T) {
 	svcs := newTestServices(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	fakeComp := &fakeCompleter{summary: "must not be called"}
@@ -1393,6 +1385,7 @@ func TestAutoCompaction_NothingToCompactIsSilent(t *testing.T) {
 func TestAutoCompaction_SuccessEmitsEstimatedTokensAfter(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	sess.completer = &fakeCompleter{summary: "auto summary"}
@@ -1449,6 +1442,7 @@ func TestCompact_NothingToCompact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "should not be called"}
 	var failed *extension.SessionCompactFailedEvent
@@ -1641,6 +1635,7 @@ func TestNavigateTreeRejectsStreamingSession(t *testing.T) {
 func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
 	defer func() { _ = sess.Close() }()
+	_ = sess.Events()
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
 	originalLeafID := *sess.inner.GetLeafID()
@@ -1665,6 +1660,7 @@ func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
 	defer func() { _ = sess.Close() }()
+	_ = sess.Events()
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
 	originalLeafID := *sess.inner.GetLeafID()
@@ -1891,6 +1887,7 @@ func assistantMessageTexts(messages []agent.AgentMessage) []string {
 func TestCheckCompactionThreshold(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 5)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "compact summary"}
 
@@ -1952,6 +1949,7 @@ func TestCheckCompactionThreshold(t *testing.T) {
 func TestCheckCompactionOverflow(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "overflow summary"}
 
@@ -2020,6 +2018,7 @@ func TestCheckCompactionOverflow(t *testing.T) {
 func TestOverflowNoDoubleRetry(t *testing.T) {
 	svcs := newTestServices(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "should not be called"}
 	var failed *extension.SessionCompactFailedEvent
@@ -2802,10 +2801,11 @@ func TestRecordBashResultPreservesTruncationProvenance(t *testing.T) {
 	}
 }
 
-func TestAppendBashFailureRetainsEntryProvenanceWithoutRefreshingAgent(t *testing.T) {
+func TestAppendBashFailureKeepsNoEntryAndDoesNotRefreshAgent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServices(t), 1)
 	defer func() { _ = sess.Close() }()
 	before := len(sess.Messages())
+	projected := len(sess.Inner().BuildSessionProjection().Messages)
 	sess.Inner().SetPath(t.TempDir())
 
 	sess.mu.Lock()
@@ -2819,11 +2819,9 @@ func TestAppendBashFailureRetainsEntryProvenanceWithoutRefreshingAgent(t *testin
 	if len(sess.Messages()) != before {
 		t.Fatal("failed append refreshed Agent context")
 	}
-	// Pi appends to the Session entry list before attempting persistence.
-	messages := sess.Inner().BuildSessionProjection().Messages
-	last := messages[len(messages)-1]
-	if last.Custom["truncated"] != true || last.Custom["fullOutputPath"] != "/tmp/original-output" {
-		t.Fatalf("failed Bash entry = %#v", last.Custom)
+	// Pi's _appendEntry undoes the in-memory append when persistence fails (807a5c05): the failed Bash entry is not kept.
+	if got := len(sess.Inner().BuildSessionProjection().Messages); got != projected {
+		t.Fatalf("failed Bash entry was kept: %d projected messages, want %d", got, projected)
 	}
 }
 
@@ -3205,6 +3203,7 @@ func (c abortingCompactionCompleter) CompleteSimple(ctx context.Context, _ *ai.M
 }
 func TestCompactAbortReturnsOperationCancellation(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = abortingCompactionCompleter{abort: sess.AbortCompaction}
 	before := len(sess.Inner().GetEntries())

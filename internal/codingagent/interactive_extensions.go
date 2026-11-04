@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (bindCurrentSessionExtensions and the extension action wiring).
+
 import (
 	"cmp"
 	"context"
@@ -7,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"slices"
 	"strings"
@@ -475,6 +478,10 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			above = append(above, entry.component)
 		}
 	}
+	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
+	if m.queueCopyTip != nil {
+		below = append(below, m.queueCopyTip)
+	}
 	m.widgetContainer.SetChildren(above...)
 	if m.widgetContainerBelow != nil {
 		m.widgetContainerBelow.SetChildren(below...)
@@ -516,7 +523,11 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		if m.newRunner != nil {
 			runner = m.newRunner
 		}
-		return ExtensionToolInfos(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools)
+		var scope *extension.ToolScope
+		if session, ok := m.opts.SessionHandle.(interface{ ToolScope() *extension.ToolScope }); ok {
+			scope = session.ToolScope()
+		}
+		return ExtensionToolInfosScoped(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools, scope)
 	})
 	// upstream: agent-session.ts:3339, 3382-3383 bind getSettings, executeTool and getCallableTools to the session in every mode.
 	b.SetHostAction("getSettings", func() extension.Settings {
@@ -826,9 +837,10 @@ func subprocessOptionalInt64(object map[string]any, key, path string) (int64, er
 	}
 	switch number := value.(type) {
 	case float64:
-		if number != float64(int64(number)) {
+		if number < -(1<<63) || number >= 1<<63 || number != math.Trunc(number) {
 			return 0, fmt.Errorf("%s.%s must be an integer", path, key)
 		}
+		//portlint:allow numbers the range and integrality checks above make the conversion exact
 		return int64(number), nil
 	case int:
 		return int64(number), nil

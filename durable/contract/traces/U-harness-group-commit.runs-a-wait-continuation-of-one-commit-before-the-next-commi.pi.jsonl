@@ -1,0 +1,20 @@
+{"k":">","name":"harness.root","tick":2824515}
+{"k":"#","seq":1,"summary":"conversation document.create","tick":2824609,"begin":2824606}
+{"k":">","name":"harness.createConversation","tick":2824617}
+{"k":"#","seq":2,"summary":"conversation document.create","tick":2824693,"begin":2824690}
+{"k":">","name":"harness.root().commit","tick":2824701}
+{"k":"#","seq":3,"summary":"task","tick":2824725,"begin":2824722}
+{"k":">","name":"harness.createConversation().commit","tick":2824732}
+{"k":"#","seq":4,"summary":"task","tick":2824771,"begin":2824768}
+{"k":">","name":"harness.resume","tick":2824778}
+{"k":">","name":"harness.getTask","tick":2824778}
+{"k":"#","seq":5,"summary":"task","tick":2824821,"begin":2824818}
+{"k":">","name":"harness.getTask","tick":3024466}
+{"k":">","name":"harness.getTask","tick":3024466}
+{"k":">","name":"harness.followCommits","tick":3024466}
+{"k":">","name":"harness.root().commit","tick":3024466}
+{"k":">","name":"harness.waitForTask","tick":3024466}
+{"k":"#","seq":6,"summary":"entry","tick":3024466,"begin":3024466}
+{"k":"#","seq":7,"summary":"task,task","tick":3024466,"begin":3024466}
+{"k":">","name":"harness.waitForTask","tick":3024466}
+{"k":">","name":"harness.close","tick":3024466}

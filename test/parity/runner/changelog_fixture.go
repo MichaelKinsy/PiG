@@ -55,6 +55,7 @@ func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pi
 		return pig, pi, err
 	}
 	pig.Path = filepath.Join(tmp, "pig")
+	//nolint:gosec // G204 (class a): program is literal go; args are a temp overlay path, a temp -o output, and the literal ./cmd/pig.
 	cmd := exec.CommandContext(ctx, "go", "build", "-overlay", overlayPath, "-o", pig.Path, "./cmd/pig")
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {

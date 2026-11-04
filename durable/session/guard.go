@@ -11,14 +11,10 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/internal/entryscan"
 )
 
-// failureLatch is the Session's failure state, which the guard reads and sets, and the end of the publication a Storage
-// commit adopted.
+// failureLatch is the Session's failure state, which the guard reads and sets.
 type failureLatch interface {
 	failure() error
 	fail(error)
-	// finishPublication runs what the commit's adoption queued: the dispatch to subscribeCommits listeners, then the work
-	// its observers deferred.
-	finishPublication()
 }
 
 // guardedStorage is the Session's Storage behind its failure guard; every component of the Session reads and writes
@@ -26,7 +22,10 @@ type failureLatch interface {
 // the Session and returns the backend's error, unless it is a StorageRequestError or a read whose caller's context was
 // cancelled: neither says the Storage is broken. Close always reaches the backend, so a failed Session still closes it.
 type guardedStorage struct {
+	// storage is what the guard calls: the Session's record cache over the backend, or the backend itself.
 	storage durable.Storage
+	// backend is the Storage the Session was opened over, whose optional capabilities the guard offers.
+	backend durable.Storage
 	latch   failureLatch
 
 	mu      sync.Mutex
@@ -36,8 +35,8 @@ type guardedStorage struct {
 	underway sync.WaitGroup
 }
 
-func newGuardedStorage(storage durable.Storage, latch failureLatch) *guardedStorage {
-	return &guardedStorage{storage: storage, latch: latch}
+func newGuardedStorage(storage, backend durable.Storage, latch failureLatch) *guardedStorage {
+	return &guardedStorage{storage: storage, backend: backend, latch: latch}
 }
 
 // rangedGuard is the guard of a backend that serves visible entry ranges: the Harness reads them when the Storage offers
@@ -54,10 +53,44 @@ func (guard rangedGuard) VisibleEntryRange(ctx context.Context, query durable.En
 
 // exposed returns the guard as a Storage that offers the optional capabilities of its backend.
 func (guard *guardedStorage) exposed() durable.Storage {
-	if ranger, ok := guard.storage.(entryscan.Ranger); ok {
+	if ranger, ok := guard.backend.(entryscan.Ranger); ok {
 		return rangedGuard{guardedStorage: guard, ranger: ranger}
 	}
 	return guard
+}
+
+// rangedGated is the gated view of a backend that serves visible entry ranges: a read of a range touches the keys a scan of the
+// conversation's entries does.
+type rangedGated struct {
+	durable.Storage
+	guard  *guardedStorage
+	ranger entryscan.Ranger
+	touch  func(ctx context.Context, key string) error
+}
+
+// VisibleEntryRange waits until neither the conversation's appends nor its creation has an unpublished writer, then reads the
+// range under the guard.
+func (gated rangedGated) VisibleEntryRange(ctx context.Context, query durable.EntryQuery) ([]durable.EntryRecord, error) {
+	if err := gated.touch(ctx, ConversationKey(query.ConversationId)); err != nil {
+		return nil, err
+	}
+	if err := gated.touch(ctx, AppendKey(query.ConversationId)); err != nil {
+		return nil, err
+	}
+	return guardedCall(gated.guard, ctx, func() ([]durable.EntryRecord, error) { return gated.ranger.VisibleEntryRange(ctx, query) })
+}
+
+// gate returns gated, the Session's gated view of this guard, as a Storage that offers the optional capabilities of the backend.
+func (guard *guardedStorage) gate(gated *GatedStorage) durable.Storage {
+	if ranger, ok := guard.backend.(entryscan.Ranger); ok {
+		return rangedGated{Storage: gated, guard: guard, ranger: ranger, touch: gated.touch}
+	}
+	return gated
+}
+
+// publishing is the backend's own scope for a publication (Storage.Publishing), nil when it has none; not a call to guard.
+func (guard *guardedStorage) publishing() func(ctx context.Context, publish func()) {
+	return ScopeOf(guard.storage)
 }
 
 func (guard *guardedStorage) assertHealthy() error {
@@ -67,21 +100,28 @@ func (guard *guardedStorage) assertHealthy() error {
 	return nil
 }
 
-// guardedCall runs one backend call under the guard. read is a read's context; Commit and MintId pass none, so nothing
-// exempts their errors: once a batch is admitted, whether it committed is unknown. A call still underway when another
-// fails the Session ends with SessionFailed too, whatever it returns: nothing it read or wrote is used.
-func guardedCall[T any](guard *guardedStorage, read context.Context, run func() (T, error)) (T, error) {
-	var zero T
+// begin starts a backend call under the guard: a failed or closing Session gets its error, and Close waits for the call.
+func (guard *guardedStorage) begin() error {
 	if err := guard.assertHealthy(); err != nil {
-		return zero, err
+		return err
 	}
 	guard.mu.Lock()
+	defer guard.mu.Unlock()
 	if guard.closing {
-		guard.mu.Unlock()
-		return zero, ErrSessionClosed
+		return ErrSessionClosed
 	}
 	guard.underway.Add(1)
-	guard.mu.Unlock()
+	return nil
+}
+
+// guardedCall runs one backend call under the guard. read is a read's context; MintId passes none, so nothing exempts its
+// errors. A call still underway when another fails the Session ends with SessionFailed too, whatever it returns: nothing it read
+// or wrote is used.
+func guardedCall[T any](guard *guardedStorage, read context.Context, run func() (T, error)) (T, error) {
+	var zero T
+	if err := guard.begin(); err != nil {
+		return zero, err
+	}
 	defer guard.underway.Done()
 	result, err := run()
 	if err != nil {
@@ -102,14 +142,14 @@ func guardedCall[T any](guard *guardedStorage, read context.Context, run func() 
 	return result, nil
 }
 
-// Commit is never exempt, whatever it fails with. Once the backend returned, success or failure, the commit it adopted is
-// finished: its host listeners get it and the waits it resolved wake, before the Session sees the result and before a
-// failure fails the Session, so a commit rejected after its adoption is published first.
-func (guard *guardedStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
-	return guardedCall(guard, nil, func() (durable.Seq, error) {
-		defer guard.latch.finishPublication()
-		return guard.storage.Commit(ctx, writes, adopt)
-	})
+// Commit is guarded like every call, but its outcome is the Session writer's to judge: it publishes the batches received first,
+// then fails the Session for a refusal or a rejection, and for a Session that failed meanwhile.
+func (guard *guardedStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	if err := guard.begin(); err != nil {
+		return durable.CommitResult{}, err
+	}
+	defer guard.underway.Done()
+	return guard.storage.Commit(ctx, batches, receive)
 }
 
 func (guard *guardedStorage) MintId() (int64, error) {

@@ -5,7 +5,6 @@ import {
   StreamingJsonParser,
   StringEnum,
   ToolCallArgumentsStream,
-  Type,
   cleanupSessionResources,
   createAssistantMessageEventStream,
   createFauxCore,
@@ -30,7 +29,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-V34LBYPQ.js";
+} from "./chunk-LM2GRTGA.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -54,11 +53,11 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-IVQOCMGA.js";
+} from "./chunk-DH6PKDEX.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-GWORY4ZZ.js";
+} from "./chunk-57EFHYMA.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -110,7 +109,7 @@ import {
   toToolDeclaration,
   withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-QGCG6AEG.js";
+} from "./chunk-YGHTO7GP.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -438,7 +437,6 @@ export {
   StreamingJsonParser,
   StringEnum,
   ToolCallArgumentsStream,
-  Type,
   anthropicMessagesApi,
   appendAssistantMessageDiagnostic,
   azureOpenAIResponsesApi,

@@ -6,6 +6,10 @@ package codingagent
 
 // pi: packages/coding-agent/src/core/tools/renderers/edit.ts
 
+// pi: packages/coding-agent/src/core/tools/renderers/bash.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"context"
 	"encoding/json"

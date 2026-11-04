@@ -204,6 +204,8 @@ type Conn struct {
 
 	// Incoming messages that aren't responses go here for the host to process.
 	inCh chan *Envelope
+	// incoming is the Host's read loop of this connection (Host.goHandleIncoming); nil when no Host loop reads it.
+	incoming atomic.Pointer[incomingLoop]
 
 	// runSignal is the last run signal state the runtime was sent.
 	runSignal runSignalSync
@@ -234,6 +236,10 @@ type Conn struct {
 
 	// nextID is an atomic counter for generating request IDs.
 	nextID atomic.Uint64
+
+	// autocompleteUnholds are the input-hold releases of the autocomplete.suggest requests in flight, by request id.
+	autocompleteMu      sync.Mutex
+	autocompleteUnholds map[string]func()
 
 	abortForwards abortForwards
 
@@ -788,8 +794,12 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if invocation.Bound(ctx) {
 		ctx = withAckHold(ctx)
 	}
+	sink := requestStateSink{ch: stateCh, ctx: ctx}
+	if env.Request != nil {
+		sink.event = env.Request.Event
+	}
 	c.stateMu.Lock()
-	c.requestStates[env.ID] = requestStateSink{ch: stateCh, ctx: ctx}
+	c.requestStates[env.ID] = sink
 	c.stateMu.Unlock()
 
 	// Clean up on exit.
@@ -845,6 +855,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	}
 	// Wait for response or meaningful request activity.
 	cancelled := ctx.Done()
+	// A caller that must serve the calls the request's handler makes on its own goroutine (withRequestInterjections) receives them here, while it waits.
+	interjected := requestInterjections(ctx)
 	var abortGraceC <-chan time.Time
 	suspensionApplied := false
 	for {
@@ -876,6 +888,8 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 				}
 			}
 			return resp, nil
+		case run := <-interjected:
+			run()
 		case state := <-stateCh:
 			suspensionApplied = suspensionApplied || state.State == "suspended"
 			applyRequestSuspension(ctx, state)
@@ -1057,6 +1071,26 @@ func (c *Conn) Done() <-chan struct{} {
 	return c.done
 }
 
+// incomingLoop is the Host's read loop of one connection. ended closes once the loop has seen the connection end and has scheduled the work that follows it (the drop of the extension's ownership of thinking runs, D214).
+type incomingLoop struct {
+	ended chan struct{}
+	once  sync.Once
+}
+
+// endIncoming closes the end signal of the connection's Host read loop, once. It does nothing for a connection no Host loop reads.
+func (c *Conn) endIncoming() {
+	if loop := c.incoming.Load(); loop != nil {
+		loop.once.Do(func() { close(loop.ended) })
+	}
+}
+
+// awaitIncomingEnded returns once the connection's Host read loop has seen the connection end and scheduled the work that follows it. It returns at once for a connection no Host loop reads. The connection must be closed, or the loop never ends.
+func (c *Conn) awaitIncomingEnded() {
+	if loop := c.incoming.Load(); loop != nil {
+		<-loop.ended
+	}
+}
+
 // Name returns the extension name this connection serves.
 func (c *Conn) Name() string {
 	return c.name
@@ -1214,6 +1248,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 			continue
 		}
 		// The host forwards a turn before this reader routes the response that follows it, so the forwarded frame precedes on every other connection whatever the host sends after that response.
+		// The notice that a provider chain awaits I/O precedes its response on the wire, and the hold it releases must be released before the response ends the request.
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyUIAutocompletePending {
+			c.deliverAutocompletePending(env.Notify.Args)
+			continue
+		}
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyLoopTurned {
 			if c.onLoopTurned != nil {
 				c.onLoopTurned(env.Notify.Args)
@@ -1454,8 +1493,17 @@ func drainRequestStates(ctx context.Context, stateCh <-chan RequestStatePayload)
 
 // requestStateSink is where a request's lifecycle frames go: its waiting goroutine's channel, or, for a request that does not react to them (a nil ch), the read loop applies them to the request's context.
 type requestStateSink struct {
-	ch  chan RequestStatePayload
-	ctx context.Context
+	ch    chan RequestStatePayload
+	ctx   context.Context
+	event string // the request's event name, empty for a request that is not an event
+}
+
+// requestEvent returns the event a request in flight delivers, and whether the request is in flight.
+func (c *Conn) requestEvent(requestID string) (string, bool) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	sink, ok := c.requestStates[requestID]
+	return sink.event, ok
 }
 
 // requestReportsSuspension reports whether ctx reports the request's suspension, which the request's own goroutine applies in frame order.
@@ -1465,6 +1513,41 @@ func requestReportsSuspension(ctx context.Context) bool {
 }
 
 // deliverRequestState hands a request lifecycle frame to the request waiting for it.
+// watchAutocomplete registers unhold for the autocomplete.suggest request named id until the returned function runs: the runtime's
+// NotifyUIAutocompletePending for that id, and the calls the request makes, release the host's input hold.
+func (c *Conn) watchAutocomplete(id string, unhold func()) func() {
+	c.autocompleteMu.Lock()
+	if c.autocompleteUnholds == nil {
+		c.autocompleteUnholds = make(map[string]func())
+	}
+	c.autocompleteUnholds[id] = unhold
+	c.autocompleteMu.Unlock()
+	return func() {
+		c.autocompleteMu.Lock()
+		delete(c.autocompleteUnholds, id)
+		c.autocompleteMu.Unlock()
+	}
+}
+
+// autocompleteUnhold returns the release function of the autocomplete.suggest request id, or nil.
+func (c *Conn) autocompleteUnhold(id string) func() {
+	c.autocompleteMu.Lock()
+	defer c.autocompleteMu.Unlock()
+	return c.autocompleteUnholds[id]
+}
+
+func (c *Conn) deliverAutocompletePending(args json.RawMessage) {
+	var request struct {
+		RequestID string `json:"requestId"`
+	}
+	if json.Unmarshal(args, &request) != nil {
+		return
+	}
+	if unhold := c.autocompleteUnhold(request.RequestID); unhold != nil {
+		unhold()
+	}
+}
+
 func (c *Conn) deliverRequestState(state RequestStatePayload) {
 	c.stateMu.Lock()
 	sink, ok := c.requestStates[state.RequestID]
@@ -2262,6 +2345,20 @@ func withRequestWindow(ctx context.Context, window requestWindowHandle) context.
 func requestWindow(ctx context.Context) requestWindowHandle {
 	window, _ := ctx.Value(requestWindowKey{}).(requestWindowHandle)
 	return window
+}
+
+type requestInterjectionsKey struct{}
+
+// withRequestInterjections has request run each function sent on runs, on the goroutine that waits for the response, while it waits. A host call made by
+// the request's handler is a child of the request (CallPayload.ParentRequestID); the waiting goroutine runs it itself when it holds what the call needs,
+// as the goroutine that renders a TuiAltScreen frame holds the frame's locks while it waits for a component's render.
+func withRequestInterjections(ctx context.Context, runs <-chan func()) context.Context {
+	return context.WithValue(ctx, requestInterjectionsKey{}, runs)
+}
+
+func requestInterjections(ctx context.Context) <-chan func() {
+	runs, _ := ctx.Value(requestInterjectionsKey{}).(<-chan func())
+	return runs
 }
 
 type requestHostCallsKey struct{}

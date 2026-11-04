@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-const passthroughWriteSchema = `{"~kind":"Object","type":"object","properties":{"path":{"~kind":"String","type":"string"},"content":{"~kind":"String","type":"string"}},"required":["path","content"]}`
+const passthroughWriteSchema = `{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"]}`
 
 func passthroughWriteArgs(size int) json.RawMessage {
 	return json.RawMessage(`{"path":"out.txt","content":"` + strings.Repeat("line of text\\n", size/14) + `"}`)

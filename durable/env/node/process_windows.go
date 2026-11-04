@@ -43,6 +43,7 @@ func taskkillCommand(pid int) *exec.Cmd {
 	if systemRoot == "" {
 		systemRoot = `C:\Windows`
 	}
+	//nolint:gosec // G204 (class a): program is System32\taskkill.exe under SystemRoot (default C:\Windows), as upstream; args are fixed /F /T /PID plus the pid of a process PiG started.
 	command := exec.Command(filepath.Join(systemRoot, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))
 	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
 	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)

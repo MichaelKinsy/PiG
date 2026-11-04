@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/models.ts (the catalog records a provider publication persists to the ModelsStore and reads back).
+
 import (
 	"bytes"
 	"encoding/json"

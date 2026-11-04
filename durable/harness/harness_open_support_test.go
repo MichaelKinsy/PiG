@@ -9,7 +9,7 @@ import (
 
 type openHarnessOptions struct {
 	registry Registry
-	onReport func(error, durable.ReportInfo)
+	onReport func(error)
 }
 
 // openHarness opens a Harness with a fresh registry holding the named tools (harness-support.ts:33-48).
@@ -30,7 +30,11 @@ func openHarness(t *testing.T, storage durable.Storage, toolNames []string, opti
 		}
 		mustInstall(t, registry, new(durable.Extension{Name: "tools", Tools: tools}))
 	}
-	harness, err := OpenHarness(testContext, storage, HarnessOptions{Models: ai.CreateModels(), Registry: registry, OnReport: option.onReport})
+	var onReport func(durable.Report)
+	if option.onReport != nil {
+		onReport = func(report durable.Report) { option.onReport(report.Error) }
+	}
+	harness, err := OpenHarness(testContext, storage, HarnessOptions{Models: ai.CreateModels(), Registry: registry, OnReport: onReport})
 	if err != nil {
 		t.Fatal(err)
 	}

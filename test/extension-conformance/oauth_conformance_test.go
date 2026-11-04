@@ -57,6 +57,7 @@ func TestConformance_OAuthTransportsMatch(t *testing.T) {
 		{"subprocess-go", makeSubprocessGoHarness},
 		{"subprocess-rust", makeSubprocessRustHarness},
 		{"subprocess-python", makeSubprocessPythonHarness},
+		{"subprocess-lisp", makeSubprocessLispHarness},
 		{"fused-go", makeFusedGoHarness},
 	}
 

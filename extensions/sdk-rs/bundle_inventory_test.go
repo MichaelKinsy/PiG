@@ -13,13 +13,13 @@ import (
 
 // Every source file Cargo can consume in a build must ship with the staged SDK, including newly added modules. The unit-test modules (src/*tests.rs) do not: lib.rs and the modules that declare them do so under #[cfg(test)].
 func TestBundledFilesMatchRustSourceTree(t *testing.T) {
-	want := []string{"LICENSE", "Cargo.toml", "Cargo.lock"}
+	want := []string{embeddedName("LICENSE"), embeddedName("Cargo.toml"), embeddedName("Cargo.lock")}
 	err := fs.WalkDir(os.DirFS("."), "src", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !entry.IsDir() && !isTestModule(path) && !hasCompressedCopy(path) {
-			want = append(want, path)
+		if !entry.IsDir() && !isTestModule(path) {
+			want = append(want, embeddedName(path))
 		}
 		return nil
 	})
@@ -32,30 +32,32 @@ func TestBundledFilesMatchRustSourceTree(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("staged Rust sources=%v, want filesystem inventory=%v; run go generate in extensions/sdk-rs", got, want)
 	}
-	for _, path := range want {
+	// The stager writes each file under its own name, without .gz/ and .gz: that text is the source tree's.
+	for _, name := range want {
+		path := stagedPath(name)
 		source, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		embedded, err := Source.ReadFile(path)
+		embedded, err := embeddedText(name)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(source, embedded) {
-			t.Fatalf("staged Rust source %s differs from its current source", path)
+			t.Fatalf("staged Rust source %s differs from its current source; run go generate in extensions/sdk-rs", path)
 		}
 	}
 }
 
 func isTestModule(path string) bool { return strings.HasSuffix(path, "tests.rs") }
 
-// hasCompressedCopy reports whether the bundle embeds a file as its gzip, path + ".gz", which holds the same text.
+// hasCompressedCopy reports whether the bundle embeds a file as its gzip, .gz/path.gz, which holds the same text.
 func hasCompressedCopy(path string) bool {
-	_, err := os.Stat(path + ".gz")
+	_, err := os.Stat(".gz/" + path + ".gz")
 	return err == nil
 }
 
-// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz.
+// A compressed copy is the file it stands for: staging writes the decompressed text under the name without .gz/ and .gz.
 func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 	found := 0
 	err := fs.WalkDir(os.DirFS("."), "src", func(path string, entry fs.DirEntry, err error) error {
@@ -67,7 +69,7 @@ func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		embedded, err := Source.ReadFile(path + ".gz")
+		embedded, err := Source.ReadFile(embeddedName(path))
 		if err != nil {
 			return err
 		}
@@ -80,7 +82,7 @@ func TestCompressedCopiesHoldTheirFilesText(t *testing.T) {
 			return err
 		}
 		if !bytes.Equal(text, source) {
-			t.Errorf("embedded %s.gz differs from %s", path, path)
+			t.Errorf("embedded .gz/%s.gz differs from %s", path, path)
 		}
 		return nil
 	})

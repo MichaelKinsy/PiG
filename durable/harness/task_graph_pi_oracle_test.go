@@ -79,14 +79,14 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 	ctx := context.Background()
 	store := storage.NewMemoryStorage()
 	line := session.CreateSession(store)
-	view := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }})
+	view := NewTaskGraphView(line, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }})
 	live, err := view.Watch(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var mu sync.Mutex
 	var deliveries []graphDelivery
-	live.Start(func(_ context.Context, change chord.WatchChange[TaskGraph]) error {
+	live.Start(onValue(func(_ context.Context, change chord.WatchCall[TaskGraph]) error {
 		ops := change.Ops
 		encoded, err := json.Marshal(ops)
 		if err != nil {
@@ -96,7 +96,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 		deliveries = append(deliveries, graphDelivery{Ops: encoded})
 		mu.Unlock()
 		return nil
-	})
+	}))
 	var convs []durable.ConversationId
 	var tasks []durable.TaskId
 	var outcomes []graphOutcome
@@ -186,7 +186,7 @@ func runPigTaskGraph(t *testing.T, program []graphStep) []graphOutcome {
 			outcome.OK = encoded
 		}
 		line.WaitDeliveries()
-		fresh, err := NewTaskGraphView(line, store, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).Watch(ctx)
+		fresh, err := NewTaskGraphView(line, TaskGraphBlocking{Blocked: func(BlockedSubject) durable.BlockedReason { return "" }, SubscribeBlocked: func(func()) func() { return func() {} }}).Watch(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}

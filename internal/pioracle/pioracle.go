@@ -16,20 +16,7 @@ const distRoot = "coding/extension/host/subprocess/runtime-node/shims/pi-dist"
 // Root returns the absolute path of the vendored Pi distribution.
 func Root(t testing.TB) string {
 	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return filepath.Join(dir, filepath.FromSlash(distRoot))
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("pioracle: go.mod not found above the test directory")
-		}
-		dir = parent
-	}
+	return filepath.Join(repoRoot(t), filepath.FromSlash(distRoot))
 }
 
 // Run executes an ES module body in Node with the Pi distribution root in `root`, the decoded `input` in scope, and returns the JSON the body passes to `emit`. The body is the async function body of the check. Environment extra entries (KEY=value) are added to the child environment. A missing Node is a failure: the Pig test suite requires it.
@@ -55,7 +42,9 @@ await (async () => {
 })();
 process.stdout.write(JSON.stringify(result));
 `
-	cmd := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script)
+	args := []string{"--input-type=module", "-e", script}
+	//nolint:gosec // G204 (class b): program is node from exec.LookPath; args are fixed --input-type=module -e with a constant script, and the input is on stdin.
+	cmd := exec.CommandContext(t.Context(), node, args...)
 	cmd.Stdin = bytes.NewReader(payload)
 	cmd.Env = append(os.Environ(), "PI_ORACLE_ROOT="+Root(t))
 	cmd.Env = append(cmd.Env, env...)

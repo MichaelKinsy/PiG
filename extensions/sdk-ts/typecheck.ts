@@ -6,7 +6,10 @@ import type {
   ExtensionVirtualModel,
   InlineExtension,
   McpServerConfig,
+  EntryRenderOptions,
+  KeybindingHints,
   McpServersChangeEvent,
+  MessageRenderOptions,
   ModelRegistry,
   ProviderConfig,
   ProviderStreamEvent,
@@ -30,6 +33,9 @@ import type {
   PiGViewLines,
   PiGViewTheme,
 } from "@michaelkinsy/pig-extension-types";
+
+// Pi's package root does not export ToolRenderContext (Pi 1.4.0+b556cfe5 and 1.5.0 export KeybindingHints, MessageRenderOptions and EntryRenderOptions beside it), so an extension names it through the context parameter Pi's ToolDefinition hands to renderCall.
+type ToolRenderContext = Parameters<NonNullable<ToolDefinition["renderCall"]>>[2];
 
 const login: PiGLoginDefinition = {
   brand: ["."],
@@ -118,7 +124,31 @@ export function toolDefinitionFields(): ToolDefinition {
   };
 }
 
+export function keybindingHints(pi: ExtensionAPI): void {
+  const hints = (hint: KeybindingHints): string => `${hint.keyText("app.tools.expand")} ${hint.keyHint("app.tools.expand", "to expand")}`;
+  pi.registerMessageRenderer("hints", (_message, options: MessageRenderOptions) => {
+    void hints(options);
+    return undefined;
+  });
+  pi.registerEntryRenderer("hints", (_entry, options: EntryRenderOptions) => {
+    void hints(options);
+    return undefined;
+  });
+  const renderCall = (_args: unknown, _theme: unknown, context: ToolRenderContext): undefined => {
+    void hints(context);
+    return undefined;
+  };
+  void renderCall;
+}
+
 export function apiAdditions(pi: ExtensionAPI): void {
+  void pi.exec("git", ["log"], { maxBuffer: 1024 * 1024 }).then((result) => {
+    const truncated: boolean = result.truncated;
+    const killed: boolean = result.killed;
+    void [truncated, killed];
+  });
+  pi.ownThinkingRuns();
+  pi.ownThinkingRuns(false);
   const config: McpServerConfig = { url: "https://mcp.example.com/jira" };
   pi.registerMcpServer("jira", config);
   const servers: RegisteredMcpServer[] = pi.getMcpServers();

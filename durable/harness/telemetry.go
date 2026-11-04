@@ -40,7 +40,7 @@ func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter 
 		if !metricsOn && span == telemetry.NoopTelemetryContext {
 			return
 		}
-		attributes := telemetry.SpanAttributes{telemetry.Attr("type", string(info.Type))}
+		attributes := telemetry.SpanAttributes{telemetry.Attr("type", string(info.Kind))}
 		taskId := func() {
 			if info.Task != nil {
 				attributes = attributes.Set("task.id", float64(info.Task.Id))
@@ -51,14 +51,14 @@ func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter 
 				attributes = attributes.Set("extension", info.Extension)
 			}
 		}
-		switch info.Type {
-		case durable.ReportTaskFaulted, durable.ReportTaskOutdated:
+		switch info.Kind {
+		case durable.ReportTaskFaulted, durable.ReportTaskInterrupted, durable.ReportTaskOutdated:
 			if info.Reason != "" {
 				attributes = attributes.Set("reason", info.Reason)
 			}
 			extension()
 			taskId()
-		case durable.ReportTaskParked, durable.ReportMigrationFailed, durable.ReportTaskError, durable.ReportExtensionError:
+		case durable.ReportMigrationFailed, durable.ReportTaskError, durable.ReportExtensionError:
 			extension()
 			taskId()
 		case durable.ReportHostError:
@@ -69,7 +69,7 @@ func telemetryReport(onReport func(err error, info durable.ReportInfo), adapter 
 			_ = recover()
 		}()
 		if metricsOn {
-			reports.Add(1, telemetry.SpanAttributes{telemetry.Attr("type", string(info.Type))})
+			reports.Add(1, telemetry.SpanAttributes{telemetry.Attr("type", string(info.Kind))})
 		}
 		span.AddEvent("pi.durable.report", attributes)
 	}
@@ -110,10 +110,10 @@ var durableEntryEvent = telemetry.TelemetryEventDefinition{
 }
 
 var durableReportAttributes = map[string]telemetry.TelemetryStartAttributeDefinition{
-	"type": attribute(attrString, true, "ReportInfo type.",
-		"session_failed", "task_faulted", "task_parked", "migration_failed", "task_outdated", "task_error",
+	"type": attribute(attrString, true, "Report kind (`Report.kind`).",
+		"storage_failed", "task_faulted", "task_interrupted", "migration_failed", "task_outdated", "task_error",
 		"extension_error", "host_error", "listener_error"),
-	"reason":    attribute(attrString, false, "Fixed report reason, when present.", "threw", "restart_limit", "missing_task", "incompatible_task"),
+	"reason":    attribute(attrString, false, "Fixed report reason, when present.", "threw", "restart_limit", "interrupted", "missing_task", "task_too_old", "migration_failed"),
 	"extension": attribute(attrString, false, "Registered extension name, when present."),
 	"task.id":   highCardinality(attribute(attrNumber, false, "Task ID, when present.")),
 }
@@ -138,10 +138,10 @@ var DurableTelemetrySchema = telemetry.DefineTelemetrySchema(&telemetry.Telemetr
 	Version: 1,
 	Spans: map[string]telemetry.TelemetrySpanDefinition{
 		"pi.durable.submit": {
-			Description: "Public submission admission and its commit. Inputs start root traces linked to their callers; writes are children. Internal admissions emit phase events only.",
+			Description: "Public submission admission: with its commit for submit(draft, context); the admission only for submit(tx, draft), whose result is provisional (a later throw or storage failure of the caller's commit leaves no submission) and whose commit events go to the caller's commit context. Inputs and continues start root traces linked to their callers; writes are children. Internal admissions emit phase events only.",
 			Parents:     telemetry.TelemetryParentDefinition{Kind: telemetry.TelemetryParentKindAny},
 			StartAttributes: map[string]telemetry.TelemetryStartAttributeDefinition{
-				"submission.type": attribute(attrString, true, "Submission type.", "input", "write"),
+				"submission.type": attribute(attrString, true, "Submission type.", "input", "write", "continue"),
 				"conversation.id": highCardinality(attribute(attrNumber, true, "Conversation ID.")),
 			},
 			EndAttributes: map[string]telemetry.TelemetryAttributeDefinition{
@@ -197,7 +197,7 @@ var DurableTelemetrySchema = telemetry.DefineTelemetrySchema(&telemetry.Telemetr
 	Metrics: map[string]telemetry.TelemetryMetricDefinition{
 		"pi.durable.reports": {
 			Kind:        telemetry.TelemetryMetricKindCounter,
-			Description: "Reports raised, grouped by their fixed ReportInfo type.",
+			Description: "Reports raised, grouped by their fixed kind.",
 			Attributes:  map[string]telemetry.TelemetryMetricAttributeDefinition{"type": durableReportAttributes["type"]},
 		},
 		"pi.durable.phase.duration": {

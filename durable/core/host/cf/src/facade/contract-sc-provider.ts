@@ -3,6 +3,7 @@
 // a Session commit does (Pi's statements, then the core's state), and every read comes from the core's state.
 import { EVENT } from "../abi.ts"
 import { CoreClient } from "../client.ts"
+import { reviveError } from "../errors.ts"
 import { HostSession, RejectedError } from "../host.ts"
 import { WasmCore } from "../wasm.ts"
 import { coreFromEnvironment } from "./core-env.ts"
@@ -20,7 +21,13 @@ export async function withStorage(use: (storage: any) => Promise<void>): Promise
   if (step?.status) throw new RejectedError(step.error?.name, step.error?.message, step.error?.raw ?? "")
   const call = async (method: string, args: Record<string, unknown> = {}) => (await client.api(`storage.${method}`, args)) ?? undefined
   const storage = {
-    commit: (writes: unknown[]) => call("commit", { writes }),
+    // types.ts Storage.commit(batches, receive, context): the batches are durable when the core's commit answers, so the receipts are made
+    // there, synchronously, in order, before the promise resolves; a rejected commit receives nothing.
+    commit: async (batches: unknown[][], receive: (index: number, seq: number) => void, _context?: unknown) => {
+      const { seqs, refused } = (await call("commit", { batches })) as { seqs: number[]; refused?: { name: string; message: string } }
+      seqs.forEach((seq, index) => receive(index, seq))
+      return refused === undefined ? { stored: seqs.length } : { stored: seqs.length, refused: reviveError(refused) }
+    },
     mintId: () => call("mintId"),
     conversation: (id: number) => call("conversation", { id }),
     scanConversations: (query: unknown, limit: number, cursor?: unknown) => call("scanConversations", { query, limit, cursor }),

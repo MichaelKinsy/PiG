@@ -9,6 +9,7 @@ package prompts
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -43,7 +44,7 @@ type docsTopic struct {
 }
 
 // docsTopics are the docs section's "When asked about" topics in upstream order. The header names the ones marked
-// headerWord beside pig itself, its SDK and TUI.
+// headerWord beside the harness itself, its SDK and TUI.
 var docsTopics = []docsTopic{
 	{text: "extensions (docs/extensions.md, examples/extensions/)", headerWord: true},
 	{text: "themes (docs/themes.md)", list: pigstrip.ListFeatures, id: pigstrip.Themes, headerWord: true},
@@ -54,11 +55,16 @@ var docsTopics = []docsTopic{
 	{text: "SDK integrations (docs/sdk.md)"},
 	{text: "custom providers (docs/custom-provider.md)"},
 	{text: "adding models (docs/models.md)"},
-	{text: "pig packages (docs/packages.md)"},
+	{text: "packages (docs/packages.md)"},
 	{text: "environment variables (docs/environment-variables.md)"},
 	{text: "MCP servers (docs/mcp.md)", list: pigstrip.ListExtensions, id: "mcp"},
 	{text: "codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)", list: pigstrip.ListExtensions, id: "codemode"},
 }
+
+// pigletTopic is the topic a Piglet adds. Like every topic it goes with the docs section: the `docs` feature owns it, so
+// stripping the `/piglet` command, which is only the inspection UI, does not remove the Piglet docs.
+// pig additive (D23, D92): Pi has no Piglets.
+var pigletTopic = docsTopic{text: "Piglets and their tool scope (docs/piglets.md, docs/piglet-strip.md)"}
 
 // docsSectionAt points the model at PiG's documentation in upstream's format, with the README and examples locations given; an
 // empty readme is README.md inside root and empty examples is [PigExamplesLocation].
@@ -71,7 +77,11 @@ func docsSectionAt(root, readme, examples string) string {
 		examples = PigExamplesLocation
 	}
 	var topics, header []string
-	for _, topic := range docsTopics {
+	all := docsTopics
+	if pigletDocsTopic.Load() {
+		all = append(slices.Clone(docsTopics), pigletTopic)
+	}
+	for _, topic := range all {
 		if topic.list != "" && pigstrip.Has(topic.list, topic.id) {
 			continue
 		}
@@ -81,12 +91,11 @@ func docsSectionAt(root, readme, examples string) string {
 		}
 	}
 	// pig additive (D22): the docs section points at the materialized PiG documentation bundle.
-	return "PiG documentation (read only when the user asks about pig itself, its SDK, " + strings.Join(header, ", ") + ", or TUI):\n" +
+	return "PiG documentation (read only when the user asks about the harness itself, its SDK, " + strings.Join(header, ", ") + ", or TUI):\n" +
 		"- Main documentation: " + readme + "\n" +
 		"- Additional docs: " + root + "\n" +
 		"- Examples: " + examples + " (extensions, custom tools, SDK)\n" +
 		"- When reading pig docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n" +
 		"- When asked about: " + strings.Join(topics, ", ") + "\n" +
-		"- When working on pig topics, read the docs and examples, and follow .md cross-references before implementing\n" +
-		"- Always read pig .md files completely and follow links to related docs (e.g., tui.md for TUI API details)"
+		"- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references."
 }

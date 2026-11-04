@@ -48,6 +48,11 @@ func TestEditorHelperProcess(t *testing.T) {
 	case "exit0":
 	case "exit1":
 		os.Exit(1)
+	case "exit3":
+		os.Exit(3)
+	case "signal":
+		terminateSelf()
+		select {} // unreachable: the process is already gone
 	case "args":
 		_ = os.WriteFile(file, []byte(strings.Join(args[1:], " ")), 0o600)
 	default:

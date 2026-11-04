@@ -34,12 +34,16 @@ func contextScenarios() []Scenario {
 		{Name: "r-provider", Description: "Registry provider-name", Op: CommandRegistry, Arg: "provider-name:owned"},
 		{Name: "r-provider-none", Description: "Registry provider-name", Op: CommandRegistry, Arg: "provider-name:nobody"},
 	}, Providers: []Provider{{ID: "owned", Name: "Owned Provider"}}}
+	// bare is the same commands with no Provider object registered. A row that reads the host's state and not the provider uses it, so an
+	// SDK that has not ported Provider objects still proves that row.
+	bare := spec
+	bare.Providers = nil
 	return []Scenario{
 		{
 			ID: "state-getters-answer-from-the-host", Group: group,
 			Pi:     "runner.ts createContext and agent-session.ts _bindExtensionCore: ctx.isIdle(), ctx.hasPendingMessages(), ctx.getSystemPrompt() and pi.getThinkingLevel()/getAllTools() return what the session answers, not a default",
 			Covers: []string{"call isIdle", "call hasPendingMessages", "call getSystemPrompt", "call getThinkingLevel", "call getAllTools"},
-			Spec:   spec,
+			Spec:   bare,
 			Steps: []Step{
 				{Op: "command", Name: "q-idle", JSON: true},
 				{Op: "command", Name: "q-pending", JSON: true},
@@ -59,7 +63,7 @@ func contextScenarios() []Scenario {
 			ID: "session-manager-reads-the-session", Group: group,
 			Pi:     "runner.ts createContext sessionManager: ctx.sessionManager.getHeader(), getLeafEntry() and getSessionId() read the session the host holds",
 			Covers: []string{"call sessionRead"},
-			Spec:   spec,
+			Spec:   bare,
 			Steps: []Step{
 				{Op: "command", Name: "q-header", JSON: true},
 				{Op: "command", Name: "q-leaf", JSON: true},
@@ -69,6 +73,30 @@ func contextScenarios() []Scenario {
 				`command q-header {"cwd":"/conformance/registry","id":"registry-session","type":"session"}`,
 				`command q-leaf {"id":"two","type":"label"}`,
 				`command q-manager-id "registry-session"`,
+			},
+		},
+		{
+			ID: "model-registry-reads-the-auth-state-of-a-provider", Group: group,
+			Pi:     "model-registry.ts:85-86,206-207 hasConfiguredAuth and isUsingOAuth ask the runtime about the model's provider, whether or not an extension registered a Provider object",
+			Covers: []string{"call getModelRegistryState"},
+			Spec:   bare,
+			Steps: []Step{
+				{Op: "command", Name: "r-auth-yes", JSON: true},
+				{Op: "command", Name: "r-auth-no", JSON: true},
+				{Op: "command", Name: "r-auth-unknown", JSON: true},
+				{Op: "command", Name: "r-oauth-yes", JSON: true},
+				{Op: "command", Name: "r-oauth-no", JSON: true},
+				{Op: "command", Name: "r-auth-key", JSON: true},
+				{Op: "command", Name: "r-oauth-key", JSON: true},
+			},
+			Want: []string{
+				`command r-auth-yes true`,
+				`command r-auth-no false`,
+				`command r-auth-unknown false`,
+				`command r-oauth-yes true`,
+				`command r-oauth-no false`,
+				`command r-auth-key true`,
+				`command r-oauth-key false`,
 			},
 		},
 		{
@@ -127,7 +155,7 @@ func contextScenarios() []Scenario {
 			ID: "abort-shutdown-and-compact-reach-the-host", Group: group,
 			Pi:     "agent-session.ts _bindExtensionCore: ctx.abort(), ctx.shutdown() and ctx.compact(options) call the session; compact carries customInstructions",
 			Covers: []string{"call abort", "call shutdown", "call compact"},
-			Spec:   spec,
+			Spec:   bare,
 			Steps: []Step{
 				{Op: "command", Name: "a-abort"},
 				{Op: "host-calls", Count: 1},

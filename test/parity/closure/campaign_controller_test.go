@@ -17,7 +17,7 @@ func threeUnitStore(t *testing.T) string {
 	records := []Record{snapshot}
 	records = append(records, behaviorBundle(snapshot, "alpha", "wire:a", "ai/openai.go")...)
 	records = append(records, behaviorBundle(snapshot, "beta", "wire:b", "ai/anthropic.go")...)
-	records = append(records, behaviorBundle(snapshot, "gamma", "wire:g", "ai/bedrock.go")...)
+	records = append(records, behaviorBundle(snapshot, "gamma", "wire:g", "ai/providers/bedrock/bedrock.go")...)
 	graph, err := Build(records)
 	if err != nil {
 		t.Fatal(err)

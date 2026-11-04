@@ -107,7 +107,7 @@ func TestExecAbortAcrossSDKs(t *testing.T) {
 		}
 	})
 	cases := sdkHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	for _, tc := range cases {

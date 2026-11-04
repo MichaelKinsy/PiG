@@ -80,15 +80,6 @@
   "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
   "package": "./tui",
   "tests": [
-   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
-  ],
-  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
-  "mutation": "tui/extension_selector.go: replace `e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)` with `_, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
- },
- {
-  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
-  "package": "./tui",
-  "tests": [
    "TestExtensionSelectorComponentNavigationSelectionAndCompletion",
    "TestExtensionSelectorComponentCallsSelectAndCancelCallbacks"
   ],
@@ -258,24 +249,6 @@
   ],
   "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
   "mutation": "tui/extension_selector.go: replace `e.cursor = max(0, e.cursor-1)\n\t\te.updateList()` with `e.cursor = max(0, e.cursor-1)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
- },
- {
-  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
-  "package": "./tui",
-  "tests": [
-   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
-  ],
-  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
-  "mutation": "tui/extension_selector.go: replace `e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)\n\t\te.updateList()` with `e.cursor, _ = PageSelectionIndex(kb, data, e.cursor, len(e.options), extensionSelectorPageSize)`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
- },
- {
-  "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
-  "package": "./tui",
-  "tests": [
-   "TestExtensionSelectorComponentNavigationSelectionAndCompletion"
-  ],
-  "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
-  "mutation": "tui/extension_selector.go: replace `const extensionSelectorPageSize = 8` with `const extensionSelectorPageSize = 4`; TestExtensionSelectorComponentNavigationSelectionAndCompletion fails."
  },
  {
   "upstream": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",

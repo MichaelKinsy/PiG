@@ -47,7 +47,13 @@ fn exact_i64(value: f64) -> Option<i64> {
 }
 
 fn expires_projection(value: f64) -> i64 {
-    if value.is_finite() && value >= -9_223_372_036_854_775_808.0 && value < 9_223_372_036_854_775_808.0 { value.trunc() as i64 } else { 0 }
+    if value.is_finite()
+        && (-9_223_372_036_854_775_808.0..9_223_372_036_854_775_808.0).contains(&value)
+    {
+        value.trunc() as i64
+    } else {
+        0
+    }
 }
 
 fn exact_value_projection(value: &serde_json::Value) -> i64 {
@@ -62,12 +68,16 @@ fn js_number_value(value: f64) -> serde_json::Value {
     if value == 0.0 {
         return json!(0);
     }
-    serde_json::Number::from_f64(value).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null)
+    serde_json::Number::from_f64(value)
+        .map(serde_json::Value::Number)
+        .unwrap_or(serde_json::Value::Null)
 }
 
 impl OAuthCredentials {
     fn exact_expires(&self) -> Option<&serde_json::Value> {
-        self.extra.get("expires").filter(|value| exact_value_projection(value) == self.expires)
+        self.extra
+            .get("expires")
+            .filter(|value| exact_value_projection(value) == self.expires)
     }
 
     /// The exact `expires` number, or `None` when the property is absent or holds a value that Pi's
@@ -118,7 +128,9 @@ impl<'de> Deserialize<'de> for OAuthCredentials {
                     object.remove(key);
                     Ok(text)
                 }
-                Some(other) if !optional => Err(serde::de::Error::custom(format!("{key}: expected string, got {other}"))),
+                Some(other) if !optional => Err(serde::de::Error::custom(format!(
+                    "{key}: expected string, got {other}"
+                ))),
                 _ => Ok(String::new()),
             }
         };
@@ -127,7 +139,14 @@ impl<'de> Deserialize<'de> for OAuthCredentials {
         let project_id = take_string("projectId", true)?;
         let account_id = take_string("accountId", true)?;
         let scope = take_string("scope", true)?;
-        let mut credentials = OAuthCredentials { refresh, access, project_id, account_id, scope, ..Default::default() };
+        let mut credentials = OAuthCredentials {
+            refresh,
+            access,
+            project_id,
+            account_id,
+            scope,
+            ..Default::default()
+        };
         match object.remove("expires") {
             None => credentials.expires_absent = true,
             Some(serde_json::Value::Number(number)) => {
@@ -163,7 +182,11 @@ impl Serialize for OAuthCredentials {
                 value.insert("expires".into(), json!(self.expires));
             }
         }
-        for (key, text) in [("projectId", &self.project_id), ("accountId", &self.account_id), ("scope", &self.scope)] {
+        for (key, text) in [
+            ("projectId", &self.project_id),
+            ("accountId", &self.account_id),
+            ("scope", &self.scope),
+        ] {
             if !text.is_empty() {
                 value.insert(key.into(), json!(text));
             }
@@ -405,11 +428,27 @@ mod credential_tests {
     fn credentials_retain_exact_expiry_and_provider_keys() {
         let meta = json!({"k": [1, null, ""]});
         for (input, expires, millis) in [
-            (json!({"refresh":"r","access":"a","expires":1_700_000_000_000.5_f64,"meta":meta,"projectId":""}), 1_700_000_000_000_i64, Some(1_700_000_000_000.5)),
-            (json!({"refresh":"r","access":"a","expires":1e21,"meta":meta}), 0, Some(1e21)),
-            (json!({"refresh":"r","access":"a","expires":"soon"}), 0, None),
+            (
+                json!({"refresh":"r","access":"a","expires":1_700_000_000_000.5_f64,"meta":meta,"projectId":""}),
+                1_700_000_000_000_i64,
+                Some(1_700_000_000_000.5),
+            ),
+            (
+                json!({"refresh":"r","access":"a","expires":1e21,"meta":meta}),
+                0,
+                Some(1e21),
+            ),
+            (
+                json!({"refresh":"r","access":"a","expires":"soon"}),
+                0,
+                None,
+            ),
             (json!({"refresh":"r","access":"a","expires":null}), 0, None),
-            (json!({"refresh":"r","access":"a","expires":42}), 42, Some(42.0)),
+            (
+                json!({"refresh":"r","access":"a","expires":42}),
+                42,
+                Some(42.0),
+            ),
         ] {
             let credentials: OAuthCredentials = serde_json::from_value(input.clone()).unwrap();
             assert_eq!(credentials.expires, expires, "{input}");
@@ -423,13 +462,26 @@ mod credential_tests {
     #[test]
     fn integer_expiry_beyond_two_to_the_53_is_a_javascript_number() {
         let two_60 = 1_152_921_504_606_846_976_i64;
-        for text in ["1152921504606847000", "1152921504606846976", "1.152921504606847e18"] {
-            let credentials: OAuthCredentials = serde_json::from_str(&format!(r#"{{"refresh":"r","access":"a","expires":{text}}}"#)).unwrap();
+        for text in [
+            "1152921504606847000",
+            "1152921504606846976",
+            "1.152921504606847e18",
+        ] {
+            let credentials: OAuthCredentials = serde_json::from_str(&format!(
+                r#"{{"refresh":"r","access":"a","expires":{text}}}"#
+            ))
+            .unwrap();
             assert_eq!(credentials.expires_millis(), Some(two_60 as f64), "{text}");
             assert_eq!(credentials.expires, two_60, "{text}");
-            assert_eq!(serde_json::to_value(&credentials).unwrap()["expires"].as_f64(), Some(two_60 as f64), "{text}");
+            assert_eq!(
+                serde_json::to_value(&credentials).unwrap()["expires"].as_f64(),
+                Some(two_60 as f64),
+                "{text}"
+            );
         }
-        let safe: OAuthCredentials = serde_json::from_str(r#"{"refresh":"r","access":"a","expires":9007199254740992}"#).unwrap();
+        let safe: OAuthCredentials =
+            serde_json::from_str(r#"{"refresh":"r","access":"a","expires":9007199254740992}"#)
+                .unwrap();
         assert_eq!(safe.expires_millis(), Some(9_007_199_254_740_992.0));
         assert!(safe.extra.get("expires").is_none());
         let mut assigned = OAuthCredentials::default();
@@ -449,18 +501,37 @@ mod credential_tests {
 
     #[test]
     fn assigning_expires_replaces_the_retained_exact_value() {
-        let mut credentials: OAuthCredentials = serde_json::from_value(json!({"refresh":"r","access":"a","expires":10.5})).unwrap();
+        let mut credentials: OAuthCredentials =
+            serde_json::from_value(json!({"refresh":"r","access":"a","expires":10.5})).unwrap();
         assert_eq!(credentials.expires_millis(), Some(10.5));
         credentials.expires = 99;
         assert_eq!(credentials.expires_millis(), Some(99.0));
-        assert_eq!(serde_json::to_value(&credentials).unwrap()["expires"], json!(99));
+        assert_eq!(
+            serde_json::to_value(&credentials).unwrap()["expires"],
+            json!(99)
+        );
         credentials.set_expires_millis(-0.0);
-        assert_eq!(serde_json::to_value(&credentials).unwrap()["expires"], json!(0));
+        assert_eq!(
+            serde_json::to_value(&credentials).unwrap()["expires"],
+            json!(0)
+        );
         credentials.set_expires_millis(2.25);
-        assert_eq!((credentials.expires, credentials.expires_millis()), (2, Some(2.25)));
+        assert_eq!(
+            (credentials.expires, credentials.expires_millis()),
+            (2, Some(2.25))
+        );
         credentials.clear_expires();
-        assert!(serde_json::to_value(&credentials).unwrap().get("expires").is_none());
-        let literal = OAuthCredentials { access: "x".into(), expires: 7, ..Default::default() };
+        assert!(
+            serde_json::to_value(&credentials)
+                .unwrap()
+                .get("expires")
+                .is_none()
+        );
+        let literal = OAuthCredentials {
+            access: "x".into(),
+            expires: 7,
+            ..Default::default()
+        };
         assert_eq!(serde_json::to_value(&literal).unwrap()["expires"], json!(7));
     }
 }

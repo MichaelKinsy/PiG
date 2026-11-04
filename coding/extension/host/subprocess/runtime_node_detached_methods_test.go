@@ -31,6 +31,10 @@ const sent = [];
 runtime.fireAndForget = (method, args) => { sent.push([method, args]); };
 runtime.state.isIdle = false;
 runtime.state.projectTrusted = true;
+runtime.callSync = (method) => {
+  assert.equal(method, "isIdle");
+  return { idle: false };
+};
 
 const { setStatus, setWidget, notify, getEditorText } = runtime.ui;
 setStatus("pi-lens-lsp", "LSP Inactive");

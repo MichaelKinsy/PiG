@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -156,22 +157,20 @@ func (store *ownMarkFailingStorage) fail(id durable.TaskId) {
 	store.mu.Unlock()
 }
 
-func (store *ownMarkFailingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
-	store.mu.Lock()
-	marks := false
-	for _, write := range writes {
-		if task, ok := write.(durable.TaskWrite); ok && store.failMark != 0 && task.Value.Id == store.failMark && task.Value.AbortRequested {
-			marks = true
+// Commit refuses the batch that marks failMark, as a storage whose own check refuses it does.
+func (store *ownMarkFailingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	return refusingAt(ctx, store.Storage.Commit, batches, receive, func(writes []durable.StorageWrite) bool {
+		store.mu.Lock()
+		defer store.mu.Unlock()
+		marks := slices.ContainsFunc(writes, func(write durable.StorageWrite) bool {
+			task, ok := write.(durable.TaskWrite)
+			return ok && store.failMark != 0 && task.Value.Id == store.failMark && task.Value.AbortRequested
+		})
+		if marks {
+			store.failMark = 0
 		}
-	}
-	if marks {
-		store.failMark = 0
-	}
-	store.mu.Unlock()
-	if marks {
-		return 0, store.failure
-	}
-	return store.Storage.Commit(ctx, writes, adopt)
+		return marks
+	}, store.failure)
 }
 
 func ownExpectFailedEnd(t *testing.T, harness Harness, failure error) {
@@ -181,7 +180,7 @@ func ownExpectFailedEnd(t *testing.T, harness Harness, failure error) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the Harness did not fail")
 	}
-	if end := harness.End(); end.Reason != durable.SessionEndFailed || (failure != nil && !errors.Is(end.Error, failure)) {
+	if end := harness.End(); end.Kind != durable.SessionEndFailed || (failure != nil && !errors.Is(end.Error, failure)) {
 		t.Fatalf("end %+v, want failed with %v", end, failure)
 	}
 }

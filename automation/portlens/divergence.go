@@ -77,7 +77,7 @@ type Divergence struct {
 
 var (
 	divHeadRe   = regexp.MustCompile(`^## (D(\d+))\s+(.+?)\s*$`)
-	retiredRe   = regexp.MustCompile(`^- (D(\d+)) \x{2014} (.+)$`)
+	retiredRe   = regexp.MustCompile(`^- (D(\d+)): (.+)$`)
 	testNameRe  = regexp.MustCompile("`((?:Test|Fuzz|Benchmark)[A-Za-z0-9_]*)(?:/[^`]*)?`")
 	testBareRe  = regexp.MustCompile(`\b(Test[A-Z][A-Za-z0-9_]{6,})\b`)
 	scenarioRe  = regexp.MustCompile("`((?:test/parity/scenarios/)?[a-z0-9][a-z0-9-]*/[0-9a-z][0-9a-z-]*(?:\\.toml)?)`")

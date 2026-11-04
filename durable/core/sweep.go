@@ -7,38 +7,17 @@ import (
 	"strconv"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
+	"github.com/MichaelKinsy/PiG/durable/core/jv"
 )
 
-// The Session's document sweep (session/retention.go) runs as a job on the Session line. In Harness mode that line is the Loop. A
-// Session-mode core has no Loop: its line is the host's transactions, so a sweep waits for the open transaction and runs at the end
-// of the step, as the job Pi queues behind the commit that holds the line.
+// The Session's document sweep (session/retention.go) runs as a job on the Session line, the Loop.
 
-// sweepMicrotask runs fn as a microtask: on the Loop in Harness mode, at the end of the step otherwise.
-func (h *handler) sweepMicrotask(fn func()) {
-	if h.loop != nil {
-		h.loop.Defer(fn)
-		return
-	}
-	h.sweeps = append(h.sweeps, fn)
-}
+// sweepMicrotask runs fn as a microtask of the Loop.
+func (h *handler) sweepMicrotask(fn func()) { h.loop.Defer(fn) }
 
-// enqueueSweep queues job on the Session line.
-func (h *handler) enqueueSweep(job func()) {
-	if h.loop != nil {
-		h.loop.LineAfterTail(func() error { job(); return nil }, nil)
-		return
-	}
-	h.sweeps = append(h.sweeps, job)
-}
-
-// runSessionSweeps runs the sweeps a Session-mode core queued, unless a host transaction holds the line.
-func (h *handler) runSessionSweeps() {
-	for len(h.sweeps) > 0 && h.holder == 0 {
-		job := h.sweeps[0]
-		h.sweeps = h.sweeps[1:]
-		job()
-	}
-}
+// enqueueSweep queues job on the Session line (session.ts #maintain). A job that returns a *session.NeedPublication (the store of held
+// changes, while the part that writes them is in the writer) runs again from the start once it is published.
+func (h *handler) enqueueSweep(job func() error) { h.loop.LineMaintain(job) }
 
 // publishDocCache tells the host the size of the document cache when it changed: the host's documentCacheSizes is a
 // synchronous getter (session.ts) and replicates this state. It runs after every event and does nothing in nearly every step:
@@ -55,14 +34,30 @@ func (h *handler) publishDocCache() {
 	cached, idle := h.sess.DocumentCacheSizes()
 	sweeps := h.sess.SweepJobs
 	attached := h.sess.DocumentsAttached()
-	if h.cacheSent && h.cacheSizes == [4]int{cached, idle, attached, sweeps} {
+	held := h.sess.HeldDocuments()
+	taskDocuments, tails := h.sess.TaskDocumentsSize(), h.sess.TailsSize()
+	// The documents whose value the host holds and the cache dropped: the host forgets that value (tx.go sentValues), and the core sends the
+	// value of the next change.
+	var dropped []byte
+	for _, doc := range h.sess.TakeDropped() {
+		h.sent.remove(doc.ID)
+		dropped = strconv.AppendInt(append(dropped, `,{"id":`...), int64(doc.ID), 10)
+		dropped = append(jv.AppendString(append(dropped, `,"address":`...), doc.Address), '}')
+	}
+	if h.cacheSent && h.cacheSizes == [7]int{cached, idle, attached, sweeps, held, taskDocuments, tails} && dropped == nil {
 		return
 	}
-	h.cacheSent, h.cacheSizes = true, [4]int{cached, idle, attached, sweeps}
+	h.cacheSent, h.cacheSizes = true, [7]int{cached, idle, attached, sweeps, held, taskDocuments, tails}
 	body := append([]byte(`{"cached":`), strconv.Itoa(cached)...)
 	body = append(append(body, `,"idle":`...), strconv.Itoa(idle)...)
 	body = append(append(body, `,"attached":`...), strconv.Itoa(attached)...)
 	body = append(append(body, `,"sweeps":`...), strconv.Itoa(sweeps)...)
+	body = append(append(body, `,"held":`...), strconv.Itoa(held)...)
+	body = append(append(body, `,"taskDocuments":`...), strconv.Itoa(taskDocuments)...)
+	body = append(append(body, `,"tails":`...), strconv.Itoa(tails)...)
+	if dropped != nil {
+		body = append(append(append(body, `,"dropped":[`...), dropped[1:]...), ']')
+	}
 	h.b.Notice(abi.NoticeDocCache, append(body, '}'))
 }
 
@@ -76,13 +71,13 @@ func (h *handler) publishIndexSizes() {
 		return
 	}
 	z := h.sched.IndexSizes()
-	sizes := [7]int{z.Live, z.Settled, z.Edges, z.Below, z.Roots, z.Unloaded, z.DropQueue}
+	sizes := [8]int{z.Live, z.Settled, z.Edges, z.Below, z.Roots, z.Unloaded, z.DropQueue, z.Pins}
 	if h.indexSent && h.indexSizes == sizes {
 		return
 	}
 	h.indexSent, h.indexSizes = true, sizes
 	body := []byte(`{`)
-	for i, name := range [7]string{"live", "settled", "edges", "below", "roots", "unloaded", "dropQueue"} {
+	for i, name := range [8]string{"live", "settled", "edges", "below", "roots", "unloaded", "dropQueue", "pins"} {
 		if i > 0 {
 			body = append(body, ',')
 		}

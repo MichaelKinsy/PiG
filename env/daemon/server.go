@@ -39,6 +39,9 @@ type Options struct {
 	// OnSilence runs when the client went silent for the limit, after everything it started was killed; it defaults to
 	// exiting the process, as the daemon does.
 	OnSilence func()
+	// OnExitSignal runs with the signal number when the daemon receives SIGTERM, SIGINT or SIGHUP, after everything it
+	// started was killed; it defaults to exiting the process with status 128 + the signal, as the daemon does.
+	OnExitSignal func(signal int)
 }
 
 type fileHandle struct {
@@ -801,6 +804,10 @@ func (s seen) Read(buffer []byte) (int, error) {
 // refuses with EMFILE at about 1020 handles on a default shell succeeds here up to the hard limit or maxHandles.
 func Serve(input io.Reader, output io.Writer, token string, options Options) error {
 	defaultChildSignals()
+	// A client that stops the daemon (Node's `child.kill()`), or a hangup, leaves nothing running either. The signals are
+	// taken before anything starts, so none is lost to their default action.
+	exitSignals, stopExitSignals := notifyExitSignals()
+	defer stopExitSignals()
 	if _, err := fmt.Fprintf(output, "PI-ENV %s\n", token); err != nil {
 		return err
 	}
@@ -832,6 +839,18 @@ func Serve(input io.Reader, output io.Writer, token string, options Options) err
 	var lastSeen atomic.Int64
 	lastSeen.Store(time.Now().UnixMilli())
 	stop := make(chan struct{})
+	go func() {
+		select {
+		case number := <-exitSignals:
+			s.killAll()
+			if options.OnExitSignal != nil {
+				options.OnExitSignal(number)
+			} else {
+				os.Exit(128 + number)
+			}
+		case <-stop:
+		}
+	}()
 	var pings sync.WaitGroup
 	pings.Go(func() {
 		ticker := time.NewTicker(options.PingInterval)

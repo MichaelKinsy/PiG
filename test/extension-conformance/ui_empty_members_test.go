@@ -109,7 +109,7 @@ func TestConformance_UIEmptyMembersAgreeAcrossSDKs(t *testing.T) {
 			ui := &emptyMembersUI{recordingUI: h.ui}
 			h.bridge.SetUIContext(ui)
 			h.bridge.SetNotifyFunc(ui.Notify)
-			tellsEmptyFromUnset := strings.Contains(tc.name, "node") || strings.Contains(tc.name, "python")
+			tellsEmptyFromUnset := strings.Contains(tc.name, "node") || strings.Contains(tc.name, "python") || strings.Contains(tc.name, "lisp")
 			want := []string{
 				`status:"k":""`,
 				`status:"k":<unset>`,

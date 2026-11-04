@@ -3,6 +3,7 @@
 package harness
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -30,38 +31,50 @@ type ContextBounds struct {
 	Tail durable.EntryId
 }
 
-// CaptureContextBounds captures the bounds of the current context, or of the context cut off at the visible entry at, with two O(1) reads; nil when the conversation has no entry. Run it on the Session line; entries at or below the tail are immutable, so DeriveContext can then scan them off the line.
-func CaptureContextBounds(ctx context.Context, storage durable.Storage, conversationId durable.ConversationId, at *durable.EntryId) (*ContextBounds, error) {
+// CaptureContextBounds captures the bounds of the current context, or of the context cut off at the visible entry at; nil
+// when the conversation has no entry. The newest entry and head marker are known from the Session's commits, so the
+// current bounds usually cost no Storage read. Run it on the Session line, with its gated storage; entries at or below the
+// tail are immutable, so DeriveContext can then scan them off the line. visible is set when at is known to be visible, as
+// an entry of a range of the conversation is.
+func CaptureContextBounds(ctx context.Context, session lineReader, storage durable.Storage, conversationId durable.ConversationId, at *durable.EntryId, visible bool) (*ContextBounds, error) {
 	var tail durable.EntryId
 	if at == nil {
-		page, err := storage.ScanEntries(ctx, durable.EntryQuery{ConversationId: conversationId}, 1, nil)
+		latest, err := session.LatestEntryId(ctx, conversationId)
 		if err != nil {
 			return nil, err
 		}
-		if len(page.Items) == 0 {
+		if latest == nil {
 			return nil, nil
 		}
-		tail = page.Items[0].Id
+		tail = *latest
 	} else {
-		visible, err := storage.VisibleEntry(ctx, conversationId, *at)
-		if err != nil {
-			return nil, err
-		}
-		if visible == nil {
-			return nil, fmt.Errorf("Entry %d is not visible from conversation %d", *at, conversationId)
+		if !visible {
+			found, err := storage.VisibleEntry(ctx, conversationId, *at)
+			if err != nil {
+				return nil, err
+			}
+			if found == nil {
+				return nil, fmt.Errorf("Entry %d is not visible from conversation %d", *at, conversationId)
+			}
 		}
 		tail = *at
 	}
-	head, err := storage.FindLatestHeadMarker(ctx, conversationId, &tail)
+	head, err := session.LatestHeadMarker(ctx, conversationId, &tail)
 	if err != nil {
 		return nil, err
 	}
 	return &ContextBounds{Head: head, Tail: tail}, nil
 }
 
-// lineReader runs read-only jobs on the Session line.
+// lineReader is the Session line as a context read uses it: jobs on the line with its gated storage, and the newest entry
+// and head marker the Session knows of a conversation.
 type lineReader interface {
-	ReadOnLine(ctx context.Context, job func() (any, error)) (any, error)
+	ReadOnLine(ctx context.Context, job func(storage durable.Storage) (any, error)) (any, error)
+	LatestEntryId(ctx context.Context, conversationId durable.ConversationId) (*durable.EntryId, error)
+	LatestHeadMarker(ctx context.Context, conversationId durable.ConversationId, atOrBefore *durable.EntryId) (*durable.EntryRecord, error)
+	// KnownLatestEntryId is the newest entry the Session knows of the conversation: known is false when it knows
+	// nothing, a nil id when it knows the conversation has none.
+	KnownLatestEntryId(conversationId durable.ConversationId) (id *durable.EntryId, known bool)
 }
 
 // ReadContext returns the committed context of one conversation: bounds captured on the Session line, entries derived off it. The view is the caller's own.
@@ -72,16 +85,16 @@ func ReadContext(ctx context.Context, session lineReader, storage durable.Storag
 
 // readContext is ReadContext; the view may share memory with storage, so callers must not modify it.
 func readContext(ctx context.Context, session lineReader, storage durable.Storage, conversationId durable.ConversationId, at *durable.EntryId) (durable.ContextView, error) {
-	bounds, err := captureOnLine(ctx, session, storage, conversationId, at)
+	bounds, err := captureOnLine(ctx, session, conversationId, at, false)
 	if err != nil {
 		return durable.ContextView{}, err
 	}
 	return deriveContext(ctx, storage, conversationId, bounds)
 }
 
-func captureOnLine(ctx context.Context, session lineReader, storage durable.Storage, conversationId durable.ConversationId, at *durable.EntryId) (*ContextBounds, error) {
-	captured, err := session.ReadOnLine(ctx, func() (any, error) {
-		return CaptureContextBounds(ctx, storage, conversationId, at)
+func captureOnLine(ctx context.Context, session lineReader, conversationId durable.ConversationId, at *durable.EntryId, visible bool) (*ContextBounds, error) {
+	captured, err := session.ReadOnLine(ctx, func(line durable.Storage) (any, error) {
+		return CaptureContextBounds(ctx, session, line, conversationId, at, visible)
 	})
 	if err != nil {
 		return nil, err
@@ -114,6 +127,9 @@ type contextRange struct {
 	// owners tell which later range may append in place to the arrays of entries, view.Entries, view.Contributions and
 	// settled; see growOwned.
 	owners rangeOwners
+	// current is whether the range reached the conversation's newest entry when it was read, so the entries of later
+	// commits extend it (advanceRange); a range cut off at an earlier entry is not.
+	current bool
 }
 
 // rangeOwners are the tail owners of the arrays a range extends in place. A nil owner means the array is not the
@@ -163,13 +179,15 @@ type baseline struct {
 // range is nil when the conversation has no entry. The view shares its arrays, entries and messages with the range
 // and with later views, so callers must not modify them; a caller that modifies its view detaches it first.
 func readContextFrom(ctx context.Context, session lineReader, storage durable.Storage, conversationId durable.ConversationId, at *durable.EntryId, previous *contextRange) (durable.ContextView, *contextRange, error) {
-	bounds, err := captureOnLine(ctx, session, storage, conversationId, at)
+	visible := at != nil && previous != nil && rangeEntry(previous, *at) != nil
+	bounds, err := captureOnLine(ctx, session, conversationId, at, visible)
 	if err != nil {
 		return durable.ContextView{}, nil, err
 	}
 	if bounds == nil {
 		return emptyView(), nil, nil
 	}
+	current := at == nil
 	var next *contextRange
 	switch {
 	case previous == nil || !sameHead(previous.bounds.Head, bounds.Head):
@@ -177,17 +195,25 @@ func readContextFrom(ctx context.Context, session lineReader, storage durable.St
 		if err != nil {
 			return durable.ContextView{}, nil, err
 		}
-		next = deriveRange(*bounds, scanned)
+		next = deriveRange(*bounds, scanned, current)
 	case bounds.Tail == previous.bounds.Tail:
 		next = previous
 	case bounds.Tail < previous.bounds.Tail:
-		next = deriveRange(*bounds, slices.DeleteFunc(slices.Clone(previous.entries), func(entry durable.EntryRecord) bool { return entry.Id > bounds.Tail }))
+		next = deriveRange(*bounds, slices.DeleteFunc(slices.Clone(previous.entries), func(entry durable.EntryRecord) bool { return entry.Id > bounds.Tail }), false)
 	default:
 		added, err := scanEntries(ctx, storage, conversationId, durable.EntryQuery{MinEntryId: new(previous.bounds.Tail + 1), MaxEntryId: new(bounds.Tail)})
 		if err != nil {
 			return durable.ContextView{}, nil, err
 		}
-		next = extendRange(previous, *bounds, added)
+		next = extendRange(previous, *bounds, added, current)
+	}
+	// Entries committed while the scan ran off the line are not in the range: it is current only if none was.
+	if next.current {
+		if latest, known := session.KnownLatestEntryId(conversationId); !known || latest == nil || *latest != next.bounds.Tail {
+			copied := *next
+			copied.current = false
+			next = &copied
+		}
 	}
 	return next.shared(), next, nil
 }
@@ -235,11 +261,48 @@ func deriveContext(ctx context.Context, storage durable.Storage, conversationId 
 	if err != nil {
 		return durable.ContextView{}, err
 	}
-	return deriveRange(*bounds, scanned).view, nil
+	return deriveRange(*bounds, scanned, false).view, nil
+}
+
+// rangeEntry is entry id of r, by binary search: a range holds its entries in ID order, every one visible from its
+// conversation. The entry is the range's own, which nothing modifies.
+func rangeEntry(r *contextRange, id durable.EntryId) *durable.EntryRecord {
+	index, found := slices.BinarySearchFunc(r.entries, id, func(entry durable.EntryRecord, id durable.EntryId) int { return cmp.Compare(entry.Id, id) })
+	if !found {
+		return nil
+	}
+	return &r.entries[index]
+}
+
+// advanceRange is r with the entries one commit appended to its conversation, in ID order, without reading Storage: the
+// conversation's own new entries are its newest, and a new head marker's head never lies before the range's start. A
+// range that is not current stays as it is; the next read extends it from Storage. keep is false to drop the range.
+func advanceRange(r *contextRange, appended []durable.EntryRecord) (next *contextRange, keep bool) {
+	if !r.current || len(appended) == 0 {
+		return r, true
+	}
+	head := r.bounds.Head
+	for index := range appended {
+		if appended[index].Head != nil {
+			marker := appended[index]
+			head = &marker
+		}
+	}
+	bounds := ContextBounds{Head: head, Tail: appended[len(appended)-1].Id}
+	if sameHead(head, r.bounds.Head) {
+		return extendRange(r, bounds, appended, true), true
+	}
+	start := *head.Head
+	// Heads only move forward: compaction keeps a later entry, a reset starts at itself, an older head is stale.
+	if r.bounds.Head != nil && r.bounds.Head.Head != nil && start < *r.bounds.Head.Head {
+		return nil, false
+	}
+	entries := slices.DeleteFunc(slices.Concat(r.entries, appended), func(entry durable.EntryRecord) bool { return entry.Id < start })
+	return deriveRange(bounds, entries, true), true
 }
 
 // deriveRange derives the context view from the entries scanned within bounds.
-func deriveRange(bounds ContextBounds, scanned []durable.EntryRecord) *contextRange {
+func deriveRange(bounds ContextBounds, scanned []durable.EntryRecord, current bool) *contextRange {
 	// Edits of every entry in the range count, including older head markers that selectActive drops.
 	edits := map[durable.EntryId]durable.ContextEdit{}
 	for _, entry := range scanned {
@@ -266,16 +329,16 @@ func deriveRange(bounds ContextBounds, scanned []durable.EntryRecord) *contextRa
 	first := firstSystemEntry(entries, contributions)
 	view.Messages = leadWithSystem(view.Messages, leadsBaseline(base, first, edited))
 	system, nonUser := leadingScan(settled)
-	return &contextRange{bounds: bounds, entries: scanned, view: view, edited: edited, settled: settled, open: open, baseline: base, firstSystem: first, settledSystem: system, settledNonUser: nonUser}
+	return &contextRange{bounds: bounds, entries: scanned, view: view, edited: edited, settled: settled, open: open, baseline: base, firstSystem: first, settledSystem: system, settledNonUser: nonUser, current: current}
 }
 
 // extendRange is previous extended by the entries added after its tail under the same head marker: only their
 // contributions and the open messages are derived. An added edit can change an earlier entry, so it derives the whole
 // range again.
-func extendRange(previous *contextRange, bounds ContextBounds, added []durable.EntryRecord) *contextRange {
+func extendRange(previous *contextRange, bounds ContextBounds, added []durable.EntryRecord, current bool) *contextRange {
 	for index := range added {
 		if _, edited := previous.edited[added[index].Id]; edited || len(added[index].Edits) > 0 || added[index].Head != nil {
-			return deriveRange(bounds, slices.Concat(previous.entries, added))
+			return deriveRange(bounds, slices.Concat(previous.entries, added), current)
 		}
 	}
 	contributions := make([][]ai.Message, 0, len(added))
@@ -320,7 +383,7 @@ func extendRange(previous *contextRange, bounds ContextBounds, added []durable.E
 		Messages:      composeMessages(settled, system, nonUser, OrderToolResults(open), leadsBaseline(base, first, previous.edited)),
 	}
 	return &contextRange{bounds: bounds, entries: entries, view: view, edited: previous.edited, settled: settled, open: open, baseline: base, firstSystem: first,
-		settledSystem: system, settledNonUser: nonUser, owners: rangeOwners{entries: entriesOwner, active: activeOwner, contributions: contributionsOwner, settled: settledOwner}}
+		settledSystem: system, settledNonUser: nonUser, owners: rangeOwners{entries: entriesOwner, active: activeOwner, contributions: contributionsOwner, settled: settledOwner}, current: current}
 }
 
 // leadingScan is the index of the first system message of messages and of the first message that is not a user
@@ -489,32 +552,6 @@ func leadWithSystem(messages []ai.Message, baseline bool) []ai.Message {
 	led = append(led, messages[index])
 	led = append(led, messages[:index]...)
 	return append(led, messages[index+1:]...)
-}
-
-// ActiveEntries returns the raw active entries within captured bounds, without deriving model context. The entries are
-// the caller's own.
-func ActiveEntries(ctx context.Context, storage durable.Storage, conversationId durable.ConversationId, bounds *ContextBounds) ([]durable.EntryRecord, error) {
-	entries, err := activeEntries(ctx, storage, conversationId, bounds)
-	if err != nil || !sharesEntries(storage) {
-		return entries, err
-	}
-	owned := make([]durable.EntryRecord, len(entries))
-	for index := range entries {
-		owned[index] = detach.Entry(entries[index])
-	}
-	return owned, nil
-}
-
-// activeEntries is ActiveEntries; the entries may share memory with storage, so callers must not modify them.
-func activeEntries(ctx context.Context, storage durable.Storage, conversationId durable.ConversationId, bounds *ContextBounds) ([]durable.EntryRecord, error) {
-	if bounds == nil {
-		return []durable.EntryRecord{}, nil
-	}
-	scanned, err := scanRange(ctx, storage, conversationId, bounds)
-	if err != nil {
-		return nil, err
-	}
-	return selectActive(bounds.Head, scanned), nil
 }
 
 // scanRange returns the visible entries from the head marker's head, or transcript start, through the tail, oldest first.

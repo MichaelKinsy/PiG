@@ -51,6 +51,8 @@ func TestUserBashOperationsReleaseTheExtensionHandleWhenTheHostDropsThem(t *test
 		t.Fatalf("handle %q released while the host still holds the object", handle)
 	case <-time.After(50 * time.Millisecond):
 	}
+	// The compiler ends typed's life at its last use, so without this a collection during the window above would release the handle while the test still holds the object.
+	runtime.KeepAlive(typed)
 	typed = nil
 	deadline := time.After(10 * time.Second)
 	for {

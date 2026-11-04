@@ -456,6 +456,29 @@ test("tool: retainedOutput after the call settled throws as every other api call
   assert.throws(() => late.retainedOutput(), /Tool call c has settled/)
 })
 
+// Pi tool.ts ToolExecutionApi.now: the Harness clock (`HarnessOptions.now`), which throws once the invocation has ended.
+test("tool: api.now reads the Harness clock while the call runs and throws once the invocation ended", async () => {
+  const seen: unknown[] = []
+  let late: { now(): number } | undefined
+  const tool = { name: "clock", execute: async (_a: unknown, api: { now(): number }) => { late = api; seen.push(api.now(), api.now()); return { output: [] } } }
+  let clock = 1000
+  const r = rig(ev => ev.kind === EVENT.open ? { effects: [effect(5, EFFECT.tool, { taskId: 1, conversationId: 1, toolName: "clock", callId: "c", arguments: {}, replay: "safe" })] } : undefined, { registry: registryOf([{ name: "x", tools: [tool] }]), models: fauxModels().models, now: () => clock++ })
+  r.host.send(EVENT.open)
+  await until(() => r.core.ofKind(EVENT.tool_done).length === 1, "no tool_done")
+  assert.deepEqual(seen, [1000, 1001])
+  assert.throws(() => late?.now(), /Task 1 invocation has ended/)
+})
+
+test("tool: api.now is the wall clock when the host gives none", async () => {
+  let seen = 0
+  const tool = { name: "wall", execute: async (_a: unknown, api: { now(): number }) => { seen = api.now(); return { output: [] } } }
+  const r = rig(ev => ev.kind === EVENT.open ? { effects: [effect(5, EFFECT.tool, { taskId: 1, conversationId: 1, toolName: "wall", callId: "c", arguments: {}, replay: "safe" })] } : undefined, { registry: registryOf([{ name: "x", tools: [tool] }]), models: fauxModels().models })
+  const before = Date.now()
+  r.host.send(EVENT.open)
+  await until(() => r.core.ofKind(EVENT.tool_done).length === 1, "no tool_done")
+  assert.ok(seen >= before && seen <= Date.now())
+})
+
 test("tool: api.commit begins with the call's invocation and returns the callback's value without making it the task's next state", async () => {
   let returned: unknown
   const tool = { name: "writer", execute: async (_a: any, api: any, context: any) => { returned = await api.commit(async () => ({ entry: 7 }), context); return { output: [] } } }

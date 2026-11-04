@@ -129,9 +129,10 @@ func newVirtualSuite(t *testing.T, route virtualRoute, settings string, handlers
 		suite.mu.Unlock()
 	})
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()

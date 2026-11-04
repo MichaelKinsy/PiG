@@ -239,9 +239,9 @@ func TestAppendExtensionEntryPropagatesNativeStorageFailure(t *testing.T) {
 	if events != 0 {
 		t.Fatalf("failed write emitted %d entry_appended events", events)
 	}
-	// Pi's native writer updates memory before persistence. The public wrapper reports the error without introducing rollback semantics.
-	if _, ok := session.SessionManager().GetEntry(direct.ID); !ok {
-		t.Fatal("the wrapper changed the native writer's in-memory failure semantics")
+	// Pi's native writer undoes its in-memory append when persistence fails (session-manager.ts _appendEntry, 807a5c05), so the entry is not kept.
+	if _, ok := session.SessionManager().GetEntry(direct.ID); ok {
+		t.Fatal("the failed write left the entry in memory")
 	}
 	restore()
 	if err := session.Close(); err != nil {

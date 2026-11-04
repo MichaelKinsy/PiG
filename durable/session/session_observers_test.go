@@ -1,22 +1,28 @@
 package session_test
 
 // Ports packages/durable/test/session-observers.test.ts: Session.observeDoc(), the synchronous observer of one document
-// address that watches are built on. Upstream's three tests that read V8's WeakRef and gc() ("keeps no detached observer
-// alive", "keeps no value of a document retired for good, while still attached") have no Go counterpart; what they protect,
-// that a detached observer is referenced by nothing of the Session, is checked on the references themselves where Go
-// can: the detached observer is no longer pinned (documentCacheSizes.attached) and gets no call.
+// address that watches are built on. Upstream's two tests that read V8's WeakRef and gc() ("keeps no detached observer
+// alive", "keeps no value of a document retired for good, while still attached") run on Go's weak pointers and
+// runtime.GC (TestObserveDocKeepsNothingAlive). The case "reports an observer whose call returns a rejected promise, then
+// detaches it and ends it `listener_error`" is designed out under the owner class approval of Promise/thenable mechanics:
+// a Go observer's Advance returns no value, and one that panics is reported, detached and ended `listener_error`
+// ("reports a throwing observer, detaches it and ends it with the error").
 
 import (
 	"context"
 	"errors"
 	"math"
+	"runtime"
 	"sync"
 	"testing"
+	"unsafe"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 var (
@@ -27,10 +33,10 @@ var (
 
 // observerCall is one call of a recorded observer: an advance, with whether it ran inside the storage's adopt, or an end.
 type observerCall struct {
-	advance    *durable.WatchChange[obj]
-	adopting   bool
-	end        bool
-	endFailure error
+	advance  *durable.WatchCall[obj]
+	adopting bool
+	end      bool
+	endCall  durable.WatchEnd
 }
 
 // recordingObserver records each call, and whether it ran inside the storage's adopt.
@@ -40,16 +46,16 @@ type recordingObserver struct {
 	calls   []observerCall
 }
 
-func (observer *recordingObserver) Advance(_ context.Context, change durable.WatchChange[obj]) {
+func (observer *recordingObserver) Advance(_ context.Context, change durable.WatchCall[obj]) {
 	observer.mu.Lock()
 	defer observer.mu.Unlock()
 	observer.calls = append(observer.calls, observerCall{advance: &change, adopting: observer.storage.Adopting()})
 }
 
-func (observer *recordingObserver) End(failure error) {
+func (observer *recordingObserver) End(end durable.WatchEnd) {
 	observer.mu.Lock()
 	defer observer.mu.Unlock()
-	observer.calls = append(observer.calls, observerCall{end: true, endFailure: failure})
+	observer.calls = append(observer.calls, observerCall{end: true, endCall: end})
 }
 
 func (observer *recordingObserver) all() []observerCall {
@@ -112,6 +118,9 @@ func expectAdvance(t *testing.T, call observerCall, value obj, ops []durable.Op,
 	if call.advance == nil || call.end {
 		t.Fatalf("call %+v is not an advance", call)
 	}
+	if call.advance.Kind != durable.WatchCallValue {
+		t.Fatalf("call %+v is not a value call", call)
+	}
 	expectEqual(t, call.advance.Value, value)
 	expectEqual(t, call.advance.Ops, ops)
 	if call.advance.Retired != retired || call.adopting != adopting {
@@ -136,7 +145,7 @@ func TestObserveDoc(t *testing.T) {
 		must(t, opened.session.Close(ctx))
 	})
 
-	t.Run("starts at the committed value and advances inside adopt with each stored commit's ops", func(t *testing.T) {
+	t.Run("starts at the committed value and advances at the publication of each stored commit with its ops", func(t *testing.T) {
 		opened := openObserving()
 		opened.add(t, 1)
 		observer := opened.recorder()
@@ -147,7 +156,7 @@ func TestObserveDoc(t *testing.T) {
 		if len(calls) != 1 {
 			t.Fatalf("calls %+v", calls)
 		}
-		expectAdvance(t, calls[0], delta.JsonObjectOf("count", 3), []durable.Op{{"s", []any{"count"}, 3}}, false, true)
+		expectAdvance(t, calls[0], delta.JsonObjectOf("count", 3), []durable.Op{{"s", []any{"count"}, 3}}, false, false)
 		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
@@ -195,11 +204,11 @@ func TestObserveDoc(t *testing.T) {
 		if len(calls) != 2 {
 			t.Fatalf("calls %+v", calls)
 		}
-		expectAdvance(t, calls[0], observation.Value(), nil, true, true)
+		expectAdvance(t, calls[0], observation.Value(), nil, true, false)
 		if !same(calls[0].advance.Value, observation.Value()) {
 			t.Fatal("a retirement carries the value the observer was given")
 		}
-		expectAdvance(t, calls[1], delta.JsonObjectOf("count", 9), []durable.Op{{"r", delta.JsonObjectOf("count", 9)}}, false, true)
+		expectAdvance(t, calls[1], delta.JsonObjectOf("count", 9), []durable.Op{{"r", delta.JsonObjectOf("count", 9)}}, false, false)
 		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
@@ -224,15 +233,39 @@ func TestObserveDoc(t *testing.T) {
 		}
 	})
 
-	t.Run("ends once when the Session closes", func(t *testing.T) {
+	t.Run("ends once when the Session closes, failed (S1: an adapter follows the next Session), a watch ended", func(t *testing.T) {
 		opened := openObserving()
 		opened.add(t, 1)
 		observer := opened.recorder()
 		opened.observe(t, observer, observeSessionCounter)
+		watch, err := opened.session.WatchDocErased(ctx, observeSessionCounter)
+		must(t, err)
 		must(t, opened.session.Close(ctx))
 		calls := observer.all()
-		if len(calls) != 1 || !calls[0].end || calls[0].endFailure != nil {
+		if len(calls) != 1 || !calls[0].end || calls[0].endCall.Kind != durable.WatchFailed || calls[0].endCall.Error == nil || calls[0].endCall.Error.Error() != "session closed" {
 			t.Fatalf("calls %+v", calls)
+		}
+		<-watch.Closed()
+		expectEqual(t, watch.End(), durable.WatchEnd{Kind: durable.WatchEnded})
+	})
+
+	t.Run("ends each close's observers with an error of that close, not one shared by every Session", func(t *testing.T) {
+		// Pi makes a new Error per close; Go gives every close a new error wrapping session.ErrSessionClosedEnd, which errors.Is reads.
+		var errs []error
+		for range 2 {
+			opened := openObserving()
+			opened.add(t, 1)
+			observer := opened.recorder()
+			opened.observe(t, observer, observeSessionCounter)
+			must(t, opened.session.Close(ctx))
+			for _, call := range observer.all() {
+				if call.end {
+					errs = append(errs, call.endCall.Error)
+				}
+			}
+		}
+		if len(errs) != 2 || errs[0] == nil || errs[1] == nil || errs[0].Error() != "session closed" || errs[1].Error() != "session closed" || !errors.Is(errs[0], session.ErrSessionClosedEnd) || !errors.Is(errs[1], session.ErrSessionClosedEnd) || any(errs[0]) == any(errs[1]) {
+			t.Fatalf("errors %v", errs)
 		}
 	})
 
@@ -248,7 +281,7 @@ func TestObserveDoc(t *testing.T) {
 		}), "disk gone")
 		<-opened.session.Closed()
 		calls := observer.all()
-		if len(calls) != 1 || !calls[0].end || !errors.Is(calls[0].endFailure, failure) {
+		if len(calls) != 1 || !calls[0].end || calls[0].endCall.Kind != durable.WatchFailed || !errors.Is(calls[0].endCall.Error, failure) {
 			t.Fatalf("calls %+v", calls)
 		}
 	})
@@ -257,17 +290,17 @@ func TestObserveDoc(t *testing.T) {
 		opened := openObserving()
 		opened.add(t, 1)
 		bug := errors.New("observer bug")
-		throwing := &funcObserver{advance: func(durable.WatchChange[obj]) { panic(bug) }}
+		throwing := &funcObserver{advance: func(durable.WatchCall[obj]) { panic(bug) }}
 		opened.observe(t, throwing, observeSessionCounter)
 		healthy := opened.recorder()
 		opened.observe(t, healthy, observeSessionCounter)
 		opened.add(t, 1)
 		opened.add(t, 1)
 		reports := opened.reported()
-		if len(reports) != 1 || !errors.Is(reports[0].err, bug) || reports[0].info.Type != durable.ReportListenerError {
+		if len(reports) != 1 || !errors.Is(reports[0].err, bug) || reports[0].info.Kind != durable.ReportListenerError {
 			t.Fatalf("reports %+v", reports)
 		}
-		if ends := throwing.endsSeen(); len(ends) != 1 || !errors.Is(ends[0], bug) {
+		if ends := throwing.endsSeen(); len(ends) != 1 || ends[0].Kind != durable.WatchListenerError || !errors.Is(ends[0].Error, bug) {
 			t.Fatalf("ends %v", ends)
 		}
 		if len(healthy.all()) != 2 {
@@ -300,13 +333,13 @@ func TestObserveDoc(t *testing.T) {
 			err         error
 		}
 		result := make(chan attached, 1)
+		attaching := make(chan struct{})
 		go func() {
-			observation, err := opened.session.ObserveDocErased(ctx, observeSessionCounter, observer)
+			observation, err := opened.session.ObserveDocErased(lineadmission.With(ctx, func() { close(attaching) }), observeSessionCounter, observer)
 			result <- attached{observation, err}
 		}()
-		// The attachment is queued behind the commit on the line.
-		for opened.session.LineJobs() < 2 {
-		}
+		// The attachment is queued behind the commit on the line, and reads what the commit wrote only once it is published.
+		<-attaching
 		gate.Release()
 		got := <-result
 		must(t, got.err)
@@ -334,9 +367,8 @@ func TestObserveDoc(t *testing.T) {
 
 	t.Run("rejects, never panics, on a closed Session or a missing scope ID", func(t *testing.T) {
 		opened := openObserving()
-		if _, err := opened.session.ObserveDocErased(ctx, observeConversationCounter, opened.recorder()); err == nil {
-			t.Fatal("a missing scope ID was accepted")
-		}
+		_, missing := opened.session.ObserveDocErased(ctx, observeConversationCounter, opened.recorder())
+		expectErrorContains(t, missing, "requires a conversation ID")
 		must(t, opened.session.Close(ctx))
 		_, err := opened.session.ObserveDocErased(ctx, observeSessionCounter, opened.recorder())
 		expectErrorContains(t, err, "Session is closed")
@@ -345,27 +377,143 @@ func TestObserveDoc(t *testing.T) {
 
 // funcObserver is an observer made of functions.
 type funcObserver struct {
-	advance func(durable.WatchChange[obj])
+	advance func(durable.WatchCall[obj])
 	mu      sync.Mutex
-	ends    []error
+	ends    []durable.WatchEnd
 }
 
-func (observer *funcObserver) Advance(_ context.Context, change durable.WatchChange[obj]) {
+func (observer *funcObserver) Advance(_ context.Context, change durable.WatchCall[obj]) {
 	if observer.advance != nil {
 		observer.advance(change)
 	}
 }
 
-func (observer *funcObserver) End(failure error) {
+func (observer *funcObserver) End(end durable.WatchEnd) {
 	observer.mu.Lock()
-	observer.ends = append(observer.ends, failure)
+	observer.ends = append(observer.ends, end)
 	observer.mu.Unlock()
 }
 
-func (observer *funcObserver) endsSeen() []error {
+func (observer *funcObserver) endsSeen() []durable.WatchEnd {
 	observer.mu.Lock()
 	defer observer.mu.Unlock()
-	return append([]error(nil), observer.ends...)
+	return append([]durable.WatchEnd(nil), observer.ends...)
+}
+
+// commitsRecorder is a CommitObserver recording each Seq and its end.
+type commitsRecorder struct {
+	mu    sync.Mutex
+	seqs  []durable.Seq
+	order []string
+	ends  []durable.WatchEnd
+}
+
+func (recorder *commitsRecorder) Advance(_ context.Context, publication durable.CommitPublication) {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	recorder.seqs = append(recorder.seqs, publication.Seq)
+	recorder.order = append(recorder.order, "seq")
+}
+
+func (recorder *commitsRecorder) End(end durable.WatchEnd) {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	recorder.ends = append(recorder.ends, end)
+	recorder.order = append(recorder.order, "end")
+}
+
+// throwingCommits is a CommitObserver whose Advance panics.
+type throwingCommits struct {
+	bug    error
+	mu     sync.Mutex
+	thrown int
+	ends   []durable.WatchEnd
+}
+
+func (observer *throwingCommits) Advance(context.Context, durable.CommitPublication) {
+	observer.mu.Lock()
+	observer.thrown++
+	observer.mu.Unlock()
+	panic(observer.bug)
+}
+
+func (observer *throwingCommits) End(end durable.WatchEnd) {
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	observer.ends = append(observer.ends, end)
+}
+
+func TestObserveCommits(t *testing.T) {
+	t.Run("gets every stored commit, then failed once the Session closed (S1), after its last publication", func(t *testing.T) {
+		opened := openObserving()
+		recorder := &commitsRecorder{}
+		opened.session.ObserveCommits(recorder)
+		opened.add(t, 1)
+		opened.add(t, 1)
+		must(t, opened.session.Close(ctx))
+		expectEqual(t, recorder.order, []string{"seq", "seq", "end"})
+		if len(recorder.ends) != 1 || recorder.ends[0].Kind != durable.WatchFailed || recorder.ends[0].Error == nil || recorder.ends[0].Error.Error() != "session closed" {
+			t.Fatalf("ends %+v", recorder.ends)
+		}
+	})
+
+	t.Run("ends failed with the error that failed the Session", func(t *testing.T) {
+		opened := openObserving()
+		recorder := &commitsRecorder{}
+		opened.session.ObserveCommits(recorder)
+		failure := errors.New("disk gone")
+		opened.storage.FailNextCommit(failure)
+		expectErrorContains(t, tryCommit(opened.session, func(tx durable.Tx) error {
+			return mustDoc(t, tx, observeSessionCounter).Set("count", 1)
+		}), "disk gone")
+		<-opened.session.Closed()
+		expectEqual(t, recorder.order, []string{"end"})
+		if len(recorder.ends) != 1 || recorder.ends[0].Kind != durable.WatchFailed || !errors.Is(recorder.ends[0].Error, failure) {
+			t.Fatalf("ends %+v", recorder.ends)
+		}
+	})
+
+	t.Run("gets nothing after detach, which is idempotent, not even its end", func(t *testing.T) {
+		opened := openObserving()
+		recorder := &commitsRecorder{}
+		observation := opened.session.ObserveCommits(recorder)
+		opened.add(t, 1)
+		opened.session.WaitDeliveries()
+		observation.Detach()
+		observation.Detach()
+		opened.add(t, 1)
+		must(t, opened.session.Close(ctx))
+		expectEqual(t, recorder.order, []string{"seq"})
+	})
+
+	t.Run("reports a throwing observer, detaches it and ends it listener_error; the others go on", func(t *testing.T) {
+		opened := openObserving()
+		bug := errors.New("commit observer bug")
+		throwing := &throwingCommits{bug: bug}
+		opened.session.ObserveCommits(throwing)
+		healthy := &commitsRecorder{}
+		opened.session.ObserveCommits(healthy)
+		opened.add(t, 1)
+		opened.add(t, 1)
+		opened.session.WaitDeliveries()
+		if throwing.thrown != 1 {
+			t.Fatalf("thrown %d, want 1", throwing.thrown)
+		}
+		reports := opened.reported()
+		if len(reports) != 1 || !errors.Is(reports[0].err, bug) || reports[0].info.Kind != durable.ReportListenerError {
+			t.Fatalf("reports %+v", reports)
+		}
+		if len(throwing.ends) != 1 || throwing.ends[0].Kind != durable.WatchListenerError || !errors.Is(throwing.ends[0].Error, bug) {
+			t.Fatalf("ends %+v", throwing.ends)
+		}
+		if len(healthy.seqs) != 2 {
+			t.Fatalf("healthy seqs %v", healthy.seqs)
+		}
+		must(t, opened.session.Close(ctx))
+		if len(throwing.ends) != 1 {
+			t.Fatalf("ends after close %+v", throwing.ends)
+		}
+	})
 }
 
 func TestObserveDocDetachedDuringACommit(t *testing.T) {
@@ -389,8 +537,8 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 		opened, conversationId, recreate := retiring(t)
 		bug := errors.New("observer bug")
 		var mu sync.Mutex
-		var changes []durable.WatchChange[obj]
-		observer := &funcObserver{advance: func(change durable.WatchChange[obj]) {
+		var changes []durable.WatchCall[obj]
+		observer := &funcObserver{advance: func(change durable.WatchCall[obj]) {
 			mu.Lock()
 			changes = append(changes, change)
 			mu.Unlock()
@@ -403,10 +551,10 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 			t.Fatalf("changes %+v", changes)
 		}
 		mu.Unlock()
-		if ends := observer.endsSeen(); len(ends) != 1 || !errors.Is(ends[0], bug) {
+		if ends := observer.endsSeen(); len(ends) != 1 || ends[0].Kind != durable.WatchListenerError || !errors.Is(ends[0].Error, bug) {
 			t.Fatalf("ends %v", ends)
 		}
-		if reports := opened.reported(); len(reports) != 1 || !errors.Is(reports[0].err, bug) || reports[0].info.Type != durable.ReportListenerError {
+		if reports := opened.reported(); len(reports) != 1 || !errors.Is(reports[0].err, bug) || reports[0].info.Kind != durable.ReportListenerError {
 			t.Fatalf("reports %+v", reports)
 		}
 		if attached := opened.session.DocumentCacheSizes().Attached; attached != 0 {
@@ -422,12 +570,12 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 	t.Run("gets nothing more of the commit once it detaches in the retirement call, and pins nothing", func(t *testing.T) {
 		opened, conversationId, recreate := retiring(t)
 		var mu sync.Mutex
-		var changes []durable.WatchChange[obj]
+		var changes []durable.WatchCall[obj]
 		var observation durable.Observation[obj]
 		var attachedObservation sync.WaitGroup
 		attachedObservation.Add(1)
 		observer := &funcObserver{}
-		observer.advance = func(change durable.WatchChange[obj]) {
+		observer.advance = func(change durable.WatchCall[obj]) {
 			mu.Lock()
 			changes = append(changes, change)
 			mu.Unlock()
@@ -436,7 +584,7 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 		observation = opened.observe(t, observer, observeConversationCounter, conversationId)
 		recreate()
 		mu.Lock()
-		if len(changes) != 1 || !changes[0].Retired || !same(changes[0].Value, observation.Value()) {
+		if len(changes) != 1 || changes[0].Kind != durable.WatchCallValue || len(changes[0].Ops) != 0 || !changes[0].Retired || !same(changes[0].Value, observation.Value()) {
 			t.Fatalf("changes %+v", changes)
 		}
 		mu.Unlock()
@@ -452,7 +600,7 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 	t.Run("gets nothing of the commit when another observer's call detached it first, and pins nothing", func(t *testing.T) {
 		opened, conversationId, recreate := retiring(t)
 		var second durable.Observation[obj]
-		first := opened.observe(t, &funcObserver{advance: func(durable.WatchChange[obj]) { second.Detach() }}, observeConversationCounter, conversationId)
+		first := opened.observe(t, &funcObserver{advance: func(durable.WatchCall[obj]) { second.Detach() }}, observeConversationCounter, conversationId)
 		detached := opened.recorder()
 		second = opened.observe(t, detached, observeConversationCounter, conversationId)
 		recreate()
@@ -464,6 +612,111 @@ func TestObserveDocDetachedDuringACommit(t *testing.T) {
 		if attached := opened.session.DocumentCacheSizes().Attached; attached != 0 {
 			t.Fatalf("attached %d", attached)
 		}
+		must(t, opened.session.Close(ctx))
+	})
+}
+
+// collect runs the collector until no round frees more: Pi's collect() runs gc() five rounds with a timer turn between.
+func collect() {
+	for range 5 {
+		runtime.GC()
+		runtime.Gosched()
+	}
+}
+
+// bareObserver is an observer only the Session references, with no state of its own.
+type bareObserver struct{ _ int }
+
+func (*bareObserver) Advance(context.Context, durable.WatchCall[obj]) {}
+func (*bareObserver) End(durable.WatchEnd)                            {}
+
+// valueWeak is a weak pointer to the storage a JSON object's members live in: the value stays reachable while any copy
+// of the object, or the Session holding one, does.
+func valueWeak(value obj) weak.Pointer[byte] {
+	// The object's first field is the slice of its members: its first word is the address of their storage.
+	return weak.Make(*(**byte)(unsafe.Pointer(&value))) //nolint:gosec // the test reads the first word of the object, a pointer to its members, to watch their storage
+}
+
+// weakLastObserver keeps nothing of what it is given but a weak pointer to the storage of the last value.
+type weakLastObserver struct {
+	mu   sync.Mutex
+	seen int
+	last weak.Pointer[byte]
+}
+
+func (observer *weakLastObserver) Advance(_ context.Context, change durable.WatchCall[obj]) {
+	if change.Kind == durable.WatchCallValue && !change.Retired {
+		last := valueWeak(change.Value)
+		observer.mu.Lock()
+		observer.last = last
+		observer.seen++
+		observer.mu.Unlock()
+	}
+}
+func (*weakLastObserver) End(durable.WatchEnd) {}
+
+func (observer *weakLastObserver) value() *byte {
+	observer.mu.Lock()
+	defer observer.mu.Unlock()
+	return observer.last.Value()
+}
+
+func TestObserveDocKeepsNothingAlive(t *testing.T) {
+	t.Run("keeps no detached observer alive", func(t *testing.T) {
+		opened := openObserving()
+		opened.add(t, 1)
+		// Attach an observer only the Session references; detach says whether to detach it before returning.
+		attach := func(detach bool) (durable.Observation[obj], weak.Pointer[bareObserver]) {
+			observer := &bareObserver{}
+			observation := opened.observe(t, observer, observeSessionCounter)
+			if detach {
+				observation.Detach()
+			}
+			return observation, weak.Make(observer)
+		}
+		// Control: an attached observer stays, so the collection below is real.
+		attached, attachedObserver := attach(false)
+		collect()
+		if attachedObserver.Value() == nil {
+			t.Fatal("an attached observer was collected")
+		}
+		attached.Detach()
+
+		_, detachedObserver := attach(true)
+		collect()
+		if detachedObserver.Value() != nil {
+			t.Fatal("a detached observer is still referenced by the Session")
+		}
+		must(t, opened.session.Close(ctx))
+	})
+
+	t.Run("keeps no value of a document retired for good, while still attached", func(t *testing.T) {
+		opened := openObserving()
+		conversationId := sessiontest.CreateConversation(t, opened.session)
+		commit(t, opened.session, func(tx durable.Tx) error {
+			_, err := tx.Doc(observeConversationCounter, conversationId)
+			return err
+		})
+		// Attach an observer that keeps nothing, change the document, and retire it: only a weak pointer to its last value.
+		retire := func() (durable.Observation[obj], *weakLastObserver) {
+			observer := &weakLastObserver{}
+			observation := opened.observe(t, observer, observeConversationCounter, conversationId)
+			commit(t, opened.session, func(tx durable.Tx) error {
+				return mustDoc(t, tx, observeConversationCounter, conversationId).Set("count", 7)
+			})
+			commit(t, opened.session, func(tx durable.Tx) error { return tx.RetireDoc(observeConversationCounter, conversationId) })
+			must(t, opened.session.UnloadDocuments())
+			return observation, observer
+		}
+		observation, observer := retire()
+		if observer.seen != 1 {
+			t.Fatalf("the observer saw %d values, want its one change", observer.seen)
+		}
+		collect()
+		if observer.value() != nil {
+			t.Fatal("the Session keeps the last value of a document retired for good")
+		}
+		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
 }

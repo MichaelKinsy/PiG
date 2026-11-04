@@ -7,7 +7,10 @@ import (
 	"context"
 	"errors"
 
+	"strconv"
+
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -17,6 +20,8 @@ type orderedSet[K comparable] struct {
 	index map[K]int
 	items []setItem[K]
 	dead  int
+	// front is a slot before which none is live, so First does not pass the slots of deleted keys again.
+	front int
 	// ranging counts the iterations in progress; a slot is reclaimed only while none is.
 	ranging int
 }
@@ -69,6 +74,7 @@ func (set *orderedSet[K]) compact() {
 	clear(set.items[len(kept):])
 	set.items = kept
 	set.dead = 0
+	set.front = 0
 }
 
 // Clear removes every key.
@@ -77,6 +83,18 @@ func (set *orderedSet[K]) Clear() {
 	clear(set.items)
 	set.items = set.items[:0]
 	set.dead = 0
+	set.front = 0
+}
+
+// First returns the oldest key, the first of Values, in amortized constant time.
+func (set *orderedSet[K]) First() (key K, ok bool) {
+	for set.front < len(set.items) && !set.items[set.front].live {
+		set.front++
+	}
+	if set.front == len(set.items) {
+		return key, false
+	}
+	return set.items[set.front].key, true
 }
 
 // Values returns the keys in insertion order.
@@ -112,6 +130,14 @@ func taskTreeNode(id durable.TaskId) treeNode { return treeNode{id: int64(id)} }
 
 func conversationTreeNode(id durable.ConversationId) treeNode {
 	return treeNode{conversation: true, id: int64(id)}
+}
+
+// ownedKey is the key of the owned-work membership of node (group commit §4.2): a task's ID, or a conversation as c<id>.
+func ownedKey(node treeNode) string {
+	if node.conversation {
+		return session.OwnedKey("c" + strconv.FormatInt(node.id, 10))
+	}
+	return session.OwnedKey(durable.TaskId(node.id))
 }
 
 // parentTreeNode is the node a task hangs from: its owner task, or its conversation.
@@ -163,6 +189,7 @@ func (s *TaskScheduler) walkDownLocked(start treeNode, options walkOptions, visi
 	for len(pending) > 0 {
 		at := pending[len(pending)-1]
 		pending = pending[:len(pending)-1]
+		s.recordLocked(ownedKey(at))
 		stopped := false
 		each := func(children *orderedSet[treeNode]) {
 			if children == nil || stopped {
@@ -259,10 +286,10 @@ func (s *TaskScheduler) linksLocked(staged *overlay) map[treeNode]*orderedSet[tr
 // ownedLiveLocked returns the live ordinary owned work of owner (spec §5.5): the live non-background tasks below it that
 // a walk down reaches without entering a background task; with first, only the first. Candidates in staged replace
 // committed records; the walk does not enter tasks in done, which have none. Owner chains must be loaded.
-func (s *TaskScheduler) ownedLiveLocked(owner durable.TaskId, staged *overlay, first bool, done map[durable.TaskId]bool) []durable.TaskId {
+func (s *TaskScheduler) ownedLiveLocked(owner durable.TaskId, staged *overlay, first bool, done func(durable.TaskId) bool) []durable.TaskId {
 	options := walkOptions{staged: staged}
 	if done != nil {
-		options.enter = func(id durable.TaskId) bool { return !done[id] }
+		options.enter = func(id durable.TaskId) bool { return !done(id) }
 	}
 	var found []durable.TaskId
 	s.walkDownLocked(taskTreeNode(owner), options, func(id durable.TaskId, node taskNode, live bool, _ anyTaskRecord) bool {
@@ -275,7 +302,7 @@ func (s *TaskScheduler) ownedLiveLocked(owner durable.TaskId, staged *overlay, f
 	return found
 }
 
-func (s *TaskScheduler) hasOwnedLiveLocked(owner durable.TaskId, staged *overlay, done map[durable.TaskId]bool) bool {
+func (s *TaskScheduler) hasOwnedLiveLocked(owner durable.TaskId, staged *overlay, done func(durable.TaskId) bool) bool {
 	return len(s.ownedLiveLocked(owner, staged, true, done)) > 0
 }
 
@@ -303,6 +330,7 @@ func (s *TaskScheduler) knownLocked(node treeNode) bool {
 // nearestLiveAboveLocked returns the nearest live task above ended ordinary work node, in the overlay's view: the one
 // that work held, if any. Work at or below a background task holds nothing above it.
 func (s *TaskScheduler) nearestLiveAboveLocked(node taskNode, staged *overlay) (anyTaskRecord, bool) {
+	s.recordLocked(session.IntentKey)
 	for current := node; !current.background; {
 		var owner *durable.TaskId
 		if current.owner != nil {
@@ -318,7 +346,7 @@ func (s *TaskScheduler) nearestLiveAboveLocked(node taskNode, staged *overlay) (
 			record, found = staged.tasks[*owner]
 		}
 		if !found {
-			record, found = s.live[*owner]
+			record, found = s.liveRecordLocked(*owner)
 		}
 		if found && record.State.Status != durable.TaskTerminal {
 			return record, true
@@ -391,7 +419,7 @@ func (s *TaskScheduler) scheduleSweepLocked() {
 		}
 		s.background.Go(func() {
 			// Fails only once the Session is closing or failed, when nothing is kept anyway.
-			_, _ = s.options.Session.ReadWithTicket(ticket, func() (any, error) {
+			_, _ = s.options.Session.ReadWithTicket(ticket, func(durable.Storage) (any, error) {
 				s.mu.Lock()
 				s.sweepScheduled = false
 				s.sweepLocked()
@@ -408,7 +436,8 @@ func (s *TaskScheduler) scheduleSweepLocked() {
 // last listed node.
 func (s *TaskScheduler) sweepLocked() {
 	s.dropQueue.Range(func(node treeNode) bool {
-		if _, listed := s.below[node]; listed {
+		// Queued again once its pins go.
+		if _, listed := s.below[node]; listed || s.pins[node] > 0 {
 			return true
 		}
 		if node.conversation {
@@ -575,7 +604,7 @@ func (s *TaskScheduler) relistLocked(start treeNode) {
 }
 
 // schedulerIndexSizes are the sizes of the scheduler's ownership indexes, for tests that bound its memory.
-type schedulerIndexSizes struct{ live, settled, edges, below, roots, unloaded, dropQueue int }
+type schedulerIndexSizes struct{ live, settled, edges, below, roots, unloaded, dropQueue, pins int }
 
 func (s *TaskScheduler) indexSizes() schedulerIndexSizes {
 	s.mu.Lock()
@@ -584,5 +613,5 @@ func (s *TaskScheduler) indexSizes() schedulerIndexSizes {
 	for _, children := range s.below {
 		below += children.Len()
 	}
-	return schedulerIndexSizes{live: len(s.live), settled: len(s.settled), edges: len(s.edges), below: below, roots: s.roots.Len(), unloaded: s.unloaded.Len(), dropQueue: s.dropQueue.Len()}
+	return schedulerIndexSizes{live: len(s.live), settled: len(s.settled), edges: len(s.edges), below: below, roots: s.roots.Len(), unloaded: s.unloaded.Len(), dropQueue: s.dropQueue.Len(), pins: len(s.pins)}
 }

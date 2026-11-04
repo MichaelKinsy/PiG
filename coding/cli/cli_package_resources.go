@@ -82,7 +82,7 @@ func (r cliPackageResources) collect(resources []codingagent.ResolvedResource, k
 		if _, ok := r.Infos[resource.Path]; ok {
 			continue
 		}
-		info := codingagent.ResourceSourceInfo{Path: resource.Path, ResourceType: kind, Enabled: true, Source: resource.Metadata.Source, Scope: resource.Metadata.Scope, Origin: resource.Metadata.Origin, BaseDir: resource.Metadata.BaseDir}
+		info := codingagent.ResourceSourceInfo{Path: resource.Path, ResourceType: kind, Enabled: true, Source: resource.Metadata.Source, Scope: resource.Metadata.Scope, Origin: resource.Metadata.Origin, BaseDir: resource.Metadata.BaseDir, ChangelogPath: resource.Metadata.ChangelogPath}
 		if kind == "skills" {
 			info.Source, info.Scope, info.Origin, info.BaseDir = "cli", "temporary", "top-level", ""
 		}

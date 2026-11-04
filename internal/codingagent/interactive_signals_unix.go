@@ -2,8 +2,11 @@
 
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (handleCtrlZ; the resize handler is the pig terminal wiring of the same lifecycle).
+
 import (
 	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -106,8 +109,19 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 				m.tuiInst.Render()
 			}
 		},
-		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		kill:       func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		foreground: func() (bool, error) { return m.foregroundOrExit(tui.StdinInForeground) },
 	}
+}
+
+// foregroundOrExit runs the foreground probe and ends the process through the dead-terminal exit (129) when the probe fails because the terminal went away.
+// pig divergence (D227): the foreground check that Pi's SIGCONT handler lacks.
+func (m *InteractiveMode) foregroundOrExit(probe func() (bool, error)) (bool, error) {
+	foreground, err := probe()
+	if err != nil {
+		m.exitIfDeadTerminal(err)
+	}
+	return foreground, err
 }
 
 // onSuspendContinue owns one signal waiter in the mode's joined background scope. SIGCONT uses backpressured owner dispatch; canceled or failed operations cannot restart a stopped mode.
@@ -124,28 +138,42 @@ func (m *InteractiveMode) onSuspendContinue(onContinue func() error, onCancel fu
 	signal.Notify(continued, syscall.SIGCONT)
 	m.backgroundTasks.Go(func() {
 		defer signal.Stop(continued)
-		select {
-		case <-ctx.Done():
-			onCancel()
-		case <-continued:
-			applied := make(chan struct{})
-			if err := m.postToMain(ctx, func() {
-				defer close(applied)
-				if ctx.Err() != nil {
+		for {
+			select {
+			case <-ctx.Done():
+				onCancel()
+				return
+			case <-continued:
+				applied := make(chan struct{})
+				parked := false
+				if err := m.postToMain(ctx, func() {
+					defer close(applied)
+					if ctx.Err() != nil {
+						onCancel()
+						return
+					}
+					err := onContinue()
+					// pig divergence (D227): a parked continuation keeps the waiter for the SIGCONT that fg sends.
+					if errors.Is(err, errSuspendParked) {
+						parked = true
+						return
+					}
+					if err != nil {
+						m.inputLoopErr = err
+					}
+				}); err != nil {
 					onCancel()
 					return
 				}
-				if err := onContinue(); err != nil {
-					m.inputLoopErr = err
+				select {
+				case <-applied:
+				case <-ctx.Done():
+					onCancel()
+					return
 				}
-			}); err != nil {
-				onCancel()
-				return
-			}
-			select {
-			case <-applied:
-			case <-ctx.Done():
-				onCancel()
+				if !parked {
+					return
+				}
 			}
 		}
 	})

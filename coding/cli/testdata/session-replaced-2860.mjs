@@ -43,6 +43,8 @@ export default function replacedSession2860(pi) {
           }
           await replacedCtx.sendUserMessage("reply with exactly: hello reply");
           log(`idle:${replacedCtx.isIdle()}`);
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          log("yield:ok");
           log(`model:${replacedCtx.model?.id}`);
           log(`conversation:${conversation(replacedCtx.sessionManager)}`);
         },

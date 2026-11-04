@@ -1,3 +1,0 @@
-### Added
-
-- The extension authoring guide now shows how to price what compaction would drop with `findCutPoint`, `sessionEntryToContextMessages` and `estimateTokens`, which the Go (`sdk.FindCutPoint`, `sdk.SessionEntryToContextMessages`, `sdk.EstimateTokens` in the separate `extensions/sdk` module), Rust and Python SDKs export over the entries `getBranch()` returns (`findCutPoint` and `estimateTokens` since 0.5.0, `sessionEntryToContextMessages` since 0.5.2). The Go SDK ships a runnable example whose expected output Pi's own functions produce, and benchmarks that run the helpers over branches of 1k, 10k and 100k entries.

@@ -58,7 +58,7 @@ func createPackageCommandSettings(ctx context.Context, cwd, agentDir string, opt
 		var pathExtensions []extension.Extension
 		if len(configs) > 0 {
 			stageExtensionSDKsAtStartup(ctx, codingagent.ConfigRoot(), os.Stderr, startupSDKLockTimeout)
-			extensions, _, bridge, loadErrors := loadFinalSubprocessExtensions(ctx, cwd, mode.extensionMode(), codingagent.NewModelRegistry(agentDir), configs, nil, nil, loaded, nil)
+			extensions, _, bridge, loadErrors := loadSubprocessExtensionSet(ctx, cwd, mode.extensionMode(), codingagent.NewModelRegistry(agentDir), mergeExtConfigs(configs), nil, nil, loaded, nil)
 			for _, err := range loadErrors {
 				fmt.Fprintln(os.Stderr, chalkYellow(fmt.Sprintf("Warning: %v", err)))
 			}
