@@ -188,16 +188,9 @@ func (g *GraphExtensionRunner) contextActions(ids callbackIDs) extension.Context
 	}
 	if has("getSignal") {
 		actions.GetSignal = func() context.Context {
-			signal, err := runDecoded[*graphSignalState](g, bg(), ids, "getSignal")
-			if err != nil || signal == nil {
-				return nil
-			}
-			if !signal.Aborted {
-				return bg()
-			}
-			ctx, cancel := context.WithCancel(bg())
-			cancel()
-			return ctx
+			return g.signal.read(func() (*graphSignalState, error) {
+				return runDecoded[*graphSignalState](g, bg(), ids, "getSignal")
+			})
 		}
 	}
 	if has("abort") {

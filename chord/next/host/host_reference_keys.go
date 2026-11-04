@@ -34,6 +34,9 @@ type keyHolder interface {
 	keysVersion() int
 	// keysTarget is the object it is bound to; nil while unbound.
 	keysTarget() target
+	// keysInMemory is whether the load of a pin of key of the keyed member has finished, or needs none (its slot, however
+	// the object re-exposes it, holds the key loaded): false when the object is not live, or is not a local one.
+	keysInMemory(member, key string) bool
 }
 
 // keyEntry is one key of one keyed member held by the reference: its source, its users, and the instance pin it follows.
@@ -63,6 +66,20 @@ func newReferenceKeys(holder keyHolder) *referenceKeys { return &referenceKeys{h
 // hold holds key of keyed member: its source once pinned and loaded on the live instance; ctx ends only this caller's
 // wait. release (once, in a section) lets it go with its last holder. It blocks, outside a section: its sections are
 // the lookup and the resumption after the pin loaded.
+//
+// The pin it waits for may leave its instance while it loads (the object failed and went live again): its load then
+// ends without a pin for the key, and the entry follows the pin on the instance it points at now. Pi's `hold` awaits the
+// first pin only, and so returns the entry's source at once, with no value if the new pin has not landed. In Pi's test it
+// has: a new pin whose load has finished when the old pin settles lands before the old pin's waiter resumes
+// (reference-keys.test.ts "the object fails and re-binds meanwhile"). Pins here are tasks, so nothing orders them, and
+// hold waits for the new pin to settle when its load has finished (keysInMemory), which is when Pi's has landed already;
+// it returns the source whichever way that pin settled. A new pin whose load has not finished when the old pin settles is
+// not waited for: Pi's hold has returned by then, with the key's source as it is.
+//
+// Residual: "finished" is the slot's key marked loaded, and the load's end and that mark are a few steps apart. A load
+// that ends within that window before the old pin settles is not yet seen as finished (hold returns at once where Pi's new
+// pin has landed first: PiG fails where Pi succeeds), and one that ends within the window after Pi's old pin settled is
+// seen as finished (hold waits where Pi's has returned: PiG succeeds where Pi fails).
 func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey, error) {
 	loop := k.holder.keysLoop()
 	var entry *keyEntry
@@ -83,16 +100,25 @@ func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey
 			wait = k.pin(entry)
 		}
 	})
-	if wait != nil {
+	for first := true; wait != nil; first = false {
 		result := make(chan error, 1)
 		loop.Run(func() {
 			wait.thenWithContext(ctx, func(_ struct{}, err error) { result <- err })
 		})
 		parking.Park(ctx)
-		if err := <-result; err != nil {
+		// The first pin's failure is the hold's; a later pin's is not (it shows on the key), but ctx still ends the wait.
+		if err := <-result; err != nil && (first || ctx.Err() != nil) {
 			loop.Run(release)
 			return pinnedKey{}, err
 		}
+		waited := wait
+		wait = nil
+		loop.Run(func() {
+			// A pin the entry followed has set entry.pin; one it left leaves the pin of the new instance, in flight.
+			if entry.pin == nil && entry.loading != nil && entry.loading != waited && k.holder.keysInMemory(member, key) {
+				wait = entry.loading
+			}
+		})
 	}
 	return pinnedKey{source: entry.source, release: release}, nil
 }
