@@ -633,7 +633,9 @@ func TestRPCShutdownTriggers(t *testing.T) {
 	t.Run("stdin end during a signal dispose does not interrupt it", func(t *testing.T) {
 		h := newHarness(true)
 		done := disposing(t, h, func() { h.shutdown.signal(syscall.SIGTERM) })
-		h.shutdown.inputEnd()
+		if h.shutdown.inputEnd() {
+			t.Fatal("stdin end claimed the process while a signal's shutdown was running")
+		}
 		expect(t, h)
 		close(h.release)
 		<-done

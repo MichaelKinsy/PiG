@@ -884,8 +884,11 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		case <-shutdown.Started():
 		case <-ctx.Done():
 		}
-		if ctx.Err() == nil {
-			shutdown.inputEnd()
+		if ctx.Err() == nil && !shutdown.inputEnd() {
+			// pig divergence (D231): a shutdown that another trigger started goes on and ends the process; returning would end it under the dispose. A drained event loop (host.drain) still ends it.
+			<-ctx.Done()
+			inputDone <- nil
+			return
 		}
 		inputDone <- err
 	}()

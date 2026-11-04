@@ -79,14 +79,16 @@ func (s *rpcShutdown) drained() { s.flushAndExit(false, 0) }
 // Started returns a channel closed when a trigger has started shutdown.
 func (s *rpcShutdown) Started() <-chan struct{} { return s.startedCh }
 
-// inputEnd handles stdin end. After shutdown started it does nothing: the started dispose finishes and exits (D231).
-func (s *rpcShutdown) inputEnd() {
+// inputEnd handles stdin end. After shutdown started it does nothing: the started dispose finishes and exits (D231). It reports false in that case, so the caller leaves the process to that shutdown's exit.
+func (s *rpcShutdown) inputEnd() bool {
 	if s.settle != nil && !s.settle() {
-		return
+		return true
 	}
 	if s.begin() {
 		s.flushAndExit(true, 0)
+		return true
 	}
+	return false
 }
 
 // requested handles an extension's ctx.shutdown() once the gate's check passes. After shutdown started it does nothing (D231).
