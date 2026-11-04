@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `1032` PORT_MAP entries and `837` parity scenarios.
+Generated from `1032` PORT_MAP entries and `838` parity scenarios.
 
 ## Status
 

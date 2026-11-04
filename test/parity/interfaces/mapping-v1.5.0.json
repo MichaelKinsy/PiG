@@ -216718,7 +216718,7 @@
       "evidence": [
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches"
+        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel"
       ]
     },
     {
@@ -216740,7 +216740,7 @@
       "evidence": [
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches"
+        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel"
       ]
     },
     {
@@ -216893,6 +216893,7 @@
       ],
       "evidence": [
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
+        "test:tui/chalk_modifiers_test.go#TestChalkModifiersOffDrawNoMarkdownStyles",
         "test:tui/theme_attribute_helpers_test.go#TestThemeTextAttributeHelpers"
       ]
     },
@@ -216914,6 +216915,7 @@
       ],
       "evidence": [
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
+        "test:tui/chalk_modifiers_test.go#TestChalkModifiersOffDrawNoMarkdownStyles",
         "test:tui/theme_attribute_helpers_test.go#TestThemeTextAttributeHelpers"
       ]
     },
@@ -289615,8 +289617,8 @@
       ],
       "evidence": [
         "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
-        "test:tui/markdown_blockquote_style_test.go#TestMarkdownBlockquoteDefaultStyleMatchesUpstreamBytes",
-        "test:tui/markdown_blockquote_style_test.go#TestMarkdownEmphasisAndSetextMatchUpstreamBytes"
+        "test:tui/chalk_modifiers_test.go#TestChalkModifiersOffDrawNoMarkdownStyles",
+        "test:tui/markdown_blockquote_style_test.go#TestMarkdownBlockquoteDefaultStyleMatchesUpstreamBytes"
       ]
     },
     {
@@ -303201,6 +303203,7 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches",
         "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchMatchStyles"
       ]
@@ -303222,6 +303225,7 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches",
         "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchMatchStyles"
       ]
@@ -303243,6 +303247,7 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches",
         "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchButtonsNavigateAndHover"
       ]
