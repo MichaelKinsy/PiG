@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands of lane S3 (see def-fixture in fixture.lisp): builtin_probe, the built-in tool delegation of testdata/python-sdk-fixture/main.py
+;;; the probe commands of this file (see def-fixture in fixture.lisp): builtin_probe, the built-in tool delegation of testdata/python-sdk-fixture/main.py
 ;;; (TestConformance_BuiltinToolDelegationAcrossSDKs and the override rows).
 
 (defun bp-yes (x) (if x t :false))

@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane M: the event stream (against the vectors of Pi's own pi-ai) and the model calls against the fake host.
+;;;; The event stream (against the vectors of Pi's own pi-ai) and the model calls against the fake host.
 (in-package #:pig-tests)
 
 ;;; ---------------------------------------------------------------- the event stream

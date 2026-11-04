@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane U2 (see def-fixture in fixture.lisp)
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp)
 
 ;;; ---- editor components (editor_component_test.go, editor_component_members_test.go, editor_getter_test.go)
 

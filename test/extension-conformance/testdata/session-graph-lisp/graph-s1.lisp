@@ -1,5 +1,5 @@
 (in-package "session-graph")
-;;; child_handles, agent_session_runtime (lane S1): the scripts of session_graph_python.py.
+;;; child_handles, agent_session_runtime: the scripts of session_graph_python.py.
 
 (defun s1-error-text (fn)
   (handler-case (progn (funcall fn) "no error")

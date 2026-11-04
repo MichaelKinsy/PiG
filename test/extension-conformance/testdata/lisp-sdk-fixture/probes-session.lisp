@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane S1 (see def-fixture in fixture.lisp)
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp)
 
 (def-fixture "session_actions_unbound" (ext)
   (pig:command ext "session_actions_unbound" "Report what unbound session actions answer"

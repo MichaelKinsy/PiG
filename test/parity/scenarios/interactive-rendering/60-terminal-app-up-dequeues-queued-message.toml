@@ -12,7 +12,7 @@
 # "Steering:" row and, after the tool, sends the message (test-faux answers "test-faux: unhandled request"); PiG shows
 # "Restored 1 queued message to editor" and sends nothing. Alt+Up bytes already match Pi in scenario 58.
 
-# Upstream evidence (Pi 1.5.0 source build f9a26365 oracle, parity harness on xd670 in tern-ci:v7, 2026-11-02, 100x35 tmux, test-faux,
+# Upstream evidence (Pi 1.5.0 source build f9a26365 oracle, parity harness on a Linux amd64 host in the CI image, 2026-11-02, 100x35 tmux, test-faux,
 # TERM_PROGRAM=Apple_Terminal): "Run: tui live tool pause" (a 10 s bash tool), wait LIVE-TOOL-08, "queued steer text" Enter, hex 1b 5b 41,
 # 18 BSpace, wait for the tool to end. Pi: the text is recalled into the editor, the Steering row stays, the editor is emptied, and when the
 # tool ends the pane shows `Error: test-faux: unhandled request "queued steer text"`: the message was sent. PiG: "Restored 1 queued message

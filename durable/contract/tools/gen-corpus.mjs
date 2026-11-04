@@ -76,20 +76,20 @@ const U = {
 	"harness-context-range": "loop", "harness-group-commit": "session", "harness-idle-scopes": "session", "search": "loop", "session-cached-storage": "session",
 	"session-conversation-tails": "session", "session-group-commit": "session", "store-storage-commit": "store", "tool-args-typebox": "loop",
 }
-// Sources that gained, after Pi 5f312dac, what lane D-store of the follow ports (Durable on Chord's store and the registry: 14b4c56e,
-// 6eb99ad6). The row is pending, with the lane in its reason, until that lane lands: the candidates cannot pass it, and a row that
-// reports the lane's work as `ready` would fail every candidate for the wrong reason.
-const laneDStore = what => `pending lane D-store (Durable on Chord's store, registries): ${what}`
+// Sources that gained, after Pi 5f312dac, what the follow's Durable port on Chord's store and the registry covers (14b4c56e,
+// 6eb99ad6). The row is pending until that port lands: the candidates cannot pass it, and a row that
+// reports the port's work as `ready` would fail every candidate for the wrong reason.
+const pendingDStore = what => `pending Durable on Chord's store and registries: ${what}`
 const LATER = {
-	"35-durable-on-the-store": laneDStore("a Harness on StoreStorage over Chord's store (14b4c56e)"),
-	"36-durable-views": laneDStore("Durable views on Chord's store (14b4c56e)"),
-	"37-harness-registry": laneDStore("a Harness over a registry and host.root (6eb99ad6)"),
-	"harness-registry-reader": laneDStore("the registry reader (6eb99ad6)"),
-	"store-storage": laneDStore("StoreStorage, Durable's storage on Chord's store (14b4c56e)"),
-	"store-storage-commit": laneDStore("StoreStorage.commit over ChordStore.commitSeries (14b4c56e)"),
-	"harness-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
-	"session-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
-	"SC": laneDStore("it refuses a creation and a change of one document in one commit (14b4c56e)"),
+	"35-durable-on-the-store": pendingDStore("a Harness on StoreStorage over Chord's store (14b4c56e)"),
+	"36-durable-views": pendingDStore("Durable views on Chord's store (14b4c56e)"),
+	"37-harness-registry": pendingDStore("a Harness over a registry and host.root (6eb99ad6)"),
+	"harness-registry-reader": pendingDStore("the registry reader (6eb99ad6)"),
+	"store-storage": pendingDStore("StoreStorage, Durable's storage on Chord's store (14b4c56e)"),
+	"store-storage-commit": pendingDStore("StoreStorage.commit over ChordStore.commitSeries (14b4c56e)"),
+	"harness-observers": pendingDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
+	"session-observers": pendingDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
+	"SC": pendingDStore("it refuses a creation and a change of one document in one commit (14b4c56e)"),
 }
 const out = []
 const emit = (...lines) => out.push(...lines, "")

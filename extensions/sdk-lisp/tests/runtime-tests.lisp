@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Unit tests of lane S3 (model runtime, create-provider, extension runner and factories, MCP options, event bus, built-in tools) against the
+;;;; Unit tests of the model runtime, create-provider, extension runner and factories, MCP options, event bus, built-in tools against the
 ;;;; in-process fake host. The values of the session-graph conformance rows (test/extension-conformance, Pi's own tables) are the reference for behavior;
 ;;;; the fixtures under test/extension-conformance/testdata/ reach every export, test/parity/sdk-vectors/ holds the pure vectors.
 (in-package #:pig-tests)

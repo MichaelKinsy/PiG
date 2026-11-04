@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane U1: the component kit, ui.custom, overlays, widgets, footer, header, theme. The fake host is sdk-tests.lisp's.
+;;;; The component kit, ui.custom, overlays, widgets, footer, header, theme. The fake host is sdk-tests.lisp's.
 (in-package #:pig-tests)
 
 (defun kt-canon (value)

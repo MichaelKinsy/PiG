@@ -26,8 +26,8 @@ func base() map[string]string {
 		"active-intro.md": "intro\n",
 		"D2.md":           "## D2 two\nbody\n\nSCRUTINIZED:approved\n",
 		"D10.md":          "## D10 ten\nbody\n",
-		"D9.md":           "- D9 — Retired. Why.\n",
-		"D3.md":           "- D3 — Retired earlier. Why.\n",
+		"D9.md":           "- D9: Retired. Why.\n",
+		"D3.md":           "- D3: Retired earlier. Why.\n",
 	}
 }
 
@@ -36,7 +36,7 @@ func TestGenerateOrdersRecordsNumericallyAndSeparatesRetired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# T\n\nrules\n\n## Retired divergences\n\n- D3 — Retired earlier. Why.\n\n- D9 — Retired. Why.\n\n## Active divergences\n\nintro\n" +
+	want := "# T\n\nrules\n\n## Retired divergences\n\n- D3: Retired earlier. Why.\n\n- D9: Retired. Why.\n\n## Active divergences\n\nintro\n" +
 		"\n## D2 two\nbody\n\nSCRUTINIZED:approved\n\n## D10 ten\nbody\n"
 	if string(got) != want {
 		t.Fatalf("generated:\n%s\nwant:\n%s", got, want)
@@ -51,7 +51,7 @@ func TestGenerateRejectsARecordThatIsNotItsFile(t *testing.T) {
 		"heading of another number":       {func(f map[string]string) { f["D2.md"] = "## D3 three\n" }, "starts with the heading of D3"},
 		"two records in one file":         {func(f map[string]string) { f["D2.md"] += "\n## D4 four\n" }, "second level-two heading"},
 		"retired spanning lines":          {func(f map[string]string) { f["D9.md"] += "more\n" }, "one line"},
-		"retired entry of another number": {func(f map[string]string) { f["D9.md"] = "- D4 — Retired. Why.\n" }, "starts with the entry of D4"},
+		"retired entry of another number": {func(f map[string]string) { f["D9.md"] = "- D4: Retired. Why.\n" }, "starts with the entry of D4"},
 		"stray file":                      {func(f map[string]string) { f["notes.md"] = "x" }, "not head.md"},
 		"no heading":                      {func(f map[string]string) { f["D2.md"] = "body\n" }, "must start with"},
 		"missing head":                    {func(f map[string]string) { delete(f, "head.md") }, "needs head.md"},

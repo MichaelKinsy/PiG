@@ -152,7 +152,7 @@ func readFrag(t *testing.T, path string) (name, html string) {
 
 var (
 	dHeading = regexp.MustCompile(`(?m)^## D(\d+)\b`)
-	dRetired = regexp.MustCompile("(?m)^- D(\\d+) \u2014 ")
+	dRetired = regexp.MustCompile(`(?m)^- D(\d+): `)
 	idAttr   = regexp.MustCompile(`<details class="(?:dv|bg)" id="([^"]+)"`)
 )
 
