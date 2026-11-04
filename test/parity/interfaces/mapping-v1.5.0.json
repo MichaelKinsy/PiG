@@ -263303,7 +263303,7 @@
       "evidence": [
         "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
         "test:mcp/review_regression_test.go#TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody",
-        "test:mcp/review_regression_test.go#TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody"
+        "test:mcp/review_regression_test.go#TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody"
       ]
     },
     {
@@ -264813,7 +264813,7 @@
       "evidence": [
         "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
         "test:mcp/review_regression_test.go#TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody",
-        "test:mcp/review_regression_test.go#TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody"
+        "test:mcp/review_regression_test.go#TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody"
       ]
     },
     {
@@ -265060,7 +265060,7 @@
       "evidence": [
         "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
         "test:mcp/review_regression_test.go#TestStreamableHTTPTransportDropsALeadingBOMFromAnErrorBody",
-        "test:mcp/review_regression_test.go#TestStreamableHTTPTransportKeepsMaxErrorBodyUTF16UnitsOfAnErrorBody"
+        "test:mcp/review_regression_test.go#TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody"
       ]
     },
     {
