@@ -134,10 +134,12 @@ func execCases() []execCase {
 		// machine. A `sleep 0.05` writes 50 ms after the sleep started, and starting it on macOS can take longer than the whole grace, so
 		// whichever daemon ran into that lost the line: Pi's in one run, PiG's in the next.
 		{name: "descendant writes after exit", request: sh("(while kill -0 $$ 2>/dev/null; do :; done; echo late) & echo early")},
-		{name: "timeout", request: sh("echo before; sleep 30", "timeoutMs", 300)},
-		{name: "timeout with spill", request: sh("echo before; sleep 30", "timeoutMs", 300, "spill", object("afterBytes", 1, "afterLines", 100))},
-		{name: "timeout of zero", request: sh("sleep 30", "timeoutMs", 0)},
-		{name: "fractional timeout", request: sh("sleep 30", "timeoutMs", 150.5)},
+		// A command the daemon kills execs its sleep. With bash waiting on a child, bash's report of the child's death ("Killed: 9")
+		// races bash's own SIGKILL on macOS, where kill(-pgid) signals one member at a time, and either daemon could show the line.
+		{name: "timeout", request: sh("echo before; exec sleep 30", "timeoutMs", 300)},
+		{name: "timeout with spill", request: sh("echo before; exec sleep 30", "timeoutMs", 300, "spill", object("afterBytes", 1, "afterLines", 100))},
+		{name: "timeout of zero", request: sh("exec sleep 30", "timeoutMs", 0)},
+		{name: "fractional timeout", request: sh("exec sleep 30", "timeoutMs", 150.5)},
 		{name: "timeout above what Node can arm", request: sh("echo quick", "timeoutMs", 3e9)},
 		{name: "timeout not reached", request: sh("echo quick", "timeoutMs", 20000)},
 		{name: "spill by bytes", request: sh("printf 0123456789abcdef", "spill", object("afterBytes", 10, "afterLines", 100))},
@@ -196,7 +198,8 @@ func TestDaemonExecCancelMatchesPisDaemon(t *testing.T) {
 	for _, mode := range []string{"", "abort", "kill"} {
 		t.Run("mode "+mode, func(t *testing.T) {
 			pi, pig := runOnBoth(t, nil, func(d *wireDaemon, root string) string {
-				id := d.start(object("op", "exec", "cwd", root, "command", "echo started; sleep 30", "spill", object("afterBytes", 1, "afterLines", 100)), nil)
+				// The sleep is exec'd as in the timeout cases of execCases.
+				id := d.start(object("op", "exec", "cwd", root, "command", "echo started; exec sleep 30", "spill", object("afterBytes", 1, "afterLines", 100)), nil)
 				// The output proves the command runs, so the cancel reaches a live process.
 				var frames []*daemon.Frame
 				for {
