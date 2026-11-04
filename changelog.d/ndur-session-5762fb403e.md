@@ -1,3 +1,0 @@
-### Changed
-
-- A Session now group commits: commits admitted while a storage call is in flight are stored as one `Storage.Commit` call, each with its own seq, and published in line order, one part per hop. A commit's callback can run while an earlier commit is being stored; at its first read of what an unpublished commit wrote it waits for that commit's publication. A commit returns once it is stored and published, and outcomes are delivered in line order. `Session.ReadOnLine` and `ReadWithTicket` take the job as `func(storage durable.Storage)`, which reads through a view that waits for what the line admitted before. Commit observers run at the commit's publication, not inside Storage's adopt.
