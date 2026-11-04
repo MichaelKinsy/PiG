@@ -13,9 +13,9 @@ import (
 // freshEnding gives a test its own process-wide ending record and restores the previous one.
 func freshEnding(t *testing.T) {
 	t.Helper()
-	saved, savedWrite := ending, recordExit
+	saved := ending
 	ending = newProcessEnding()
-	t.Cleanup(func() { ending, recordExit = saved, savedWrite })
+	t.Cleanup(func() { ending = saved })
 }
 
 func exitLogLines(agentDir string) []string {
@@ -55,20 +55,13 @@ func TestRecordEndingLeavesOneLineForConcurrentEndings(t *testing.T) {
 	}
 }
 
-// holdOwner starts the owner of the record and holds it inside the write until release is called. recordExit blocks on a
+// holdOwner starts the owner of the record and holds it before its write until release is called. The owner blocks on a
 // channel, which a synctest bubble sees as durably blocked, so the checks that follow do not depend on scheduling.
-func holdOwner(t *testing.T, agentDir string) (release func()) {
-	t.Helper()
+func holdOwner(agentDir string) (release func()) {
 	gate := make(chan struct{})
-	inWrite := make(chan struct{})
-	write := recordExit
-	recordExit = func(dir, reason string) {
-		close(inWrite)
-		<-gate
-		write(dir, reason)
-	}
+	ending.hold = gate
 	go RecordEnding(agentDir, "owner")
-	<-inWrite
+	synctest.Wait()
 	return func() { close(gate) }
 }
 
@@ -78,7 +71,7 @@ func TestRecordEndingLoserBlocksUntilTheOwnersLineIsOnDisk(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		freshEnding(t)
 		agentDir := t.TempDir()
-		release := holdOwner(t, agentDir)
+		release := holdOwner(agentDir)
 		var loserWon, returned bool
 		var linesAtReturn int
 		var loser sync.WaitGroup
@@ -109,7 +102,7 @@ func TestBeforeExitWaitsForTheLineInFlight(t *testing.T) {
 		if time.Since(began) != 0 {
 			t.Fatal("BeforeExit waited with no ending in flight")
 		}
-		release := holdOwner(t, agentDir)
+		release := holdOwner(agentDir)
 		var returned bool
 		var waiter sync.WaitGroup
 		waiter.Go(func() {
@@ -146,11 +139,7 @@ func waitParked(n int) {
 // release that lets it finish. The child test then drives a second ending while the first is in flight.
 func emergencyChildHolding(m *InteractiveMode) (release func()) {
 	gate := make(chan struct{})
-	write := recordExit
-	recordExit = func(dir, reason string) {
-		<-gate
-		write(dir, reason)
-	}
+	ending.hold = gate
 	go m.emergencyTerminalExit("terminal gone: write /dev/stdout: input/output error")
 	for !emergencyExiting.Load() || !ending.claimed() {
 		runtime.Gosched()
