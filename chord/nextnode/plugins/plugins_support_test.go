@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,6 +24,47 @@ const fixtures = "testdata/plugins"
 // kinds are the facet kinds of the fixtures' app.
 var kinds = []string{"server", "worker", "web"}
 
+// copied are the directories tempRoot filled, by test, that the test has written no entry to since: Windows reports each one's
+// last-write time as a change of it at a moment no test can bound (see withoutDirectoryStamps), so a plugin of that name may be
+// marked dirty though the test edited nothing in it.
+var copied = struct {
+	sync.Mutex
+	dirs map[*testing.T]map[string]struct{}
+}{dirs: map[*testing.T]map[string]struct{}{}}
+
+func copiedDirs(t *testing.T) map[string]struct{} {
+	if _, ok := copied.dirs[t]; !ok {
+		copied.dirs[t] = map[string]struct{}{}
+		t.Cleanup(func() {
+			copied.Lock()
+			defer copied.Unlock()
+			delete(copied.dirs, t)
+		})
+	}
+	return copied.dirs[t]
+}
+
+// withoutCopyStamps is marks without what Windows adds for the directories tempRoot filled and the test did not write to: the
+// set and the dirty plugins of those directories (a plugin is named as its directory is, after the last "/").
+func withoutCopyStamps(t *testing.T, marks PluginsState) PluginsState {
+	copied.Lock()
+	defer copied.Unlock()
+	dirs := copied.dirs[t]
+	if len(dirs) == 0 {
+		return marks
+	}
+	marks.Set = false
+	marks.Dirty = slices.DeleteFunc(slices.Clone(marks.Dirty), func(name string) bool {
+		_, dir, ok := strings.Cut(name, "/")
+		if !ok {
+			dir = name
+		}
+		_, stamped := dirs[dir]
+		return stamped
+	})
+	return marks
+}
+
 // tempRoot is a temporary directory removed after the test, with fixture plugins (names of directories of testdata) copied
 // into it.
 func tempRoot(t *testing.T, names ...string) string {
@@ -32,6 +74,9 @@ func tempRoot(t *testing.T, names ...string) string {
 		if err := os.CopyFS(filepath.Join(root, name), os.DirFS(filepath.Join(fixtures, name))); err != nil {
 			t.Fatal(err)
 		}
+		copied.Lock()
+		copiedDirs(t)[name] = struct{}{}
+		copied.Unlock()
 	}
 	return root
 }
@@ -39,6 +84,9 @@ func tempRoot(t *testing.T, names ...string) string {
 // writeFiles writes files (relative path to text) into dir, creating directories.
 func writeFiles(t *testing.T, dir string, files map[string]string) {
 	t.Helper()
+	copied.Lock()
+	delete(copied.dirs[t], filepath.Base(dir))
+	copied.Unlock()
 	for path, text := range files {
 		full := filepath.Join(dir, path)
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
