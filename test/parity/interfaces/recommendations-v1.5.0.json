@@ -168091,7 +168091,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/piglet/internal/genstripids#table",
-        "go:github.com/MichaelKinsy/PiG/tui#markdownBlockSource.table"
+        "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.table"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -396890,7 +396890,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "21 normalized-name Pig candidates are ambiguous."
+        "22 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -396920,7 +396920,8 @@
         "go:github.com/MichaelKinsy/PiG/tui#Editor.Text",
         "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.Text",
         "go:github.com/MichaelKinsy/PiG/tui#Text",
-        "go:github.com/MichaelKinsy/PiG/tui#TextInput.Text"
+        "go:github.com/MichaelKinsy/PiG/tui#TextInput.Text",
+        "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.text"
       ],
       "missingClosure": [
         "candidate-disambiguation",
