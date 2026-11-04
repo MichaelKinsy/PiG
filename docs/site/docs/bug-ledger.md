@@ -58,7 +58,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | Unreleased |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-0a036c9](#bf-0a036c9) | fix(tui): fullscreen search and MCP manager styles follow chalk's color level | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a51e9d](#bf-0a51e9d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-0aa31c4](#bf-0aa31c4) | Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -2127,19 +2126,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38b0f0c036` (2026-10-05), `098e33da91` (2026-10-06), `70d13f2863` (2026-10-06)
 - **Tests:** `extensions/sdk/surface_parity_test.go::TestHasUIAndUIThemeFollowReplicatedState`, `extensions/sdk/ui_theme_style_test.go::TestUIThemeFgAndBgPanicForAnUnknownToken`, `test/extension-conformance/theme_test.go::TestThemeFaintForegroundAcrossSDKs`, `tui/highlight_test.go::TestCliHighlightThemeColorsSubstitutionsWithTheTextColor`, `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor`, `tui/theme_unknown_token_test.go::TestThemeTextAttributeMethodsWrapInChalkPairs` and 1 more in docs/bug-ledger.json
 - **Release note:** Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.
-
-### BF-0a036c9
-
-**fix(tui): fullscreen search and MCP manager styles follow chalk's color level**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(tui): fullscreen search and MCP manager styles follow chalk's color level
-- **Root cause:** Pi draws the fullscreen search styles (tui-renderer.ts:27-29) and the MCP manager title (mcp/ui.ts:61) through theme.underline, theme.bold and theme.inverse, chalk calls that draw nothing at color level 0. PiG hard-coded the SGR codes at both sites.
-- **User impact:** Wrong display
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `0a036c9a15` (2026-11-03)
-- **Tests:** `coding/mcpext/manager_chalk_test.go::TestManagerTitleBoldFollowsChalkLevel`, `internal/codingagent/fullscreen_search_test.go::TestFullscreenTuiOptionsSearchStylesFollowChalkLevel`, `test/parity/scenarios/interactive-rendering/62-chalk-level-zero-modifiers.toml`
 
 ### BF-0a3e8ce
 
