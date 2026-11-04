@@ -462,7 +462,12 @@ test-race-nightly: ## Whole-package -race and goroutine-leak gate (nightly)
 fuzz-nightly: ## Run every Fuzz target for PIG_FUZZ_TIME, default 30s (nightly)
 	@./automation/ci/fuzz-nightly.sh
 
-.PHONY: test-race-nightly fuzz-nightly
+# The fast tier runs a covering subset of each sweep that sends every combination of inputs and options through Pi's own code; this runs the full
+# product. Pi resizes an image in a new worker thread per call, so the full PNG sweep (7952 cases) takes 150 s on 4 CPUs, 97% of it in Pi.
+test-oracle-sweeps-nightly: ## Full Pi-oracle sweeps that the fast tier runs as covering subsets (nightly)
+	@PIG_IMAGE_ORACLE_SWEEP=full go test -count=1 -timeout 30m -run '^TestProcessImagePNGMatchesPi$$' ./internal/imageprocessing
+
+.PHONY: test-race-nightly fuzz-nightly test-oracle-sweeps-nightly
 
 # go-fix-clean enforces AGENTS.md rule #3 (Go 1.27 idiom compliance).
 # `go fix -diff ./...` must produce zero output. If this target fails,

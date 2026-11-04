@@ -60,12 +60,107 @@ func decimal(n int) string {
 	return string(digits)
 }
 
+// imageSweepEnv selects the extent of the PNG sweep: "full" runs every input under every declared type and limit, as the nightly workflow does
+// (make test-oracle-sweeps-nightly); anything else runs the covering subset below.
+const imageSweepEnv = "PIG_IMAGE_ORACLE_SWEEP"
+
+// pngDeclaredTypes are the types a PNG file is declared under: its own, the other inline types, types Pi converts from, and none.
+var pngDeclaredTypes = []string{"image/png", "image/x-icon", "", "application/octet-stream", "image/jpeg; q=1", "image/gif", "image/webp"}
+
+// pngDeclaredTypeInputs are the inputs the covering subset runs under every declared type, with and without resizing and under both limits: an
+// 8-bit true colour image and three damaged copies of it, an interlaced palette image, a 16-bit image with alpha, a one-bit grey image with a
+// byte changed, an image over the default limit, a 150x103 image (its second side is a fraction when it is resized to 16), and a file with
+// a damaged zlib stream.
+var pngDeclaredTypeInputs = []string{
+	"pngsuite/basn2c08.png", "pngsuite/basn2c08.png-cut-70", "pngsuite/basn2c08.png-flipped-middle", "pngsuite/basn2c08.png-bad-crc-after-ihdr",
+	"pngsuite/basi3p04.png", "image-rs/16bpc-basn6a16.png", "pngsuite/basn0g01.png-flipped-middle",
+	"image-rs/bugfixes-debug_triangle_corners_widescreen.png", "go/image-video-001.png", "go/invalid-zlib.png",
+}
+
+// pngCoverageKey is what a PNG input adds to the covering subset: its colour type, bit depth and interlacing from the header, the size class
+// against the limits the sweep uses (16 and 2000), whether it is square (a resize of any other shape rounds the second side), and the damage the
+// input carries. Two inputs with the same key take the same branches of
+// the pipeline, so the first of them stands for the rest.
+func pngCoverageKey(in namedImage) string {
+	damage := "intact"
+	switch {
+	case strings.HasSuffix(in.name, "-cut-70"):
+		damage = "cut-in-header"
+	case strings.Contains(in.name, "-cut-"):
+		damage = "cut-in-data"
+	case strings.HasSuffix(in.name, "-flipped-middle"):
+		damage = "flipped"
+	case strings.HasSuffix(in.name, "-bad-crc-after-ihdr"):
+		damage = "bad-crc"
+	case strings.Contains(in.name, "/invalid-"):
+		damage = "invalid"
+	}
+	if len(in.data) < 29 {
+		return damage + " no-header"
+	}
+	width, height := binary.BigEndian.Uint32(in.data[16:]), binary.BigEndian.Uint32(in.data[20:])
+	size := "tiny"
+	if side := max(width, height); side > 2000 {
+		size = "over-default-limit"
+	} else if side > 16 {
+		size = "over-16"
+	}
+	shape := "square"
+	if width > height {
+		shape = "landscape"
+	} else if width < height {
+		shape = "portrait"
+	}
+	return damage + " " + size + " " + shape + " depth " + decimal(int(in.data[24])) + " type " + decimal(int(in.data[25])) + " interlace " + decimal(int(in.data[28]))
+}
+
+// pngSweep is the covering subset of the sweep: each of the inputs of pngDeclaredTypeInputs under every declared type, and the first input of
+// each pngCoverageKey under the PNG type, resized by default and to 16 and left alone, and as a type Pi converts from, resized by default and
+// left alone. Pi's cost is its resizing calls, so these are a tenth of the full sweep's.
+func pngSweep(t *testing.T, inputs []namedImage) oracleSweep {
+	t.Helper()
+	var sweep oracleSweep
+	byName := make(map[string]namedImage, len(inputs))
+	for _, in := range inputs {
+		byName[in.name] = in
+	}
+	for _, name := range pngDeclaredTypeInputs {
+		in, ok := byName[name]
+		if !ok {
+			t.Fatalf("the covering subset names %s, which the corpus does not have", name)
+		}
+		sweep.addProduct(in, pngDeclaredTypes)
+	}
+	seen := map[string]bool{}
+	for _, in := range inputs {
+		key := pngCoverageKey(in)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		sweep.add(in, "image/png", true, 0)
+		sweep.add(in, "image/png", true, 16)
+		sweep.add(in, "image/png", false, 0)
+		sweep.add(in, "image/x-icon", true, 0)
+		sweep.add(in, "image/x-icon", false, 0)
+	}
+	return sweep
+}
+
 // TestProcessImagePNGMatchesPi runs image-process.ts processImage and PiG's ProcessImage over PNG files under declared types of their own, of the
 // other inline types and of none: Pi hands PNG bytes to Photon's `new_from_byteslice` through resize or through convertImageBytesToPng, and
 // Photon's png crate decodes or refuses them (bad checksums, truncated data, damaged zlib streams). Whether an image is returned, its type, the
-// hints, the omission message and every returned byte must be Pi's.
+// hints, the omission message and every returned byte must be Pi's. Photon's decoder itself is compared on every file by
+// photonimage.TestDecodePNGMatchesPhoton, so this test sweeps the pipeline around it. Each run takes the covering subset of pngSweep; with
+// PIG_IMAGE_ORACLE_SWEEP=full it takes every input under every declared type, which is 7952 cases and 150 s on 4 CPUs, of which Pi's resizing
+// is 97%: the nightly workflow runs that.
 func TestProcessImagePNGMatchesPi(t *testing.T) {
-	compareProcessImageWithPi(t, pngOracleInputs(t), []string{"image/png", "image/x-icon", "", "application/octet-stream", "image/jpeg; q=1", "image/gif", "image/webp"})
+	inputs := pngOracleInputs(t)
+	if os.Getenv(imageSweepEnv) == "full" {
+		compareProcessImageWithPi(t, inputs, pngDeclaredTypes)
+		return
+	}
+	compareProcessImageCasesWithPi(t, pngSweep(t, inputs))
 }
 
 // TestProcessImageWithNoPixelsMatchesPi: an image with a width or a height of zero, from farbfeld and from an interlaced GIF. Photon decodes it

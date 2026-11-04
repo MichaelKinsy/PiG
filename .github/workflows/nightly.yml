@@ -2,7 +2,8 @@
 name: Nightly race, fuzz and allocation ratchet
 
 # Whole-package -race on the packages that own concurrency, on Linux and on macOS (darwin/arm64), and every Fuzz
-# target for 30 seconds. Pull requests run only the narrow race regressions of make test-race; these runs are too long
+# target for 30 seconds, and the full products of the oracle sweeps whose covering subsets the fast tier runs (make test-oracle-sweeps-nightly).
+# Pull requests run only the narrow race regressions of make test-race; these runs are too long
 # for every change. The allocation job runs every benchmark of the hot packages once and compares allocs/op with
 # automation/ci/allocbase/baseline.toml (make alloc-baseline).
 on:
@@ -114,6 +115,27 @@ jobs:
           name: fuzz-failures-${{ github.sha }}
           path: '**/testdata/fuzz/**'
           if-no-files-found: ignore
+
+  oracle-sweeps:
+    name: Oracle sweeps / full products
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      # internal/pioracle runs Pi's vendored modules in Node, so the job needs the pinned Node and nothing else.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Run the full oracle sweeps
+        env:
+          CI: '1'
+        run: make test-oracle-sweeps-nightly
 
   allocations:
     name: Allocation ratchet / allocs per op
