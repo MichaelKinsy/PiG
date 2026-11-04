@@ -70,6 +70,18 @@ func TestExitRecordChild(t *testing.T) {
 	case "dead-terminal":
 		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9", TerminateExtensionProcesses: terminatedSentinel(agentDir)})
 		m.emergencyTerminalExit("terminal gone: read /dev/tty: input/output error")
+	case "dead-terminal-concurrent":
+		// The input reader, a failed terminal write and a crash on the dead terminal reach the emergency exit together.
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+		for i := range 8 {
+			go m.emergencyTerminalExit(fmt.Sprintf("terminal gone: path %d", i))
+		}
+		select {}
+	case "dead-terminal-after-signal":
+		// The signal goroutine already owns the line when the dead terminal's exit arrives.
+		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: agentDir, AppVersion: "9.9.9"})
+		RecordEnding(agentDir, "received SIGHUP")
+		m.emergencyTerminalExit("terminal gone: EOF (hung up)")
 	case "dead-terminal-off-loop":
 		// A goroutine fails because the terminal is gone: Pi's uncaughtCrash takes emergencyTerminalExit, which kills the
 		// detached children.

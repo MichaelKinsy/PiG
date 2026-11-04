@@ -480,7 +480,7 @@ func (m *InteractiveMode) handleInterruptSignal() {
 		return
 	}
 	// pig additive (D102): Pi dies on SIGINT with no trace.
-	RecordExit(m.opts.AgentDir, "received SIGINT (exit 130)")
+	RecordEnding(m.opts.AgentDir, "received SIGINT (exit 130)")
 	// pig divergence (D51): restore terminal state before exit 130.
 	done := make(chan struct{})
 	go func() {
