@@ -611,7 +611,7 @@ func TestRPCShutdownTriggers(t *testing.T) {
 	})
 	t.Run("a single signal during a dispose does not interrupt it", func(t *testing.T) {
 		h := newHarness(true)
-		done := disposing(t, h, h.shutdown.inputEnd)
+		done := disposing(t, h, func() { h.shutdown.inputEnd() })
 		if h.shutdown.signal(syscall.SIGTERM) {
 			t.Fatal("the signal started a second shutdown")
 		}
@@ -622,7 +622,7 @@ func TestRPCShutdownTriggers(t *testing.T) {
 	})
 	t.Run("a repeated signal during a dispose exits at once", func(t *testing.T) {
 		h := newHarness(true)
-		done := disposing(t, h, h.shutdown.inputEnd)
+		done := disposing(t, h, func() { h.shutdown.inputEnd() })
 		h.shutdown.repeatedSignal(syscall.SIGTERM)
 		expect(t, h, "exit 143")
 		close(h.release)
@@ -643,7 +643,7 @@ func TestRPCShutdownTriggers(t *testing.T) {
 	})
 	t.Run("a shutdown request during a stdin-end dispose does nothing", func(t *testing.T) {
 		h := newHarness(true)
-		done := disposing(t, h, h.shutdown.inputEnd)
+		done := disposing(t, h, func() { h.shutdown.inputEnd() })
 		h.shutdown.requested()
 		expect(t, h)
 		close(h.release)
