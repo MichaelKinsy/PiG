@@ -21,7 +21,8 @@ const (
 	ProviderOperationClassifiers = "classifiers"
 )
 
-func imagesOptionsWire(o ai.ImagesOptions) map[string]any {
+// encodeImagesOptions is the wire form of the options an image API receives. It carries the caller's API key; the extension receives it as `apiKey`.
+func encodeImagesOptions(o ai.ImagesOptions) map[string]any {
 	values := map[string]any{}
 	if o.APIKey != "" || o.APIKeySet {
 		values["apiKey"] = o.APIKey
@@ -47,7 +48,8 @@ func imagesOptionsWire(o ai.ImagesOptions) map[string]any {
 	return values
 }
 
-func classifierOptionsWire(o ai.ClassifierOptions) map[string]any {
+// encodeClassifierOptions is the wire form of the options a classifier API receives, with the caller's API key as `apiKey`.
+func encodeClassifierOptions(o ai.ClassifierOptions) map[string]any {
 	values := map[string]any{}
 	if o.APIKey != "" || o.APIKeySet {
 		values["apiKey"] = o.APIKey
@@ -83,7 +85,7 @@ func (h *Host) attachProviderOperations(me *managedExt, provider ProviderDecl, c
 		cfg.Images = make(ai.ProviderImageAPIMap, len(provider.ImageAPIs))
 		for _, api := range provider.ImageAPIs {
 			cfg.Images[ai.ImageAPI(api)] = &ai.ProviderImages{GenerateImages: func(ctx context.Context, model *ai.ImageModel, request ai.ImagesContext, options ai.ImagesOptions) (ai.AssistantImages, error) {
-				return remoteOperation[ai.AssistantImages](ctx, me, provider.Name, ProviderOperationImages, api, extension.ModelValue{Model: model}, request, imagesOptionsWire(options))
+				return remoteOperation[ai.AssistantImages](ctx, me, provider.Name, ProviderOperationImages, api, extension.ModelValue{Model: model}, request, encodeImagesOptions(options))
 			}}
 		}
 	}
@@ -91,7 +93,7 @@ func (h *Host) attachProviderOperations(me *managedExt, provider ProviderDecl, c
 		cfg.Classifiers = make(ai.ProviderClassifierMap, len(provider.ClassifierAPIs))
 		for _, api := range provider.ClassifierAPIs {
 			cfg.Classifiers[ai.ClassifierAPI(api)] = &ai.ProviderClassifier{Classify: func(ctx context.Context, model *ai.ClassifierModel, request ai.ClassifierContext, options ai.ClassifierOptions) (ai.ClassifierResult, error) {
-				return remoteOperation[ai.ClassifierResult](ctx, me, provider.Name, ProviderOperationClassifiers, api, extension.ModelValue{Model: model}, request, classifierOptionsWire(options))
+				return remoteOperation[ai.ClassifierResult](ctx, me, provider.Name, ProviderOperationClassifiers, api, extension.ModelValue{Model: model}, request, encodeClassifierOptions(options))
 			}}
 		}
 	}
@@ -123,12 +125,12 @@ func remoteOperation[T any](ctx context.Context, me *managedExt, provider, kind,
 
 // generateImages runs the provider object's generateImages in its extension.
 func (p *nativeProviderProxy) generateImages(ctx context.Context, model *ai.ImageModel, request ai.ImagesContext, options ai.ImagesOptions) (ai.AssistantImages, error) {
-	return nativeObjectValue[ai.AssistantImages](p, ctx, "generateImages", map[string]any{"model": extension.ModelValue{Model: model}, "context": request, "options": imagesOptionsWire(options)}, nil)
+	return nativeObjectValue[ai.AssistantImages](p, ctx, "generateImages", map[string]any{"model": extension.ModelValue{Model: model}, "context": request, "options": encodeImagesOptions(options)}, nil)
 }
 
 // classify runs the provider object's classify in its extension.
 func (p *nativeProviderProxy) classify(ctx context.Context, model *ai.ClassifierModel, request ai.ClassifierContext, options ai.ClassifierOptions) (ai.ClassifierResult, error) {
-	return nativeObjectValue[ai.ClassifierResult](p, ctx, "classify", map[string]any{"model": extension.ModelValue{Model: model}, "context": request, "options": classifierOptionsWire(options)}, nil)
+	return nativeObjectValue[ai.ClassifierResult](p, ctx, "classify", map[string]any{"model": extension.ModelValue{Model: model}, "context": request, "options": encodeClassifierOptions(options)}, nil)
 }
 
 // operations wires the image and classifier methods a provider object declares.

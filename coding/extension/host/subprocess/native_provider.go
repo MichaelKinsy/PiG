@@ -255,7 +255,7 @@ func decodeCallbackValue(raw json.RawMessage, target any) error {
 }
 
 func nativeStreamOptions(o ai.StreamOptions) map[string]any {
-	out := providerOptionsWire(o)
+	out := encodeProviderOptions(o)
 	if o.APIKey == "" {
 		delete(out, "apiKey")
 	}

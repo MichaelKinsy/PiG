@@ -12,7 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
-func providerOptionsWire(o ai.StreamOptions) map[string]any {
+// encodeProviderOptions is the wire form of the options a provider's stream receives. It carries the caller's API key; the extension receives it as `apiKey`.
+func encodeProviderOptions(o ai.StreamOptions) map[string]any {
 	values := map[string]any{"apiKey": o.APIKey}
 	optional := map[string]any{"reasoning": o.Thinking, "reasoningEffort": o.ReasoningEffort, "effort": o.Effort, "thinkingDisplay": o.ThinkingDisplay, "cacheRetention": o.CacheRetention, "sessionId": o.SessionID, "transport": o.Transport}
 	for key, value := range optional {
@@ -108,7 +109,7 @@ func (h *Host) providerStreamCallback(me *managedExt, name string) extension.Pro
 			cancel()
 		}
 		//portlint:allow mapkeyorder the positional arguments of provider.stream(model, context, options) (models.ts:213), which the runtime reads by name; the model object inside keeps Pi's member order
-		args, err := json.Marshal(map[string]any{"model": extension.ModelValue{Model: model}, "context": map[string]any{"messages": transcript.Messages()}, "options": providerOptionsWire(options)})
+		args, err := json.Marshal(map[string]any{"model": extension.ModelValue{Model: model}, "context": map[string]any{"messages": transcript.Messages()}, "options": encodeProviderOptions(options)})
 		if err != nil {
 			fail(err)
 			return stream
