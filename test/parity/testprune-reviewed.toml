@@ -940,3 +940,10 @@ commit = "d4e641bde31d36a083dc85ef274e7d0854b45998"
 class = "DIVERGENCE"
 cite = "D233"
 reason = "D233 ports Pi main 4a8b60bc3 ahead of the 1.5.0 pin: an HTTP error body keeps its first 8192 bytes (MAX_ERROR_BODY_BYTES) instead of the whole decoded body, so the expected error text of the regression test is that excerpt. Pi main checks the same expectations in its readBodyText tests, ported in streamable_http_body_cap_pi_test.go."
+
+[[entry]]
+path = "automation/ci/divsplit/divsplit_test.go"
+commit = "d0d03879fef7f39c73e9b440fa79aa202669a3e5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Release hygiene, no behavior change: the retired-divergence record format is now `- D<N>: text`, so the test fixtures use that format together with the parser change; no Pi behavior is involved."
