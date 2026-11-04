@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 )
 
 // JSONNames returns the member names encoding/json reads and writes for the exported fields of the struct type t, which has no embedded
@@ -41,7 +43,7 @@ func AppendMembers(object []byte, members map[string]json.RawMessage) ([]byte, e
 		return nil, errors.New("orderedjson: value is not an object")
 	}
 	body := bytes.TrimSpace(trimmed[1 : len(trimmed)-1])
-	out := make([]byte, 0, len(trimmed)+len(members)*16)
+	out := make([]byte, 0, allocsize.Add(len(trimmed), allocsize.Mul(len(members), 16)))
 	out = append(out, '{')
 	out = append(out, body...)
 	for _, key := range slices.Sorted(maps.Keys(members)) {

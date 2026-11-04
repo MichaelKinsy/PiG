@@ -9,6 +9,8 @@ import (
 	"errors"
 	"io"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 )
 
 const (
@@ -84,7 +86,7 @@ func (frames *ipcFrames) Write(data []byte) (int, error) {
 	if uint64(len(data)) > uint64(^uint32(0)) {
 		return 0, errors.New("IPC message too large")
 	}
-	frame := make([]byte, ipcFrameHeaderBytes+len(data))
+	frame := make([]byte, allocsize.Add(ipcFrameHeaderBytes, len(data)))
 	if len(data) > 0 {
 		binary.LittleEndian.PutUint32(frame[0:], ipcFrameHasData)
 		binary.LittleEndian.PutUint32(frame[8:], uint32(len(data)))

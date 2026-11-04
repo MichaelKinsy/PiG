@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -280,7 +281,7 @@ func marshalContent(contentType string, content any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	encoded := make([]byte, 0, len(`{"type":,`)+len(typeField)+len(body))
+	encoded := make([]byte, 0, allocsize.Add(allocsize.Add(len(`{"type":,`), len(typeField)), len(body)))
 	encoded = append(encoded, `{"type":`...)
 	encoded = append(encoded, typeField...)
 	if len(body) > 2 {
