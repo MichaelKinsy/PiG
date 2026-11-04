@@ -1111,6 +1111,8 @@ func (f *fakeKeysTarget) become(instance *fakeInstance, failNext bool) {
 type fakeKeysHolder struct {
 	h      *memberHarness
 	object target
+	// cold is whether a pin of the key reads the store (the keys are in memory when nil).
+	cold *atomic.Bool
 }
 
 func (f *fakeKeysHolder) none() error                             { return notReady("test: not live yet") }
@@ -1119,6 +1121,7 @@ func (f *fakeKeysHolder) keysScheduler() *chord.DeliveryScheduler { return f.h.s
 func (f *fakeKeysHolder) keysLoop() sectionLoop                   { return f.h.loop }
 func (f *fakeKeysHolder) keysVersion() int                        { return 1 }
 func (f *fakeKeysHolder) keysTarget() target                      { return f.object }
+func (f *fakeKeysHolder) keysInMemory(_, _ string) bool           { return f.cold == nil || !f.cold.Load() }
 
 // reference-keys.test.ts › keys across a restart and a failed re-pin (Astra's coverage note) › a key's re-pin on a new
 // instance that fails to load keeps its last value, one failed call; the next pin heals it. Forced difference: Pi
@@ -1240,6 +1243,8 @@ func (c *listenedContext) AfterFunc(f func()) func() bool {
 // loading and the hold waits for it. Pi's `await hold` is the same wait; the test's turns are the channels.
 type gatedHold struct {
 	first    *gatedInstance
+	abort    func(cause error)
+	cold     atomic.Bool
 	h        *memberHarness
 	keys     *referenceKeys
 	object   *gatedKeysTarget
@@ -1256,8 +1261,9 @@ func startGatedHold(t *testing.T, first *gatedInstance) *gatedHold {
 	t.Helper()
 	h := newMemberHarness(t)
 	g := &gatedHold{first: first, h: h, object: &gatedKeysTarget{live: first}, listened: make(chan struct{}, 8), holding: make(chan gatedHeld, 1)}
-	g.keys = newReferenceKeys(&fakeKeysHolder{h: h, object: g.object})
-	signal, _ := newScopeCounting()
+	g.keys = newReferenceKeys(&fakeKeysHolder{h: h, object: g.object, cold: &g.cold})
+	signal, abort := newScopeCounting()
+	g.abort = abort
 	// Registered after the harness's cleanup, so it runs first: a pin still held when a case ends would keep its task, and
 	// the harness waits for the tasks.
 	t.Cleanup(func() {
@@ -1349,5 +1355,59 @@ func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceReturnsItsSourceOnce
 	g.h.loop.Run(func() { kept = g.keys.entries.len() })
 	if kept != 0 {
 		t.Fatalf("keys held after release = %d, want none", kept)
+	}
+}
+
+// A new pin that must read the store lands after the old pin settled in Pi (a read of the store is a later turn), so Pi's
+// hold has returned by then, with the key's source as it is: the hold does not wait for it.
+func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceDoesNotWaitForAPinOnTheNewInstanceThatReadsTheStore(t *testing.T) {
+	first := newGatedInstance(nil)
+	g := startGatedHold(t, first)
+	second := newGatedInstance(newMemberDoc(g.h.batch, kmN(2)))
+	g.cold.Store(true)
+	g.move(t, second)
+	held := g.letLoad()
+	if held == nil {
+		t.Fatalf("the hold went on waiting for a pin on the new instance that reads the store: Pi's has returned by then")
+	}
+	must(t, held.err)
+	var readErr error
+	g.h.loop.Run(func() { _, readErr = held.pin.source.Value() })
+	if readErr == nil || readErr.Error() != "test: not live yet" {
+		t.Fatalf("read of the key = %v, want not_ready (the new pin has not landed)", readErr)
+	}
+	second.let()
+	g.h.loop.Wait()
+	g.h.loop.Run(held.pin.release)
+	if released := second.released.Load(); released != 1 {
+		t.Fatalf("pins on the new instance released = %d, want the one", released)
+	}
+}
+
+// The context of a hold ends its wait for the pin on the new instance too: it fails with the context's cause, lets the key
+// go, and the pin that lands later is released.
+func TestReferenceKeysAHoldWaitingForThePinOnTheNewInstanceEndsWithItsContext(t *testing.T) {
+	first := newGatedInstance(nil)
+	g := startGatedHold(t, first)
+	second := newGatedInstance(newMemberDoc(g.h.batch, kmN(2)))
+	g.move(t, second)
+	if held := g.letLoad(); held != nil {
+		t.Fatalf("the hold returned (%v) before the pin on the new instance settled", held.err)
+	}
+	cause := errors.New("aborted")
+	g.abort(cause)
+	got := <-g.holding
+	if !errors.Is(got.err, cause) {
+		t.Fatalf("the hold = %v, want the context's cause", got.err)
+	}
+	var kept int
+	g.h.loop.Run(func() { kept = g.keys.entries.len() })
+	if kept != 0 {
+		t.Fatalf("keys held = %d, want none", kept)
+	}
+	second.let()
+	g.h.loop.Wait()
+	if released := second.released.Load(); released != 1 {
+		t.Fatalf("pins on the new instance released = %d, want the one that landed after the hold ended", released)
 	}
 }

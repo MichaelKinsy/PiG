@@ -34,6 +34,9 @@ type keyHolder interface {
 	keysVersion() int
 	// keysTarget is the object it is bound to; nil while unbound.
 	keysTarget() target
+	// keysInMemory is whether a pin of key of the keyed member settles without a read of the store (its slot, however the
+	// object re-exposes it, holds the key loaded): false when the object is not live, or is not a local one.
+	keysInMemory(member, key string) bool
 }
 
 // keyEntry is one key of one keyed member held by the reference: its source, its users, and the instance pin it follows.
@@ -66,11 +69,13 @@ func newReferenceKeys(holder keyHolder) *referenceKeys { return &referenceKeys{h
 //
 // The pin it waits for may leave its instance while it loads (the object failed and went live again): its load then
 // ends without a pin for the key, and the entry follows the pin on the instance it points at now. Pi's `hold` awaits the
-// first pin only: its test holds the old pin open until the new instance's pin, an in-memory one, has settled, which
-// Pi's turn order guarantees (reference-keys.test.ts "the object fails and re-binds meanwhile"). Pins here are tasks, so
-// nothing orders the two, and a source returned before the new pin landed has no value to read. hold waits for that pin
-// to settle too, and returns what Pi's returns once it has: its source, whether the pin loaded or not (a failed load
-// shows on the key, as `follow`'s says: nobody waits on that pin for its failure).
+// first pin only, and so returns the entry's source at once, with no value if the new pin has not landed. Pi's turn order
+// lands a new pin that reads no store in the turns that started it, before the old pin's load (a read of the store, a
+// later turn) settles: its test relies on that (reference-keys.test.ts "the object fails and re-binds meanwhile").
+// Pins here are tasks, so nothing orders them, and hold waits for the new pin to settle only when it reads no store,
+// which is when Pi's has landed already (keysInMemory); it returns the source whichever way that pin settled. A new pin
+// that must read the store lands after the old one settled in Pi too: hold does not wait for it, and returns at once as
+// Pi's does, with the key's source as it is.
 func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey, error) {
 	loop := k.holder.keysLoop()
 	var entry *keyEntry
@@ -106,7 +111,7 @@ func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey
 		wait = nil
 		loop.Run(func() {
 			// A pin the entry followed has set entry.pin; one it left leaves the pin of the new instance, in flight.
-			if entry.pin == nil && entry.loading != waited {
+			if entry.pin == nil && entry.loading != nil && entry.loading != waited && k.holder.keysInMemory(member, key) {
 				wait = entry.loading
 			}
 		})

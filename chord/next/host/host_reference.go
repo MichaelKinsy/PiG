@@ -705,6 +705,12 @@ func (k bindingKeys) keysLoop() sectionLoop                   { return k.loop }
 func (k bindingKeys) keysVersion() int                        { return k.version }
 func (k bindingKeys) keysTarget() target                      { return k.target() }
 
+// keysInMemory resolves the keyed member to its ultimate slot (a local object's own, or the one it re-exposes).
+func (k bindingKeys) keysInMemory(member, key string) bool {
+	slot, err := k.keyedSlot(member)
+	return err == nil && slot.InMemory(key)
+}
+
 // pinKey holds key of keyed member (a key watch, a factory's `at(key)`, an object re-exposing this member): its
 // source, pinned on the live instance and following its object's instances (`referenceKeys`); release once. It blocks,
 // outside a section.
