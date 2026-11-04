@@ -219,6 +219,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	// pig divergence (D231): follows Pi main ace560c30 ahead of the v1.5.0 pin. finalDisposing is set while the final disposal (the teardown's rt.Close) runs, and finalDisposed closes when it ends; a signal during it waits for that disposal, as Pi's disposeRuntime() returns the shared in-flight disposal (print-mode.ts), instead of starting a second one or cutting it off.
 	var finalDisposing atomic.Bool
 	finalDisposed := make(chan struct{})
+	// teardownDone closes when the teardown has ended. The signal handlers live until then, not until the run's ctx ends: a stdout or conversion error cancels ctx before the final disposal, and a signal during it must still be handled, a repeated one by exiting at once (D231).
+	teardownDone := make(chan struct{})
+	defer close(teardownDone)
 	var resultMu sync.Mutex
 	var releaseHoldMu sync.Mutex
 	releaseHold := func() {}
@@ -281,7 +284,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 						tools.KillTrackedDetachedChildren()
 						exitOnSignal(againSig)
 					}
-				case <-ctx.Done():
+				case <-teardownDone:
 				}
 			}()
 			sysSig, ok := noteTerminationSignal(sig)
@@ -292,7 +295,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 				exitOnSignal(sysSig)
 			}
 			cancel()
-		case <-ctx.Done():
+		case <-teardownDone:
 		}
 	}()
 	defer func() {
