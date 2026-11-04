@@ -1032,6 +1032,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a238095](#bf-a238095) | coding: fix session executor queue-prefix race and durable execMu waits | PiG's own defect | All platforms | Unreleased |
 | [BF-a30388b](#bf-a30388b) | GPT-5.4 and GPT-5.5 no longer fail with `Missing namespace for function_call` after switching from another… | PiG's own defect | All platforms | Unreleased |
 | [BF-a3859aa](#bf-a3859aa) | An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-a3a71c5](#bf-a3a71c5) | `coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held… | PiG's own defect | All platforms | Unreleased |
 | [BF-a3bfab2](#bf-a3bfab2) | A Radius gateway config cached on an OAuth credential is sanitized as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a40a16d](#bf-a40a16d) | fix(codingagent): typed input restarts the idle collection's wait on every route | PiG's own defect | All platforms | Unreleased |
 | [BF-a422947](#bf-a422947) | fix(chord/next/documents): a shared cold load hands its document to the waiters, which an ending object may… | PiG's own defect | All platforms | Unreleased |
@@ -15613,6 +15614,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3ef234b949` (2026-10-09), `82994975e6` (2026-10-09), `a3859aa658` (2026-10-09), `4180310931` (2026-10-10), `543dba2cbe` (2026-10-10), `66765600a6` (2026-10-10), `6693198f8c` (2026-10-10), `9cc4d406f7` (2026-10-10), `74ed845011` (2026-10-11), `b567ebab3c` (2026-10-11)
 - **Tests:** `ai/openai_empty_tool_call_reviewer_test.go::TestOpenAICompletionsGeneratedToolCallIDsAreUnique`, `ai/openai_empty_tool_call_reviewer_test.go::TestOpenAICompletionsReplayOmitsStoredToolCallsWithoutIDOrNameReviewed`, `ai/openai_empty_tool_call_test.go::TestOpenAICompletionsEmptyToolCallDoesNotWedgeReplay`, `ai/unreplayable_tool_call_test.go::TestReplayOmitsUnreplayableToolCallsOnEveryProviderPath`, `ai/unreplayable_tool_call_test.go::TestStreamedToolCallsWithoutIDGetDistinctIDsAcrossTurns`
 - **Release note:** An OpenAI-compatible provider that streams a tool call without an id or a function name (OpenRouter and GLM do) no longer leaves the session failing every later turn with `tool messages must include a non-empty string tool_call_id`. PiG gives the call a unique id, leaves a call without a name or id and its results out of every provider's replayed request, and a stored session that already holds such a call works again (D120, pi-mono #10299).
+
+### BF-a3a71c5
+
+**`coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted.
+- **Root cause:** A packed cell connects several runtimes to one Host, and every connection's sync (before a request, at a run's begin or end, at the abort) read the run with UIBridge.RunSignal() before it took runSignals.mu to number it. A sync that had read the previous run's end could be overtaken by the sync of the next request, which read and numbered the new run, and then apply the older state: runSignals went back to "no run", the next sync numbered the live run again (run 3, then 5 on the wire), the runtime replaced the signal its handler held, and the abort frame aborted the new one. An isolated runtime has one connection, whose lock orders its syncs, so it never raced.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a3a71c520c` (2026-11-03)
+- **Tests:** `coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale`, `test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK`
+- **Release note:** `coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every runtime of the cell, and a runtime's sync that had read the end of the previous run could apply that older state after another runtime's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. An isolated runtime has one connection and was never affected, and a Node runtime aborts the signal it holds itself.
 
 ### BF-a3bfab2
 

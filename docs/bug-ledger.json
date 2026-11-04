@@ -28863,6 +28863,29 @@
       ]
     },
     {
+      "id": "BF-a3a71c5",
+      "title": "`coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held…",
+      "symptom": "`coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted.",
+      "rootCause": "A packed cell connects several runtimes to one Host, and every connection's sync (before a request, at a run's begin or end, at the abort) read the run with UIBridge.RunSignal() before it took runSignals.mu to number it. A sync that had read the previous run's end could be overtaken by the sync of the next request, which read and numbered the new run, and then apply the older state: runSignals went back to \"no run\", the next sync numbered the live run again (run 3, then 5 on the wire), the runtime replaced the signal its handler held, and the abort frame aborted the new one. An isolated runtime has one connection, whose lock orders its syncs, so it never raced.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`coding/extension/host/subprocess`: in a packed runtime cell, a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every runtime of the cell, and a runtime's sync that had read the end of the previous run could apply that older state after another runtime's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. An isolated runtime has one connection and was never affected, and a Node runtime aborts the signal it holds itself.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a3a71c520c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale",
+        "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK"
+      ]
+    },
+    {
       "id": "BF-a3bfab2",
       "title": "A Radius gateway config cached on an OAuth credential is sanitized as Pi does",
       "symptom": "A Radius gateway config cached on an OAuth credential is sanitized as Pi does.",
