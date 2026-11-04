@@ -19,9 +19,9 @@
   cwd agent-dir model-runtime settings-manager resource-loader diagnostics)
 
 (defun rt-join (directory name)
-  (cond ((and (plusp (length name)) (char= (char name 0) #\/)) name)
-        ((or (zerop (length directory)) (char= (char directory (1- (length directory))) #\/)) (concatenate 'string directory name))
-        (t (concatenate 'string directory "/" name))))
+  (cond ((path-absolute-p name) name)
+        ((or (zerop (length directory)) (path-separator-p (char directory (1- (length directory))))) (concatenate 'string directory name))
+        (t (concatenate 'string directory (string (path-separator)) name))))
 
 (defun create-agent-session-services (ctx &key cwd agent-dir settings-manager model-runtime extension-flag-values
                                             resource-loader-options resource-loader-reload-options)
@@ -100,25 +100,13 @@ which are the services' own; RESOURCE-LOADER-RELOAD-OPTIONS a plist of loader-re
 
 (defun rt-present (value) (and value (not (eq value :null)) (not (eq value :false)) (not (equal value ""))))
 
-(defun rt-normalize (path)
-  "posixpath.abspath of an absolute PATH: no empty, `.` or `..` segment."
-  (let ((parts '()))
-    (loop with start = 0
-          for slash = (position #\/ path :start start)
-          do (let ((part (subseq path start slash)))
-               (cond ((or (string= part "") (string= part ".")))
-                     ((string= part "..") (pop parts))
-                     (t (push part parts))))
-             (if slash (setf start (1+ slash)) (return)))
-    (format nil "/~{~A~^/~}" (reverse parts))))
-
 (defun rt-resolve-path (path)
   (let* ((path (string-trim '(#\Space #\Tab #\Newline #\Return) path))
          (home (sb-posix:getenv "HOME"))
-         (path (if (and home (plusp (length path)) (char= (char path 0) #\~) (or (= (length path) 1) (char= (char path 1) #\/)))
+         (path (if (and home (plusp (length path)) (char= (char path 0) #\~) (or (= (length path) 1) (path-separator-p (char path 1))))
                    (concatenate 'string home (subseq path 1))
                    path)))
-    (rt-normalize (if (and (plusp (length path)) (char= (char path 0) #\/)) path (rt-join (sb-posix:getcwd) path)))))
+    (path-resolve path)))
 
 (defun rt-assert-session-cwd-exists (manager fallback-cwd)
   "A persisted session whose stored working directory is gone signals a missing-session-cwd-error."
@@ -280,7 +268,7 @@ before the session reads it (the session's context is refreshed after it). The r
   (let ((resolved (rt-resolve-path input-path)) (ctx (agent-session-runtime-ctx runtime)))
     (unless (rt-exists-p resolved) (error 'session-import-file-not-found-error :file-path resolved))
     (let* ((session-dir (sm-get-session-dir (agent-session-session-manager (agent-session-runtime-session runtime))))
-           (base (subseq resolved (1+ (position #\/ resolved :from-end t))))
+           (base (path-basename resolved))
            (destination (rt-join session-dir base))
            (already-stored (string= (rt-resolve-path destination) resolved)))
       (ensure-directories-exist (rt-join session-dir "x"))

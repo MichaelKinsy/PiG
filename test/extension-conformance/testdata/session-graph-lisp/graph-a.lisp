@@ -5,11 +5,16 @@
 
 (defun arg (args key) (pig:jget args key))
 
-(defun join (&rest parts) (format nil "~{~A~^/~}" parts))
+;;; The paths of the host's platform, as Python's os.path gives them: a Windows host separates with a backslash and takes a slash as a separator too.
+(defun separator-p (char) (or (char= char #\/) #+win32 (char= char #\\)))
 
-(defun dirname (path) (subseq path 0 (or (position #\/ path :from-end t) 0)))
+(defun join (&rest parts)
+  (with-output-to-string (out)
+    (loop for (part . more) on parts do (write-string part out) (when more (write-char #+win32 #\\ #-win32 #\/ out)))))
 
-(defun basename (path) (subseq path (let ((p (position #\/ path :from-end t))) (if p (1+ p) 0))))
+(defun dirname (path) (subseq path 0 (or (position-if #'separator-p path :from-end t) 0)))
+
+(defun basename (path) (subseq path (let ((p (position-if #'separator-p path :from-end t))) (if p (1+ p) 0))))
 
 (defun ends-with (text suffix) (let ((n (length suffix))) (and (>= (length text) n) (string= suffix text :start2 (- (length text) n)))))
 

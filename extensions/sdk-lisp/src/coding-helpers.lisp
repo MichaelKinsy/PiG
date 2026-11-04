@@ -287,21 +287,80 @@
           (cx-get data provider-id))
       (error () nil))))
 
+;;; ---------------------------------------------------------------- paths
+
+(defvar *windows-paths* #+win32 t #-win32 nil
+  "True where paths follow Windows' rules: a backslash separates components as a slash does, and a root is a drive (D:\\), a UNC share or a lone separator. The SDK's own tests bind it to exercise those rules on any host.")
+
+(defun path-separator () (if *windows-paths* #\\ #\/))
+
+(defun path-separator-p (char) (or (char= char #\/) (and *windows-paths* (char= char #\\))))
+
+(defun path-components (text)
+  "The components of TEXT between its separators, without the empty ones."
+  (let ((parts '()) (start 0))
+    (loop for end = (position-if #'path-separator-p text :start start)
+          do (when (< start (or end (length text))) (push (subseq text start end) parts))
+             (if end (setf start (1+ end)) (return)))
+    (nreverse parts)))
+
+(defun path-root (path double-slash)
+  "(values KIND ROOT TAIL): how PATH starts. KIND is NIL for a relative path, :ROOTED for a path from the root of the current drive (POSIX: of the file system),
+:DRIVE or :UNC for a root of its own and :DRIVE-RELATIVE for D:name. ROOT spells the root and TAIL is the rest of PATH. DOUBLE-SLASH keeps the two leading
+slashes of a POSIX path, which POSIX leaves to the implementation and os.path.abspath preserves."
+  (let ((length (length path)))
+    (flet ((separator-at (index) (and (< index length) (path-separator-p (char path index)))))
+      (cond ((not *windows-paths*)
+             (cond ((not (separator-at 0)) (values nil "" path))
+                   ((and double-slash (separator-at 1) (not (separator-at 2))) (values :rooted "//" (subseq path 2)))
+                   (t (values :rooted "/" (subseq path 1)))))
+            ((and (separator-at 0) (separator-at 1) (< 2 length) (not (separator-at 2)))
+             (let* ((server-end (or (position-if #'path-separator-p path :start 2) length))
+                    (share-start (min length (1+ server-end)))
+                    (share-end (or (position-if #'path-separator-p path :start share-start) length))
+                    (server (subseq path 2 server-end)) (share (subseq path share-start share-end)))
+               (values :unc (if (string= share "") (format nil "\\\\~A\\" server) (format nil "\\\\~A\\~A\\" server share))
+                       (subseq path (min length (1+ share-end))))))
+            ((separator-at 0) (values :rooted "\\" (subseq path 1)))
+            ((and (>= length 2) (char= (char path 1) #\:) (< (char-code (char path 0)) 128) (alpha-char-p (char path 0)))
+             (if (separator-at 2)
+                 (values :drive (format nil "~C:\\" (char path 0)) (subseq path 3))
+                 (values :drive-relative (format nil "~C:" (char path 0)) (subseq path 2))))
+            (t (values nil "" path))))))
+
+(defun path-absolute-p (path)
+  (and (member (path-root path nil) '(:rooted :drive :unc)) t))
+
+(defun path-basename (path)
+  "PATH after its last separator."
+  (let ((separator (position-if #'path-separator-p path :from-end t))) (subseq path (if separator (1+ separator) 0))))
+
+(defun path-resolve (path &key double-slash (cwd (sb-posix:getcwd)))
+  "PATH made absolute against CWD, with . and .. and repeated separators resolved and no link followed: Node's path.resolve and os.path.abspath. A Windows
+path keeps its drive or share and takes a backslash for every separator. DOUBLE-SLASH is path-root's."
+  (multiple-value-bind (kind root tail) (path-root path double-slash)
+    (multiple-value-bind (cwd-kind cwd-root cwd-tail) (path-root cwd double-slash)
+      (declare (ignore cwd-kind))
+      (flet ((finish (root components)
+               (let ((kept '()))
+                 (dolist (part components) (cond ((string= part ".")) ((string= part "..") (pop kept)) (t (push part kept))))
+                 (with-output-to-string (out)
+                   (write-string root out)
+                   (loop for (part . more) on (nreverse kept) do (write-string part out) (when more (write-char (path-separator) out)))))))
+        (let ((parts (path-components tail)) (cwd-parts (path-components cwd-tail)))
+          (case kind
+            ((:drive :unc) (finish root parts))
+            (:rooted (finish (if *windows-paths* cwd-root root) parts))
+            (:drive-relative (if (and (plusp (length cwd-root)) (char-equal (char root 0) (char cwd-root 0)))
+                                 (finish cwd-root (append cwd-parts parts))
+                                 (finish (format nil "~A\\" root) parts)))
+            (t (finish cwd-root (append cwd-parts parts)))))))))
+
 ;;; ---------------------------------------------------------------- file mutation queue
 
 (defun cx-abspath (path)
   "os.path.abspath: PATH against the working directory, with . and .. and repeated separators resolved (no symlinks)."
-  (let* ((full (if (cx-at-p path "/" 0) path (concatenate 'string (string-right-trim "/" (sb-posix:getcwd)) "/" path)))
-         (initial (cond ((and (cx-at-p full "//" 0) (not (cx-at-p full "///" 0))) "//") (t "/")))
-         (parts '()))
-    (loop with start = 0
-          for slash = (position #\/ full :start start)
-          do (let ((part (subseq full start slash)))
-               (cond ((or (string= part "") (string= part ".")))
-                     ((string= part "..") (pop parts))
-                     (t (push part parts))))
-             (if slash (setf start (1+ slash)) (return)))
-    (format nil "~A~{~A~^/~}" initial (reverse parts))))
+  (path-resolve path :double-slash t))
 
 (defun with-file-mutation-queue (file-path function)
   "Pi's withFileMutationQueue: calls FUNCTION (no arguments) once every mutation registered earlier for the same file has finished, then lets the next one run, and returns its value. Mutations of different files run in parallel. The file is keyed by its real path (a symlink and its target share a queue) and callers run in the order they called. The queue is the host's: it serializes this extension's mutations with the host's edit and write tools and with every other extension process. A path the host cannot resolve signals host-call-error without calling FUNCTION. May be called before the extension runs."

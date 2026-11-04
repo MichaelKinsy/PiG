@@ -10,6 +10,9 @@
 (defun start-host (ext)
   "Listen on a fresh socket, serve EXT against it in a thread, accept it and complete the register handshake.
 Returns the host and the register envelope."
+  (declare (ignorable ext))
+  #+win32 (error "the fake host listens on a sb-bsd-sockets:local-socket, which SBCL on Windows does not have")
+  #-win32
   (let* ((path (format nil "/tmp/pig-lisp-test-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
          (listener (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
     (ignore-errors (delete-file path))
