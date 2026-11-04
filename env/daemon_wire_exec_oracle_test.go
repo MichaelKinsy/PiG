@@ -278,9 +278,11 @@ func TestDaemonHelloMatchesPisDaemon(t *testing.T) {
 }
 
 // TestDaemonRepliesBeforeBulkOutputLikePisDaemon: a small reply goes ahead of command output that is queued behind a client that
-// does not read. Output is read only after the request is answered, so the queued bulk output is what the reply jumps.
+// does not read. The client reads only once the reply is queued: chunk writes to one handle run in order, each answered
+// before the next starts, so the second chunk on disk proves the first chunk's reply is in the queue. Reading any earlier
+// races the reply against the bulk the client drains, and a slow scheduler put the whole 3.2 MB ahead of it.
 func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
-	// The command has written 3.2 MB when the request is sent, so at least 1.9 MB of it waits in the daemon behind what its
+	// The command has written 3.2 MB when the reply is queued, so at least 1.9 MB of it waits in the daemon behind what its
 	// output buffer (1 MiB) and the pipe (64 KiB) hold. A reply that waited its turn would come after that much output.
 	const bound = 1_600_000
 	oracle := oracleDaemon(t)
@@ -289,22 +291,29 @@ func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
 		root := filepath.Join(base, "root")
 		mustDo(os.MkdirAll(root, 0o755))
 		d := startWireDaemon(t, binary, root, daemonEnvironment(base, base))
+		await := func(ready func() bool, what string) {
+			for deadline := time.Now().Add(30 * time.Second); !ready(); time.Sleep(10 * time.Millisecond) {
+				if time.Now().After(deadline) {
+					t.Fatalf("%s: %s", name, what)
+				}
+			}
+		}
+		chunks := filepath.Join(root, "chunks")
+		opened := d.call(object("op", "write", "path", chunks, "keep", true), nil)
+		handle := opened[len(opened)-1].JSON.(daemon.Object)["handle"]
+		if handle == nil {
+			t.Fatalf("%s: write with keep answered %+v", name, opened[len(opened)-1])
+		}
 		started := filepath.Join(root, "started")
 		execID := d.start(object("op", "exec", "cwd", root, "command", "head -c 3200000 /dev/zero; touch started; head -c 20000000 /dev/zero"), nil)
-		for deadline := time.Now().Add(30 * time.Second); ; {
-			if _, err := os.Stat(started); err == nil {
-				break
-			}
-			if time.Now().After(deadline) {
-				t.Fatalf("%s: the command never produced its first 3.2 MB", name)
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-		infoID := d.start(object("op", "lstat", "path", root), nil)
+		await(func() bool { _, err := os.Stat(started); return err == nil }, "the command never produced its first 3.2 MB")
+		replyID := d.start(object("op", "writeChunk", "handle", handle), []byte("a"))
+		d.start(object("op", "writeChunk", "handle", handle), []byte("b"))
+		await(func() bool { info, err := os.Stat(chunks); return err == nil && info.Size() == 2 }, "the second chunk write never ran")
 		before := 0
 		for {
 			frame := d.next()
-			if frame.ID == infoID {
+			if frame.ID == replyID {
 				break
 			}
 			if frame.ID != execID || frame.Kind != daemon.FrameEvent {
@@ -318,7 +327,7 @@ func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
 			if frame.Kind == daemon.FrameEvent {
 				total += len(frame.Payload)
 			}
-			if frame.Kind == daemon.FrameResult {
+			if frame.ID == execID && frame.Kind != daemon.FrameEvent {
 				break
 			}
 		}
