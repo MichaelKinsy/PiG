@@ -460,7 +460,12 @@ func (p *framedPort) ended() {
 	}
 }
 
+// write sends one frame. A frame past maxFrame ends the channel at the reader, and its length would wrap the four bytes it is
+// written in from 4 GiB on, so it is refused before any byte is sent.
 func (p *framedPort) write(kind byte, payload []byte) error {
+	if len(payload) >= maxFrame {
+		return fmt.Errorf("a frame of %d bytes is longer than the channel's limit of %d", 1+len(payload), maxFrame)
+	}
 	frame := make([]byte, 5, 5+len(payload))
 	binary.BigEndian.PutUint32(frame, uint32(1+len(payload)))
 	frame[4] = kind

@@ -139,6 +139,11 @@ func runStatusCommand(args []string) int {
 			fmt.Fprintf(os.Stderr, "pig status: encode JSON: %v\n", err)
 			return 1
 		}
+		// CodeQL go/clear-text-logging is a false positive here. CLI threat model: the report is built to be pasted and piped, and no secret
+		// reaches it: a Package source and every error and warning pass RedactBugReportURL (Pi's redactUrl: userinfo and secret query values
+		// stripped), an installed path holds no credentials, and TestStatusRedactsCredentialsInPackageSources pins both output forms. The alert
+		// follows nodeurl's URL.Password field into Href and treats everything derived from a parsed URL as tainted.
+		// codeql[go/clear-text-logging]
 		fmt.Println(string(data))
 	} else {
 		renderStatus(status)
@@ -360,6 +365,8 @@ func renderStatus(status statusOutput) {
 	fmt.Printf("  resources: %d (enabled=%d disabled=%d ignored=%d)\n", status.Resources.Total, status.Resources.Enabled, status.Resources.Disabled, status.Resources.Ignored)
 	for _, item := range status.Resources.Items {
 		if item.Ignored != "" {
+			// CodeQL go/clear-text-logging: false positive, see runStatusCommand. Name and Path are file-system names; the Path is not a URL and holds no credentials.
+			// codeql[go/clear-text-logging]
 			fmt.Printf("    ignored (%s): %s %s (%s scope) %s\n", item.Ignored, item.Kind, item.Name, item.Scope, item.Path)
 		}
 	}
@@ -368,6 +375,8 @@ func renderStatus(status statusOutput) {
 		printCLIError("%s", message)
 	}
 	for _, message := range status.Warnings {
+		// CodeQL go/clear-text-logging: false positive, see runStatusCommand. Every warning went through redactStatusText in collectStatus.
+		// codeql[go/clear-text-logging]
 		fmt.Printf("Warning: %s\n", message)
 	}
 }
