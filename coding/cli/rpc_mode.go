@@ -423,6 +423,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		terminateProcesses()
 		// PIG_PROFILE files are written here because os.Exit skips main's deferred stop; unset, this is a no-op.
 		stopProfiles()
+		// pig additive (D102): a claimed exit.log line is flushed first, and an emergency exit in flight ends the process with its 129.
+		codingagent.BeforeExit()
 		// Upstream process.exit does not wait for providers or suspended extension callbacks.
 		os.Exit(code)
 	}
