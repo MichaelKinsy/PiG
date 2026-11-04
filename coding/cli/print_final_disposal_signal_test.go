@@ -153,7 +153,7 @@ func TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce(t *testing.T) {
 		if took := time.Since(began); took > 2*time.Second {
 			t.Fatalf("exit took %s, want it before the 2.5 s handler ended", took)
 		}
-	case <-time.After(3500 * time.Millisecond):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("a repeated SIGTERM did not exit at once")
 	}
 }
