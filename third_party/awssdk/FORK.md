@@ -13,7 +13,8 @@ Each service's `internal/endpoints` compiled eight partition regular expressions
 5. `config/env_config.go`: one `%q` verb for an `int64` became `%d` so `go vet` passes (message text otherwise identical for the value, without quotes).
 6. Tests, `go.mod`, `go.sum`, `doc.go`, `CHANGELOG.md` and `generated.json` are not copied. The root `go.mod` drops `config`, `service/{sts,sso,ssooidc,signin,bedrockruntime}`, `internal/{configsources,endpoints/v2,v4a}` and `service/internal/*` requirements (nothing else imports them); `aws-sdk-go-v2`, `credentials` (ec2rolecreds, endpointcreds, processcreds), `feature/ec2/imds` and smithy-go stay.
 7. `internal/endpoints/awsrulesfn` keeps its `regexp.MustCompile` inside `GetPartition` (a function, run per resolution), unchanged.
+8. `internal/v4a/v4a.go`: the signing debug log (`ClientLogMode` signing) prints the canonical request through `redactSigningLog`, which replaces the values of its `x-amz-security-token` and `authorization` header lines with `<redacted>`; upstream prints them. `redact_signing_log_test.go` (new) checks it.
 
 ## Updating
 
-Bump the versions in the root `go.mod` only for the upstream modules still required, fetch the new release of each copied module, copy the same directories, repeat differences 1-5, re-add any new `internal` package the copied packages import, and run `go build ./...`, `go vet ./third_party/awssdk/...`, `go test ./third_party/awssdk/... ./ai -run 'Bedrock|Endpoint'`. Offer nothing upstream without the owner.
+Bump the versions in the root `go.mod` only for the upstream modules still required, fetch the new release of each copied module, copy the same directories, repeat differences 1-5 and 8, re-add any new `internal` package the copied packages import, and run `go build ./...`, `go vet ./third_party/awssdk/...`, `go test ./third_party/awssdk/... ./ai -run 'Bedrock|Endpoint'`. Offer nothing upstream without the owner.
