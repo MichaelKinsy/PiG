@@ -56,9 +56,15 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (registerSignalHandlers terminalErrorHandler).
 func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
 	// The exit's own restore writes fail on the same terminal and come back here; only the first failure runs the exit.
+	// emergencyTerminalExit guards the exit itself, across this handler and the input reader's path.
 	var exiting atomic.Bool
 	return tui.OnTerminalWriteError(func(err error) {
 		if !exiting.CompareAndSwap(false, true) {
+			return
+		}
+		if emergencyExiting.Load() {
+			// The exiting goroutine's own restore writes (RestoreTerminalOnExit writes through this handler). A caller
+			// that blocked here would stall the owner.
 			return
 		}
 		if isDeadTerminalError(err) {
@@ -77,9 +83,18 @@ func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
 // processes in their own process groups, so it kills them too, or they would keep writing into the session's
 // directories.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
+//
+// The input reader, a failed terminal write and a crash on a dead terminal can all arrive here at once (exit_ending.go has
+// the ordering contract). Pi's is `never`: the first caller ends the process with 129, and a later caller blocks behind it
+// and never returns either, because its callers (uncaughtCrash, Run's unwinding to exit 1) assume the call does not return.
+// pig additive (D102): the exit.log line is the first cause observed and is flushed before os.Exit. The exit code, the restore
+// writes, the output and the timing are Pi's.
 func (m *InteractiveMode) emergencyTerminalExit(reason string) {
+	if !emergencyExiting.CompareAndSwap(false, true) {
+		select {}
+	}
 	// pig additive (D102): Pi exits here with no trace.
-	RecordExit(m.opts.AgentDir, reason+" (exit 129)")
+	RecordEnding(m.opts.AgentDir, reason+" (exit 129)")
 	tools.KillTrackedDetachedChildren()
 	if m.opts.TerminateExtensionProcesses != nil {
 		m.opts.TerminateExtensionProcesses()
@@ -89,6 +104,9 @@ func (m *InteractiveMode) emergencyTerminalExit(reason string) {
 	tui.RestoreTerminalOnExit()
 	os.Exit(129)
 }
+
+// emergencyExiting is set by the one emergencyTerminalExit that runs; the process ends in it.
+var emergencyExiting atomic.Bool
 
 // isDeadTerminalError reports whether err says the terminal is gone. EIO is a tty read or ioctl from an orphaned
 // background process group, or a write after hangup. ENOTTY is a revoked tty (macOS) that stdin no longer reports as
