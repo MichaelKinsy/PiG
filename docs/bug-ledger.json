@@ -760,6 +760,134 @@
       ]
     },
     {
+      "id": "BF-077abd0",
+      "title": "Interactive mode follows Pi's agent events more closely: `agent_end` removes a message that is still…",
+      "symptom": "Interactive mode follows Pi's agent events more closely: `agent_end` removes a message that is still streaming, `message_end` of an assistant message requests a frame, and a user `message_end` does nothing.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode follows Pi's agent events more closely: `agent_end` removes a message that is still streaming, `message_end` of an assistant message requests a frame, and a user `message_end` does nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "077abd0076",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/first_time_setup_contract_test.go::TestFirstTimeSetupBindingOverlapsMatchPi",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go::TestFlushCompactionQueueDeliversInOrderToTheActiveRun",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go::TestFlushCompactionQueueRestoresTheQueueWhenThePromptIsRejected",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go::TestFlushCompactionQueueWithNothingQueuedChangesNothing",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAgentEndClearsTheRunState",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAgentEndSettlesRunningToolsAndForgetsPendingArguments",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAgentStartClearsThePendingTools",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAutoRetry",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventCompactionStartAndEnd",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageEndFinishesTheMessage",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageEndRequestsAFrame",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageStartRendersEachRole",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageUpdateStreamsTextAndCreatesOneCardPerToolCall",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventSummarizationRetry",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventToolCardArgumentsAndExecutionStart",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventToolExecutionLifecycle",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventToolUpdateIsPartialAndEndRecordsTheDuration",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventTurnStartShowsProgressAndTheWorkingStatus",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventUserMessageStartRefreshesThePendingMessages",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventsRequestFrames",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutClearsTheSearchButtonHover",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutEndsPointerGestures",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutKeepsACompletedSelectionState",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutReleasesTheComponentCapture",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutRequestsAFrameForANonEmptySelection",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutRestartsClickCounts",
+        "tui/alt_screen_render_contract_test.go::TestAltScreenDoesNotDrawWhileInactive",
+        "tui/alt_screen_render_contract_test.go::TestAltScreenFrameAndExitDumpDropZonePrefixes",
+        "tui/alt_screen_render_contract_test.go::TestAltScreenImplicitDocumentRendersTheScreensChildren",
+        "tui/alt_screen_render_contract_test.go::TestRenderLayoutFrameClampsTheViewportToOneCell",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportConsumesFocusAndMouseReportsOnly",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportKeyBoundToTwoActionsRunsTheEarlierOne",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportKeysScrollByTheirAmounts",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportKeysStopAtTheEnds",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportNavigationDefersToCapturingFocusAndOverlays",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportSearchKeyComesFirst",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportSearchNavigationKeysAreMatchedInOrder",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportWheelOverlaysShadowTheLayout",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportWheelScrollsTheTranscript",
+        "tui/tool_execution_render_contract_test.go::TestSelfShellCardDrawsBlankRowComponentsThenImages",
+        "tui/tool_execution_render_contract_test.go::TestToolCardAppliesStreamedArgumentsAtRender",
+        "tui/user_message_selector_contract_test.go::TestUserMessageSelectorPageKeyOverlapsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-077abd0-2",
+      "title": "A prompt rejected while the messages queued during compaction are flushed (for example no model selected) now…",
+      "symptom": "A prompt rejected while the messages queued during compaction are flushed (for example no model selected) now puts the whole queue back and shows \"Failed to send queued message(s): ...\" as Pi does, instead of dropping the messages.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt rejected while the messages queued during compaction are flushed (for example no model selected) now puts the whole queue back and shows \"Failed to send queued message(s): ...\" as Pi does, instead of dropping the messages.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "077abd0076",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/first_time_setup_contract_test.go::TestFirstTimeSetupBindingOverlapsMatchPi",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go::TestFlushCompactionQueueDeliversInOrderToTheActiveRun",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go::TestFlushCompactionQueueRestoresTheQueueWhenThePromptIsRejected",
+        "internal/codingagent/interactive_compaction_queue_contract_test.go::TestFlushCompactionQueueWithNothingQueuedChangesNothing",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAgentEndClearsTheRunState",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAgentEndSettlesRunningToolsAndForgetsPendingArguments",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAgentStartClearsThePendingTools",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventAutoRetry",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventCompactionStartAndEnd",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageEndFinishesTheMessage",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageEndRequestsAFrame",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageStartRendersEachRole",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventMessageUpdateStreamsTextAndCreatesOneCardPerToolCall",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventSummarizationRetry",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventToolCardArgumentsAndExecutionStart",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventToolExecutionLifecycle",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventToolUpdateIsPartialAndEndRecordsTheDuration",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventTurnStartShowsProgressAndTheWorkingStatus",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventUserMessageStartRefreshesThePendingMessages",
+        "internal/codingagent/interactive_events_contract_test.go::TestEventsRequestFrames",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutClearsTheSearchButtonHover",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutEndsPointerGestures",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutKeepsACompletedSelectionState",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutReleasesTheComponentCapture",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutRequestsAFrameForANonEmptySelection",
+        "tui/alt_screen_focus_out_contract_test.go::TestAltScreenFocusOutRestartsClickCounts",
+        "tui/alt_screen_render_contract_test.go::TestAltScreenDoesNotDrawWhileInactive",
+        "tui/alt_screen_render_contract_test.go::TestAltScreenFrameAndExitDumpDropZonePrefixes",
+        "tui/alt_screen_render_contract_test.go::TestAltScreenImplicitDocumentRendersTheScreensChildren",
+        "tui/alt_screen_render_contract_test.go::TestRenderLayoutFrameClampsTheViewportToOneCell",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportConsumesFocusAndMouseReportsOnly",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportKeyBoundToTwoActionsRunsTheEarlierOne",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportKeysScrollByTheirAmounts",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportKeysStopAtTheEnds",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportNavigationDefersToCapturingFocusAndOverlays",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportSearchKeyComesFirst",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportSearchNavigationKeysAreMatchedInOrder",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportWheelOverlaysShadowTheLayout",
+        "tui/alt_screen_viewport_input_contract_test.go::TestAltScreenViewportWheelScrollsTheTranscript",
+        "tui/tool_execution_render_contract_test.go::TestSelfShellCardDrawsBlankRowComponentsThenImages",
+        "tui/tool_execution_render_contract_test.go::TestToolCardAppliesStreamedArgumentsAtRender",
+        "tui/user_message_selector_contract_test.go::TestUserMessageSelectorPageKeyOverlapsMatchPi"
+      ]
+    },
+    {
       "id": "BF-0790d5e",
       "title": "`String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which…",
       "symptom": "`String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which trims U+0085 and not U+FEFF where JavaScript trims U+FEFF and not U+0085 (`jsstring.Trim` is the JS rule, already used in 100 other places).",
@@ -3831,6 +3959,66 @@
       ]
     },
     {
+      "id": "BF-1fb10d6",
+      "title": "Accepting an autocomplete popup of awaited command-argument completions after the cursor moved applies the…",
+      "symptom": "Accepting an autocomplete popup of awaited command-argument completions after the cursor moved applies the popup at the cursor as Pi does, instead of dropping it, and a cursor placed before the start of the popup's prefix splices the completion as Pi's string slice does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Accepting an autocomplete popup of awaited command-argument completions after the cursor moved applies the popup at the cursor as Pi does, instead of dropping it, and a cursor placed before the start of the popup's prefix splices the completion as Pi's string slice does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1fb10d6462",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "test/parity/scenarios/compaction/17-extension-empty-summary-compaction.toml",
+        "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/16-main-screen-external-editor-repaint.toml",
+        "test/parity/scenarios/fullscreen/17-keyboard-scroll-top-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/18-alt-screen-search-highlights.toml",
+        "test/parity/scenarios/interactive-rendering/62-user-message-selector-navigation-confirm.toml",
+        "test/parity/scenarios/interactive-rendering/63-user-message-selector-cancel.toml",
+        "test/parity/scenarios/interactive-rendering/64-user-message-markers-escapes-colors.toml",
+        "tui/editor_awaited_accept_oracle_test.go::TestEditorAcceptsAnAwaitedPopupAtTheMovedCursorLikePi"
+      ]
+    },
+    {
+      "id": "BF-1fb10d6-2",
+      "title": "A compaction that completes with an empty summary, such as one an extension answers `session_before_compact`…",
+      "symptom": "A compaction that completes with an empty summary, such as one an extension answers `session_before_compact` with, now shows the `[compaction]` block and rebuilds the transcript like any completed compaction, and the RPC `compaction_end` event carries its `result`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A compaction that completes with an empty summary, such as one an extension answers `session_before_compact` with, now shows the `[compaction]` block and rebuilds the transcript like any completed compaction, and the RPC `compaction_end` event carries its `result`. The interactive mode and the RPC encoder took an empty summary for a missing result.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1fb10d6462",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "test/parity/scenarios/compaction/17-extension-empty-summary-compaction.toml",
+        "test/parity/scenarios/fullscreen/15-keyboard-scroll-actions-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/16-main-screen-external-editor-repaint.toml",
+        "test/parity/scenarios/fullscreen/17-keyboard-scroll-top-fullscreen.toml",
+        "test/parity/scenarios/fullscreen/18-alt-screen-search-highlights.toml",
+        "test/parity/scenarios/interactive-rendering/62-user-message-selector-navigation-confirm.toml",
+        "test/parity/scenarios/interactive-rendering/63-user-message-selector-cancel.toml",
+        "test/parity/scenarios/interactive-rendering/64-user-message-markers-escapes-colors.toml",
+        "tui/editor_awaited_accept_oracle_test.go::TestEditorAcceptsAnAwaitedPopupAtTheMovedCursorLikePi"
+      ]
+    },
+    {
       "id": "BF-1fbdabb",
       "title": "A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse…",
       "symptom": "A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse Anthropic SSE event message_start` (D121, pi-mono #10390).",
@@ -4475,6 +4663,33 @@
       ]
     },
     {
+      "id": "BF-2424d94",
+      "title": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model…",
+      "symptom": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model fallback message and the crash notice, and shows the changelog notice before the transcript, as Pi orders init() and run().",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model fallback message and the crash notice, and shows the changelog notice before the transcript, as Pi orders init() and run().",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2424d94b51",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_init_contract_test.go::TestInitReturnsWithoutWorkOnceInitialized",
+        "internal/codingagent/startup_visibility_contract_test.go::TestStartupHeaderAndDetailsVisibilityFollowVerboseAndQuietStartup",
+        "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/17-startup-exit-key-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+        "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml"
+      ]
+    },
+    {
       "id": "BF-24872ab",
       "title": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models…",
       "symptom": "Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models, virtual-model routes and provider-object calls) as Pi's model object, with its members in Pi's order, instead of sorted by member name with `null` for members the model does not set.",
@@ -4558,6 +4773,99 @@
         "tui/internal/hljs/resume_test.go::TestHighlightResumableEqualsAFreshRun",
         "tui/internal/hljs/resume_test.go::TestHighlightResumableFollowsLaterText",
         "tui/internal/hljs/resume_test.go::TestResumedRunCountsTheIterationsOfAWholeRun"
+      ]
+    },
+    {
+      "id": "BF-250be68",
+      "title": "Messages queued during an overflow compaction now go through the input handlers and prompt template expansion…",
+      "symptom": "Messages queued during an overflow compaction now go through the input handlers and prompt template expansion when the retry turn takes them, and an extension command among them runs instead of being queued as text, as Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Messages queued during an overflow compaction now go through the input handlers and prompt template expansion when the retry turn takes them, and an extension command among them runs instead of being queued as text, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "250be6835c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueFirstPromptKeepsItsModeWhileTheRunSettles",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIntoASettlingRunKeepsItsAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRetryQueuesThroughInputHandlersAndExpansion",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRunsExtensionCommands",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueStartsTheTurnUnderALiveAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueStopsAtTheFirstFailedMessage",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestSubmitDoesNotDrainRestoredCompactionQueue"
+      ]
+    },
+    {
+      "id": "BF-250be68-2",
+      "title": "Flushing the messages queued during compaction no longer moves the output of `!` commands that ran during a…",
+      "symptom": "Flushing the messages queued during compaction no longer moves the output of `!` commands that ran during a run into the chat; only a prompt you submit does that, as in Pi.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Flushing the messages queued during compaction no longer moves the output of `!` commands that ran during a run into the chat; only a prompt you submit does that, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "250be6835c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueFirstPromptKeepsItsModeWhileTheRunSettles",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIntoASettlingRunKeepsItsAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRetryQueuesThroughInputHandlersAndExpansion",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRunsExtensionCommands",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueStartsTheTurnUnderALiveAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueStopsAtTheFirstFailedMessage",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestSubmitDoesNotDrainRestoredCompactionQueue"
+      ]
+    },
+    {
+      "id": "BF-250be68-3",
+      "title": "Messages restored after a rejected flush stay queued until the next compaction ends instead of being sent…",
+      "symptom": "Messages restored after a rejected flush stay queued until the next compaction ends instead of being sent with your next submission, as in Pi, and a flush that fails at one message no longer sends the messages behind it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Messages restored after a rejected flush stay queued until the next compaction ends instead of being sent with your next submission, as in Pi, and a flush that fails at one message no longer sends the messages behind it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "250be6835c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueFirstPromptKeepsItsModeWhileTheRunSettles",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIntoASettlingRunKeepsItsAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRetryQueuesThroughInputHandlersAndExpansion",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueRunsExtensionCommands",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueStartsTheTurnUnderALiveAbortContext",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueStopsAtTheFirstFailedMessage",
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestSubmitDoesNotDrainRestoredCompactionQueue"
       ]
     },
     {
@@ -4925,6 +5233,31 @@
       ],
       "tests": [
         "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
+      ]
+    },
+    {
+      "id": "BF-279be73",
+      "title": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi…",
+      "symptom": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi does and as `read`, `write` and `edit` already were.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi does and as `read`, `write` and `edit` already were. The interactive mode took the plain card for those calls unless an extension registered the tool, so a collapsed bash preview at a narrow width wrapped its \"earlier lines\" hint with other colour resets, an image in the result drew nothing, and the elapsed time past a minute stayed in seconds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "279be73da2",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_resume_thinking_test.go::TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream",
+        "internal/codingagent/session_tool_cards_oracle_test.go::TestBuiltinToolCardsWithoutRegisteredDefinitionMatchPi",
+        "internal/codingagent/session_tool_cards_oracle_test.go::TestUnregisteredToolCardsMatchPi",
+        "internal/codingagent/tick_render_test.go::TestTimerDrivenFramesReachTerminalWithoutInput"
       ]
     },
     {
@@ -7757,6 +8090,41 @@
       ]
     },
     {
+      "id": "BF-3b033bf",
+      "title": "Markdown quotes, lists, paragraphs, tables and display math now lex exactly as Pi's marked lexer does: the…",
+      "symptom": "Markdown quotes, lists, paragraphs, tables and display math now lex exactly as Pi's marked lexer does: the block lexer is a port of `Lexer.blockTokens` with the `blockquote`, `list`, `paragraph` and `table` tokenizers and the display-math clipping of paragraphs.",
+      "rootCause": "The line-based block loop imitated marked's quote, list and paragraph rules and could not reproduce their interactions (lazy lines, nested quotes, list relexing, space tokens). The lexer now runs Lexer.blockTokens on the text itself: Tokenizer.blockquote and Tokenizer.list with their continuation relexing, the latexBlock extension with its paragraph clipping, the inline queue and its task-marker fix-up, and markdown.ts renderToken, renderList and trimPartialClosingFences on the tokens.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown quotes, lists, paragraphs, tables and display math now lex exactly as Pi's marked lexer does: the block lexer is a port of `Lexer.blockTokens` with the `blockquote`, `list`, `paragraph` and `table` tokenizers and the display-math clipping of paragraphs. This closes every remaining difference from Pi that the random-document comparison found, among them a quote whose nested quote is empty and swallows the lines after it (`\u003e\u003e` then `b`), lazy lines after a quoted list, an item with an empty first line followed by indented content, a list followed by spaces and a blank line, a table delimiter row or display math on a lazy line, an indented line after a lazy line, a list item whose lazy line starts with an astral character, and a quote line that holds a carriage return.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b033bf67e",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "a5099b8d6d",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "f34454ae63",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/markdown_autolink_test.go::TestAutoLinkScannerRenderingPrecedence",
+        "tui/markdown_known_differences_test.go::TestMarkdownKnownDifferencesStillDiffer",
+        "tui/markdown_marked_lexer_allocs_norace_test.go::TestMarkedListItemRulesAllocateNothing",
+        "tui/markdown_marked_lexer_rules_test.go::TestMarkedBlockRulesEqualTheirPatterns",
+        "tui/markdown_random_contract_test.go::TestMarkdownRandomDocsMatchPi",
+        "tui/markdown_residual_contract_test.go::TestMarkdownResidualDocsMatchPi"
+      ]
+    },
+    {
       "id": "BF-3b3dba6",
       "title": "A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's…",
       "symptom": "A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's `JSON.stringify` does instead of `-0`.",
@@ -9695,6 +10063,30 @@
       ]
     },
     {
+      "id": "BF-462d5c9",
+      "title": "Markdown rendering matches Pi for more block shapes",
+      "symptom": "Markdown rendering matches Pi for more block shapes.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown rendering matches Pi for more block shapes. A quote whose list takes lazy lines no longer swallows the quoted line after them, and an empty nested quote drops the lines after it as Pi does. Display math that starts a line after a paragraph line (up to three spaces in) clips the paragraph like Pi, and a paragraph ended by a pipe line and a dash line merges with the next one when display math follows later in the text. Nested lists followed by blank lines or trailing spaces inside a list item keep their empty row, a list item's text starts a setext heading at any line, lazy lines of a quote are lexed apart from the quoted lines before them (HTML blocks, tables, display math and setext headings no longer read across them), and an unclosed fence keeps a partial closing fence line when its text ends in a newline.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "462d5c95b6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/markdown_commonmark_contract_test.go::TestMarkdownCommonmarkDocsMatchPi",
+        "tui/markdown_known_differences_test.go::TestMarkdownKnownDifferencesStillDiffer",
+        "tui/markdown_random_contract_test.go::TestMarkdownRandomDocsMatchPi"
+      ]
+    },
+    {
       "id": "BF-4649166",
       "title": "fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68…",
       "symptom": "fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68 allocations; test the emptydrop claims; keep an empty operations list",
@@ -10852,6 +11244,45 @@
       "tests": []
     },
     {
+      "id": "BF-4ef4859",
+      "title": "A `message_end` handler that returns a system message with missing or null content now keeps that content, as…",
+      "symptom": "A `message_end` handler that returns a system message with missing or null content now keeps that content, as Pi does, instead of getting an empty string.",
+      "rootCause": "System message_end replacements keep null content like Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `message_end` handler that returns a system message with missing or null content now keeps that content, as Pi does, instead of getting an empty string.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4ef48597ec",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/oauth_callback_render_page_contract_test.go::TestMCPCallbackRenderPageMatchesPi",
+        "coding/session_emit_extension_event_oracle_test.go::TestEmitExtensionEventMatchesPi",
+        "internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionDialogClosesTheActiveSelector",
+        "internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionDialogWithAnAbortedSignalShowsNothing",
+        "internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionDialogsRequestARenderWhenTheSlotChanges",
+        "internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionEditorDialogIsBuiltFromTheModeAndSettings",
+        "internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionInputIgnoresItsPlaceholder",
+        "internal/codingagent/ext_ui_dialog_contract_test.go::TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+        "internal/codingagent/ext_ui_footer_contract_test.go::TestSetExtensionFooterFollowsUpstreamOrder",
+        "internal/codingagent/extension_error_stack_contract_test.go::TestExtensionErrorStackMatchesPi",
+        "internal/codingagent/extension_shortcut_contract_test.go::TestExtensionShortcutDispatchMatchesPi",
+        "internal/codingagent/extension_shortcut_contract_test.go::TestExtensionShortcutHandlerDoesNotBlockInput",
+        "internal/codingagent/extension_shortcut_contract_test.go::TestExtensionShortcutListenerIsReplacedBySetup",
+        "internal/codingagent/extension_shortcut_contract_test.go::TestExtensionShortcutsFollowRemappedKeybindings",
+        "internal/codingagent/interactive_initial_messages_contract_test.go::TestRenderInitialMessagesCountsEveryCompactionOfTheFile",
+        "internal/codingagent/interactive_initial_messages_contract_test.go::TestRenderInitialMessagesKeepsTheLoadedRowsAndPaintsAnEmptySession",
+        "internal/codingagent/interactive_initial_messages_contract_test.go::TestRenderInitialMessagesMatchesPi",
+        "internal/codingagent/llama/search_contract_test.go::TestLlamaSearchDirectedKeysMatchPi"
+      ]
+    },
+    {
       "id": "BF-4f079a7",
       "title": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being…",
       "symptom": "An MCP request over Streamable HTTP that is cancelled or times out while the server's authorization is being refreshed is no longer sent again after the refresh; other requests waiting on the same refresh still complete.",
@@ -11473,6 +11904,32 @@
       "tests": []
     },
     {
+      "id": "BF-52550a6",
+      "title": "`pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as…",
+      "symptom": "`pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as Pi does not; the selector's rows still fit every width at which Pi's fit.",
+      "rootCause": "Pi skips a declared member that matches nothing, so startup proceeds, and gives the user no way to see or disable the stale entry in `pi config`. PiG keeps the entry visible so the user can disable it, which rewrites the Package filter exactly as for an existing member (`-extensions/missing-extension`).",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D230",
+      "removeWhen": "Pi lists declared-but-missing Package members in `pi config`, or the owner withdraws the feature.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as Pi does not; the selector's rows still fit every width at which Pi's fit. Declared Package members whose file is absent stay listed with a ` missing` suffix, recorded as D230.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "52550a62aa",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/config_selector_command_test.go::TestConfigSelectorDisablesEnabledMissingPackageMember",
+        "tui/component_width_table_test.go::TestSelectorDialogListComponentsNeverExceedRenderWidth",
+        "tui/config_selector_contract_test.go::TestConfigSelectorContractMatchesPi"
+      ]
+    },
+    {
       "id": "BF-5260e5c",
       "title": "The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and…",
       "symptom": "The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and every price) and returns an error for a field of the wrong type, as the Go SDK's `ModelInfo` does.",
@@ -12037,6 +12494,32 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-5611f7a",
+      "title": "Startup now records the changelog version, and each extension package's version, before the UI and the…",
+      "symptom": "Startup now records the changelog version, and each extension package's version, before the UI and the extensions start, as Pi's `init()` does: a `session_start` handler that reads `settings.json` finds `lastChangelogVersion`.",
+      "rootCause": "A resumed session that holds no message now records it and shows \"What's New\" like a new session, because Pi skips the changelog only for a session with messages.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Startup now records the changelog version, and each extension package's version, before the UI and the extensions start, as Pi's `init()` does: a `session_start` handler that reads `settings.json` finds `lastChangelogVersion`. A resumed session that holds no message now records it and shows \"What's New\" like a new session, because Pi skips the changelog only for a session with messages.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5611f7a1de",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_changelog_init_pty_test.go::TestInitRecordsTheChangelogVersionsBeforeAnythingStarts",
+        "internal/codingagent/startup_changelog_init_pty_test.go::TestInitRecordsTheChangelogVersionsBeforeAnythingStartsChild",
+        "internal/codingagent/startup_changelog_init_test.go::TestChangelogForDisplayFollowsTheSessionMessages",
+        "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
+        "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml"
+      ]
     },
     {
       "id": "BF-5654e71",
@@ -13180,6 +13663,31 @@
       "tests": [
         "tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs",
         "tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"
+      ]
+    },
+    {
+      "id": "BF-5d34045",
+      "title": "A row that fills the terminal and holds an unpaired UTF-16 surrogate, for example text cut inside an emoji…",
+      "symptom": "A row that fills the terminal and holds an unpaired UTF-16 surrogate, for example text cut inside an emoji, no longer stops the interface with \"Rendered line N exceeds terminal width\".",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A row that fills the terminal and holds an unpaired UTF-16 surrogate, for example text cut inside an emoji, no longer stops the interface with \"Rendered line N exceeds terminal width\". The surrogate is measured as zero cells and written to the terminal as U+FFFD when the frame is written, as in Pi, instead of being widened to U+FFFD before the row was measured.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5d34045e29",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/bounded_terminal_writer_lone_surrogate_test.go::TestBoundedTerminalWriterCountsLoneSurrogateAsOneUnit",
+        "tui/main_screen_lone_surrogate_test.go::TestMainScreenLoneSurrogateRowIsEncodedByProcessTerminal",
+        "tui/main_screen_lone_surrogate_test.go::TestMainScreenLoneSurrogateRowMatchesPi",
+        "tui/widthx/lone_surrogate_normalize_test.go::TestNormalizeTerminalOutputKeepsLoneSurrogatesLikePi"
       ]
     },
     {
@@ -16964,6 +17472,78 @@
       "tests": []
     },
     {
+      "id": "BF-6643ce1",
+      "title": "The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:`…",
+      "symptom": "The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:` URL cannot be resolved (a URL that names a host or holds an encoded `/`) when the terminal supports hyperlinks; they used to show the path unlinked.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:` URL cannot be resolved (a URL that names a host or holds an encoded `/`) when the terminal supports hyperlinks; they used to show the path unlinked.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6643ce177e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundariesMatchPi",
+        "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundaryDocsDump",
+        "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundaryDocsParity",
+        "internal/codingagent/edit_card_unlinkable_path_test.go::TestEditCardDrawsTheCallFallbackForAnUnlinkablePath",
+        "internal/codingagent/read_truncation_view_test.go::TestReadTruncationViewOfTheToolsOwnDetails",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsParity",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsProbeDump",
+        "internal/codingagent/write_stream_prefix_contract_test.go::TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary",
+        "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+        "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml",
+        "tui/render_tool_path_contract_test.go::TestRenderToolPathBoundariesMatchPi",
+        "tui/render_tool_path_contract_test.go::TestRenderToolPathBoundaryParity",
+        "tui/render_tool_path_contract_test.go::TestRenderToolPathBoundaryProbeDump"
+      ]
+    },
+    {
+      "id": "BF-6643ce1-2",
+      "title": "The read card's truncation warning prints a count the result does not carry as `undefined` and keeps a stored…",
+      "symptom": "The read card's truncation warning prints a count the result does not carry as `undefined` and keeps a stored limit of 0, as Pi does; it printed `0` and the default limit.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The read card's truncation warning prints a count the result does not carry as `undefined` and keeps a stored limit of 0, as Pi does; it printed `0` and the default limit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6643ce177e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundariesMatchPi",
+        "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundaryDocsDump",
+        "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundaryDocsParity",
+        "internal/codingagent/edit_card_unlinkable_path_test.go::TestEditCardDrawsTheCallFallbackForAnUnlinkablePath",
+        "internal/codingagent/read_truncation_view_test.go::TestReadTruncationViewOfTheToolsOwnDetails",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsParity",
+        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsProbeDump",
+        "internal/codingagent/write_stream_prefix_contract_test.go::TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary",
+        "test/parity/scenarios/providers-registry/09-llama-classify-render-boundaries.toml",
+        "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
+        "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml",
+        "tui/render_tool_path_contract_test.go::TestRenderToolPathBoundariesMatchPi",
+        "tui/render_tool_path_contract_test.go::TestRenderToolPathBoundaryParity",
+        "tui/render_tool_path_contract_test.go::TestRenderToolPathBoundaryProbeDump"
+      ]
+    },
+    {
       "id": "BF-6646adc",
       "title": "A durable transaction that settles a submission with a detail that is not strict JSON now counts as having…",
       "symptom": "A durable transaction that settles a submission with a detail that is not strict JSON now counts as having written a table, as Pi's `settleSubmission` does: later table reads in the same commit are refused, and on a settled transaction the settled error is reported before the JSON check.",
@@ -19238,6 +19818,30 @@
       ]
     },
     {
+      "id": "BF-6f91ff5",
+      "title": "A key bound to two editor actions now performs the action Pi performs",
+      "symptom": "A key bound to two editor actions now performs the action Pi performs.",
+      "rootCause": "Shared keys resolved in a different order than Pi (undo, selection cancel, deletion before movement, newline before submit). Newline cancels a forced popup, Tab always ends the tab branch, and accepting a popup applies it as published instead of querying the provider again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A key bound to two editor actions now performs the action Pi performs. The editor checked copy, undo, the autocomplete selection keys, deletion, kill ring, history, movement, newline, submit and paging in an order of its own, so a shared key such as one bound to both undo and cursor left, or to selection cancel and up, did the wrong one. A newline typed while a forced file popup is open closes it, Tab with no completion available ends there instead of acting as another key, and accepting a popup applies it as shown instead of asking the provider again at the new cursor.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f91ff5417",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/editor_handle_input_contract_test.go::TestEditorAutocompleteKeysResolveInPiOrder",
+        "tui/editor_handle_input_contract_test.go::TestEditorAutocompleteSequencesMatchPi",
+        "tui/editor_handle_input_contract_test.go::TestEditorSharedKeysResolveInPiOrder"
+      ]
+    },
+    {
       "id": "BF-6fb1307",
       "title": "openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before…",
       "symptom": "openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before `transformMessages` drops an errored or aborted assistant turn (`ai/openai_responses.go`, openai-codex-responses.ts:551): a transcript that starts with such a turn followed by a system message no longer sends that message as the prompt.",
@@ -21008,6 +21612,78 @@
       "tests": []
     },
     {
+      "id": "BF-7bc8312",
+      "title": "A task list item whose text starts with emphasis, a code span or a link (`- [ ] **bold** text`) no longer…",
+      "symptom": "A task list item whose text starts with emphasis, a code span or a link (`- [ ] **bold** text`) no longer shows an empty styled span in front of it under a text color or style, and delimiters that open the item's text (`- [ ] **`code`**`) are parsed as emphasis like Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A task list item whose text starts with emphasis, a code span or a link (`- [ ] **bold** text`) no longer shows an empty styled span in front of it under a text color or style, and delimiters that open the item's text (`- [ ] **`code`**`) are parsed as emphasis like Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7bc831259d",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/markdown_sweep_contract_test.go::TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go::TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go::TestMarkdownTableWidthSweepMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-7bc8312-2",
+      "title": "A list item at a marker indent of three spaces or more (` - d`) followed by a line indented four spaces (` -…",
+      "symptom": "A list item at a marker indent of three spaces or more (` - d`) followed by a line indented four spaces (` - e`) continues the item's text with up to four spaces removed instead of rendering a code block, as Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A list item at a marker indent of three spaces or more (` - d`) followed by a line indented four spaces (` - e`) continues the item's text with up to four spaces removed instead of rendering a code block, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7bc831259d",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/markdown_sweep_contract_test.go::TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go::TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go::TestMarkdownTableWidthSweepMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-7bc8312-3",
+      "title": "Rendering Markdown at width 0 gives the rows Pi gives instead of padding them to one cell",
+      "symptom": "Rendering Markdown at width 0 gives the rows Pi gives instead of padding them to one cell.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Rendering Markdown at width 0 gives the rows Pi gives instead of padding them to one cell.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7bc831259d",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/markdown_sweep_contract_test.go::TestMarkdownBlockSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go::TestMarkdownInlineSweepMatchesPi",
+        "tui/markdown_sweep_contract_test.go::TestMarkdownTableWidthSweepMatchesPi"
+      ]
+    },
+    {
       "id": "BF-7bcd404",
       "title": "fix(durable): state the lifetime of the goroutine that publishes an adopted commit",
       "symptom": "fix(durable): state the lifetime of the goroutine that publishes an adopted commit",
@@ -22149,6 +22825,82 @@
         "ai/google_chunk_member_type_oracle_test.go::TestGoogleChunkMistypedMembersMatchPi",
         "ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi",
         "ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi"
+      ]
+    },
+    {
+      "id": "BF-82ae74a",
+      "title": "`pig config` names the key bound to `tui.input.tab` in its \"switch mode\" hint, as Pi does, instead of always…",
+      "symptom": "`pig config` names the key bound to `tui.input.tab` in its \"switch mode\" hint, as Pi does, instead of always printing `tab`; an unbound action prints no key.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig config` names the key bound to `tui.input.tab` in its \"switch mode\" hint, as Pi does, instead of always printing `tab`; an unbound action prints no key. In the global scope the selector no longer toggles an item whose scope is `project`, and a toggle updates the first item of the same path and resource type in the current scope's groups too, as Pi's `ResourceList.updateItem` does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "82ae74af5d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorCancelCallsOnCancelOnce",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorExternalEditorStatusRow",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
+        "internal/codingagent/thinking_selector_contract_test.go::TestThinkingSelectorBoundariesMatchPi",
+        "test/parity/scenarios/project-trust/24-trust-selector-keys.toml",
+        "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+        "test/parity/scenarios/selectors/17-extension-editor-cancel.toml",
+        "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+        "tui/config_selector_callbacks_contract_test.go::TestConfigSelectorGlobalScopeIgnoresProjectOverrideState",
+        "tui/config_selector_callbacks_contract_test.go::TestConfigSelectorToggleCallbacks",
+        "tui/config_selector_contract_test.go::TestConfigSelectorContractMatchesPi",
+        "tui/extension_dialog_contract_test.go::TestExtensionDialogCallbacksFireOncePerCompletingKey",
+        "tui/extension_dialog_contract_test.go::TestExtensionSelectorBranchOrderAndBoundariesMatchPi",
+        "tui/login_dialog_contract_test.go::TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "tui/oauth_selector_contract_test.go::TestOAuthSelectorBranchOrderAndBoundariesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-82ae74a-2",
+      "title": "The extension editor consumes the external-editor key even when no editor handoff is bound, as Pi's…",
+      "symptom": "The extension editor consumes the external-editor key even when no editor handoff is bound, as Pi's `handleInput` does, instead of typing it into the text.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The extension editor consumes the external-editor key even when no editor handoff is bound, as Pi's `handleInput` does, instead of typing it into the text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "82ae74af5d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorCancelCallsOnCancelOnce",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorExternalEditorStatusRow",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress",
+        "internal/codingagent/extension_editor_contract_test.go::TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
+        "internal/codingagent/thinking_selector_contract_test.go::TestThinkingSelectorBoundariesMatchPi",
+        "test/parity/scenarios/project-trust/24-trust-selector-keys.toml",
+        "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+        "test/parity/scenarios/selectors/17-extension-editor-cancel.toml",
+        "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+        "tui/config_selector_callbacks_contract_test.go::TestConfigSelectorGlobalScopeIgnoresProjectOverrideState",
+        "tui/config_selector_callbacks_contract_test.go::TestConfigSelectorToggleCallbacks",
+        "tui/config_selector_contract_test.go::TestConfigSelectorContractMatchesPi",
+        "tui/extension_dialog_contract_test.go::TestExtensionDialogCallbacksFireOncePerCompletingKey",
+        "tui/extension_dialog_contract_test.go::TestExtensionSelectorBranchOrderAndBoundariesMatchPi",
+        "tui/login_dialog_contract_test.go::TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "tui/oauth_selector_contract_test.go::TestOAuthSelectorBranchOrderAndBoundariesMatchPi"
       ]
     },
     {
@@ -29415,6 +30167,42 @@
       "tests": []
     },
     {
+      "id": "BF-a5ff849",
+      "title": "Markdown rendering matches Pi for five more shapes of text",
+      "symptom": "Markdown rendering matches Pi for five more shapes of text.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown rendering matches Pi for five more shapes of text. A paragraph whose last line is only spaces no longer gets an extra blank row under a default text color. An ordered list item with nothing after its delimiter (`2)`) renders as `2.` when list markers are preserved. In a quote narrower than three columns, lazy list lines followed by one blank line no longer add a blank row. A bare `-` under a list item's text is a setext underline (a heading) instead of a nested empty item, also while the text streams. A list item that starts with an empty line and is followed by a blank line ends there, and a bullet up to three spaces in after it is the next item.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5a998f3f4e",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "a5ff849c7b",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/markdown_contract_oracle_test.go::TestMarkdownCodeAndImageRowsMatchPi",
+        "tui/markdown_contract_oracle_test.go::TestMarkdownRenderSequencesMatchPi",
+        "tui/markdown_contract_oracle_test.go::TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_regression_contract_test.go::TestMarkdownRegressionDocsMatchPi",
+        "tui/render_image_registry_contract_test.go::TestRenderImageRegistersKittyMetadataLikePi",
+        "tui/text_contract_oracle_test.go::TestTextRenderContractMatchesPi",
+        "tui/widthx/utils_contract_oracle_test.go::TestBreakLongWordContractMatchesPi",
+        "tui/widthx/utils_contract_oracle_test.go::TestSplitIntoTokensWithAnsiContractMatchesPi",
+        "tui/widthx/utils_contract_oracle_test.go::TestTruncateToWidthContractMatchesPi",
+        "tui/widthx/utils_contract_oracle_test.go::TestWrapSingleLineContractMatchesPi",
+        "tui/widthx/utils_contract_oracle_test.go::TestWrapTextWithAnsiContractMatchesPi"
+      ]
+    },
+    {
       "id": "BF-a690122",
       "title": "`PIG_PROFILE=heap` and the `heap_live_bytes` of `PIG_PROFILE=metrics` count only memory PiG retains",
       "symptom": "`PIG_PROFILE=heap` and the `heap_live_bytes` of `PIG_PROFILE=metrics` count only memory PiG retains.",
@@ -33349,6 +34137,158 @@
       ]
     },
     {
+      "id": "BF-c24d20d",
+      "title": "The terminal progress indicator and the working status start at the run's first turn, as in Pi, so a run…",
+      "symptom": "The terminal progress indicator and the working status start at the run's first turn, as in Pi, so a run writes the progress sequence once, and Escape in a retried run aborts the run.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal progress indicator and the working status start at the run's first turn, as in Pi, so a run writes the progress sequence once, and Escape in a retried run aborts the run.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c24d20d7d6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedIgnoresOtherEntries",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedSupersededCompactionChangesNothing",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageUpdateNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentSettledChecksTheShutdownRequest",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartKeepsTheRetryStatusUntilTurnStart",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventBashExecutionUpdateChangesNothing",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventQueueUpdateRefreshesThePendingMessages",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter"
+      ]
+    },
+    {
+      "id": "BF-c24d20d-2",
+      "title": "A queue change, a thinking-level change and the end of a run now update the pending messages, the editor…",
+      "symptom": "A queue change, a thinking-level change and the end of a run now update the pending messages, the editor border and the footer from the session events, and an extension's `ctx.shutdown()` during a run ends the session when the run settles instead of mid-run.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A queue change, a thinking-level change and the end of a run now update the pending messages, the editor border and the footer from the session events, and an extension's `ctx.shutdown()` during a run ends the session when the run settles instead of mid-run.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c24d20d7d6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedIgnoresOtherEntries",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedSupersededCompactionChangesNothing",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageUpdateNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentSettledChecksTheShutdownRequest",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartKeepsTheRetryStatusUntilTurnStart",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventBashExecutionUpdateChangesNothing",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventQueueUpdateRefreshesThePendingMessages",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter"
+      ]
+    },
+    {
+      "id": "BF-c24d20d-3",
+      "title": "Custom entries, displayed custom messages and compactions that an extension appends at a turn boundary now…",
+      "symptom": "Custom entries, displayed custom messages and compactions that an extension appends at a turn boundary now draw in the transcript as they do in Pi.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Custom entries, displayed custom messages and compactions that an extension appends at a turn boundary now draw in the transcript as they do in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c24d20d7d6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedIgnoresOtherEntries",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedSupersededCompactionChangesNothing",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageUpdateNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentSettledChecksTheShutdownRequest",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartKeepsTheRetryStatusUntilTurnStart",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventBashExecutionUpdateChangesNothing",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventQueueUpdateRefreshesThePendingMessages",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter"
+      ]
+    },
+    {
+      "id": "BF-c24d20d-4",
+      "title": "A finished response shows the thinking-drop notice before the cache-miss notice, an aborted or failed…",
+      "symptom": "A finished response shows the thinking-drop notice before the cache-miss notice, an aborted or failed response shows neither, and a message update or end that arrives with no streaming message draws nothing.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A finished response shows the thinking-drop notice before the cache-miss notice, an aborted or failed response shows neither, and a message update or end that arrives with no streaming message draws nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c24d20d7d6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCompactionRebuildsTheTranscript",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedIgnoresOtherEntries",
+        "internal/codingagent/interactive_handle_event_entries_test.go::TestHandleEventEntryAppendedSupersededCompactionChangesNothing",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventMessageUpdateNeedsAStreamingMessage",
+        "internal/codingagent/interactive_handle_event_messages_test.go::TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentSettledChecksTheShutdownRequest",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartKeepsTheRetryStatusUntilTurnStart",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAgentStartShowsNeitherProgressNorStatus",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventBashExecutionUpdateChangesNothing",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventQueueUpdateRefreshesThePendingMessages",
+        "internal/codingagent/interactive_handle_event_run_test.go::TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter"
+      ]
+    },
+    {
       "id": "BF-c2b2b8b",
       "title": "fix(tui): the inline memo is used only with tui's own style functions",
       "symptom": "fix(tui): the inline memo is used only with tui's own style functions",
@@ -37156,6 +38096,30 @@
       ]
     },
     {
+      "id": "BF-d95dddb",
+      "title": "Markdown removes the indent of a line of an indented code block that follows a Unicode line separator…",
+      "symptom": "Markdown removes the indent of a line of an indented code block that follows a Unicode line separator (U+2028) or paragraph separator (U+2029) inside the block, as Pi does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Markdown removes the indent of a line of an indented code block that follows a Unicode line separator (U+2028) or paragraph separator (U+2029) inside the block, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d95dddb002",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/markdown_marked_lexer_oracle_test.go::TestMarkedBlockLexerEqualsMarkedOnCommittedCorpora",
+        "tui/markdown_marked_lexer_oracle_test.go::TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments",
+        "tui/markdown_marked_lexer_oracle_test.go::TestMarkedBlockLexerEqualsMarkedOnTokenizerSources"
+      ]
+    },
+    {
       "id": "BF-d983b74",
       "title": "Anthropic requests whose strict `prefer` tools exceed a strict tool limit (\"The compiled grammar is too…",
       "symptom": "Anthropic requests whose strict `prefer` tools exceed a strict tool limit (\"The compiled grammar is too large\", \"Too many strict tools\", too many union parameters) no longer fail every turn: PiG retries once with the `prefer` tools non-strict, keeps `require` tools strict, and records an `anthropic_strict_tools_fallback` diagnostic, as Pi 1.2.0 does (pi-mono #10409).",
@@ -40543,6 +41507,68 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e426d28",
+      "title": "Extension commands now run one after the other where Pi awaits each prompt: among the positional startup…",
+      "symptom": "Extension commands now run one after the other where Pi awaits each prompt: among the positional startup messages, among the prompts you type while a command runs, and among the messages queued during compaction.",
+      "rootCause": "run() awaits session.prompt() for the initial message, each positional message and every typed prompt, and flushCompactionQueue awaits each message; prompt() awaits an extension command's handler. PiG started the commands with go ExecuteCommand and went on, so a later command or prompt could overlap an earlier command, and a first prompt could miss the run an earlier command started. The prompt loop and the flush now take the command's completion channel and continue after it. Pi's init() also binds app.clear and Ctrl-D on the default editor before the UI starts and setupKeyHandlers only after managed-tool setup; the startup window now runs Ctrl-C and Ctrl-D through the CustomEditor and…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension commands now run one after the other where Pi awaits each prompt: among the positional startup messages, among the prompts you type while a command runs, and among the messages queued during compaction. The prompt after a command waits for its handler to return, and a queued prompt joins a run an earlier command started with its queued mode.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e426d28bd9",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+        "internal/codingagent/interactive_flush_compaction_queue_order_test.go::TestFlushCompactionQueueAwaitsEachExtensionCommand",
+        "internal/codingagent/interactive_flush_compaction_queue_order_test.go::TestFlushCompactionQueueFirstPromptJoinsTheRunACommandStarted",
+        "internal/codingagent/startup_changelog_init_test.go::TestExtensionChangelogUpdatesFollowTheSessionMessages",
+        "internal/codingagent/startup_prompt_commands_test.go::TestInitialExtensionCommandsRunInOrder",
+        "internal/codingagent/startup_prompt_commands_test.go::TestTypedExtensionCommandHoldsTheNextPrompt",
+        "internal/codingagent/startup_window_keys_pty_test.go::TestInitBindsOnlyTheClearAndExitKeysDuringStartup",
+        "internal/codingagent/startup_window_keys_pty_test.go::TestInitBindsOnlyTheClearAndExitKeysDuringStartupChild",
+        "test/parity/scenarios/startup/22-startup-initial-extension-commands-run-in-order.toml",
+        "test/parity/scenarios/startup/23-startup-typed-extension-commands-run-in-order.toml"
+      ]
+    },
+    {
+      "id": "BF-e426d28-2",
+      "title": "Ctrl+C clears the draft (a second one exits) and Ctrl+D on an empty editor exits while startup is still…",
+      "symptom": "Ctrl+C clears the draft (a second one exits) and Ctrl+D on an empty editor exits while startup is still finishing, for example during the first `fd` and `rg` download, as in Pi; the other application keys stay inactive until startup is done.",
+      "rootCause": "run() awaits session.prompt() for the initial message, each positional message and every typed prompt, and flushCompactionQueue awaits each message; prompt() awaits an extension command's handler. PiG started the commands with go ExecuteCommand and went on, so a later command or prompt could overlap an earlier command, and a first prompt could miss the run an earlier command started. The prompt loop and the flush now take the command's completion channel and continue after it. Pi's init() also binds app.clear and Ctrl-D on the default editor before the UI starts and setupKeyHandlers only after managed-tool setup; the startup window now runs Ctrl-C and Ctrl-D through the CustomEditor and…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ctrl+C clears the draft (a second one exits) and Ctrl+D on an empty editor exits while startup is still finishing, for example during the first `fd` and `rg` download, as in Pi; the other application keys stay inactive until startup is done.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e426d28bd9",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_flush_compaction_queue_contract_test.go::TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+        "internal/codingagent/interactive_flush_compaction_queue_order_test.go::TestFlushCompactionQueueAwaitsEachExtensionCommand",
+        "internal/codingagent/interactive_flush_compaction_queue_order_test.go::TestFlushCompactionQueueFirstPromptJoinsTheRunACommandStarted",
+        "internal/codingagent/startup_changelog_init_test.go::TestExtensionChangelogUpdatesFollowTheSessionMessages",
+        "internal/codingagent/startup_prompt_commands_test.go::TestInitialExtensionCommandsRunInOrder",
+        "internal/codingagent/startup_prompt_commands_test.go::TestTypedExtensionCommandHoldsTheNextPrompt",
+        "internal/codingagent/startup_window_keys_pty_test.go::TestInitBindsOnlyTheClearAndExitKeysDuringStartup",
+        "internal/codingagent/startup_window_keys_pty_test.go::TestInitBindsOnlyTheClearAndExitKeysDuringStartupChild",
+        "test/parity/scenarios/startup/22-startup-initial-extension-commands-run-in-order.toml",
+        "test/parity/scenarios/startup/23-startup-typed-extension-commands-run-in-order.toml"
+      ]
     },
     {
       "id": "BF-e42ae82",
@@ -46864,6 +47890,11 @@
       "id": "D228",
       "title": "Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy",
       "entry": "BF-2359a0a"
+    },
+    {
+      "id": "D230",
+      "title": "`pig config` lists declared Package members that are missing from disk, marked `missing`",
+      "entry": "BF-52550a6"
     }
   ],
   "exemptCommits": {
