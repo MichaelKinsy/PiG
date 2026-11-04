@@ -1059,7 +1059,7 @@
         "internal/modelgen/source_openrouter_test.go#TestOpenRouterPricingOverrides",
         "internal/modelgen/source_vercel_test.go#TestGetAiGatewayCost"
       ],
-      "rationale": "Cost-tier cases over catalog/sources (OpenRouter pricing overrides and getAiGatewayCost), lane B1."
+      "rationale": "Cost-tier cases over catalog/sources (OpenRouter pricing overrides and getAiGatewayCost)."
     },
     {
       "path": "packages/ai/test/model-data-validation.test.ts",
@@ -1487,7 +1487,7 @@
       "evidence": [
         "cmd/gen-models/opencode_model_generation_test.go#TestOpencodeModelGeneration"
       ],
-      "rationale": "Two OpenCode generation cases (Pi 2e0f175b, lane B1)."
+      "rationale": "Two OpenCode generation cases (Pi 2e0f175b)."
     },
     {
       "path": "packages/ai/test/opencode-provider-headers.test.ts",
@@ -3988,7 +3988,7 @@
         "chord/watch_upstream_test.go#TestWatchKeepsReportingTheRetirementPastAnOverflow",
         "chord/watch_upstream_test.go#TestWatchTreatsANullValueAsAValueNeverAsARetirement"
       ],
-      "rationale": "Pi 5f312dac: renamed expectations (kind, aborted, EndWith/ObserveAbort), the 'Watch failure calls' group and the NativeWatch failure case; call-object key/structuredClone/identity cases are designed out (Go call is a struct value). Lane C2."
+      "rationale": "Pi 5f312dac: renamed expectations (kind, aborted, EndWith/ObserveAbort), the 'Watch failure calls' group and the NativeWatch failure case; call-object key/structuredClone/identity cases are designed out (Go call is a struct value)."
     },
     {
       "path": "packages/chord/test/websocket.test.ts",
@@ -5257,7 +5257,7 @@
       "evidence": [
         "internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream"
       ],
-      "rationale": "Four extension changelog cases (Pi b4b72a35, lane A1)."
+      "rationale": "Four extension changelog cases (Pi b4b72a35)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-extension-dialogs.test.ts",
@@ -5301,7 +5301,7 @@
         "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader",
         "internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeHiddenWithStartupDetails"
       ],
-      "rationale": "Model scope inside the fullscreen header and hidden with startup details (Pi 7391dbb0, lane A1)."
+      "rationale": "Model scope inside the fullscreen header and hidden with startup details (Pi 7391dbb0)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
@@ -5344,7 +5344,7 @@
         "internal/codingagent/ext_ui_custom_stack_test.go#TestRemoteCustomOverlayCloseOutOfOrderRemovesItsOwnOverlay",
         "internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsStackConcurrentInlineCustomComponents"
       ],
-      "rationale": "Quiet startup still shows diagnostics, headed [Skill warnings] (Pi f14813e9, lane A1)."
+      "rationale": "Quiet startup still shows diagnostics, headed [Skill warnings] (Pi f14813e9)."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",
@@ -5507,7 +5507,7 @@
         "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenCancelsTheRunningOperationWithTheCancelKey",
         "coding/mcpext/manager_test.go#TestMcpManagerStatusScreenIgnoresTheCancelKeyForOperationsThatCannotBeCancelled"
       ],
-      "rationale": "A menu list captures fullscreen viewport keys only while shown (Pi 3bae8527, lane A1)."
+      "rationale": "A menu list captures fullscreen viewport keys only while shown (Pi 3bae8527)."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-refresh.test.ts",
@@ -5711,7 +5711,7 @@
         "test/parity/scenarios/model-runtime-store-catalog/14-model-selector-error-order.toml",
         "tui/model_select_test.go#TestModelSelector_ShowsModelNamesThatDifferFromTheID"
       ],
-      "rationale": "Moves by one page with remapped selection page keys (Pi 3bae8527, lane A1)."
+      "rationale": "Moves by one page with remapped selection page keys (Pi 3bae8527)."
     },
     {
       "path": "packages/coding-agent/test/models-store.test.ts",
@@ -6973,7 +6973,7 @@
       "evidence": [
         "coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"
       ],
-      "rationale": "The getAuth spy is prepareSummarizationRequest carrying no apiKey/headers/env (Pi 6fed3cfb, lane A2)."
+      "rationale": "The getAuth spy is prepareSummarizationRequest carrying no apiKey/headers/env (Pi 6fed3cfb)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
@@ -7868,7 +7868,7 @@
         "agent/system_state_test.go",
         "internal/codingagent/prompts/sections_test.go"
       ],
-      "rationale": "Reordered active tools do not patch the prompt (Pi b9e3eef6, lane A2)."
+      "rationale": "Reordered active tools do not patch the prompt (Pi b9e3eef6)."
     },
     {
       "path": "packages/coding-agent/test/system-prompt.test.ts",
@@ -8297,7 +8297,7 @@
         "durable/env/node/conformance_test.go",
         "durable/durabletest/env_conformance.go"
       ],
-      "rationale": "Follows Pi 5f312dac (kind coverage, 'watch stops reporting once stopped'); lane C2."
+      "rationale": "Follows Pi 5f312dac (kind coverage, 'watch stops reporting once stopped')."
     },
     {
       "path": "packages/durable/test/env-node-spill.test.ts",

@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane M (see def-fixture in fixture.lisp): the model calls of testdata/python-sdk-fixture/main.py
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp): the model calls of testdata/python-sdk-fixture/main.py
 ;;; (model-stream-probe, model-stream-callback-probe, model-stream-fetch-probe) and the typed model tools of the model-types rows.
 
 (defun mp-fail (control &rest arguments) (error "~?" control arguments))

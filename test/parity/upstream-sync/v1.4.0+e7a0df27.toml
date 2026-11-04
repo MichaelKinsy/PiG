@@ -3044,7 +3044,7 @@ path = "packages/coding-agent/src/core/agent-session.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:coding/session_system_prompt_updates_upstream_test.go#TestReorderedActiveToolsDoNotPatchThePrompt", "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream"]
-rationale = "Pi b9e3eef6 keeps the active tool order when the same tools are set again; 6fed3cfb lets the SDK stream resolve auth for summaries (markRuntimeStreamFunction is Session.runtimeStream set by CreateAgentSession). Lane A2."
+rationale = "Pi b9e3eef6 keeps the active tool order when the same tools are set again; 6fed3cfb lets the SDK stream resolve auth for summaries (markRuntimeStreamFunction is Session.runtimeStream set by CreateAgentSession)."
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-guidance.ts"
@@ -3499,7 +3499,7 @@ path = "packages/coding-agent/src/core/source-info.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:coding/source/source_package_key_test.go#TestGetSourcePackageKey", "test:internal/codingagent/source_info_changelog_test.go#TestSourceInfoCarriesTheChangelogPath"]
-rationale = "Pi b4b72a35: SourceInfo.changelogPath and getSourcePackageKey; coding/source/source_info.go. The SDK wire surfaces of changelogPath are lane F."
+rationale = "Pi b4b72a35: SourceInfo.changelogPath and getSourcePackageKey; coding/source/source_info.go. The SDK wire surfaces of changelogPath are not covered here."
 
 [[files]]
 path = "packages/coding-agent/src/core/system-prompt.ts"
@@ -4528,7 +4528,7 @@ path = "packages/coding-agent/src/utils/image-resize-core.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos", "test:internal/imageprocessing/resize_strategy_oracle_test.go#TestResizeImageDimensionStrategyMatchesPi", "test:internal/imageprocessing/resize_format_oracle_test.go#TestResizeFormatChoiceMatchesPiOnRealisticImages"]
-rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing/images.go with Photon's byte-exact PNG encoder, Lanczos3 and JPEG encoder (internal/photonimage); the format choice matches Pi on 200/200 and 72/72 oracle cases (lanes A2, A2b, photon-jpeg)."
+rationale = "Pi e7a0df27 picks the smaller of PNG and JPEG when resizing; internal/imageprocessing/images.go with Photon's byte-exact PNG encoder, Lanczos3 and JPEG encoder (internal/photonimage); the format choice matches Pi on 200/200 and 72/72 oracle cases."
 
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize-worker.ts"
