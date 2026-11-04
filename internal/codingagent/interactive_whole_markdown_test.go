@@ -17,6 +17,10 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	DefaultKeybindingsManager().syncToTUI()
 	prevTheme := tui.ActiveTheme()
 	t.Cleanup(func() { tui.SetKeybindings(previous); tui.SetTheme(prevTheme.Name) })
+	// The hash was taken on a terminal that is not truecolor; detection reports truecolor for a Windows host or COLORTERM=truecolor.
+	previousCaps := tui.GetCapabilities()
+	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
+	tui.SetCapabilities(tui.TerminalCapabilities{})
 	text := "# Heading\n\nSome **bold**, *italic* and `code` with a [link](https://example.com).\n\n- one\n- two\n\n```go\nfmt.Println(1)\n```\n\n" + strings.Repeat("A long line that wraps at every width tested. ", 6) + "\n"
 	hash := sha256.New()
 	for _, theme := range []string{"dark", "light"} {
