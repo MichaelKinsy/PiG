@@ -122,9 +122,13 @@ func GetProjectTrustOptions(cwd string, includeSessionOnly bool) []ProjectTrustO
 func HasTrustRequiringProjectResources(cwd string) bool {
 	// trust-manager.ts:187 canonicalizePath(resolvePath(process.env.HOME || homedir())): without HOME, Node's os.homedir() reads
 	// the user database. An empty home would resolve to the working directory and hide its .agents/skills.
-	userAgentsSkills := ""
+	userAgentsSkills, userHomeKey := "", ""
 	if home := cmp.Or(os.Getenv("HOME"), osHomedir()); home != "" {
-		userAgentsSkills = filepath.Join(normalizeTrustCwd(home), ".agents", "skills")
+		home = normalizeTrustCwd(home)
+		userAgentsSkills = filepath.Join(home, ".agents", "skills")
+		if resolvepath.FoldsCase() {
+			userHomeKey = resolvepath.ComparisonKey(home)
+		}
 	}
 	current := normalizeTrustCwd(cwd)
 
@@ -136,10 +140,16 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 		}
 	}
 
-	for {
+	for first := true; ; first = false {
 		isUserSkills := probe.Set(current, ".agents", "skills").Is(userAgentsSkills)
-		if !isUserSkills && resolvepath.FoldsCase() {
-			isUserSkills = resolvepath.PathsEqual(filepath.Join(current, ".agents", "skills"), userAgentsSkills)
+		// pathsEqual(<current>/.agents/skills, <home>/.agents/skills) is current's key equal to home's, so one key is made for the walk and no level builds a path or a key of its own.
+		// The working directory is as realpath spelled it and gets the full key; every parent is filepath.Dir's, already resolved.
+		if !isUserSkills && userHomeKey != "" {
+			if first {
+				isUserSkills = resolvepath.ComparisonKey(current) == userHomeKey
+			} else {
+				isUserSkills = resolvepath.HasComparisonKey(current, userHomeKey)
+			}
 		}
 		if !isUserSkills && probe.Exists() {
 			return true

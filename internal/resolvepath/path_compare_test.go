@@ -52,3 +52,34 @@ func TestIsPathWithinMatchesWholePathSegments(t *testing.T) {
 		}
 	}
 }
+
+// HasComparisonKey is ComparisonKey(path) == key for a resolved path, without the allocations of PathsEqual.
+func TestHasComparisonKeyAgreesWithComparisonKeyOnWindows(t *testing.T) {
+	t.Cleanup(OverridePlatform("windows"))
+	paths := []string{
+		`C:\`, `c:\`, `C:\Users`, `C:\Users\Me`, `c:\users\me`, `C:\Users\Me\project`, `C:\Users\Me2`, `D:\Users\Me`,
+		`\\server\share\`, `\\SERVER\Share\`, `\\server\share\folder`,
+		"C:/Users/Me",
+		`C:\Users\Ünïcode`, `c:\users\ünïcode`, `C:\Users\İstanbul`, `C:\Users\K`, `C:\Users\k`, "C:\\Users\\bad\xffbyte", "c:\\users\\bad\ufffdbyte",
+	}
+	for _, path := range paths {
+		for _, other := range paths {
+			key := ComparisonKey(other)
+			if got, want := HasComparisonKey(path, key), ComparisonKey(path) == key; got != want {
+				t.Errorf("HasComparisonKey(%q, ComparisonKey(%q)) = %v, want %v", path, other, got, want)
+			}
+		}
+	}
+	key := ComparisonKey(`C:\Users\Me`)
+	if allocs := testing.AllocsPerRun(100, func() { HasComparisonKey(`C:\USERS\me`, key) }); allocs != 0 {
+		t.Errorf("HasComparisonKey allocates %v objects", allocs)
+	}
+}
+
+func TestHasComparisonKeyComparesBytesOnCaseSensitivePlatforms(t *testing.T) {
+	t.Cleanup(OverridePlatform("linux"))
+	key := ComparisonKey("/home/me")
+	if !HasComparisonKey("/home/me", key) || HasComparisonKey("/home/Me", key) {
+		t.Error("HasComparisonKey folded case on a case-sensitive platform")
+	}
+}

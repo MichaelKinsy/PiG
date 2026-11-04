@@ -4,6 +4,8 @@ import (
 	"runtime"
 	"strings"
 	"sync/atomic"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
@@ -62,6 +64,29 @@ func ComparisonKey(path string) string {
 		return strings.ToLower(resolved)
 	}
 	return resolved
+}
+
+// HasComparisonKey reports ComparisonKey(resolved) == key without allocating, for a resolved path already absolute and normalized as path.resolve leaves it, but for its separators (a path from
+// filepath.Dir of one) and a key from ComparisonKey. On Windows it folds each rune as ComparisonKey's strings.ToLower does and compares in place; a walk that checks every
+// ancestor of the working directory against one key uses it, where PathsEqual would resolve, lower-case and allocate both paths at every level.
+func HasComparisonKey(resolved, key string) bool {
+	if !onWindows() {
+		return resolved == key
+	}
+	for _, r := range resolved {
+		if key == "" {
+			return false
+		}
+		if r == '/' {
+			r = '\\' // win32.resolve writes every separator as a backslash
+		}
+		folded, size := utf8.DecodeRuneInString(key)
+		if unicode.ToLower(r) != folded {
+			return false
+		}
+		key = key[size:]
+	}
+	return key == ""
 }
 
 // PathsEqual is Pi's pathsEqual: both paths name the same location (see ComparisonKey).
