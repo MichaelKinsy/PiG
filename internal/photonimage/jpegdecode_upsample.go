@@ -5,7 +5,10 @@
 
 package photonimage
 
-import "image"
+import (
+	"image"
+	"sync"
+)
 
 // Ports jpeg-decoder 0.3.1 src/upsampler.rs (cited as upsampler.rs), the colour conversions of src/decoder.rs (:1300-1508, cited as
 // decoder.rs) and worker/mod.rs compute_image_parallel (:97-128, the path wasm32 takes), fused with the conversion of image 0.24.9
@@ -249,7 +252,8 @@ const (
 // jpegYCbCrTable holds the four products of decoder.rs:1491-1500 ycbcr_to_rgb for every chroma value, in the same i32 arithmetic.
 type jpegYCbCrTable struct{ crR, cbB, cbG, crG [256]int32 }
 
-var jpegYCbCr = func() *jpegYCbCrTable {
+// jpegYCbCr builds the table on first use: a process that never decodes a JPEG does not pay its 4 KB at start.
+var jpegYCbCr = sync.OnceValue(func() *jpegYCbCrTable {
 	t := new(jpegYCbCrTable)
 	for v := range 256 {
 		d := int32(v) - 128
@@ -259,7 +263,7 @@ var jpegYCbCr = func() *jpegYCbCrTable {
 		t.crG[v] = jpegYCbCrGCr * d
 	}
 	return t
-}()
+})
 
 // jpegClampFixedPoint is decoder.rs:1506-1508 clamp_fixed_point.
 func jpegClampFixedPoint(value int32) uint8 {
@@ -267,8 +271,7 @@ func jpegClampFixedPoint(value int32) uint8 {
 }
 
 // jpegYCbCrToRGB is decoder.rs:1491-1500 ycbcr_to_rgb (ITU-R BT.601, based on libjpeg-turbo's jdcolext.c).
-func jpegYCbCrToRGB(y, cb, cr uint8) (r, g, b uint8) {
-	t := jpegYCbCr
+func jpegYCbCrToRGB(t *jpegYCbCrTable, y, cb, cr uint8) (r, g, b uint8) {
 	yy := int32(y)*(1<<jpegFixedPointOffset) + jpegFixedPointHalf
 	return jpegClampFixedPoint(yy + t.crR[cr]), jpegClampFixedPoint(yy - t.cbG[cb] - t.crG[cr]), jpegClampFixedPoint(yy + t.cbB[cb])
 }
@@ -286,7 +289,7 @@ func jpegConvertRow(kind jpegConvert, dst []byte, lines *[jpegMaxComponents][]by
 			d[0], d[1], d[2], d[3] = r[i], g[i], b[i], 255
 		}
 	case jpegConvertYCbCr:
-		t := jpegYCbCr
+		t := jpegYCbCr()
 		y, cb, cr := lines[0][:n], lines[1][:n], lines[2][:n]
 		for i := range n {
 			yy := int32(y[i])*(1<<jpegFixedPointOffset) + jpegFixedPointHalf
@@ -309,7 +312,7 @@ func jpegConvertRow(kind jpegConvert, dst []byte, lines *[jpegMaxComponents][]by
 		}
 	default: // jpegConvertYCCK
 		// color_convert_line_ycck stores the RGB of (c, m, y) and 255 - k, and cmyk_to_rgb gives k * (255 - r) / 255.
-		t := jpegYCbCr
+		t := jpegYCbCr()
 		c, m, y, k := lines[0][:n], lines[1][:n], lines[2][:n], lines[3][:n]
 		for i := range n {
 			yy := int32(c[i])*(1<<jpegFixedPointOffset) + jpegFixedPointHalf
@@ -391,9 +394,10 @@ func jpegConvertRowRaw(kind jpegConvert, dst []byte, lines *[jpegMaxComponents][
 			dst[3*i], dst[3*i+1], dst[3*i+2] = r[i], g[i], b[i]
 		}
 	case jpegConvertYCbCr:
+		t := jpegYCbCr()
 		y, cb, cr := lines[0][:n], lines[1][:n], lines[2][:n]
 		for i := range n {
-			dst[3*i], dst[3*i+1], dst[3*i+2] = jpegYCbCrToRGB(y[i], cb[i], cr[i])
+			dst[3*i], dst[3*i+1], dst[3*i+2] = jpegYCbCrToRGB(t, y[i], cb[i], cr[i])
 		}
 	case jpegConvertCMYK:
 		c, m, y, k := lines[0][:n], lines[1][:n], lines[2][:n], lines[3][:n]
@@ -401,9 +405,10 @@ func jpegConvertRowRaw(kind jpegConvert, dst []byte, lines *[jpegMaxComponents][
 			dst[4*i], dst[4*i+1], dst[4*i+2], dst[4*i+3] = 255-c[i], 255-m[i], 255-y[i], 255-k[i]
 		}
 	case jpegConvertYCCK:
+		t := jpegYCbCr()
 		c, m, y, k := lines[0][:n], lines[1][:n], lines[2][:n], lines[3][:n]
 		for i := range n {
-			dst[4*i], dst[4*i+1], dst[4*i+2] = jpegYCbCrToRGB(c[i], m[i], y[i])
+			dst[4*i], dst[4*i+1], dst[4*i+2] = jpegYCbCrToRGB(t, c[i], m[i], y[i])
 			dst[4*i+3] = 255 - k[i]
 		}
 	default: // jpegConvertNone

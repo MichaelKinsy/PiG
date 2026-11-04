@@ -12,6 +12,7 @@ import (
 	"image"
 	"math"
 	"math/bits"
+	"sync"
 )
 
 // Photon's `PhotonImage.get_bytes_jpeg(quality)` (photon-rs 0.3.3 lib.rs:203-211) hands its RGBA8 pixels to image 0.24.9
@@ -419,7 +420,8 @@ type colorTables struct {
 	crR, crG, crB [256]float32 // crG and crB hold the products of 106.7685/255 and 20.7315/255, which Rust subtracts
 }
 
-var jpegColor = func() *colorTables {
+// jpegColor builds the tables on first use: a process that never encodes a JPEG does not pay their 9 KB at start.
+var jpegColor = sync.OnceValue(func() *colorTables {
 	t := new(colorTables)
 	yR, yG, yB := yfR/jpegMaxSubpixel, yfG/jpegMaxSubpixel, yfB/jpegMaxSubpixel
 	cbR, cbG, cbB := cbfR/jpegMaxSubpixel, cbfG/jpegMaxSubpixel, cbfB/jpegMaxSubpixel
@@ -431,7 +433,7 @@ var jpegColor = func() *colorTables {
 		t.crR[i], t.crG[i], t.crB[i] = float32(crR*v), float32(-crG*v), float32(-crB*v)
 	}
 	return t
-}()
+})
 
 // toU8 is Rust's saturating `f32 as u8` for a finite value.
 func toU8(v float32) uint8 {
@@ -532,7 +534,7 @@ func EncodeJPEG(img *image.NRGBA, quality uint8) ([]byte, error) {
 // loadBlock is copy_blocks_ycbcr (encoder.rs:818-836) for the block at (x0, y0). pixel_at_or_near (:810-816) repeats the edge pixel
 // of a block that overhangs the image.
 func loadBlock(img *image.NRGBA, x0, y0 int, blockY, blockCb, blockCr *[64]uint8) {
-	c := jpegColor
+	c := jpegColor()
 	width, height := img.Rect.Dx(), img.Rect.Dy()
 	for y := range 8 {
 		row := img.Pix[img.PixOffset(img.Rect.Min.X, img.Rect.Min.Y+min(y0+y, height-1)):]
@@ -550,7 +552,7 @@ func loadBlock(img *image.NRGBA, x0, y0 int, blockY, blockCb, blockCr *[64]uint8
 
 // loadInteriorBlock is loadBlock for a block that lies inside the image.
 func loadInteriorBlock(img *image.NRGBA, x0, y0 int, blockY, blockCb, blockCr *[64]uint8) {
-	c := jpegColor
+	c := jpegColor()
 	for y := range 8 {
 		o := img.PixOffset(img.Rect.Min.X+x0, img.Rect.Min.Y+y0+y)
 		row := img.Pix[o : o+32 : o+32]

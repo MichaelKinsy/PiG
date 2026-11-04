@@ -57,7 +57,7 @@ func referenceEncodeCoefficient(coefficient int32) (uint8, uint16) {
 
 // TestColorTablesMatchRgbToYCbCr compares the lookups of loadBlock with rgb_to_ycbcr for all 2^24 colours.
 func TestColorTablesMatchRgbToYCbCr(t *testing.T) {
-	c := jpegColor
+	c := jpegColor()
 	for r := range 256 {
 		for g := range 256 {
 			for b := range 256 {

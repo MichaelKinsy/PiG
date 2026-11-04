@@ -13,10 +13,11 @@ import (
 
 // TestJPEGYCbCrTableMatchesTheFormula checks the tabulated ycbcr_to_rgb against the formula for every (y, cb, cr).
 func TestJPEGYCbCrTableMatchesTheFormula(t *testing.T) {
+	table := jpegYCbCr()
 	for y := range 256 {
 		for cb := range 256 {
 			for cr := range 256 {
-				r, g, b := jpegYCbCrToRGB(uint8(y), uint8(cb), uint8(cr))
+				r, g, b := jpegYCbCrToRGB(table, uint8(y), uint8(cb), uint8(cr))
 				wr, wg, wb := referenceYCbCrToRGB(uint8(y), uint8(cb), uint8(cr))
 				if r != wr || g != wg || b != wb {
 					t.Fatalf("ycbcr_to_rgb(%d, %d, %d) = %d %d %d, the formula gives %d %d %d", y, cb, cr, r, g, b, wr, wg, wb)
