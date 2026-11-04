@@ -149524,9 +149524,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(signal context.Context, abort func(), held runSignalFrame) (heldAborted bool, frame runSignalFrame)"
+        "type": "func(read func() context.Context, abort func(), held runSignalFrame) (heldAborted bool, frame runSignalFrame)"
       },
-      "shapeHash": "sha256:282a222695dba71bad7ed77fc0c7afedb871b0aa396d22248f436dfbdc60f21a"
+      "shapeHash": "sha256:e1d3acdbdfad500b8ce0ab9b282a9990fc4d792cd02fb81bd29a61d2bce78d0e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runSignals.release",
