@@ -935,6 +935,20 @@ cite = "packages/ai/src/api/openai-completions.ts:1500"
 reason = "Pi sends the tool parameters of a strict sampling tool as getJsonSchemaToolParameters returns them (openai-completions.ts:1500), in the key order of the decoded schema: type, properties, required. The expected request body of the plain-tool case now lists the keys in that order; the fixture builds the tool from JSON so it records the key order a decoded tool does."
 
 [[entry]]
+path = "mcp/review_regression_test.go"
+commit = "d4e641bde31d36a083dc85ef274e7d0854b45998"
+class = "DIVERGENCE"
+cite = "D233"
+reason = "D233 ports Pi main 4a8b60bc3 ahead of the 1.5.0 pin: an HTTP error body keeps its first 8192 bytes (MAX_ERROR_BODY_BYTES) instead of the whole decoded body, so the expected error text of the regression test is that excerpt. Pi main checks the same expectations in its readBodyText tests, ported in streamable_http_body_cap_pi_test.go."
+
+[[entry]]
+path = "automation/ci/divsplit/divsplit_test.go"
+commit = "d0d03879fef7f39c73e9b440fa79aa202669a3e5"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Release hygiene, no behavior change: the retired-divergence record format is now `- D<N>: text`, so the test fixtures use that format together with the parser change; no Pi behavior is involved."
+
+[[entry]]
 path = "internal/codingagent/exit_ending_test.go"
 commit = "c680df851c4349559df4868954a0675ad02fcaee"
 class = "NOBEHAVIOR"
@@ -947,3 +961,9 @@ commit = "3afef80fa0d331f237b853cd92c40c8d4ee2c3ae"
 class = "DIVERGENCE"
 cite = "D231"
 reason = "PiG follows Pi main ace560c30 ahead of the v1.5.0 pin (D231, owner-approved). Pi main keeps the signal handlers until exit and counts signals (rpc-mode.ts signalCount, shutdown() returns when shuttingDown): once a shutdown has started, a stdin end, a ctx.shutdown() request or a single SIGTERM does nothing and the dispose finishes, and only a repeated signal exits at once with 128+signum. TestRPCShutdownTriggers therefore expects a single signal and a stdin end during a started dispose not to interrupt it (the dispose then exits with the first trigger's status), a shutdown request during a stdin-end dispose to do nothing, and a repeated signal to exit 143 at once. Pi 1.5.0 takes the default signal action and exits 0 at once. Pi's own cases are rpc-prompt-response-semantics.test.ts:594, 613 and 631 at ace560c30."
+
+path = "chord/next/host/host_reference_keys_test.go"
+commit = "b478485936430504d20b2c167683b20ff6ab3891"
+class = "CITE"
+cite = "packages/chord/src/next/host/reference-keys.ts:55"
+reason = "Pi hold (reference-keys.ts:55) returns the key source once the pin settles and does not fail with the pin failure: a failed pin shows on the key, which never had a value. The unit test of the failing pin now expects that not_ready key, the result Pi shows to its caller."

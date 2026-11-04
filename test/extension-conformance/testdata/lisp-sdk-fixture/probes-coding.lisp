@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane C (see def-fixture in fixture.lisp)
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp)
 
 (defun coding-bool (value) (if value t :false))
 (defun coding-or-null (value) (if value value :null))

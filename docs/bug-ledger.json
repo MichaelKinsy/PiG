@@ -2154,6 +2154,28 @@
       ]
     },
     {
+      "id": "BF-12d5c56",
+      "title": "A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine…",
+      "symptom": "A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine while a reload composes them.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine while a reload composes them. The read recomposed a changed registry beside the commit that changed it: data races, and a reload that failed with \"reload inside a commit or a derive compute\" (2 of 5 runs of a reload loop beside readers). Pi reads `registries.router.value` on its one JavaScript thread, between the turns of the host's loop; the reads are now sections of the host's loop, which give the same interleaving.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "12d5c56025",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/review_test.go::TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers"
+      ]
+    },
+    {
       "id": "BF-1356aae",
       "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
       "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",
@@ -7744,30 +7766,6 @@
       ]
     },
     {
-      "id": "BF-3afef80",
-      "title": "RPC mode no longer lets a stdin end, a second shutdown request or a single SIGTERM or SIGHUP cut off a…",
-      "symptom": "RPC mode no longer lets a stdin end, a second shutdown request or a single SIGTERM or SIGHUP cut off a shutdown that already started: closing stdin and sending SIGTERM together, as Paseo and systemd do, lets the `session_shutdown` handlers finish, and the process exits with the status of the first trigger.",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "RPC mode no longer lets a stdin end, a second shutdown request or a single SIGTERM or SIGHUP cut off a shutdown that already started: closing stdin and sending SIGTERM together, as Paseo and systemd do, lets the `session_shutdown` handlers finish, and the process exits with the status of the first trigger. A second signal exits at once with 128 plus its number. Print mode likewise keeps handling signals until its final disposal is done, instead of dying from a signal during it. Pi 1.5.0 behaves as before; PiG follows Pi main ace560c30 (Pi #11599, D231).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3afef80fa0",
-          "date": "2026-11-03"
-        }
-      ],
-      "tests": [
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndSettlesBeforeShutdownStarts",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownRepeatedSignalKeepsItsExitStatus",
-        "coding/cli/rpc_shutdown_test.go::TestRPCShutdownTriggers"
-      ]
-    },
-    {
       "id": "BF-3b009a3",
       "title": "`chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK`",
       "symptom": "A child host that forked its own children passed its lock on, and children without a lock of their own failed to start with `locked` (Pi a4d040d3).",
@@ -10304,36 +10302,6 @@
       ]
     },
     {
-      "id": "BF-48a903e",
-      "title": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting…",
-      "symptom": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command.",
-      "rootCause": "The owner asked for the fix to ship in 0.7.0.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D231",
-      "removeWhen": "the pin reaches a Pi release containing 1708b4788.",
-      "fixedIn": "Unreleased",
-      "releaseNote": "RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting for the next command. A request made during startup (for example from `session_start`) is handled once input is attached, and a shutdown requested by an extension command waits until the command's `prompt` response is written. Pi 1.5.0 behaves as before; PiG follows Pi main 1708b4788 (Pi #11599, D231).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "48a903ebee",
-          "date": "2026-11-03"
-        }
-      ],
-      "tests": [
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownFromSessionStartExits",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWaitsForCommandOfSameChunk",
-        "coding/cli/rpc_idle_shutdown_test.go::TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand",
-        "coding/cli/rpc_shutdown_gate_test.go::TestRPCShutdownGate",
-        "coding/cli/rpc_shutdown_regression_test.go::TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder",
-        "coding/cli/rpc_shutdown_test.go::TestRPCExtensionShutdownRequestExits"
-      ]
-    },
-    {
       "id": "BF-4916f14",
       "title": "A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi…",
       "symptom": "A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi (`harness-view-run.test.ts` \"commits a growing text and tool call at a cost that follows the new text\").",
@@ -10464,6 +10432,33 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4a70ed5",
+      "title": "`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell…",
+      "symptom": "`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted.",
+      "rootCause": "a Host with two or more extension connections, packed or isolated, synced them concurrently against one run numbering, and each sync read the run before it took the numbering's lock, so a sync that read the end of a run could apply it after another connection's sync numbered the next run.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every connection, and a connection's sync that had read the end of the previous run could apply that older state after another connection's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. A Host with one extension connection never raced, and a Node runtime aborts the signal it holds itself.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a70ed5306",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "a3a71c520c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale",
+        "test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK"
+      ]
     },
     {
       "id": "BF-4ac21c8",
@@ -10709,6 +10704,40 @@
         "tui/settings_list_input_test.go::TestSettingsListSubmenuReceivesEveryKeyIncludingCancel",
         "tui/settings_list_input_test.go::TestSettingsListWithoutSearchIgnoresOtherKeysAndKeepsSelection",
         "tui/settings_list_keys_test.go::TestSettingsListPageAndHomeEndKeysFollowSearchState"
+      ]
+    },
+    {
+      "id": "BF-4d2f44e",
+      "title": "A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`…",
+      "symptom": "A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready` (\"app.exposer: not live yet\") when that object failed and went live again, in memory, while the key's first pin still loaded from the store: the key was handed back before its pin on the new instance had landed, and the factory's derive read it with no value.",
+      "rootCause": "TestReferenceKeys...TheObjectFailsAndRebindsMeanwhile...TheLatePinIsReleased failed in the final-2 gate with \"app.exposer: not live yet\" (host_reference_keys_test.go:547, the get of the viewer), and on the base 4 times in 5000 runs on 2 CPUs with 8 busy loops.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready` (\"app.exposer: not live yet\") when that object failed and went live again, in memory, while the key's first pin still loaded from the store: the key was handed back before its pin on the new instance had landed, and the factory's derive read it with no value. In Pi a new pin whose load has finished when the old pin settles has landed by then; here the key is now handed back after the new pin has settled when its load has finished. A new pin whose load has not finished when the old pin settles is not waited for, as in Pi, where the consumer's get is then rejected with `not_ready` and `activation_failed`. In the few steps between a load's end and the key being marked loaded the two can differ either way: PiG fails where Pi succeeds, or succeeds where Pi fails. Seen once in a gate run, and 4 times in 5000 runs on 2 CPUs with 8 busy loops.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4d2f44e5e2",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "83216dc40b",
+          "date": "2026-11-03"
+        },
+        {
+          "hash": "b478485936",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_reference_keys_store_test.go::TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectRebindsToAKeyInTheStoreOnlyTheConsumerIsRejectedNotReadyAsInPi",
+        "chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWaitingForThePinOnTheNewInstanceEndsWithItsContext",
+        "chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceDoesNotWaitForAPinOnTheNewInstanceThatReadsTheStore",
+        "chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceReturnsItsSourceOnceThePinOnTheNewInstanceFailedToLoad",
+        "chord/next/host/host_reference_keys_test.go::TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceWaitsForThePinOnTheNewInstance"
       ]
     },
     {
@@ -12428,6 +12457,28 @@
       ]
     },
     {
+      "id": "BF-57347b2",
+      "title": "A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the…",
+      "symptom": "A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the connection was kept could be ended by a delivery that was older than that router, which Pi never does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord HTTP upgrade whose router check read a router that was composed but not yet delivered when the connection was kept could be ended by a delivery that was older than that router, which Pi never does. Routers now carry the order of their composition, and a connection is judged only by the routers composed after the one its check read, whether or not that one is ever delivered; a router composed later than the check still ends it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "57347b2237",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/review_test.go::TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead"
+      ]
+    },
+    {
       "id": "BF-576065f",
       "title": "A stream of appends to one text costs the appended bytes instead of the whole text so far",
       "symptom": "A stream of appends to one text costs the appended bytes instead of the whole text so far.",
@@ -12735,6 +12786,29 @@
       "tests": [
         "ai/classifier_models_upstream_test.go::TestClassifierModelsUpstream",
         "ai/opencode_endpoints_upstream_test.go::TestOpenCodeCatalogUsesProtocolSpecificEndpoints"
+      ]
+    },
+    {
+      "id": "BF-59e2efb",
+      "title": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then…",
+      "symptom": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives. Every router delivered after the check now judges the connection, from the router the check read, so the removal ends it. A router delivered between the check's count and its read no longer ends a connection the router it read admits once that router's delivery is listed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59e2efb012",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/review_test.go::TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead",
+        "chord/nextnode/http/review_test.go::TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers"
       ]
     },
     {
@@ -23076,6 +23150,29 @@
       ]
     },
     {
+      "id": "BF-892827f",
+      "title": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted…",
+      "symptom": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time.",
+      "rootCause": "The getSignal binding of the ExtensionRunner graph object returned context.Background() for a live run and a new cancelled context on every read of an aborted one. The Host numbers a context it has not seen as a new run and watches it with context.AfterFunc, which fires at once for a context that is already cancelled and syncs every runtime again. While a graph client's run was aborted every sync therefore saw a new context, renumbered the run, armed the watcher and read again: a busy loop of getter reads (one RPC to the client each) and run_signal frames to every runtime, until the run ended. It was not caused by the run signal numbering change before it and is present on the base too.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time. The binding answered an aborted run with a new cancelled context on every read; the Host takes a context it has not seen for a new run and watches it, which fires at once for a cancelled one, so every sync renumbered the run and synced again. A run is now one context from the first read that reports it until a read reports no run, and the abort cancels that context in place, as Pi's `agent.signal` is one `AbortSignal` for a run. The run keeps its number through its abort and an aborted run costs no further read.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "892827ff8c",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/session_graph_signal_test.go::TestGraphAbortedRunIsReadAgainByNoSync",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort"
+      ]
+    },
+    {
       "id": "BF-893ff97",
       "title": "A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not…",
       "symptom": "A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not `:25-2512`) in the TUI and in exported HTML (Pi #9887).",
@@ -30443,6 +30540,28 @@
       ]
     },
     {
+      "id": "BF-ad0c167",
+      "title": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and…",
+      "symptom": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero.",
+      "rootCause": "Pi's theme.bold, italic, underline, inverse and strikethrough are chalk calls, which return their text unchanged at chalk stdout color level 0 (CI=1, TERM=dumb, stdout not a terminal), while theme.fg writes escape sequences directly and still colors.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero. With `CI` set (outside a known CI service), `TERM=dumb` or stdout redirected, PiG kept drawing them while Pi 1.5.0 drew only the theme colors.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad0c1678f6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/chalk_modifiers_test.go::TestChalkModifiersOffDrawNoMarkdownStyles"
+      ]
+    },
+    {
       "id": "BF-ad49f9f",
       "title": "`pig status` no longer reports a shared extension name as an unhealthy duplicate",
       "symptom": "`pig status` no longer reports a shared extension name as an unhealthy duplicate.",
@@ -30903,6 +31022,7 @@
         }
       ],
       "tests": [
+        "codemode/haltcheck_test.go::TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld",
         "codemode/haltcheck_test.go::TestInstrumentHaltPollsRepeatedlyAcrossALongLoop",
         "codemode/haltcheck_test.go::TestInstrumentHaltTrapsALoopWhenTheGlobalIsSet"
       ]
@@ -30951,6 +31071,27 @@
       "tests": [
         "chord/host/link_upstream_test.go::TestLinksARouteThatReturnsAnAlreadyClosedLinkDoesNotPoisonTheHostName",
         "chord/host/link_upstream_test.go::TestLinksAnAlreadyClosedLinkIsNotKeptAndStartsNoPinger"
+      ]
+    },
+    {
+      "id": "BF-b04bb32",
+      "title": "fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers…",
+      "symptom": "fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers apply in the order of the reads",
+      "rootCause": "The extension answers getSignal on its own thread, so two reads of the run can be in flight together and answer in either order. The tracker took its lock only to apply an answer, so an \"aborted\" answer could land before an older \"live\" one and the live one then began a run of its own: a live context that nothing would abort, while the run was aborted. The lock is now held across the request and the apply, so answers are applied in read order and a read waits for the one before it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b04bb32856",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/session_graph_signal_test.go::TestGraphGetSignalAppliesAnswersInReadOrder"
       ]
     },
     {
@@ -36344,6 +36485,55 @@
       ]
     },
     {
+      "id": "BF-d4e641b",
+      "title": "An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with…",
+      "symptom": "An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with `MCP JSON response exceeds N bytes`, like an oversized SSE event, instead of being buffered whole (Pi main #11749, D233).",
+      "rootCause": "Pi main's rule, ahead of the pin so that an oversized JSON reply is rejected like the same message sent as SSE. No other mechanism is added: the limit is `StreamableHTTPTransportOptions.MaxMessageBytes`.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D233",
+      "removeWhen": "the pinned Pi release contains 4a8b60bc3. Then the two call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An MCP Streamable HTTP `application/json` reply over `maxMessageBytes` (default 16 MiB) is now rejected with `MCP JSON response exceeds N bytes`, like an oversized SSE event, instead of being buffered whole (Pi main #11749, D233).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d4e641bde3",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody",
+        "mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses",
+        "mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter",
+        "mcp/streamable_http_body_cap_pi_test.go::TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest"
+      ]
+    },
+    {
+      "id": "BF-d4e641b-2",
+      "title": "An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept…",
+      "symptom": "An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An MCP Streamable HTTP error body is read only up to its first 8 KiB, and the rest is cancelled; the kept excerpt is 8192 bytes, not 8192 UTF-16 units (Pi main #11749, D233).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d4e641bde3",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "mcp/review_regression_test.go::TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody"
+      ]
+    },
+    {
       "id": "BF-d50ec25",
       "title": "The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the…",
       "symptom": "The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the admission loop at top level (Bun never reaches `beforeExit` while an entry module's top-level await is pending, so the quit drain after RPC input ended hung), it hooks `v8.Serializer.prototype.writeValue` only where the runtime has it, it keeps a native method when the runtime froze built-ins, and it loads its lazy modules through one list that a bundling runtime can serve.",
@@ -37902,6 +38092,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -37966,6 +38157,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38030,6 +38222,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38094,6 +38287,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38158,6 +38352,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38222,6 +38417,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38286,6 +38482,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38350,6 +38547,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38414,6 +38612,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38478,6 +38677,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38542,6 +38742,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38606,6 +38807,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38670,6 +38872,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38734,6 +38937,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38798,6 +39002,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38862,6 +39067,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38926,6 +39132,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38990,6 +39197,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39054,6 +39262,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39118,6 +39327,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39182,6 +39392,7 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -46931,9 +47142,9 @@
       "entry": "BF-2359a0a"
     },
     {
-      "id": "D231",
-      "title": "PiG follows Pi main 1708b4788 and ace560c30 ahead of the v1.5.0 pin: RPC mode acts on an idle…",
-      "entry": "BF-48a903e"
+      "id": "D233",
+      "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
+      "entry": "BF-d4e641b"
     }
   ],
   "exemptCommits": {

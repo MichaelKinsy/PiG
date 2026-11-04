@@ -92,13 +92,13 @@ func scrollToEndIndicatorLabel() string {
 
 func fullscreenTuiOptions() tui.TuiAltScreenOptions {
 	return tui.TuiAltScreenOptions{
-		SearchMatchStyle: func(text string) string { return "\x1b[4m" + styleSearchMatch(text) + tui.SGRUnderlineReset },
+		SearchMatchStyle: func(text string) string { return tui.ChalkUnderline(styleSearchMatch(text)) },
 		SearchCurrentMatchStyle: func(text string) string {
-			return "\x1b[1m" + tui.ActiveTheme().Inverse(styleSearchMatch(text)) + tui.SGRBoldDimReset
+			return tui.ChalkBold(tui.ActiveTheme().Inverse(styleSearchMatch(text)))
 		},
 		SearchNavigationButtonStyle: func(text string, hovered bool) string {
 			if hovered {
-				return "\x1b[4m" + text + tui.SGRUnderlineReset
+				return tui.ChalkUnderline(text)
 			}
 			return text
 		},

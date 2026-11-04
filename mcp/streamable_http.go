@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -25,13 +26,12 @@ import (
 // Ports packages/mcp/src/transports/streamable-http.ts.
 
 const (
-	maxErrorBodyBytes           = 8 * 1024
-	errorMessageBodyChars       = 500
-	defaultReconnectInitialMs   = 1_000
-	defaultReconnectMaxDelayMs  = 30_000
-	defaultReconnectMaxRetries  = 5
-	sessionDeleteTimeout        = time.Second
-	responseBodyDrainLimitBytes = 64 * 1024
+	maxErrorBodyBytes          = 8 * 1024
+	errorMessageBodyChars      = 500
+	defaultReconnectInitialMs  = 1_000
+	defaultReconnectMaxDelayMs = 30_000
+	defaultReconnectMaxRetries = 5
+	sessionDeleteTimeout       = time.Second
 )
 
 // StreamableHTTPReconnectOptions control reconnection of dropped SSE streams
@@ -152,6 +152,30 @@ func discardResponse(response *http.Response) {
 	if response != nil && response.Body != nil {
 		_ = response.Body.Close()
 	}
+}
+
+// readBodyBytes is Pi's readBodyText (streamable-http.ts, 4a8b60bc3): it reads body to its end, or until it holds more than
+// maxBytes, and closes it. A body over maxBytes is cancelled unread and reported as truncated, with only its first maxBytes
+// bytes kept, less a trailing incomplete UTF-8 sequence (decoder.decode(subarray, {stream: true}) withholds it).
+func readBodyBytes(body io.ReadCloser, maxBytes int) (data []byte, truncated bool, err error) {
+	defer func() { _ = body.Close() }()
+	data, err = io.ReadAll(io.LimitReader(body, int64(maxBytes)+1))
+	if err != nil {
+		return nil, false, err
+	}
+	if len(data) <= maxBytes {
+		return data, false, nil
+	}
+	data = data[:maxBytes]
+	for i := len(data) - 1; i >= 0 && i >= len(data)-3; i-- {
+		if utf8.RuneStart(data[i]) {
+			if !utf8.FullRune(data[i:]) {
+				data = data[:i]
+			}
+			break
+		}
+	}
+	return data, true, nil
 }
 
 func describeHTTPFailure(status int, body string) string {
@@ -320,10 +344,14 @@ func (t *StreamableHTTPTransport) Send(ctx context.Context, message JSONRPCMessa
 	}
 	switch kind := responseContentType(response); kind {
 	case "application/json":
-		data, err := io.ReadAll(response.Body)
-		_ = response.Body.Close()
+		// pig divergence (D233): Pi 1.5.0 reads an application/json reply whole; Pi main caps it at maxMessageBytes like an SSE event (4a8b60bc3, #11335).
+		maxBytes := t.maxMessageBytes()
+		data, truncated, err := readBodyBytes(response.Body, maxBytes)
 		if err != nil {
 			return err
+		}
+		if truncated {
+			return fmt.Errorf("MCP JSON response exceeds %d bytes", maxBytes)
 		}
 		// Response.json() decodes the body as UTF-8 without its BOM, then
 		// rejects invalid JSON with JSON.parse's SyntaxError.
@@ -539,13 +567,10 @@ func (t *StreamableHTTPTransport) checkResponse(response *http.Response) error {
 	if response.StatusCode >= 200 && response.StatusCode < 300 {
 		return nil
 	}
-	// response.text() decodes the body as UTF-8 without its BOM, and slice
-	// keeps MAX_ERROR_BODY_BYTES UTF-16 units, which take at most three bytes
-	// each.
-	data, _ := io.ReadAll(io.LimitReader(response.Body, int64(3*maxErrorBodyBytes+len("\uFEFF"))))
-	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, responseBodyDrainLimitBytes))
-	_ = response.Body.Close()
-	body := jsstring.Slice(jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF"))), 0, maxErrorBodyBytes)
+	// pig divergence (D233): Pi 1.5.0 keeps the first 8192 UTF-16 units of the whole body; Pi main reads only the first MAX_ERROR_BODY_BYTES bytes and cancels the rest (4a8b60bc3, #11335).
+	// TextDecoder decodes the kept bytes without a leading BOM; a failed read leaves an empty body.
+	data, _, _ := readBodyBytes(response.Body, maxErrorBodyBytes)
+	body := jsstring.FromUTF8(bytes.TrimPrefix(data, []byte("\uFEFF")))
 	if response.StatusCode == http.StatusUnauthorized {
 		return NewMcpAuthRequiredError(response, body)
 	}

@@ -143,7 +143,7 @@ func NewLoginDialogComponent(ui TUI, providerID string, onComplete func(success 
 	}
 	// upstream: login-dialog.ts constructor children.
 	dialog.Add(NewDynamicBorder())
-	dialog.Add(NewPaddedText(ActiveTheme().Fg("accent", "\x1b[1m"+dialog.title+SGRBoldDimReset), 1, 0, nil))
+	dialog.Add(NewPaddedText(ActiveTheme().Fg("accent", ChalkBold(dialog.title)), 1, 0, nil))
 	dialog.Add(dialog.content)
 	dialog.Add(NewDynamicBorder())
 	return dialog

@@ -9,7 +9,7 @@ import (
 )
 
 // StartTerminal must start a program on every tmux the journeys run on, and the window must keep the size it was started with whatever the control
-// client reports: window-size manual. tmux 3.4 (Ubuntu 24.04, tern-ci) exits on that option set in the config file before the first session
+// client reports: window-size manual. tmux 3.4 (Ubuntu 24.04) exits on that option set in the config file before the first session
 // exists, so no journey could start there.
 func TestStartTerminalRunsAProgramAtItsSizeOnThisTmux(t *testing.T) {
 	if _, err := exec.LookPath("tmux"); err != nil {

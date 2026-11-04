@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -154,7 +155,14 @@ type Router struct {
 	Csp []CspEntry
 	// SocketHandlers are the socket handlers it serves: a socket handed out by one no longer here is closed.
 	SocketHandlers map[*HttpSocket]struct{}
+	// order is the number of its composition, counted over every composition in the process: a router composed later has a
+	// greater one, whoever reads or delivers it first. It is how an upgrade tells the router its check read from the ones
+	// composed after it.
+	order uint64
 }
+
+// compositions counts the routers composed.
+var compositions atomic.Uint64
 
 // RouteMatch is a matched route: its pattern, plugin, params, handler, options and wraps (outermost first).
 type RouteMatch struct {
@@ -201,7 +209,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 	var entries []*routeEntry
 	router := &Router{
 		routes: routes, sockets: sockets, Hosts: NewStringSet(), Framers: NewStringSet(),
-		SocketHandlers: map[*HttpSocket]struct{}{},
+		SocketHandlers: map[*HttpSocket]struct{}{}, order: compositions.Add(1),
 	}
 	for _, each := range table {
 		plugin, value := each.Plugin, each.Value

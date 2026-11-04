@@ -47,7 +47,7 @@ var hangupSetups = []hangupSetup{
 // terminal write fails with EIO: all the endings race, as they do when a terminal window closes. The line names the first cause
 // observed, `received SIGHUP` or `terminal gone: … (exit 129)`; which of them comes first depends on the setup.
 //
-// Measured on d7127ee2e5 (tern-ci:v7, --cpus 2, six busy loops, pig as the session leader in a tmux pane): 100 of 100 hangups
+// Measured on d7127ee2e5 (a container limited to 2 CPUs, six busy loops, pig as the session leader in a tmux pane): 100 of 100 hangups
 // left three lines (`terminal gone: EOF (hung up)`, `received SIGHUP`, `terminal gone: write /dev/stdout: input/output error`)
 // or two lines with no `received SIGHUP`.
 func TestHangupWritesOneExitLogLine(t *testing.T) {

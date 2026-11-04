@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane P (see def-fixture in fixture.lisp)
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp)
 
 (defun pv-bool (value) (if (eq value t) "true" "false"))
 

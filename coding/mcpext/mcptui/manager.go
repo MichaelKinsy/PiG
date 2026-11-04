@@ -48,13 +48,11 @@ func NewMcpManagerView(host ManagerHost, theme *tui.Theme, keybindings *tui.TUIK
 	return v
 }
 
-func bold(text string) string { return "\x1b[1m" + text + "\x1b[22m" }
-
 // frame is a bordered container with a bold title, the body, and an optional footer.
 func (v *McpManagerView) frame(title string, body []tui.Component, footer string) *tui.Container {
 	container := tui.NewContainer()
 	container.Add(tui.NewDynamicBorder(func(text string) string { return v.theme.Fg("accent", text) }))
-	container.Add(tui.NewPaddedText(v.theme.Fg("accent", bold(title)), 1, 0, nil))
+	container.Add(tui.NewPaddedText(v.theme.Fg("accent", tui.ChalkBold(title)), 1, 0, nil))
 	for _, child := range body {
 		container.Add(child)
 	}

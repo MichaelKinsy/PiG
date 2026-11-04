@@ -118,7 +118,7 @@ func RenderDiff(diffText string, _ ...RenderDiffOptions) string {
 // RenderIntraLineDiff is diff.ts renderIntraLineDiff: the word-level diff of the two lines (jsdiff's diffWords), with inverse on the
 // changed parts and the leading whitespace of the first removed and first added part left outside the highlight.
 func RenderIntraLineDiff(oldContent, newContent string) (removedLine, addedLine string) {
-	inverse := func(value string) string { return "\x1b[7m" + value + "\x1b[27m" }
+	inverse := ChalkInverse
 	var removed, added strings.Builder
 	firstRemoved, firstAdded := true, true
 	for _, part := range jsdiff.DiffWords(oldContent, newContent) {

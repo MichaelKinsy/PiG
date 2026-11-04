@@ -1809,12 +1809,14 @@ func TestRoutinesAreAbortedByHostCloseWhichDrainsTheirRunningCallsBoundedByClose
 	done := make(chan error, 1)
 	go func() { done <- e.host.Close(background) }()
 	// The first routine ends once the close aborted it; the second never stops, so the drain waits for the host's timer,
-	// which the fake clock fires once the first has ended.
+	// which the fake clock fires once the first has ended. The teardown task makes that timer after the aborts, so the first
+	// routine's end does not show it: a clock moved before the timer exists passes it by, and the close never finishes.
 	scopeEventually(t, "the first routine to end", func() bool {
 		mu.Lock()
 		defer mu.Unlock()
 		return len(ended) == 1
 	})
+	until(t, "the close's drain timer", func() bool { return e.timers() > 0 })
 	e.loop.AdvanceAsync(50)
 	must(t, receive(t, done))
 	mu.Lock()

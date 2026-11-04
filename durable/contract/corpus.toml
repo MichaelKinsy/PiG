@@ -445,7 +445,7 @@ about = "a Harness on Chord's store"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): a Harness on StoreStorage over Chord's store (14b4c56e)"
+reason = "pending Durable on Chord's store and registries: a Harness on StoreStorage over Chord's store (14b4c56e)"
 
 [[scenario]]
 id = "E36"
@@ -458,7 +458,7 @@ about = "Durable views on Chord's store"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): Durable views on Chord's store (14b4c56e)"
+reason = "pending Durable on Chord's store and registries: Durable views on Chord's store (14b4c56e)"
 
 [[scenario]]
 id = "E37"
@@ -471,7 +471,7 @@ about = "a Harness over a registry"
 levels = ["store", "commit", "context", "output", "order"]
 normalisers = []
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): a Harness over a registry and host.root (6eb99ad6)"
+reason = "pending Durable on Chord's store and registries: a Harness over a registry and host.root (6eb99ad6)"
 
 [[scenario]]
 id = "U-codemode-checkpoints"
@@ -848,7 +848,7 @@ sha256 = "8c0156ac3177fede9c642204996e1bb311d3d0fa7087500af8e6b24aefacc116"
 owner = "dcore-session"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"
+reason = "pending Durable on Chord's store and registries: a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"
 
 [[scenario]]
 id = "U-harness-ownership"
@@ -899,7 +899,7 @@ sha256 = "4b53c3cbeea9d414bf159641293e3a5edc60834a624beaca15b0496e047d053c"
 owner = "dcore-loop"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): the registry reader (6eb99ad6)"
+reason = "pending Durable on Chord's store and registries: the registry reader (6eb99ad6)"
 
 [[scenario]]
 id = "U-harness-registry"
@@ -1307,7 +1307,7 @@ sha256 = "05486dae2e157903cc932069e84df2313ab75f9239d3e8b6ef5333907144cd8e"
 owner = "dcore-session"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"
+reason = "pending Durable on Chord's store and registries: a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"
 
 [[scenario]]
 id = "U-session-tables"
@@ -1401,7 +1401,7 @@ sha256 = "d1be14297cd5b3ac2cef380446b6452acfbcadee5f1eac7465d898bf40152111"
 owner = "dcore-store"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): StoreStorage.commit over ChordStore.commitSeries (14b4c56e)"
+reason = "pending Durable on Chord's store and registries: StoreStorage.commit over ChordStore.commitSeries (14b4c56e)"
 
 [[scenario]]
 id = "U-store-storage"
@@ -1412,7 +1412,7 @@ sha256 = "1c13c21282bbf46e11f942b1b8ac01c24991d9f3825446f3a9e5128df9216e6a"
 owner = "dcore-store"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): StoreStorage, Durable's storage on Chord's store (14b4c56e)"
+reason = "pending Durable on Chord's store and registries: StoreStorage, Durable's storage on Chord's store (14b4c56e)"
 
 [[scenario]]
 id = "U-system-order-cache-e2e"
@@ -1494,7 +1494,7 @@ owner = "dcore-store"
 about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"
 levels = ["tests"]
 status = "pending"
-reason = "pending lane D-store (Durable on Chord's store, registries): it refuses a creation and a change of one document in one commit (14b4c56e)"
+reason = "pending Durable on Chord's store and registries: it refuses a creation and a change of one document in one commit (14b4c56e)"
 
 [[scenario]]
 id = "I"

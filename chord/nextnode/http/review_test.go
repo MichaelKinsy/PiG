@@ -769,3 +769,248 @@ func TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits(t *testing.
 		})
 	}
 }
+
+// Pi's hand-out is one synchronous step, so every router delivered after an upgrade's check revokes its connection in turn: a
+// host removed and then restored between the check and the keep ends it at the removal's delivery, though the newest router
+// admits it again.
+func TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection(t *testing.T) {
+	entered, release := newGate(), newGate()
+	t.Cleanup(release.resolve)
+	gone, back := make(chan struct{}, 8), make(chan struct{}, 8)
+	var sawGone atomic.Bool
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{tunnel}, servedOptions{
+		revokeHook: func(router *Router) {
+			if !router.Hosts.Has("t.example") {
+				sawGone.Store(true)
+				gone <- struct{}{}
+			} else if sawGone.Load() {
+				back <- struct{}{}
+			}
+		},
+		links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+			entered.resolve()
+			<-release.done()
+			return LinkOptions{}, nil
+		}},
+	})
+	type dialed struct {
+		socket *clientSocket
+		err    error
+	}
+	opening := httpAsync(func() dialed {
+		socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
+		return dialed{socket, err}
+	})
+	receive(t, entered.done(), "the upgrade checked against the router with the host")
+	server.reload(t)
+	receive(t, gone, "the revoke against the router without the host")
+	server.http.revokeTasks.Wait()
+	server.reload(t, tunnel)
+	receive(t, back, "the revoke against the router with the host back")
+	server.http.revokeTasks.Wait()
+	release.resolve()
+	got := receive(t, opening, "the upgrade")
+	if got.err != nil {
+		t.Fatalf("upgrade: %v", got.err)
+	}
+	receive(t, got.socket.closed, "the server ending the connection at the removal of its host")
+}
+
+// serverSideSocket is a WebSocket over a connection to a server that upgrades and idles.
+func serverSideSocket(t *testing.T) *WebSocket {
+	t.Helper()
+	upgrader := websocket.Upgrader{CheckOrigin: func(*nethttp.Request) bool { return true }}
+	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		_, _ = upgrader.Upgrade(w, r, nil)
+	}))
+	t.Cleanup(server.Close)
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	return newWebSocket(conn)
+}
+
+// An upgrade counts the deliveries (V0) before it reads its router; V1 (host gone) is delivered meanwhile and V2 (host back) is
+// what the check read. Pi's revoke of V1 ran before that check read V2, so it ends nothing; had the check read V0, V1's revoke
+// ends the connection at its delivery.
+func TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead(t *testing.T) {
+	router := func(order uint64, host ...string) *Router {
+		return &Router{Hosts: NewStringSet(host...), SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
+	}
+	for _, read := range []string{"V0", "V2"} {
+		t.Run("the check read "+read, func(t *testing.T) {
+			u := NewUpgrades()
+			v0, v1, v2 := router(1, "t.example"), router(2), router(3, "t.example")
+			u.delivered(v0)
+			seen := u.admitting()
+			defer u.settled(seen)
+			u.delivered(v1)
+			u.delivered(v2)
+			socket := serverSideSocket(t)
+			checked := map[string]*Router{"V0": v0, "V2": v2}[read]
+			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, checked: checked.order}
+			u.keep(connection)
+			u.recheck(connection)
+			if ended := socket.ReadyState() == WebSocketClosedState; ended != (read == "V0") {
+				t.Fatalf("after reading %s the connection ended = %v", read, ended)
+			}
+		})
+	}
+}
+
+// The router the component reads and the one the follower delivers are the same composition (its order is what an upgrade's
+// connection is judged from).
+func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.T) {
+	var last atomic.Pointer[Router]
+	gone := make(chan struct{}, 8)
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{tunnel}, servedOptions{
+		noListen: true,
+		revokeHook: func(router *Router) {
+			last.Store(router)
+			if !router.Hosts.Has("t.example") {
+				gone <- struct{}{}
+			}
+		},
+	})
+	if status := httpStatus(server, "/x", httpLoopback); status != 404 {
+		t.Fatalf("status = %d", status)
+	}
+	server.reload(t)
+	receive(t, gone, "the revoke against the router without the host")
+	server.http.revokeTasks.Wait()
+	set, err := server.http.registriesNow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := set.routerNow(); got != last.Load() {
+		t.Fatal("the router the component reads is not the one the follower delivered")
+	}
+}
+
+// The deliveries an upgrade needs are kept only while it is in flight: its own settling, and every delivery that follows one,
+// drop the rest (a leak would cost one router per reload for the life of the component).
+func TestReviewTheDeliveriesKeptForUpgradesAreBoundedByTheOnesInFlight(t *testing.T) {
+	u := NewUpgrades()
+	router := func() *Router { return &Router{Hosts: NewStringSet(), SocketHandlers: map[*HttpSocket]struct{}{}} }
+	u.delivered(router())
+	seen := u.admitting()
+	const deliveries = 1000
+	for range deliveries {
+		u.delivered(router())
+	}
+	if got := len(u.history); got != deliveries+1 {
+		t.Fatalf("in flight across %d deliveries the history holds %d, want %d", deliveries, got, deliveries+1)
+	}
+	u.settled(seen)
+	if len(u.history) != 1 || len(u.inflight) != 0 {
+		t.Fatalf("after settled the history holds %d and %d are in flight, want 1 and 0", len(u.history), len(u.inflight))
+	}
+	for range deliveries {
+		each := u.admitting()
+		u.delivered(router())
+		u.settled(each)
+	}
+	if len(u.history) != 1 || len(u.inflight) != 0 {
+		t.Fatalf("after %d admit, deliver, settle rounds the history holds %d and %d are in flight, want 1 and 0", deliveries, len(u.history), len(u.inflight))
+	}
+}
+
+// The router an upgrade's check read can be composed and still undelivered when the connection is kept (the check composed it
+// on read). The deliveries composed before it are older than the check (Pi's revoke of them ran before it): they judge
+// nothing. One composed after it judges the connection, whether or not the router the check read is ever delivered.
+func TestReviewAnUpgradeWhoseCheckReadAnUndeliveredRouterIsJudgedOnlyByLaterCompositions(t *testing.T) {
+	router := func(order uint64, host ...string) *Router {
+		return &Router{Hosts: NewStringSet(host...), SocketHandlers: map[*HttpSocket]struct{}{}, order: order}
+	}
+	for _, laterGone := range []bool{false, true} {
+		name := "only an older composition was delivered since the count"
+		if laterGone {
+			name = "a later composition without the host was delivered before the keep"
+		}
+		t.Run(name, func(t *testing.T) {
+			u := NewUpgrades()
+			u.delivered(router(1, "t.example"))
+			seen := u.admitting()
+			defer u.settled(seen)
+			u.delivered(router(2))
+			read := router(3, "t.example")
+			if laterGone {
+				u.delivered(router(4))
+			}
+			socket := serverSideSocket(t)
+			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, checked: read.order}
+			u.keep(connection)
+			u.recheck(connection)
+			if ended := socket.ReadyState() == WebSocketClosedState; ended != laterGone {
+				t.Fatalf("the connection ended = %v, want %v", ended, laterGone)
+			}
+		})
+	}
+}
+
+// Every upgrade that was in flight is settled once it is over, handed out or refused, so the deliveries kept for it are
+// released (the component's own `admitting` and `settled`, not the Upgrades' alone).
+func TestReviewAnUpgradeIsSettledWhetherItWasHandedOutOrRefused(t *testing.T) {
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	server := serving(t, []plugin{sockets}, servedOptions{})
+	mustRefused(t, server.port, "/nowhere", owner, 404)
+	socket := mustSocketTo(t, server.port, "/echo", owner)
+	t.Cleanup(func() { socket.Close(0, "") })
+	eventually(t, "every upgrade settled and its deliveries released", func() bool {
+		server.http.upgrades.mu.Lock()
+		defer server.http.upgrades.mu.Unlock()
+		return len(server.http.upgrades.inflight) == 0 && len(server.http.upgrades.history) == 1
+	})
+}
+
+// Pi's HTTP component reads the router and the authenticators (`registries.router.value`) on the one JavaScript thread, between
+// the turns of the host's loop, so a read never meets a reload composing the registry. Requests and upgrades here run on
+// goroutines of their own: their reads must be sections of the host's loop too, or they recompose the registry beside a commit
+// (data races, and a reload that fails with "reload inside a commit or a derive compute").
+func TestReviewRequestsAndUpgradesReadTheRegistriesWhileReloadsComposeThem(t *testing.T) {
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	// A route for the requests to reach their authenticators, and an authenticator the reloads add and remove in turn.
+	routes := plugin{"@app/routes", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /x", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil }),
+	}})}
+	extra := plugin{"@app/extra-auth", authenticating(func(HttpRequest, context.Context) (data.Principal, error) { return nil, nil })}
+	server := serving(t, []plugin{sockets, tunnel, routes}, servedOptions{})
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	running := func() bool {
+		select {
+		case <-stop:
+			return false
+		default:
+			return true
+		}
+	}
+	for range 4 {
+		wg.Go(func() {
+			for running() {
+				_ = server.http.Fetch(loopback("/x"), loopbackConnection).Body.Close()
+			}
+		})
+	}
+	wg.Go(func() {
+		for running() {
+			if socket, err := socketTo(server.port, "/echo", owner, 0); err == nil {
+				socket.Close(0, "")
+			}
+		}
+	})
+	for i := range 40 {
+		if i%2 == 0 {
+			server.reload(t, sockets, routes, extra)
+		} else {
+			server.reload(t, sockets, tunnel, routes)
+		}
+	}
+	close(stop)
+	wg.Wait()
+}

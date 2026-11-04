@@ -4342,6 +4342,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/62-chalk-level-zero-modifiers.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Chalk level zero",
+            "capture_end": "Chalk answer end"
+          },
+          "reason": "Owned visible surface: With CI=1 (chalk level 0) Markdown headings, quotes, table headers and links draw no bold, italic or underline.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {
@@ -9813,6 +9831,24 @@
             "capture_start_last": true
           },
           "reason": "Owned visible surface: Both binaries render the card of an MCP tool call and its result the same way.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/26-hotkeys-extension-shortcuts.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Session name set: hotkeys-ext-anchor",
+            "capture_end": "Session name set: hotkeys-ext-end"
+          },
+          "reason": "Owned visible surface: Hotkeys lists extension-registered shortcuts in an Extensions table",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

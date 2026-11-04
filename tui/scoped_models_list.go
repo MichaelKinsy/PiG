@@ -112,7 +112,7 @@ func NewScopedModelsList(cfg ScopedModelsConfig) *ScopedModelsList {
 	s.footerText = NewPaddedText("", 0, 0, nil)
 	s.Add(NewDynamicBorder())
 	s.Add(NewSpacer(1))
-	s.Add(NewPaddedText(fg(th.Accent, "\x1b[1mModel Configuration"+SGRBoldDimReset), 0, 0, nil))
+	s.Add(NewPaddedText(fg(th.Accent, ChalkBold("Model Configuration")), 0, 0, nil))
 	s.Add(NewPaddedText(fg(th.Muted, "Session-only. "+ActionKeyDisplayTextOr("app.models.save", "ctrl+s")+" to save to settings."), 0, 0, nil))
 	s.Add(NewSpacer(1))
 	s.Add(s.searchInput)
@@ -388,7 +388,7 @@ func (s *ScopedModelsList) renderRow(i int) string {
 			status = fg(th.Accent, "✓ ")
 		}
 	} else {
-		id = "\x1b[9m" + id + SGRStrikeReset
+		id = ChalkStrikethrough(id)
 	}
 	if i == s.cursor {
 		prefix = fg(th.Accent, "→ ")

@@ -19,6 +19,8 @@ const deterministicModel = "test-faux/faux-1"
 func deterministicGopiConfig(t *testing.T) systemConfig {
 	t.Helper()
 	pigHome := t.TempDir()
+	// Without a settings.json in the agent directory pig opens its first-time setup (D88), which blocks readiness.
+	seedIntegrationSettings(t, pigHome)
 	// cli/args.ts --approve selects trust for this run without touching user state.
 	return systemConfig{
 		name:   "pig",

@@ -1024,8 +1024,10 @@ func TestGCCollectsRequestsScopesAndRequestsOnceAnswered(t *testing.T) {
 func TestReloadsAndCloseAReloadSwappingARouteLeavesARunningRequestOnTheOldRouterTheNextUsesTheNewOne(t *testing.T) {
 	gate := newGate()
 	t.Cleanup(gate.resolve)
+	entered := newGate()
 	old := contributing(HttpContribution{Routes: []HttpRouteEntry{
 		RouteFunc("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			entered.resolve()
 			<-gate.done()
 			return htmlOf("old"), nil
 		}),
@@ -1039,7 +1041,8 @@ func TestReloadsAndCloseAReloadSwappingARouteLeavesARunningRequestOnTheOldRouter
 		got, err := send(t, server.port, "GET", "/v", sendOptions{})
 		return sent{got, err}
 	})
-	time.Sleep(50 * time.Millisecond)
+	// The running request is on the old route, which it read from the router before it could run.
+	receive(t, entered.done(), "the old route")
 	next := contributing(HttpContribution{Routes: []HttpRouteEntry{
 		RouteFunc("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("new"), nil }),
 	}})

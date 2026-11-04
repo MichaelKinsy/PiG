@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane U1: the component kit, ui.custom and overlays, widgets, footer and header, the
+;;; the probe commands, tools and event handlers of this file: the component kit, ui.custom and overlays, widgets, footer and header, the
 ;;; working indicator (see def-fixture in fixture.lisp). Each is the Python fixture's probe of the same name (python-sdk-fixture/main.py).
 
 (defun kp-nl (&rest lines) (format nil "~{~A~^~%~}" lines))
@@ -389,7 +389,7 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                  (pig:ctx-set-footer-view ctx (kp-probe-view))
                  (pig:tool ext "kit_view_tool" "Render its result as the kit probe" (pig:obj "type" "object") (lambda (ctx params) (declare (ignore ctx params)) "kit"))
                  (pig::tool-renderers ext "kit_view_tool" :result-view (lambda (ctx result options render width) (declare (ignore ctx result options render width)) (kp-probe-view)))))
-  ;; the view renderers are lane P's API (pig:: until its exports are merged)
+  ;; the view renderers are the providers' API (pig:: until its exports are merged)
   (pig::message-view-renderer ext "kit-message" (lambda (ctx message options width) (declare (ignore ctx message options width)) (kp-probe-view)))
   (pig::entry-view-renderer ext "kit-entry" (lambda (ctx entry options width) (declare (ignore ctx entry options width)) (kp-probe-view)))
   (pig::tool-renderer ext (lambda (tool next)

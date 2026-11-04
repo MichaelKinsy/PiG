@@ -264,7 +264,7 @@ export default function (pi) {
 	}
 	h.expectContains(startupReadyWait, interactiveReadyMarker, "[Extensions]", "startup-probe")
 	h.send("/hotkeys\r")
-	h.expectContains(3*time.Second, "Ctrl+R            : Rename session")
+	h.expectContains(3*time.Second, hotkeysLastRow)
 }
 
 // TestExt_StartupWithoutConfig proves pig starts with no configured or discovered extensions.
@@ -428,7 +428,7 @@ func TestExt_Live_SubagentDispatchAndCheck(t *testing.T) {
 
 	// Interactive test via tmux: dispatch then check.
 	session := "ext-dispatch-" + randID()
-	defer func() { _ = tmuxCommand("kill-session", "-t", session).Run() }()
+	defer func() { _ = killSession(t, session) }()
 
 	if err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").Run(); err != nil {
 		t.Fatal(err)

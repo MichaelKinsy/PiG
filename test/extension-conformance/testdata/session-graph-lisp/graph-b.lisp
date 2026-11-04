@@ -1,5 +1,5 @@
 (in-package "session-graph")
-;;; model_runtime, model_registry, create_provider, extension_refs, mcp_options, extension_runner, services (lane S3)
+;;; model_runtime, model_registry, create_provider, extension_refs, mcp_options, extension_runner, services
 
 (defun b-yes (x) (if x t :false))
 (defun b-vec (list) (coerce list 'simple-vector))

@@ -538,7 +538,7 @@ func (b *AssistantMessageComponent) thinkingRun(index int, md *Markdown, hidden 
 	kept := &b.thinkingRuns[index]
 	hiddenText := ""
 	if hidden {
-		hiddenText = "\x1b[3m" + ActiveTheme().ThinkingText + b.hiddenLabel + FgClose(ActiveTheme().ThinkingText) + SGRItalicReset
+		hiddenText = ChalkItalic(ActiveTheme().ThinkingText + b.hiddenLabel + FgClose(ActiveTheme().ThinkingText))
 	} else {
 		md.SetDefaultColor(ActiveTheme().ThinkingText)
 	}
