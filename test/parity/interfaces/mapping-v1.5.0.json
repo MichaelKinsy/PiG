@@ -216893,6 +216893,7 @@
       ],
       "evidence": [
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
+        "test:tui/chalk_modifiers_test.go#TestChalkModifiersOffDrawNoMarkdownStyles",
         "test:tui/theme_attribute_helpers_test.go#TestThemeTextAttributeHelpers"
       ]
     },
@@ -216914,6 +216915,7 @@
       ],
       "evidence": [
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
+        "test:tui/chalk_modifiers_test.go#TestChalkModifiersOffDrawNoMarkdownStyles",
         "test:tui/theme_attribute_helpers_test.go#TestThemeTextAttributeHelpers"
       ]
     },
@@ -264769,8 +264771,8 @@
       ],
       "evidence": [
         "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/streamable_http_policy_pi_test.go#TestStreamableHTTPFailureDescriptionAndRetryPolicyMatchPi",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsRetriesATransientHTTPFailureTwiceAndThenFails"
+        "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty",
+        "test:mcp/streamable_http_policy_pi_test.go#TestStreamableHTTPFailureDescriptionAndRetryPolicyMatchPi"
       ]
     },
     {
@@ -265015,8 +265017,8 @@
       ],
       "evidence": [
         "test:mcp/errors_test.go#TestErrorClassesCarryUpstreamNamesMessagesAndFields",
-        "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession",
-        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs"
+        "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty",
+        "test:mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession"
       ]
     },
     {
@@ -267765,8 +267767,8 @@
       ],
       "evidence": [
         "test:mcp/goroutines_test.go#TestStreamableHTTPClientLeavesNoGoroutineBehindAfterClose",
-        "test:mcp/streamable_http_close_order_test.go#TestStreamableHTTPTransportSendsTheSessionDeleteOnlyAfterTheAbortedRequestsReturned",
-        "test:mcp/streamable_http_get_stream_token_test.go#TestStreamableHTTPTransportReadsTheGETStreamsTokenBeforeTheInitializedNotificationReturns"
+        "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty",
+        "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses"
       ]
     },
     {
@@ -289615,8 +289617,8 @@
       ],
       "evidence": [
         "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
-        "test:tui/markdown_blockquote_style_test.go#TestMarkdownBlockquoteDefaultStyleMatchesUpstreamBytes",
-        "test:tui/markdown_blockquote_style_test.go#TestMarkdownEmphasisAndSetextMatchUpstreamBytes"
+        "test:tui/chalk_modifiers_test.go#TestChalkModifiersOffDrawNoMarkdownStyles",
+        "test:tui/markdown_blockquote_style_test.go#TestMarkdownBlockquoteDefaultStyleMatchesUpstreamBytes"
       ]
     },
     {

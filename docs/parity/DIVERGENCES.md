@@ -2979,6 +2979,28 @@ Evidence: `TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage` (a tool call 
 
 Parity allowance: scenario `interactive-rendering/59-up-recalls-queued-message-copy-tip` compares the screen with Pi's byte for byte under `TERM_PROGRAM=tmux` and removes only the tip rows; scenario `interactive-rendering/60-terminal-app-up-dequeues-queued-message` states each side's outcome under `TERM_PROGRAM=Apple_Terminal`, where the screens differ by this record. Alt+Up bytes stay compared with Pi in `interactive-rendering/58-alt-up-dequeues-queued-message`.
 
+## D231 PiG follows Pi main 1708b4788 and ace560c30 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`, and a started RPC or print shutdown finishes
+
+What: PiG takes two Pi main commits before the pin reaches a release that contains them. Part 1 is 1708b4788 ("fix(coding-agent): process idle ctx.shutdown() requests in RPC mode", Pi #11746, fixing #11599): RPC mode. An extension's `ctx.shutdown()` sets a request and schedules one check on the next tick of the stdin executor. The check shuts down only when a request is pending, input is attached, no command is being handled and the session is idle, and it is repeated when a command ends (for `prompt`, when the prompt settles), at `agent_settled` and when input is attached. A request made while the session is idle (for example from a timer) shuts down at once instead of waiting for the next stdin command. A request made during startup, such as a synchronous `ctx.shutdown()` in `session_start`, is handled once input is attached. A shutdown requested by an extension command waits until the command finished, so the command's `prompt` response is written before `session_shutdown` and the exit. A shutdown that has started is not started again by a repeated request. A request made while an extension-started compaction runs still waits for the next command or run.
+
+Part 2 is ace560c30 ("let a started RPC or print shutdown finish; only a repeated signal forces exit", Pi #11752). Once an RPC shutdown has started, from stdin end, `ctx.shutdown()` or a signal, a later stdin end, request or single SIGTERM/SIGHUP does not interrupt it and the dispose finishes; the process then exits with the code of the trigger that started it (0, or 128 plus the signal number). A second signal exits at once with 128 plus its number, without waiting for the dispose. The signal handlers stay until exit. Print mode keeps its signal handlers until the final disposal is done: a signal during it waits for that disposal and then exits 143 (SIGHUP 129), and a repeated signal exits at once. SIGKILL always works.
+
+Why: The owner asked for both fixes to ship in 0.7.0. Pi 1.5.0 removes its signal handlers when shutdown starts, so a signal that follows stdin end (Paseo closes stdin and sends SIGTERM together, systemd sends SIGTERM and stdin closes after) kills the process mid-dispose and cuts off cleanup such as a pending MCP token refresh, and a second shutdown trigger exits at once; print mode removes its handlers before the final disposal. Pi 1.5.0 also only sets a flag that is read after a stdin command and at `agent_settled`, so an idle request keeps the process alive until the client sends another command, and an extension command that requests shutdown exits before its `prompt` response is written.
+
+Pi bug: Pi 1.5.0 (`rpc-mode.ts` `shutdownHandler`, `checkShutdownRequested`), fixed by Pi main 1708b4788 ([#11599](https://github.com/earendil-works/pi/issues/11599)). Part 2 is Pi main ace560c30 ([#11599](https://github.com/earendil-works/pi/issues/11599), #11752).
+
+Scope: RPC mode (both parts) and print mode (part 2). Interactive mode already lets a started shutdown finish. Where PiG's wire output follows from the ordering above, the `prompt` response of the requesting command precedes the `session_shutdown` side effects, which Pi 1.5.0 writes first.
+
+Owner decision: 2026-11-03, owner approved by relay via Claude.
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing both 1708b4788 and ace560c30. Part 1 alone is removed when the pin reaches one containing 1708b4788; part 2 likewise for ace560c30.
+
+Call-site markers: `coding/cli/rpc_shutdown_gate.go` (`rpcShutdownGate`), `coding/cli/rpc_mode.go` (`shutdownGate.bind` in `serveRPCMode`, `shutdownGate.InputReady`), `coding/cli/rpc_admission.go` (`commandTurn`, `rpcAwaitHandler`, `startPreparedPrompt`); part 2: `coding/cli/rpc_shutdown.go` (`rpcShutdown`, `repeatedTermination`), `coding/cli/rpc_mode.go` (`watchRepeatedTermination`), `coding/cli/print_mode.go` (`finalDisposing`, the signal goroutine).
+
+Evidence: `TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand`, `TestRPCExtensionShutdownFromSessionStartExits`, `TestRPCExtensionCommandShutdownWritesResponseBeforeShutdown`, `TestRPCExtensionShutdownWaitsForCommandOfSameChunk`, `TestRPCShutdownGate`, `TestRPCSingleSignalDuringInputEndShutdownLetsItFinish`, `TestRPCInputEndDuringSignalShutdownLetsItFinish`, `TestRPCRepeatedSignalDuringShutdownExitsAtOnce`, `TestRPCShutdownTriggers`, `TestPrintModeSignalDuringFinalDisposalWaitsForIt` (`coding/cli`); `TestRPCExtensionShutdownRequestExits` and `TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder` state each side's order, because the Pi 1.5.0 oracle writes the notification before the response.
+
 ## D233 A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first 8192 bytes
 
 What: PiG's Streamable HTTP transport ports Pi main 4a8b60bc3 (`fix(mcp): apply maxMessageBytes to Streamable HTTP JSON responses`, #11749, fixing #11335), which is not in Pi 1.5.0.
