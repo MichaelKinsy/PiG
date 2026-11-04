@@ -9,9 +9,12 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 // An extension that locates a Pi package on disk resolves it (import.meta.resolve, or a resolve a helper
@@ -147,8 +150,9 @@ func TestNodeServesEachPiPackageWithPisLayout(t *testing.T) {
 		subpath := "." + strings.TrimPrefix(spec, pkg)
 		served[pkg] = true
 		url := resolved[spec]
-		file, ok := strings.CutPrefix(url, "file://")
-		if !ok {
+		// import.meta.resolve answers a file URL, which names a Windows file as file:///D:/dir/file.js.
+		file, err := nodeurl.FileURLToPath(url, runtime.GOOS == "windows")
+		if err != nil {
 			problems[pkg] = append(problems[pkg], spec+" resolves to "+url+", not a file")
 			continue
 		}
