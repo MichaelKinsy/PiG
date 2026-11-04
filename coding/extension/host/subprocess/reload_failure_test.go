@@ -78,9 +78,8 @@ func TestReload_MixedCellFailureIsolatesFailingExtension(t *testing.T) {
 }
 
 func TestReloadReturnsConfiguredOrderForMixedPackedAndIsolatedCells(t *testing.T) {
-	keepGoBuildCaches(t)
 	root := t.TempDir()
-	t.Setenv("HOME", filepath.Join(root, "home"))
+	isolateHome(t, filepath.Join(root, "home"))
 	t.Setenv("PIG_HOME", filepath.Join(root, "pig-home"))
 	rootA := writePackedFactoryModule(t, "example.com/mixorder/a", "mix-order-a", "tool_a")
 	rootB := writePackedFactoryModule(t, "example.com/mixorder/b", "mix-order-b", "tool_b")
