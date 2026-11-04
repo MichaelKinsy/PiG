@@ -131,14 +131,17 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 	changelog := filepath.Join(root, "CHANGELOG.md")
 	const before = "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Upgrading from 0.9.x\n\n- Note.\n\n### Added\n\n- Add X.\n\n### Fixed\n\n- Fix X.\n\n## [0.9.0] - 2026-01-01\n\n### Fixed\n\n- Old.\n"
 	legacyPath := filepath.Join(root, "legacy.txt")
-	for path, text := range map[string]string{changelog: before, legacyPath: "kept.md\nold-sections.md\n"} {
+	recordsPath := filepath.Join(root, "version-records.toml")
+	entry := filepath.ToSlash(dir) + "/"
+	records := "[[record]]\nversion = \"1.4.0\"\nreason = \"r\"\npaths = [\n  \"" + entry + "\",\n  \"docs/a.md\",\n]\n\n[[record]]\nversion = \"1.4\"\nreason = \"r\"\npaths = [\"" + entry + "\"]\n\n[[record]]\nversion = \"1.3.0\"\nreason = \"r\"\npaths = [\"docs/b.md\", \"" + entry + "\"]\n"
+	for path, text := range map[string]string{changelog: before, legacyPath: "kept.md\nold-sections.md\n", recordsPath: records} {
 		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
 	fold := func(fragments []fragment) {
 		t.Helper()
-		if err := foldInto(dir, changelog, legacyPath, "1.0.0", fragments); err != nil {
+		if err := foldInto(dir, changelog, legacyPath, recordsPath, "1.0.0", fragments); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -150,6 +153,7 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 	want := "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Upgrading from 0.9.x\n\n- Note.\n- Upgrade B.\n\n### Added\n\n- Add X.\n- Add B.\n  wrapped\n\n### Removed\n\n- Remove B.\n\n### Fixed\n\n- Fix X.\n- Fix A. <!-- fix: 0123abcdef -->\n- Old fix. <!-- fix: 89abcdef01 -->\n\n## [0.9.0] - 2026-01-01\n\n### Fixed\n\n- Old.\n"
 	assertFile(t, changelog, want)
 	assertFile(t, legacyPath, "kept.md\n")
+	assertFile(t, recordsPath, "[[record]]\nversion = \"1.4.0\"\nreason = \"r\"\npaths = [\n  \"docs/a.md\",\n]\n\n[[record]]\nversion = \"1.3.0\"\nreason = \"r\"\npaths = [\"docs/b.md\"]\n")
 	if left, _ := os.ReadDir(dir); len(left) != 0 {
 		t.Fatalf("changelog.d still holds %d fragments", len(left))
 	}

@@ -52,7 +52,7 @@ A commit that moves or renames a test a fix commit added to another file keeps t
 
 ## Changelog fragments and the bug ledger
 
-Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI).
+Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI). A fold that empties `changelog.d/` also removes the `changelog.d/` entries from `automation/ci/version-records.toml`: they excuse a fragment's statement about an earlier Pi release, the folded bullets sit in a released `CHANGELOG.md` section that the public-claims check does not read for such statements, and an entry that excuses nothing fails that check.
 
 `make changelog-check` fails a release candidate when:
 
