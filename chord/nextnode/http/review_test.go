@@ -974,7 +974,12 @@ func TestReviewAnUpgradeIsSettledWhetherItWasHandedOutOrRefused(t *testing.T) {
 func TestReviewRequestsAndUpgradesReadTheRegistriesWhileReloadsComposeThem(t *testing.T) {
 	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
 	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
-	server := serving(t, []plugin{sockets, tunnel}, servedOptions{})
+	// A route for the requests to reach their authenticators, and an authenticator the reloads add and remove in turn.
+	routes := plugin{"@app/routes", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /x", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil }),
+	}})}
+	extra := plugin{"@app/extra-auth", authenticating(func(HttpRequest, context.Context) (data.Principal, error) { return nil, nil })}
+	server := serving(t, []plugin{sockets, tunnel, routes}, servedOptions{})
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	running := func() bool {
@@ -1001,9 +1006,9 @@ func TestReviewRequestsAndUpgradesReadTheRegistriesWhileReloadsComposeThem(t *te
 	})
 	for i := range 40 {
 		if i%2 == 0 {
-			server.reload(t)
+			server.reload(t, sockets, routes, extra)
 		} else {
-			server.reload(t, sockets, tunnel)
+			server.reload(t, sockets, tunnel, routes)
 		}
 	}
 	close(stop)
