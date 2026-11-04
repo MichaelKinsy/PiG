@@ -1,0 +1,255 @@
+name: r7 winext proof
+# A proof run of the Windows extension shards on this branch only.
+on:
+  push:
+    branches: [fix/r7-winext-proof]
+permissions:
+  contents: read
+env:
+  NPM_VERSION: 12.1.0
+  RUST_VERSION: 1.97.1
+  # Wall-clock and speed-ratio gates only warn on shared runners (internal/testenv.TimingGate); count, size and allocation gates still block. make test-timing runs them blocking on quiet hardware before a release.
+  PIG_PERF_TIMING_REPORT_ONLY: '1'
+
+jobs:
+  windows:
+    name: Windows ${{ matrix.shard }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # extension-host: the extension host packages (runtimecell and
+        # subprocess). extension-conformance: every SDK against the in-process
+        # reference. native-1 to native-4: the smoke run (native-1) and every other
+        # package that carries Windows tests, in four parallel jobs
+        # (automation/ci/windows-native-shard.sh). The eight cmd/pig shards share four
+        # jobs, paired longest with shortest from measured run times, so each job builds
+        # the test binary once. The two extension shards were one shard whose extension
+        # step took 49 of the job's 60 minutes, and native with cmd/pig reached the
+        # 60-minute limit. Longest jobs first. The shards come from automation/ci/ci-tiers.txt through the changes job:
+        # the light pull-request run keeps native-1, the full run every shard, under the same check names.
+        include: [{"shard":"extension-conformance-1"},{"shard":"extension-conformance-2"},{"shard":"extension-host-1"},{"shard":"extension-host-2"},{"shard":"extension-host-3"}]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # GitHub's hosted Windows images put RUNNER_TEMP on the D: drive, which handles many small files faster than C:; the
+      # step prints the drives to show it. The Go build cache and the Pi oracle store live there. Go's temporary directories
+      # stay on the system drive: tests run their binaries and temporary trees there, as a user's would.
+      - name: Keep Go and oracle scratch under RUNNER_TEMP
+        shell: pwsh
+        run: |
+          "GOCACHE=$(Join-Path $env:RUNNER_TEMP 'go-build')" >> $env:GITHUB_ENV
+          "PIG_PI_BUILD_STORE=$(Join-Path $env:RUNNER_TEMP 'pi-builds')" >> $env:GITHUB_ENV
+          Write-Output "RUNNER_TEMP=$env:RUNNER_TEMP"
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name, Used, Free
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          # The job restores its own Go build cache below; setup-go's copy would download a second, older one.
+          cache: false
+      - name: Restore the Go module cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      # This restores the newest cache a previous run saved, so a job recompiles only what changed.
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: Age the restored Go build cache
+        id: age
+        if: matrix.shard == 'native-1'
+        shell: bash
+        run: automation/ci/gocache-trim.sh age
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            extensions/sdk-ts/package-lock.json
+            test/parity/interface-extractor/package-lock.json
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install $env:RUST_VERSION --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain installation failed" }
+          rustup default $env:RUST_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain selection failed" }
+      # fd and ripgrep come from pinned GitHub release archives verified against
+      # automation/ci/windows-tools.txt, not from a package feed whose outages
+      # (504, missing lib paths) failed every Windows shard.
+      - name: Restore the native test tool archives
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\native-tool-archives
+          key: native-tools-${{ runner.os }}-${{ hashFiles('automation/ci/windows-tools.txt', 'automation/ci/install-windows-tools.ps1') }}
+      - name: Install native test tools
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP 'native-tools'
+          ./automation/ci/install-windows-tools.ps1 -Cache (Join-Path $env:RUNNER_TEMP 'native-tool-archives') -Bin $bin
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+          $env:PATH = "$bin;$env:PATH"
+          fd --version
+          if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      # Without this every Windows job builds the oracle from source (5-12 minutes); oracle.py reuses a restored build whose stamp matches.
+      - name: Restore the Pi oracle build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Install pinned Pi test oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$NPM_VERSION"
+          # Builds Pi from source at the pin and links it as the oracle (automation/pin/oracle.py); the published package is not the oracle.
+          # setup-python on Windows provides python, not always python3.
+          py="$(command -v python3 || command -v python)"
+          "$py" automation/pin/pin.py install-oracle
+          # The oracle tests' own locked npm trees, as make parity-deps installs them on Linux.
+          "$py" automation/ci/npm-locked.py internal/typebox/testdata/npm
+          "$py" automation/ci/npm-locked.py ai/testdata/sdk
+          # The ai package's oracle tests import Pi's source through durable/interop's node_modules (make durable-interop-deps on Linux): the locked release of a tag pin. Every native shard installs it: the shard split decides which shard runs ./ai.
+          if [ "$("$py" automation/pin/pin.py get kind)" = tag ]; then "$py" automation/ci/npm-locked.py durable/interop; fi
+      - name: Mirror the pinned Pi source
+        # The extension host's parity tests read Pi's source from
+        # .upstream/current, as on Linux (make upstream-mirror).
+        shell: bash
+        env:
+          MSYS: winsymlinks:nativestrict
+        run: ./automation/gen/mirror-upstream.sh
+      - name: Build and smoke-test native Windows paths
+        if: matrix.shard == 'native-1'
+        shell: pwsh
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig native acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          $env:PIG_CODING_AGENT_DIR = Join-Path $env:PIG_HOME 'agent'
+          go build -trimpath -o bin/pig.exe ./cmd/pig
+          if ($LASTEXITCODE -ne 0) { throw "Windows build failed" }
+          & .\bin\pig.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "pig.exe --help failed" }
+          & .\bin\pig.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "pig.exe --version failed" }
+          $env:PIG_TEST_FAUX = '1'
+          $printOutput = & .\bin\pig.exe --model test-faux/faux-1 --no-session --no-extensions --print 'What is 20+22?'
+          if ($LASTEXITCODE -ne 0 -or $printOutput -notmatch '42') { throw "Windows print smoke failed: $printOutput" }
+          '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
+          if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
+          if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
+      - name: Test every package with Windows tests
+        # The extension-host shard runs the extension host packages, and the
+        # cli-N shards run cmd/pig in shards. The package
+        # list comes from the toolchain, so a new Windows test file is run
+        # without editing this workflow. The list holds packages with a
+        # Windows-only test file; tests that branch on runtime.GOOS in a
+        # file every platform builds are not selected by it.
+        if: startsWith(matrix.shard, 'native-')
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+          NATIVE_SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          acceptance="$RUNNER_TEMP/pig native acceptance"
+          mkdir -p "$acceptance"
+          export PIG_HOME="$acceptance/config with spaces"
+          export PIG_CODING_AGENT_DIR="$PIG_HOME/agent"
+          packages=$(automation/ci/windows-native-shard.sh "${NATIVE_SHARD#native-}")
+          echo "$packages"
+          go test -timeout 30m $packages
+      - name: Test cmd/pig shards ${{ matrix.shard }} of 8
+        # Each cli-N unit runs shard N of automation/ci/test-shard-pattern.sh, as make test-cli runs the shards on Linux: each in its own test process and timeout.
+        if: startsWith(matrix.shard, 'cli-')
+        shell: bash
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
+          UNITS: ${{ matrix.shard }}
+          # TestMain dumps every goroutine if its setup has not reached m.Run by then; the test alarm covers only m.Run.
+          PIG_TEST_STALL_DUMP: 4m
+        run: automation/ci/windows-cli-units.sh
+      - name: Install the pinned SBCL
+        # The Lisp SDK rows run in the extension jobs; SBCL's official Windows installer is checked against the lock's SHA-256.
+        if: startsWith(matrix.shard, 'extension-')
+        shell: pwsh
+        run: ./automation/ci/install-sbcl.ps1 -GithubEnv
+      - name: Select this job's extension tests
+        # Each extension job runs its half of the package's tests, split by automation/ci/test-shard-pattern.sh so every test runs in exactly one job.
+        if: startsWith(matrix.shard, 'extension-')
+        shell: bash
+        env:
+          EXTENSION_SHARD: ${{ matrix.shard }}
+        run: |
+          set -euo pipefail
+          case "$EXTENSION_SHARD" in
+            extension-host-*) package=./coding/extension/host/subprocess shards=3 ;;
+            extension-conformance-*) package=./test/extension-conformance shards=2 ;;
+            *) echo "unexpected shard $EXTENSION_SHARD" >&2; exit 1 ;;
+          esac
+          run=$(automation/ci/test-shard-pattern.sh "${EXTENSION_SHARD##*-}" "$shards" "$package")
+          echo "SHARD_RUN=$run" >> "$GITHUB_ENV"
+      - name: Test Windows extension host packages
+        if: startsWith(matrix.shard, 'extension-host-')
+        shell: pwsh
+        env:
+          CARGO_BUILD_JOBS: '2'
+          PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+          MATRIX_SHARD: ${{ matrix.shard }}
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:TEMP = $acceptanceRoot
+          $env:TMP = $acceptanceRoot
+          $env:TMPDIR = $acceptanceRoot
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          # runtimecell runs whole, in extension-host-1; the subprocess tests are split in three.
+          if ($env:MATRIX_SHARD -eq 'extension-host-1') {
+            go test -v -timeout 30m ./coding/extension/host/runtimecell
+            if ($LASTEXITCODE -ne 0) { throw "Windows runtimecell tests failed" }
+          }
+          go test -v -timeout 30m -run $env:SHARD_RUN ./coding/extension/host/subprocess
+          if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
+      - name: Test Windows extension conformance for every SDK
+        if: startsWith(matrix.shard, 'extension-conformance-')
+        shell: pwsh
+        env:
+          CARGO_BUILD_JOBS: '2'
+          PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:TEMP = $acceptanceRoot
+          $env:TMP = $acceptanceRoot
+          $env:TMPDIR = $acceptanceRoot
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          go test -v -timeout 30m -run $env:SHARD_RUN ./test/extension-conformance
+          if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
+      - name: Keep only the Go build cache entries this job used
+        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
+        shell: bash
+        run: automation/ci/gocache-trim.sh trim
+      - name: Save the Go build cache
+        if: ${{ !cancelled() && steps.age.outcome == 'success' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+
