@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -96,7 +97,18 @@ func exCopy(t *testing.T, example string, dirs ...string) string {
 	t.Helper()
 	base := realOf(t, t.TempDir())
 	for _, dir := range dirs {
-		if err := os.CopyFS(filepath.Join(base, dir), os.DirFS(filepath.Join("testdata", "examples", example, dir))); err != nil {
+		copied := filepath.Join(base, dir)
+		if err := os.CopyFS(copied, os.DirFS(filepath.Join("testdata", "examples", example, dir))); err != nil {
+			t.Fatal(err)
+		}
+		// Windows reports the last-write time of each directory the copy filled as a change of it, at a moment no test can bound (see
+		// withoutDirectoryStamps): the watcher may mark the set or a plugin for the copy itself.
+		if err := filepath.WalkDir(copied, func(path string, entry fs.DirEntry, err error) error {
+			if err == nil && entry.IsDir() {
+				exTouch(t, path)
+			}
+			return err
+		}); err != nil {
 			t.Fatal(err)
 		}
 	}
