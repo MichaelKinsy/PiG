@@ -158,23 +158,47 @@ type namedImage struct {
 	data []byte
 }
 
+// oracleSweep is the list of cases an oracle test hands to Pi and to PiG, with the name of the input of each.
+type oracleSweep struct {
+	cases []processImageCase
+	names []string
+}
+
+// add appends one case.
+func (s *oracleSweep) add(in namedImage, mime string, resize bool, limit int) {
+	s.cases = append(s.cases, processImageCase{Data: base64.StdEncoding.EncodeToString(in.data), MimeType: mime, AutoResize: resize, MaxWidth: limit, MaxHeight: limit})
+	s.names = append(s.names, in.name)
+}
+
+// addProduct appends the input under every declared type, with and without resizing, with the default limit and with 16.
+func (s *oracleSweep) addProduct(in namedImage, mimes []string) {
+	for _, mime := range mimes {
+		for _, resize := range []bool{true, false} {
+			for _, limit := range []int{0, 16} {
+				s.add(in, mime, resize, limit)
+			}
+		}
+	}
+}
+
 // compareProcessImageWithPi runs image-process.ts processImage and PiG's ProcessImage over every input under every declared type, with and
 // without resizing, with the default limit and with 16: whether an image is returned, its type, the hints, the omission message and the
 // returned bytes must be Pi's.
 func compareProcessImageWithPi(t *testing.T, inputs []namedImage, mimes []string) {
 	t.Helper()
-	var cases []processImageCase
-	var names []string
+	var sweep oracleSweep
 	for _, in := range inputs {
-		for _, mime := range mimes {
-			for _, resize := range []bool{true, false} {
-				for _, limit := range []int{0, 16} {
-					cases = append(cases, processImageCase{Data: base64.StdEncoding.EncodeToString(in.data), MimeType: mime, AutoResize: resize, MaxWidth: limit, MaxHeight: limit})
-					names = append(names, in.name)
-				}
-			}
-		}
+		sweep.addProduct(in, mimes)
 	}
+	compareProcessImageCasesWithPi(t, sweep)
+}
+
+// compareProcessImageCasesWithPi runs the cases of a sweep through Pi and through PiG. Pi resizes in a new worker thread for each call
+// (image-resize.ts resizeImage), so the cost of a sweep is the number of its resizing cases (about 35 ms each on 4 CPUs, 97% of the run), not the size
+// of the images.
+func compareProcessImageCasesWithPi(t *testing.T, sweep oracleSweep) {
+	t.Helper()
+	cases, names := sweep.cases, sweep.names
 
 	var want []processImageOutcome
 	pioracle.Run(t, `
