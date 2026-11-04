@@ -7,6 +7,7 @@ package host
 // validator), never another Pi port.
 
 import (
+	"os"
 	"os/exec"
 	"slices"
 	"strings"
@@ -22,7 +23,8 @@ var chordHelpers = []string{
 	"durable/core/jv", // JavaScript number and JSON string primitives, reached through internal/jsparity
 	"extensions/sdk/json",
 	"internal/chord/chordjson",
-	"internal/entered", // the shared parked-goroutine check behind goEntered
+	"internal/chord/winpipe", // the Windows named-pipe listener of the plugins' Node subprocess and of a worker's channel and lock; it has code only on Windows
+	"internal/entered",       // the shared parked-goroutine check behind goEntered
 	"internal/goroutineid",
 	"internal/jsclock", // Date.now() and performance.now() with a replaceable source, read by the telemetry recorders
 	"internal/jsnumber",
@@ -39,22 +41,28 @@ var chordHelpers = []string{
 	"telemetry",                 // pi-telemetry, the dependency of Context.telemetry (chord/context)
 }
 
+// The dependencies differ by platform (the Windows channels link internal/chord/winpipe), so each shipped platform is listed, not only the host's.
 func TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord(t *testing.T) {
-	command := exec.CommandContext(t.Context(), "go", "list", "-deps", "./chord/...")
-	command.Dir = testenv.ModuleRoot(t)
-	output, err := command.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var violations []string
-	for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
-		path, ok := strings.CutPrefix(line, module)
-		if !ok || path == "chord" || strings.HasPrefix(path, "chord/") || slices.Contains(chordHelpers, path) {
-			continue
-		}
-		violations = append(violations, path)
-	}
-	if len(violations) > 0 {
-		t.Fatalf("chord links %v", violations)
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			command := exec.CommandContext(t.Context(), "go", "list", "-deps", "./chord/...")
+			command.Dir = testenv.ModuleRoot(t)
+			command.Env = append(os.Environ(), "GOOS="+goos, "CGO_ENABLED=0")
+			output, err := command.Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var violations []string
+			for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
+				path, ok := strings.CutPrefix(line, module)
+				if !ok || path == "chord" || strings.HasPrefix(path, "chord/") || slices.Contains(chordHelpers, path) {
+					continue
+				}
+				violations = append(violations, path)
+			}
+			if len(violations) > 0 {
+				t.Fatalf("chord links %v", violations)
+			}
+		})
 	}
 }
