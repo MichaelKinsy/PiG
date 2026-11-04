@@ -166040,17 +166040,6 @@
       "shapeHash": "sha256:e9985670f7e0822b344789b8656d89df4a0b5d69ac039fe0857d467d8dc51541"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#bold",
-      "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
-      "name": "bold",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(text string) string"
-      },
-      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext/mcptui#fullOutputPathOf",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext/mcptui",
       "name": "fullOutputPathOf",
@@ -318181,6 +318170,61 @@
       "shapeHash": "sha256:6b20e0fab1b00b528e20470d176e70fb4555edee9d7f12a267ab7b9512f3d366"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ChalkBold",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ChalkBold",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ChalkInverse",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ChalkInverse",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ChalkItalic",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ChalkItalic",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ChalkStrikethrough",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ChalkStrikethrough",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ChalkUnderline",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ChalkUnderline",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(text string) string"
+      },
+      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Clickable",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Clickable",
@@ -336098,6 +336142,17 @@
         "type": "func(dims CellDimensions)"
       },
       "shapeHash": "sha256:055282e12fc36cf36f6e4310489d5a7aaacdb8d79ee751997bf5c328b25c8248"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SetChalkModifiers",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SetChalkModifiers",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(enabled bool)"
+      },
+      "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SetCompactReadClassifier",
@@ -355392,6 +355447,61 @@
         "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
       },
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#chalkModifiersOff",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "chalkModifiersOff",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Bool"
+      },
+      "shapeHash": "sha256:f85422bad8786dcb0ba9a5557ded76dd8411dfb9c02231e59bde3817cf6948dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#chalkModifiersOff.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "chalkModifiersOff.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old bool, new bool) (swapped bool)"
+      },
+      "shapeHash": "sha256:1cfabc521fb500e8a2e1bfca48e5d5851f97c691d716d043f3c28146ba2e839a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#chalkModifiersOff.Load",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "chalkModifiersOff.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#chalkModifiersOff.Store",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "chalkModifiersOff.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val bool)"
+      },
+      "shapeHash": "sha256:b08db92408a3bb28c5b974a4a4029369f5547ecf4936f9912b657a447ab723c9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#chalkModifiersOff.Swap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "chalkModifiersOff.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new bool) (old bool)"
+      },
+      "shapeHash": "sha256:af3587a09350ff36e1c8dc05a1555e4ccd20b6d006c06d30aceed17653d9d42e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#checkAdditionalProperties",

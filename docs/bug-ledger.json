@@ -1123,6 +1123,29 @@
       ]
     },
     {
+      "id": "BF-0a036c9",
+      "title": "fix(tui): fullscreen search and MCP manager styles follow chalk's color level",
+      "symptom": "fix(tui): fullscreen search and MCP manager styles follow chalk's color level",
+      "rootCause": "Pi draws the fullscreen search styles (tui-renderer.ts:27-29) and the MCP manager title (mcp/ui.ts:61) through theme.underline, theme.bold and theme.inverse, chalk calls that draw nothing at color level 0. PiG hard-coded the SGR codes at both sites.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0a036c9a15",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/mcpext/manager_chalk_test.go::TestManagerTitleBoldFollowsChalkLevel",
+        "internal/codingagent/fullscreen_search_test.go::TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
+        "test/parity/scenarios/interactive-rendering/62-chalk-level-zero-modifiers.toml"
+      ]
+    },
+    {
       "id": "BF-0a3e8ce",
       "title": "In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's…",
       "symptom": "In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's `session_shutdown` handler makes a host call that waits for the agent, such as `wait_for_idle`.",
@@ -30258,6 +30281,28 @@
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-command.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-input.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-settled.toml"
+      ]
+    },
+    {
+      "id": "BF-ad0c167",
+      "title": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and…",
+      "symptom": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero.",
+      "rootCause": "Pi's theme.bold, italic, underline, inverse and strikethrough are chalk calls, which return their text unchanged at chalk stdout color level 0 (CI=1, TERM=dumb, stdout not a terminal), while theme.fg writes escape sequences directly and still colors.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and emphasis, tool titles, selector titles, diff highlights) now draw only when Pi's chalk would: its stdout color level is above zero. With `CI` set (outside a known CI service), `TERM=dumb` or stdout redirected, PiG kept drawing them while Pi 1.5.0 drew only the theme colors.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ad0c1678f6",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "tui/chalk_modifiers_test.go::TestChalkModifiersOffDrawNoMarkdownStyles"
       ]
     },
     {
