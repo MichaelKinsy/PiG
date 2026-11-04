@@ -34,10 +34,12 @@ windows | cli-1 cli-3 | queue
 windows | cli-4 cli-7 | queue
 windows | cli-6 cli-8 | queue
 windows | extension-conformance-2 | queue
+windows | extension-conformance-4 | queue
 windows | native-3 | queue
 windows | native-2 | queue
 windows | native-1 | pr
 windows | extension-conformance-1 | queue
+windows | extension-conformance-3 | queue
 windows | extension-host-1 | queue
 windows | native-4 | queue
 windows | extension-host-2 | queue
