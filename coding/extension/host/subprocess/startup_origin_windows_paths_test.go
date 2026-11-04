@@ -9,6 +9,7 @@ import (
 // Pi 1be312b4 (#10488) resource-loader.ts loadFinalExtensionSet matches a preloaded extension to a final path by getResourcePathKey: on Windows paths that differ only in casing are one
 // extension, and a path the project_trust pass attempted is not loaded again.
 func TestFinalSetOriginIgnoresPathCasingOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	loaded := ExtConfig{Name: "a", Path: "/Work/Ext/Index.ts"}
 	final := ExtConfig{Name: "a", Path: "/work/ext/index.ts"}
 	if finalSetOrigin("/cwd", loaded) == finalSetOrigin("/cwd", final) {

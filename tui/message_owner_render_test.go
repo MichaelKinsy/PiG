@@ -27,6 +27,10 @@ func retentionSource(i int) string {
 func TestMessageOwnersRenderBytes(t *testing.T) {
 	prev := ActiveTheme()
 	t.Cleanup(func() { SetTheme(prev.Name) })
+	// The hash was taken on a terminal that is not truecolor; detection reports truecolor for a Windows host or COLORTERM=truecolor.
+	previousCaps := GetCapabilities()
+	t.Cleanup(func() { SetCapabilities(previousCaps) })
+	SetCapabilities(TerminalCapabilities{})
 	src := retentionSource(7) + "\n1. one\n2. two\n\n> quote\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n" + strings.Repeat("A long line without breaks that wraps at every width tested. ", 8) + "\n"
 	hash := sha256.New()
 	for _, theme := range []string{"dark", "light"} {

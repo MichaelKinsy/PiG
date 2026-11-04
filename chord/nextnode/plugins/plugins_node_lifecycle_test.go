@@ -607,6 +607,9 @@ func TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout(t *tes
 		t.Fatal("the call never started")
 	}
 	if err := node.Close(background); err != nil {
+		if exit, ok := errors.AsType[*NodeExit](err); ok {
+			t.Fatalf("Close = %v, want nil: the host was closing within its closeTimeout; exit %+v, stderr:\n%s", err, exit, exit.Stderr)
+		}
 		t.Fatalf("Close = %v, want nil: the host was closing within its closeTimeout", err)
 	}
 	if exit, ok := errors.AsType[*NodeExit](node.Err()); ok {

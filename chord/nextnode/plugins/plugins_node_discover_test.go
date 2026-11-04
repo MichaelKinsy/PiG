@@ -48,13 +48,20 @@ func envPlace(name, variable string, below ...string) nodePlace {
 	}}
 }
 
+// shadowedPlace marks place as one another place's variable replaces when both are set.
+func shadowedPlace(place nodePlace) nodePlace {
+	place.shadowed = true
+	return place
+}
+
 // nodePlaces are the places after PATH in the order discoverNode tries them.
 func nodePlaces() []nodePlace {
 	if runtime.GOOS == "windows" {
 		return []nodePlace{
 			envPlace("nvm-symlink", "NVM_SYMLINK"),
 			envPlace("nvm-home", "NVM_HOME", "v22.19.0"),
-			envPlace("appdata", "APPDATA", "nvm", "v22.19.0"),
+			// %APPDATA%\nvm is where nvm-windows lives when NVM_HOME is empty; a set NVM_HOME replaces it, as $NVM_DIR replaces ~/.nvm.
+			shadowedPlace(envPlace("appdata", "APPDATA", "nvm", "v22.19.0")),
 			envPlace("fnm", "FNM_DIR", "node-versions", "v22.19.0", "installation"),
 			envPlace("volta", "VOLTA_HOME", "tools", "image", "node", "22.19.0"),
 			envPlace("program-files", "ProgramFiles", "nodejs"),

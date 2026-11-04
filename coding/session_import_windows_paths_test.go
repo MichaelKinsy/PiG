@@ -11,6 +11,7 @@ import (
 // Pi 1be312b4 (#10488) agent-session-runtime.ts importFromJsonl: the self-check `pathsEqual(destinationPath, resolvedPath)` ignores case on Windows, so a session file
 // that already lives in the session directory, spelled in other casing, is opened in place rather than copied beside itself.
 func TestImportDestinationRecognizesAStoredSessionInOtherCasingOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	sessionDir := filepath.Join(t.TempDir(), "Sessions")
 	stored := filepath.Join(strings.ToLower(sessionDir), "s.jsonl")
 	if _, already := importDestination(sessionDir, stored); already {

@@ -5,12 +5,15 @@ package tui
 import (
 	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // TestRenderToolPathHonorsPiGeneratedExpectations pins renderToolPath, shortenPath and linkPath (render-utils.ts:10-23, 102-112). The
 // expectations were produced by the Pi 1.1.0 render-utils.js with HOME=/home/tester: shortenPath anchors home at a path segment since Pi 1be312b4 (#10488; the 1.1.0 expectation was ~x for /home/testerx), and linkPath resolves the raw path against cwd (`~` expanded) before
 // pathToFileURL percent-encodes it.
 func TestRenderToolPathHonorsPiGeneratedExpectations(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the expectations are Pi's on POSIX; a Windows host writes the rest of a shortened path with backslashes
 	th := ActiveTheme()
 	c := func(color, s string) string { return color + s + SGRFgReset }
 	t.Setenv("HOME", "/home/tester")

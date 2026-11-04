@@ -12,6 +12,7 @@ import (
 // Pi 1be312b4 (#10488) resource-loader.ts findShadowedContextFile: a linked worktree's context file shadows the main worktree's when the worktree root is inside the main
 // repository root (isPathWithin) and the main repository's .git is the common git directory (pathsEqual). On Windows git's paths and the working directory may differ in casing.
 func TestShadowedContextFileOfComparesCaseInsensitivelyOnWindows(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	root := filepath.Join(t.TempDir(), "Repo")
 	worktree := filepath.Join(root, "wt")
 	if err := os.MkdirAll(worktree, 0o755); err != nil {

@@ -13,6 +13,7 @@ import (
 // Pi 1be312b4 (#11588) session-selector.ts getSessionPathKey: the session tree finds a parent whose path differs from the child's parentSessionPath in casing only,
 // on Windows. The same two spellings are two sessions on a case-sensitive platform.
 func TestBuildSessionTreeFindsTheParentAcrossWindowsPathCasing(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	now := time.Now()
 	root := SessionInfo{Path: `C:\Sessions\Root.jsonl`, Modified: now, Name: "root"}
 	child := SessionInfo{Path: `C:\Sessions\child.jsonl`, ParentSessionPath: `c:\sessions\root.jsonl`, Modified: now.Add(-time.Hour), Name: "child"}
@@ -46,6 +47,7 @@ func TestSessionSelectorFindsTheCurrentSessionAcrossWindowsPathCasing(t *testing
 // Pi 1be312b4 (#11588) package-manager.ts: collectAncestorAgentsSkillDirs(cwd) drops the user's ~/.agents/skills with pathsEqual, so a home spelled in other casing
 // than the working directory does not list the user's skills as the project's on Windows.
 func TestAncestorAgentsSkillScanExcludesTheUserDirectoryAcrossWindowsPathCasing(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the first half pins POSIX rules, whatever the host
 	home := t.TempDir()
 	cwd := filepath.Join(home, "project")
 	t.Setenv("HOME", strings.ToUpper(home))

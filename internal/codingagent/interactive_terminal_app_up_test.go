@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -80,6 +81,7 @@ const plainUp = "\x1b[A"
 // tool finish; nothing queued is sent.
 func TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage(t *testing.T) {
 	t.Setenv("TERM_PROGRAM", "Apple_Terminal")
+	icodingagent.BindDequeueToAltUp(t) // D228 acts only while the action is bound to alt+up, which Windows keybindings do not do by default
 	pair, release := queuedDuringTool(t)
 	pair.harness.Do(func() { pair.harness.Key(plainUp) })
 	if got := pair.harness.EditorText(); got != "also update the docs" {
@@ -106,6 +108,7 @@ func TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage(t *testing.T) {
 // Terminal.app keeps Pi's Up in every other state: a non-empty editor moves the cursor, and no queued message leaves history recall.
 func TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState(t *testing.T) {
 	t.Setenv("TERM_PROGRAM", "Apple_Terminal")
+	icodingagent.BindDequeueToAltUp(t)
 	t.Run("nothing queued recalls history", func(t *testing.T) {
 		pair := newSessionPair(t, `{"retry":{"enabled":false}}`, 100000, nil, reply("answer", ai.Usage{Input: 10, Output: 10}))
 		pair.harness.Do(func() { pair.harness.Enter("first prompt") })
@@ -141,6 +144,7 @@ func TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun(t *testing.T) {
 	for _, program := range []string{"", "tmux", "ghostty", "SomethingNew"} {
 		t.Run("TERM_PROGRAM="+program, func(t *testing.T) {
 			t.Setenv("TERM_PROGRAM", program)
+			icodingagent.BindDequeueToAltUp(t)
 			t.Setenv("TERM", "tmux-256color")
 			pair, release := queuedDuringTool(t)
 			dequeueKey := tui.ActionKeyDisplayText("app.message.dequeue")

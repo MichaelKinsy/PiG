@@ -48,7 +48,7 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.tuiInst.SetFocus(m.editor)
 	m.newRunner = opts.ExtensionRunner
 	m.wireInprocContextActions()
-	m.keybindings = DefaultKeybindingsManager()
+	m.keybindings = NewKeybindingsManagerFromBindings(harnessUserBindings, "")
 	m.slashRegistry = NewSlashRegistry()
 	m.agent = opts.SessionHandle.Agent()
 	m.installRunPromptTurnRefresh()
@@ -310,4 +310,27 @@ func (h *TestHarness) ApplyScopedSelection(models []tui.ModelItem, enabled []str
 		selection, _ := newScopedModelsSelection(models, nil, nil)
 		selection.apply(h.m, enabled)
 	})
+}
+
+// HostDequeueInputs are the legacy terminal inputs for the host platform's default app.message.dequeue key: Alt+Up (CSI 1;3A, or ESC p as a terminal in
+// application mode sends it) except with Windows keybindings (native Windows and WSL), where it is Alt+Q, as upstream keybindings.ts.
+func HostDequeueInputs() []string {
+	if key := keybindingDefinitionsFor(tui.HostKeybindingPlatform())["app.message.dequeue"].DefaultKeys[0]; key != "alt+up" {
+		return []string{"\x1bq"}
+	}
+	return []string{"\x1b[1;3A", "\x1bp"}
+}
+
+// HostFollowUpInput is the legacy terminal input for the host platform's default app.message.followUp key (Alt+Enter, Ctrl+Q with Windows keybindings).
+func HostFollowUpInput() string { return hostFollowUpInput() }
+
+// harnessUserBindings are the user bindings the next TestHarness starts with.
+var harnessUserBindings map[string][]KeyID
+
+// BindDequeueToAltUp makes the harnesses of the test bind app.message.dequeue to Alt+Up, its default except with Windows keybindings. The Terminal.app
+// divergence D228 acts only while the action is bound to the key Option+Up stands for.
+func BindDequeueToAltUp(t *testing.T) {
+	t.Helper()
+	harnessUserBindings = map[string][]KeyID{"app.message.dequeue": {"alt+up"}}
+	t.Cleanup(func() { harnessUserBindings = nil })
 }
