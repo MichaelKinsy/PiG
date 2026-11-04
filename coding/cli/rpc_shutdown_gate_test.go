@@ -14,7 +14,7 @@ func TestRPCShutdownGate(t *testing.T) {
 	newHarness := func() *harness {
 		h := &harness{idle: true}
 		h.gate = newRPCShutdownGate()
-		h.gate.bind(func(fn func()) { h.ticks = append(h.ticks, fn) }, func() bool { return h.idle }, func() bool { return h.started }, func() { h.fired++; h.started = true })
+		h.gate.bind(func(fn func()) { fn() }, func(fn func()) { h.ticks = append(h.ticks, fn) }, func() bool { return h.idle }, func() bool { return h.started }, func() { h.fired++; h.started = true })
 		return h
 	}
 	tick := func(h *harness) {

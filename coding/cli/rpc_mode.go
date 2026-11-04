@@ -534,6 +534,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	var shutdownTasks sync.WaitGroup
 	defer shutdownTasks.Wait()
 	shutdownGate.bind(
+		func(fn func()) { shutdownTasks.Go(fn) },
 		responses.Macrotask,
 		func() bool { return sess().IsIdle() },
 		func() bool {
@@ -553,6 +554,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}
 		},
 	)
+	defer shutdownGate.unbind()
 	host.afterSettled = shutdownGate.Check
 	setTerminationShutdownHook(func() { shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) })
 	defer setTerminationShutdownHook(nil)
