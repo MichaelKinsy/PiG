@@ -2,6 +2,7 @@ package coding
 
 import (
 	"context"
+	"runtime"
 	"sync/atomic"
 	"testing"
 
@@ -109,6 +110,60 @@ func TestGraphGetSignalIsOneObjectForARunAndItsAbort(t *testing.T) {
 	next := read(graphLiveRun)
 	if next == third || next == nil || next.Err() != nil {
 		t.Fatalf("live run after an aborted one: signal = %v, want a new live context", next)
+	}
+}
+
+// The extension's getSignal runs on the extension's own thread, so two reads of the run can be in flight together, and the answers come back in either order. The tracker applies each answer to the one context of the run, so it must apply them in the order the reads were made: an "aborted" answer that lands before an older "live" one must not leave the live one to start a run of its own, a live context that nothing will abort.
+// The test holds the first read's answer (live) inside the extension, makes a second read (aborted) and lets it finish if it can, then releases the first. With the answers applied in read order the second read waits for the first, and both reads return the run's one context, cancelled.
+func TestGraphGetSignalAppliesAnswersInReadOrder(t *testing.T) {
+	t.Parallel()
+	scope := &graphSignalScope{}
+	g := &GraphExtensionRunner{scope: scope}
+	var (
+		calls    atomic.Int32
+		secondIn atomic.Bool
+		firstIn  = make(chan struct{})
+		release  = make(chan struct{})
+	)
+	scope.serve = func(string, []json.RawMessage) (any, error) {
+		if calls.Add(1) == 1 {
+			close(firstIn)
+			<-release
+			return map[string]any{"aborted": false}, nil
+		}
+		secondIn.Store(true)
+		return map[string]any{"aborted": true}, nil
+	}
+	get := g.contextActions(callbackIDs{"getSignal": "sig"}).GetSignal
+
+	var first, second context.Context
+	firstDone, secondDone := make(chan struct{}), make(chan struct{})
+	go func() { defer close(firstDone); first = get() }()
+	<-firstIn
+	go func() { defer close(secondDone); second = get() }()
+	// Wait until the second read has finished, or is held behind the first. Nothing but a read holds the tracker's lock. A tracker that holds it across the extension's answer holds it for the first read, so TryLock fails before the second read has reached the extension; one that does not lets the second read reach the extension (secondIn, set before it takes the lock) and finish.
+	for {
+		select {
+		case <-secondDone:
+		default:
+			if g.signal.mu.TryLock() {
+				g.signal.mu.Unlock()
+			} else if !secondIn.Load() {
+				break
+			}
+			runtime.Gosched()
+			continue
+		}
+		break
+	}
+	close(release)
+	<-firstDone
+	<-secondDone
+	if first == nil || first != second || first.Err() == nil {
+		t.Fatalf("reads = %v and %v (same object %v, cancelled %v), want the one context of the run, cancelled", first, second, first == second, first != nil && first.Err() != nil)
+	}
+	if n := calls.Load(); n != 2 {
+		t.Fatalf("extension answered %d times, want 2", n)
 	}
 }
 

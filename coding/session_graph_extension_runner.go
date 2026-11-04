@@ -218,10 +218,15 @@ type graphSignal struct {
 	cancel context.CancelFunc
 }
 
-// read returns the context of the run state the extension answered, nil for no run. A context whose parent is Background holds nothing to release, so a run that ends live is dropped, not cancelled: cancelling it would abort a run Pi never aborted.
-func (s *graphSignal) read(state *graphSignalState) context.Context {
+// read asks the extension for the state of the run and returns the context of the run it answers, nil for no run or when the extension cannot answer (the held run is kept: nothing says it ended). A context whose parent is Background holds nothing to release, so a run that ends live is dropped, not cancelled: cancelling it would abort a run Pi never aborted.
+// The lock is held across the extension's answer. The extension answers on its own thread, so two reads can be in flight together and their answers come back in either order; applied out of order, a late "live" would follow an "aborted" and begin a run that nothing aborts. The answer does not re-enter the tracker: it is a request to the extension's own connection, answered on the extension's thread, and a getSignal function that read this runner's own ctx.signal would call itself in Pi too.
+func (s *graphSignal) read(ask func() (*graphSignalState, error)) context.Context {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	state, err := ask()
+	if err != nil {
+		return nil
+	}
 	if state == nil {
 		s.run, s.cancel = nil, nil
 		return nil
