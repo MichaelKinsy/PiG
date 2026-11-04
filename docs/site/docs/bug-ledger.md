@@ -828,6 +828,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-892827f](#bf-892827f) | `coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted… | PiG's own defect | All platforms | Unreleased |
 | [BF-893ff97](#bf-893ff97) | A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-89d167f](#bf-89d167f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-8a18a6b](#bf-8a18a6b) | A Node extension no longer keeps reading an entry the host refused | PiG's own defect | All platforms | 0.5.2 |
@@ -12776,6 +12777,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8897a1b41f` (2026-10-30, #11566)
 - **Tests:** `internal/codingagent/interactive_resource_test.go::TestResourceCollisionDiagnostics_SkillIncludesSourceInfo`, `internal/codingagent/loaded_resources_diagnostics_test.go::TestShowLoadedResourcesListingThenDiagnostics`, `internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream`, `internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts`, `internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics`
 - **Release note:** Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of them are validation warnings for skills that still load, not name collisions. Carried forward from Pi f14813e9 (earendil-works/pi#11521), past the 1.4.0+b3a29f11 pin.
+
+### BF-892827f
+
+**`coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time.
+- **Root cause:** The getSignal binding of the ExtensionRunner graph object returned context.Background() for a live run and a new cancelled context on every read of an aborted one. The Host numbers a context it has not seen as a new run and watches it with context.AfterFunc, which fires at once for a context that is already cancelled and syncs every runtime again. While a graph client's run was aborted every sync therefore saw a new context, renumbered the run, armed the watcher and read again: a busy loop of getter reads (one RPC to the client each) and run_signal frames to every runtime, until the run ended. It was not caused by the run signal numbering change before it and is present on the base too.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `892827ff8c` (2026-11-03)
+- **Tests:** `coding/session_graph_signal_test.go::TestGraphAbortedRunIsReadAgainByNoSync`, `coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort`
+- **Release note:** `coding`: while the run of a session-graph client (an ExtensionRunner an extension constructed) was aborted, the Host read the client's `getSignal` function again and again without end, one call to the client each, and sent every runtime a new `run_signal` frame each time. The binding answered an aborted run with a new cancelled context on every read; the Host takes a context it has not seen for a new run and watches it, which fires at once for a cancelled one, so every sync renumbered the run and synced again. A run is now one context from the first read that reports it until a read reports no run, and the abort cancels that context in place, as Pi's `agent.signal` is one `AbortSignal` for a run. The run keeps its number through its abort and an aborted run costs no further read.
 
 ### BF-893ff97
 
