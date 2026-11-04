@@ -106,8 +106,13 @@ func TestResolveSessionArgumentRows(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.name == "path argument" {
-				if sel.resumePath != "/work/proj0/rel/none.jsonl" {
-					t.Fatalf("resumePath = %q", sel.resumePath)
+				// path.resolve of a rooted path with no drive takes the drive of the working directory on win32: D:\work\proj0\rel\none.jsonl.
+				want, err := filepath.Abs(filepath.FromSlash("/work/proj0/rel/none.jsonl"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if sel.resumePath != want {
+					t.Fatalf("resumePath = %q, want %q", sel.resumePath, want)
 				}
 				return
 			}
