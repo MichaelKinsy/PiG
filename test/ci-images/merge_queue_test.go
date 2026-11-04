@@ -433,7 +433,7 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 			t.Errorf("the light run does not run %s", gate)
 		}
 	}
-	for _, gate := range []string{"lint", "module-size", "test-race", "test-conformance", "test-sdk-rs", "parity-fast-2", "portmap-check-1"} {
+	for _, gate := range []string{"lint", "module-size", "test-race", "test-conformance-1", "test-conformance-2", "test-sdk-rs", "parity-fast-2", "portmap-check-1"} {
 		if slices.Contains(lightGates, gate) {
 			t.Errorf("the light run runs %s, which belongs to the merge_group run", gate)
 		}
