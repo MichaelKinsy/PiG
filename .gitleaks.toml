@@ -32,8 +32,10 @@ regexes = [
 paths = [
   # Stored archive fixture: "key" fields are UUIDv7 document keys, not credentials.
   '''^chord/next/host/testdata/schema-switch/stored/archive\.jsonl$''',
-  # Upstream test-file SHA-256 digests.
-  '''^test/parity/upstream-sync/[^/]+\.tsv$''',
+  # Upstream test-file SHA-256 digests. The tables lived at parity/upstream-sync/ before they moved under test/;
+  # a full-history scan (the push-event run) still reads them there, e.g. the digest of the upstream test
+  # 6324-branch-summary-ambient-auth, which generic-api-key reads as a key.
+  '''^(?:test/)?parity/upstream-sync/[^/]+\.tsv$''',
   # Pi's vendored, compiled SDK bundle (upstream code shipped verbatim).
   '''^coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/sdk-bundle/[^/]+\.js$''',
   # SHA-256 digests of Pi's vendored provider data files.
