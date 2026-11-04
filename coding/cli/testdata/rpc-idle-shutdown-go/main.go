@@ -19,16 +19,23 @@ func logLine(line string) {
 
 func main() {
 	ext := sdk.New("rpc-idle-shutdown-go")
+	// returned closes once ctx.Shutdown() returned. The session_shutdown handler waits for it before it logs, because the SDK answers the call on one goroutine and runs the handler on another; a host that blocks the call until the handler ran never closes it, and the 5 s bound ends the wait (a hang detector, not a delay).
+	returned := make(chan struct{})
 	ext.OnSessionStart(func(ctx sdk.Context, _ map[string]any) (any, error) {
 		go func() {
 			time.Sleep(300 * time.Millisecond)
 			logLine("before")
 			ctx.Shutdown()
+			close(returned)
 			logLine("after")
 		}()
 		return nil, nil
 	})
 	ext.OnSessionShutdown(func(ctx sdk.Context, _ map[string]any) (any, error) {
+		select {
+		case <-returned:
+		case <-time.After(5 * time.Second):
+		}
 		logLine("session_shutdown")
 		return nil, nil
 	})
