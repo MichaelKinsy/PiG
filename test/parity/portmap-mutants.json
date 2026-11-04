@@ -1935,8 +1935,8 @@
  "packages/chord/test/next/examples/24-keyed-members.ts": [
   {
    "file": "chord/next/host/host_reference_keys.go",
-   "old": "if wait != nil {",
-   "new": "if wait == nil {"
+   "old": "for first := true; wait != nil; first = false {",
+   "new": "for first := true; wait != nil && !first; first = false {"
   }
  ],
  "packages/chord/test/next/examples/25-export-import.ts": [
