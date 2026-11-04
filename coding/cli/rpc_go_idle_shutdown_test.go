@@ -31,7 +31,7 @@ func logLine(s string) {
 
 func Extension() *sdk.Extension {
 	e := sdk.New(%[1]q)
-	// returned closes once ctx.Shutdown() returned. The primary member's session_shutdown handler waits for it before it logs, because the SDK answers the call on one goroutine and runs the handler on another; a host that blocks the call until the handler ran never closes it, and the 5 s bound ends the wait (a hang detector, not a delay).
+	// returned closes once ctx.Shutdown() returned and "after" was logged. The primary member's session_shutdown handler waits for it before it logs, because the SDK answers the call on one goroutine and runs the handler on another; a host that blocks the call until the handler ran never closes it, and the 5 s bound ends the wait (a hang detector, not a delay).
 	returned := make(chan struct{})
 	if %[2]v {
 		e.OnSessionStart(func(ctx sdk.Context, _ map[string]any) (any, error) {
@@ -39,8 +39,8 @@ func Extension() *sdk.Extension {
 				time.Sleep(300 * time.Millisecond)
 				logLine("before")
 				ctx.Shutdown()
-				close(returned)
 				logLine("after")
+				close(returned)
 			}()
 			return nil, nil
 		})
