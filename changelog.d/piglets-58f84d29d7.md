@@ -5,4 +5,4 @@
 
 ### Changed
 
-- A Binary built with 0.6.0 accepts `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`, `--system-prompt` and ambient discovery by default, where a 0.5.3 Binary refused them. Set `build.closed: true` in the Piglet you build to keep the 0.5.3 behavior; a closed Binary also refuses `-e`, the package commands, `pig mcp add`, `settings.extensions` and `mcp.json` servers.
+- A Binary built with 0.7.0 accepts `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME`, `--system-prompt` and ambient discovery by default, where a 0.5.3 Binary refused them. Set `build.closed: true` in the Piglet you build to keep the 0.5.3 behavior; a closed Binary also refuses `-e`, the package commands, `pig mcp add`, `settings.extensions` and `mcp.json` servers.
