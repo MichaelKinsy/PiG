@@ -33,8 +33,8 @@ func launchSystemWithReady(t *testing.T, config systemConfig, timeout time.Durat
 		t.Fatalf("create tmux session %s: %v\n%s", session, err, output)
 	}
 	cleanup := func() {
-		if output, err := tmuxCommand("kill-session", "-t", session).CombinedOutput(); err != nil {
-			t.Errorf("remove tmux session %s: %v\n%s", session, err, output)
+		if err := killSession(t, session); err != nil {
+			t.Errorf("remove tmux session %s: %v", session, err)
 		}
 	}
 

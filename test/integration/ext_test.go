@@ -428,7 +428,7 @@ func TestExt_Live_SubagentDispatchAndCheck(t *testing.T) {
 
 	// Interactive test via tmux: dispatch then check.
 	session := "ext-dispatch-" + randID()
-	defer func() { _ = tmuxCommand("kill-session", "-t", session).Run() }()
+	defer func() { _ = killSession(t, session) }()
 
 	if err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").Run(); err != nil {
 		t.Fatal(err)
