@@ -56,6 +56,10 @@ func TestRPCShutdownAfterSynchronousUIEffectKeepsPiOrder(t *testing.T) {
 				rpcShutdownStartedNotify,
 				handledPromptResponse("quit"),
 			}
+			if impl.name == "pig" {
+				// pig divergence (D231): follows Pi main 1708b4788, where the shutdown waits for the command's prompt response.
+				want = []rpcRecord{want[0], want[2], want[1]}
+			}
 			if !reflect.DeepEqual(records, want) {
 				t.Fatalf("stdout=%v, want %v", records, want)
 			}

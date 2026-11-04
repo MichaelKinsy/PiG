@@ -725,7 +725,7 @@ snippet = "close(entry.released)"
 [[hit]]
 check = "doubleclose"
 file = "coding/cli/rpc_shutdown.go"
-func = "watchForcedTermination"
+func = "watchRepeatedTermination"
 snippet = "defer close(w.done)"
 
 [[hit]]
