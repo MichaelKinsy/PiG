@@ -68,8 +68,9 @@ func newReferenceKeys(holder keyHolder) *referenceKeys { return &referenceKeys{h
 // ends without a pin for the key, and the entry follows the pin on the instance it points at now. Pi's `hold` awaits the
 // first pin only: its test holds the old pin open until the new instance's pin, an in-memory one, has settled, which
 // Pi's turn order guarantees (reference-keys.test.ts "the object fails and re-binds meanwhile"). Pins here are tasks, so
-// nothing orders the two, and a source returned before the new pin landed has no value to read; hold waits for that pin
-// too, which is what Pi's contract says it returns (a source pinned and loaded on the live instance, reference-keys.ts).
+// nothing orders the two, and a source returned before the new pin landed has no value to read. hold waits for that pin
+// to settle too, and returns what Pi's returns once it has: its source, whether the pin loaded or not (a failed load
+// shows on the key, as `follow`'s says: nobody waits on that pin for its failure).
 func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey, error) {
 	loop := k.holder.keysLoop()
 	var entry *keyEntry
@@ -90,13 +91,14 @@ func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey
 			wait = k.pin(entry)
 		}
 	})
-	for wait != nil {
+	for first := true; wait != nil; first = false {
 		result := make(chan error, 1)
 		loop.Run(func() {
 			wait.thenWithContext(ctx, func(_ struct{}, err error) { result <- err })
 		})
 		parking.Park(ctx)
-		if err := <-result; err != nil {
+		// The first pin's failure is the hold's; a later pin's is not (it shows on the key), but ctx still ends the wait.
+		if err := <-result; err != nil && (first || ctx.Err() != nil) {
 			loop.Run(release)
 			return pinnedKey{}, err
 		}

@@ -1319,9 +1319,9 @@ func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceWaitsForThePinOnTheN
 	}
 }
 
-// The pin on the new instance fails to load: the hold fails with it, as a hold on a first pin that fails does, and lets the
-// key go.
-func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceFailsWithThePinOnTheNewInstanceThatFailedToLoad(t *testing.T) {
+// The pin on the new instance fails to load: the hold still returns its source, as Pi's does once that pin settled (a
+// failure of it shows on the key, which never had a value: reads of it are `not_ready`), and keeps the key until released.
+func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceReturnsItsSourceOnceThePinOnTheNewInstanceFailedToLoad(t *testing.T) {
 	first := newGatedInstance(nil)
 	g := startGatedHold(t, first)
 	second := newGatedInstance(nil)
@@ -1332,12 +1332,22 @@ func TestReferenceKeysAHoldWhosePinTheKeyLeftForANewInstanceFailsWithThePinOnThe
 	}
 	second.let()
 	got := <-g.holding
-	if got.err == nil || got.err.Error() != "disk" {
-		t.Fatalf("the hold = %v, want the failed pin's error", got.err)
-	}
+	must(t, got.err)
+	var readErr error
 	var kept int
+	g.h.loop.Run(func() {
+		_, readErr = got.pin.source.Value()
+		kept = g.keys.entries.len()
+	})
+	if readErr == nil || readErr.Error() != "test: not live yet" {
+		t.Fatalf("read of the key = %v, want not_ready (it never had a value)", readErr)
+	}
+	if kept != 1 {
+		t.Fatalf("keys held = %d, want the one", kept)
+	}
+	g.h.loop.Run(got.pin.release)
 	g.h.loop.Run(func() { kept = g.keys.entries.len() })
 	if kept != 0 {
-		t.Fatalf("keys held = %d, want none", kept)
+		t.Fatalf("keys held after release = %d, want none", kept)
 	}
 }
