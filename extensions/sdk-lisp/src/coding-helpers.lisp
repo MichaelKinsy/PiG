@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane C: pi-coding-agent's small pure helpers (tool-result guards, message helpers, language, session and skill helpers, image notes) and the helpers
+;;;; Pi-coding-agent's small pure helpers (tool-result guards, message helpers, language, session and skill helpers, image notes) and the helpers
 ;;;; the host answers (frontmatter, Date.parse, diffs, images, clipboard, the file mutation queue). The host ones work before the extension runs.
 
 (in-package #:pig)

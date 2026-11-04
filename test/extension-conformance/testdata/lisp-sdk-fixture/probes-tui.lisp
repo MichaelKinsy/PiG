@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane H (see def-fixture in fixture.lisp)
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp)
 
 ;;; tui_probe: pi-tui's keybindings, capabilities and Key over the state the host published (test/extension-conformance/tui_probe_test.go).
 (defun tui-bool (x) (if x t :false))

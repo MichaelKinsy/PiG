@@ -1,10 +1,10 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane C: pi-coding-agent's compaction helpers (core/compaction/compaction.ts) and the JavaScript value rules the lane's helpers share.
+;;;; Pi-coding-agent's compaction helpers (core/compaction/compaction.ts) and the JavaScript value rules the helpers share.
 ;;;; Messages and entries are decoded JSON (hash-tables, vectors, strings, numbers, T :FALSE :NULL). Names of internals start with CX-.
 
 (in-package #:pig)
 
-;;; ---------------------------------------------------------------- JavaScript value rules shared by the lane
+;;; ---------------------------------------------------------------- JavaScript value rules shared by the helpers
 
 (define-condition js-type-error (pig-error)
   ((message :initarg :message :reader js-type-error-message))

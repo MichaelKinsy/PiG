@@ -13,7 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// .upstream/v0.87.1/packages/ai/test/node-http-proxy.test.ts:57 — prefers scoped proxy env aliases before process env aliases.
+// .upstream/v0.87.1/packages/ai/test/node-http-proxy.test.ts:57: prefers scoped proxy env aliases before process env aliases.
 // Drive the production Bedrock request rather than only a resolver helper.
 func TestBedrockScopedProxyRequest(t *testing.T) {
 	clearNodeProxyEnv(t)

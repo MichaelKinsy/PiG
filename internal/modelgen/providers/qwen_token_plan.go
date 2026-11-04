@@ -31,7 +31,7 @@ func qwenTokenPlanFallbackThinkingLevels() *Obj {
 
 var qwenTokenPlanReasoningEffortFallbackModelIDs = map[string]bool{"glm-5": true, "glm-5.1": true}
 
-// Retired preview id — models.dev may still list it after GA ships.
+// Retired preview id: models.dev may still list it after GA ships.
 var qwenTokenPlanExcludedModelIDs = map[string]bool{"qwen3.8-max-preview": true}
 
 // qwenTokenPlanModels maps one models.dev token plan provider. A nil modelIds keeps every model.

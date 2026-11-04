@@ -12,7 +12,7 @@ import (
 
 // Ports packages/chord/test/next/link/link.test.ts. `flushed()` (a macrotask) is MemoryLink.Flushed: the pair's
 // queue of microtasks drained. The last test (accepting a closed link keeps no host) needs createHost and stays
-// pending on lane D5.
+// pending on the host port.
 
 type recorder[T any] struct {
 	mu    sync.Mutex

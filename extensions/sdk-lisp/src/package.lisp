@@ -46,7 +46,7 @@
    #:bash-exec-options-on-data #:bash-exec-options-signal #:bash-exec-options-timeout #:bash-exec-options-env
    #:ctx-footer-data #:footer-get-git-branch #:footer-get-extension-statuses
    #:footer-get-available-provider-count #:footer-on-branch-change
-   ;; ==== lane T: type engine, tool schema, pi-ai ====
+   ;; type engine, tool schema, pi-ai
    #:type-schema-error #:type-schema-error-message #:big-int #:make-big-int #:big-int-p #:big-int-value #:type-to-json
    #:type-refinement #:make-type-refinement #:type-refinement-p #:type-refinement-check #:type-refinement-message
    #:type-schema-p #:type-kind-p #:type-optional-p #:type-readonly-p #:type-immutable-p #:type-unsafe-p #:type-enum-value-p #:type-refine-p
@@ -72,8 +72,7 @@
    #:collapse-system-messages #:resolve-transcript #:get-declared-tools #:has-non-additive-tool-changes-p #:resolve-transcript-tools
    #:retry-delay-ms #:retryable-assistant-error-p #:context-overflow-p #:recoverable-length-p #:env-api-key-auth #:get-model-type
    #:model-type-p #:has-api-p #:models-are-equal-p
-   ;; ==== end lane T ====
-   ;; ==== lane H: pi-tui helpers ====
+   ;; pi-tui helpers
     #:tui-visible-width #:tui-strip-terminal-sequences #:tui-truncate-to-width #:tui-wrap-text-with-ansi #:tui-slice-by-column #:tui-slice-with-width
     #:tui-extract-segments #:tui-get-osc8-link-at-column #:tui-get-active-background-ansi #:+tui-cursor-marker+ #:tui-key #:tui-matches-key
     #:tui-parse-key #:tui-key-release-p #:tui-key-repeat-p #:tui-set-kitty-protocol-active #:tui-kitty-protocol-active-p #:tui-decode-kitty-printable
@@ -94,8 +93,7 @@
     #:select-list-theme-selected-text #:select-list-theme-description #:select-list-theme-scroll-info #:select-list-theme-no-match
     #:settings-list-theme-label #:settings-list-theme-value #:settings-list-theme-description #:settings-list-theme-cursor #:settings-list-theme-hint
     #:editor-theme-border-color #:editor-theme-select-list
-   ;; ==== end lane H ====
-   ;; ==== lane C: pi-coding-agent pure helpers ====
+   ;; pi-coding-agent pure helpers
    #:js-type-error #:js-type-error-message #:+default-max-lines+ #:+default-max-bytes+ #:+grep-max-line-length+ #:truncate-head #:truncate-tail
    #:truncate-line #:format-size #:truncate-to-visual-lines #:truncation-result #:truncation-result-content #:truncation-result-truncated
    #:truncation-result-truncated-by #:truncation-result-total-lines #:truncation-result-total-bytes #:truncation-result-output-lines
@@ -117,8 +115,7 @@
    #:parsed-frontmatter-body #:parse-frontmatter #:strip-frontmatter #:parse-date #:diff-string #:diff-string-diff #:diff-string-first-changed-line
    #:generate-diff-string #:generate-unified-patch #:copy-to-clipboard #:converted-image #:converted-image-data #:converted-image-mime-type
    #:convert-to-png #:image-resize-options #:make-image-resize-options #:resize-image #:read-stored-credential #:with-file-mutation-queue
-   ;; ==== end lane C ====
-   ;; ==== lane M: model calls and streams, model types ====
+   ;; model calls and streams, model types
    #:ctx-complete #:registry-stream #:registry-stream-simple #:registry-complete #:registry-classify #:registry-generate-images
    #:registry-get-all #:registry-get-available #:registry-get-error #:registry-get-models-of-type #:registry-get-model-of-type
    #:registry-find-of-type #:registry-get-api-key-and-headers #:registry-get-api-key-for-provider #:registry-get-provider-auth-status
@@ -126,8 +123,7 @@
    #:registry-register-provider #:registry-unregister-provider #:registry-register-virtual-model #:registry-unregister-virtual-model
    #:model-event-stream #:make-model-event-stream #:create-assistant-message-event-stream
    #:model-stream-push #:model-stream-end #:model-stream-result #:model-stream-events #:model-stream-next
-   ;; ==== end lane M ====
-   ;; ==== lane S2: session manager, settings manager, resource loader, package manager, project trust ====
+   ;; session manager, settings manager, resource loader, package manager, project trust
     #:has-trust-requiring-project-resources #:host-agent-dir #:host-config-dir-name #:host-info-unavailable
     #:host-info-unavailable-message #:host-package-dir #:host-shell-config #:host-version #:loaded-extension-loader
     #:loader-extend-resources #:loader-get-agents-files #:loader-get-append-system-prompt #:loader-get-append-system-prompt-sources
@@ -187,8 +183,7 @@
     #:sm-get-session-name #:sm-get-tree #:sm-in-memory #:sm-is-persisted #:sm-list #:sm-list-all #:sm-new-session #:sm-open
     #:sm-reset-leaf #:sm-set-session-file #:sm-uses-default-session-dir #:trust-store-get #:trust-store-get-entry #:trust-store-set
     #:trust-store-set-many
-   ;; ==== end lane S2 ====
-   ;; ==== lane S3: model runtime and registry, create-provider, extension runner and factories, MCP options, event bus, builtin tools ====
+   ;; model runtime and registry, create-provider, extension runner and factories, MCP options, event bus, builtin tools
     #:bash-tool-options #:builtin-tool #:builtin-tool-constrained-sampling #:builtin-tool-definition #:builtin-tool-definition-constrained-sampling
     #:builtin-tool-definition-description #:builtin-tool-definition-execute #:builtin-tool-definition-execute-with
     #:builtin-tool-definition-execution-mode #:builtin-tool-definition-label #:builtin-tool-definition-name #:builtin-tool-definition-output-schema
@@ -250,8 +245,7 @@
     #:runtime-registry-unregister-virtual-model #:runtime-remove-runtime-api-key #:runtime-resolve-model #:runtime-set-runtime-api-key
     #:runtime-stream #:runtime-stream-simple #:runtime-unregister-provider #:runtime-unregister-virtual-model #:tools-options #:write-operations
     #:write-tool-options
-   ;; ==== end lane S3 ====
-   ;; ==== lane S1: session operations, child sessions, agent session runtime and services ====
+   ;; session operations, child sessions, agent session runtime and services
    #:ctx-new-session #:ctx-fork #:ctx-navigate-tree #:ctx-switch-session
    #:setup-manager #:setup-append-message #:setup-append-custom-entry #:setup-append-custom-message-entry
    #:setup-append-session-info #:setup-append-model-change #:setup-append-thinking-level-change #:setup-append-label-change
@@ -275,8 +269,7 @@
    #:session-import-file-not-found-error #:session-import-file-not-found-error-file-path
    #:missing-session-cwd-error #:missing-session-cwd-error-session-file #:missing-session-cwd-error-session-cwd
    #:missing-session-cwd-error-fallback-cwd
-   ;; ==== end lane S1 ====
-   ;; ==== lane P: providers, OAuth, renderers, virtual models, MCP registration ====
+   ;; providers, OAuth, renderers, virtual models, MCP registration
    #:abort-signal-subscribe #:make-abort-signal #:signal-abort #:registry-get-provider #:register-native-provider
    #:register-provider #:unregister-provider #:register-oauth-provider #:ctx-register-provider #:ctx-unregister-provider
    #:ctx-register-native-provider #:oauth-cancelled #:oauth-credentials #:oauth-on-auth #:oauth-on-device-code #:oauth-on-progress
@@ -333,8 +326,7 @@
    #:login-definition-palette #:login-definition-name #:login-definition-description #:login-definition-tagline
    #:sprite-definition #:make-sprite-definition #:sprite-definition-p #:sprite-definition-id #:sprite-definition-name
    #:sprite-definition-tagline #:sprite-definition-mascot #:sprite-definition-palette
-   ;; ==== end lane P ====
-   ;; ==== lane U1: component kit, ui.custom, overlays, widgets, theme ====
+   ;; component kit, ui.custom, overlays, widgets, theme
    ;; kit: nodes
    #:kit-container #:kit-container-add-child #:kit-box #:kit-box-add-child #:kit-text #:kit-truncated-text #:kit-markdown #:kit-text-style
    #:kit-spacer #:kit-dynamic-border #:kit-select-item #:kit-select-layout #:kit-select-list #:kit-setting-item #:kit-settings-list
@@ -375,8 +367,7 @@
    #:theme-fg #:theme-bg #:theme-bold #:theme-italic #:theme-underline #:theme-inverse #:theme-strikethrough #:theme-get-fg-ansi
    #:theme-get-bg-ansi #:theme-get-color-mode #:theme-style #:theme-get-thinking-border-color #:theme-get-bash-mode-border-color
    #:ctx-theme #:ctx-on-theme-change #:ctx-on-tools-expanded-change
-   ;; ==== end lane U1 ====
-   ;; ==== lane U2: editor components, autocomplete providers, terminal input ====
+   ;; editor components, autocomplete providers, terminal input
    #:ctx-set-editor-component #:ctx-clear-editor-component #:ctx-get-editor-component
    #:editor-status #:make-editor-status #:editor-status-kind #:editor-status-message #:editor-status-frames #:editor-status-frame
    #:editor-status-spinner-color #:editor-status-message-color #:editor-status-indicator-verbatim
@@ -396,8 +387,7 @@
    #:ctx-add-autocomplete-provider #:autocomplete-provider #:make-autocomplete-provider #:autocomplete-provider-trigger-characters
    #:autocomplete-get-suggestions #:autocomplete-apply-completion #:autocomplete-should-trigger-file-completion
    #:ctx-on-terminal-input #:terminal-input-result #:make-terminal-input-result #:terminal-input-result-consume #:terminal-input-result-data
-   ;; ==== end lane U2 ====
-   ;; ==== lane TA: pi-tui's TuiAltScreen over the tui.alt wire ====
+   ;; pi-tui's TuiAltScreen over the tui.alt wire
    #:tui-terminal #:make-tui-terminal #:tui-terminal-columns #:tui-terminal-rows #:tui-terminal-kitty-protocol-active #:tui-terminal-start
    #:tui-terminal-stop #:tui-terminal-drain-input #:tui-terminal-write #:tui-terminal-move-by #:tui-terminal-hide-cursor #:tui-terminal-show-cursor
    #:tui-terminal-clear-line #:tui-terminal-clear-from-cursor #:tui-terminal-clear-screen #:tui-terminal-set-title #:tui-terminal-set-progress
@@ -418,5 +408,4 @@
    #:tui-alt-screen-start #:tui-alt-screen-stop #:tui-alt-screen-terminal #:tui-alt-screen-viewport-top
    #:tui-alt-overlay-handle #:tui-alt-overlay-hide #:tui-alt-overlay-set-hidden #:tui-alt-overlay-hidden-p #:tui-alt-overlay-focus
    #:tui-alt-overlay-unfocus #:tui-alt-overlay-focused-p #:tui-alt-overlay-get-bounds
-   ;; ==== end lane TA ====
    ))

@@ -1,5 +1,5 @@
 (in-package "lisp-sdk-fixture")
-;;; the probe commands, tools and event handlers of lane CORE (see def-fixture in fixture.lisp); the Python fixture's main.py is the reference
+;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp); the Python fixture's main.py is the reference
 
 (defun core-info (ctx text) (pig:ctx-notify ctx text "info"))
 (defun core-bool (value) (if (and value (not (eq value :false)) (not (eq value :null))) "true" "false"))
