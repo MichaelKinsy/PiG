@@ -484,6 +484,11 @@ func callbackID(serverURL string) (string, error) {
 		return "", fmt.Errorf("Invalid URL: %s", serverURL)
 	}
 	href := u.WithoutHash().Href()
+	// CodeQL go/weak-sensitive-data-hashing is a false positive here. CLI threat model: this is Pi's callbackId, a public 12-character name for
+	// the server's callback path (oauth.ts), not a stored or compared secret: nothing verifies a password against it, and the URL is
+	// one the user configured. The alert follows nodeurl's URL.Password field into Href.
+	// A password-hash function would change the callback path Pi's clients and stored sign-ins use.
+	// codeql[go/weak-sensitive-data-hashing]
 	sum := sha256.Sum256([]byte(href))
 	return base64.RawURLEncoding.EncodeToString(sum[:9]), nil
 }

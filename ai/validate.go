@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 
@@ -60,7 +61,12 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 		return args, nil
 	}
 	//portlint:allow numbers a capacity hint for the output buffer, never observable: Pi's validateToolArguments (validation.ts) returns the structuredClone, with no size arithmetic
-	return appendStringify(make([]byte, 0, len(args)+len(args)/8), result.Value), nil
+	headroom := len(args) / 8
+	capacity := len(args)
+	if capacity <= math.MaxInt-headroom { // on a 32-bit int the extra eighth is a hint to drop, not a size to wrap
+		capacity += headroom
+	}
+	return appendStringify(make([]byte, 0, capacity), result.Value), nil
 }
 
 // validationError is the error validateToolArguments throws for a failed validation (validation.ts:64-68).

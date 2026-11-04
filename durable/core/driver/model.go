@@ -3,6 +3,7 @@
 package driver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -253,7 +254,8 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 			return fmt.Errorf("model_context %d event: %w", call.ID, err)
 		}
 		body = withDuration(body, event, startedAt, started, m.mono())
-		call.Post(abi.Event{Kind: abi.EventModelEvent, ID: call.ID, Payload: append(append(make([]byte, 0, len(body)+2), '['), append(body, ']')...)})
+		// The event is posted as the one element of a JSON array; Join sizes its one allocation itself.
+		call.Post(abi.Event{Kind: abi.EventModelEvent, ID: call.ID, Payload: bytes.Join([][]byte{[]byte("["), body, []byte("]")}, nil)})
 	}
 	if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
