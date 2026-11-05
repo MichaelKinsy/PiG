@@ -200,7 +200,7 @@ func (p *sdkProcess) accept(t *testing.T, i int) net.Conn {
 	select {
 	case peer := <-accepted:
 		t.Cleanup(func() { _ = peer.Close() })
-		return peer
+		return newRearmingConn(peer)
 	case err := <-acceptErr:
 		t.Fatal(err)
 	case <-p.done:
