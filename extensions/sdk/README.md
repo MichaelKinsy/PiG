@@ -8,7 +8,7 @@ The helpers Pi exports to extensions keep their names in Go case and behave like
 
 `Context.SetWorkingMessage("")` shows an empty working label, as Pi does; `Context.ClearWorkingMessage()` restores the default label (Pi's `setWorkingMessage()` with no argument).  `Context.ClearHiddenThinkingLabel()` does the same for `SetHiddenThinkingLabel`.
 
-`Context.SetStatus(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context.ClearStatus(key)` is Pi's `setStatus(key, undefined)`. An empty placeholder or prefill of `Input` and `Editor` is the unset member (Pi's `placeholder?`, `prefill?`; a Go string cannot be undefined), so RPC mode writes no such member for it.
+`Context.SetStatus(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context.ClearStatus(key)` is Pi's `setStatus(key, undefined)`. `Input(title, "")` and `Editor(title, "")` send an empty placeholder or prefill, as Pi's `input(title, "")` and `editor(title, "")` do (RPC mode writes `placeholder: ""` and `prefill: ""`); `InputWithoutPlaceholder(title)`, `InputWithoutPlaceholderWithOptions(title, opts)` and `EditorWithoutPrefill(title)` are Pi's `input(title)`, `input(title, undefined, opts)` and `editor(title)` (a Go string cannot be undefined), for which RPC mode writes no such member.
 
 ## Upgrading an older extension
 

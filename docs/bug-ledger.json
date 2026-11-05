@@ -34970,6 +34970,29 @@
       ]
     },
     {
+      "id": "BF-cbf4a52",
+      "title": "The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of…",
+      "symptom": "They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi.",
+      "rootCause": "Pi's `ctx.ui.editor(title, \"\")` reaches an RPC client as `prefill: \"\"` and `editor(title)` as a request with no prefill member (rpc-mode.ts editor); input and placeholder behave the same. The host, the Node runtime, Python and Lisp already told the two apart, but the Go and Rust SDKs dropped an empty string (`withNonEmpty` / `with_non_empty`), so a port of Pi's plan-mode example, which calls `editor(\"Refine the plan:\", \"\")`, wrote a different request than Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of `Input`/`input` as given, as Pi's `ctx.ui.editor(title, \"\")` and `ctx.ui.input(title, \"\")` do (an RPC client sees `prefill: \"\"`). They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi. Pi's `editor(title)` and `input(title)`, which write no such member, are now `EditorWithoutPrefill`, `InputWithoutPlaceholder` and `InputWithoutPlaceholderWithOptions` in Go and `editor_without_prefill`, `input_without_placeholder` and `input_without_placeholder_with_options` in Rust, as `ClearStatus` is for `SetStatus`. `TestConformance_UIEmptyMembersAgreeAcrossSDKs` now requires every SDK (isolated, packed, fused) to tell the empty string from the unset member.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cbf4a52c17",
+          "date": "2026-11-04"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire",
+        "test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-cc9370b",
       "title": "A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a…",
       "symptom": "A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a `ctx.ui.custom` factory, as in Pi: `showOverlay`, `hideOverlay`, `setFocus` and `terminal` work there, and `tui.requestRender()` also redraws the overlays the extension shows.",

@@ -8,7 +8,7 @@ The crate documentation (`cargo doc`; `cargo test --doc` runs the truncation exa
 
 `Context::set_working_message("")` shows an empty working label, as Pi does, and `Context::clear_working_message()` restores the default label (Pi's `setWorkingMessage()` with no argument); `clear_hidden_thinking_label()` does the same for `set_hidden_thinking_label`.
 
-`Context::set_status(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context::clear_status(key)` is Pi's `setStatus(key, undefined)`. An empty placeholder or prefill of `input` and `editor` is the unset member (Pi's `placeholder?`, `prefill?`; a Rust `&str` cannot be undefined), so RPC mode writes no such member for it.
+`Context::set_status(key, "")` sets an empty status text, as Pi's `setStatus(key, "")` does (RPC mode writes it); `Context::clear_status(key)` is Pi's `setStatus(key, undefined)`. `Context::input(title, "")` and `Context::editor(title, "")` send an empty placeholder or prefill, as Pi's `input(title, "")` and `editor(title, "")` do (RPC mode writes `placeholder: ""` and `prefill: ""`); `input_without_placeholder(title)`, `input_without_placeholder_with_options(title, opts)` and `editor_without_prefill(title)` are Pi's `input(title)`, `input(title, undefined, opts)` and `editor(title)` (a Rust `&str` cannot be undefined), for which RPC mode writes no such member.
 
 ## Constrained sampling
 

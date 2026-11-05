@@ -2880,9 +2880,11 @@ func Extension() *sdk.Extension {
 		ctx.SetEditorText("")
 		_, _, _ = ctx.Select("T", []string{})
 		_, _ = ctx.Confirm("", "")
-		_, _, _ = ctx.Input("T1", "")
+		_, _, _ = ctx.InputWithoutPlaceholder("T1")
+		_, _, _ = ctx.Input("T2", "")
 		_, _, _ = ctx.Input("T3", "ph")
-		_, _, _ = ctx.Editor("E1", "")
+		_, _, _ = ctx.EditorWithoutPrefill("E1")
+		_, _, _ = ctx.Editor("E2", "")
 		_, _, _ = ctx.Editor("E3", "pre")
 		return nil
 	})

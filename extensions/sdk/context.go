@@ -524,17 +524,18 @@ func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (
 
 // InputWithOptions is [Context.Input] with upstream's dialog options.
 func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (any, bool, error) {
-	return c.inputDialog(withNonEmpty(map[string]any{"title": title, "opts": opts}, "placeholder", placeholder))
+	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder, "opts": opts})
 }
 
-// withNonEmpty sets args[key] to value unless it is empty. An optional dialog member (Pi's `placeholder?`, `prefill?`) is undefined when the extension passes
-// none, and a Go string cannot be undefined: an empty one is the unset member, as in every native SDK. The host then writes no such member to an RPC client,
-// as Pi does, where it writes `placeholder: ""` for the empty string a Node extension can pass.
-func withNonEmpty(args map[string]any, key, value string) map[string]any {
-	if value != "" {
-		args[key] = value
-	}
-	return args
+// InputWithoutPlaceholder is Pi's `input(title)`: the placeholder is undefined, not the empty string [Context.Input] sends, so an RPC client's request has no
+// `placeholder` member (rpc-mode.ts input). A Go string cannot be undefined, hence the second spelling, as [Context.ClearStatus] is for [Context.SetStatus].
+func (c Context) InputWithoutPlaceholder(title string) (any, bool, error) {
+	return c.inputDialog(map[string]any{"title": title})
+}
+
+// InputWithoutPlaceholderWithOptions is [Context.InputWithoutPlaceholder] with upstream's dialog options: Pi's `input(title, undefined, opts)`.
+func (c Context) InputWithoutPlaceholderWithOptions(title string, opts DialogOptions) (any, bool, error) {
+	return c.inputDialog(map[string]any{"title": title, "opts": opts})
 }
 
 func (c Context) selectDialog(args map[string]any) (any, bool, error) {
@@ -579,20 +580,28 @@ func (c Context) confirmDialog(args map[string]any) (any, error) {
 	return resp.Confirmed, nil
 }
 
-// Input shows a text input dialog.
+// Input shows a text input dialog. The placeholder is sent as given, the empty string included (Pi's `input(title, "")`, which RPC mode writes as
+// `placeholder: ""`); [Context.InputWithoutPlaceholder] is Pi's `input(title)`.
 // Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails. The result is typed as for [Context.Select].
 func (c Context) Input(title, placeholder string) (any, bool, error) {
-	return c.inputDialog(withNonEmpty(map[string]any{"title": title}, "placeholder", placeholder))
+	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder})
 }
 
 func (c Context) inputDialog(args map[string]any) (any, bool, error) {
 	return c.valueDialog("ui.input", "text", args)
 }
 
-// Editor opens a multi-line editor.
+// Editor opens a multi-line editor. The prefill is sent as given, the empty string included (Pi's `editor(title, "")`, which RPC mode writes as
+// `prefill: ""`); [Context.EditorWithoutPrefill] is Pi's `editor(title)`.
 // Returns (nil, false, nil) if cancelled and a non-nil error when the host UI call fails. The result is typed as for [Context.Select].
 func (c Context) Editor(title, prefill string) (any, bool, error) {
-	return c.valueDialog("ui.editor", "text", withNonEmpty(map[string]any{"title": title}, "prefill", prefill))
+	return c.valueDialog("ui.editor", "text", map[string]any{"title": title, "prefill": prefill})
+}
+
+// EditorWithoutPrefill is Pi's `editor(title)`: the prefill is undefined, not the empty string [Context.Editor] sends, so an RPC client's request has no
+// `prefill` member (rpc-mode.ts editor). A Go string cannot be undefined, hence the second spelling, as [Context.ClearStatus] is for [Context.SetStatus].
+func (c Context) EditorWithoutPrefill(title string) (any, bool, error) {
+	return c.valueDialog("ui.editor", "text", map[string]any{"title": title})
 }
 
 // ── Message Injection ────────────────────────────────────────────────────────
