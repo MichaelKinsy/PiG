@@ -196,7 +196,7 @@ jobs:
       # commit reaches, which is the history the event is about.
       - name: Scan only the checked-out history
         shell: bash
-        run: git for-each-ref --format='delete %(refname)' refs/remotes refs/tags | git update-ref --stdin
+        run: git for-each-ref --format='delete %(refname)' refs/remotes refs/tags | git update-ref --no-deref --stdin
       # gitleaks-action supports only push, pull_request, workflow_dispatch and schedule; on merge_group it exits with an
       # error. The commits a merge group adds are the queued pull request's own, which the pull_request run scanned.
       - name: Gitleaks
