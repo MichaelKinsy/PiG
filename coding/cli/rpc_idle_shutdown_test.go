@@ -1,18 +1,26 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
 )
 
 // Pi 1.5.0 shutdownHandler (rpc-mode.ts) only set a flag that a stdin command or agent_settled checked, so a ctx.shutdown() from a timer on an idle session waited for the next command (Pi #11599, fixed on Pi main by 1708b4788, D231). The process must shut down on its own.
+//
+// The request must arrive while the session is idle with input attached, so the extension makes it only after the test saw the get_state answer (RPC_SHUTDOWN_IDLE_GATE). A timer armed at session_start races that answer: when startup after session_start takes longer than the timer, the request is made before input is attached, the notification is written ahead of the get_state response, and awaitReady discards it. A 300 ms startup tail stands in for a slow runner, in both modes.
 func TestRPCExtensionShutdownWhileIdleExitsWithoutAnotherCommand(t *testing.T) {
 	// One extension runs in its own process; two share a packed runtime cell (D20), which must behave alike.
 	for name, extra := range map[string][]string{"isolated": nil, "packed": {rpcShutdownSecondExtension}} {
 		t.Run(name, func(t *testing.T) {
-			p, report := startRPCShutdownFixture(t, append([]string{"RPC_SHUTDOWN_IDLE_TIMER=100"}, extra...)...)
+			gate := filepath.Join(t.TempDir(), "idle-gate")
+			p, report := startRPCShutdownFixture(t, append([]string{"RPC_SHUTDOWN_IDLE_GATE=" + gate, "RPC_SHUTDOWN_START_TAIL=300"}, extra...)...)
 			awaitReady(p)
+			if err := os.WriteFile(gate, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
 			records := drainRPCOutput(p)
 			p.waitForExit("after an idle ctx.shutdown() with stdin open")
 			if !reflect.DeepEqual(records, []rpcRecord{rpcShutdownStartedNotify}) {
