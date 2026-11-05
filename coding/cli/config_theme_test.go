@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -61,5 +63,34 @@ func TestConfigSelectorUIAppliesTheCursorAndClearOnShrinkSettings(t *testing.T) 
 		if ui.GetShowHardwareCursor() != enabled || ui.GetClearOnShrink() != settings.GetClearOnShrink() || settings.GetClearOnShrink() != enabled {
 			t.Fatalf("settings %s: cursor=%v clearOnShrink=%v (setting %v)", value, ui.GetShowHardwareCursor(), ui.GetClearOnShrink(), settings.GetClearOnShrink())
 		}
+	}
+}
+
+// Ports packages/coding-agent/test/config-selector-keybindings.test.ts (Pi b0c64f33c): selectConfig installs KeybindingsManager.create(agentDir),
+// so the selector resolves the user's keybindings.json remaps.
+func TestConfigSelectorUIUsesTheUsersKeybindings(t *testing.T) {
+	previous := tui.GetTUIKeybindings()
+	t.Cleanup(func() { tui.SetKeybindings(previous) })
+	previousRegistry, previousName := tui.ActiveThemeRegistry(), tui.ActiveTheme().Name
+	t.Cleanup(func() {
+		tui.SetThemeRegistry(previousRegistry)
+		tui.SetThemeByName(previousName)
+	})
+	cwd, agentDir := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(agentDir, "keybindings.json"), []byte(`{"tui.select.up":["up","ctrl+p"],"tui.select.down":["down","ctrl+n"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	settings := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, false)
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Setenv("PI_CODING_AGENT_DIR", agentDir)
+	t.Cleanup(closeThemeWatcher)
+	tui.SetKeybindings(tui.NewKeybindingsManager(tui.TUIKeybindingDefinitionsFor(tui.HostKeybindingPlatform()), nil))
+	newConfigSelectorUI(tui.NewScopedConfigSelector(nil, nil, 0, "global", false), settings, agentDir)
+	kb := tui.GetTUIKeybindings()
+	if got := kb.GetKeys(tui.KBSelectDown); !slices.Contains(got, "ctrl+n") {
+		t.Errorf("tui.select.down keys = %v, want ctrl+n among them", got)
+	}
+	if got := kb.GetKeys(tui.KBSelectUp); !slices.Contains(got, "ctrl+p") {
+		t.Errorf("tui.select.up keys = %v, want ctrl+p among them", got)
 	}
 }
