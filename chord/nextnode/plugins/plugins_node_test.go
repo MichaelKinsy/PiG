@@ -478,6 +478,56 @@ func TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat(t *testing
 	}
 }
 
+// compileCacheFiles counts the cache entries (not their temporary files) in dir, the V8 compile cache of a process's tree.
+func compileCacheFiles(t *testing.T, dir string) int {
+	t.Helper()
+	count := 0
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && !strings.Contains(entry.Name(), ".") {
+			count++
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal(err)
+	}
+	return count
+}
+
+// Not Pi's: Pi's plugins run in the app's process. Node writes the V8 compile cache of the modules a process compiled when the
+// process exits, one file after another, before it is gone. A process whose cache is cold (a new tree, new plugins) had its
+// writes on its exit path, where each took long enough on Windows under load that together they outlasted the stop grace after
+// its link closed: the Go side killed the process after it had run its exit handlers
+// (TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat, "its link closed and it did not exit within 5s", exit
+// status 1). The process writes the cache once it is up, so its exit has none left to write.
+func TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits(t *testing.T) {
+	cache := t.TempDir()
+	_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-node.Exited():
+		t.Fatalf("the process ended: %v", node.Err())
+	default:
+	}
+	dir := filepath.Join(tree, "v8")
+	before := compileCacheFiles(t, dir)
+	if before == 0 {
+		t.Fatal("the process, still running after its load, has written none of its compile cache: it would write it as it exits")
+	}
+	if err := node.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if after := compileCacheFiles(t, dir); after != before {
+		t.Fatalf("the compile cache has %d entries before the process exited and %d after: it wrote %d on its exit path", before, after, after-before)
+	}
+}
+
 // A link attached long after the heartbeat's window carries the host, and the heartbeat then runs for it: the Go host
 // answers the pings, so the host outlives several windows attached.
 func TestNodeALinkAttachedAfterManyHeartbeatWindowsCarriesTheHost(t *testing.T) {
