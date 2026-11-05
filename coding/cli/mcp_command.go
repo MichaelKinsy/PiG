@@ -6,10 +6,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sync"
 
 	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
@@ -39,11 +42,14 @@ func runMcpCommand(args []string) int {
 		return 1
 	}
 	trust := codingagent.NewProjectTrustStore(agentDir)
+	providerToken, closeProviderTokens := newMcpProviderTokenReader(agentDir)
+	defer closeProviderTokens()
 	return mcpext.RunMcpCommand(context.Background(), args[1:], mcpext.McpCommandOptions{
 		Cwd:           cwd,
 		AgentDir:      agentDir,
 		AppName:       codingagent.AppName,
 		ConfigDirName: codingagent.ConfigDirName(),
+		ProviderToken: providerToken,
 		OpenURL:       codingagent.OpenBrowser,
 		IsProjectTrusted: func(cwd string) (bool, error) {
 			decision, err := trust.Get(cwd)
@@ -52,4 +58,36 @@ func runMcpCommand(args []string) int {
 		Interactive: term.IsTerminal(int(os.Stdin.Fd())),
 		Color:       chalkColorLevel(environMap(os.Environ()), args, term.IsTerminal(int(os.Stdout.Fd()))) > 0,
 	})
+}
+
+// newMcpProviderTokenReader reads provider tokens from the agent directory's credentials, refreshing an expired OAuth token as a session does
+// (Pi 4d72d05bc createProviderTokenReader). The model runtime is created on the first request, so a server without `auth.provider` never loads it. The
+// returned function releases it. A missing or unrefreshable credential gives "": the server's 401 then reports that sign-in is needed.
+func newMcpProviderTokenReader(agentDir string) (read func(ctx context.Context, provider string) string, closeRuntime func()) {
+	var (
+		once    sync.Once
+		runtime *coding.ModelRuntime
+	)
+	read = func(ctx context.Context, provider string) string {
+		// `list` connects to the servers concurrently.
+		once.Do(func() {
+			runtime, _ = coding.CreateModelRuntime(ctx, coding.CreateModelRuntimeOptions{
+				AuthPath:        filepath.Join(agentDir, "auth.json"),
+				RefreshOnCreate: new(false),
+			})
+		})
+		if runtime == nil {
+			return ""
+		}
+		auth, err := runtime.GetAuth(ctx, provider)
+		if err != nil || auth == nil {
+			return ""
+		}
+		return auth.Auth.APIKey
+	}
+	return read, func() {
+		if runtime != nil {
+			runtime.Close()
+		}
+	}
 }
