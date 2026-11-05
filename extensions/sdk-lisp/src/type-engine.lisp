@@ -187,33 +187,40 @@ other argument count signals TYPE-SCHEMA-ERROR as Pi's does."
 
 ;; pig divergence (D226): TypeBox's Value.Check and Value.Errors run in the host, which asks this process for each refinement call (internal/typebox/engine/value_check.go).
 (defun te-value-run (member schema value send)
-  "Value.Check / Value.Errors of MEMBER on SCHEMA and VALUE. SEND takes the request object of the type.engine call and returns its reply. The host walks the
-schema and, at each refinement call it has no answer for, replies with that call: it is run here once and its answer is sent with every later request, in call
-order. A condition a refinement signals propagates; an error reply signals TYPE-SCHEMA-ERROR."
+  "Value.Check / Value.Errors of MEMBER on SCHEMA and VALUE. SEND takes the request object of the type.engine call and returns its reply. The first request
+carries the schema and the value, once. The host keeps the walk suspended and, at each refinement call, replies with that call and a token: the refinement is
+run here once and only its answer goes back (Value.Answer), until the host replies with the result. A condition a refinement signals, or any other early exit,
+sends a best-effort Value.Cancel with the token and then propagates; an error reply signals TYPE-SCHEMA-ERROR."
   (let* ((refs (make-array 0 :adjustable t :fill-pointer t))
-         (wire-schema (te-encode schema refs))
-         (wire-value (te-encode value refs))
-         (answers '()))
-    (loop
-      (let* ((reply (funcall send (obj "member" member "args" (vector wire-schema wire-value (coerce (reverse answers) 'simple-vector)))))
-             (err (jget reply "error"))
-             (call (jget reply "call")))
-        (when (hash-table-p err) (ts-fail "~A" (jget err "message" "")))
-        (unless (hash-table-p call) (return (jget reply "value")))
-        (let* ((refinement (aref refs (jget call "id")))
-               (argument (jget call "value")))
-          (push (if (eq (jget call "message") t)
-                    (let ((message (type-refinement-message refinement)))
-                      (if message (funcall message argument) "Refine Error"))
-                    (if (member (funcall (type-refinement-check refinement) argument) '(nil :false :null)) :false t))
-                answers))))))
+         (request (obj "member" member "args" (vector (te-encode schema refs) (te-encode value refs))))
+         (token nil)
+         (finished nil))
+    (unwind-protect
+         (loop
+           (let* ((reply (funcall send request))
+                  (err (jget reply "error"))
+                  (call (jget reply "call")))
+             (when (hash-table-p err) (setf finished t) (ts-fail "~A" (jget err "message" "")))
+             (unless (hash-table-p call) (setf finished t) (return (jget reply "value")))
+             (setf token (jget call "token"))
+             (let* ((refinement (aref refs (jget call "id")))
+                    (argument (jget call "value"))
+                    (answer (if (eq (jget call "message") t)
+                                (let ((message (type-refinement-message refinement)))
+                                  (if message (funcall message argument) "Refine Error"))
+                                (if (member (funcall (type-refinement-check refinement) argument) '(nil :false :null)) :false t))))
+               (setf request (obj "member" "Value.Answer" "args" (vector token answer))))))
+      (when (and token (not finished))
+        (ignore-errors (funcall send (obj "member" "Value.Cancel" "args" (vector token))))))))
 
 (defun te-value-call (member schema value)
   (te-value-run member schema value (lambda (request) (helper-call "type.engine" request))))
 
 (defun value-check (schema value)
   "Value.Check: T when VALUE (plain JSON: objects as hash tables, arrays as vectors, :false, :null) satisfies SCHEMA, refinements included, else NIL. Each
-refinement's check runs on the value it tests, in the order TypeBox calls them; a condition it signals propagates."
+refinement's check runs on the value it tests, in the order TypeBox calls them; a condition it signals propagates. A refinement's return is coerced with Lisp
+truthiness (NIL, :false and :null fail, everything else passes), which differs from JavaScript for 0 (falsy there, truthy here) and for NIL, the empty list
+(an empty JavaScript array or object is truthy). VALUE-ERRORS coerces the same way."
   (eq (te-value-call "Value.Check" schema value) t))
 
 (defun value-errors (schema value)

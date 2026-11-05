@@ -144,32 +144,39 @@ _DEFAULT_REFINE_ERROR = "Refine Error"
 def _value_call(member: str, schema: Any, value: Any) -> Any:
     """Run ``member`` (``Value.Check`` or ``Value.Errors``) of the host's engine on ``schema`` and ``value`` and return the JSON value it answers.
 
-    A schema's refinements are functions of this process, so the host walks the schema as TypeBox does and asks for each call of a refinement it reaches: ``{"call": {"id", "message",
-    "value"}}`` wants the check of refinement ``id`` on ``value`` (``message`` false; the answer is whether it passed) or its error message (``message`` true). The call is run here, its answer is
-    appended and the same request is sent again with the answers so far; the host replays them in order, so each refinement runs once, in the order TypeBox calls them. What a refinement raises
-    ends the call and propagates unchanged; a host ``error`` raises ``ValueError`` with its message, as ``engine_call`` does."""
+    A schema's refinements are functions of this process, so the host walks the schema as TypeBox does, keeps the walk suspended, and asks for each call of a refinement it reaches: ``{"call":
+    {"token", "id", "message", "value"}}`` wants the check of refinement ``id`` on ``value`` (``message`` false; the answer is whether it passed) or its error message (``message`` true). The
+    schema and the value are sent once, in the first request; each call is run here and answered with ``Value.Answer`` (the token and the one answer), so each refinement runs once, in the order
+    TypeBox calls them, and the cost is linear in the calls. What a refinement raises (or an error function returning a non-str) ends the call: ``Value.Cancel`` tells the host to drop the walk
+    (best effort, its failure is ignored) and the exception propagates unchanged. A host ``error`` raises ``ValueError`` with its message, as ``engine_call`` does; the host drops the walk itself."""
     from . import host_helpers
 
     refs: list = []
-    wire = [_encode(schema, refs), _encode(value, refs)]
-    answers: list = []
+    reply = host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": member, "args": [_encode(schema, refs), _encode(value, refs)]})
     while True:
-        reply = host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": member, "args": [*wire, list(answers)]})
         if "error" in reply:
             raise ValueError(reply["error"].get("message", ""))
         call = reply.get("call")
         if call is None:
             return reply.get("value")
-        refinement = refs[call["id"]]
-        argument = _decode(call.get("value"), refs)
-        if call.get("message"):
-            error = refinement.error
-            text = _DEFAULT_REFINE_ERROR if error is None else error(argument)
-            if not isinstance(text, str):
-                raise TypeError(f"a refinement's error function must return a str, not {type(text).__name__}")
-            answers.append(text)
-        else:
-            answers.append(bool(refinement.check(argument)))
+        token = call["token"]
+        try:
+            refinement = refs[call["id"]]
+            argument = _decode(call.get("value"), refs)
+            if call.get("message"):
+                error = refinement.error
+                answer = _DEFAULT_REFINE_ERROR if error is None else error(argument)
+                if not isinstance(answer, str):
+                    raise TypeError(f"a refinement's error function must return a str, not {type(answer).__name__}")
+            else:
+                answer = bool(refinement.check(argument))
+        except BaseException:
+            try:
+                host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": "Value.Cancel", "args": [token]})
+            except Exception:
+                pass
+            raise
+        reply = host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": "Value.Answer", "args": [token, answer]})
 
 
 class Value:
@@ -179,12 +186,13 @@ class Value:
 
     @staticmethod
     def check(schema: Any, value: Any) -> bool:
-        """``Value.Check(schema, value)``: whether ``value`` passes the schema and every refinement TypeBox reaches."""
+        """``Value.Check(schema, value)``: whether ``value`` passes the schema and every refinement TypeBox reaches. A refinement's check result is coerced with Python's truthiness (``bool()``), which
+        differs from JavaScript's for ``0``, ``[]`` and ``{}``."""
         return bool(_value_call("Value.Check", schema, value))
 
     @staticmethod
     def errors(schema: Any, value: Any) -> list:
-        """``Value.Errors(schema, value)``: the :class:`ValueCheckError` list of what is wrong with ``value``, in TypeBox's order (empty when it passes)."""
+        """``Value.Errors(schema, value)``: the :class:`ValueCheckError` list of what is wrong with ``value``, in TypeBox's order (empty when it passes). Refinement results are coerced with ``bool()``, as in :meth:`check`."""
         return [
             ValueCheckError(failure["keyword"], failure["schemaPath"], failure["instancePath"], failure["params"], failure["message"])
             for failure in _value_call("Value.Errors", schema, value)

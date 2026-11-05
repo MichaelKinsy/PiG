@@ -72,8 +72,8 @@ func (valueNamespace) Errors(schema any, value any) ([]ValueError, error) {
 	return errors, nil
 }
 
-// valueEngineCall runs one Value member through the host: it asks, answers every refinement call the host replies with and asks again with the answers so far, until the host replies
-// with the result (see internal/typebox/engine/value_check.go).
+// valueEngineCall runs one Value member through the host: it sends the schema and the value once, answers every refinement call the host replies with by sending the token and the
+// answer, and returns the result the host replies with at last (see internal/typebox/engine/value_check.go). A refinement that fails cancels the walk the host keeps parked.
 func valueEngineCall(member string, schema, value any) (result []byte, err error) {
 	var refs []Refinement
 	var wire bytes.Buffer
@@ -84,26 +84,25 @@ func valueEngineCall(member string, schema, value any) (result []byte, err error
 	if err != nil {
 		return nil, fmt.Errorf("%s: the value has no JSON form: %w", member, err)
 	}
-	var answers bytes.Buffer
-	answers.WriteByte('[')
+	var request bytes.Buffer
+	request.WriteString(`{"member":`)
+	writeWireString(&request, member)
+	request.WriteString(`,"args":[`)
+	request.Write(wire.Bytes())
+	request.WriteByte(',')
+	request.Write(valueText)
+	request.WriteString("]}")
+	token := ""
 	for {
-		var request bytes.Buffer
-		request.WriteString(`{"member":`)
-		writeWireString(&request, member)
-		request.WriteString(`,"args":[`)
-		request.Write(wire.Bytes())
-		request.WriteByte(',')
-		request.Write(valueText)
-		request.WriteByte(',')
-		request.Write(answers.Bytes())
-		request.WriteString("]]}")
 		reply, err := typeEngineTransport(request.Bytes())
 		if err != nil {
+			valueCancel(token)
 			return nil, fmt.Errorf("%s: %w", member, err)
 		}
 		var envelope struct {
 			Value sdkjson.RawMessage `json:"value"`
 			Call  *struct {
+				Token   string             `json:"token"`
 				ID      int                `json:"id"`
 				Message bool               `json:"message"`
 				Value   sdkjson.RawMessage `json:"value"`
@@ -114,6 +113,7 @@ func valueEngineCall(member string, schema, value any) (result []byte, err error
 			} `json:"error"`
 		}
 		if err := sdkjson.Unmarshal(reply, &envelope); err != nil {
+			valueCancel(token)
 			return nil, fmt.Errorf("%s: the host answered %s", member, reply)
 		}
 		switch {
@@ -122,18 +122,35 @@ func valueEngineCall(member string, schema, value any) (result []byte, err error
 		case envelope.Call == nil:
 			return envelope.Value, nil
 		}
+		token = envelope.Call.Token
 		if envelope.Call.ID < 0 || envelope.Call.ID >= len(refs) {
+			valueCancel(token)
 			return nil, fmt.Errorf("%s: the host asked for refinement %d of %d", member, envelope.Call.ID, len(refs))
 		}
 		answer, err := runValueRefinement(refs[envelope.Call.ID], envelope.Call.Message, envelope.Call.Value)
 		if err != nil {
+			valueCancel(token)
 			return nil, err
 		}
-		if answers.Len() > 1 {
-			answers.WriteByte(',')
-		}
-		answers.Write(answer)
+		request.Reset()
+		request.WriteString(`{"member":"Value.Answer","args":[`)
+		writeWireString(&request, token)
+		request.WriteByte(',')
+		request.Write(answer)
+		request.WriteString("]}")
 	}
+}
+
+// valueCancel tells the host to drop the walk it keeps parked at the call of token; it is best effort, the host drops an abandoned walk by itself after a while.
+func valueCancel(token string) {
+	if token == "" {
+		return
+	}
+	var request bytes.Buffer
+	request.WriteString(`{"member":"Value.Cancel","args":[`)
+	writeWireString(&request, token)
+	request.WriteString("]}")
+	_, _ = typeEngineTransport(request.Bytes())
 }
 
 // valueEncodeSchema writes schema in the engine's wire form, collecting its refinements into refs. What cannot be written panics as the Type members do; it is returned as an error.

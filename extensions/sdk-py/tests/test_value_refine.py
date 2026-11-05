@@ -1,5 +1,5 @@
 """``Value.check`` and ``Value.errors`` run the refinements of a schema by answering the host's ``call`` replies (see ``pig_sdk/type_engine.py`` and
-``internal/typebox/engine/value_check.go``). The host is replaced by a scripted transport: the replies are fixed, the requests are recorded, and the tests assert what the SDK ran and sent. The
+``internal/typebox/engine/value_check.go``). The host is replaced by a scripted transport: the replies are fixed, the requests are recorded, and the tests assert what the SDK ran and sent: the schema and value once, then only ``Value.Answer`` requests with the token and one answer, and ``Value.Cancel`` when a callback fails. The
 real walk, and its agreement with TypeBox's, is ``go test ./test/extension-conformance -run TestConformance_RefinedValueRunsRefinements``."""
 import pytest
 
@@ -8,7 +8,7 @@ from pig_sdk import host_helpers
 
 
 class Transport:
-    """Answers each ``type.engine`` request with the next scripted reply and keeps the requests (the answers list is copied by the SDK, so each request shows the list it was sent with)."""
+    """Answers each ``type.engine`` request with the next scripted reply and keeps the requests."""
 
     def __init__(self, replies):
         self.replies = list(replies)
@@ -26,8 +26,11 @@ def install(monkeypatch, replies):
     return transport
 
 
+TOKEN = "t-1"
+
+
 def call(id, message, value):
-    return {"call": {"id": id, "message": message, "value": value}}
+    return {"call": {"token": TOKEN, "id": id, "message": message, "value": value}}
 
 
 def probe(log, error=lambda value: f"bad {value}"):
@@ -65,7 +68,12 @@ def refinement_ids(request):
     return found
 
 
-def test_check_answers_every_call_once_in_order_and_replays_the_answers(monkeypatch):
+def answers(transport):
+    """The requests after the first, as (member, args): each must be an Answer with the token and one answer."""
+    return [(request["member"], request["args"]) for request in transport.requests[1:]]
+
+
+def test_check_answers_every_call_once_in_order_with_only_the_answer_sent(monkeypatch):
     log = []
     schema = probe(log)
     transport = install(monkeypatch, [call(0, False, "x"), call(1, False, 5), call(1, True, 5), {"value": False}])
@@ -73,16 +81,13 @@ def test_check_answers_every_call_once_in_order_and_replays_the_answers(monkeypa
     assert pig_sdk.Value.check(schema, {"a": "x", "b": 5}) is False
 
     assert log == [("check", "a", "x"), ("check", "b", 5), ("error", "b", 5)]
-    assert [request["member"] for request in transport.requests] == ["Value.Check"] * 4
-    assert [request["args"][2] for request in transport.requests] == [[], [True], [True, False], [True, False, "bad 5"]]
-    assert len({repr(request["args"][:2]) for request in transport.requests}) == 1
-    assert request_value(transport.requests[0]) == {"a": "x", "b": 5}
-    assert refinement_ids(transport.requests[0]) == [0, 1]
+    first = transport.requests[0]
+    assert first["member"] == "Value.Check"
+    assert len(first["args"]) == 2
+    assert first["args"][1] == {"a": "x", "b": 5}
+    assert refinement_ids(first) == [0, 1]
+    assert answers(transport) == [("Value.Answer", [TOKEN, True]), ("Value.Answer", [TOKEN, False]), ("Value.Answer", [TOKEN, "bad 5"])]
     assert transport.replies == []
-
-
-def request_value(request):
-    return request["args"][1]
 
 
 def test_check_returns_the_host_result_as_a_bool(monkeypatch):
@@ -97,7 +102,7 @@ def test_a_check_answers_by_truthiness_and_a_missing_error_function_is_refine_er
 
     assert pig_sdk.Value.check(refined, []) is True
 
-    assert [request["args"][2] for request in transport.requests] == [[], [False], [False, True], [False, True, "Refine Error"]]
+    assert answers(transport) == [("Value.Answer", [TOKEN, False]), ("Value.Answer", [TOKEN, True]), ("Value.Answer", [TOKEN, "Refine Error"])]
 
 
 def test_the_value_of_a_call_is_decoded_as_plain_json(monkeypatch):
@@ -122,8 +127,9 @@ def test_errors_builds_the_error_list_in_the_hosts_order(monkeypatch):
 
     errors = pig_sdk.Value.errors(schema, {"a": "x", "b": 5})
 
-    assert [request["member"] for request in transport.requests] == ["Value.Errors"] * 3
-    assert [request["args"][2] for request in transport.requests] == [[], [False], [False, "bad 5"]]
+    assert transport.requests[0]["member"] == "Value.Errors"
+    assert len(transport.requests[0]["args"]) == 2
+    assert answers(transport) == [("Value.Answer", [TOKEN, False]), ("Value.Answer", [TOKEN, "bad 5"])]
     assert errors == [
         pig_sdk.ValueCheckError("~refine", "#/properties/b", "/b", {"z": 1, "a": [2]}, "bad 5"),
         pig_sdk.ValueCheckError("type", "#", "", {}, "must be object"),
@@ -134,11 +140,12 @@ def test_errors_builds_the_error_list_in_the_hosts_order(monkeypatch):
 
 
 def test_errors_of_a_passing_value_is_an_empty_list(monkeypatch):
-    install(monkeypatch, [{"value": []}])
+    transport = install(monkeypatch, [{"value": []}])
     assert pig_sdk.Value.errors(probe([]), {}) == []
+    assert len(transport.requests) == 1
 
 
-def test_a_raising_check_aborts_the_call_with_the_original_exception(monkeypatch):
+def test_a_raising_check_cancels_and_propagates_the_original_exception(monkeypatch):
     boom = RuntimeError("kaboom")
     ran = []
 
@@ -147,18 +154,19 @@ def test_a_raising_check_aborts_the_call_with_the_original_exception(monkeypatch
         raise boom
 
     refined = pig_sdk.Type.refine(pig_sdk.Type.string(), check)
-    transport = install(monkeypatch, [call(0, False, "x"), {"value": True}])
+    transport = install(monkeypatch, [call(0, False, "x"), {"value": {}}, {"value": True}])
 
     with pytest.raises(RuntimeError) as failure:
         pig_sdk.Value.check(refined, "x")
 
     assert failure.value is boom
     assert ran == ["x"]
-    assert len(transport.requests) == 1
+    assert [request["member"] for request in transport.requests] == ["Value.Check", "Value.Cancel"]
+    assert transport.requests[1]["args"] == [TOKEN]
     assert len(transport.replies) == 1
 
 
-def test_a_raising_error_function_aborts_after_the_calls_made_so_far(monkeypatch):
+def test_a_raising_error_function_cancels_after_the_answers_made_so_far(monkeypatch):
     log = []
     boom = KeyError("kaboom")
 
@@ -166,40 +174,71 @@ def test_a_raising_error_function_aborts_after_the_calls_made_so_far(monkeypatch
         raise boom
 
     schema = probe(log, error=refuse)
-    transport = install(monkeypatch, [call(0, False, "x"), call(1, False, 5), call(1, True, 5), {"value": []}])
+    transport = install(monkeypatch, [call(0, False, "x"), call(1, False, 5), call(1, True, 5), {"value": {}}, {"value": []}])
 
     with pytest.raises(KeyError) as failure:
         pig_sdk.Value.errors(schema, {"a": "x", "b": 5})
 
     assert failure.value is boom
     assert log == [("check", "a", "x"), ("check", "b", 5), ("error", "b", 5)]
-    assert [request["args"][2] for request in transport.requests] == [[], [True], [True, False]]
+    assert [(request["member"], request["args"]) for request in transport.requests[1:]] == [("Value.Answer", [TOKEN, True]), ("Value.Answer", [TOKEN, False]), ("Value.Cancel", [TOKEN])]
     assert len(transport.replies) == 1
 
 
-def test_an_error_reply_fails_the_call(monkeypatch):
-    transport = install(monkeypatch, [call(0, False, "x"), {"error": {"name": "TypeError", "message": "the value cannot be written as JSON: boom"}}, {"value": True}])
+def test_a_failing_cancel_does_not_hide_the_callbacks_failure(monkeypatch):
+    boom = RuntimeError("kaboom")
+
+    def check(value):
+        raise boom
+
+    refined = pig_sdk.Type.refine(pig_sdk.Type.string(), check)
+    calls = []
+
+    def transport(method, args):
+        calls.append(args["member"])
+        if args["member"] == "Value.Cancel":
+            raise OSError("connection closed")
+        return call(0, False, "x")
+
+    monkeypatch.setattr(host_helpers, "_helper_call", transport)
+
+    with pytest.raises(RuntimeError) as failure:
+        pig_sdk.Value.check(refined, "x")
+
+    assert failure.value is boom
+    assert calls == ["Value.Check", "Value.Cancel"]
+
+
+def test_an_error_reply_fails_the_call_without_a_cancel(monkeypatch):
+    transport = install(monkeypatch, [call(0, False, "x"), {"error": {"name": "RangeError", "message": "Maximum call stack size exceeded"}}, {"value": True}])
     refined = pig_sdk.Type.refine(pig_sdk.Type.string(), lambda value: True)
 
     with pytest.raises(ValueError) as failure:
         pig_sdk.Value.check(refined, "x")
 
-    assert str(failure.value) == "the value cannot be written as JSON: boom"
-    assert len(transport.requests) == 2
+    assert str(failure.value) == "Maximum call stack size exceeded"
+    assert [request["member"] for request in transport.requests] == ["Value.Check", "Value.Answer"]
     assert len(transport.replies) == 1
+
+
+def test_an_error_reply_to_the_first_request_fails_the_call(monkeypatch):
+    transport = install(monkeypatch, [{"error": {"name": "RangeError", "message": "Maximum call stack size exceeded"}}])
+    with pytest.raises(ValueError, match="Maximum call stack size exceeded"):
+        pig_sdk.Value.errors(pig_sdk.Type.string(), "x")
+    assert len(transport.requests) == 1
 
 
 def test_an_error_function_must_return_a_string(monkeypatch):
     refined = pig_sdk.Type.refine(pig_sdk.Type.string(), lambda value: False, lambda value: 7)
-    transport = install(monkeypatch, [call(0, False, "x"), call(0, True, "x"), {"value": []}])
+    transport = install(monkeypatch, [call(0, False, "x"), call(0, True, "x"), {"value": {}}])
 
     with pytest.raises(TypeError):
         pig_sdk.Value.errors(refined, "x")
 
-    assert len(transport.requests) == 2
+    assert [request["member"] for request in transport.requests] == ["Value.Errors", "Value.Answer", "Value.Cancel"]
 
 
 def test_a_schema_without_refinements_is_one_request(monkeypatch):
     transport = install(monkeypatch, [{"value": True}])
     assert pig_sdk.Value.check(pig_sdk.Type.string(), "x") is True
-    assert transport.requests == [{"member": "Value.Check", "args": [{"\x00": "o", "h": {"~kind": "String"}, "e": {"type": "string"}}, "x", []]}]
+    assert transport.requests == [{"member": "Value.Check", "args": [{"\x00": "o", "h": {"~kind": "String"}, "e": {"type": "string"}}, "x"]}]

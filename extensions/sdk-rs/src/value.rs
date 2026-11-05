@@ -1,9 +1,12 @@
 //! pi-ai's `Value` (TypeBox 1.3.27's `typebox/value`): [`Value::check`] and [`Value::errors`] of a schema, running the refinements (`Type::refine`) the schema carries.
 //!
-//! pig divergence (D226): TypeBox's walk runs in the host and the refinements are functions of this process, so the host asks for each refinement call it reaches and this
-//! module answers it (`type.engine` members `Value.Check` and `Value.Errors`). Every refinement runs once per call, in the order TypeBox runs it. A refinement that fails
+//! pig divergence (D226): TypeBox's walk runs in the host, suspended at each refinement call, and the refinements are functions of this process: this module starts the walk
+//! (`type.engine` members `Value.Check` and `Value.Errors`) and answers each refinement call the host replies with (`Value.Answer`, or `Value.Cancel` when a refinement fails). Every
+//! refinement runs once per call, in the order TypeBox runs it. A refinement that fails
 //! (returns `Err`, as a thrown JavaScript error does) fails the whole call with its message. The module is `pig_sdk::value`, not a root export: `serde_json::Value` is the
 //! name extensions already import.
+//!
+//! The Rust SDK's refinements return `bool` and `String` already, so there is no coercion of a refinement's result (the Python and Lisp SDKs coerce with their own truthiness).
 
 use serde_json::{Map, Value as Json, json};
 
@@ -25,7 +28,7 @@ pub struct ValueError {
 pub struct Value;
 
 impl Value {
-    /// `Value.Check(schema, value)`: whether `value` is valid for `schema`, running its refinements.
+    /// `Value.Check(schema, value)`: whether `value` is valid for `schema`, running its refinements. A refinement that returns `Err` fails the call with its message.
     pub fn check(schema: impl Into<TSchema>, value: &Json) -> Result<bool, String> {
         match call("Value.Check", schema.into(), value)? {
             Json::Bool(valid) => Ok(valid),
@@ -73,7 +76,9 @@ fn call(member: &str, schema: TSchema, value: &Json) -> Result<Json, String> {
     })
 }
 
-/// Ask the host through `send` until it answers a result, running the refinement each `call` reply names and sending the answers so far again.
+/// Start `member` through `send` and answer each `call` the host replies with the result of the refinement it names, until the host answers a result. The host keeps the walk
+/// suspended between the requests: the schema and the value are sent once, then only each answer with the `token` of the call. A refinement that fails, or any other early exit
+/// after the host gave a token, cancels the call (best effort) and fails with the reason; an `error` reply ends the call, the host having dropped the token.
 fn drive(
     member: &str,
     schema: Json,
@@ -81,9 +86,8 @@ fn drive(
     refs: &[Refinement],
     send: &mut dyn FnMut(Json) -> Result<Option<Json>, String>,
 ) -> Result<Json, String> {
-    let mut answers: Vec<Json> = Vec::new();
+    let mut request = json!({"member": member, "args": [schema, value]});
     loop {
-        let request = json!({"member": member, "args": [schema, value, answers]});
         let reply = send(request)?.unwrap_or(Json::Null);
         if let Some(error) = reply.get("error") {
             return Err(error
@@ -92,30 +96,46 @@ fn drive(
                 .unwrap_or_default()
                 .to_string());
         }
-        if let Some(wanted) = reply.get("call") {
-            let id = wanted
-                .get("id")
-                .and_then(Json::as_u64)
-                .ok_or_else(|| format!("{member}: the host asked for a refinement with no id"))?;
-            let refinement = refs
-                .get(id as usize)
-                .ok_or_else(|| format!("{member}: the host asked for an unknown refinement"))?;
-            let argument = wanted.get("value").unwrap_or(&Json::Null);
-            let answer = if wanted.get("message").and_then(Json::as_bool) == Some(true) {
-                match &refinement.error {
-                    Some(error) => Json::String(error(argument)?),
-                    None => Json::String("Refine Error".to_string()),
-                }
-            } else {
-                Json::Bool((refinement.check)(argument)?)
-            };
-            answers.push(answer);
-            continue;
+        let Some(wanted) = reply.get("call") else {
+            return reply
+                .get("value")
+                .cloned()
+                .ok_or_else(|| format!("{member}: the host answered no value"));
+        };
+        let Some(token) = wanted.get("token").and_then(Json::as_str) else {
+            return Err(format!(
+                "{member}: the host asked for a refinement with no token"
+            ));
+        };
+        let cancel = |send: &mut dyn FnMut(Json) -> Result<Option<Json>, String>| {
+            let _ = send(json!({"member": "Value.Cancel", "args": [token]}));
+        };
+        let refinement = wanted
+            .get("id")
+            .and_then(Json::as_u64)
+            .and_then(|id| refs.get(id as usize));
+        let Some(refinement) = refinement else {
+            cancel(send);
+            return Err(format!(
+                "{member}: the host asked for an unknown refinement"
+            ));
+        };
+        let argument = wanted.get("value").unwrap_or(&Json::Null);
+        let answer = if wanted.get("message").and_then(Json::as_bool) == Some(true) {
+            match &refinement.error {
+                Some(error) => error(argument).map(Json::String),
+                None => Ok(Json::String("Refine Error".to_string())),
+            }
+        } else {
+            (refinement.check)(argument).map(Json::Bool)
+        };
+        match answer {
+            Ok(answer) => request = json!({"member": "Value.Answer", "args": [token, answer]}),
+            Err(failure) => {
+                cancel(send);
+                return Err(failure);
+            }
         }
-        return reply
-            .get("value")
-            .cloned()
-            .ok_or_else(|| format!("{member}: the host answered no value"));
     }
 }
 
@@ -176,10 +196,10 @@ mod tests {
         let sent = Arc::new(Mutex::new(Vec::new()));
         let mut send = scripted(
             vec![
-                json!({"call": {"id": 0, "message": false, "value": "ab"}}),
-                json!({"call": {"id": 0, "message": true, "value": "ab"}}),
-                json!({"call": {"id": 1, "message": false, "value": "ab"}}),
-                json!({"call": {"id": 1, "message": true, "value": "ab"}}),
+                json!({"call": {"token": "t1", "id": 0, "message": false, "value": "ab"}}),
+                json!({"call": {"token": "t1", "id": 0, "message": true, "value": "ab"}}),
+                json!({"call": {"token": "t1", "id": 1, "message": false, "value": "ab"}}),
+                json!({"call": {"token": "t1", "id": 1, "message": true, "value": "ab"}}),
                 json!({"value": [{"keyword": "x"}]}),
             ],
             &sent,
@@ -191,45 +211,62 @@ mod tests {
             vec!["check:\"ab\"", "error:\"ab\"", "check:outer"]
         );
         let sent = sent.lock().unwrap();
-        let answers: Vec<&Json> = sent.iter().map(|request| &request["args"][2]).collect();
         assert_eq!(
-            answers,
+            *sent,
             vec![
-                &json!([]),
-                &json!([false]),
-                &json!([false, "too short"]),
-                &json!([false, "too short", true]),
-                &json!([false, "too short", true, "Refine Error"]),
+                json!({"member": "Value.Errors", "args": [wire, "ab"]}),
+                json!({"member": "Value.Answer", "args": ["t1", false]}),
+                json!({"member": "Value.Answer", "args": ["t1", "too short"]}),
+                json!({"member": "Value.Answer", "args": ["t1", true]}),
+                json!({"member": "Value.Answer", "args": ["t1", "Refine Error"]}),
             ]
-        );
-        assert!(
-            sent.iter()
-                .all(|request| request["member"] == "Value.Errors"
-                    && request["args"][0] == wire
-                    && request["args"][1] == json!("ab"))
         );
     }
 
     #[test]
-    fn a_failing_refinement_aborts_the_call() {
+    fn a_failing_refinement_cancels_and_aborts_the_call() {
         let log: Log = Default::default();
         let (wire, refs) = schema(&log, true);
         let sent = Arc::new(Mutex::new(Vec::new()));
         let mut send = scripted(
             vec![
-                json!({"call": {"id": 0, "message": false, "value": "ab"}}),
+                json!({"call": {"token": "t9", "id": 0, "message": false, "value": "ab"}}),
                 json!({"value": true}),
             ],
             &sent,
         );
-        let error = drive("Value.Check", wire, json!("ab"), &refs, &mut send).unwrap_err();
+        let error = drive("Value.Check", wire.clone(), json!("ab"), &refs, &mut send).unwrap_err();
         assert_eq!(error, "kaboom");
-        assert_eq!(sent.lock().unwrap().len(), 1);
+        assert_eq!(log.lock().unwrap().len(), 1);
+        assert_eq!(
+            *sent.lock().unwrap(),
+            vec![
+                json!({"member": "Value.Check", "args": [wire, "ab"]}),
+                json!({"member": "Value.Cancel", "args": ["t9"]}),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_error_reply_fails_the_call_without_a_cancel() {
+        let log: Log = Default::default();
+        let (wire, refs) = schema(&log, false);
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let mut send = scripted(
+            vec![
+                json!({"call": {"token": "t2", "id": 0, "message": false, "value": "ab"}}),
+                json!({"error": {"name": "RangeError", "message": "Maximum call stack size exceeded"}}),
+            ],
+            &sent,
+        );
+        let error = drive("Value.Check", wire, json!("ab"), &refs, &mut send).unwrap_err();
+        assert_eq!(error, "Maximum call stack size exceeded");
+        assert_eq!(sent.lock().unwrap().len(), 2);
         assert_eq!(log.lock().unwrap().len(), 1);
     }
 
     #[test]
-    fn an_error_reply_fails_the_call() {
+    fn an_error_reply_to_the_first_request_fails_the_call() {
         let log: Log = Default::default();
         let (wire, refs) = schema(&log, false);
         let sent = Arc::new(Mutex::new(Vec::new()));
@@ -239,6 +276,7 @@ mod tests {
         );
         let error = drive("Value.Check", wire, json!(1), &refs, &mut send).unwrap_err();
         assert_eq!(error, "bad schema");
+        assert_eq!(sent.lock().unwrap().len(), 1);
         assert!(log.lock().unwrap().is_empty());
     }
 
