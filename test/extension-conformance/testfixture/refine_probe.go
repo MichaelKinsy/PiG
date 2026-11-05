@@ -70,9 +70,13 @@ func registerRefineProbe(ext *sdk.Extension) {
 		var report *sdk.OrderedObject
 		var result any
 		var err error
-		if request.Mode == "check" {
+		switch request.Mode {
+		case "cycle":
+			// A schema that refers to itself: TypeBox throws a RangeError for it.
+			result, err = sdk.Value.Check(sdk.Type.Unsafe(map[string]any{"$ref": "#"}), 1.0)
+		case "check":
 			result, err = sdk.Value.Check(root, request.Value)
-		} else {
+		default:
 			var errs []sdk.ValueError
 			errs, err = sdk.Value.Errors(root, request.Value)
 			rows := make([]any, len(errs))

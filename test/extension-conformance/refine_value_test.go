@@ -213,3 +213,31 @@ func TestConformance_RefinedValueRunsRefinements(t *testing.T) {
 		})
 	}
 }
+
+// TestConformance_RefinedValueOfASelfReferringSchemaFailsTheCall: `Value.Check` of a schema that refers to itself (`{"$ref":"#"}`) throws a RangeError in TypeBox ("Maximum call stack size
+// exceeded"). Every SDK gets the same failure as the call's error, and the host, which walks the schema for the SDKs, stays up: the same extension runs a refinement check afterwards.
+func TestConformance_RefinedValueOfASelfReferringSchemaFailsTheCall(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixture)")
+	}
+	for _, tc := range sdkHarnessCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			got := runRefineValue(t, h, "cycle", `1`)
+			if got.Thrown == nil || !strings.Contains(*got.Thrown, "Maximum call stack size exceeded") {
+				t.Errorf("Value.Check of {\"$ref\":\"#\"}: result %s, thrown %v, want the failure \"Maximum call stack size exceeded\"", got.Result, got.Thrown)
+			}
+			if after := runRefineValue(t, h, "check", `{"name":"abc","pick":"a"}`); string(after.Result) != "true" {
+				t.Errorf("a check after the cycle: %s (thrown %v), want true", after.Result, after.Thrown)
+			}
+		})
+	}
+}

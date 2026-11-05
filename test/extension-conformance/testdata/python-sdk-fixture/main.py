@@ -642,6 +642,9 @@ def new_extension() -> pig_sdk.Extension:
         try:
             if request["mode"] == "check":
                 report["result"] = pig_sdk.Value.check(probe, request["value"])
+            elif request["mode"] == "cycle":
+                # a schema that refers to itself: the host answers TypeBox's RangeError, which is the call's failure
+                report["result"] = pig_sdk.Value.check(pig_sdk.Type.unsafe({"$ref": "#"}), 1)
             else:
                 report["result"] = [
                     {"keyword": e.keyword, "schemaPath": e.schema_path, "instancePath": e.instance_path, "params": e.params, "message": e.message}

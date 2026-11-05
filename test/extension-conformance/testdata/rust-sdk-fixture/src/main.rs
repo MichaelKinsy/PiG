@@ -1144,6 +1144,9 @@ fn main() {
                     .cloned()
                     .unwrap_or(serde_json::Value::Null);
                 let outcome = match case.get("mode").and_then(|mode| mode.as_str()) {
+                    Some("cycle") => Type::unsafe_(json!({"$ref": "#"}).as_object().unwrap())
+                        .and_then(|cyclic| pig_sdk::value::Value::check(cyclic, &json!(1)))
+                        .map(|valid| json!(valid)),
                     Some("check") => pig_sdk::value::Value::check(probe.clone(), &value)
                         .map(|valid| json!(valid)),
                     Some("errors") => {

@@ -103,15 +103,17 @@
                      (let ((calls (coerce (reverse log) 'simple-vector)))
                        (setf log '())
                        (types-notify ctx (concatenate 'string "refine_log:" (pig:to-json calls) ":end")))))
-      ;; refine_value (TestConformance_RefinedValueRunsRefinements): Value.check / Value.errors of the same schema; {"mode":"check"|"errors","value":<json>}
+      ;; refine_value (TestConformance_RefinedValueRunsRefinements): Value.check / Value.errors of the same schema; {"mode":"check"|"errors"|"cycle","value":<json>}
       (pig:command ext "refine_value" "Run Value.Check or Value.Errors on the refine probe"
                    (lambda (ctx args)
                      (let* ((request (pig:from-json args))
                             (value (pig:jget request "value"))
                             (report (handler-case
-                                        (let ((result (if (equal (pig:jget request "mode") "errors")
-                                                          (coerce (pig:value-errors schema value) 'simple-vector)
-                                                          (if (pig:value-check schema value) t :false))))
+                                        (let* ((mode (pig:jget request "mode"))
+                                               (result (cond ((equal mode "errors") (coerce (pig:value-errors schema value) 'simple-vector))
+                                                             ;; cycle: a schema that refers to itself, which the host answers with TypeBox's RangeError
+                                                             ((equal mode "cycle") (if (pig:value-check (pig:type-unsafe (pig:obj "$ref" "#")) 1) t :false))
+                                                             (t (if (pig:value-check schema value) t :false)))))
                                           (list "result" result))
                                       (error (e) (list "thrown" (princ-to-string e)))))
                             (calls (coerce (reverse log) 'simple-vector)))

@@ -62,7 +62,7 @@ export default function (pi) {
       const { mode, value } = JSON.parse(args);
       let report;
       try {
-        const result = mode === "check" ? Value.Check(probe, value) : [...Value.Errors(probe, value)].map((e) => ({ keyword: e.keyword, schemaPath: e.schemaPath, instancePath: e.instancePath, params: e.params, message: e.message }));
+        const result = mode === "cycle" ? Value.Check(Type.Unsafe({ $ref: "#" }), 1) : mode === "check" ? Value.Check(probe, value) : [...Value.Errors(probe, value)].map((e) => ({ keyword: e.keyword, schemaPath: e.schemaPath, instancePath: e.instancePath, params: e.params, message: e.message }));
         report = { result, calls: log.splice(0) };
       } catch (error) { report = { thrown: String(error && error.message), calls: log.splice(0) }; }
       ctx.ui.notify(`refine_value:${JSON.stringify(report)}:end`, "info");
