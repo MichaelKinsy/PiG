@@ -1,4 +1,4 @@
-import { appendFileSync, readFile as readFileCallback } from "node:fs";
+import { appendFileSync, existsSync, readFile as readFileCallback } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 // Records every lifecycle event the extension receives. echo_bridge reports a
@@ -42,13 +42,18 @@ export default function (pi) {
       record("settled_wait:done");
     });
   }
-  // RPC_SHUTDOWN_AT_START requests shutdown synchronously from session_start; RPC_SHUTDOWN_IDLE_TIMER=ms requests it from a timer, while the session is idle.
+  // RPC_SHUTDOWN_AT_START requests shutdown synchronously from session_start. RPC_SHUTDOWN_IDLE_GATE=path requests it from a timer callback once the file exists, which a test creates after the session answered get_state, so the request comes while the session is idle and input is attached, never during startup. RPC_SHUTDOWN_START_TAIL=ms keeps that session_start handler pending for that long, a startup tail that a slow runner shows on its own.
   if (process.env.RPC_SHUTDOWN_AT_START) {
     pi.on("session_start", (_event, ctx) => ctx.shutdown());
   }
-  if (process.env.RPC_SHUTDOWN_IDLE_TIMER) {
-    pi.on("session_start", (_event, ctx) => {
-      setTimeout(() => ctx.shutdown(), Number(process.env.RPC_SHUTDOWN_IDLE_TIMER));
+  if (process.env.RPC_SHUTDOWN_IDLE_GATE) {
+    pi.on("session_start", async (_event, ctx) => {
+      const poll = () => {
+        if (existsSync(process.env.RPC_SHUTDOWN_IDLE_GATE)) ctx.shutdown();
+        else setTimeout(poll, 10);
+      };
+      setTimeout(poll, 10);
+      if (process.env.RPC_SHUTDOWN_START_TAIL) await new Promise((resolve) => setTimeout(resolve, Number(process.env.RPC_SHUTDOWN_START_TAIL)));
     });
   }
   if (process.env.RPC_SHUTDOWN_ON_SETTLED) {
