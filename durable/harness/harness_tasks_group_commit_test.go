@@ -188,6 +188,12 @@ func TestTaskPhasesGroupCommit(t *testing.T) {
 		if retired, err := opened.harness.SnapshotErased(testContext, progress, id); err != nil || retired != nil {
 			t.Fatalf("task document %v %v, want retired", retired, err)
 		}
+		// The created child is a task of its own: nothing orders its end before the end of the task that created it, so its
+		// entry is still indexed, and its terminal commit may still scan, until the child itself is terminal.
+		childReceipt, err := opened.harness.WaitForTask(testContext, durable.TaskId(childId.Load()))
+		if err != nil || childReceipt.ConversationId != conversation.Id() {
+			t.Fatalf("child receipt %+v %v, want conversation %d", childReceipt, err, conversation.Id())
+		}
 		// The Session indexed the documents of the tasks it created, so no terminal commit scanned for them, and it dropped
 		// each task's entry at its end.
 		if scans := store.documentScans.Load(); scans != 0 {
@@ -198,10 +204,6 @@ func TestTaskPhasesGroupCommit(t *testing.T) {
 		}
 		if stored, err := opened.harness.GetTask(testContext, id); err != nil || !reflect.DeepEqual(*stored, receipt) {
 			t.Fatalf("stored task %+v %v differs from receipt %+v", stored, err, receipt)
-		}
-		childReceipt, err := opened.harness.WaitForTask(testContext, durable.TaskId(childId.Load()))
-		if err != nil || childReceipt.ConversationId != conversation.Id() {
-			t.Fatalf("child receipt %+v %v, want conversation %d", childReceipt, err, conversation.Id())
 		}
 		if opened.root.Id() == conversation.Id() {
 			t.Fatal("root and created conversation share an ID")
