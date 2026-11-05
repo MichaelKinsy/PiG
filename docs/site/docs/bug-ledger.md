@@ -850,6 +850,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8b8f379](#bf-8b8f379) | A pi-ai call made while a module loads is answered in every extension host: SDK sessions, the extension… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b9e467](#bf-8b9e467) | `PIG_PROFILE=metrics` reports the exact cumulative allocation counts | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8bc7c8f](#bf-8bc7c8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-8bf0832](#bf-8bf0832) | A tool card whose call and result are both known when it is first drawn, as after resuming a session or when… | PiG's own defect | All platforms | Unreleased |
 | [BF-8c3f5a1](#bf-8c3f5a1) | fix(tui): a finished block's hidden thinking run keeps no streaming memos | PiG's own defect | All platforms | Unreleased |
 | [BF-8c5a7a4](#bf-8c5a7a4) | The Go, Python and Rust extension SDKs' `serializeConversation` (`SerializeConversation`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8c7bacf](#bf-8c7bacf) | `delta.AssertValidOp` checks path safety as Pi's `assertValidOp` does: it rejects a negative, fractional… | PiG's own defect | All platforms | 0.5.0 |
@@ -13092,6 +13093,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `8bc7c8f3f0` (2026-10-10)
 - **Tests:** `mcp/oauth/callback_server_options_test.go::TestOAuthCallbackServerNamesTheRedirectMixUpAndReturnsTheContextCause`
+
+### BF-8bf0832
+
+**A tool card whose call and result are both known when it is first drawn, as after resuming a session or when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool card whose call and result are both known when it is first drawn, as after resuming a session or when a tool finishes before the card is drawn, now runs an extension's `renderCall` before its `renderResult`, as Pi does, so a result renderer that reads state its call renderer wrote (`context.state`) sees it.
+- **Root cause:** A card draws its call region and then its result region, and each region's proxy ran its own request loop, while an extension serves requests concurrently. A card whose call and result were both known at its first frame (a resumed session, a tool that finishes before the card is first drawn) therefore sent the two renders in whichever order the loops reached the socket, and the result renderer ran before the call renderer had written the card's state: 47 of 300 Go cards drew the result without it. Pi's ToolExecutionComponent.updateDisplay runs renderCall and then renderResult synchronously, so the result renderer always reads the state the call renderer just wrote.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8bf083217b` (2026-11-05)
+- **Tests:** `coding/extension/host/subprocess/tool_render_order_test.go::TestRenderOrderDoesNotWedgeOnAStaleOrMissingWant`, `coding/extension/host/subprocess/tool_render_order_test.go::TestRenderOrderGrantsTurnsInTheOrderTheCardAsked`, `coding/extension/host/subprocess/tool_render_order_test.go::TestRenderOrderMovesAProxyThatWantsAgainBehindTheOthers`, `coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderOrderHoldsAcrossPasses`, `coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderProxiesSendTheResultRenderAfterTheCallRenderAnswered`, `coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderResultDoesNotWaitForACallThatIsNotDrawn`, `coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderResultIsNotHeldForeverByAnAbandonedCallRender`, `coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderResultIsSentAfterACallRenderThatFailed` and 1 more in docs/bug-ledger.json
+- **Release note:** A tool card whose call and result are both known when it is first drawn, as after resuming a session or when a tool finishes before the card is drawn, now runs an extension's `renderCall` before its `renderResult`, as Pi does, so a result renderer that reads state its call renderer wrote (`context.state`) sees it. The host sent the two renders to the extension at the same moment and the extension could run them in either order (between 47 and 153 of 300 such cards in a Go SDK test), in every SDK and in Node. It now sends a card's renders one at a time in the order the card asked; a call render that fails, or that the renderer inactivity boundary abandons, holds its result render back for that request only (D56).
 
 ### BF-8c3f5a1
 
