@@ -119,6 +119,8 @@ var refineCases = []refineCase{
 	{`Type.Array(Type.Number(), { contains: refine(Type.Number(), "even") })`, []any{1, 3, 4, 6}},
 	{`Type.Array(Type.Number(), { contains: refine(Type.Number(), "even") })`, []any{1, 3}},
 	{`Type.Array(Type.Number(), { contains: refine(Type.Number(), "even"), minContains: 2, maxContains: 3 })`, []any{2, 4, 6, 8}},
+	// not: what the negated schema evaluated while failing counts as evaluated for unevaluatedProperties (Check and Errors agree).
+	{`Type.Unsafe({ not: { properties: { a: {} }, minProperties: 5 }, unevaluatedProperties: false })`, map[string]any{"a": 1}},
 	// References: a named definition and a cyclic type.
 	{`Type.Module({ Node: Type.Object({ n: refine(Type.Number(), "pos"), next: Type.Optional(Type.Ref("Node")) }) }).Node`, map[string]any{"n": 1, "next": map[string]any{"n": -2}}},
 	{`Type.Cyclic({ Node: Type.Object({ n: refine(Type.Number(), "pos"), next: Type.Optional(Type.Ref("Node")) }) }, "Node")`, map[string]any{"n": 1, "next": map[string]any{"n": 2, "next": map[string]any{"n": -1}}}},
@@ -157,14 +159,14 @@ func TestRefineMatchesTypeBox(t *testing.T) {
 	for index, answer := range answers {
 		label := fmt.Sprintf("case %d %s on %v", index, refineCases[index].Schema, refineCases[index].Value)
 		value, _ := json.Marshal(refineCases[index].Value)
-		gotCheck, gotCalls := serveToCompletion(t, memberValueCheck, answer.Wire, value)
+		gotCheck, gotCalls, _ := serveToCompletion(t, memberValueCheck, answer.Wire, value, oracleAnswer)
 		if gotCheck.(bool) != answer.Check {
 			t.Errorf("%s: Check %v, typebox %v", label, gotCheck, answer.Check)
 		}
 		if got, want := callsText(gotCalls), callsText(toCalls(answer.CheckCalls)); got != want {
 			t.Errorf("%s: Check calls\n  go %s\n  tb %s", label, got, want)
 		}
-		gotErrors, gotErrorCalls := serveToCompletion(t, memberValueErrors, answer.Wire, value)
+		gotErrors, gotErrorCalls, _ := serveToCompletion(t, memberValueErrors, answer.Wire, value, oracleAnswer)
 		if got, want := compactJSON(t, gotErrors), compactJSON(t, answer.Errors); got != want {
 			t.Errorf("%s: Errors\n  go %s\n  tb %s", label, got, want)
 		}
@@ -217,29 +219,37 @@ func compactJSON(t *testing.T, value any) string {
 	return out.String()
 }
 
-// serveToCompletion is what an SDK does: ask Serve, answer each refinement call it replies with, and ask again with the answers so far, until it returns a value.
-func serveToCompletion(t *testing.T, member string, schema json.RawMessage, value []byte) (any, []recordedCall) {
+// valueReply is one reply of Serve to a Value request.
+type valueReply struct {
+	Value json.RawMessage `json:"value"`
+	Call  *struct {
+		Token   string          `json:"token"`
+		ID      int             `json:"id"`
+		Message bool            `json:"message"`
+		Value   json.RawMessage `json:"value"`
+	} `json:"call"`
+	Error *struct{ Name, Message string } `json:"error"`
+}
+
+func serve(t testing.TB, request string) valueReply {
 	t.Helper()
-	var answers []any
+	var reply valueReply
+	if err := json.Unmarshal(Serve([]byte(request)), &reply); err != nil {
+		t.Fatal(err)
+	}
+	return reply
+}
+
+// serveToCompletion is what an SDK does: start the walk with the schema and the value, answer each refinement call Serve replies with, sending only the answer and the token, until it
+// returns a value. It also returns the number of bytes it sent.
+func serveToCompletion(t testing.TB, member string, schema json.RawMessage, value []byte, answer func(name string, message bool, value any) any) (any, []recordedCall, int) {
+	t.Helper()
 	var calls []recordedCall
-	for round := 0; round < 1000; round++ {
-		encoded, _ := json.Marshal(answers)
-		if answers == nil {
-			encoded = []byte("[]")
-		}
-		request := fmt.Sprintf(`{"member":%q,"args":[%s,%s,%s]}`, member, schema, value, encoded)
-		var reply struct {
-			Value json.RawMessage `json:"value"`
-			Call  *struct {
-				ID      int             `json:"id"`
-				Message bool            `json:"message"`
-				Value   json.RawMessage `json:"value"`
-			} `json:"call"`
-			Error *struct{ Name, Message string } `json:"error"`
-		}
-		if err := json.Unmarshal(Serve([]byte(request)), &reply); err != nil {
-			t.Fatal(err)
-		}
+	sent := 0
+	request := fmt.Sprintf(`{"member":%q,"args":[%s,%s]}`, member, schema, value)
+	for round := 0; round < 1_000_000; round++ {
+		sent += len(request)
+		reply := serve(t, request)
 		if reply.Error != nil {
 			t.Fatalf("%s: %s: %s", member, reply.Error.Name, reply.Error.Message)
 		}
@@ -249,31 +259,46 @@ func serveToCompletion(t *testing.T, member string, schema json.RawMessage, valu
 				if err := json.Unmarshal(reply.Value, &passed); err != nil {
 					t.Fatal(err)
 				}
-				return passed, calls
+				return passed, calls, sent
 			}
 			var list []json.RawMessage
 			if err := json.Unmarshal(reply.Value, &list); err != nil {
 				t.Fatal(err)
 			}
-			return list, calls
+			return list, calls, sent
 		}
 		name := refineNames[reply.Call.ID]
 		kind := "check"
 		if reply.Call.Message {
 			kind = "error"
 		}
-		calls = append(calls, recordedCall{name, kind, compactJSON(t, reply.Call.Value)})
+		calls = append(calls, recordedCall{name, kind, compactJSONT(t, reply.Call.Value)})
 		decoded, err := chordjson.Decode(reply.Call.Value)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if reply.Call.Message {
-			text, _ := json.Marshal(decoded)
-			answers = append(answers, fmt.Sprintf("%s rejected %s", name, text))
-		} else {
-			answers = append(answers, refineCheck(name, decoded))
-		}
+		given := answer(name, reply.Call.Message, decoded)
+		text, _ := json.Marshal(given)
+		request = fmt.Sprintf(`{"member":"Value.Answer","args":[%q,%s]}`, reply.Call.Token, text)
 	}
 	t.Fatal("Serve kept asking")
-	return nil, nil
+	return nil, nil, 0
+}
+
+// oracleAnswer answers a refinement call with the semantics of testdata/refine_oracle.mjs.
+func oracleAnswer(name string, message bool, value any) any {
+	if message {
+		text, _ := json.Marshal(value)
+		return fmt.Sprintf("%s rejected %s", name, text)
+	}
+	return refineCheck(name, value)
+}
+
+func compactJSONT(t testing.TB, raw json.RawMessage) string {
+	t.Helper()
+	var out bytes.Buffer
+	if err := json.Compact(&out, raw); err != nil {
+		t.Fatalf("%v: %s", err, raw)
+	}
+	return out.String()
 }

@@ -72,11 +72,29 @@ func (c *checkContext) merge(results []*checkContext) bool {
 	return true
 }
 
+// MaxDepth is how many schemas deep a walk may go: TypeBox's own walk of a schema that refers to itself (`{"$ref":"#"}`) ends in V8's "Maximum call stack size exceeded" at a few thousand
+// levels, and a walk here that recursed without a limit would end in Go's fatal stack overflow, which no recover catches and which would take the host down.
+const MaxDepth = 1000
+
+// StackOverflowError is the panic of a walk deeper than MaxDepth, what a JavaScript RangeError "Maximum call stack size exceeded" is.
+type StackOverflowError struct{}
+
+func (*StackOverflowError) Error() string { return "RangeError: Maximum call stack size exceeded" }
+
+// descend enters one schema and returns the function that leaves it.
+func (w errorWalker) descend() func() {
+	*w.depth++
+	if *w.depth > MaxDepth {
+		panic(&StackOverflowError{})
+	}
+	return func() { *w.depth-- }
+}
+
 // RefineCheck is Value.Check(schema, value) with the refinements of the schema run through hook.
 func RefineCheck(schema, value any, hook RefineHook) bool {
 	var orders map[uintptr][]string
 	plain := orderedPlain(value, &orders)
-	walker := errorWalker{root: schema, orders: orders, refine: hook}
+	walker := errorWalker{root: schema, orders: orders, refine: hook, depth: new(int)}
 	return walker.check(newCheckContext(), schema, plain)
 }
 
@@ -84,7 +102,7 @@ func RefineCheck(schema, value any, hook RefineHook) bool {
 func RefineErrors(schema, value any, hook RefineHook) []ValueError {
 	var orders map[uintptr][]string
 	plain := orderedPlain(value, &orders)
-	walker := errorWalker{root: schema, orders: orders, refine: hook}
+	walker := errorWalker{root: schema, orders: orders, refine: hook, depth: new(int)}
 	context := &errorContext{}
 	walker.schema(context, nil, "", schema, plain)
 	return context.errors
@@ -131,6 +149,7 @@ func (w errorWalker) runRefine(id int, value any) bool {
 }
 
 func (w errorWalker) check(context *checkContext, schema, value any) bool {
+	defer w.descend()()
 	if boolean, ok := schema.(bool); ok {
 		return boolean
 	}

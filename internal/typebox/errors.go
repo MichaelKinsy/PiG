@@ -138,7 +138,7 @@ func (c *errorContext) addAll(from *errorContext) {
 func Errors(schema, value any) []ValueError {
 	var orders map[uintptr][]string
 	plain := orderedPlain(value, &orders)
-	walker := errorWalker{root: schema, orders: orders}
+	walker := errorWalker{root: schema, orders: orders, depth: new(int)}
 	context := &errorContext{}
 	walker.schema(context, nil, "", schema, plain)
 	return context.errors
@@ -148,6 +148,8 @@ type errorWalker struct {
 	root any
 	// refine runs a node's refinements (RefineKey); nil walks a schema as TypeBox's Errors does for one without refinements.
 	refine RefineHook
+	// depth is how many schemas deep the walk is (a *int: the walker is passed by value); a walk deeper than MaxDepth panics with a *StackOverflowError.
+	depth *int
 	// orders is the member order of each object of the value being walked, by the address of its map: a map has no
 	// order of its own, and TypeBox lists errors and params in the instance's insertion order.
 	orders map[uintptr][]string
@@ -334,6 +336,7 @@ func typeMatches(typeName string, value any) bool {
 
 // schema is engine ErrorSchema: every applicable keyword runs, in this order, and the schema fails if any did.
 func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, schema, value any) bool {
+	defer w.descend()()
 	if context.atCapacity() {
 		return false
 	}
@@ -394,7 +397,7 @@ func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, 
 		step(w.ifKeyword(context, spath, path, n, condition, value))
 	}
 	if n.has("not") {
-		step(w.notPasses(n, value) || context.addError("not", errParams{}, spath, path, "must not be valid"))
+		step(w.notPasses(context, n, value) || context.addError("not", errParams{}, spath, path, "must not be valid"))
 	}
 	if operands, ok := n.list("allOf"); ok {
 		step(w.combinator(context, spath, path, operands, value, "allOf"))
@@ -448,13 +451,15 @@ func (w errorWalker) matches(schema, value any) bool {
 	return w.check(newCheckContext(), schema, value)
 }
 
-// notPasses is not.mjs: the schema under `not` does not match value. With refinements it runs through the checking walker, so the refinements under it run.
-func (w errorWalker) notPasses(n node, value any) bool {
-	if w.refine == nil {
-		return Check(n.keyword("not"), value)
-	}
+// notPasses is not.mjs: the schema under `not` does not match value. The keys and indices it evaluated while failing join the caller's context (CheckNot), and the refinements under it run.
+func (w errorWalker) notPasses(context *errorContext, n node, value any) bool {
 	negated, _ := n.get("not")
-	return !w.check(newCheckContext(), negated, value)
+	next := newCheckContext()
+	if w.check(next, negated, value) {
+		return false
+	}
+	context.tracking().merge([]*checkContext{next})
+	return true
 }
 
 func textOf(n node, key string) string {

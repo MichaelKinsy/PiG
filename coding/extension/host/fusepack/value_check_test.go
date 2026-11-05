@@ -103,3 +103,16 @@ func TestGoValueCheckReturnsTheErrorOfARefinement(t *testing.T) {
 		t.Errorf("Check = %v after %d calls, want the refinement's error after exactly one", err, ran)
 	}
 }
+
+// A schema that refers to itself ends in the RangeError TypeBox throws for it, as the call's error, not in a stack overflow that takes the host process down.
+func TestGoValueCheckOfASelfReferringSchemaReturnsTheRangeError(t *testing.T) {
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
+	schema := sdk.Type.Unsafe(map[string]any{"$ref": "#"})
+	if _, err := sdk.Value.Check(schema, 1.0); err == nil || !strings.Contains(err.Error(), "Maximum call stack size exceeded") {
+		t.Errorf("Check = %v, want the RangeError", err)
+	}
+	if _, err := sdk.Value.Errors(schema, 1.0); err == nil || !strings.Contains(err.Error(), "Maximum call stack size exceeded") {
+		t.Errorf("Errors = %v, want the RangeError", err)
+	}
+}
