@@ -54,7 +54,12 @@ func getExtensionChangelogUpdates(sm *SettingsManager, sourceInfos []PiSourceInf
 			_ = sm.SetExtensionChangelogVersion(key, pkgVersion)
 			continue
 		}
-		newEntries := GetNewEntries(parseChangelogFile(sourceInfo.ChangelogPath), lastVersion)
+		newEntries, ok := GetNewEntries(parseChangelogFile(sourceInfo.ChangelogPath), lastVersion)
+		if !ok {
+			// pig divergence (D245): an unreadable recorded version shows nothing and records the current one (Pi main 9a1953961).
+			_ = sm.SetExtensionChangelogVersion(key, pkgVersion)
+			continue
+		}
 		if len(newEntries) == 0 {
 			continue
 		}
