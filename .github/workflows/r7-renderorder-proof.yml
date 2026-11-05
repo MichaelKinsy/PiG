@@ -1,0 +1,37 @@
+name: r7 renderorder proof
+# A proof run of the call-before-result render order tests on Windows, on this branch only. Not for merging.
+on:
+  push:
+    branches: [fix/r7-render-order-proof]
+permissions:
+  contents: read
+jobs:
+  windows:
+    name: Windows render order x${{ matrix.n }}
+    runs-on: windows-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Render order tests, Go and Node SDKs and the fake extension tests, 20 times
+        shell: pwsh
+        env:
+          PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:TEMP = $acceptanceRoot
+          $env:TMP = $acceptanceRoot
+          $env:TMPDIR = $acceptanceRoot
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          go test -timeout 35m -count=20 -run 'TestToolRenderProxies|TestToolRenderResult|TestToolRenderOrder|TestRenderOrder|TestToolRenderCardsOrderTheCallBeforeTheResultAcrossSDKs/(go|node)' ./coding/extension/host/subprocess
+          if ($LASTEXITCODE -ne 0) { throw "render order tests failed" }
