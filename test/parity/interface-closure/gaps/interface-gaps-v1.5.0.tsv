@@ -1,0 +1,3 @@
+pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
+pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	

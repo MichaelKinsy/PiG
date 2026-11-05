@@ -100,6 +100,7 @@ func seedSymbols() map[string]symbolSet {
 		"go":     {"TruncateHead": true, "kit.Text": true, "Context.Complete": true},
 		"rust":   {"truncate_head": true, "kit::Text": true, "Context::complete": true},
 		"python": {"truncate_head": true, "kit.Text": true, "Context.complete": true},
+		"lisp":   {"pig:truncate-head": true, "pig:kit-text": true, "pig:ctx-complete": true},
 	}
 }
 
@@ -113,7 +114,7 @@ func seedInput() ledgerInput {
 		{Key: "pi-coding-agent: defineTool", Module: "pi-coding-agent", Name: "defineTool", Decl: "function", Node: "served"},
 		{Key: "pi-coding-agent: KeybindingsManager", Module: "pi-coding-agent", Name: "KeybindingsManager", Decl: "class", Node: "missing"},
 	}
-	gap := func(l string) map[string]string { return map[string]string{"go": l, "rust": l, "python": l} }
+	gap := func(l string) map[string]string { return map[string]string{"go": l, "rust": l, "python": l, "lisp": l} }
 	return ledgerInput{
 		Rows: rows,
 		File: ledgerFile{
@@ -121,11 +122,11 @@ func seedInput() ledgerInput {
 			Lane:   map[string]ledgerLane{"SdkTuiHelpers": {Owner: "SdkTuiHelpers lane", Opened: "0.5.2", Closing: "vector tests from Pi"}},
 			Export: map[string]map[string]string{
 				"pi-tui: truncateToWidth":             gap("gap:SdkTuiHelpers"),
-				"pi-coding-agent: truncateHead":       {"go": "native:TruncateHead", "rust": "native:truncate_head", "python": "native:truncate_head"},
-				"pi-tui: Text":                        {"go": "kit:Text", "rust": "kit:Text", "python": "kit:Text"},
+				"pi-coding-agent: truncateHead":       {"go": "native:TruncateHead", "rust": "native:truncate_head", "python": "native:truncate_head", "lisp": "native:pig:truncate-head"},
+				"pi-tui: Text":                        {"go": "kit:Text", "rust": "kit:Text", "python": "kit:Text", "lisp": "kit:pig:kit-text"},
 				"pi-tui: Text.render":                 gap("divergence:D107"),
 				"pi-coding-agent: defineTool":         gap("identity"),
-				"pi-coding-agent: KeybindingsManager": {"node": "identity", "go": "identity", "rust": "identity", "python": "identity"},
+				"pi-coding-agent: KeybindingsManager": {"node": "identity", "go": "identity", "rust": "identity", "python": "identity", "lisp": "identity"},
 			},
 		},
 		Symbols: seedSymbols(),
@@ -133,6 +134,7 @@ func seedInput() ledgerInput {
 			"go":     "TruncateHead(x); kit.Text(\"a\")",
 			"rust":   "truncate_head(x); kit::Text::new(\"a\")",
 			"python": "truncate_head(x); kit.Text('a')",
+			"lisp":   "(pig:truncate-head x) (pig:kit-text \"a\")",
 		},
 		Usage:       usageFile{Usage: map[string]map[string]int{"pi-tui": {"truncateToWidth": 4}}},
 		Divergences: map[string]bool{"D107": true},
@@ -230,6 +232,15 @@ func TestExportLedgerRejectsBadAndNearMissCases(t *testing.T) {
 		{"realized cell no fixture reaches", func(in *ledgerInput) { in.Corpus["rust"] = "kit::Text::new(\"a\")" }, false, "rust (native:truncate_head) is reached by no conformance fixture"},
 		{"name only in a longer identifier is not reached", func(in *ledgerInput) { in.Corpus["go"] = "NotTruncateHeadAtAll(); kit.Text(1)" }, false, "go (native:TruncateHead) is reached by no"},
 		{"kit view reached only by a bare word", func(in *ledgerInput) { in.Corpus["python"] = "truncate_head(); print('Text')" }, false, "python (kit:Text) is reached by no"},
+		{"lisp kit view of a symbol the package does not export", func(in *ledgerInput) {
+			in.Symbols["lisp"] = symbolSet{"pig:truncate-head": true, "pig:kit-box": true}
+		}, false, `names kit "pig:kit-text", which the Lisp SDK does not define`},
+		{"lisp kit view reached only by a longer symbol", func(in *ledgerInput) {
+			in.Corpus["lisp"] = "(pig:truncate-head x) (pig:kit-text-style)"
+		}, false, "lisp (kit:pig:kit-text) is reached by no"},
+		{"lisp kit view reached through a kit namespace is not enough", func(in *ledgerInput) {
+			in.Corpus["lisp"] = "(pig:truncate-head x) (kit.Text 1)"
+		}, false, "lisp (kit:pig:kit-text) is reached by no"},
 		{"reached hole is stale", func(in *ledgerInput) {
 			in.File.Unreached = []unreachedSpec{{Key: "pi-coding-agent: truncateHead", SDKs: []string{"go"}, Lane: "SdkTuiHelpers", Row: "r"}}
 		}, false, "is stale"},
@@ -295,7 +306,7 @@ func TestLedgerRenderKeepsCellsAndMarksNewRows(t *testing.T) {
 	if !strings.Contains(text, `"pi-tui: truncateToWidth" = { go = "gap:SdkTuiHelpers"`) {
 		t.Errorf("regeneration lost an author's cell:\n%s", text)
 	}
-	if !strings.Contains(text, `"pi-tui: brandNew" = { go = "unclassified", rust = "unclassified", python = "unclassified" }`) {
+	if !strings.Contains(text, `"pi-tui: brandNew" = { go = "unclassified", rust = "unclassified", python = "unclassified", lisp = "unclassified" }`) {
 		t.Errorf("a new export was not added unclassified:\n%s", text)
 	}
 	if strings.Contains(text, "Text.render") {

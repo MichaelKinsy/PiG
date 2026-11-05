@@ -29,7 +29,7 @@ type SelectSubmenuComponent struct {
 	// description is the text under the title; a frontend session shows it.
 	description string
 	// OnSelectionChange runs with the highlighted value after every up or down key that reaches a non-empty list, even when the
-	// highlight lands on the same item, as upstream's SelectList onSelectionChange does.
+	// highlight lands on the same item, and after a page key that moves the highlight, as upstream's SelectList onSelectionChange does.
 	OnSelectionChange func(value string)
 }
 
@@ -100,9 +100,12 @@ func (s *SelectSubmenuComponent) HandleInput(data string) {
 	// A parent Container reuses this component's lines until it is invalidated.
 	defer s.Invalidate()
 	kb := GetTUIKeybindings()
-	if s.searchInput == nil || kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown) || kb.Matches(data, KBSelectConfirm) || kb.Matches(data, KBSelectCancel) {
+	isPage := kb.Matches(data, KBSelectPageUp) || kb.Matches(data, KBSelectPageDown)
+	if s.searchInput == nil || kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown) || isPage || kb.Matches(data, KBSelectConfirm) || kb.Matches(data, KBSelectCancel) {
+		before := s.list.cursor
 		s.list.HandleInput(data)
-		if s.OnSelectionChange != nil && (kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown)) {
+		moved := kb.Matches(data, KBSelectUp) || kb.Matches(data, KBSelectDown) || (isPage && s.list.cursor != before)
+		if s.OnSelectionChange != nil && moved {
 			if value := s.CurrentValue(); value != "" {
 				s.OnSelectionChange(value)
 			}

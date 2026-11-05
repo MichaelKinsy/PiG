@@ -432,7 +432,7 @@
    "TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
   ],
   "upstream_reference": "packages/coding-agent/src/core/package-manager.ts",
-  "mutation": "internal/packagemanager/package_manager.go: replace `args = append(args, \"--legacy-peer-deps\")` with `args = append(args, \"--no-save\")`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
+  "mutation": "internal/packagemanager/package_manager.go: replace `args = append(args, \"--legacy-peer-deps\", \"--no-audit\", \"--no-fund\")` with `args = append(args, \"--no-save\")`; TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand fails."
  },
  {
   "upstream": "packages/coding-agent/src/core/package-manager.ts",

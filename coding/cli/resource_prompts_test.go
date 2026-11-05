@@ -72,10 +72,10 @@ func TestLoadContextFilesHonorsDisableFlag(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cwd, "AGENTS.md"), []byte("instructions"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := loadContextFiles(cwd, "", true); len(got) != 0 {
+	if got := loadContextFiles(cwd, "", true, true); len(got) != 0 {
 		t.Fatalf("disabled context files = %#v", got)
 	}
-	if got := loadContextFiles(cwd, "", false); len(got) != 1 {
+	if got := loadContextFiles(cwd, "", false, true); len(got) != 1 {
 		t.Fatalf("enabled context files = %#v", got)
 	}
 }

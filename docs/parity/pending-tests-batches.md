@@ -2,7 +2,7 @@
 
 ## Dispatch contract
 
-Baseline: `c475b56d028166a429b7fe35476520550780a471`, Pi 1.4.0+6c384aa3. This document partitions every baseline pending and partial test file exactly once: **0 pending + 0 partial = 0 files**, across **0 batches**. Counts come from `upstream-tests-v1.4.0+6c384aa3.json`; they are case sites, not expanded `it.each` matrices or a count of cases still missing in partial files.
+Baseline: `c475b56d028166a429b7fe35476520550780a471`, the Pi build 1.4.0+6c384aa3. This document partitions every baseline pending and partial test file exactly once: **0 pending + 0 partial = 0 files**, across **0 batches**. Counts come from `upstream-tests-v1.4.0+6c384aa3.json`; they are case sites, not expanded `it.each` matrices or a count of cases still missing in partial files.
 
 Hot-path batches come first. Target Go packages combine existing evidence locations with the owning production area; they are navigation targets, not proof of closure. New harness execution/runtime packages need their separate API and production callers, not substitutions from the older agent loop. Read the mapping rationale to enumerate missing cases before changing a partial entry.
 

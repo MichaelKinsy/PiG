@@ -11,26 +11,22 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/session/hopcost"
 )
 
-// Line-job duration (dcore-trace A1, ABI section 5.3). Pi's Session line is a FIFO of jobs, and a job holds the line for
-// the awaits of its change callback, its settle and its Storage commit (session.ts #runCommit :415-443). The core runs a
-// job's body at once; when the host may act meanwhile, the job's completion (publication, done, release of the line)
-// waits for a hops chain as long as Pi's job, so a host call that reaches Pi's line during the job queues behind it and
-// ahead of the job's continuation, as in Pi. The job's own body still runs at once, so its storage reads see the state
-// at the job's start, as Pi's line guarantees.
+// Line-job duration (ABI section 5.3, 5.5). Pi's Session line (session.ts #enqueue, #runCommit, writer.ts) holds the line through
+// a job's change callback, its settle and its admission to the writer; the Storage call, the publication and the outcome follow
+// off the line. The Loop (session/loop.go) runs a job's body at once, when the line is free, and keeps Pi's durations as ticks:
+// the handler tells it how long Pi's job takes (Loop.Elapsed), how long the Storage call takes (Loop.StoreTicks), and runs each
+// wait of the Loop as a hops chain (Loop.Hops) or a macrotask (Loop.Macro). The statements of a Storage call leave in the step of
+// the tick its receipts come, in the step of the wait that ends there.
 
-// jobStats is what the running line job did through the Session's Store, in Pi's await ticks: the change callback's
-// Storage reads, the IDs it minted, the reads the settle makes, and the commit's batch.
+// jobStats is what the running line job did through the Session's Store, in Pi's await ticks: the change callback's Storage reads,
+// the IDs it minted.
 type jobStats struct {
-	change       int // ticks of the change callback's Storage reads (hopcost.ReadHops)
-	mintStart    session.ID
-	settleRows   int                      // single-statement reads of settleSuccess (hopcost.Settle)
-	settleOwners int                      // created tasks with an owner: validateOwners awaits each (hopcost.Settle)
-	settleCached int                      // replaced tasks the callback had read: assemble awaits a settled promise (hopcost.Settle)
-	writes       *hopcost.Writes          // the commit's batch; nil: no commit
-	readLine     bool                     // a Session.readOnLine job (api reads, context bounds): no change callback, settle or commit
-	direct       bool                     // its job returns the Storage promise itself (readOnLine(() => storage.task(id)))
-	reads        [maxPlanned]hopcost.Read // the first Storage reads the job made, in order (the gate profiles' statement queue, capsql.go)
-	nreads       int                      // reads made, planned or not: more than maxPlanned has no statement plan
+	change    int // ticks of the change callback's Storage reads (hopcost.ReadHops)
+	mintStart session.ID
+	direct    bool                     // its job returns the Storage promise itself (readOnLine(() => storage.task(id)))
+	reads     [maxPlanned]hopcost.Read // the first Storage reads the job made, in order (the gate profiles' statement queue, capsql.go)
+	nreads    int                      // reads made, planned or not: more than maxPlanned has no statement plan
+	firstAt   int                      // the ticks the job had spent when its first Storage statement was issued
 }
 
 // nodeSqliteProfile is the storageProfile the host's openNodeSqliteStorage names: SqliteStorage over node.ts, hopcost.Node.
@@ -54,32 +50,53 @@ func (h *handler) readHops(r hopcost.Read) int { return hopcost.ReadHops(h.hopPr
 
 // read charges one Storage read to the running job.
 func (h *handler) read(r hopcost.Read) {
+	h.noteFirst()
 	h.job.change += h.readHops(r)
-	if h.capsql() != nil {
-		if h.job.nreads < maxPlanned {
-			h.job.reads[h.job.nreads] = r
-		}
-		h.job.nreads++
+	h.planRead(r)
+}
+
+// noteFirst records the ticks the running job had spent at its first Storage statement: a statement issued while the transaction of a commit
+// holds the Storage's queue waits for it (hopcost.Busy).
+func (h *handler) noteFirst() {
+	if h.job.nreads == 0 {
+		h.job.firstAt = h.job.change
 	}
 }
 
-// jobCommit records the batch of the running job's commit: its table writes and merged document actions
-// (storage.ts prepareDocumentActions), and the reads settleSuccess makes for it (the committed task of each replaced task
-// and a scanDocuments page for each task going terminal, transaction.ts assemble).
+// planRead records a Storage read the job made, for the gate profiles' statement queue.
+func (h *handler) planRead(r hopcost.Read) {
+	if h.capsql() != nil && h.job.nreads < maxPlanned {
+		h.job.reads[h.job.nreads] = r
+	}
+	h.job.nreads++
+}
+
+// readRecord charges a client read of the record id the Session's CachedStorage answers (hopcost.RecordRead): a hit is no Storage read. It
+// returns how the cache answered, for Session.KeepRecord.
+func (h *handler) readRecord(r hopcost.Record, id session.ID) hopcost.Cache {
+	c := h.sess.RecordAnswer(r, id)
+	if c != hopcost.CacheHit {
+		h.noteFirst()
+	}
+	h.job.change += hopcost.RecordRead(h.hopProfile(), r, c)
+	if c != hopcost.CacheHit {
+		h.planRead(hopcost.ReadRow)
+	}
+	return c
+}
+
+// batchWrites is the StorageWrite batch of a commit as hopcost counts it: its table writes and merged document actions
+// (storage.ts prepareDocumentActions) against the state the mirror holds.
 //
 //go:noinline
-func (h *handler) jobCommit(writes []session.Write, actions map[session.ID]*mirrorAction, order []session.ID) {
-	w := &hopcost.Writes{}
+func (h *handler) batchWrites(writes []session.Write) hopcost.Writes {
+	var w hopcost.Writes
 	// The maps are made at their first entry: most commits copy no document and write no document action.
 	var copies map[session.ID]bool
-	h.job.settleRows += h.settleRows(writes) - h.sess.SettleCached()
-	h.job.settleCached += h.sess.SettleCached()
-	h.job.settleOwners += h.settleOwners(writes)
-	for _, wr := range writes {
+	for i := range writes {
+		wr := &writes[i]
 		switch wr.Kind {
-		case session.WriteConversation, session.WriteEntry, session.WriteSubmission:
-			w.Tables++
-		case session.WriteTask:
+		case session.WriteConversation, session.WriteEntry, session.WriteSubmission, session.WriteTask:
 			w.Tables++
 		case session.WriteDocCreate:
 			w.DocCreates++
@@ -92,6 +109,10 @@ func (h *handler) jobCommit(writes []session.Write, actions map[session.ID]*mirr
 		case session.WriteDocChange, session.WriteDocRetire:
 			w.DocEdits++
 		}
+	}
+	actions, order, err := h.mir.prepareDocActions(h.mir.resolveCopies(writes))
+	if err != nil {
+		return w
 	}
 	var seen map[string]bool
 	for _, id := range order {
@@ -123,210 +144,80 @@ func (h *handler) jobCommit(writes []session.Write, actions map[session.ID]*mirr
 		}
 		w.Actions = append(w.Actions, act)
 	}
-	h.job.writes = w
+	return w
 }
 
-// settleRows is the single-statement reads settleSuccess makes for a commit's writes: the committed task of each replaced task
-// and a scanDocuments page for each task going terminal (transaction.ts assemble), and the committed submission of each
-// staged submission change (:818-823).
-func (h *handler) settleRows(writes []session.Write) int {
-	// The committed record of each submission change the callback staged without having read it (transaction.ts :818-823).
-	rows := h.sess.SettleReads()
-	for _, wr := range writes {
-		if wr.Kind != session.WriteTask {
-			continue
-		}
-		if existing, _ := h.mir.Task(session.ID(numOf(wr.Record, "id"))); existing != nil {
-			rows++
-		}
-		if strOf(objOf(wr.Record, "state"), "status") == session.StatusTerminal {
-			rows++
-		}
+// storeTicks is Loop.StoreTicks: the ticks from the writer's call of Storage.commit to the Storage's read of its ID counter (hopcost.IDReadLead
+// before the receipts), to the receipts, where the batches' statements land (the Loop commits the batches then), and to the writer's
+// resumption from the call (hopcost.Commit, hopcost.CommitTail; MemoryStorage stores in the tick of the call).
+func (h *handler) storeTicks(batches [][]session.Write) (read, receive, resume int) {
+	p := h.hopProfile()
+	if p == hopcost.Memory {
+		return 0, 0, hopcost.MemoryCommitResume
 	}
-	return rows
-}
-
-// settleOwners is the owner entries settleSuccess's validateOwners awaits one by one: each task this commit creates with an
-// owner (transaction.ts :861-863, :865).
-func (h *handler) settleOwners(writes []session.Write) int {
-	owners := 0
-	for _, wr := range writes {
-		if wr.Kind != session.WriteTask || numOf(wr.Record, "owner") == 0 {
-			continue
-		}
-		if existing, _ := h.mir.Task(session.ID(numOf(wr.Record, "id"))); existing == nil {
-			owners++
-		}
+	ws := make([]hopcost.Writes, len(batches))
+	for i, b := range batches {
+		ws[i] = h.batchWrites(b)
 	}
-	return owners
-}
-
-// commitCallHops is the ticks from the start of the running line job to its call of Storage.commit (session.ts #runCommit
-// :415-440): `await change(tx)`, then `await tx.settleSuccess()`; the commit's own hops (hopcost.Commit) follow the call.
-func (h *handler) commitCallHops(writes []session.Write) int {
-	change := h.job.change
-	if tx := h.sess.PeekTicks(); tx >= 0 {
-		change = tx
-	} else if mints := int(h.sess.NextID() - h.job.mintStart); h.job.mintStart != 0 && mints > 0 {
-		change += mints * hopcost.ReadHops(h.hopProfile(), hopcost.MintID)
+	receive, resume = hopcost.CommitCall(p, ws)
+	if h.capsql() != nil || p == hopcost.Node {
+		h.busy = hopcost.Busy{Commit: h.vnow + receive, Set: true}
 	}
-	return 1 + change + 1 + hopcost.Settle(h.hopProfile(), h.settleRows(writes)-h.sess.SettleCached(), h.sess.SettleCached(), h.settleOwners(writes))
+	return max(receive-hopcost.IDReadLead(ws), 0), receive, resume
 }
 
-// jobHops is Pi's duration of the line job that just finished, from its start on the line to its resolution
-// (session.ts #runCommit :405-446 under #enqueue :531; hopcost.Job): the change callback's Storage reads and mints, the
-// settle and its reads, the Storage commit, and the return through #enqueue.
-func (h *handler) jobHops() int {
+// elapsed is Loop.Elapsed: Pi's duration of the line job that just ended, in ticks from its start on the line (session.ts #runCommit
+// under #enqueue; hopcost.Job): to the resumption of `await change(tx)` (callback) and to the return of its work (work), which for a
+// commit with writes is its admission to the writer. The change callback's Storage reads and mints, the settle and its reads are charged
+// by the Session and by the adapter's reads; the Storage call itself is the writer's (storeTicks).
+func (h *handler) elapsed(e session.Ended) (callback, work int) {
 	st := h.job
+	h.job = jobStats{mintStart: h.sess.NextID()}
+	h.endGateReads()
+	ending := h.endingTx
+	h.endingTx = nil
 	p := h.hopProfile()
 	change := st.change
-	tx := h.sess.TakeTicks()
-	if tx >= 0 {
+	if tx := e.Ticks.Change; tx >= 0 && e.Read {
+		// A read job charged its own awaits (Session.ChargeRead, a decision region) beside its Storage reads.
+		change += tx
+	} else if tx >= 0 {
 		// A transaction callback ran: Pi's change is its Transaction method awaits and wrapper, not the Store reads.
 		change = tx
 	} else if mints := int(h.sess.NextID() - st.mintStart); st.mintStart != 0 && mints > 0 {
 		change += mints * hopcost.ReadHops(p, hopcost.MintID)
 	}
-	if st.readLine || (h.loop != nil && h.loop.Reading) {
-		return hopcost.ReadOnLine(change, st.direct)
-	}
-	return hopcost.Job{Change: change, Settle: hopcost.Settle(p, st.settleRows, st.settleCached, st.settleOwners), Writes: st.writes}.Hops(p)
-}
-
-// holdJob is the Loop's Hold: it parks the finished job's completion on a hops chain of the job's duration. It parks every
-// job: a step cannot tell whether host code woken by an earlier step (a caller resuming on an api_result three hops
-// later) is still pending, so "the host cannot interleave" is not observable from the core.
-func (h *handler) holdJob(release func()) bool {
-	if h.shadow.n > 0 {
-		// The host's Storage still runs reads this job issued: the job completes when it is done with them.
-		h.shadow.after(func() {
-			if !h.holdJobNow(release) {
-				release()
+	switch {
+	case e.Read:
+		if h.timed && st.nreads > 0 {
+			// The first statement waits for the transaction of a commit in flight (hopcost.Busy). The gate's lazy proxy adds a tick before it.
+			issued := h.vnow + st.firstAt
+			if p == hopcost.Gate {
+				issued++
 			}
-		})
-		return true
+			change += h.busy.Delay(p, issued)
+		}
+		callback, work = 0, hopcost.ReadReturn(change, st.direct)
+	case e.Err != nil:
+		if e.Ticks.Change < 0 {
+			// It failed before its callback ran (the Session failed, or the caller's signal was aborted): the work rejects at once.
+			return 0, 0
+		}
+		callback, work = 0, hopcost.Job{Change: change}.ReturnFailed()
+	default:
+		j := hopcost.Job{Change: change, Settle: hopcost.Settle(e.Ticks.SettleOwners, e.Ticks.SettleCached, e.Ticks.SettleReads), Membership: e.Ticks.Membership}
+		callback, work = j.Callback(), j.Return()
 	}
-	return h.holdJobNow(release)
+	if ending != nil {
+		// The host's callback already spent these passes holding the line: Pi's job duration includes them.
+		callback, work = max(callback-ending.elapsed, 0), max(work-ending.elapsed, 0)
+	}
+	return callback, work
 }
 
-func (h *handler) holdJobNow(release func()) bool {
-	st := h.job
-	n := h.jobHops() + h.loop.TakeStartDelay()
-	h.job = jobStats{mintStart: h.sess.NextID()}
-	held := h.held
-	h.held = nil
-	if len(held) == 0 {
-		if h.holdReadJob(st, n, release) {
-			return true
-		}
-		if n >= 2 && h.loop.EndingClient() {
-			// A host caller awaits the job's `run` promise, which settles a hop before the tail resolves (session.ts :105-115).
-			return h.holdFor(n-1, func() { h.loop.Settle(); release() })
-		}
-		if h.loop.QuietEnd() {
-			// The end and the tail that follows it would each run nothing: one chain of both.
-			return h.holdFor(n+tailHops, h.loop.QuietRelease())
-		}
-		if h.loop.HasPubs() {
-			return h.holdSteps(n, []holdStep{{h.publishAt(n), h.loop.Publish}}, release)
-		}
-		return h.holdFor(n, release)
-	}
-	if h.opening {
-		for _, c := range held {
-			h.b.Commit(c.Seq, c.Stmts)
-		}
-		return h.holdFor(n, release)
-	}
-	// The job's statements land at Pi's capsql COMMIT, tail hops before the job resolves (dcore-trace 4.3): #runCommit resumes
-	// from Storage.commit hopcost.CommitTail after the COMMIT, and the job's own return adds pubBeforeEnd. A host call that
-	// reaches Pi's line during the job is admitted before the COMMIT, so the statements wait for that hop and not for the
-	// step that ran the job body.
-	tail := hopcost.CommitTail(h.hopProfile()) + pubBeforeEnd
-	// The commit is published when Storage adopts it (session.ts #runCommit publishes inside `adopt`), hopcost.AdoptTail before
-	// #runCommit resumes from Storage.commit and that many plus pubBeforeEnd before the job's run resolves: commit listeners
-	// and publication waiters see it there, the job's caller resumes at its end.
-	p := h.publishAt(n)
-	if n-tail < 1 {
-		h.flush(held)
-		return h.holdSteps(n, []holdStep{{p, h.loop.Publish}}, release)
-	}
-	// The host applies the statements in the microtask of hop n-tail of the chain that runs to the publication, where the
-	// core would have emitted them; the core runs again at the publication and parks the last pubBeforeEnd hops.
-	return h.holdChain(abi.Hops{N: uint32(p), At: uint32(n - tail), Commits: held}, func() {
-		h.loop.Publish()
-		if !h.holdFor(n-p, release) {
-			release()
-		}
-	})
-}
-
-// publishAt is the hop of a commit job of n hops at which its commit is published: the Storage's adoption (hopcost.AdoptTail
-// before #runCommit's resumption, pubBeforeEnd before the job's end).
-func (h *handler) publishAt(n int) int {
-	return max(n-pubBeforeEnd-hopcost.AdoptTail(h.hopProfile()), 0)
-}
-
-// tailHops is the tick a finished line job's tail holds the line for (session.ts #enqueue :530-537; Loop.Tail).
-const tailHops = 1
-
-// pubBeforeEnd is the hops from a commit job's publication to its end: `#runCommit` returns after publishing and `#enqueue`'s
-// run resolves one hop later (session.ts :446-449, :531).
-const pubBeforeEnd = 2
-
-// holdStep is an action at a hop offset of a held line job.
-type holdStep struct {
-	at int
-	do func()
-}
-
-// holdSteps parks release on n hops and runs each step at its offset (steps in nondecreasing order of at); a step at 0 runs
-// at once. It reports whether it parked release.
-func (h *handler) holdSteps(n int, steps []holdStep, release func()) bool {
-	at := 0
-	for len(steps) > 0 && steps[0].at <= at {
-		steps[0].do()
-		steps = steps[1:]
-	}
-	if len(steps) == 0 {
-		return h.holdFor(n-at, release)
-	}
-	next := steps[0].at
-	var run func()
-	run = func() {
-		at = next
-		for len(steps) > 0 && steps[0].at <= at {
-			steps[0].do()
-			steps = steps[1:]
-		}
-		if len(steps) == 0 {
-			if !h.holdFor(n-at, release) {
-				release()
-			}
-			return
-		}
-		next = steps[0].at
-		if !h.holdFor(next-at, run) {
-			run()
-		}
-	}
-	return h.holdFor(next, run)
-}
-
-// flushHeld emits the statements of a line job whose completion nothing parked (a job without a hold), in commit order.
-//
-//go:noinline
-func (h *handler) flushHeld() {
-	h.flush(h.held)
-	h.held = nil
-}
-
-// flush emits statements in this step, in commit order.
-func (h *handler) flush(commits []abi.Commit) {
-	for _, c := range commits {
-		h.b.Commit(c.Seq, c.Stmts)
-	}
-}
+// hostReadLead is the ticks the facade needs from the core's answer of a client read to its caller's resumption (host/cf/src/client.ts api,
+// facade/harness.ts): the facade's await of the answer is one tick after it, so the core answers one tick before Pi's caller resumes.
+const hostReadLead = 1
 
 // holdFor parks release on a hops chain of n hops (effect 14) and reports whether it did.
 func (h *handler) holdFor(n int, release func()) bool {
@@ -336,9 +227,32 @@ func (h *handler) holdFor(n int, release func()) bool {
 	return h.holdChain(abi.Hops{N: uint32(n)}, release)
 }
 
-// holdChain parks release on the hops chain c names: the host runs c.N hops, applies c.Commits after hop c.At, and sends
-// hopped after the last. A payload over abi.ChunkSize (a 20,000-task commit's is 7 MB) goes out in blocks.
+// holdChain parks release on the hops chain c names: the host runs c.N hops and sends hopped after the last.
 func (h *handler) holdChain(c abi.Hops, release func()) bool {
+	return h.parkChain(c, parkedHops{release: release})
+}
+
+// macrotask is Loop.Macro: it queues a macrotask (ABI section 5.5, effect macrotask) and runs r when the host's `hopped` for it arrives.
+func (h *handler) macrotask(r session.Resumer) bool {
+	id := h.b.EffectBare(abi.EffectMacrotask, nil)
+	origin := h.origin()
+	h.holdOrigin(origin)
+	h.hops = append(h.hops, parkedHops{id: id, due: h.vnow, fn: resumeHop, val: r, step: h.stepNo, origin: origin})
+	return true
+}
+
+// holdLate parks on a chain of n hops the call of fn(h, id, val) rather than a closure: what the work needs is kept in the parked record. A
+// closure that carries a value costs a heap allocation per site (and one for each variable it captures) in TinyGo; fn is a function
+// declared at the top level of the package, which costs none.
+func (h *handler) holdLate(n int, fn func(h *handler, id uint32, val any), id uint32, val any) bool {
+	if n <= 0 {
+		return false
+	}
+	return h.parkChain(abi.Hops{N: uint32(n)}, parkedHops{fn: fn, rid: id, val: val})
+}
+
+// parkChain opens the chain c and parks p, whose chain fields it fills in, on it.
+func (h *handler) parkChain(c abi.Hops, p parkedHops) bool {
 	size := abi.HopsSize(c)
 	if h.hopArena == nil {
 		h.hopArena = make([]byte, 0, hopArenaSize)
@@ -353,16 +267,18 @@ func (h *handler) holdChain(c abi.Hops, release func()) bool {
 		id = h.b.EffectBare(abi.EffectHops, abi.AppendHops(make([]byte, 0, size), c))
 	default:
 		var payload abi.Chunks
-		abi.AppendHopsChunks(&payload, c)
+		abi.ConsumeHopsChunks(&payload, c)
 		id = h.b.EffectChunksBare(abi.EffectHops, payload)
 	}
 	due := 0
-	if h.capsql() != nil {
+	h.capsql() // decides h.timed
+	if h.timed {
 		due = h.vnow + int(c.N)
 	}
 	origin := h.origin()
 	h.holdOrigin(origin)
-	h.hops = append(h.hops, parkedHops{id, due, release, h.stepNo, origin})
+	p.id, p.due, p.step, p.origin = id, due, h.stepNo, origin
+	h.hops = append(h.hops, p)
 	return true
 }
 
@@ -371,8 +287,12 @@ type parkedHops struct {
 	id      uint32
 	due     int // the virtual tick the chain ends (capsql.go); zero without a statement queue
 	release func()
-	step    uint64 // the step that opened the chain: a rejected step takes its chains back (dropStepHops)
-	origin  uint32 // the host async context of the code that parked the work: it continues in it (origin.go)
+	// fn, when set, is what runs instead of release, with the id and value the work parked with (holdLate).
+	fn     func(h *handler, id uint32, val any)
+	rid    uint32
+	val    any
+	step   uint64 // the step that opened the chain: a rejected step takes its chains back (dropStepHops)
+	origin uint32 // the host async context of the code that parked the work: it continues in it (origin.go)
 }
 
 // onHopped runs the work parked on a hops chain (ABI section 5, event 18).
@@ -382,11 +302,15 @@ func (h *handler) onHopped(ev *abi.Event) error {
 	for i, p := range h.hops {
 		if p.id == ev.ID {
 			h.hops = slices.Delete(h.hops, i, i+1)
-			if h.q != nil {
+			if h.timed {
 				h.vnow = max(h.vnow, p.due)
 			}
 			h.setOrigin(p.origin)
-			p.release()
+			if p.fn != nil {
+				p.fn(h, p.rid, p.val)
+			} else {
+				p.release()
+			}
 			h.dropOrigin(p.origin)
 			break
 		}

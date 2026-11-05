@@ -214,6 +214,9 @@ func sessionGraphSDKs() map[string]sessionGraphLoader {
 			}
 			r.load(t, cfg)
 		},
+		"lisp": func(t testing.TB, r *sessionGraphRig) {
+			r.load(t, sessionGraphLispConfig(t))
+		},
 		"node": func(t testing.TB, r *sessionGraphRig) {
 			source, err := filepath.Abs("testdata/session-graph.mjs")
 			if err != nil {
@@ -227,6 +230,14 @@ func sessionGraphSDKs() map[string]sessionGraphLoader {
 			r.load(t, cfg)
 		},
 	}
+}
+
+// sessionGraphLispConfig is the Lisp session-graph fixture (testdata/session-graph-lisp: the ASDF system "session-graph", one file of scripts per lane).
+func sessionGraphLispConfig(t testing.TB) subprocess.ExtConfig {
+	t.Helper()
+	cfg := lispFixtureConfig(t, "session-graph-lisp", sessiongraph.Name)
+	cfg.Package = "session-graph"
+	return cfg
 }
 
 func (r *sessionGraphRig) load(t testing.TB, cfg subprocess.ExtConfig) {
@@ -458,15 +469,27 @@ var sessionGraphDefaultResourceLoaderWant string
 // package-manager.ts DefaultPackageManager (settings sources, listing, resolve with a missing-source callback, install and remove of a local package with progress events, temporary sources, updates) for every SDK.
 func TestSessionGraphDefaultPackageManagerAcrossSDKs(t *testing.T) {
 	t.Parallel()
-	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, _ string) {
+	eachSessionGraphSDK(t, func(t *testing.T, r *sessionGraphRig, sdkName string) {
 		report, root := r.script("package_manager")
 		got := normalizeSessionGraph(t, report, root)
 		if path := os.Getenv("SESSION_GRAPH_PRINT"); path != "" {
 			encoded, _ := json.MarshalIndent(got, "", "\t")
 			_ = os.WriteFile(path, encoded, 0o600)
 		}
-		requireSessionGraphReport(t, got, sessionGraphDefaultPackageManagerWant)
+		requireSessionGraphReport(t, got, sessionGraphDefaultPackageManagerWantFor(sdkName))
 	})
+}
+
+// sessionGraphDefaultPackageManagerWantFor is the DefaultPackageManager report an SDK row must give. The script installs the Package by its absolute path:
+// Pi stores that as the spelling relative to the settings directory (the Node row), and every PiG row keeps the absolute path as typed, which the
+// normalized report shows as "<root>/pkgs/localpkg" (D215).
+func sessionGraphDefaultPackageManagerWantFor(sdkName string) string {
+	if sdkName == "node" {
+		return sessionGraphDefaultPackageManagerWant
+	}
+	// pig divergence (D215): an absolute local Package path is stored as typed, where Pi stores it relative to the settings directory.
+	want := strings.ReplaceAll(sessionGraphDefaultPackageManagerWant, `"../../pkgs/localpkg"`, `"\u003croot\u003e/pkgs/localpkg"`)
+	return strings.ReplaceAll(want, `"../pkgs/localpkg"`, `"\u003croot\u003e/pkgs/localpkg"`)
 }
 
 // sessionGraphDefaultPackageManagerWant is the report of Pi's own DefaultPackageManager (the Node row).

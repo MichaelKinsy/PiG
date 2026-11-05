@@ -1,52 +1,43 @@
 package piglet
 
 import (
-	"slices"
-	"strings"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// MCPSourcePrefix identifies tools registered by an MCP adapter for one server.
-const MCPSourcePrefix = "mcp:"
-
-// MCPAdapterExtensionName is the conventional owner of MCP tools.
-const MCPAdapterExtensionName = "pig-mcp-adapter"
+// MCPAdapterExtensionName is the Piglet extension entry that governs every MCP tool.
+const MCPAdapterExtensionName = extension.McpAdapterEntry
 
 // ToolInfo is the minimal metadata needed for Piglet tool scoping.
 type ToolInfo struct {
 	Name   string
 	Source string
+	// Namespace is the tool's namespace name, `mcp__<server>` for a built-in MCP tool (extension.McpNamespace). Empty when the tool has none.
+	Namespace string
 }
 
-// ScopeTools intersects registered tools with root and extension allowlists.
-// Resource loading/discovery decides which extensions exist; this function does
-// not use Piglet membership as a second discovery gate.
-func ScopeTools(piglet *Piglet, allTools []ToolInfo) []string {
-	extensionTools := make(map[string]*[]string, len(piglet.Extensions))
+// CompileToolScope compiles a Piglet's tool scope into the form the Session's registry filter reads
+// (extension.ToolFilter.WithScope; pig additive, D23). owner names the Piglet extension entry that registered an
+// extension tool, or "" when no loaded extension did. The rules are documented on [extension.ToolScope].
+func CompileToolScope(piglet *Piglet, owner func(extension.ToolInfo) string) *extension.ToolScope {
+	scope := &extension.ToolScope{Builtin: piglet.BuiltinTools, Extensions: make(map[string]*[]string, len(piglet.Extensions)), Owner: owner}
 	for i := range piglet.Extensions {
-		extensionTools[piglet.Extensions[i].Name] = piglet.Extensions[i].Tools
+		scope.Extensions[piglet.Extensions[i].Name] = piglet.Extensions[i].Tools
 	}
+	return scope
+}
 
+// ScopeTools returns the names of the registered tools the Piglet keeps, in registry order.
+func ScopeTools(piglet *Piglet, allTools []ToolInfo) []string {
+	scope := CompileToolScope(piglet, nil)
 	active := make([]string, 0, len(allTools))
 	for _, tool := range allTools {
-		source := tool.Source
-		switch {
-		case source == "" || source == "builtin":
-			if toolAllowed(piglet.BuiltinTools, tool.Name) {
-				active = append(active, tool.Name)
-			}
-		case strings.HasPrefix(source, MCPSourcePrefix):
-			if toolAllowed(extensionTools[MCPAdapterExtensionName], tool.Name) {
-				active = append(active, tool.Name)
-			}
-		default:
-			if toolAllowed(extensionTools[source], tool.Name) {
-				active = append(active, tool.Name)
-			}
+		info := extension.ToolInfo{Name: tool.Name, Source: tool.Source}
+		if tool.Namespace != "" {
+			info.Namespace = &extension.ToolNamespace{Name: tool.Namespace}
+		}
+		if scope.Keeps(info) {
+			active = append(active, tool.Name)
 		}
 	}
 	return active
-}
-
-func toolAllowed(allowlist *[]string, name string) bool {
-	return allowlist == nil || slices.Contains(*allowlist, name)
 }

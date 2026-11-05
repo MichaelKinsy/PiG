@@ -1,6 +1,6 @@
 {
- "pin": "1.4.0+6c384aa3",
- "package": "pi-tui@1.4.0",
+ "pin": "1.5.0",
+ "package": "pi-tui@1.5.0",
  "module": "pi-tui",
  "export": "isKeyRelease",
  "cases": [
@@ -100,7 +100,7 @@
    "args": [
     "\u001b[1;10:3P"
    ],
-   "result": false
+   "result": true
   },
   {
    "name": "case 0014",

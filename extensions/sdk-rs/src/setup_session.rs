@@ -3,7 +3,7 @@
 use crate::context::Context;
 use crate::protocol::{Connection, ErrorInfo};
 use crate::session_manager::ReadonlySessionManager;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::io;
 use std::ops::Deref;
@@ -27,7 +27,10 @@ impl<'a> Deref for SetupSessionManager<'a> {
 impl SetupSessionManager<'_> {
     fn write(&self, method: &str, args: Value) -> io::Result<Value> {
         self.context
-            .call_host("sessionWrite", Some(json!({"method": method, "args": args})))
+            .call_host(
+                "sessionWrite",
+                Some(json!({"method": method, "args": args})),
+            )
             .map(|value| value.unwrap_or(Value::Null))
     }
 
@@ -38,7 +41,10 @@ impl SetupSessionManager<'_> {
 
     /// session-manager.ts:304: an extension entry that does not take part in the model context.
     pub fn append_custom_entry(&self, custom_type: &str, data: Value) -> io::Result<Value> {
-        self.write("appendCustomEntry", json!({"customType": custom_type, "data": data}))
+        self.write(
+            "appendCustomEntry",
+            json!({"customType": custom_type, "data": data}),
+        )
     }
 
     /// session-manager.ts:353: an extension message that takes part in the model context.
@@ -49,7 +55,10 @@ impl SetupSessionManager<'_> {
         display: bool,
         details: Value,
     ) -> io::Result<Value> {
-        self.write("appendCustomMessageEntry", custom_message_args(custom_type, content, display, details))
+        self.write(
+            "appendCustomMessageEntry",
+            custom_message_args(custom_type, content, display, details),
+        )
     }
 
     /// session-manager.ts:318: sets the session name.
@@ -64,7 +73,10 @@ impl SetupSessionManager<'_> {
 
     /// session-manager.ts:231.
     pub fn append_thinking_level_change(&self, thinking_level: &str) -> io::Result<Value> {
-        self.write("appendThinkingLevelChange", json!({"thinkingLevel": thinking_level}))
+        self.write(
+            "appendThinkingLevelChange",
+            json!({"thinkingLevel": thinking_level}),
+        )
     }
 
     /// session-manager.ts:455: sets or clears (None) the label of an entry.
@@ -114,7 +126,10 @@ impl SetupRegistry {
             callback: Mutex::new(Some(callback)),
             error: Mutex::new(None),
         });
-        self.entries.lock().unwrap().insert(handle.clone(), entry.clone());
+        self.entries
+            .lock()
+            .unwrap()
+            .insert(handle.clone(), entry.clone());
         (handle, entry)
     }
 
@@ -158,8 +173,15 @@ impl Context {
 
 /// Runs the callback a setup request names with the replacement Session's manager. `ctx` is the request's context, so its
 /// host calls belong to the request.
-pub(crate) fn dispatch(ctx: &Context, conn: &Arc<Connection>, args: Option<&Value>) -> Result<(), ErrorInfo> {
-    let failure = |message: String| ErrorInfo { code: None, message };
+pub(crate) fn dispatch(
+    ctx: &Context,
+    conn: &Arc<Connection>,
+    args: Option<&Value>,
+) -> Result<(), ErrorInfo> {
+    let failure = |message: String| ErrorInfo {
+        code: None,
+        message,
+    };
     let args = args.cloned().unwrap_or(Value::Null);
     let handle = args["handle"].as_str().unwrap_or_default();
     let entry = conn
@@ -172,7 +194,10 @@ pub(crate) fn dispatch(ctx: &Context, conn: &Arc<Connection>, args: Option<&Valu
         .unwrap()
         .take()
         .ok_or_else(|| failure(format!("setup callback {handle} already ran")))?;
-    let manager = SetupSessionManager { reads: ctx.session_manager(), context: ctx };
+    let manager = SetupSessionManager {
+        reads: ctx.session_manager(),
+        context: ctx,
+    };
     callback(&manager).map_err(|error| {
         let message = error.to_string();
         *entry.error.lock().unwrap() = Some((error.kind(), message.clone()));
@@ -195,7 +220,10 @@ mod tests {
         let found = registry.get(&first).expect("registered handle");
         assert!(Arc::ptr_eq(&found, &entry));
         assert!(found.callback.lock().unwrap().take().is_some());
-        assert!(found.callback.lock().unwrap().take().is_none(), "a handle's callback runs once");
+        assert!(
+            found.callback.lock().unwrap().take().is_none(),
+            "a handle's callback runs once"
+        );
         registry.remove(&first);
         assert!(registry.get(&first).is_none());
         assert!(registry.get(&second).is_some());
@@ -209,8 +237,17 @@ mod tests {
             custom_message_args("t", json!([{"type": "text"}]), true, json!({"k": 1})),
             json!({"customType": "t", "content": [{"type": "text"}], "display": true, "details": {"k": 1}})
         );
-        assert_eq!(model_change_args("openai", "gpt-x"), json!({"provider": "openai", "modelId": "gpt-x"}));
-        assert_eq!(label_args("e1", Some("L")), json!({"targetId": "e1", "label": "L"}));
-        assert_eq!(label_args("e1", None), json!({"targetId": "e1", "label": null}));
+        assert_eq!(
+            model_change_args("openai", "gpt-x"),
+            json!({"provider": "openai", "modelId": "gpt-x"})
+        );
+        assert_eq!(
+            label_args("e1", Some("L")),
+            json!({"targetId": "e1", "label": "L"})
+        );
+        assert_eq!(
+            label_args("e1", None),
+            json!({"targetId": "e1", "label": null})
+        );
     }
 }

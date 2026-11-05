@@ -25,7 +25,7 @@ func TestSkillFileMetadataRetainsCollisionDiagnostics(t *testing.T) {
 		{Name: "demo", FilePath: winner}, {Name: "demo", FilePath: loser}, {Name: "other", FilePath: other},
 	})
 	m.showLoadedResources(false, true)
-	want := "[Skill conflicts]\n  \"demo\" collision:\n    ✓ npm:pkg-a (user) skills/demo/SKILL.md\n    ✗ " + filepath.ToSlash(loser) + " (skipped)"
+	want := "[Skill warnings]\n  \"demo\" collision:\n    ✓ npm:pkg-a (user) skills/demo/SKILL.md\n    ✗ " + filepath.ToSlash(loser) + " (skipped)"
 	if got := strings.ReplaceAll(renderListing(m), `\`, "/"); got != want {
 		t.Fatalf("diagnostics =\n%s\nwant\n%s", got, want)
 	}

@@ -9,6 +9,7 @@ import (
 	"os"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/evals/bridge"
 )
 
@@ -48,7 +49,7 @@ func run() error {
 	}
 	for _, tool := range spec.Tools {
 		definition := sdk.ToolDefinition{
-			Name: tool.Name, Label: tool.Label, Description: tool.Description, PromptSnippet: tool.PromptSnippet, Parameters: tool.Parameters,
+			Name: tool.Name, Label: tool.Label, Description: tool.Description, PromptSnippet: tool.PromptSnippet, Parameters: toolParameters(tool.Parameters),
 			Execute: func(ctx sdk.Context, params map[string]any) (any, error) {
 				response, err := bridge.Call(bridge.Request{Op: bridge.OpTool, Tool: tool.Name, ToolCallID: ctx.ToolCallID(), Params: params})
 				if err != nil {
@@ -63,4 +64,30 @@ func run() error {
 		extension.RegisterTool(definition)
 	}
 	return extension.Run()
+}
+
+// toolParameters is the tool's schema in the form the SDK writes in member order: the root keeps the order of the spec's members and every nested object is an ordered object.
+func toolParameters(parameters *chordjson.Object) sdk.Schema {
+	if parameters == nil {
+		return nil
+	}
+	return sdk.Type.Unsafe(orderedSchemaValue(parameters)).Schema()
+}
+
+func orderedSchemaValue(value any) any {
+	switch value := value.(type) {
+	case *chordjson.Object:
+		pairs := make([]any, 0, 2*value.Len())
+		for key, member := range value.All() {
+			pairs = append(pairs, key, orderedSchemaValue(member))
+		}
+		return sdk.NewOrderedObject(pairs...)
+	case []any:
+		items := make([]any, len(value))
+		for i, item := range value {
+			items[i] = orderedSchemaValue(item)
+		}
+		return items
+	}
+	return value
 }

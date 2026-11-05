@@ -9,11 +9,14 @@ import (
 // mutation-checked: zeroing the results of ConversationBusy.Error, ReadAfterWrite.Error fails it
 // mutation-checked: dropping the reads and writes of ConversationBusy.ConversationId fails it
 func TestDurableErrorMessagesMatchPi(t *testing.T) {
-	if got, want := NewReadAfterWrite("task").Error(), "Tx.task() cannot read tables after the first table write"; got != want {
+	if got, want := NewReadAfterWrite("Tx.task()").Error(), "Tx.task() cannot read tables after the first table write"; got != want {
 		t.Fatalf("ReadAfterWrite message %q, want %q", got, want)
 	}
 	if got, want := NewConversationBusy(7).Error(), "Conversation 7 is busy"; got != want {
 		t.Fatalf("ConversationBusy message %q, want %q", got, want)
+	}
+	if got, want := NewConversationIdle(7).Error(), "Conversation 7 is idle"; got != want {
+		t.Fatalf("ConversationIdle message %q, want %q", got, want)
 	}
 	if got := NewConversationBusy(7).ConversationId; got != 7 {
 		t.Fatalf("ConversationBusy carries conversation %d, want 7", got)

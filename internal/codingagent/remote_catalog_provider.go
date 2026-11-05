@@ -436,7 +436,8 @@ func withPersonalizedCatalogOverlay(provider *ai.ModelsProvider, personalize Per
 	}
 	allModels := func() ([]ai.AnyModel, error) {
 		if personal := overlay.snapshot(); len(personal) > 0 {
-			return personal, nil
+			// pig divergence (D199): the saved list replaces the bundled one, so OpenRouter's routing variants are derived from it, as they are from the bundled models.
+			return ai.WithOpenRouterRoutingVariantModels(personal), nil
 		}
 		return builtinModels()
 	}

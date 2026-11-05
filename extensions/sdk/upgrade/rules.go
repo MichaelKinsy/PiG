@@ -65,6 +65,7 @@ const (
 	RuleReadonlySession     = "context-session-manager-readonly"
 	RuleModelRegistryFind   = "model-registry-find-returns-error"
 	RuleDialogResults       = "dialog-results-are-json-values"
+	RuleHostHighlightCode   = "host-helpers-highlight-code-no-markdown"
 )
 
 // getter is one Context method that gained an error result. Params is the
@@ -251,6 +252,14 @@ func Rules() []Rule {
 			Remedy:  "Receive the error and return it from the handler: `model, err := ctx.ModelRegistry().Find(provider, id)`. A nil model with a nil error means no model matches; a host or transport failure is the error.",
 			Changes: []Change{
 				{Symbol: "ModelRegistry.Find", Old: "func(string, string) map[string]any", New: "func(string, string) (map[string]any, error)", Since: "0.5.2"},
+			},
+		},
+		{
+			ID:      RuleHostHighlightCode,
+			Summary: "HostHelpers.HighlightCode has no markdown parameter",
+			Remedy:  "Delete the markdown parameter of the HighlightCode function you install with SetHostHelpers and answer with the lines of highlightCode: Pi's getMarkdownTheme().highlightCode is highlightCode, so one call serves both and the host call carries no markdown member.",
+			Changes: []Change{
+				{Symbol: "HostHelpers.HighlightCode", Old: "func(string, string, bool, []byte) ([]string, error)", New: "func(string, string, []byte) ([]string, error)", Since: "0.7.0"},
 			},
 		},
 	}

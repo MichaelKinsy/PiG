@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -423,11 +424,11 @@ func TestMarkerRowIsProvenByCoverageAndAKilledMutant(t *testing.T) {
 	}{
 		{"coverage and a killed mutant", marked, killer, ""},
 		{"no mutant listed", marked, `{}`, "names no mutant"},
-		{"the old text is ambiguous (two sites)", marked, twice, "no listed mutant makes"},
-		{"the tests assert nothing: the mutant survives", slack, killer, "no listed mutant makes the marker tests fail"},
-		{"the mutant text is absent from the file", marked, `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"nope","new":"x"}]}`, "no listed mutant makes"},
-		{"the mutant does not compile", marked, `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"undefined"}]}`, "no listed mutant makes"},
-		{"the mutant panics: the slack test only executes the code", slack, `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"func() string { panic(w.Name) }()"}]}`, "no listed mutant makes"},
+		{"the old text is ambiguous (two sites)", marked, twice, "the old text occurs 2 times, not once"},
+		{"the tests assert nothing: the mutant survives", slack, killer, "no listed mutant makes the marker tests fail (the tests would pass without the cited code) [lib/widget.go: the tests passed with the mutant]"},
+		{"the mutant text is absent from the file", marked, `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"nope","new":"x"}]}`, "the old text occurs 0 times, not once"},
+		{"the mutant does not compile", marked, `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"undefined"}]}`, "the mutant did not build: "},
+		{"the mutant panics: the slack test only executes the code", slack, `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"func() string { panic(w.Name) }()"}]}`, "the mutant panicked: panic: a"},
 		{"the mutant edits the evidence test", slack, `{"packages/fx/src/widget.ts":[{"file":"lib/widget_test.go","old":"_ = Widget","new":"t.Fatal(); _ = Widget"}]}`, "is a test file"},
 		{"the mutant edits an uncited file", marked, `{"packages/fx/src/widget.ts":[{"file":"lib/other.go","old":"Unrelated","new":"X"}]}`, "is not a cited file"},
 	} {
@@ -869,4 +870,226 @@ func TestWorkersFollowTheCPUsTheProcessMayUse(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRowsThatNameTheSameTestsButMapDifferentFilesDoNotShareARecord: a coverage record holds the executed statements of one row's mapped
+// files only, so two rows of a package that name the same evidence tests and cite files of that package (the ai providers/*.models.ts
+// rows) need different digests, or the record the last row stored would judge the others.
+func TestRowsThatNameTheSameTestsButMapDifferentFilesDoNotShareARecord(t *testing.T) {
+	root := t.TempDir()
+	for name, body := range map[string]string{
+		"lib/a.go": "package lib\n\nfunc A() {}\n", "lib/b.go": "package lib\n\nfunc B() {}\n",
+		"lib/a_test.go": "package lib\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) { A() }\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, name)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	d := newDigester(root)
+	cited := []string{"lib/a.go", "lib/b.go"}
+	onA := result{Cited: cited, Hit: []string{"lib/a.go"}, Tests: []string{"lib#TestA"}}
+	onB := result{Cited: cited, Hit: []string{"lib/b.go"}, Tests: []string{"lib#TestA"}}
+	if d.of(onA, nil) == d.of(onB, nil) {
+		t.Fatal("rows that map different cited files share one digest, so one row's coverage record would judge the other")
+	}
+	first, second := d.of(onA, nil), d.of(onA, nil)
+	if first != second {
+		t.Fatal("the digest of one row is not stable")
+	}
+}
+
+// brokenGo puts a `go` first on PATH that fails with out whenever its arguments contain match, and otherwise runs the real go.
+func brokenGo(t *testing.T, match, out string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("the stand-in go is a shell script")
+	}
+	real, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	script := "#!/bin/sh\ncase \"$*\" in *" + match + "*) echo '" + out + "' >&2; exit 1;; esac\nexec " + real + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+// TestInfrastructureFailuresAreNotFindingsAboutARow: a replay or build the machine failed (a full disk, a dead compiler) fails the check with
+// the real cause and leaves the row INFRASTRUCTURE, never MARKER-UNPROVEN; a mutation that merely does not compile stays "not killed".
+func TestInfrastructureFailuresAreNotFindingsAboutARow(t *testing.T) {
+	const marked = "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/widget.ts\nfunc TestWidget(t *testing.T) {\n\tif (Widget{Name: \"a\"}).Hello() != \"hello a\" {\n\t\tt.Fatal(\"hello\")\n\t}\n}\n"
+	const mutant = `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"\"bye \" + w.Name"}]}`
+	for _, tc := range []struct{ name, match, out string }{
+		{"the mutant's build cache is on a full disk", "-overlay", "compile: write $WORK/b001/_pkg_.a: no space left on device"},
+		{"the compiler is killed during the mutant's build", "-overlay", "go: error obtaining buildID for go tool compile: signal: killed"},
+		{"the evidence binary cannot be linked on a full disk", "-coverpkg", "link: write $WORK/b001/exe/a.out: no space left on device"},
+	} {
+		brokenGo(t, tc.match, tc.out)
+		root := markerFixture(t, marked, mutant)
+		res, err := checkWith(root, true)
+		if err == nil || !strings.Contains(err.Error(), "infrastructure failure, not a PORT_MAP finding") || !strings.Contains(err.Error(), strings.Split(tc.out, ": ")[len(strings.Split(tc.out, ": "))-1]) {
+			t.Errorf("%s: err = %v, want the infrastructure cause named", tc.name, err)
+		}
+		for _, r := range res {
+			if strings.Contains(strings.Join(r.Reasons, ";"), "MARKER-UNPROVEN") {
+				t.Errorf("%s: row reported MARKER-UNPROVEN: %v", tc.name, r.Reasons)
+			}
+		}
+	}
+}
+
+func TestInfraFailureClassification(t *testing.T) {
+	exitErr := exec.Command("go", "tool", "no-such-tool-for-portmapcheck").Run()
+	if exitErr == nil {
+		t.Fatal("expected a failing go command")
+	}
+	for _, tc := range []struct {
+		name, out string
+		err       error
+		want      string
+	}{
+		{"success", "ok", nil, ""},
+		{"a failed assertion", "--- FAIL: TestWidget (0.00s)\n    widget_test.go:9: hello\nFAIL\n", exitErr, ""},
+		{"a failed assertion that printed a dial error", "--- FAIL: TestDial\n    dial tcp 127.0.0.1:1: connect: connection refused\nFAIL\n", exitErr, ""},
+		{"a mutation that does not compile", "# fixture/lib [fixture/lib.test]\nlib/widget.go:5:50: undefined: undefined\nFAIL\tfixture/lib [build failed]\n", exitErr, ""},
+		{"a full disk during the build", "# fixture/lib\ncompile: writing output: write /tmp/x/_pkg_.a: no space left on device\nFAIL\tfixture/lib [build failed]\n", exitErr, "compile: writing output: write /tmp/x/_pkg_.a: no space left on device"},
+		{"a full disk under a failing test", "--- FAIL: TestWidget\n    write /tmp/x: no space left on device\nFAIL\n", exitErr, "write /tmp/x: no space left on device"},
+		{"a killed compiler", "go: error obtaining buildID for go tool compile: signal: killed\n", exitErr, "go: error obtaining buildID for go tool compile: signal: killed"},
+		{"a module download that cannot connect", "go: downloading x v1.0.0\ndial tcp: lookup proxy.golang.org: no such host\n", exitErr, "dial tcp: lookup proxy.golang.org: no such host"},
+		{"the go binary cannot start", "", &exec.Error{Name: "go", Err: exec.ErrNotFound}, "exec: \"go\": executable file not found in $PATH"},
+	} {
+		if got := infraFailure(tc.out, tc.err); got != tc.want {
+			t.Errorf("%s: infraFailure = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestReplaysCompileIntoACloneOfTheBuildCache: the clone shares the cache's entries by hard link, what replays add stays in the clone and
+// is removed after replaysPerTrim replays, and the shared cache is never written to; the clone goes at the end.
+func TestReplaysCompileIntoACloneOfTheBuildCache(t *testing.T) {
+	parent := t.TempDir()
+	shared := filepath.Join(parent, "go-build")
+	if err := os.MkdirAll(filepath.Join(shared, "ab"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	entry := filepath.Join(shared, "ab", "entry-d")
+	if err := os.WriteFile(entry, []byte("compiled"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clones := func() []string { g, _ := filepath.Glob(filepath.Join(parent, ".portmap-gocache-*")); return g }
+	exists := func(p string) bool { _, err := os.Stat(p); return err == nil }
+	env := []string{"HOME=/x", "GOCACHE=" + shared}
+	c := newReplayCaches()
+	c.every = 3
+	var dir string
+	for i := 1; i <= 3; i++ {
+		d, done := c.acquire(env)
+		if d == "" || d == shared || filepath.Dir(d) != parent {
+			t.Fatalf("replay %d: GOCACHE=%q, want a clone beside %s", i, d, shared)
+		}
+		if dir != "" && d != dir {
+			t.Fatalf("replay %d: a second clone %q beside %q", i, d, dir)
+		}
+		dir = d
+		a, _ := os.Stat(entry)
+		b, err := os.Stat(filepath.Join(d, "ab", "entry-d"))
+		if err != nil || !os.SameFile(a, b) {
+			t.Fatalf("replay %d: the clone must hard-link the shared entry: %v", i, err)
+		}
+		if err := os.WriteFile(filepath.Join(d, "ab", "mutant"+strconv.Itoa(i)+"-d"), []byte("mutated"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		done()
+		if i < 3 && !exists(filepath.Join(d, "ab", "mutant"+strconv.Itoa(i)+"-d")) {
+			t.Fatalf("replay %d: trimmed before %d replays", i, c.every)
+		}
+	}
+	if g, _ := filepath.Glob(filepath.Join(dir, "ab", "*")); len(g) != 1 || filepath.Base(g[0]) != "entry-d" {
+		t.Fatalf("after the trim the clone must hold only the shared entries: %v", g)
+	}
+	if len(clones()) != 1 {
+		t.Fatalf("want one clone: %v", clones())
+	}
+	c.close()
+	if len(clones()) != 0 {
+		t.Fatalf("the clone outlived the check: %v", clones())
+	}
+	if g, _ := filepath.Glob(filepath.Join(shared, "ab", "*")); len(g) != 1 || g[0] != entry {
+		t.Fatalf("the shared cache was written to: %v", g)
+	}
+	missing := newReplayCaches()
+	if d, done := missing.acquire([]string{"GOCACHE=" + filepath.Join(parent, "missing")}); d != "" {
+		t.Fatalf("a missing cache cannot be cloned, got %q", d)
+	} else {
+		done()
+	}
+	missing.close()
+	if len(clones()) != 0 {
+		t.Fatalf("a failed clone left a directory: %v", clones())
+	}
+	if d, _ := newReplayCaches().acquire([]string{"GOCACHE=off"}); d != "" {
+		t.Fatalf("a disabled cache needs no clone, got %q", d)
+	}
+	if d, _ := (*replayCaches)(nil).acquire(env); d != "" {
+		t.Fatalf("a nil *replayCaches uses the shared cache, got %q", d)
+	}
+}
+
+// TestMutantReplaysLeaveTheSharedBuildCacheAlone: whatever the go command of a replay writes into its build cache is gone when the check ends
+// and never reaches the shared cache. The stand-in go runs everything else against the real cache, so nothing compiles cold.
+func TestMutantReplaysLeaveTheSharedBuildCacheAlone(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the stand-in go is a shell script")
+	}
+	const marked = "package lib\n\nimport \"testing\"\n\n// pi: packages/fx/src/widget.ts\nfunc TestWidget(t *testing.T) {\n\tif (Widget{Name: \"a\"}).Hello() != \"hello a\" {\n\t\tt.Fatal(\"hello\")\n\t}\n}\n"
+	const mutant = `{"packages/fx/src/widget.ts":[{"file":"lib/widget.go","old":"\"hello \" + w.Name","new":"\"bye \" + w.Name"}]}`
+	realCache := strings.TrimSpace(goEnv(t, "GOCACHE"))
+	real, err := exec.LookPath("go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := t.TempDir()
+	shared := filepath.Join(parent, "go-build")
+	if err := os.MkdirAll(filepath.Join(shared, "ab"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(shared, "ab", "entry-d"), []byte("compiled"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	log := filepath.Join(dir, "seen.log")
+	script := "#!/bin/sh\ncase \"$*\" in\n*-overlay*) [ -f \"$GOCACHE/ab/entry-d\" ] && echo hit >> " + log + "; mkdir -p \"$GOCACHE/zz\" && echo mutated > \"$GOCACHE/zz/mutant-d\"; exit 1;;\nesac\nGOCACHE=" + realCache + " exec " + real + " \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("GOCACHE", shared)
+	root := markerFixture(t, marked, mutant)
+	res, err := checkWith(root, true)
+	if err != nil || res[0].Proven {
+		t.Fatalf("the replay fails, so the row is unproven and it is not an infrastructure error: %v %+v", err, res)
+	}
+	if b, _ := os.ReadFile(log); strings.TrimSpace(string(b)) != "hit" {
+		t.Fatalf("the replay must see the shared entries through its clone: %q", b)
+	}
+	if _, err := os.Stat(filepath.Join(shared, "zz")); !os.IsNotExist(err) {
+		t.Fatalf("the replay wrote into the shared cache: %v", err)
+	}
+	if left, _ := filepath.Glob(filepath.Join(parent, ".portmap-gocache-*")); len(left) != 0 {
+		t.Fatalf("a clone outlived the check: %v", left)
+	}
+}
+
+func goEnv(t *testing.T, name string) string {
+	t.Helper()
+	out, err := exec.Command("go", "env", name).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(out)
 }

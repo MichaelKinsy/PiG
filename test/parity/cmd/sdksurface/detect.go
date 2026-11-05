@@ -704,3 +704,94 @@ func rawStringEnd(b []byte, i int) int {
 	}
 	return len(b)
 }
+
+// ── Lisp ─────────────────────────────────────────────────────────────────────
+
+// lispExportRE reads one exported symbol of the pig package: #:name inside the defpackage's (:export ...) clause.
+var lispExportRE = regexp.MustCompile(`#:([a-z0-9*+][a-z0-9*+-]*)`)
+
+// lispConstructorRE finds a defstruct's keyword constructor: its lambda list starts at the end of the match.
+var lispConstructorRE = regexp.MustCompile(`\(:constructor\s+([a-z0-9][a-z0-9*+-]*)\s+\(`)
+
+// lispDefunRE finds a function definition: its lambda list starts at the end of the match.
+var lispDefunRE = regexp.MustCompile(`(?m)^\(def(?:un|macro)\s+([a-z0-9][a-z0-9*+-]*)\s+\(`)
+
+// parseLisp returns the symbols the pig package exports, each as pig:<name>: the SDK's whole public surface. The package
+// file is src/package.lisp; for an exported function the parameters of its lambda list (keyword, optional and required)
+// are also symbols, pig:<name>(<parameter>), the form the surface map names a parameter of a member.
+func parseLisp(packageFile string) (symbolSet, error) {
+	data, err := os.ReadFile(packageFile)
+	if err != nil {
+		return nil, err
+	}
+	text := string(data)
+	start := strings.Index(text, "(:export")
+	if start < 0 {
+		return nil, fmt.Errorf("%s has no (:export clause", packageFile)
+	}
+	set := symbolSet{}
+	for _, m := range lispExportRE.FindAllStringSubmatch(text[start:], -1) {
+		set["pig:"+m[1]] = true
+	}
+	files, err := filepath.Glob(filepath.Join(filepath.Dir(packageFile), "*.lisp"))
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		src, err := os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+		source := string(src)
+		for _, re := range []*regexp.Regexp{lispDefunRE, lispConstructorRE} {
+			for _, loc := range re.FindAllStringSubmatchIndex(source, -1) {
+				name := source[loc[2]:loc[3]]
+				if !set["pig:"+name] {
+					continue
+				}
+				for _, param := range lispLambdaParams(source[loc[1]-1:]) {
+					set["pig:"+name+"("+param+")"] = true
+				}
+			}
+		}
+	}
+	return set, nil
+}
+
+// lispLambdaParams returns the parameter names of the lambda list that opens at the start of text.
+func lispLambdaParams(text string) []string {
+	var params []string
+	depth, i := 0, 0
+	for ; i < len(text); i++ {
+		c := text[i]
+		switch {
+		case c == '(':
+			depth++
+			if depth == 2 {
+				// (name default): the name is the first symbol of the element
+				j := i + 1
+				for j < len(text) && !strings.ContainsRune(" \t\n()", rune(text[j])) {
+					j++
+				}
+				if name := text[i+1 : j]; name != "" && !strings.HasPrefix(name, "&") {
+					params = append(params, strings.ToLower(name))
+				}
+			}
+		case c == ')':
+			depth--
+			if depth == 0 {
+				return params
+			}
+		case depth == 1 && !strings.ContainsRune(" \t\n", rune(c)):
+			j := i
+			for j < len(text) && !strings.ContainsRune(" \t\n()", rune(text[j])) {
+				j++
+			}
+			if name := text[i:j]; !strings.HasPrefix(name, "&") {
+				params = append(params, strings.ToLower(name))
+			}
+			i = j - 1
+		}
+	}
+	return params
+}

@@ -1,0 +1,135 @@
+package documents
+
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+// Ports packages/chord/test/next/documents/line.test.ts
+// pi: packages/chord/src/next/documents/line.ts
+
+// waitingIs waits until the line shows n holders that asked and wait: Pi's holders take their place at the call, which
+// a goroutine does once it is scheduled.
+func waitingIs(t *testing.T, line *Line, n int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for line.waitingHolders() != n {
+		if time.Now().After(deadline) {
+			t.Fatalf("waiting = %d, want %d", line.waitingHolders(), n)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
+func TestTheLineHandsItToEachHolderInTheOrderTheyAskedOnceThePreviousOneReleased(t *testing.T) {
+	line := NewLine()
+	var order []string
+	first := line.Acquire(context.Background())
+	released := make(chan func(), 2)
+	go func() {
+		release := line.Acquire(context.Background())
+		order = append(order, "second")
+		released <- release
+	}()
+	waitingIs(t, line, 1)
+	third := make(chan struct{})
+	go func() {
+		release := line.Acquire(context.Background())
+		order = append(order, "third")
+		release()
+		close(third)
+	}()
+	waitingIs(t, line, 2)
+	time.Sleep(10 * time.Millisecond)
+	if len(order) != 0 {
+		t.Fatalf("order before the first released = %v", order)
+	}
+	first()
+	(<-released)()
+	<-third
+	if len(order) != 2 || order[0] != "second" || order[1] != "third" {
+		t.Fatalf("order = %v, want [second third]", order)
+	}
+}
+
+func TestTheLineIgnoresASecondReleaseOfTheSameHolder(t *testing.T) {
+	line := NewLine()
+	first := line.Acquire(context.Background())
+	secondHeld := make(chan func(), 1)
+	go func() { secondHeld <- line.Acquire(context.Background()) }()
+	waitingIs(t, line, 1)
+	thirdHeld := make(chan struct{})
+	go func() {
+		line.Acquire(context.Background())
+		close(thirdHeld)
+	}()
+	waitingIs(t, line, 2)
+	first()
+	first()
+	second := <-secondHeld
+	select {
+	case <-thirdHeld:
+		t.Fatal("the third holder took the line while the second held it")
+	case <-time.After(10 * time.Millisecond):
+	}
+	second()
+	select {
+	case <-thirdHeld:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the third holder never took the line")
+	}
+}
+
+// WaitingHolders is what the host's tests read to know that a transaction took its place on the line (Pi's tests rely on
+// the order of promise calls): it counts the holders that asked and wait, and is zero once each was handed the line.
+func TestTheLineReportsItsWaitingHoldersToTheHostsTests(t *testing.T) {
+	line := NewLine()
+	if got := line.WaitingHolders(); got != 0 {
+		t.Fatalf("WaitingHolders of a free line = %d", got)
+	}
+	first := line.Acquire(context.Background())
+	if got := line.WaitingHolders(); got != 0 {
+		t.Fatalf("WaitingHolders with the line held and nobody asking = %d", got)
+	}
+	handed := make(chan func(), 2)
+	for range 2 {
+		go func() { handed <- line.Acquire(context.Background()) }()
+	}
+	waitingIs(t, line, 2)
+	if got := line.WaitingHolders(); got != 2 {
+		t.Fatalf("WaitingHolders with two asking = %d, want 2", got)
+	}
+	first()
+	(<-handed)()
+	(<-handed)()
+	if got := line.WaitingHolders(); got != 0 {
+		t.Fatalf("WaitingHolders once every holder was handed the line = %d", got)
+	}
+}
+
+// Pi's residency calls `this.onLine(async () => sweep())` from the timer's callback, and onLine takes its place on the
+// line at that call (documents.ts `onLine` → `this.line.acquire()`): a holder asking after the callback queues behind it.
+func TestASweepTakesItsPlaceOnTheLineAtTheCallOfTheResidencyHook(t *testing.T) {
+	o := newObject(t, objectOptions{})
+	line := o.documents.Line()
+	first := line.Acquire(context.Background())
+	ran := make(chan string, 2)
+	o.documents.Residency().onLine(func() { ran <- "sweep" })
+	if got := line.WaitingHolders(); got != 1 {
+		t.Fatalf("WaitingHolders right after the hook returned = %d, want 1", got)
+	}
+	go func() {
+		release := line.Acquire(context.Background())
+		ran <- "later"
+		release()
+	}()
+	waitingIs(t, line, 2)
+	first()
+	if got := <-ran; got != "sweep" {
+		t.Fatalf("first to run = %q, want the sweep", got)
+	}
+	if got := <-ran; got != "later" {
+		t.Fatalf("second to run = %q, want the later holder", got)
+	}
+}

@@ -82,7 +82,7 @@ type McpOAuthSettings struct {
 	Scope string
 	// ClientName is the `client_name` of dynamic client registration. Default: the app name.
 	ClientName string
-	// ClientRegistration is `dcr` (default) or `cimd`; see [extension.McpOAuthConfig].
+	// ClientRegistration is `auto` (default), `dcr` or `cimd`; see [extension.McpOAuthConfig].
 	ClientRegistration string
 	// AuthServerMetadataURL is the authorization server metadata document to
 	// use instead of discovery; see [extension.McpOAuthConfig].
@@ -488,17 +488,32 @@ func callbackID(serverURL string) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(sum[:9]), nil
 }
 
-// clientMetadataDocument is pi's Client ID Metadata Document, for
-// `clientRegistration: "cimd"`, chosen like Codex chooses its own. The
-// configuration ensures the default callback path. Without the `iss`
-// parameter in authorization responses (RFC 9207), the redirect URI and the
-// document are specific to the MCP server, so a response cannot be mixed up
-// with one from another authorization server (RFC 9700 section 4.4.2.2).
+// offersClientMetadataDocument reports whether sign-in may identify with pi's Client ID Metadata Document instead of
+// registering. `auto` registers when the user asked for a client name, the redirect URI is not one the documents list,
+// or a rebranded build would show up as pi.
+// pig divergence (D2): PiG's application name is not pi, so `auto` registers a client dynamically, as Pi does for any
+// rebranded build; only `cimd` identifies as pi's document.
+// upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:offersClientMetadataDocument
+func offersClientMetadataDocument(settings McpOAuthSettings, appName string) bool {
+	registration := cmp.Or(settings.ClientRegistration, "auto")
+	if registration != "auto" {
+		return registration == "cimd"
+	}
+	if settings.ClientID != "" || settings.ClientName != "" || appName != "pi" {
+		return false
+	}
+	return extension.IsClientMetadataDocumentCallback(settings.CallbackURL)
+}
+
+// clientMetadataDocument is pi's Client ID Metadata Document, chosen like Codex chooses its own, or nil when the
+// authorization server does not support documents for public clients. Without the `iss` parameter in authorization
+// responses (RFC 9207), the redirect URI and the document are specific to the MCP server, so a response cannot be
+// mixed up with one from another authorization server (RFC 9700 section 4.4.2.2).
 // upstream: packages/coding-agent/src/extensions/mcp/oauth.ts:clientMetadataDocument
 func clientMetadataDocument(serverURL, redirectURL string, metadata *oauth.AuthorizationServerMetadata) (*oauth.OAuthClientMetadataDocument, error) {
 	if metadata == nil || metadata.ClientIDMetadataDocumentSupported == nil || !*metadata.ClientIDMetadataDocumentSupported ||
 		!slices.Contains(metadata.TokenEndpointAuthMethodsSupported, "none") {
-		return nil, errors.New(`The authorization server does not support Client ID Metadata Documents for public clients; remove oauth.clientRegistration "cimd"`)
+		return nil, nil
 	}
 	if metadata.AuthorizationResponseIssParameterSupported != nil && *metadata.AuthorizationResponseIssParameterSupported {
 		return &oauth.OAuthClientMetadataDocument{URL: clientMetadataBaseURL + "/client.json", RedirectURL: redirectURL}, nil
@@ -516,9 +531,13 @@ func clientMetadataDocument(serverURL, redirectURL string, metadata *oauth.Autho
 
 func createProvider(serverURL string, store oauth.McpOAuthStateStore, settings McpOAuthSettings, redirectURL, appName string, onRedirect func(oauth.URL)) (*oauth.McpOAuthProvider, error) {
 	var document func(*oauth.AuthorizationServerMetadata) (*oauth.OAuthClientMetadataDocument, error)
-	if settings.ClientRegistration == "cimd" {
+	if offersClientMetadataDocument(settings, appName) {
 		document = func(metadata *oauth.AuthorizationServerMetadata) (*oauth.OAuthClientMetadataDocument, error) {
-			return clientMetadataDocument(serverURL, redirectURL, metadata)
+			doc, err := clientMetadataDocument(serverURL, redirectURL, metadata)
+			if err == nil && doc == nil && settings.ClientRegistration == "cimd" {
+				return nil, errors.New(`The authorization server does not support Client ID Metadata Documents for public clients; remove oauth.clientRegistration "cimd"`)
+			}
+			return doc, err
 		}
 	}
 	return oauth.NewMcpOAuthProvider(oauth.McpOAuthProviderOptions{
@@ -961,10 +980,10 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) (err error) {
 			}
 		}
 	}
-	cimd := options.Settings.ClientRegistration == "cimd"
+	offersDocument := offersClientMetadataDocument(options.Settings, options.AppName)
 	// The redirect URI of a server-specific Client ID Metadata Document.
 	var extraPaths []string
-	if cimd {
+	if offersDocument {
 		id, err := callbackID(options.ServerURL)
 		if err != nil {
 			return err
@@ -990,13 +1009,16 @@ func SignInMcpServer(ctx context.Context, options SignInOptions) (err error) {
 		next := stored.Clone()
 		// Every sign-in gets a fresh `state` parameter.
 		next.OAuthState = ""
-		// A registered client cannot use another redirect URI, and its tokens belong to it. A Client ID
-		// Metadata Document is not stored, so with one, a stored client was registered before and is replaced.
+		// A registered client cannot use another redirect URI, and its tokens belong to it. `cimd` replaces a
+		// registered client; `auto` keeps it. A Client ID Metadata Document is not stored, so tokens without a
+		// stored client belong to the document.
 		keepClient := options.Settings.ClientID != ""
-		if !keepClient && cimd {
-			keepClient = stored.ClientInformation == nil
-		} else if !keepClient {
-			keepClient = slices.Contains(registeredRedirectURLs(stored.ClientInformation), redirectURL)
+		if !keepClient {
+			if stored.ClientInformation != nil {
+				keepClient = options.Settings.ClientRegistration != "cimd" && slices.Contains(registeredRedirectURLs(stored.ClientInformation), redirectURL)
+			} else {
+				keepClient = offersDocument
+			}
 		}
 		if !keepClient {
 			next.ClientInformation, next.Tokens, next.TokensExpireAt = nil, nil, nil

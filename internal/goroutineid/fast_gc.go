@@ -36,6 +36,9 @@ func current() uint64 {
 	return id
 }
 
+// proving reports whether the offset is still being proved.
+func proving() bool { return offsetState.Load() == 0 }
+
 // goidAt returns the word at offset in the calling goroutine's runtime record (goroutineid_amd64.s, goroutineid_arm64.s). An
 // offset beyond the record reads memory that is not the record's, so only the proof's scan and the offset it proves reach it.
 func goidAt(offset uintptr) uint64

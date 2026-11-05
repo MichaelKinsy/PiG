@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
@@ -136,7 +137,7 @@ func NewRun(cfg *Config, j *Journey, kind Kind, plan Plan, root string) (*Run, e
 	}
 	maps.Copy(settings, c.Env.Settings)
 	c.SB, err = NewSandbox(SandboxOpts{Kind: kind, Root: root, Provider: c.P, Settings: settings, Files: c.Env.Files,
-		ExtraEnv: extra, Reasoning: c.Env.Reasoning, Images: c.Env.Images, Bin: c.Env.Bin, AgentFiles: c.Env.AgentDirFiles, ContextWindow: c.Env.ContextWindow})
+		ExtraEnv: extra, Reasoning: c.Env.Reasoning, Images: c.Env.Images, Bin: c.Env.Bin, AgentFiles: c.Env.AgentDirFiles, ContextWindow: c.Env.ContextWindow, Models: c.Env.Models})
 	if err != nil {
 		c.P.Close()
 		return nil, err
@@ -207,10 +208,11 @@ func (c *Run) WaitReady() {
 		c.WaitFor(`"id":"ready"`)
 		return
 	}
+	marker := cmp.Or(c.Env.ReadyMarker, "strict")
 	c.Await("interactive prompt", func(s string) bool {
 		lines := strings.Split(s, "\n")
 		for i := max(0, len(lines)-4); i < len(lines); i++ {
-			if strings.Contains(lines[i], "strict") {
+			if strings.Contains(lines[i], marker) {
 				return true
 			}
 		}
@@ -404,6 +406,30 @@ func (c *Run) WaitGone(sub string) {
 // Say types text and submits it.
 func (c *Run) Say(text string) {
 	c.Type(text)
+	c.Key("Enter")
+}
+
+// SayNextRead types text and presses Enter right behind it, as the product's next terminal read. Say sends the two as consecutive tmux commands, and tmux can hand both to the pty in one write, which a product reads at once: its keys then all see the editor before the menu the text opens, and Enter submits, in Pi as in PiG. The first output the product writes after the text shows that it has read the text, so the Enter that follows is a read of its own, sent as soon as the notification arrives.
+func (c *Run) SayNextRead(text string) {
+	before := c.T.Outputs()
+	c.Type(text)
+	desc := fmt.Sprintf("the first output after typing %q", truncate(text, 40))
+	quiet := time.NewTimer(c.scaled(hangQuiet))
+	defer quiet.Stop()
+	start := time.Now()
+	for c.T.Outputs() <= before {
+		changed := c.T.Changed()
+		if c.T.Outputs() > before {
+			break
+		}
+		select {
+		case <-changed:
+		case <-c.T.Exited():
+			c.fail("exit", "process exited while waiting for %s (exit %s)", desc, c.exitText())
+		case <-quiet.C:
+			c.hang(desc, fmt.Sprintf("no terminal output for %s", c.scaled(hangQuiet)), time.Since(start))
+		}
+	}
 	c.Key("Enter")
 }
 

@@ -1,5 +1,7 @@
 package cli
 
+// Ports packages/coding-agent/src/core/model-resolver.ts
+
 import "github.com/MichaelKinsy/PiG/internal/codingagent"
 
 // ResolveCliModelResult is the shared model-selection result used by CLI and auth commands.

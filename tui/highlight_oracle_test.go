@@ -163,10 +163,10 @@ func TestHighlightMatchesPiOracle(t *testing.T) {
 				fail("%s %s (%s): highlight.js HTML differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 			}
 		}
-		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, false, ActiveTheme()), "\n")); got != expected.Lines {
+		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, ActiveTheme()), "\n")); got != expected.Lines {
 			fail("%s %s (%s): highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 		}
-		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, true, ActiveTheme()), "\n")); got != expected.Markdown {
+		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, ActiveTheme()), "\n")); got != expected.Markdown {
 			fail("%s %s (%s): Markdown highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 		}
 	}

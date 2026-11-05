@@ -4,6 +4,8 @@
 // Copyright (C) 2006-2016, International Business Machines Corporation and others.
 // ICU CjkBreakEngine translation; see LICENSES/Unicode-3.0.txt and LICENSES/LicenseRef-ICU-CJK.txt.
 
+// Ports packages/tui/src/utils.ts (getWordSegmenter: the CJK dictionary engine of Intl.Segmenter)
+
 package wordsegmenter
 
 import (
@@ -15,6 +17,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
@@ -24,6 +27,7 @@ import (
 var cjkDictionary string
 
 func dictionaryUint32(offset int) int {
+	//portlint:allow utf16units offset indexes the embedded little-endian ICU dictionary bytes, not a JS string; Pi's Intl.Segmenter (utils.ts:getWordSegmenter) has no such table
 	return int(binary.LittleEndian.Uint32([]byte(cjkDictionary[offset : offset+4])))
 }
 func dictionaryWord(index int) string {
@@ -35,6 +39,7 @@ func dictionaryMatches(text string, offsets []int, start int, visit func(length 
 	count := dictionaryUint32(0)
 	low, high := 0, count
 	for length := 1; length <= 20 && start+length < len(offsets); length++ {
+		//portlint:allow utf16units offsets are byte positions of Go's own UTF-8 text built by the segmenter; Intl.Segmenter (utils.ts:getWordSegmenter) reports UTF-16 indexes that segments.go converts at its boundary
 		prefix := text[offsets[start]:offsets[start+length]]
 		low += sort.Search(high-low, func(i int) bool { return dictionaryWord(low+i) >= prefix })
 		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(dictionaryWord(low+i), prefix) })
@@ -83,8 +88,8 @@ func cjkBoundaries(text string) []int {
 	offsets = append(offsets, len(normalized))
 	n := len(chars)
 	const unreachable = ^uint32(0)
-	best := make([]uint32, n+1)
-	previous := make([]int, n+1)
+	best := make([]uint32, allocsize.Add(n, 1))
+	previous := make([]int, allocsize.Add(n, 1))
 	for i := range n + 1 {
 		best[i] = unreachable
 		previous[i] = -1

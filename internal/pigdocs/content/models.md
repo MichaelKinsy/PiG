@@ -1,8 +1,20 @@
 # Models
 
-A model in pig is identified by a **provider-qualified spec**: `provider/modelID`. Model-selection APIs such as `--model`, `/model`, `Ctrl+P` cycling, and `Context.SetModel()` use provider-qualified specs. Scoped model entries in settings also use that form. The saved default is an exception: set `defaultProvider` to the provider and `defaultModel` to the model ID without the provider prefix. A provider-qualified `defaultModel` does not select that model at startup. Bare model IDs passed to model-selection APIs are accepted for backward compatibility but can route to `openai/<id>` instead of the intended provider.
+For a built-in provider, run `/login`, then choose a model with `/model`. Use `models.json` only when PiG does not already include the provider or endpoint you need.
+
+## Choose a connection
+
+| What you have | Recommended setup |
+|---|---|
+| A supported subscription | Sign in with `/login`. See [Providers](providers.md). |
+| A provider API key | Store it with `/login` or set the provider's environment variable. See [Providers](providers.md). |
+| A local GGUF model | Connect PiG to the llama.cpp router. See [Connect local models](#connect-local-models). |
+| An OpenAI-, Anthropic-, or Google-compatible endpoint | Add it to `models.json`. See [Configure models.json](#configure-modelsjson). |
+| A provider with a custom protocol or sign-in flow | Build or install a provider extension. See [Add a custom provider](#add-a-custom-provider). |
 
 ## Selecting a model
+
+A model in pig is identified by a **provider-qualified spec**: `provider/modelID`. Model-selection APIs such as `--model`, `/model`, `Ctrl+P` cycling, and `Context.SetModel()` use provider-qualified specs. Scoped model entries in settings also use that form. The saved default is an exception: set `defaultProvider` to the provider and `defaultModel` to the model ID without the provider prefix. A provider-qualified `defaultModel` does not select that model at startup. Bare model IDs passed to model-selection APIs are accepted for backward compatibility but can route to `openai/<id>` instead of the intended provider.
 
 | Mechanism | Effect |
 |---|---|
@@ -175,7 +187,11 @@ Extensions generate images through `ctx.modelRegistry.generateImages()`, without
 
 An extension's registered model can include `cost.tiers`. Each tier supplies `inputTokensAbove` and the `input`, `output`, `cacheRead` and `cacheWrite` rates per million tokens. PiG keeps these thresholds and rates through Provider registration and model lookup, and the cost calculation picks the tier from total input usage.
 
-## Adding a model
+## Add a custom provider
+
+Use an extension when the provider needs custom streaming, model discovery, or sign-in behavior. See [Custom providers](custom-provider.md) for the extension workflow. To add a model for an endpoint PiG can already talk to, use [Configure models.json](#configure-modelsjson).
+
+### Add a built-in model (PiG contributors)
 
 New built-in models go into `ai/models_generated.go` and are committed in source. Extensions cannot add new built-in models, but they can register a new **provider** whose model catalog is independent (see `providers.md` and `extension-api.md`).
 

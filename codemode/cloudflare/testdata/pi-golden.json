@@ -1,5 +1,5 @@
 {
- "pin": "1.4.0+6c384aa3",
+ "pin": "1.5.0",
  "constants": {
   "defaultRemoteMemoryLimitBytes": 33554432
  },

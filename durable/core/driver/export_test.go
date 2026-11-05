@@ -52,3 +52,6 @@ type Session = coreSession
 
 // OpenSession is Open with the concrete session the external tests inspect.
 func OpenSession(ctx context.Context, cfg SessionConfig) (*Session, error) { return open(ctx, cfg) }
+
+// ClientForTest is the session's core client, for tests that drive the line below the Session API.
+func (s *Session) ClientForTest() *Client { return s.client }

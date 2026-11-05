@@ -101,7 +101,7 @@ var rootScope = durable.DocumentRecordScope{Kind: durable.ScopeConversation, Con
 // SeedStorageBenchmark seeds deterministic representative data through only the public Storage contract.
 func SeedStorageBenchmark(ctx context.Context, storage durable.Storage, scale StorageBenchmarkScale) (StorageBenchmarkDataset, error) {
 	var dataset StorageBenchmarkDataset
-	commit := func(writes ...durable.StorageWrite) (durable.Seq, error) { return storage.Commit(ctx, writes, adopt) }
+	commit := func(writes ...durable.StorageWrite) (durable.Seq, error) { return CommitWrites(ctx, storage, writes) }
 	if _, err := commit(durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}); err != nil {
 		return dataset, err
 	}
@@ -408,9 +408,9 @@ type StorageWriteBenchmark struct {
 
 // SeedStorageWriteBenchmark seeds the common state expected by every write benchmark sample.
 func SeedStorageWriteBenchmark(ctx context.Context, storage durable.Storage) error {
-	if _, err := storage.Commit(ctx, []durable.StorageWrite{
+	if _, err := CommitWrites(ctx, storage, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
-	}, adopt); err != nil {
+	}); err != nil {
 		return err
 	}
 	writes := make([]durable.StorageWrite, 0, 100)
@@ -423,7 +423,7 @@ func SeedStorageWriteBenchmark(ctx context.Context, storage durable.Storage) err
 			Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "benchmark.baseline", Data: map[string]any{"index": index},
 		}})
 	}
-	_, err := storage.Commit(ctx, writes, adopt)
+	_, err := CommitWrites(ctx, storage, writes)
 	return err
 }
 
@@ -437,10 +437,10 @@ var STORAGE_WRITE_BENCHMARKS = []StorageWriteBenchmark{
 			if err != nil {
 				return 0, err
 			}
-			_, err = storage.Commit(ctx, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
+			_, err = CommitWrites(ctx, storage, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
 				Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "benchmark.write",
 				Data: map[string]any{"text": strings.Repeat("x", 128)},
-			}}}, adopt)
+			}}})
 			return 1, err
 		},
 	},
@@ -459,7 +459,7 @@ var STORAGE_WRITE_BENCHMARKS = []StorageWriteBenchmark{
 					Data: map[string]any{"index": index, "text": strings.Repeat("x", 128)},
 				}})
 			}
-			_, err := storage.Commit(ctx, writes, adopt)
+			_, err := CommitWrites(ctx, storage, writes)
 			return int64(len(writes)), err
 		},
 	},
@@ -497,7 +497,7 @@ var STORAGE_WRITE_BENCHMARKS = []StorageWriteBenchmark{
 					Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: chorddelta.JsonObjectOf("entryId", entryId, "taskId", taskId)},
 				},
 			}
-			_, err = storage.Commit(ctx, writes, adopt)
+			_, err = CommitWrites(ctx, storage, writes)
 			return int64(len(writes)), err
 		},
 	},

@@ -397,6 +397,16 @@ func TestGeneratedCatalogV0741RemovalsAndRenames(t *testing.T) {
 	}
 }
 
+// Pi 2e0f175b: the catalog is generated from models.dev's v2 catalog, whose realtime and image models are not chat models, so
+// `gpt-realtime-2.1`, `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` are no longer offered (packages/ai/CHANGELOG.md, Unreleased).
+func TestGeneratedCatalogOmitsRealtimeAndImageModelsAsChatModels(t *testing.T) {
+	for _, spec := range []string{"azure/gpt-realtime-2.1", "openai/gpt-realtime-2.1", "google/gemini-3.1-flash-live-preview", "google/gemini-3.1-flash-lite-image"} {
+		if m, ok := LookupModel(spec); ok {
+			t.Errorf("LookupModel(%q) = %s/%s, want no chat model", spec, m.Provider, m.ID)
+		}
+	}
+}
+
 func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 	tests := []struct {
 		spec                string
@@ -550,21 +560,6 @@ func TestGeneratedCatalogUpgradeSpotChecks(t *testing.T) {
 				ThinkingXHigh: new("xhigh"),
 				ThinkingMax:   new("max"),
 			},
-		},
-		{
-			spec:               "azure/gpt-realtime-2.1",
-			wantProvider:       "azure",
-			wantName:           "GPT-Realtime-2.1",
-			wantAPI:            "azure-openai-responses",
-			wantMaxTokens:      32000,
-			wantContext:        128000,
-			wantInputCost:      4,
-			wantOutputCost:     24,
-			wantCacheReadCost:  0.4,
-			wantCacheWriteCost: 0,
-			wantReasoning:      true,
-			wantCapabilities:   []string{"text", "image"},
-			wantBaseURL:        "",
 		},
 	}
 

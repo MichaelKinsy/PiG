@@ -10,6 +10,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Ports packages/coding-agent/src/modes/rpc/rpc-client.ts (stop and exit reporting: terminateProcess, exitCodeAndSignal).
+
 // terminateProcess mirrors Node's kill("SIGTERM").
 func terminateProcess(process *os.Process) {
 	_ = process.Signal(syscall.SIGTERM)

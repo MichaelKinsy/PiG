@@ -33,13 +33,27 @@ impl FooterState {
             return (false, false);
         };
         let next = Snapshot {
-            branch: data.get("gitBranch").and_then(Value::as_str).filter(|branch| !branch.is_empty()).map(str::to_string),
+            branch: data
+                .get("gitBranch")
+                .and_then(Value::as_str)
+                .filter(|branch| !branch.is_empty())
+                .map(str::to_string),
             statuses: data
                 .get("extensionStatuses")
                 .and_then(Value::as_object)
-                .map(|statuses| statuses.iter().filter_map(|(key, text)| text.as_str().map(|text| (key.clone(), text.to_string()))).collect())
+                .map(|statuses| {
+                    statuses
+                        .iter()
+                        .filter_map(|(key, text)| {
+                            text.as_str().map(|text| (key.clone(), text.to_string()))
+                        })
+                        .collect()
+                })
                 .unwrap_or_default(),
-            providers: data.get("availableProviderCount").and_then(Value::as_u64).unwrap_or(0) as u32,
+            providers: data
+                .get("availableProviderCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0) as u32,
         };
         let mut current = self.snapshot.lock().unwrap();
         let branch_changed = next.branch != current.branch;
@@ -50,11 +64,23 @@ impl FooterState {
 
     /// Run the branch subscribers in subscription order. A panic in one is reported through `report`, as the Node runtime reports a failing subscriber, and does not stop the others.
     pub(crate) fn notify_branch(&self, report: impl Fn(String)) {
-        let mut callbacks: Vec<(u64, BranchCallback)> = self.subscribers.lock().unwrap().iter().map(|(id, callback)| (*id, callback.clone())).collect();
+        let mut callbacks: Vec<(u64, BranchCallback)> = self
+            .subscribers
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(id, callback)| (*id, callback.clone()))
+            .collect();
         callbacks.sort_by_key(|(id, _)| *id);
         for (_, callback) in callbacks {
-            if let Err(panic) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback())) {
-                let message = panic.downcast_ref::<&str>().map(|text| text.to_string()).or_else(|| panic.downcast_ref::<String>().cloned()).unwrap_or_default();
+            if let Err(panic) =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback()))
+            {
+                let message = panic
+                    .downcast_ref::<&str>()
+                    .map(|text| text.to_string())
+                    .or_else(|| panic.downcast_ref::<String>().cloned())
+                    .unwrap_or_default();
                 report(format!("footer branch subscriber failed: {message}"));
             }
         }
@@ -89,8 +115,17 @@ impl FooterData {
         F: Fn() + Send + Sync + 'static,
     {
         let id = self.state.footer.next.fetch_add(1, Ordering::SeqCst);
-        self.state.footer.subscribers.lock().unwrap().insert(id, Arc::new(callback));
-        BranchChangeSubscription { id, state: self.state.clone(), released: false }
+        self.state
+            .footer
+            .subscribers
+            .lock()
+            .unwrap()
+            .insert(id, Arc::new(callback));
+        BranchChangeSubscription {
+            id,
+            state: self.state.clone(),
+            released: false,
+        }
     }
 }
 
@@ -110,7 +145,12 @@ impl BranchChangeSubscription {
     fn release(&mut self) {
         if !self.released {
             self.released = true;
-            self.state.footer.subscribers.lock().unwrap().remove(&self.id);
+            self.state
+                .footer
+                .subscribers
+                .lock()
+                .unwrap()
+                .remove(&self.id);
         }
     }
 }

@@ -9,15 +9,20 @@ export type ModelRef = { provider: string; modelId: string }
 export type ModelContextEffect = {
   /** The conversation the request runs in: its newest kept list is not dropped by the host's bounds (ABI section 6, effect 3). */
   conversationId?: number
+  /** The span of the phase making the request (Context.telemetry), by the host's handle. */
+  span?: number
   model: ModelRef
   context?: { messages: unknown[] }
   extends?: number
   append?: unknown[]
   options?: Record<string, unknown>
+  /** The request is a generation's: the options carry an `onPayload` that asks the core to run the beforeProviderRequest chain (ABI section 6, effect 3). */
+  onPayload?: boolean
 }
 
 /** tool effect (effect 6). `handler` indexes the registry's handler table; hosts fall back to the first installed tool of that name. */
 export type ToolEffect = {
+  span?: number
   taskId: number
   conversationId: number
   toolName: string
@@ -29,19 +34,19 @@ export type ToolEffect = {
 }
 
 /** hook effect (effect 7): the core runs the chain rules of §7.2 and asks for one handler at a time. */
-export type HookEffect = { name: string; handler: number; conversationId: number; taskId: number; payload: Record<string, unknown> }
+export type HookEffect = { span?: number; name: string; handler: number; conversationId: number; taskId: number; payload: Record<string, unknown> }
 
 /** phase effect (effect 8): a custom task's phase handler, or its abort handler when `abort` is true. */
-export type PhaseEffect = { taskId: number; kind: string; phase?: string; record: unknown; invocation: number; handler?: number; abort?: true }
+export type PhaseEffect = { span?: number; taskId: number; kind: string; extension?: string; phase?: string; record: unknown; invocation: number; handler?: number; abort?: true }
 
 /** env effect (effect 9): build HarnessOptions.env for a task; the result stays in the host under `taskId` until the task ends. */
-export type EnvEffect = { conversationId: number; taskId?: number; cwd?: string }
+export type EnvEffect = { span?: number; conversationId: number; taskId?: number; cwd?: string }
 
 /** section effect (effect 11). */
-export type SectionEffect = { conversationId: number; taskId: number; section: number; input: Record<string, unknown> }
+export type SectionEffect = { span?: number; conversationId: number; taskId: number; section: number; input: Record<string, unknown> }
 
 /** deferred effect (effect 12). */
-export type DeferredEffect = { op: "fetch" | "cancel"; model: ModelRef; handle: unknown }
+export type DeferredEffect = { span?: number; op: "fetch" | "cancel"; model: ModelRef; handle: unknown }
 
 /** callback effect (effect 13): host code Pi runs inside an open commit callback, with the section 8 channel bound to `txId`. */
 export type CallbackEffect = { name: string; txId: number; payload: Record<string, unknown> }
@@ -49,14 +54,16 @@ export type CallbackEffect = { name: string; txId: number; payload: Record<strin
 /** tool.ts readCall: a nested call's hook call carries the call that made it, `{ ...call, parent: { taskId, callId } }`; the core sends it beside the call. */
 const hookCall = (p: Record<string, any>) => (p.parent === undefined ? p.call : { ...p.call, parent: p.parent })
 
-/** The positional arguments each hook of §7.2 receives before `(api, context)`, from the effect's `payload`. */
-export const HOOK_ARGUMENTS: Record<string, (payload: Record<string, any>) => unknown[]> = {
+/** The positional arguments each hook of §7.2 receives before `(api, context)`, from the effect's `payload`; `models` resolves the model a hook names. */
+export const HOOK_ARGUMENTS: Record<string, (payload: Record<string, any>, models: { getModel(provider: string, modelId: string): unknown }) => unknown[]> = {
   beforeRequest: p => [{ messages: p.messages }],
+  beforeProviderRequest: (p, models) => [{ model: models.getModel(p.model.provider, p.model.modelId), payload: p.payload }],
   afterResponse: p => [p.message],
   onYield: p => [p.answer],
   afterTools: p => [p.assistant, p.results],
   beforeTool: p => [hookCall(p)],
   afterTool: p => [hookCall(p), p.result],
+  afterRun: p => [p.run],
   beforeCompact: p => [p.compaction],
   prepareArguments: p => [p.arguments],
 }
@@ -80,15 +87,21 @@ export type DocAddress = { scope: "session" | "conversation" | "task"; definitio
 export type ApiAnswer = { ok: unknown } | { error: WireError }
 
 /** tx_result bodies (ABI section 8): the line is held (`ready`), queued (`waiting`), an operation's answer, or Pi's rejection. */
-export type TxAnswer = { ready: true; current?: unknown } | { waiting: true } | { gated: true } | { result: unknown } | { rejected: WireError }
+export type TxAnswer = { ready: true; current?: unknown } | { waiting: true } | { result: unknown } | { rejected: WireError }
 
 export type PublishedNotice = {
   submissions?: { id?: number; requestId: string; status: string }[]
   entries?: number[]
   tasks?: { id: number; kind: string; status: string }[]
   seq?: number
+  /** The span of the commit's Context, by the host's handle. */
+  span?: number
   /** The commit's complete publication (types.ts CommitChange[]); present while a commit listener is subscribed. */
   changes?: unknown[]
+  /** A deferred commit adopted in memory only (CommitPersistence): `changes` are its document changes, and nothing was stored (session.ts ObservedCommit). */
+  memory?: boolean
+  /** The changes the Session's own observers see when the transaction also stored held changes (`changes` is what Storage got, the held operations first); empty for a deadline's store. Absent: `changes`. */
+  observed?: unknown[]
   watchId?: number
   frame?: unknown
 }

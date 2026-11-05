@@ -39,11 +39,15 @@ Print, JSON and RPC modes cannot show the trust prompt. Without an override, ext
 
 Use `/trust` to manage the current project decision. The selector shows the saved decision and the current session's trust state separately. A checkmark stays on the saved choice while you browse. Select **Trust parent folder** to trust the parent and clear the current project's override. Restart PiG after changing trust so startup discovery runs under the new decision.
 
+[Project trust](/docs/latest/trust) explains each step of the decision and compares it with Pi.
+
 ## Sessions and credentials
 
 Sessions can contain prompts, tool arguments, command output, file contents and credentials that appeared in the conversation. Review a session before you export or share it.
 
 PiG creates the agent directory, the `sessions` directory and each project's session directory with mode 0700 when it creates them. Pi creates them with the umask default, usually 0755 (D132, Pi #10770). A directory that already exists keeps its mode. `auth.json` is created owner-only (mode 0600 on POSIX, an owner-only DACL on Windows, D68).
+
+The mode 0700 protects only a directory that PiG creates. Session files are created with mode 0644, and `trust.json` is written with mode 0644. On a shared machine, rely on the mode of the parent directory or on a separate account.
 
 ## Extensions
 
@@ -79,7 +83,7 @@ Package installation never activates a Piglet. A Piglet separately selects an ag
 
 ## Piglets
 
-A Piglet is explicit composition, not a security boundary. It can narrow tools and discovery, declare secrets, and require an environment.
+Stock PiG has the same security boundary as Pi. It runs as the user, and it has no sandbox. A Piglet does not change that. A Piglet is a declaration, and stock PiG applies it as a narrowing of tools and discovery.
 
 Use exact tool lists and empty discovery lists when an application must not inherit ambient Resources:
 
@@ -90,7 +94,51 @@ discovery:
   skills: []
 ```
 
-Command-line and platform policy can narrow a Piglet. They must not silently widen it.
+Command-line options can narrow a Piglet. They cannot widen it. An overlay that widens `tools`, `discovery`, `agentEnv`, the `tools` of an extension it names again, or removes a strip entry needs `extends.allowWiden: true`. An overlay can add a new extension without it.
+
+A Piglet Binary adds guarantees that stock PiG does not give. The next section lists them. It also lists what a Piglet Binary does not guarantee.
+
+## What a Piglet Binary guarantees
+
+The guarantees below hold for a Piglet Binary built with `build.closed: true`. A Binary is open by default. It behaves as stock PiG started with its Piglet: it accepts an overlay Piglet, `--system-prompt` and ambient Resources that its effective Piglet's `discovery` allows. Organizations opt in to the closed Binary. Build a controlled deployment with `build.closed: true`.
+
+**Fused extensions.** A fused extension is compiled into the executable. The Binary starts it in the PiG process. It does not build, download, or run a subprocess for it. A fused extension that fails to load is reported and is not replaced by a subprocess. At startup the Binary checks that the fused extensions equal the component plan it was built with. It exits when they differ.
+
+**No Piglet or ambient Resource selection at run time.** A closed Binary refuses `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME` and `--system-prompt`, and each refusal names `build.closed`. It loads no ambient extension or skill, even when its Piglet lists a discovery scope.
+
+**No extension or MCP server added at run time.** A closed Binary refuses `-e`/`--extension` (a path, `npm:` or `git:` source), `pig install`, `pig remove`, `pig update --extensions` and `pig mcp add`, and each refusal names the option, the Binary and `build.closed`. It ignores `settings.extensions` and the servers of the user and project `mcp.json`, and reports a notice. Only what its signed closure lists runs; an extension in the closure can still register MCP servers.
+
+**A fixed set of fused and packed extensions.** At startup the Binary checks that the fused and packed extensions that start have the names its component plan lists, no more and no fewer. This is a check of names. It does not pin `PATH` for tools or runtimes. Startup does not install a Package or download a component.
+
+**Tool ceilings.** The `tools` list of a Piglet, and the `tools` list of an extension entry, are a ceiling. The session tool registry admits a tool only when the ceiling, `--tools` and `--exclude-tools` all admit it. A tool outside the ceiling is not listed, is not active, and is not reachable by `codemode` or `tool_search`. A later `setActiveTools` call, a late registration, or a reload cannot bring it back. The ceiling does not filter the arguments, paths or output of a tool that it admits. A Piglet with no `extensions:` section keeps every MCP tool, and a tool of an extension that the Piglet does not name is kept.
+
+**Strips that overlays cannot undo.** A strip entry marked `stripped(binary)` names code that a build tag left out of the executable. An overlay cannot re-enable it, with or without `extends.allowWiden`. The strip list is part of the Binary record digest.
+
+**Signed Binaries.** A Binary built with `--sign-key` carries an Ed25519 signature in a DSSE envelope. At every start the Binary verifies the signature offline. It refuses to run when the executable, the manifest, or the signature changed. With `pig piglet trust require on`, a Binary without a signature from a locally trusted key does not run, and `pig piglet pull` does not install it. `pig piglet pull` also verifies the DSSE release index and pins the first signer of each Piglet.
+
+**A container for the agent, when the Piglet declares one.** A source Piglet with `agentEnv.image` and `pigRuntime.mode: image` runs `pig` in a container. The container runs as the invoking user with all capabilities dropped, `no-new-privileges`, a read-only root file system and limits on memory, CPU and processes. It does not receive the host environment. It receives only the secrets that `agentEnv.secrets` binds with a declared `secretRef`, and the fixed `PIG_*` variables that the launch sets. If the environment cannot start, PiG does not fall back to the host.
+
+## What a Piglet Binary does not guarantee
+
+- **It is not a sandbox.** A Binary runs as the user. The fused code shares the PiG process. The model can still run the tools that the ceiling leaves.
+- **An open Binary does not stop `-e`, `pig install` or MCP configuration.** An open Binary loads an extension that the user names with `-e` (a path, `npm:` or `git:` source), accepts the package commands, and loads the MCP servers of the user configuration and of a trusted project, as stock PiG does. Only a closed Binary (`build.closed: true`) refuses them. Strip `mcp` to remove MCP from a Binary of either kind.
+- **It does not pin `PATH` or runtimes.** The `bash` tool, MCP servers and extensions find programs through the inherited `PATH`. A Node extension runs the `node` found on `PATH`. A Python or Lisp source extension finds `uv`, Python or SBCL on `PATH`.
+- **The signature is a self-check.** A signature proves that the file is unchanged since a key signed it. A person who can rewrite the Binary and the trust store can sign a replacement. An unsigned Binary runs unless `trust require` is on.
+- **Revocation is local.** `pig piglet trust revoke` changes a file on one machine. There is no revocation list, no key expiry and no online check. Distribute the `revoked` file with your configuration tool.
+- **Builds are not locked.** `pig piglet build --locked` and `--record` fail with "not implemented". A Binary record holds digests, and `pig piglet verify --source` checks them.
+- **The `agentEnv` container is not available for a Binary.** `pig piglet build` refuses a Piglet with `agentEnv`. The container runs only for a source Piglet that names an image. The `--unsafe-host` option skips the container and prints a warning. The container network is the default bridge network, and no setting limits it. A command that the `bash` tool runs inherits the container environment, including the bound secrets.
+
+## What needs the planned Piglet Image
+
+A Piglet Image is planned and is not built today. `pig piglet build --format image` fails with `Piglet Image build is not implemented`. These need it:
+
+- a Binary that carries its own `agentEnv` and starts inside it;
+- the Dev Container and materialized source forms of `agentEnv`;
+- `pigRuntime` modes other than `image`, and `agentEnv` together with `extends`;
+- secret file targets;
+- an environment that one signed artifact fixes, so that the host cannot swap the image.
+
+Until then, a container or virtual machine around the Binary, a network policy and a pinned image stay your job.
 
 ## Secrets
 
@@ -137,6 +185,29 @@ A Sigstore keyless attestation is separate build-provenance evidence. `pig verif
 It does not silently install, download, substitute, or weaken missing requirements. Verify the release checksum, offline signature, and available provenance before execution.
 
 A Binary can still require external services, configuration, runtimes, and secrets. Read its record instead of assuming that one file is self-contained.
+
+## Enterprise deployment
+
+An enterprise review asks for a set of controls. This table maps each to a Piglet setting. A row that says "No setting" has no control in PiG today. Provide that control outside PiG.
+
+| Control | Piglet setting | What it gives | Limit |
+|---|---|---|---|
+| C1: run untrusted tools and extensions inside an operating-system boundary, with a low-privilege account | `agentEnv.image` with `pigRuntime.mode: image`, on a source Piglet. For a Binary, run it in a container or virtual machine that you provide. | The agent runs in a container as the invoking user, with no capabilities, no new privileges and a read-only root file system. | Not available inside a Binary. `--unsafe-host` skips it. The network is not restricted. |
+| C2a: run model-chosen commands as an argument array, never through a shell | `tools` without `bash` or `powershell`, or `strip.tools`. | The model has no shell tool. | No setting makes the `bash` tool use an argument array. It always runs `shell -c <command>`. |
+| C2b: allow only listed commands and arguments | No setting. | None. Omit `bash` as above, and give the model a fused extension tool that runs only the commands you accept. | A fused extension tool is code you review. PiG does not check it. |
+| C3a: children get a minimal environment and a secrets broker | `agentEnv.secrets` with `secretRef`, and `secrets` declarations. | The container receives only the bound secrets, not the host environment. | A command that the `bash` tool runs inherits the whole container environment. No per-tool filter or broker exists. |
+| C3b: pin an absolute `PATH` | No setting. | None. Set `PATH` in the image. | Node, Python and Lisp source extensions find their runtimes on `PATH`. |
+
+Build a controlled Binary in these steps:
+
+1. Set an exact `tools` list, and set `discovery.extensions: []` and `discovery.skills: []`.
+2. Strip the built-ins that the application does not need, with `strip`.
+3. Set `build.closed: true`, and add `mcp` to `strip.extensions` when the application needs no MCP server.
+4. Build with `--sign-key`. Run `pig piglet trust add` for the publisher key, and run `pig piglet trust require on` on each host.
+5. Run the Binary in a container or virtual machine that you provide, with the secrets injected at run time. The closed Binary refuses `-e`, the package commands and MCP configuration, so the command line cannot add code. The Binary fixes what it ships, and the container fixes what it can reach.
+6. Run `pig verify <binary>` and `pig piglet verify <binary> --source <piglet.yaml>` before you release it. The second command fails when the source differs from the baked Piglet, which includes a source that turns `build.closed` off.
+
+An open Binary refuses nothing for `--piglet`. A closed Binary refuses `--piglet` with a message that names `build.closed`. Use that message to test a build.
 
 ## Network content
 

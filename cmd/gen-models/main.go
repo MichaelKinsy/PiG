@@ -1,17 +1,19 @@
-// Command gen-models reads upstream pi's catalog and emits ai/models_generated.go. Optional raw models.dev and OpenRouter API snapshots regenerate verified effort controls before emission.
-//
-// Run via `go generate ./ai/...` or directly:
+// Command gen-models has two jobs. With -src it reads upstream pi's generated catalog (models.generated.ts or .js and the provider
+// data its shards import) and emits ai/models_generated.go and its companions:
 //
 //	go run ./cmd/gen-models \
 //	  -src .upstream/current/packages/ai/src/models.generated.ts \
 //	  -out ai/models_generated.go
+//
+// Without -src it ports packages/ai/catalog/generate.ts: it fetches models.dev (v2), OpenRouter, Vercel AI Gateway, NVIDIA NIM and
+// Radius, builds every provider's catalog (internal/modelgen/providers) and writes the provider data files (-data-output) and
+// the public catalog JSON (-json-output), byte for byte as Pi's generator writes them.
 package main
 
 import (
 	"bufio"
 	"bytes"
 	"cmp"
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -125,31 +127,37 @@ var (
 )
 
 func main() {
-	src := flag.String("src", "", "path to upstream models.generated.ts or .js")
+	src := flag.String("src", "", "path to upstream models.generated.ts or .js: emit the Go catalogs from it")
 	out := flag.String("out", "ai/models_generated.go", "output Go file for chat models")
 	imageOut := flag.String("image-out", "", "output Go file for image models (default image_models_generated.go beside -out)")
 	classifierOut := flag.String("classifier-out", "", "output Go file for classifier models (default classifier_models_generated.go beside -out)")
 	providerOut := flag.String("provider-out", "", "output Go file for the barrel's provider ids (default providers_generated.go beside -out)")
-	modelsDev := flag.String("models-dev", "", "raw models.dev API JSON snapshot for verified reasoning controls")
-	openRouter := flag.String("openrouter", "", "raw OpenRouter models API JSON snapshot for reasoning controls")
-	strict := flag.Bool("strict", false, "validate models.dev Individual model membership before publication")
-	jsonOnly := flag.Bool("json-only", false, "emit the models.dev Fireworks and Qwen Token Plan stages as JSON without changing Go catalogs")
-	jsonOutput := flag.String("json-output", "", "output directory for models.dev JSON catalogs")
-	pretty := flag.Bool("pretty", false, "indent JSON catalog output")
+	strict := flag.Bool("strict", false, "generation: fail instead of degrading when upstream data is unexpected")
+	dataOnly := flag.Bool("data-only", false, "generation: regenerate the provider data files of the providers already in -data-output")
+	jsonOnly := flag.Bool("json-only", false, "generation: write only the public catalog JSON (-json-output)")
+	jsonOutput := flag.String("json-output", "", "generation: output directory for the public catalog JSON")
+	dataOutput := flag.String("data-output", "", "generation: directory for the provider data files (<provider>.json and .manifest.json)")
+	pretty := flag.Bool("pretty", false, "generation: indent JSON output")
+	record := flag.String("record", "", "generation: store every upstream response under this directory")
+	replay := flag.String("replay", "", "generation: serve the responses recorded under this directory instead of fetching")
 	flag.Parse()
-	if *src == "" && (*strict || *jsonOnly || *jsonOutput != "") {
-		if *jsonOnly && *jsonOutput == "" {
-			fmt.Fprintln(os.Stderr, "--json-only requires --json-output")
-			os.Exit(1)
-		}
-		if err := generateModelsDev(context.Background(), modelsDevGeneratorOptions{Strict: *strict, JSONOnly: *jsonOnly, JSONOutput: *jsonOutput, Pretty: *pretty, GoOutput: *out}); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
-	}
 	if *src == "" {
+		if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" {
+			if err := configureFixtures(*record, *replay); err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				os.Exit(1)
+			}
+			if err := generateModels(generatorOptions{strict: *strict, dataOnly: *dataOnly, jsonOnly: *jsonOnly, jsonOutputDir: *jsonOutput, dataOutputDir: *dataOutput, pretty: *pretty}); err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", err)
+				os.Exit(1)
+			}
+			return
+		}
 		fmt.Fprintln(os.Stderr, "gen-models: -src is required")
+		os.Exit(2)
+	}
+	if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" {
+		fmt.Fprintln(os.Stderr, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record and -replay generate catalog data and cannot be combined with -src")
 		os.Exit(2)
 	}
 	if *imageOut == "" {
@@ -168,13 +176,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "load:", err)
 		os.Exit(1)
 	}
-	applyCarriedFixes(&catalog)
 	if len(catalog.Chat) == 0 {
 		fmt.Fprintln(os.Stderr, "gen-models: parsed 0 models: refusing to clobber output")
-		os.Exit(1)
-	}
-	if err := applyVendorReasoning(catalog.Chat, *modelsDev, *openRouter); err != nil {
-		fmt.Fprintln(os.Stderr, "reasoning:", err)
 		os.Exit(1)
 	}
 	if err := emit(*out, *src, catalog.Chat); err != nil {
@@ -737,9 +740,11 @@ func emit(path, src string, rows []modelRow) error {
 	b.WriteString("\t// Record is the entry's JSON as Pi's catalog data spells it: the model object Pi serializes, member order included.\n")
 	b.WriteString("\tRecord string\n")
 	b.WriteString("}\n\n")
-	fmt.Fprintf(&b, "// GeneratedModels is the static catalog (%d entries).\n", len(rows))
-	b.WriteString("var GeneratedModels = []GeneratedModel{\n")
-	for _, r := range rows {
+	fmt.Fprintf(&b, "// GeneratedModels is the static catalog (%d entries). generatedCatalog gives its rows the shared maps the tables below hold.\n", len(rows))
+	b.WriteString("var GeneratedModels = generatedCatalog()\n\n")
+	b.WriteString("// generatedRows are the catalog's rows as the linker lays them out: a row's maps are not part of the layout, so generatedCatalog sets them.\n")
+	b.WriteString("var generatedRows = [...]GeneratedModel{\n")
+	for i, r := range rows {
 		b.WriteString("\t{\n")
 		fmt.Fprintf(&b, "\t\tID: %q,\n", r.ID)
 		fmt.Fprintf(&b, "\t\tProvider: %q,\n", r.Provider)
@@ -747,7 +752,7 @@ func emit(path, src string, rows []modelRow) error {
 		fmt.Fprintf(&b, "\t\tAPI: %q,\n", r.API)
 		fmt.Fprintf(&b, "\t\tBaseURL: %q,\n", r.BaseURL)
 		if len(r.Headers) > 0 {
-			fmt.Fprintf(&b, "\t\tHeaders: %s,\n", catalogHeaderMaps.ref(fmt.Sprintf("%#v", r.Headers)))
+			catalogHeaderMaps.assign(i, pairsLiteral(r.Headers, strconv.Quote))
 		}
 		if r.Compat != nil {
 			compat, err := json.Marshal(r.Compat)
@@ -757,15 +762,13 @@ func emit(path, src string, rows []modelRow) error {
 			fmt.Fprintf(&b, "\t\tCompat: %s,\n", catalogCompats.ref(compatLiteral(string(compat))))
 		}
 		if len(r.ThinkingLevelMap) > 0 {
-			fmt.Fprintf(&b, "\t\tThinkingLevelMap: %s,\n", catalogThinkingLevelMaps.ref(thinkingLevelMapLiteral(r.ThinkingLevelMap)))
+			catalogThinkingLevelMaps.assign(i, thinkingLevelPairs(r.ThinkingLevelMap))
 		}
 		if len(r.SamplingParams) > 0 {
-			// %#v spells map[string]any as map[string]interface {}; the table's literals spell their element type.
-			literal := "map[string]any" + strings.TrimPrefix(fmt.Sprintf("%#v", r.SamplingParams), "map[string]interface {}")
-			fmt.Fprintf(&b, "\t\tSamplingParams: %s,\n", catalogSamplingParams.ref(literal))
+			catalogSamplingParams.assign(i, pairsLiteral(r.SamplingParams, samplingValueLiteral))
 		}
 		if len(r.PromptCache) > 0 {
-			fmt.Fprintf(&b, "\t\tPromptCache: %s,\n", promptCacheLiteral(r.PromptCache))
+			catalogPromptCaches.assign(i, pairsLiteral(r.PromptCache, func(v float64) string { return strconv.FormatFloat(v, 'g', -1, 64) }))
 		}
 		if r.InputLimits != nil {
 			fmt.Fprintf(&b, "\t\tInputLimits: %s,\n", catalogInputLimits.ref(inputLimitsLiteral(r.InputLimits)))
@@ -809,6 +812,7 @@ func emit(path, src string, rows []modelRow) error {
 			b.WriteString(table.declaration())
 		}
 	}
+	b.WriteString(catalogResolver())
 	formatted, err := format.Source([]byte(b.String()))
 	if err != nil {
 		return fmt.Errorf("format generated source: %w", err)
@@ -1065,17 +1069,6 @@ func inputLimitsLiteral(limits *jsonModelInputLimits) string {
 	return "&ModelInputLimits{" + strings.Join(fields, ", ") + "}"
 }
 
-func promptCacheLiteral(values map[string]float64) string {
-	keys := slices.Sorted(maps.Keys(values))
-	var b strings.Builder
-	b.WriteString("ModelPromptCache{")
-	for _, key := range keys {
-		fmt.Fprintf(&b, "%q: %s, ", key, strconv.FormatFloat(values[key], 'g', -1, 64))
-	}
-	b.WriteString("}")
-	return b.String()
-}
-
 func catalogProvidersLiteral(providers []jsonCatalogProvider) string {
 	var b strings.Builder
 	b.WriteString("[]ModelCatalogProvider{")
@@ -1254,53 +1247,113 @@ func resetCatalogStrings() {
 	catalogStrings.index = map[string]int{}
 	catalogStrings.list = nil
 	for _, table := range catalogMapTables {
-		table.index, table.list = map[string]int{}, nil
+		table.index, table.list, table.refs = map[string]int{}, nil, nil
 	}
 }
 
 // The catalog's map members, and its Compat and InputLimits pointers, refer to one shared value per distinct content instead of a literal per model: every map in a package-level initializer is built when the process starts, and most models repeat a few thinking-level, header and sampling maps. Nothing writes through them; the registry copies a model's maps, compat and input limits before handing them out.
+//
+// A map is not laid out by the linker, so a row cannot name one in generatedRows without code that stores it when the process starts, one store for each row that has one. A table of maps therefore holds each distinct map as a list of key and value pairs, which the linker does lay out and generatedMaps builds the maps from, and a list of refs that generatedCatalog walks to give each row its map: a few instructions for all rows, where a store for each row cost kilobytes of code.
 type catalogMapTable struct {
 	name, doc, elem string
 	// pointer means the table's literals are &elem{...} and ref names an element's address.
 	pointer bool
-	index   map[string]int
-	list    []string
+	// field, keyType and valueType make the table one of maps: field is the row member a map is set on, and keyType and valueType spell the map's.
+	field, keyType, valueType string
+	// own means each row that has a map of the table gets a map of its own, as a map literal on the row would give it; the others share one map for
+	// each distinct content, as Headers and ThinkingLevelMap do.
+	own   bool
+	index map[string]int
+	list  []string
+	// refs are the rows that have a map of the table, in row order, and the element each has.
+	refs []catalogMapRef
 }
 
+// catalogMapRef is a row and the element of a table of maps it has.
+type catalogMapRef struct{ row, element int }
+
 var (
-	catalogHeaderMaps        = &catalogMapTable{name: "generatedHeaders", doc: "the distinct Headers maps", elem: "map[string]string"}
-	catalogThinkingLevelMaps = &catalogMapTable{name: "generatedThinkingLevelMaps", doc: "the distinct ThinkingLevelMap maps", elem: "map[ModelThinkingLevel]*string"}
-	catalogSamplingParams    = &catalogMapTable{name: "generatedSamplingParams", doc: "the distinct SamplingParams maps", elem: "map[string]any"}
+	catalogHeaderMaps        = &catalogMapTable{name: "generatedHeaders", doc: "the distinct Headers maps", field: "Headers", keyType: "string", valueType: "string"}
+	catalogThinkingLevelMaps = &catalogMapTable{name: "generatedThinkingLevelMaps", doc: "the distinct ThinkingLevelMap maps", field: "ThinkingLevelMap", keyType: "ModelThinkingLevel", valueType: "*string"}
+	catalogSamplingParams    = &catalogMapTable{name: "generatedSamplingParams", doc: "the distinct SamplingParams maps", field: "SamplingParams", keyType: "string", valueType: "any", own: true}
+	catalogPromptCaches      = &catalogMapTable{name: "generatedPromptCaches", doc: "the distinct PromptCache maps", field: "PromptCache", keyType: "string", valueType: "float64", own: true}
 	catalogCompats           = &catalogMapTable{name: "generatedCompats", doc: "the distinct Compat values", elem: "ModelCompat", pointer: true}
 	catalogInputLimits       = &catalogMapTable{name: "generatedInputLimits", doc: "the distinct InputLimits values", elem: "ModelInputLimits", pointer: true}
-	catalogMapTables         = []*catalogMapTable{catalogHeaderMaps, catalogThinkingLevelMaps, catalogSamplingParams, catalogCompats, catalogInputLimits}
+	catalogMapTables         = []*catalogMapTable{catalogHeaderMaps, catalogThinkingLevelMaps, catalogSamplingParams, catalogPromptCaches, catalogCompats, catalogInputLimits}
 )
 
-// ref interns literal, a map literal spelling the table's element type, in first-use order and returns the expression naming its shared map.
-func (t *catalogMapTable) ref(literal string) string {
-	if literal == "nil" {
-		return literal
-	}
+// intern returns the index of literal in the table, adding it in first-use order.
+func (t *catalogMapTable) intern(literal string) int {
 	i, ok := t.index[literal]
 	if !ok {
 		i = len(t.list)
 		t.index[literal] = i
 		t.list = append(t.list, literal)
 	}
+	return i
+}
+
+// ref interns literal, a value literal spelling the table's element type, in first-use order and returns the expression naming its shared value.
+func (t *catalogMapTable) ref(literal string) string {
+	if literal == "nil" {
+		return literal
+	}
+	i := t.intern(literal)
 	if t.pointer {
 		return fmt.Sprintf("&%s[%d]", t.name, i)
 	}
 	return fmt.Sprintf("%s[%d]", t.name, i)
 }
 
-// declaration declares the table's shared maps. The array's elements elide the element type their literals spell.
+// assign interns literal, the pairs of a map as pairsLiteral spells them, and records that row has the map.
+func (t *catalogMapTable) assign(row int, literal string) {
+	t.refs = append(t.refs, catalogMapRef{row, t.intern(literal)})
+}
+
+// declaration declares the table's shared values. The array's elements elide the element type their literals spell.
 func (t *catalogMapTable) declaration() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\n// %s is %s the catalog refers to.\nvar %s = [...]%s{\n", t.name, t.doc, t.name, t.elem)
+	if t.pointer {
+		fmt.Fprintf(&b, "\n// %s is %s the catalog refers to.\nvar %s = [...]%s{\n", t.name, t.doc, t.name, t.elem)
+		for _, literal := range t.list {
+			fmt.Fprintf(&b, "\t%s,\n", strings.TrimPrefix(literal, "&"+t.elem))
+		}
+		b.WriteString("}\n")
+		return b.String()
+	}
+	if t.own {
+		fmt.Fprintf(&b, "\n// %sPairs is %s the catalog refers to; generatedCatalog builds a map of its own from one of them for each row.\n", t.name, t.doc)
+	} else {
+		fmt.Fprintf(&b, "\n// %s is %s the catalog refers to; generatedCatalog builds them from %sPairs.\nvar %s [%d]map[%s]%s\n\n", t.name, t.doc, t.name, t.name, len(t.list), t.keyType, t.valueType)
+	}
+	fmt.Fprintf(&b, "var %sPairs = [...][]generatedPair[%s, %s]{\n", t.name, t.keyType, t.valueType)
 	for _, literal := range t.list {
-		fmt.Fprintf(&b, "\t%s,\n", strings.TrimPrefix(literal, map[bool]string{true: "&"}[t.pointer]+t.elem))
+		fmt.Fprintf(&b, "\t%s,\n", literal)
 	}
 	b.WriteString("}\n")
+	fmt.Fprintf(&b, "\n// %sRefs lists the rows that have one of %s, and the one each has.\nvar %sRefs = [...]generatedMapRef{", t.name, t.name, t.name)
+	for i, ref := range t.refs {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "{%d, %d}", ref.row, ref.element)
+	}
+	b.WriteString("}\n")
+	return b.String()
+}
+
+// catalogResolver is generatedCatalog, which gives the rows their maps.
+func catalogResolver() string {
+	var b strings.Builder
+	b.WriteString("\n// generatedCatalog sets the maps of generatedRows and returns them as the catalog.\nfunc generatedCatalog() []GeneratedModel {\n")
+	for _, table := range catalogMapTables {
+		if table.own && len(table.list) > 0 {
+			fmt.Fprintf(&b, "\tfor _, ref := range %sRefs {\n\t\tgeneratedRows[ref.row].%s = generatedMap(%sPairs[ref.element])\n\t}\n", table.name, table.field, table.name)
+		} else if table.field != "" && len(table.list) > 0 {
+			fmt.Fprintf(&b, "\tgeneratedBuildMaps(%s[:], %sPairs[:])\n\tfor _, ref := range %sRefs {\n\t\tgeneratedRows[ref.row].%s = %s[ref.element]\n\t}\n", table.name, table.name, table.name, table.field, table.name)
+		}
+	}
+	b.WriteString("\treturn generatedRows[:]\n}\n")
 	return b.String()
 }
 
@@ -1325,18 +1378,39 @@ func catalogPointerValues() string {
 	return b.String()
 }
 
-func thinkingLevelMapLiteral(m map[string]*string) string {
+// pairsLiteral spells m as the pairs of a generatedPair list, in key order, with literal spelling a value.
+func pairsLiteral[V any](m map[string]V, literal func(V) string) string {
 	keys := slices.Sorted(maps.Keys(m))
 	parts := make([]string, 0, len(keys))
 	for _, key := range keys {
-		value := m[key]
-		if value == nil {
-			parts = append(parts, fmt.Sprintf("ModelThinkingLevel(%q): nil", key))
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("ModelThinkingLevel(%q): %s", key, stringPtrLit(*value)))
+		parts = append(parts, fmt.Sprintf("{%q, %s}", key, literal(m[key])))
 	}
-	return "map[ModelThinkingLevel]*string{" + strings.Join(parts, ", ") + "}"
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// samplingValueLiteral spells a JSON sampling value as a Go value of type any: null is nil, and a number is a float64, as encoding/json decodes it.
+func samplingValueLiteral(v any) string {
+	switch v := v.(type) {
+	case nil:
+		return "nil"
+	case float64:
+		return "float64(" + strconv.FormatFloat(v, 'g', -1, 64) + ")"
+	case string:
+		return strconv.Quote(v)
+	case bool:
+		return strconv.FormatBool(v)
+	}
+	return fmt.Sprintf("%#v", v)
+}
+
+// thinkingLevelPairs spells a thinking level map as the pairs of a generatedPair list.
+func thinkingLevelPairs(m map[string]*string) string {
+	return pairsLiteral(m, func(value *string) string {
+		if value == nil {
+			return "nil"
+		}
+		return stringPtrLit(*value)
+	})
 }
 
 func basename(p string) string {

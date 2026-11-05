@@ -10,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/sqlite"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
@@ -29,7 +30,7 @@ func cacheTestStorage(t *testing.T) *sqlite.SqliteStorage {
 
 func commitWrites(t *testing.T, storage durable.Storage, writes ...durable.StorageWrite) {
 	t.Helper()
-	if _, err := storage.Commit(testContext, writes, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(testContext, storage, writes); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -113,7 +114,7 @@ func (s *cacheScenario) read(conversation durable.ConversationId) {
 	if ids := s.ids[conversation]; len(ids) > 0 && s.random.Intn(3) == 0 {
 		at = new(ids[s.random.Intn(len(ids))])
 	}
-	bounds, err := CaptureContextBounds(testContext, s.storage, conversation, at)
+	bounds, err := CaptureContextBounds(testContext, inlineLine{s.storage}, s.storage, conversation, at, false)
 	if err != nil {
 		// An entry of another conversation's ancestry the fork cannot see.
 		return
@@ -122,7 +123,7 @@ func (s *cacheScenario) read(conversation durable.ConversationId) {
 	if err != nil {
 		s.t.Fatal(err)
 	}
-	got, rng, err := readContextFrom(testContext, inlineLine{}, s.storage, conversation, at, s.ranges[conversation])
+	got, rng, err := readContextFrom(testContext, inlineLine{s.storage}, s.storage, conversation, at, s.ranges[conversation])
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -219,7 +220,7 @@ func TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut(t *testing.T) {
 	s := newCacheScenario(t, 99)
 	s.turn(1)
 	read := func() durable.ContextView {
-		view, rng, err := readContextFrom(testContext, inlineLine{}, s.storage, 1, nil, s.ranges[1])
+		view, rng, err := readContextFrom(testContext, inlineLine{s.storage}, s.storage, 1, nil, s.ranges[1])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +255,26 @@ func TestContextRangeViewsAreNotWrittenAfterTheyAreHandedOut(t *testing.T) {
 	}
 }
 
-// inlineLine runs line jobs at once; the scenarios commit and read from one goroutine.
-type inlineLine struct{}
+// inlineLine runs line jobs at once on its storage; the scenarios commit and read from one goroutine. It knows no newest
+// entry, so a range it reads is never current.
+type inlineLine struct{ storage durable.Storage }
 
-func (inlineLine) ReadOnLine(_ context.Context, job func() (any, error)) (any, error) { return job() }
+func (line inlineLine) ReadOnLine(_ context.Context, job func(storage durable.Storage) (any, error)) (any, error) {
+	return job(line.storage)
+}
+
+func (line inlineLine) LatestEntryId(ctx context.Context, conversationId durable.ConversationId) (*durable.EntryId, error) {
+	page, err := line.storage.ScanEntries(ctx, durable.EntryQuery{ConversationId: conversationId}, 1, nil)
+	if err != nil || len(page.Items) == 0 {
+		return nil, err
+	}
+	return &page.Items[0].Id, nil
+}
+
+func (line inlineLine) LatestHeadMarker(ctx context.Context, conversationId durable.ConversationId, atOrBefore *durable.EntryId) (*durable.EntryRecord, error) {
+	return line.storage.FindLatestHeadMarker(ctx, conversationId, atOrBefore)
+}
+
+func (inlineLine) KnownLatestEntryId(durable.ConversationId) (*durable.EntryId, bool) {
+	return nil, false
+}

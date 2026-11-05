@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"errors"
 	"math"
 	"slices"
 
@@ -20,6 +19,10 @@ import (
 //   - Upstream's optional `options` argument is a trailing variadic of one durable.CommitOptions.
 //   - The hold timer's job is a detached line job: it takes its place on the line when the timer fires, and runs on its own
 //     goroutine once the earlier jobs settled, as the document sweep's does.
+//   - A deferred commit is a part of no storage call (Writer, a part without writes): it is adopted in memory when the parts
+//     before it are published, in line order, and its keys stay in the unpublished write set until then.
+//   - A store of held changes is a barrier through the writer: it is selected once every commit admitted before is published, and
+//     stored as a part of its own, which the job that stores them waits for.
 
 // defaultPersistWithinMs is the default window of a deferred commit, settings.progress.persistWithinMs (session.ts
 // DEFAULT_PERSIST_WITHIN_MS).
@@ -34,7 +37,7 @@ func PersistWithin(ms *float64) float64 {
 	return defaultPersistWithinMs
 }
 
-// ObservedCommit is what the Session's own components observe of one commit (ObserveCommits): a stored commit with its
+// ObservedCommit is what the Session's own components observe of one commit (FollowCommits): a stored commit with its
 // own changes, or a deferred one adopted in memory only (Memory), which changes documents only. Memory is never behind: a
 // later store of held changes is not observed again.
 type ObservedCommit struct {
@@ -91,6 +94,13 @@ func (session *SessionImpl) heldOf(id durable.DocumentId) *heldDocument {
 	return session.holds[id]
 }
 
+// holdCount is the number of documents with held changes.
+func (session *SessionImpl) holdCount() int {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return len(session.holds)
+}
+
 // allHolds returns every hold, earliest first (upstream's Map keeps insertion order).
 func (session *SessionImpl) allHolds() []*heldDocument {
 	session.mu.Lock()
@@ -98,14 +108,14 @@ func (session *SessionImpl) allHolds() []*heldDocument {
 	return append([]*heldDocument(nil), session.holdOrder...)
 }
 
-// hold holds a deferred commit (Transaction.holdable): adopt it in memory, queue its changes per document, pinned, by the
-// earliest deadline of the document's held commits, and show it to the Session's own observers.
-func (session *SessionImpl) hold(ctx context.Context, tx *Transaction, held []heldChange, withinMs float64) error {
+// hold holds a deferred commit (Transaction.holdable) at its publication: adopt it in memory, queue its changes per document,
+// pinned, by the earliest deadline of the document's held commits, and show it to the Session's own observers. A failure of the
+// adoption is the part's; the writer fails the Session with it.
+func (session *SessionImpl) hold(ctx context.Context, tx *Transaction, held []heldChange, withinMs float64) *PublishFailure {
 	documents, err := tx.adoptHeld()
 	if err != nil {
-		// Memory is behind what the commit meant: nothing can repair it.
-		session.failIn(ctx, err)
-		return err
+		// As a stored commit's: memory could not adopt it.
+		return &PublishFailure{Kind: PublishAdoption, Err: err}
 	}
 	deadline := session.clockNow() + withinMs
 	for _, change := range held {
@@ -139,25 +149,32 @@ func (session *SessionImpl) hold(ctx context.Context, tx *Transaction, held []he
 		changes = append(changes, document)
 	}
 	commit := ObservedCommit{Memory: true, Changes: changes}
-	session.beginPublication()
-	release := session.scheduler.Hold()
+	// The watches the observers advance deliver once, for all the frames of this commit.
+	defer session.scheduler.Hold()()
+	var failure *PublishFailure
 	for _, listener := range internal {
 		// Our own observers are synchronous.
-		contained(func() { listener.listener(ctx, commit) }, func(err error) { session.failIn(ctx, err) })
+		contained(func() { listener.listener(ctx, commit) }, func(err error) {
+			if failure == nil {
+				failure = &PublishFailure{Kind: PublishListener, Err: err}
+			}
+		})
 	}
-	release()
-	session.endPublication()
-	return nil
+	return failure
 }
 
-// storeHolds stores the held changes of holds in one storage transaction, on the line. Memory already has them, so only
-// SubscribeCommits listeners see it, published as Storage adopts it. A failure fails the Session, as every Storage failure does.
-func (session *SessionImpl) storeHolds(ctx context.Context, holds []*heldDocument) error {
+// storeHolds stores the held changes select returns in one storage transaction, through the writer, from a job on the line. A
+// barrier: they are selected once every commit admitted before is published. Memory already has them, so only ObserveCommits
+// listeners see it, published as the writer publishes it. A failure fails the Session, as every Storage failure does.
+func (session *SessionImpl) storeHolds(ctx context.Context, selectHolds func() []*heldDocument) error {
+	session.awaitDrained()
+	holds := selectHolds()
 	if len(holds) == 0 {
 		return nil
 	}
 	writes := make([]durable.StorageWrite, 0, len(holds))
 	changes := make([]durable.CommitChange, 0, len(holds))
+	keys := make([]string, 0, 2*len(holds))
 	for _, hold := range holds {
 		loaded := hold.loaded
 		record := loaded.Record
@@ -165,17 +182,16 @@ func (session *SessionImpl) storeHolds(ctx context.Context, holds []*heldDocumen
 		version := loaded.ValueVersion
 		content, ops := storeHeld(hold, nil, value, version)
 		writes = append(writes, durable.DocumentChangeWrite{Id: record.Id, Content: content})
+		keys = append(keys, DocumentKey(loaded.AddressId), IncarnationKey(record.Id))
 		// Held documents are conversation documents.
 		var conversationId *durable.ConversationId
 		if record.Scope.Kind == durable.ScopeConversation {
 			id := record.Scope.ConversationId
 			conversationId = &id
 		}
-		changes = append(changes, durable.DocumentChange{Record: record, ConversationId: conversationId, Version: &version, Value: value, Ops: ops})
+		changes = append(changes, durable.DocumentChange{Record: record, ConversationId: conversationId, Version: version, Value: value, Ops: ops})
 	}
-	adopted := false
-	adopt := func(seq durable.Seq) {
-		adopted = true
+	publish := func(seq durable.Seq) *PublishFailure {
 		for index, hold := range holds {
 			loaded := hold.loaded
 			loaded.mu.Lock()
@@ -190,26 +206,24 @@ func (session *SessionImpl) storeHolds(ctx context.Context, holds []*heldDocumen
 		hosts := len(session.commitOrder) > 0
 		session.mu.Unlock()
 		if hosts {
-			session.beginPublication()
 			session.notifyHosts(ctx, durable.CommitPublication{Seq: seq, Changes: changes})
-			session.armPublication()
 		}
+		session.forget(holds)
+		return nil
 	}
-	_, err := session.storage.Commit(context.WithoutCancel(ctx), writes, adopt)
-	if err != nil {
-		return err
+	// Run from a job on the line, which a failure it causes is the outcome of.
+	session.jobMu.Lock()
+	index := 0
+	if session.current != nil {
+		index = session.current.index
 	}
-	if !adopted {
-		err := errors.New("Storage committed without adopting the batch")
-		session.failIn(ctx, err)
-		return err
-	}
-	session.release(holds)
-	return nil
+	session.jobMu.Unlock()
+	part := session.writer.Admit(PartSpec{Index: index, Writes: writes, Keys: keys, Ctx: context.WithoutCancel(ctx), Publish: publish, Published: func() { session.finishRelease(holds) }, Discard: func() {}})
+	return part.Wait()
 }
 
-// release runs after the store of holds: forget them, unpin their documents, and move the timer to the next deadline.
-func (session *SessionImpl) release(holds []*heldDocument) {
+// forget runs in the publication of a store of holds, or of a commit that took them: the Session no longer holds them.
+func (session *SessionImpl) forget(holds []*heldDocument) {
 	session.mu.Lock()
 	for _, hold := range holds {
 		delete(session.holds, hold.loaded.Record.Id)
@@ -218,6 +232,11 @@ func (session *SessionImpl) release(holds []*heldDocument) {
 		}
 	}
 	session.mu.Unlock()
+}
+
+// finishRelease runs once the keys of the publication that stored holds left the unpublished set: unpin their documents, which
+// may schedule an eviction that has to see the keys gone, and move the timer to the next deadline.
+func (session *SessionImpl) finishRelease(holds []*heldDocument) {
 	for _, hold := range holds {
 		hold.unpin()
 	}
@@ -264,7 +283,7 @@ func (session *SessionImpl) armHoldTimer() {
 		session.mu.Lock()
 		timer.fired = true
 		session.mu.Unlock()
-		session.enqueueDetached(func() {
+		session.enqueueDetached(func(int) {
 			session.mu.Lock()
 			if session.holdTimer == timer {
 				session.holdTimer = nil
@@ -276,7 +295,7 @@ func (session *SessionImpl) armHoldTimer() {
 				return
 			}
 			// A failing store has failed the Session; nobody waits on this job.
-			_ = session.storeHolds(unscoped, session.allHolds())
+			_ = session.storeHolds(unscoped, session.allHolds)
 		})
 	}
 	disarm := session.timers.Foreground(run, math.Max(0, at-session.clockNow()))

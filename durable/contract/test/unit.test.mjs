@@ -262,3 +262,16 @@ test("run lock: a lock without a pid is waited on for a few seconds, then taken 
 		}
 	} finally { rmSync(base, { recursive: true, force: true }) }
 })
+
+test("corpus: a measured divergence names a test, the failure the candidate shows and an approved divergence record; any other relaxation is refused", async () => {
+	const { validateCorpus } = await import("../lib/corpus.mjs")
+	const base = { id: "U-x", family: "upstream-test", runner: "vitest", owner: "dcore-session", status: "ready" }
+	const problems = row => validateCorpus({ scenario: [{ ...base, ...row }] })
+	assert.deepEqual(problems({}), [])
+	assert.deepEqual(problems({ measured_test: "a test", measured_failure: "expected 6 to be 49", measured_divergence: "D206" }), [])
+	assert.match(problems({ measured_test: "a test", measured_failure: "expected 6 to be 49" }).join("\n"), /measured_divergence/)
+	assert.match(problems({ measured_test: "a test", measured_failure: "expected 6 to be 49", measured_divergence: "D99999" }).join("\n"), /D99999.*no approved record/)
+	assert.match(problems({ measured_test: "a test", measured_divergence: "D206" }).join("\n"), /measured_failure/)
+	assert.match(problems({ divergence: "D206" }).join("\n"), /relaxes the row's comparison/)
+	assert.match(problems({ divergence_tests: ["a test"] }).join("\n"), /relaxes the row's comparison/)
+})

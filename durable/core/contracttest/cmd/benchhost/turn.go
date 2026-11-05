@@ -18,7 +18,6 @@ const (
 	usageKey    = "faux/scripted-1"
 	interrupted = "Tool lookup was interrupted and may have partially run"
 	attemptOps  = `[["s",["generation"],{"attempt":1}]]`
-	toolRunning = `[["s",["tools",0,"status"],"running"]]`
 )
 
 // obj builds a JSON object from alternating keys and values, in order.
@@ -166,8 +165,11 @@ func (e *engine) task(id int64, kind string, input *jv.Object, owner int64) *rec
 		return t
 	}
 	version := 1
-	if kind == "pi.tool" {
-		version = 2 // tool.ts ToolTask version 2: tagged input and result
+	switch kind {
+	case "pi.generation":
+		version = 2 // generation.ts GenerationTask version 2: calls to tools not offered are not tool task results
+	case "pi.tool":
+		version = 3 // tool.ts ToolTask version 3: the input may carry unoffered
 	}
 	return rec.NewTask(id, e.conv, kind, version, input, owner, false, nil)
 }
@@ -179,9 +181,29 @@ func (e *engine) tool() *rec.Task {
 	return e.task(t.tool, "pi.tool", obj("kind", "model", "assistant", num(t.asst), "callId", "call-"+strconv.Itoa(t.call)), t.gen)
 }
 
-// putTask replaces a task's state, stamps its times as Pi's Session does, and stages the write.
+// putTask replaces a task's state, stamps its times as Pi's Session does, and stages the write. A state the task commits that
+// differs from its current one is progress and its restart count starts over; the scheduler's change of a pending task to
+// running with the same checkpoint is not, and an outcome always drops the count (scheduler.ts withState, progressed).
 func (e *engine) putTask(tx *store.Tx, t *rec.Task, state *jv.Object) {
-	n := t.WithState(state).StampTimes(nil, e.now)
+	n := t.WithState(state)
+	if n.V.Has("restarts") {
+		cur := t.State()
+		started := str(state, "status") == "running" && str(cur, "status") == "pending" && jv.Equal(mustGet(cur, "checkpoint"), mustGet(state, "checkpoint"))
+		if !started || str(state, "status") == "terminal" || str(state, "status") == "completing" {
+			n.V.Delete("restarts")
+		}
+	}
+	e.stageTask(tx, n.StampTimes(nil, e.now))
+}
+
+// requeueTask is the scheduler's recovery of a task persisted as running: pending again, one more restart.
+func (e *engine) requeueTask(tx *store.Tx, t *rec.Task, state *jv.Object) {
+	n := t.WithState(state)
+	n.V.Set("restarts", num(intOf(t.V, "restarts")+1))
+	e.stageTask(tx, n.StampTimes(nil, e.now))
+}
+
+func (e *engine) stageTask(tx *store.Tx, n *rec.Task) {
 	tx.Task(n, n.Append(nil))
 	if n.Terminal() {
 		delete(e.tasks, n.ID())
@@ -232,7 +254,8 @@ func completed(entry int64) *jv.Object {
 	return obj("status", "completed", "result", obj("entryId", num(entry)))
 }
 
-// runGeneration is the three commits that take a pending generation to a model request.
+// runGeneration is the two commits that take a pending generation to a model request. The attempt (`generation: {attempt: 1}`) rides with
+// the live document's next write (harness/generation.ts, PROGRESS_COMMIT): no commit of its own.
 func (e *engine) runGeneration() error {
 	g := e.gen(e.t.gen)
 	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, state("running", prepareCheckpoint())); return nil }); err != nil {
@@ -242,17 +265,13 @@ func (e *engine) runGeneration() error {
 	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, state("running", e.requestCheckpoint())); return nil }); err != nil {
 		return err
 	}
-	_, err := e.commit(func(tx *store.Tx) error {
-		e.live.Set("generation", obj("attempt", num(1)))
-		tx.DocumentDelta(e.liveDoc, e.liveVer, []byte(attemptOps))
-		return nil
-	})
-	return err
+	e.live.Set("generation", obj("attempt", num(1)))
+	return nil
 }
 
 func quote(s string) string { return string(jv.AppendString(nil, s)) }
 
-// submit is the input event: four commits, then the model request.
+// submit is the input event: three commits, then the model request.
 func (e *engine) submit(reqID, text string) error {
 	e.t = turnState{active: true, reqID: reqID, user: e.st.MintID(), sub: e.st.MintID(), gen: e.st.MintID()}
 	t := e.t
@@ -270,7 +289,7 @@ func (e *engine) submit(reqID, text string) error {
 		}
 		e.putSubmission(tx)
 		e.putTask(tx, e.gen(t.gen), state("pending", prepareCheckpoint()))
-		e.live.Set("run", obj("taskId", num(t.gen), "inputs", []any{num(t.sub)}))
+		e.live.Set("run", obj("taskId", num(t.gen), "inputs", []any{num(t.sub)}, "turns", num(0), "first", num(t.user)))
 		e.putLive(tx)
 		return nil
 	})
@@ -293,11 +312,11 @@ func (e *engine) fauxUsage(outputChars int) (in, out, cacheRead, cacheWrite, tot
 	out = ceil4(outputChars)
 	if e.hasPrev {
 		cacheRead = ceil4(e.prevChars)
-		cacheWrite = ceil4(l - e.prevChars)
-		in = max(0, prompt-cacheRead)
+		cacheWrite = max(0, prompt-cacheRead)
 	} else {
-		in, cacheWrite = prompt, prompt
+		cacheWrite = prompt
 	}
+	// Every prompt token is either read from or written to the simulated cache; input stays 0 (pi-ai f3fa8bd9).
 	e.prevChars, e.hasPrev = l, true
 	total = in + out + cacheRead + cacheWrite
 	return
@@ -351,7 +370,7 @@ func (e *engine) model(trace *contracttest.Writer) error {
 	e.recordUsage(in, out, cr, cw, total)
 	t.asst = e.st.MintID()
 	draft := `{"model":[{"role":"assistant","content":` + content + `,"api":` + quote(e.api) + `,"provider":"faux","model":"scripted-1","usage":` +
-		usageJSON(in, out, cr, cw, total) + `,"stopReason":"` + stop + `","timestamp":` + num2(e.now) + `,"durationMs":0}],"kind":"pi.assistant"}`
+		usageJSON(in, out, cr, cw, total) + `,"stopReason":"` + stop + `","timestamp":` + num2(e.now) + `,"durationMs":0,"thinkingLevel":"off"}],"kind":"pi.assistant"}`
 	m, err := info([]byte(`{"role":"assistant","content":` + content + `}`))
 	if err != nil {
 		return err
@@ -391,6 +410,8 @@ func (e *engine) model(trace *contracttest.Writer) error {
 			"checkpoint", obj("phase", "tools", "assistant", num(t.asst), "tools", []any{num(t.tool)}, "pending", []any{}),
 			"on", []any{num(t.tool)}, "policy", "allSettled"))
 		e.putTask(tx, e.tool(), state("pending", obj("phase", "call")))
+		run, _ := e.live.Get("run")
+		run.(*jv.Object).Set("turns", num(intOf(run.(*jv.Object), "turns")+1)) // a tool round is one turn of the run (generation.ts)
 		e.live.Delete("generation")
 		e.live.Set("tools", []any{obj("callId", "call-"+strconv.Itoa(call), "name", "lookup", "taskId", num(t.tool), "status", "pending")})
 		e.putLive(tx)
@@ -409,13 +430,12 @@ func (e *engine) model(trace *contracttest.Writer) error {
 	return e.executeTool()
 }
 
-// executeTool takes the tool task to its execute phase; the live document records it running (a delta).
+// executeTool takes the tool task to its execute phase; the live document holds its slot running, and stores it with its next write (harness/tool.ts).
 func (e *engine) executeTool() error {
 	_, err := e.commit(func(tx *store.Tx) error {
 		e.putTask(tx, e.tool(), state("running", obj("phase", "execute", "arguments", obj("n", num(int64(e.t.call))), "replay", "unsafe")))
 		tools, _ := e.live.Get("tools")
 		tools.([]any)[0].(*jv.Object).Set("status", "running")
-		tx.DocumentDelta(e.liveDoc, e.liveVer, []byte(toolRunning))
 		return nil
 	})
 	return err
@@ -497,7 +517,7 @@ func (e *engine) afterTool(resumed bool) error {
 		return state(status, obj("phase", "tools", "assistant", num(t.asst), "tools", []any{num(t.tool)}, "pending", []any{}))
 	}
 	if resumed {
-		if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, g, running("pending")); return nil }); err != nil {
+		if _, err := e.commit(func(tx *store.Tx) error { e.requeueTask(tx, g, running("pending")); return nil }); err != nil {
 			return err
 		}
 	}
@@ -557,12 +577,74 @@ func intOf(o *jv.Object, key string) int64 {
 	return int64(f)
 }
 
-// setStatus rewrites the task with only its status changed, as scheduler recovery does.
+// setStatus rewrites the task with only its status changed, as scheduler recovery does: a running task becomes pending and
+// counts a restart; a pending one becomes running and keeps its count.
 func (e *engine) setStatus(id int64, status string) error {
 	t := e.tasks[id]
 	s := jv.Clone(t.State()).(*jv.Object)
 	s.Set("status", status)
-	_, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, t, s); return nil })
+	_, err := e.commit(func(tx *store.Tx) error {
+		if status == "pending" {
+			e.requeueTask(tx, t, s)
+		} else {
+			e.putTask(tx, t, s)
+		}
+		return nil
+	})
+	return err
+}
+
+// settings.retry's defaults (harness/agent.ts): enabled, three retries, a base delay of 2 s that doubles with each attempt (generation.ts retryDelayMs).
+const (
+	retryMaxRetries  = 3
+	retryBaseDelayMs = 2000
+)
+
+// generationDelta is a delta that sets pi.live's `generation`: the attempt, and the retry a failed attempt waits for.
+func generationDelta(attempt int64, retry string) []byte {
+	return []byte(`[["s",["generation"],{"attempt":` + strconv.FormatInt(attempt, 10) + retry + `}]]`)
+}
+
+// interruptedRequest is Pi b3a29f11's generation.ts `interrupted`: the request of attempt n was in flight when the host stopped, so it is a
+// failed attempt. With a retry left the generation sleeps until the backoff (a sleeping commit with the retry's checkpoint and pi.live's
+// `generation.retry`); the wake runs the retry phase (running, then prepare of attempt n + 1 with its delta, then the request checkpoint), and
+// the model is asked again. No partial is stored here, so convertPartial has nothing to convert. Pi's virtual clock moves to the wake time and
+// stays there, so every later commit is stamped with it.
+func (e *engine) interruptedRequest(id int64, cp *jv.Object) error {
+	attempt := intOf(cp, "attempt")
+	if attempt > retryMaxRetries {
+		return errors.New("recovery: an interrupted request without a retry left is outside this host's workload")
+	}
+	until := e.now + float64(retryBaseDelayMs*float64(int64(1)<<(attempt-1)))
+	retryCheckpoint := obj("phase", "retry", "attempt", num(attempt), "until", until)
+	text := "The host stopped while the model was answering, on attempt " + strconv.FormatInt(attempt, 10)
+	retry := `,"retry":{"at":` + num2(until) + `,"error":` + quote(text) + `}`
+	if _, err := e.commit(func(tx *store.Tx) error {
+		e.live.Set("generation", obj("attempt", num(attempt), "retry", obj("at", until, "error", text)))
+		e.putTask(tx, e.tasks[id], state("sleeping", retryCheckpoint, "until", until))
+		tx.DocumentDelta(e.liveDoc, e.liveVer, generationDelta(attempt, retry))
+		return nil
+	}); err != nil {
+		return err
+	}
+	// The scheduler wakes the generation once the clock reaches `until`.
+	e.now = until
+	if _, err := e.commit(func(tx *store.Tx) error { e.putTask(tx, e.tasks[id], state("running", retryCheckpoint)); return nil }); err != nil {
+		return err
+	}
+	if _, err := e.commit(func(tx *store.Tx) error {
+		e.live.Set("generation", obj("attempt", num(attempt+1)))
+		e.putTask(tx, e.tasks[id], state("running", obj("phase", "prepare", "attempt", num(attempt+1))))
+		tx.DocumentDelta(e.liveDoc, e.liveVer, generationDelta(attempt+1, ""))
+		return nil
+	}); err != nil {
+		return err
+	}
+	_, err := e.commit(func(tx *store.Tx) error {
+		e.putTask(tx, e.tasks[id], state("running", obj("phase", "request", "attempt", num(attempt+1), "model", mustGet(cp, "model"),
+			"thinkingLevel", mustGet(cp, "thinkingLevel"), "streamOptions", mustGet(cp, "streamOptions"), "cutoff", mustGet(cp, "cutoff"))))
+		return nil
+	})
 	return err
 }
 
@@ -672,6 +754,10 @@ func (e *engine) recover(live *store.Live) error {
 		}
 		if err := e.setStatus(gen.ID(), "running"); err != nil {
 			return err
+		}
+		// The host stopped while this request was in flight: a failed attempt under settings.retry, not a resend (generation.ts request, interrupted).
+		if e.tasks[gen.ID()].V.Has("restarts") {
+			return e.interruptedRequest(gen.ID(), cp)
 		}
 		if _, ok := e.live.Get("generation"); !ok {
 			_, err := e.commit(func(tx *store.Tx) error {

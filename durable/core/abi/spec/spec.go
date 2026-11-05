@@ -25,7 +25,7 @@ var eventRows = []kindRow{
 	{"open", uint8(abi.EventOpen), "JSON OpenOptions"},
 	{"rows", uint8(abi.EventRows), "u16 nReads, (u32 readId, u32 nRows, u8 nCols, value{nRows*nCols})*"},
 	{"submit", uint8(abi.EventSubmit), "JSON SubmitEvent"},
-	{"model_event", uint8(abi.EventModelEvent), "u32 effectId, JSON array of AssistantMessageEvent"},
+	{"model_event", uint8(abi.EventModelEvent), "u32 effectId, JSON array of AssistantMessageEvent or payload request {type, call, payload}"},
 	{"model_bytes", uint8(abi.EventModelBytes), "u32 effectId, u8 phase, bytes"},
 	{"tool_progress", uint8(abi.EventToolProgress), "u32 effectId, u8 kind, u32 skipped, u32 waitId, bytes"},
 	{"tool_done", uint8(abi.EventToolDone), "u32 effectId, u8 outcome, JSON"},
@@ -58,6 +58,7 @@ var effectRows = []kindRow{
 	{"deferred", uint8(abi.EffectDeferred), "JSON {op, model, handle}"},
 	{"callback", uint8(abi.EffectCallback), "JSON {name, txId, payload}"},
 	{"hops", uint8(abi.EffectHops), "u32 n, u32 at, commit* (applied after hop at)"},
+	{"macrotask", uint8(abi.EffectMacrotask), "none: one macrotask (setImmediate); the host sends hopped from it"},
 }
 
 var noticeRows = []kindRow{
@@ -68,9 +69,10 @@ var noticeRows = []kindRow{
 	{"sidecar", uint8(abi.NoticeSidecar), "JSON {conversationId, rows}"},
 	{"progress_ack", uint8(abi.NoticeProgressAck), "u32 waitId, u8 outcome, JSON error when rejected"},
 	{"doc_cache", uint8(abi.NoticeDocCache), "JSON {cached, idle, attached, sweeps}: the core's document cache sizes (attached: observers' pins), whenever they change"},
-	{"index_sizes", uint8(abi.NoticeIndexSizes), "JSON {live, settled, edges, below, roots, unloaded, dropQueue}: a harness-mode core's scheduler ownership index sizes, whenever they change"},
+	{"index_sizes", uint8(abi.NoticeIndexSizes), "JSON {live, settled, edges, below, roots, unloaded, dropQueue, pins}: a harness-mode core's scheduler ownership index sizes, whenever they change"},
 	{"wake", uint8(abi.NoticeWake), "JSON {active, at?}: a harness-mode core's Harness.wake value (HarnessOptions.onWake), published when it changed; the core arms no timer for sleeping tasks then"},
 	{"origin_free", uint8(abi.NoticeOriginFree), "u32 n, u32 origin{n}: the origins the core holds no work for any more; the host drops their async contexts (ABI section 5.4); the host consumes it and its listeners never see it"},
+	{"telemetry", uint8(abi.NoticeTelemetry), "JSON op: a span event or end, a span's attributes, or an active-task count of Pi's telemetry (DURABLE_TELEMETRY_SCHEMA); spans are the host's, named by the handles it assigned"},
 }
 
 var statusRows = []kindRow{
@@ -151,9 +153,12 @@ var apiRows = []apiRow{
 	{"agent", "conversationId", "the resolved agent", "at once"},
 	{"sleepUntil", "taskId, until, checkpoint", "null", "once the sleep is committed; the task then holds no invocation"},
 	{"wake", "", "{active, at?}", "at once"},
-	{"retryTask", "taskId", "null", "once a parked task's restart count is cleared and scheduling is enabled; an error for an unknown task"},
 	{"usage", "", "the UsageState of the Session", "at once"},
 	{"taskGraph", "", "the TaskGraph", "at once"},
+	{"receive", "index, seq", "null", "at once: the Storage's durability receipt of batch index of the call in flight (ABI section 5.5)"},
+	{"publish", "", "null", "at once: the Storage's publishing scope runs the publication of the part in flight (ABI section 5.5)"},
+	{"touch", "keys", "null", "when the read job that touches the keys delivered its outcome (ABI section 5.5)"},
+	{"cancel", "request", "null", "at once: aborts the signal of the unanswered submit or abort event `request` that was sent `cancellable` (a line job that started ignores it)"},
 }
 
 // The layout lines of sections 4.4 and 4.5.
@@ -161,7 +166,8 @@ var layoutLines = []string{
 	"step := u32 size, u8 status, u16 nCommits, u16 nReads, u16 nNotices, u16 nEffects, commit*, read*, notice*, effect*, order, [status != 0: u32 len, error JSON]",
 	"size and len count the bytes after their own field; the step is size + 4 bytes long",
 	"the step export returns the address of its parts := u32 n, (u32 ptr, u32 len){n}; the step is the concatenation of the n byte ranges, the first holding size",
-	"commit := u32 len, i64 seq, u16 nStmts, stmt*",
+	"commit := u32 len, i64 seq, u8 flags, u16 nStmts, stmt*",
+	"flags bit 0 (joined): the commit belongs to the same Storage call as the commit before it in the step; the host applies a run of joined commits in one transaction; the other bits are 0",
 	"stmt := u16 sqlId, u8 nParams, value*",
 	"read := u32 readId, u16 sqlId, u8 nParams, value*",
 	"a step with reads has no effects; the host applies its commits, in order, before it runs its reads",

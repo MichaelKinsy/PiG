@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -28,7 +29,7 @@ var (
 )
 
 // localeCompare mirrors String.prototype.localeCompare under the root locale.
-func localeCompare(left, right string) int { return jsstring.LocaleCompare(left, right) }
+func localeCompare(left, right string) int { return localecompare.Compare(left, right) }
 
 // HuggingFaceModel mirrors one search result.
 type HuggingFaceModel struct {

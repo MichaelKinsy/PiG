@@ -19,7 +19,7 @@ export function opencodeProvider() {
             "openai-completions": withOpenCodeSessionHeader(openAICompletionsApi()),
             "openai-responses": withOpenCodeSessionHeader(openAIResponsesApi()),
         },
-        // OpenCode Zen serves TypeSafe's System One protocol at /zen/v1/systemone.
+        // OpenCode Zen serves TypeSafe's System One protocol at /inference/systemone/v1/systemone.
         classifiers: { "typesafe-system-one": typesafeSystemOneApi() },
     });
 }

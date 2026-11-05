@@ -115,7 +115,7 @@ func (m *InteractiveMode) crashExtensionMetadata() []ExtensionStackMetadata {
 }
 
 func resourceSourceInfoValue(value extension.SourceInfo) ResourceSourceInfo {
-	return ResourceSourceInfo{Path: value.Path, Source: value.Source, Scope: value.Scope, Origin: value.Origin, BaseDir: value.BaseDir}
+	return ResourceSourceInfo{Path: value.Path, Source: value.Source, Scope: value.Scope, Origin: value.Origin, BaseDir: value.BaseDir, ChangelogPath: value.ChangelogPath}
 }
 
 func (m *InteractiveMode) crashExtensionHint(stack string) string {
@@ -190,6 +190,9 @@ func (m *InteractiveMode) uncaughtOffLoop(value any, stack []byte) {
 		tui.RestoreTerminalFromSignal()
 	}
 	m.uncaughtCrash(value, stack, os.Stderr)
+	// This exit records a crash (crashes.json), not an exit.log line, so it does not claim the record. It still waits
+	// behind an emergency exit and for a line in flight (exit_ending.go).
+	BeforeExit()
 	EndSessionMarker()
 	os.Exit(1)
 }

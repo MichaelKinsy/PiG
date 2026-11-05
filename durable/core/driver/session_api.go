@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"math"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -54,15 +56,43 @@ func (i *invocation) Agent(ctx context.Context) (durable.Agent, error) {
 
 func (i *invocation) Models() durable.Models { return i.s.cfg.Harness.CurrentModels() }
 
+// Entry is a committed entry visible from the task's conversation (HookApi.entry): the runtime's read.
+func (i *invocation) Entry(ctx context.Context, id durable.EntryId) (*durable.EntryRecord, error) {
+	return i.s.entryIn(ctx, i.conversation, id)
+}
+
+// Entries is the committed raw history of the task's conversation (HookApi.entries).
+func (i *invocation) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	return i.s.entriesIn(ctx, i.conversation, query, limit, cursor)
+}
+
+// entryIn reads one entry of a conversation (api entry).
+func (s *coreSession) entryIn(ctx context.Context, conversation durable.ConversationId, id durable.EntryId) (*durable.EntryRecord, error) {
+	raw, err := s.client.API(ctx, "entry", map[string]any{"conversationId": conversation, "entryId": id})
+	if err != nil || string(raw) == "null" {
+		return nil, err
+	}
+	var record durable.EntryRecord
+	return &record, json.Unmarshal(raw, &record)
+}
+
+// entriesIn is the scan of a conversation's history that query asks for (api scanEntries): only the entry ID bounds and the order of
+// the query are used (util.ts conversationEntries).
+func (s *coreSession) entriesIn(ctx context.Context, conversation durable.ConversationId, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	scan := durable.EntryQuery{ConversationId: conversation, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
+	return decodePage[durable.EntryRecord](s.client.API(ctx, "scanEntries", map[string]any{"query": wireEntryQuery(scan), "limit": limit, "cursor": cursor}))
+}
+
 func (i *invocation) Env() env.ExecutionEnv { return i.s.envs.Get(i.task) }
 
 func (i *invocation) Now() float64 { return i.s.now() }
 
 func (i *invocation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	return i.s.commit(ctx, map[string]any{"conversationId": i.conversation}, change)
+	return i.s.commitWith(ctx, map[string]any{"conversationId": i.conversation}, chosen, change)
 }
 
 func (i *invocation) Memo(ctx context.Context, name string) (durable.JsonValue, bool, error) {
@@ -112,8 +142,11 @@ func (i *invocation) Conversation(ctx context.Context, id durable.ConversationId
 type handle struct{ c *conversation }
 
 func (h handle) Id() durable.ConversationId { return h.c.id }
-func (h handle) Submit(ctx context.Context, draft durable.InputSubmissionDraft) (durable.Submission, error) {
+func (h handle) Submit(ctx context.Context, draft durable.SubmissionDraft) (durable.Submission, error) {
 	return h.c.Submit(ctx, draft)
+}
+func (h handle) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return h.c.SubmitIn(tx, draft)
 }
 func (h handle) Abort(ctx context.Context, options *durable.ConversationAbortOptions) error {
 	return h.c.Abort(ctx, options)
@@ -161,12 +194,40 @@ func (s *coreSession) agent(ctx context.Context, id durable.ConversationId) (dur
 		return durable.Agent{}, err
 	}
 	return harness.ResolveAgent(state, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), func(err error, extension string) {
-		s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+		s.report(err, durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
 	}), nil
 }
 
 // commit runs one Session commit on the extension transaction channel; binding carries the invocation's conversation.
 func (s *coreSession) commit(ctx context.Context, binding map[string]any, change func(tx durable.Tx) (any, error)) (any, error) {
+	return s.commitWith(ctx, binding, durable.CommitOptions{}, change)
+}
+
+// persistenceBinding adds the commit's CommitPersistence to the options of a transaction's begin (ABI section 8, begin.persistence):
+// the core holds a deferred commit in memory when it may (spec section 4.1). withinMs travels as the largest finite number for +Inf,
+// which JSON cannot carry; absent, the core uses the Session's default window.
+func persistenceBinding(binding map[string]any, options durable.CommitOptions) map[string]any {
+	persistence := options.Persistence
+	if persistence == nil || persistence.Kind != durable.CommitDeferred {
+		return binding
+	}
+	out := make(map[string]any, len(binding)+1)
+	maps.Copy(out, binding)
+	wire := map[string]any{"kind": "deferred"}
+	if persistence.WithinMs != nil {
+		ms := *persistence.WithinMs
+		if math.IsInf(ms, 1) {
+			ms = math.MaxFloat64
+		}
+		wire["withinMs"] = ms
+	}
+	out["persistence"] = wire
+	return out
+}
+
+// commitWith is commit with the options of the call (CommitOptions, checked by durable.SingleCommitOptions).
+func (s *coreSession) commitWith(ctx context.Context, binding map[string]any, options durable.CommitOptions, change func(tx durable.Tx) (any, error)) (any, error) {
+	binding = persistenceBinding(binding, options)
 	release, err := s.admit()
 	if err != nil {
 		return nil, err
@@ -200,13 +261,15 @@ func (s *coreSession) WatchDocErased(ctx context.Context, token durable.AnyDocTo
 	return s.watchDoc(ctx, token, args)
 }
 
-// Commit runs one atomic transaction on the Session mutation line. The core stores every commit before it returns:
-// options.Persistence is a permission (spec §4.1), so a deferred commit is stored at once.
+// Commit runs one atomic transaction on the Session mutation line. options.Persistence is a permission (spec section 4.1): the core
+// holds a deferred commit in memory when it only changes existing latest, initial-fork conversation documents, and stores any other
+// commit before it returns.
 func (s *coreSession) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	return s.commit(ctx, nil, change)
+	return s.commitWith(ctx, nil, chosen, change)
 }
 
 // SubscribeClose observes close when it begins (session.ts close: the close listeners run synchronously in close(), before
@@ -336,7 +399,7 @@ func (s *coreSession) Submission(ctx context.Context, id durable.SubmissionId) (
 
 // AbortSubmission asks the core to withdraw a submission.
 func (s *coreSession) AbortSubmission(ctx context.Context, id durable.SubmissionId, conversationId *durable.ConversationId) (durable.SubmissionAbortResult, error) {
-	s.kick()
+	_ = s.kick() // Submissions.abort does not start scheduling upstream: a read-only Harness reaches the commit, which refuses the withdrawal itself
 	body := map[string]any{"submissionId": id}
 	if conversationId != nil {
 		body["conversationId"] = *conversationId
@@ -347,18 +410,6 @@ func (s *coreSession) AbortSubmission(ctx context.Context, id durable.Submission
 	}
 	var result durable.SubmissionAbortResult
 	return result, json.Unmarshal(raw, &result)
-}
-
-// RetryTask runs a task parked by settings.restartLimit again: it clears its restart count and enables scheduling
-// (scheduler.ts retry). It does nothing for a task that is not parked, and fails for an unknown one.
-func (s *coreSession) RetryTask(ctx context.Context, id durable.TaskId) error {
-	release, err := s.admit()
-	if err != nil {
-		return err
-	}
-	defer release()
-	_, err = s.client.API(ctx, "retryTask", map[string]any{"taskId": id})
-	return err
 }
 
 // AbortTask commits the abort mark and schedules the abort invocation.
@@ -391,7 +442,9 @@ func (s *coreSession) WaitForTask(ctx context.Context, id durable.TaskId) (durab
 		return record, err
 	}
 	defer done()
-	s.kick()
+	if err := s.kick(); err != nil {
+		return record, err
+	}
 	raw, err := s.client.API(ctx, "waitForTask", map[string]any{"taskId": id})
 	if err != nil {
 		return record, s.closedOr(ctx, err)
@@ -401,7 +454,9 @@ func (s *coreSession) WaitForTask(ctx context.Context, id durable.TaskId) (durab
 
 // WaitForIdle returns when the ordinary ownership scope of every ownerless conversation has no live non-background task.
 func (s *coreSession) WaitForIdle(ctx context.Context) error {
-	s.kick()
+	if err := s.kick(); err != nil {
+		return err
+	}
 	return s.idle(ctx, nil)
 }
 
@@ -545,25 +600,10 @@ func (s *coreSession) submit(ctx context.Context, conversationID durable.Convers
 		return nil, err
 	}
 	defer release()
-	s.kick()
-	rid := ""
-	if draft.RequestId != nil {
-		rid = *draft.RequestId
-	} else {
-		rid = requestID()
+	if err := s.kick(); err != nil {
+		return nil, err
 	}
-	event := map[string]any{"conversationId": int64(conversationID), "type": string(draft.Type), "requestId": rid}
-	if draft.WhenBusy != "" {
-		event["whenBusy"] = string(draft.WhenBusy)
-	}
-	if draft.Type == durable.SubmissionTypeInput {
-		event["content"] = draft.Content
-		if draft.InputEntry != nil {
-			event["entry"] = wireInputEntry(*draft.InputEntry)
-		}
-	} else if draft.Entry != nil {
-		event["entry"] = wireSubmittedDraft(*draft.Entry)
-	}
+	event := submissionEvent(conversationID, draft)
 	raw, err := s.client.Submit(ctx, event)
 	if err != nil {
 		return nil, reviveError(err)
@@ -575,6 +615,52 @@ func (s *coreSession) submit(ctx context.Context, conversationID durable.Convers
 		return nil, err
 	}
 	return &submission{s: s, id: durable.SubmissionId(admitted.ID)}, nil
+}
+
+// submissionEvent is the submit event (and the transaction op's arguments) of a draft: a request ID the caller did not give is minted.
+func submissionEvent(conversationID durable.ConversationId, draft durable.SubmissionDraft) map[string]any {
+	rid := ""
+	if draft.RequestId != nil {
+		rid = *draft.RequestId
+	} else {
+		rid = requestID()
+	}
+	event := map[string]any{"conversationId": int64(conversationID), "type": string(draft.Type), "requestId": rid}
+	if draft.WhenBusy != "" {
+		event["whenBusy"] = string(draft.WhenBusy)
+	}
+	if draft.WhenIdle != "" {
+		event["whenIdle"] = string(draft.WhenIdle)
+	}
+	if draft.Type == durable.SubmissionTypeInput {
+		event["content"] = draft.Content
+		if draft.InputEntry != nil {
+			event["entry"] = wireInputEntry(*draft.InputEntry)
+		}
+	} else if draft.Entry != nil {
+		event["entry"] = wireSubmittedDraft(*draft.Entry)
+	}
+	return event
+}
+
+// submitIn is Conversation.submit(tx, draft): the admission runs inside the caller's commit, by the transaction operation `submit`, which
+// the core refuses after the transaction's first table write (ReadAfterWrite).
+func (s *coreSession) submitIn(tx durable.Tx, conversationID durable.ConversationId, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	proxy, ok := tx.(*txProxy)
+	if !ok || proxy.tx.client != s.client {
+		return 0, errors.New("The transaction belongs to another Session")
+	}
+	var admitted struct {
+		ID int64 `json:"id"`
+	}
+	raw, err := proxy.op("submit", submissionEvent(conversationID, draft))
+	if err != nil {
+		return 0, err
+	}
+	if err := json.Unmarshal(raw, &admitted); err != nil {
+		return 0, err
+	}
+	return durable.SubmissionId(admitted.ID), nil
 }
 
 // wireInputEntry is the {kind, data?} an input is placed as.
@@ -632,7 +718,9 @@ func (b *submission) Wait(ctx context.Context) (durable.SettledSubmissionRecord,
 }
 
 func (b *submission) wait(ctx context.Context) (durable.SettledSubmissionRecord, error) {
-	b.s.kick()
+	if err := b.s.kick(); err != nil {
+		return durable.SettledSubmissionRecord{}, err
+	}
 	for {
 		exp, err := b.s.host.Expect(func(n abi.Notice) bool {
 			p, ok := published(n)
@@ -688,6 +776,11 @@ func (c *conversation) Submit(ctx context.Context, draft durable.SubmissionDraft
 	return c.s.submit(ctx, c.id, draft)
 }
 
+// SubmitIn is Conversation.submit(tx, draft): the admission inside the caller's commit.
+func (c *conversation) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return c.s.submitIn(tx, c.id, draft)
+}
+
 func (c *conversation) Reset(ctx context.Context, handoff *string) error {
 	entry := durable.EntryDraft{Kind: "pi.reset", HeadSelf: true}
 	if handoff != nil {
@@ -698,7 +791,9 @@ func (c *conversation) Reset(ctx context.Context, handoff *string) error {
 }
 
 func (c *conversation) Compact(ctx context.Context, instructions *string) (durable.TaskId, error) {
-	c.s.kick()
+	if err := c.s.kick(); err != nil {
+		return 0, err
+	}
 	// harness.ts compact: createCompaction also lists the task in pi.live.compactions, which its events, retry status and
 	// failure record read.
 	input := harness.CompactionInput{Reason: durable.CompactionManual, Instructions: instructions}
@@ -713,10 +808,11 @@ func (c *conversation) Compact(ctx context.Context, instructions *string) (durab
 }
 
 func (c *conversation) Commit(ctx context.Context, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) (any, error) {
-	if _, err := durable.SingleCommitOptions(options); err != nil {
+	chosen, err := durable.SingleCommitOptions(options)
+	if err != nil {
 		return nil, err
 	}
-	return c.s.commit(ctx, map[string]any{"conversationId": c.id}, change)
+	return c.s.commitWith(ctx, map[string]any{"conversationId": c.id}, chosen, change)
 }
 
 func (c *conversation) Context(ctx context.Context, options *durable.ContextOptions) (durable.ContextView, error) {
@@ -751,7 +847,9 @@ func (c *conversation) Fork(ctx context.Context, at durable.EntryId, options har
 }
 
 func (c *conversation) Abort(ctx context.Context, options *durable.ConversationAbortOptions) error {
-	c.s.kick()
+	if err := c.s.kick(); err != nil {
+		return err
+	}
 	body := map[string]any{"conversationId": c.id}
 	if options != nil && options.Background {
 		body["background"] = true
@@ -763,7 +861,9 @@ func (c *conversation) Abort(ctx context.Context, options *durable.ConversationA
 }
 
 func (c *conversation) WaitForIdle(ctx context.Context) error {
-	c.s.kick()
+	if err := c.s.kick(); err != nil {
+		return err
+	}
 	return c.s.idle(ctx, &c.id)
 }
 

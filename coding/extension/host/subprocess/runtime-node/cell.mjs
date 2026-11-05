@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { adoptPiProcessIdentity } from "./process-identity.mjs";
 import { Generations } from "./generations.mjs";
+import { exitAfterStderr } from "./exit-after-stderr.mjs";
 
 const manifestPath = process.argv[2];
 if (!manifestPath) throw new Error("Node cell manifest is required");
@@ -16,6 +17,5 @@ const generations = new Generations(manifest.length);
 export const served = generations.serve().then(() => {
   if (generations.loaded === 0) process.exitCode = 1;
 }).catch(error => {
-  console.error(error);
-  process.exit(1);
+  exitAfterStderr(error);
 });

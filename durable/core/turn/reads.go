@@ -54,14 +54,30 @@ func (r *run) context(at ID, then func(*history.View)) {
 	})
 }
 
-// entry is runtime.entry(id).
-func (r *run) entry(id ID, then func(*jv.Object)) {
+// entry is runtime.entry(id); then is told whether the kept range answered it, which is no Session line job.
+func (r *run) entry(id ID, then func(entry *jv.Object, kept bool)) {
+	if r.g.Host.KeptEntry != nil {
+		if kept := r.g.Host.KeptEntry(r.conv, id); kept != nil {
+			r.hops(keptEntryHops, func() { then(kept, true) })
+			return
+		}
+	}
 	var entry *jv.Object
 	r.read(func() error {
 		var err error
 		entry, err = r.g.Host.Entry(id)
 		return err
-	}, func() { then(entry) })
+	}, func() { then(entry, false) })
+}
+
+// outcomes is runtime.outcomes(ids) (scheduler.ts:2235-2246): `#read(invocation, () => session.readOnLine(...))`, where `#read` is an
+// async function that returns the pending promise of the line job (scheduler.ts:2347-2350). The async return adopts that promise a hop
+// after it settles, so the awaiting phase (generation.ts:1050, :190, :198) resumes one hop after the job's end, which the Session
+// Loop's done marks (the line tail is released at the job's end, the caller of a `#read` is not). Measured on Pi e7a0df27 with
+// scenarios/tool-start-ticks.mjs: the job starts 8 hops after the call and the phase resumes 11 hops after that start with one tool
+// (7 per read, as the core's job charges).
+func (r *run) outcomes(ids []ID, then func([]*jv.Object, error)) {
+	r.rt.Outcomes(ids, func(outcomes []*jv.Object, err error) { r.hops(1, func() { then(outcomes, err) }) })
 }
 
 // snapshot is runtime.snapshot(def, conversation): `#read(() => session.snapshot(...))` (scheduler.ts:1175-1178). Session.snapshot
@@ -88,7 +104,7 @@ func (r *run) snapshotResult(def *session.DocDef, then func(*jv.Object, error)) 
 	r.rt.Read(func() error {
 		value, rerr = r.g.Host.Snapshot(def, r.conv)
 		return rerr
-	}, func(err error) { then(value, err) })
+	}, func(err error) { r.hops(snapshotMissReturnHops, func() { then(value, err) }) })
 }
 
 // snapshotCached is the answer of a cached Session.snapshot, if the document is cached (a hit takes snapshotHitHops to reach its caller).
@@ -100,8 +116,19 @@ func (r *run) snapshotCached(def *session.DocDef) (value *jv.Object, err error, 
 	return value, err, true
 }
 
+// keptEntryHops is the hops from a runtime.entry answered from the kept range to its awaiting caller: `#read` is an async function
+// returning the promise of the async arrow, which has no await to wait for, so the caller resumes as it does after a cached snapshot.
+const keptEntryHops = snapshotHitHops
+
 // snapshotHitHops is the hops from a cached Session.snapshot call to its awaiting caller (dcore-trace E23).
 const snapshotHitHops = 3
+
+// snapshotMissReturnHops is the hops from the end of a missed Session.snapshot's line job to its awaiting caller. Session.snapshot is an
+// async function that awaits `#enqueue(...)` (session.ts snapshot), so its promise settles a hop after the run's and `#read`'s async
+// return adopts that pending promise (scheduler.ts:2347-2350): the caller resumes two hops after the point where runtime.outcomes'
+// caller resumes one (reads.go outcomes). Measured on Pi e7a0df27 with the cut-off tool task of cutoff-ticks.test.ts (settleFromSlot's
+// snapshot of pi.live on a restarted host).
+const snapshotMissReturnHops = 2
 
 // agentHops is the hops from the phase's first runtime.agent() to its awaiting caller when pi.agent is cached: Pi resolves the
 // agent in its own code, `await snapshot` (1), the resolution's return into phase.agent (1) and awaitWithContext's reaction (1)
@@ -129,7 +156,11 @@ func (r *run) agent(then func(*Agent)) {
 }
 
 // agentAfter is agent with the hops Pi's caller spends before it resumes.
-func (r *run) agentAfter(hops int, then func(*Agent)) {
+func (r *run) agentAfter(hops int, then func(*Agent)) { r.agentAfterOr(hops, then, r.fail) }
+
+// agentAfterOr is agentAfter for a caller that handles the failure of the resolution itself (`runtime.agent().catch(...)`): onErr gets
+// the error instead of the phase failing with it.
+func (r *run) agentAfterOr(hops int, then func(*Agent), onErr func(error)) {
 	if r.rt.Ended() {
 		r.fail(r.rt.EndedError())
 		return
@@ -142,7 +173,7 @@ func (r *run) agentAfter(hops int, then func(*Agent)) {
 			return
 		}
 		if gerr != nil {
-			r.fail(gerr)
+			onErr(gerr)
 			return
 		}
 		r.agentSeen, r.phaseAgent = true, got

@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/providers/meta.ts
+
 // Covers .upstream/current/packages/ai/src/providers/meta.ts and meta.models.ts:
 // the generated catalog shard and the openai-responses request a Meta model
 // sends. Upstream has no dedicated provider test file.

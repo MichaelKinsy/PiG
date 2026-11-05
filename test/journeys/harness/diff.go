@@ -2,6 +2,8 @@ package harness
 
 import (
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 )
 
 // lineDiff renders a compact unified-style diff of two texts (rows prefixed - for a, + for b). It returns "" when the texts are equal.
@@ -12,9 +14,9 @@ func lineDiff(a, b string) string {
 	x := strings.Split(a, "\n")
 	y := strings.Split(b, "\n")
 	n, m := len(x), len(y)
-	lcs := make([][]int, n+1)
+	lcs := make([][]int, allocsize.Add(n, 1))
 	for i := range lcs {
-		lcs[i] = make([]int, m+1)
+		lcs[i] = make([]int, allocsize.Add(m, 1))
 	}
 	for i := n - 1; i >= 0; i-- {
 		for j := m - 1; j >= 0; j-- {

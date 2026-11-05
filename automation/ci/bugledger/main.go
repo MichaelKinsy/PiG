@@ -7,6 +7,8 @@
 // -notes <version> prints the draft release notes for a version from the same sources.
 //
 // A fix-titled commit that is not a product bug is listed with a category and a reason in automation/ci/bugledger/exempt.txt, or carries a "Bug-Ledger: exempt <category>: <reason>" trailer. A follow-up commit of an existing fix carries "Bug-Ledger: see <commit>".
+//
+// A fix commit's tests are the Go tests its diff adds or edits and the tests its message names, resolved against the tree. A test a later commit moved keeps its fix when it kept its name (the one file that declares it); a renamed test needs a line in automation/ci/bugledger/moved-tests.txt.
 package main
 
 import (
@@ -23,7 +25,7 @@ const (
 
 func main() {
 	root := flag.String("root", ".", "repository root")
-	since := flag.String("since", "0.4.1", "release the ledger starts after")
+	since := flag.String("since", "0.4.1", "release the ledger starts after; with -notes, the release the notes start after (default: the release before the notes' version)")
 	check := flag.Bool("check", false, "fail when the committed ledger is out of date instead of writing it")
 	refresh := flag.Bool("refresh", false, "recompute every entry from the history instead of keeping the committed entries whose fix is recorded (a release does this)")
 	summary := flag.Bool("summary", false, "print the entry counts of the committed ledger")
@@ -41,7 +43,13 @@ func main() {
 		return
 	}
 	if *notes != "" {
-		text, err := releaseNotes(abs, *since, *notes)
+		notesSince := ""
+		flag.Visit(func(f *flag.Flag) {
+			if f.Name == "since" {
+				notesSince = *since
+			}
+		})
+		text, err := releaseNotes(abs, notesSince, *notes)
 		if err != nil {
 			fail(err)
 		}
@@ -70,7 +78,11 @@ func runWith(root, since string, check, strict, refresh bool) error {
 	}
 	if !check && !refresh {
 		if prior, _, err := readCommitted(root); err == nil {
-			keepPrior(l, prior.Entries, root)
+			moved, err := loadMovedTests(root)
+			if err != nil {
+				return err
+			}
+			keepPrior(l, prior.Entries, root, moved)
 		}
 	}
 	canonical(l)

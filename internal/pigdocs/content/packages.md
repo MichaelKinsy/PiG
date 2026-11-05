@@ -83,7 +83,7 @@ pig package validate ./base-coding --json
 
 Validation rejects malformed manifests and JSON Resources, missing members, duplicate non-skill public names, lexical or symlink escape, missing Compose services, and absolute or escaping bind mounts.
 
-At startup, duplicate skill names keep the first valid definition and produce a `[Skill conflicts]` warning with the selected and skipped paths, as in Pi. Resolved project, user and Package skills precede additional `--skill` paths. Use `--no-skills` to load only explicitly requested skills. Project skills, including ancestor `.agents/skills`, require project trust. A skill entry may name a Markdown file or a directory. Manifest globstars such as `prompts/**/*.md` match files at the root of that directory and at any depth below it. A manifest entry with `*` or `?` is expanded as Node's `fs.globSync` expands it in Pi, so brace sets, extglobs such as `*.@(md|txt)` and POSIX classes work, and on Windows and macOS a wildcard segment ignores case. A manifest glob, override or Package filter that Pi cannot compile drops that resource kind and the later ones from a local Package, and stops startup for an npm or git Package, as in Pi.
+At startup, duplicate skill names keep the first valid definition and produce a `[Skill warnings]` warning with the selected and skipped paths, as in Pi. Resolved project, user and Package skills precede additional `--skill` paths. Use `--no-skills` to load only explicitly requested skills. Project skills, including ancestor `.agents/skills`, require project trust. A skill entry may name a Markdown file or a directory. Manifest globstars such as `prompts/**/*.md` match files at the root of that directory and at any depth below it. A manifest entry with `*` or `?` is expanded as Node's `fs.globSync` expands it in Pi, so brace sets, extglobs such as `*.@(md|txt)` and POSIX classes work, and on Windows and macOS a wildcard segment ignores case. A manifest glob, override or Package filter that Pi cannot compile drops that resource kind and the later ones from a local Package, and stops startup for an npm or git Package, as in Pi.
 
 Direct Package installation preserves upstream behavior: it records the Package
 in settings and normal discovery exposes enabled members, defaulting to all
@@ -91,6 +91,26 @@ unless Package filters narrow them. Installation does not copy Piglets or
 Agents, merge MCP configuration, create diagnostics, or generate entry points.
 A Piglet Package dependency resolves through the same materializer without
 mutating global/project settings; only explicit member selections activate.
+
+## Show a changelog
+
+After a Package update, PiG can show what changed. On the next fresh launch it reads the Package changelog and shows entries newer than the last seen version under "Extension Updates", the way it shows its own changelog. The first time PiG sees a Package, it records the version without showing anything. The last seen versions are stored in the `extensionChangelogVersions` setting.
+
+This applies to Packages that load at least one extension. Packages that only provide skills, prompt templates, or themes do not show a changelog.
+
+By default PiG reads `CHANGELOG.md` from the Package root. Point `pi.changelogPath` at another file inside the Package, or set it to `""` to disable the changelog. A path that leaves the Package root, directly or through a symbolic link, is ignored:
+
+```json
+{
+  "name": "my-pi-package",
+  "version": "1.2.0",
+  "pi": {
+    "changelogPath": "./docs/CHANGELOG.md"
+  }
+}
+```
+
+A `pi` object that holds only metadata such as `changelogPath` does not make the manifest an explicit resource list: the Package's resources are still found by directory auto-discovery. Use version headings in the same format as PiG's changelog, such as `## [1.2.0]` or `## 1.2.0 - 2026-01-01`. Entries are matched against the `version` field in `package.json`, so a git Package only shows a changelog when that field increases. The `collapseChangelog` setting condenses the section to one line per Package.
 
 ## Install
 
@@ -135,6 +155,32 @@ pig install --validate-only --set ./ext-a,./ext-b --json
 Validation resolves, builds, starts, and registers the selected extension set
 without changing package settings. Use it before publishing or before claiming
 that a piglet's extensions work together.
+
+### Check the configured local Packages
+
+```bash
+pig install --validate-only
+pig install --validate-only --json
+```
+
+With no source, `--validate-only` checks each local-path entry of `packages[]`
+in your user settings and your trusted project settings. It resolves the entry
+against its settings directory under the current agent directory, names every
+entry whose directory does not exist with the path it resolved to and the
+`pig remove` command that drops it, and exits 1 when any is missing. A session
+start warns about the same entry; Pi skips a missing local Package without a
+word (D216). npm and git entries are not checked, because that needs the
+network.
+
+```json
+{"valid": false, "checked": 2, "missing": [{"source": "/abs/gone", "scope": "user", "path": "/abs/gone", "error": "Path does not exist: /abs/gone", "remove": "pig remove /abs/gone"}]}
+```
+
+`valid` is true when `missing` is empty, `checked` counts the local entries
+examined, and `missing` is always an array. A project entry's `remove` ends in
+` -l`. `path` is omitted when the source does not resolve to a path. With a
+source or `--set`, the command validates those sources and does not read
+`packages[]`.
 
 ## Scope
 
@@ -207,6 +253,7 @@ pig update --self
 pig update <source>
 pig update --extension <source>
 pig update --extensions
+pig update --models
 pig update --all
 pig update --force
 pig remove <source>
@@ -223,7 +270,17 @@ npm updates batch eligible Packages by scope. Git updates reconcile the configur
 Bare update, `--self`, and the `self`/`pig` positional targets update PiG.
 `--extensions` updates installed Packages only; `--all` updates Packages before
 PiG. `--extension` names one Package and `--force` reinstalls the current PiG
-release. Conflicting targets fail before either update path starts.
+release. `--models` forces a model-catalog refresh through the shared model
+runtime without updating PiG or installed Packages. It cannot be combined with
+another update target. Conflicting targets fail before either update path starts.
+
+At startup, an npm Package needs an installed manifest version that satisfies its
+configured pin or range. If installation fails or offline mode prevents it, the
+old installation does not supply Resources.
+
+With the global `extensionsAutoUpgrade` setting on, `pig update` also runs the
+`pig extension upgrade` rules on Go extensions written for an older SDK
+([Extensions](extensions.md)).
 
 PiG's owned management surface uses full-word noun/verb commands such as
 `pig package list`, while retaining upstream-compatible install, remove, and

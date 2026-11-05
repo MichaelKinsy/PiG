@@ -2,7 +2,7 @@
 
 PiG reads these variables at startup. Each one has a setting or a default that covers the normal case, so set a variable only when you need to change PiG from outside its configuration: in a container, in CI, or while debugging.
 
-Variables named `PI_*` are read for compatibility with Pi 1.4.0 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
+Variables named `PI_*` are read for compatibility with Pi 1.5.0 ([Pi's environment variable reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/environment-variables.md)). Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings. Provider credential variables, such as `ANTHROPIC_API_KEY`, are listed in [Providers](/docs/latest/providers) and in `pig --help`.
 
 ## Location
 
@@ -57,6 +57,7 @@ One mistake to avoid: a shell that already has `PIG_CODING_AGENT_DIR` set keeps 
 |---|---|
 | `PIG_OFFLINE`, `PI_OFFLINE` | Turn off startup network operations, such as package update checks and model catalog refreshes. Accepts `1`, `true` or `yes`. `--offline` does the same |
 | `PIG_UPDATE_URL` | Release manifest used by `pig update` |
+| `PIG_SELF_UPDATE_COMMAND` / `PI_SELF_UPDATE_COMMAND` | Command `pig update` runs to update PiG itself, split on whitespace (no quoting), with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PIG_SELF_UPDATE_COMMAND` is read first and either takes precedence over the `selfUpdateCommand` setting. See [Custom update command](cli.md#custom-update-command) |
 | `PIG_UPDATE_TRUST_ROOT` | Public key that signs the release manifest |
 | `PI_SKIP_VERSION_CHECK` | Do not check for a newer PiG release at startup. Any non-empty value disables the check, as in Pi. `pig update` still checks |
 | `PI_OAUTH_CALLBACK_HOST` | Host the OAuth callback listens on |
@@ -171,6 +172,7 @@ Each has a setting that does the same thing. A `terminal.hyperlinks`, `terminal.
 |---|---|
 | `PIG_PIGLET_NAME` | Piglet to run |
 | `PIG_PIGLET_PATH` | Directories searched for piglets |
+| `PIG_ACTIVE_PIGLET_SOURCE` | A session sets it for its tools: the path of the Piglet it runs, or the name of a Piglet Binary. `pig status`, `pig diagnose` and `pig piglet show` read it. Setting it does not select a Piglet. |
 | `PIG_SDK_GO_ROOT` | Go SDK used when building an extension |
 | `PIG_SDK_PY_ROOT` | Python SDK used when building an extension |
 | `PIG_SDK_RS_ROOT` | Rust SDK used when building an extension |

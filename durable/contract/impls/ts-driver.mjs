@@ -5,7 +5,7 @@
 //   ts-driver.mjs --db <store> [--turns N] [--tools 8] [--recover] [--stub js|jsincr|core] [--sidecar] [--payload-kb K]
 // The scripted-model call is answered in the host from the parsed context (durable-bench's next()); `ctx` fingerprints need
 // the full pi-ai Context, which this core does not build, so its model lines carry only the bench fingerprint.
-import { openCapture } from "./storage.mjs"
+import { openCapture, SQLITE_MIGRATIONS } from "./storage.mjs"
 import { emit } from "../lib/trace.mjs"
 import { fingerprint, MEASURED_TOOLS, seenOf, turn } from "../lib/workload.mjs"
 // CONTRACT_TS_CORE_DIR names a directory with a modified copy of ts-core: the negative controls of test/matrix.test.mjs.
@@ -19,6 +19,14 @@ if (flag("payload-kb")) process.env.CONTRACT_PAYLOAD_KB = arg("payload-kb")
 if (flag("parallel") || arg("stream") || arg("fault") || Number(arg("seed", "0"))) { console.error("ts-driver: parallel, stream, fault and seed runs are outside the bench slice of the TS control"); process.exit(3) }
 
 const cap = openCapture(db)
+// A store an older release wrote is at an older schema version; Pi's open applies the migrations after it (chord applyMigrations: each
+// migration's statements, then the version), outside any commit. The control applies Pi's own statements the same way.
+const schemaVersion = cap.all("SELECT version FROM durable_schema WHERE singleton = 1", [])[0]?.version ?? 0
+for (const migration of SQLITE_MIGRATIONS) {
+	if (migration.version <= schemaVersion) continue
+	for (const statement of migration.statements) cap.run(statement, [])
+	cap.run("UPDATE durable_schema SET version = ? WHERE singleton = 1", [migration.version])
+}
 const asBlob = p => (p instanceof ArrayBuffer ? new Uint8Array(p) : p)
 const store = {
 	run: (q, ...p) => { cap.run(q, p.map(asBlob)) },

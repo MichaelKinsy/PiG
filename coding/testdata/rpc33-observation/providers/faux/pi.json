@@ -1,5 +1,5 @@
 {
- "pi": "1.4.0+6c384aa3",
+ "pi": "1.5.0",
  "node": "v24.19.0",
  "results": [
   {
@@ -73,8 +73,8 @@
          "input": 0,
          "output": 6,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 508,
+         "cacheWrite": 452,
+         "totalTokens": 458,
          "cost": {
           "input": 0,
           "output": 0,
@@ -114,8 +114,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -139,8 +139,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -165,8 +165,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -191,8 +191,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -217,8 +217,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -243,8 +243,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -269,8 +269,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -295,8 +295,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -332,8 +332,8 @@
          "input": 0,
          "output": 6,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 508,
+         "cacheWrite": 452,
+         "totalTokens": 458,
          "cost": {
           "input": 0,
           "output": 0,
@@ -3505,8 +3505,8 @@
          "input": 0,
          "output": 7,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 509,
+         "cacheWrite": 452,
+         "totalTokens": 459,
          "cost": {
           "input": 0,
           "output": 0,
@@ -3552,8 +3552,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3577,8 +3577,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3603,8 +3603,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3629,8 +3629,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3655,8 +3655,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3681,8 +3681,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3707,8 +3707,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3732,8 +3732,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3758,8 +3758,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3784,8 +3784,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3810,8 +3810,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -3851,8 +3851,8 @@
          "input": 0,
          "output": 7,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 509,
+         "cacheWrite": 452,
+         "totalTokens": 459,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8151,8 +8151,8 @@
          "input": 0,
          "output": 10,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 512,
+         "cacheWrite": 452,
+         "totalTokens": 462,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8210,8 +8210,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8237,8 +8237,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8263,8 +8263,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8289,8 +8289,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8315,8 +8315,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8341,8 +8341,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8367,8 +8367,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8393,8 +8393,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8419,8 +8419,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8445,8 +8445,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8471,8 +8471,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8519,8 +8519,8 @@
          "input": 0,
          "output": 10,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 512,
+         "cacheWrite": 452,
+         "totalTokens": 462,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8578,9 +8578,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
-         "cacheWrite": 21,
-         "totalTokens": 524,
+         "cacheRead": 452,
+         "cacheWrite": 22,
+         "totalTokens": 475,
          "cost": {
           "input": 0,
           "output": 0,
@@ -8602,9 +8602,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
-        "cacheWrite": 21,
-        "totalTokens": 524,
+        "cacheRead": 452,
+        "cacheWrite": 22,
+        "totalTokens": 475,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8627,9 +8627,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
-        "cacheWrite": 21,
-        "totalTokens": 524,
+        "cacheRead": 452,
+        "cacheWrite": 22,
+        "totalTokens": 475,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8653,9 +8653,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
-        "cacheWrite": 21,
-        "totalTokens": 524,
+        "cacheRead": 452,
+        "cacheWrite": 22,
+        "totalTokens": 475,
         "cost": {
          "input": 0,
          "output": 0,
@@ -8690,9 +8690,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
-         "cacheWrite": 21,
-         "totalTokens": 524,
+         "cacheRead": 452,
+         "cacheWrite": 22,
+         "totalTokens": 475,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13282,8 +13282,8 @@
          "input": 0,
          "output": 14,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 516,
+         "cacheWrite": 452,
+         "totalTokens": 466,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13366,8 +13366,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13391,8 +13391,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13417,8 +13417,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13443,8 +13443,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13469,8 +13469,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13494,8 +13494,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13520,8 +13520,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13546,8 +13546,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13572,8 +13572,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13599,8 +13599,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13625,8 +13625,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13651,8 +13651,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13677,8 +13677,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13703,8 +13703,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13729,8 +13729,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13755,8 +13755,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13781,8 +13781,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13807,8 +13807,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13833,8 +13833,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13889,8 +13889,8 @@
          "input": 0,
          "output": 14,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 516,
+         "cacheWrite": 452,
+         "totalTokens": 466,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13949,9 +13949,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 26,
-         "totalTokens": 529,
+         "totalTokens": 479,
          "cost": {
           "input": 0,
           "output": 0,
@@ -13973,9 +13973,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
+        "cacheRead": 452,
         "cacheWrite": 26,
-        "totalTokens": 529,
+        "totalTokens": 479,
         "cost": {
          "input": 0,
          "output": 0,
@@ -13998,9 +13998,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
+        "cacheRead": 452,
         "cacheWrite": 26,
-        "totalTokens": 529,
+        "totalTokens": 479,
         "cost": {
          "input": 0,
          "output": 0,
@@ -14024,9 +14024,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
+        "cacheRead": 452,
         "cacheWrite": 26,
-        "totalTokens": 529,
+        "totalTokens": 479,
         "cost": {
          "input": 0,
          "output": 0,
@@ -14061,9 +14061,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 26,
-         "totalTokens": 529,
+         "totalTokens": 479,
          "cost": {
           "input": 0,
           "output": 0,
@@ -22261,8 +22261,8 @@
          "input": 0,
          "output": 0,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 502,
+         "cacheWrite": 452,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -22285,8 +22285,8 @@
         "input": 0,
         "output": 0,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 502,
+        "cacheWrite": 452,
+        "totalTokens": 452,
         "cost": {
          "input": 0,
          "output": 0,
@@ -22310,8 +22310,8 @@
         "input": 0,
         "output": 0,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 502,
+        "cacheWrite": 452,
+        "totalTokens": 452,
         "cost": {
          "input": 0,
          "output": 0,
@@ -22336,8 +22336,8 @@
         "input": 0,
         "output": 0,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 502,
+        "cacheWrite": 452,
+        "totalTokens": 452,
         "cost": {
          "input": 0,
          "output": 0,
@@ -22373,8 +22373,8 @@
          "input": 0,
          "output": 0,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 502,
+         "cacheWrite": 452,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -23991,8 +23991,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -24015,8 +24015,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24040,8 +24040,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24066,8 +24066,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24092,8 +24092,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24118,8 +24118,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24144,8 +24144,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -24181,8 +24181,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -26691,7 +26691,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072943912,
+        "timestamp": 1793637692622,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -26724,7 +26724,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072943912,
+        "timestamp": 1793637692622,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -26764,8 +26764,8 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943918,
-         "durationMs": 0
+         "timestamp": 1793637692630,
+         "durationMs": 1
         }
        }
       },
@@ -26793,8 +26793,8 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072943918,
-        "durationMs": 0
+        "timestamp": 1793637692630,
+        "durationMs": 1
        }
       }
      ]
@@ -26829,7 +26829,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692630,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26861,7 +26861,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692630,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26900,7 +26900,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692630,
          "durationMs": 0
         }
        }
@@ -26929,7 +26929,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072943919,
+        "timestamp": 1793637692630,
         "durationMs": 0
        }
       }
@@ -26965,7 +26965,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692630,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -26997,7 +26997,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692630,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -27036,7 +27036,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692631,
          "durationMs": 0
         }
        }
@@ -27065,7 +27065,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072943919,
+        "timestamp": 1793637692631,
         "durationMs": 0
        }
       }
@@ -27101,7 +27101,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692631,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -27133,7 +27133,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072943919,
+         "timestamp": 1793637692631,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -27308,8 +27308,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -27333,8 +27333,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27358,8 +27358,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27384,8 +27384,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27410,8 +27410,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27436,8 +27436,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27462,8 +27462,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -27499,8 +27499,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -30109,8 +30109,8 @@
          "input": 0,
          "output": 3,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 505,
+         "cacheWrite": 452,
+         "totalTokens": 455,
          "cost": {
           "input": 0,
           "output": 0,
@@ -30133,8 +30133,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30158,8 +30158,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30184,8 +30184,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30210,8 +30210,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30236,8 +30236,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -30280,7 +30280,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072945044,
+        "timestamp": 1793637693454,
         "durationMs": 2,
         "thinkingLevel": "off"
        }
@@ -30305,9 +30305,9 @@
         "usage": {
          "input": 0,
          "output": 0,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 0,
-         "totalTokens": 502,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -30318,7 +30318,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072947055,
+        "timestamp": 1793637695465,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -30338,9 +30338,9 @@
         "usage": {
          "input": 0,
          "output": 0,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 0,
-         "totalTokens": 502,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -30351,7 +30351,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072947055,
+        "timestamp": 1793637695465,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -30599,7 +30599,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072947059,
+         "timestamp": 1793637695469,
          "durationMs": 0
         }
        }
@@ -30628,7 +30628,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072947059,
+        "timestamp": 1793637695469,
         "durationMs": 0
        }
       }
@@ -31027,7 +31027,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072947060,
+         "timestamp": 1793637695470,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -31274,7 +31274,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072947060,
+         "timestamp": 1793637695470,
          "durationMs": 0
         }
        }
@@ -31303,7 +31303,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072947060,
+        "timestamp": 1793637695470,
         "durationMs": 0
        }
       }
@@ -31702,7 +31702,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072947060,
+         "timestamp": 1793637695470,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -31949,7 +31949,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072947061,
+         "timestamp": 1793637695471,
          "durationMs": 0
         }
        }
@@ -31978,7 +31978,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072947061,
+        "timestamp": 1793637695471,
         "durationMs": 0
        }
       }
@@ -32377,7 +32377,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072947061,
+         "timestamp": 1793637695471,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -32515,8 +32515,8 @@
          "input": 0,
          "output": 6,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 508,
+         "cacheWrite": 452,
+         "totalTokens": 458,
          "cost": {
           "input": 0,
           "output": 0,
@@ -32539,8 +32539,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32570,8 +32570,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32602,8 +32602,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32634,8 +32634,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32666,8 +32666,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32698,8 +32698,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32741,8 +32741,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32767,8 +32767,8 @@
         "input": 0,
         "output": 6,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 508,
+        "cacheWrite": 452,
+        "totalTokens": 458,
         "cost": {
          "input": 0,
          "output": 0,
@@ -32804,8 +32804,8 @@
          "input": 0,
          "output": 6,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 508,
+         "cacheWrite": 452,
+         "totalTokens": 458,
          "cost": {
           "input": 0,
           "output": 0,
@@ -35936,8 +35936,8 @@
          "input": 0,
          "output": 7,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 509,
+         "cacheWrite": 452,
+         "totalTokens": 459,
          "cost": {
           "input": 0,
           "output": 0,
@@ -35960,8 +35960,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -35991,8 +35991,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36023,8 +36023,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36055,8 +36055,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36099,8 +36099,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36125,8 +36125,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36151,8 +36151,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36182,8 +36182,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36214,8 +36214,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36257,8 +36257,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36283,8 +36283,8 @@
         "input": 0,
         "output": 7,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 509,
+        "cacheWrite": 452,
+        "totalTokens": 459,
         "cost": {
          "input": 0,
          "output": 0,
@@ -36324,8 +36324,8 @@
          "input": 0,
          "output": 7,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 509,
+         "cacheWrite": 452,
+         "totalTokens": 459,
          "cost": {
           "input": 0,
           "output": 0,
@@ -40595,8 +40595,8 @@
          "input": 0,
          "output": 10,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 512,
+         "cacheWrite": 452,
+         "totalTokens": 462,
          "cost": {
           "input": 0,
           "output": 0,
@@ -40619,8 +40619,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40652,8 +40652,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40684,8 +40684,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40716,8 +40716,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40748,8 +40748,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40780,8 +40780,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40812,8 +40812,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40844,8 +40844,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40876,8 +40876,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40919,8 +40919,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40945,8 +40945,8 @@
         "input": 0,
         "output": 10,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 512,
+        "cacheWrite": 452,
+        "totalTokens": 462,
         "cost": {
          "input": 0,
          "output": 0,
@@ -40993,8 +40993,8 @@
          "input": 0,
          "output": 10,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 512,
+         "cacheWrite": 452,
+         "totalTokens": 462,
          "cost": {
           "input": 0,
           "output": 0,
@@ -41035,9 +41035,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
-         "cacheWrite": 21,
-         "totalTokens": 524,
+         "cacheRead": 452,
+         "cacheWrite": 22,
+         "totalTokens": 475,
          "cost": {
           "input": 0,
           "output": 0,
@@ -41059,9 +41059,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
-        "cacheWrite": 21,
-        "totalTokens": 524,
+        "cacheRead": 452,
+        "cacheWrite": 22,
+        "totalTokens": 475,
         "cost": {
          "input": 0,
          "output": 0,
@@ -41101,9 +41101,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
-        "cacheWrite": 21,
-        "totalTokens": 524,
+        "cacheRead": 452,
+        "cacheWrite": 22,
+        "totalTokens": 475,
         "cost": {
          "input": 0,
          "output": 0,
@@ -41127,9 +41127,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
-        "cacheWrite": 21,
-        "totalTokens": 524,
+        "cacheRead": 452,
+        "cacheWrite": 22,
+        "totalTokens": 475,
         "cost": {
          "input": 0,
          "output": 0,
@@ -41164,9 +41164,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
-         "cacheWrite": 21,
-         "totalTokens": 524,
+         "cacheRead": 452,
+         "cacheWrite": 22,
+         "totalTokens": 475,
          "cost": {
           "input": 0,
           "output": 0,
@@ -45655,8 +45655,8 @@
          "input": 0,
          "output": 14,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 516,
+         "cacheWrite": 452,
+         "totalTokens": 466,
          "cost": {
           "input": 0,
           "output": 0,
@@ -45680,8 +45680,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45711,8 +45711,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45755,8 +45755,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45781,8 +45781,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45807,8 +45807,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45838,8 +45838,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45882,8 +45882,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45908,8 +45908,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45934,8 +45934,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45967,8 +45967,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -45999,8 +45999,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46031,8 +46031,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46063,8 +46063,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46095,8 +46095,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46127,8 +46127,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46159,8 +46159,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46191,8 +46191,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46234,8 +46234,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46260,8 +46260,8 @@
         "input": 0,
         "output": 14,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 516,
+        "cacheWrite": 452,
+        "totalTokens": 466,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46316,8 +46316,8 @@
          "input": 0,
          "output": 14,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 516,
+         "cacheWrite": 452,
+         "totalTokens": 466,
          "cost": {
           "input": 0,
           "output": 0,
@@ -46359,9 +46359,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 26,
-         "totalTokens": 529,
+         "totalTokens": 479,
          "cost": {
           "input": 0,
           "output": 0,
@@ -46383,9 +46383,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
+        "cacheRead": 452,
         "cacheWrite": 26,
-        "totalTokens": 529,
+        "totalTokens": 479,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46425,9 +46425,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
+        "cacheRead": 452,
         "cacheWrite": 26,
-        "totalTokens": 529,
+        "totalTokens": 479,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46451,9 +46451,9 @@
        "usage": {
         "input": 0,
         "output": 1,
-        "cacheRead": 502,
+        "cacheRead": 452,
         "cacheWrite": 26,
-        "totalTokens": 529,
+        "totalTokens": 479,
         "cost": {
          "input": 0,
          "output": 0,
@@ -46488,9 +46488,9 @@
         "usage": {
          "input": 0,
          "output": 1,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 26,
-         "totalTokens": 529,
+         "totalTokens": 479,
          "cost": {
           "input": 0,
           "output": 0,
@@ -54618,8 +54618,8 @@
          "input": 0,
          "output": 0,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 502,
+         "cacheWrite": 452,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -54642,8 +54642,8 @@
         "input": 0,
         "output": 0,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 502,
+        "cacheWrite": 452,
+        "totalTokens": 452,
         "cost": {
          "input": 0,
          "output": 0,
@@ -54684,8 +54684,8 @@
         "input": 0,
         "output": 0,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 502,
+        "cacheWrite": 452,
+        "totalTokens": 452,
         "cost": {
          "input": 0,
          "output": 0,
@@ -54710,8 +54710,8 @@
         "input": 0,
         "output": 0,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 502,
+        "cacheWrite": 452,
+        "totalTokens": 452,
         "cost": {
          "input": 0,
          "output": 0,
@@ -54747,8 +54747,8 @@
          "input": 0,
          "output": 0,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 502,
+         "cacheWrite": 452,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -56331,8 +56331,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -56355,8 +56355,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56386,8 +56386,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56418,8 +56418,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56450,8 +56450,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56493,8 +56493,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56519,8 +56519,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -56556,8 +56556,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -59067,7 +59067,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072951364,
+        "timestamp": 1793637698710,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -59100,7 +59100,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072951364,
+        "timestamp": 1793637698710,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -59140,7 +59140,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951371,
+         "timestamp": 1793637698717,
          "durationMs": 0
         }
        }
@@ -59169,7 +59169,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072951371,
+        "timestamp": 1793637698717,
         "durationMs": 0
        }
       }
@@ -59205,7 +59205,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59237,7 +59237,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59276,7 +59276,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0
         }
        }
@@ -59305,7 +59305,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072951372,
+        "timestamp": 1793637698717,
         "durationMs": 0
        }
       }
@@ -59341,7 +59341,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59373,7 +59373,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59412,7 +59412,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0
         }
        }
@@ -59441,7 +59441,7 @@
         },
         "stopReason": "error",
         "errorMessage": "scripted factory failure",
-        "timestamp": 1793072951372,
+        "timestamp": 1793637698717,
         "durationMs": 0
        }
       }
@@ -59477,7 +59477,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59509,7 +59509,7 @@
          },
          "stopReason": "error",
          "errorMessage": "scripted factory failure",
-         "timestamp": 1793072951372,
+         "timestamp": 1793637698717,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -59650,8 +59650,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -59675,8 +59675,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59706,8 +59706,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59738,8 +59738,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59770,8 +59770,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59813,8 +59813,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59839,8 +59839,8 @@
         "input": 0,
         "output": 4,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 506,
+        "cacheWrite": 452,
+        "totalTokens": 456,
         "cost": {
          "input": 0,
          "output": 0,
@@ -59876,8 +59876,8 @@
          "input": 0,
          "output": 4,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 506,
+         "cacheWrite": 452,
+         "totalTokens": 456,
          "cost": {
           "input": 0,
           "output": 0,
@@ -62458,8 +62458,8 @@
          "input": 0,
          "output": 3,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 505,
+         "cacheWrite": 452,
+         "totalTokens": 455,
          "cost": {
           "input": 0,
           "output": 0,
@@ -62482,8 +62482,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62513,8 +62513,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62545,8 +62545,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62588,8 +62588,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62614,8 +62614,8 @@
         "input": 0,
         "output": 3,
         "cacheRead": 0,
-        "cacheWrite": 502,
-        "totalTokens": 505,
+        "cacheWrite": 452,
+        "totalTokens": 455,
         "cost": {
          "input": 0,
          "output": 0,
@@ -62658,8 +62658,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072952554,
-        "durationMs": 5,
+        "timestamp": 1793637699586,
+        "durationMs": 4,
         "thinkingLevel": "off"
        }
       }
@@ -62683,9 +62683,9 @@
         "usage": {
          "input": 0,
          "output": 0,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 0,
-         "totalTokens": 502,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -62696,7 +62696,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072954564,
+        "timestamp": 1793637701596,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -62716,9 +62716,9 @@
         "usage": {
          "input": 0,
          "output": 0,
-         "cacheRead": 502,
+         "cacheRead": 452,
          "cacheWrite": 0,
-         "totalTokens": 502,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -62729,7 +62729,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072954564,
+        "timestamp": 1793637701596,
         "durationMs": 0,
         "thinkingLevel": "off"
        }
@@ -62977,7 +62977,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072954571,
+         "timestamp": 1793637701602,
          "durationMs": 4
         }
        }
@@ -63006,7 +63006,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072954571,
+        "timestamp": 1793637701602,
         "durationMs": 4
        }
       }
@@ -63405,7 +63405,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072954574,
+         "timestamp": 1793637701606,
          "durationMs": 3,
          "thinkingLevel": "off"
         }
@@ -63652,8 +63652,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072954577,
-         "durationMs": 2
+         "timestamp": 1793637701610,
+         "durationMs": 3
         }
        }
       },
@@ -63681,8 +63681,8 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072954577,
-        "durationMs": 2
+        "timestamp": 1793637701610,
+        "durationMs": 3
        }
       }
      ]
@@ -64080,7 +64080,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072954580,
+         "timestamp": 1793637701613,
          "durationMs": 3,
          "thinkingLevel": "off"
         }
@@ -64327,7 +64327,7 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072954583,
+         "timestamp": 1793637701616,
          "durationMs": 3
         }
        }
@@ -64356,7 +64356,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Faux response ended without a stop reason",
-        "timestamp": 1793072954583,
+        "timestamp": 1793637701616,
         "durationMs": 3
        }
       }
@@ -64755,8 +64755,8 @@
          },
          "stopReason": "error",
          "errorMessage": "Faux response ended without a stop reason",
-         "timestamp": 1793072954587,
-         "durationMs": 4,
+         "timestamp": 1793637701620,
+         "durationMs": 3,
          "thinkingLevel": "off"
         }
        }
@@ -64881,8 +64881,8 @@
          "input": 0,
          "output": 0,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 502,
+         "cacheWrite": 452,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -64893,7 +64893,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072955158,
+        "timestamp": 1793637702016,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -64914,8 +64914,8 @@
          "input": 0,
          "output": 0,
          "cacheRead": 0,
-         "cacheWrite": 502,
-         "totalTokens": 502,
+         "cacheWrite": 452,
+         "totalTokens": 452,
          "cost": {
           "input": 0,
           "output": 0,
@@ -64926,7 +64926,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072955158,
+        "timestamp": 1793637702016,
         "durationMs": 1,
         "thinkingLevel": "off"
        }
@@ -64966,7 +64966,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955165,
+         "timestamp": 1793637702023,
          "durationMs": 0
         }
        }
@@ -64995,7 +64995,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072955165,
+        "timestamp": 1793637702023,
         "durationMs": 0
        }
       }
@@ -65031,7 +65031,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955165,
+         "timestamp": 1793637702023,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65063,7 +65063,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955165,
+         "timestamp": 1793637702023,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65102,7 +65102,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955165,
+         "timestamp": 1793637702023,
          "durationMs": 0
         }
        }
@@ -65131,7 +65131,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072955165,
+        "timestamp": 1793637702023,
         "durationMs": 0
        }
       }
@@ -65167,7 +65167,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955166,
+         "timestamp": 1793637702023,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65199,7 +65199,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955166,
+         "timestamp": 1793637702023,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65238,7 +65238,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955166,
+         "timestamp": 1793637702023,
          "durationMs": 0
         }
        }
@@ -65267,7 +65267,7 @@
         },
         "stopReason": "error",
         "errorMessage": "No more faux responses queued",
-        "timestamp": 1793072955166,
+        "timestamp": 1793637702023,
         "durationMs": 0
        }
       }
@@ -65303,7 +65303,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955166,
+         "timestamp": 1793637702023,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65335,7 +65335,7 @@
          },
          "stopReason": "error",
          "errorMessage": "No more faux responses queued",
-         "timestamp": 1793072955166,
+         "timestamp": 1793637702023,
          "durationMs": 0,
          "thinkingLevel": "off"
         }
@@ -65631,10 +65631,10 @@
      "provider": "faux-probe",
      "modelId": "faux-1",
      "api": "faux-probe",
-     "id": "deferred:1793072955166:lh8n7nflijs",
+     "id": "deferred:1793637702024:8r02h3dzeb6",
      "pollAfterMs": 5
     },
-    "timestamp": 1793072955166,
+    "timestamp": 1793637702024,
     "durationMs": 0
    },
    {
@@ -65662,10 +65662,10 @@
      "provider": "faux-probe",
      "modelId": "faux-1",
      "api": "faux-probe",
-     "id": "deferred:1793072955166:lh8n7nflijs",
+     "id": "deferred:1793637702024:8r02h3dzeb6",
      "pollAfterMs": 5
     },
-    "timestamp": 1793072955167,
+    "timestamp": 1793637702025,
     "durationMs": 0
    },
    {
@@ -65718,7 +65718,7 @@
     },
     "stopReason": "error",
     "errorMessage": "Unknown faux deferred response: unknown",
-    "timestamp": 1793072955167,
+    "timestamp": 1793637702025,
     "durationMs": 0
    }
   ]

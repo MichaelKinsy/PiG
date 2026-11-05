@@ -11,6 +11,7 @@ else
   [[ -n $pinned && $("$binary" --version) == "$pinned" ]] || { printf 'expected pinned Pi %s\n' "$pinned" >&2; exit 1; }
   args=(--no-extensions -e "$root/test/parity/testdata/test-faux-provider.ts" --model test-faux/faux-1)
 fi
+# A bg-first invocation resumes the stopped job in the background before fg, as `bg` then `fg` do (#396, #397).
 # An explicit queued-int invocation retains the unsynchronized stopped-job stress probe. Its two legal outcomes are covered deterministically by suspend-signal-order.py.
 queued_interrupt=${2:-}
 args+=("reply with exactly: SUSPEND_READY")
@@ -43,6 +44,10 @@ trap cleanup EXIT
   printf 'printf "\\nSUSPEND_SHELL_READY\\n"\n'
   printf 'read -r answer; test "$answer" = resume || exit 1\n'
   if [[ $queued_interrupt == queued-int ]]; then printf 'kill -INT %%1; '; fi
+  if [[ $queued_interrupt == bg-first ]]; then
+    # The resumed job must be stopped again once it ran, whichever way: Pi stops on its first terminal call (SIGTTOU), PiG parks (D227).
+    printf 'bg %%1\nsleep 2\nps -o stat= -p "$(cat %q)" > %q\n' "$work/pid" "$work/bgstate"
+  fi
   printf 'fg %%1\n'
 } > "$work/launch.sh"
 printf -v launch 'bash --noprofile --norc -i %q' "$work/launch.sh"
@@ -98,13 +103,20 @@ while :; do
 done
 kill -0 "$pid"
 tmux -L "$name" capture-pane -p -e -t "$name" > "$work/escaped"
-python3 - "$work/escaped" <<'PY'
-import json,re,sys
+python3 - "$work/escaped" "$work/bgstate" <<'PY'
+import json,os,re,sys
 rows=open(sys.argv[1]).read().splitlines()
+bg_stopped = None
+if os.path.exists(sys.argv[2]):
+    bg_stopped = 'T' in open(sys.argv[2]).read()
+    if not bg_stopped:
+        raise SystemExit('job was not stopped after bg: ' + open(sys.argv[2]).read())
 for row in rows:
     plain=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',row)
     if plain.strip()=='RESUMED_SOURCE_PROOF':
-        print('SUSPEND_NATIVE '+json.dumps({'stopped':True,'aliveAfterResume':True,'response':row},ensure_ascii=False,separators=(',',':')))
+        result={'stopped':True,'aliveAfterResume':True,'response':row}
+        if bg_stopped is not None: result['stoppedAfterBg']=True
+        print('SUSPEND_NATIVE '+json.dumps(result,ensure_ascii=False,separators=(',',':')))
         break
 else: raise SystemExit('missing resumed response row')
 PY

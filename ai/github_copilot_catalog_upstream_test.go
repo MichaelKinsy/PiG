@@ -1,5 +1,8 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/github-copilot.ts
+// pi: packages/ai/src/providers/github-copilot.ts
+
 import (
 	"encoding/json"
 	"net/http"
@@ -14,13 +17,14 @@ func TestCopilotRefreshAccountCatalogUpstream(t *testing.T) {
 		name, host string
 		data       []any
 		want       []string
+		available  bool // upstream also lists the account's models through Models.getAvailable
 	}{
 		// .upstream/v0.87.1/packages/ai/test/github-copilot-oauth.test.ts:143 (availability caller: internal/codingagent/copilot_catalog_upstream_test.go)
-		{"filters models to the authenticated account picker catalog", "proxy.individual.githubcopilot.com", []any{copilotAccountRow(ids[0], true, "", new(true)), copilotAccountRow(ids[1], true, "disabled", new(true)), copilotAccountRow(ids[2], false, "enabled", new(true))}, []string{ids[0]}},
+		{"filters models to the authenticated account picker catalog", "proxy.individual.githubcopilot.com", []any{copilotAccountRow(ids[0], true, "", new(true)), copilotAccountRow(ids[1], true, "disabled", new(true)), copilotAccountRow(ids[2], false, "enabled", new(true))}, []string{ids[0]}, true},
 		// .upstream/v0.87.1/packages/ai/test/github-copilot-oauth.test.ts:178 (availability caller: internal/codingagent/copilot_catalog_upstream_test.go)
-		{"falls back to explicitly enabled policy models when the picker catalog is empty", "proxy.individual.githubcopilot.com", []any{copilotAccountRow(ids[0], false, "enabled", new(true)), copilotAccountRow("policy-disabled-model", false, "disabled", new(true)), copilotAccountRow("unconfigured-model", false, "", new(true)), copilotAccountRow("tool-incapable-model", false, "enabled", new(false))}, []string{ids[0]}},
+		{"falls back to explicitly enabled policy models when the picker catalog is empty", "proxy.individual.githubcopilot.com", []any{copilotAccountRow(ids[0], false, "enabled", new(true)), copilotAccountRow("policy-disabled-model", false, "disabled", new(true)), copilotAccountRow("unconfigured-model", false, "", new(true)), copilotAccountRow("tool-incapable-model", false, "enabled", new(false))}, []string{ids[0]}, true},
 		// .upstream/v0.87.1/packages/ai/test/github-copilot-oauth.test.ts:216
-		{"does not fall back to policy models for non-Individual accounts", "proxy.business.githubcopilot.com", []any{copilotAccountRow("gpt-4.1", false, "enabled", new(true))}, []string{}},
+		{"does not fall back to policy models for non-Individual accounts", "proxy.business.githubcopilot.com", []any{copilotAccountRow("gpt-4.1", false, "enabled", new(true))}, []string{}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			token := "tid=test;exp=9999999999;proxy-ep=" + tc.host + ";"
@@ -59,7 +63,19 @@ func TestCopilotRefreshAccountCatalogUpstream(t *testing.T) {
 			if err != nil || !reflect.DeepEqual(stored, &got) {
 				t.Fatalf("stored=%#v,%v", stored, err)
 			}
-			// The real model-picker caller is exercised by TestCopilotAuthenticatedAccountAvailableModelsUpstream in internal/codingagent.
+			// The registry caller is exercised by TestCopilotAuthenticatedAccountAvailableModelsUpstream in internal/codingagent.
+			if tc.available {
+				models := CreateModels(CreateModelsOptions{Credentials: store})
+				models.SetProvider(GithubCopilotProvider())
+				available, err := models.GetAvailable(t.Context(), "github-copilot")
+				var availableModels []string
+				for _, model := range available {
+					availableModels = append(availableModels, model.ID)
+				}
+				if err != nil || !reflect.DeepEqual(availableModels, tc.want) {
+					t.Fatalf("getAvailable = %v, %v; want %v", availableModels, err, tc.want)
+				}
+			}
 		})
 	}
 }

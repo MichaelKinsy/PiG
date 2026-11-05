@@ -6,5 +6,269 @@
    "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
+ },
+ "packages/chord/src/next/link/part.ts": {
+  "reason": "Compression is declared in part.ts and part.go aliases it (link.Compression = nextnode.Compression) so the link package speaks the interface; its Deflate/Inflate methods live on the nextnode implementation, and part.go is the code that calls them (OriginPart deflates, OpenPart and InflateAsync inflate).",
+  "members": {
+   "pkg:chord/next#Compression::property:deflate": "chord/next/link/part.go#Compression",
+   "pkg:chord/next#Compression::property:deflate::call:0": "chord/next/link/part.go#Compression",
+   "pkg:chord/next#Compression::property:inflate": "chord/next/link/part.go#Compression",
+   "pkg:chord/next#Compression::property:inflate::call:0": "chord/next/link/part.go#Compression"
+  }
+ },
+ "packages/ai/src/providers/amazon-bedrock.models.ts": {
+  "reason": "AMAZON_BEDROCK_MODELS is the amazon-bedrock chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/amazon-bedrock.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/amazon-bedrock.models#AMAZON_BEDROCK_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/ant-ling.models.ts": {
+  "reason": "ANT_LING_MODELS is the ant-ling chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/ant-ling.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/ant-ling.models#ANT_LING_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/anthropic.models.ts": {
+  "reason": "ANTHROPIC_MODELS is the anthropic chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/anthropic.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/anthropic.models#ANTHROPIC_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/azure.models.ts": {
+  "reason": "AZURE_MODELS is the azure chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/azure.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/azure.models#AZURE_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/cerebras.models.ts": {
+  "reason": "CEREBRAS_MODELS is the cerebras chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/cerebras.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/cerebras.models#CEREBRAS_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/cloudflare-ai-gateway.models.ts": {
+  "reason": "CLOUDFLARE_AI_GATEWAY_MODELS is the cloudflare-ai-gateway chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/cloudflare-ai-gateway.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/cloudflare-ai-gateway.models#CLOUDFLARE_AI_GATEWAY_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/cloudflare-workers-ai.models.ts": {
+  "reason": "CLOUDFLARE_WORKERS_AI_MODELS is the cloudflare-workers-ai chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/cloudflare-workers-ai.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/cloudflare-workers-ai.models#CLOUDFLARE_WORKERS_AI_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/deepseek.models.ts": {
+  "reason": "DEEPSEEK_MODELS is the deepseek chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/deepseek.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/deepseek.models#DEEPSEEK_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/fireworks.models.ts": {
+  "reason": "FIREWORKS_MODELS is the fireworks chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/fireworks.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/fireworks.models#FIREWORKS_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/github-copilot.models.ts": {
+  "reason": "GITHUB_COPILOT_MODELS is the github-copilot chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/github-copilot.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/github-copilot.models#GITHUB_COPILOT_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/google-vertex.models.ts": {
+  "reason": "GOOGLE_VERTEX_MODELS is the google-vertex chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/google-vertex.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/google-vertex.models#GOOGLE_VERTEX_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/google.models.ts": {
+  "reason": "GOOGLE_MODELS is the google chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/google.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/google.models#GOOGLE_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/groq.models.ts": {
+  "reason": "GROQ_MODELS is the groq chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/groq.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/groq.models#GROQ_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/huggingface.models.ts": {
+  "reason": "HUGGINGFACE_MODELS is the huggingface chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/huggingface.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/huggingface.models#HUGGINGFACE_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/kimi-coding.models.ts": {
+  "reason": "KIMI_CODING_MODELS is the kimi-coding chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/kimi-coding.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/kimi-coding.models#KIMI_CODING_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/meta.models.ts": {
+  "reason": "META_MODELS is the meta chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/meta.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/meta.models#META_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/minimax-cn.models.ts": {
+  "reason": "MINIMAX_CN_MODELS is the minimax-cn chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/minimax-cn.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/minimax-cn.models#MINIMAX_CN_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/minimax.models.ts": {
+  "reason": "MINIMAX_MODELS is the minimax chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/minimax.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/minimax.models#MINIMAX_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/mistral.models.ts": {
+  "reason": "MISTRAL_MODELS is the mistral chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/mistral.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/mistral.models#MISTRAL_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/moonshotai-cn.models.ts": {
+  "reason": "MOONSHOTAI_CN_MODELS is the moonshotai-cn chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/moonshotai-cn.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/moonshotai-cn.models#MOONSHOTAI_CN_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/moonshotai.models.ts": {
+  "reason": "MOONSHOTAI_MODELS is the moonshotai chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/moonshotai.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/moonshotai.models#MOONSHOTAI_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/nvidia.models.ts": {
+  "reason": "NVIDIA_MODELS is the nvidia chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/nvidia.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/nvidia.models#NVIDIA_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/openai-codex.models.ts": {
+  "reason": "OPENAI_CODEX_MODELS is the openai-codex chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/openai-codex.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/openai-codex.models#OPENAI_CODEX_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/openai.models.ts": {
+  "reason": "OPENAI_MODELS is the openai chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/openai.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/openai.models#OPENAI_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/opencode-go.models.ts": {
+  "reason": "OPENCODE_GO_MODELS is the opencode-go chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/opencode-go.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/opencode-go.models#OPENCODE_GO_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/opencode.models.ts": {
+  "reason": "OPENCODE_MODELS is the opencode chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/opencode.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/opencode.models#OPENCODE_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/openrouter.models.ts": {
+  "reason": "OPENROUTER_MODELS is the openrouter chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/openrouter.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/openrouter.models#OPENROUTER_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/qwen-token-plan-cn.models.ts": {
+  "reason": "QWEN_TOKEN_PLAN_CN_MODELS is the qwen-token-plan-cn chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/qwen-token-plan-cn.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/qwen-token-plan-cn.models#QWEN_TOKEN_PLAN_CN_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/qwen-token-plan-individual.models.ts": {
+  "reason": "QWEN_TOKEN_PLAN_INDIVIDUAL_MODELS is the qwen-token-plan-individual chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/qwen-token-plan-individual.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/qwen-token-plan-individual.models#QWEN_TOKEN_PLAN_INDIVIDUAL_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/qwen-token-plan.models.ts": {
+  "reason": "QWEN_TOKEN_PLAN_MODELS is the qwen-token-plan chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/qwen-token-plan.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/qwen-token-plan.models#QWEN_TOKEN_PLAN_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/radius.models.ts": {
+  "reason": "RADIUS_MODELS is the radius chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/radius.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/radius.models#RADIUS_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/together.models.ts": {
+  "reason": "TOGETHER_MODELS is the together chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/together.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/together.models#TOGETHER_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/typesafe.models.ts": {
+  "reason": "TYPESAFE_CLASSIFIER_MODELS is the typesafe classifier catalog, which ai/classifier_models_generated.go GeneratedClassifierModels holds as the records generated from the pinned providers/data/typesafe.json; the ledger maps it to the BuiltinClassifierModels accessor in ai/builtin_providers.go by a documented rename, which leaves the generated table the row cites without a mapped symbol (builtin_providers.go then holds no mapped symbol of this row).",
+  "members": {
+   "pkg:ai/providers/typesafe.models#TYPESAFE_CLASSIFIER_MODELS": "ai/classifier_models_generated.go#GeneratedClassifierModels"
+  }
+ },
+ "packages/ai/src/providers/vercel-ai-gateway.models.ts": {
+  "reason": "VERCEL_AI_GATEWAY_MODELS is the vercel-ai-gateway chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/vercel-ai-gateway.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/vercel-ai-gateway.models#VERCEL_AI_GATEWAY_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/xai.models.ts": {
+  "reason": "XAI_MODELS is the xai chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/xai.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/xai.models#XAI_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts": {
+  "reason": "XIAOMI_TOKEN_PLAN_AMS_MODELS is the xiaomi-token-plan-ams chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/xiaomi-token-plan-ams.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/xiaomi-token-plan-ams.models#XIAOMI_TOKEN_PLAN_AMS_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts": {
+  "reason": "XIAOMI_TOKEN_PLAN_CN_MODELS is the xiaomi-token-plan-cn chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/xiaomi-token-plan-cn.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/xiaomi-token-plan-cn.models#XIAOMI_TOKEN_PLAN_CN_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts": {
+  "reason": "XIAOMI_TOKEN_PLAN_SGP_MODELS is the xiaomi-token-plan-sgp chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/xiaomi-token-plan-sgp.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/xiaomi-token-plan-sgp.models#XIAOMI_TOKEN_PLAN_SGP_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/xiaomi.models.ts": {
+  "reason": "XIAOMI_MODELS is the xiaomi chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/xiaomi.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/xiaomi.models#XIAOMI_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/zai-coding-cn.models.ts": {
+  "reason": "ZAI_CODING_CN_MODELS is the zai-coding-cn chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/zai-coding-cn.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/zai-coding-cn.models#ZAI_CODING_CN_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/ai/src/providers/zai.models.ts": {
+  "reason": "ZAI_MODELS is the zai chat rows of the generated catalog table: ai/models_generated.go GeneratedModels holds the model records generated from the pinned providers/data/zai.json (ListModels in ai/registry.go only filters that table by provider); the ledger maps it to ListModels by a documented rename, which leaves the generated table the row cites without a mapped symbol.",
+  "members": {
+   "pkg:ai/providers/zai.models#ZAI_MODELS": "ai/models_generated.go#GeneratedModels"
+  }
+ },
+ "packages/coding-agent/src/core/slash-commands.ts": {
+  "reason": "The four SlashCommandInfo fields are declared once in the SlashCommandInfo struct of coding/extension/opaque_types.go, a file whose only function body belongs to CompactionResult; no slash-command evidence can execute a statement there. internal/codingagent/extension_host_info.go aliases that struct (SlashCommandInfo = extension.SlashCommandInfo) and is where Go builds every command info Pi's getCommands returns, which TestSlashCommandCatalogListsPromptAndSkillSources and the get_commands tests drive.",
+  "members": {
+   "pkg:coding-agent/.#SlashCommandInfo::property:description": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
+   "pkg:coding-agent/.#SlashCommandInfo::property:name": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
+   "pkg:coding-agent/.#SlashCommandInfo::property:source": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
+   "pkg:coding-agent/.#SlashCommandInfo::property:sourceInfo": "internal/codingagent/extension_host_info.go#SlashCommandInfo"
+  }
  }
 }

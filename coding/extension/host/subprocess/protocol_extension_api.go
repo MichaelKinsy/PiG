@@ -198,13 +198,6 @@ type CallableToolsResult struct {
 // RequestPrepareArguments (host→ext) runs a tool's prepareArguments. RequestPayload.Tool names the tool and Args is the model's arguments; the response is the prepared arguments.
 const RequestPrepareArguments = "tool_prepare_arguments"
 
-// ── refinements ──────────────────────────────────────────────────────────────
-
-// RequestRefineArguments (host→ext) runs one refinement of a tool's parameter schema (Type.Refine): RequestPayload.Tool names the tool and RequestPayload.Refine the node's path, the
-// refinement's index and the value. The response is a RefineResult; an error response is the refinement throwing, and its message is the tool call's error, as Pi's thrown error is.
-// The host sends one request per predicate call TypeBox makes, in TypeBox's order, and only for a tool whose declaration lists Refinements.
-const RequestRefineArguments = "tool_refine_arguments"
-
 // ── reachesTools ─────────────────────────────────────────────────────────────
 
 // RequestReachesTools (host→ext) runs a tool's reachesTools. RequestPayload.Tool names the tool and Args is the call's input; the response is the string "all", or an array of the words of the input that may name the tools the call reaches (upstream's `"all" | readonly string[]`).
@@ -352,7 +345,7 @@ type ParseDateResult struct {
 	Ms *float64 `json:"ms"`
 }
 
-// CallHighlightCode (ext→host) is pi-coding-agent's highlightCode (theme.ts), or getMarkdownTheme().highlightCode when Markdown is set: the lines of code highlighted
+// CallHighlightCode (ext→host) is pi-coding-agent's highlightCode (theme.ts), which getMarkdownTheme().highlightCode is too: the lines of code highlighted
 // for lang by the host's highlight.js port and drawn with a theme. The args are a HighlightCodeArgs and the result a HighlightCodeResult. It reads no session or extension
 // state, so it may arrive before the register frame.
 const CallHighlightCode = "highlight.code"
@@ -376,10 +369,9 @@ const CallLoadTheme = "theme.load"
 // HighlightCodeArgs is the argument of CallHighlightCode. Theme is the palette (the shape of ready.state.theme) of the theme to draw with: the one the extension
 // installed with initTheme. An absent Theme draws with the host's active theme, which the extension's own global theme replicates.
 type HighlightCodeArgs struct {
-	Code     string          `json:"code"`
-	Lang     string          `json:"lang,omitempty"`
-	Markdown bool            `json:"markdown,omitempty"`
-	Theme    json.RawMessage `json:"theme,omitempty"`
+	Code  string          `json:"code"`
+	Lang  string          `json:"lang,omitempty"`
+	Theme json.RawMessage `json:"theme,omitempty"`
 }
 
 // HighlightCodeResult is the result of CallHighlightCode: Pi's array of highlighted lines.

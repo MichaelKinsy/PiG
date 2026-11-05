@@ -71,17 +71,6 @@ func TestStdinBufferHoldsSplitUTF8CharactersAcrossReads(t *testing.T) {
 	if got := b.ProcessTerminalBytes([]byte("a")); !slices.Equal(got, []string{"a"}) {
 		t.Errorf("Clear left a held partial character: %q", got)
 	}
-	for _, tc := range []struct {
-		data []byte
-		want int
-	}{
-		{nil, 0}, {[]byte("a"), 0}, {[]byte("a\xe4"), 1}, {[]byte("a\xe4\xb8"), 2}, {[]byte("\xe4\xb8\xad"), 0},
-		{[]byte("\xf0\x9f\x98"), 3}, {[]byte("\xf0\x9f\x98\x80"), 0}, {[]byte("\xc3"), 1}, {[]byte("\x80"), 0}, {[]byte("\xf0\x9f\x98\x80\xc3"), 1},
-	} {
-		if got := incompleteUTF8Suffix(tc.data); got != tc.want {
-			t.Errorf("incompleteUTF8Suffix(%q) = %d, want %d", tc.data, got, tc.want)
-		}
-	}
 }
 
 // stdin-buffer.ts process(Buffer): empty input with nothing buffered is one empty event, empty input with a buffered remainder is nothing, and a single high byte is a Meta key (ESC plus the byte minus 128). A supplementary character is emitted as its two UTF-16 units.

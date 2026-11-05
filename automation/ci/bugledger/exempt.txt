@@ -22,3 +22,8 @@ bfc03c667c see b1cea06458
 9286e75ef1 Review follow-up to unreleased work: places the arrival-order start in the request scope (no behaviour change), drops one omitempty that conflated an empty operations list with an absent one, and adds tests for the emptydrop claims
 4935bcbfcc see 958e80d99f
 f3fd868442 see ab1d07097c
+33c8d77650 Follow-up to unreleased work: regenerates the embedded SDK copies of the unreleased ownThinkingRuns feature (D214) and extends the failed-factory probe, no product behaviour
+286c78da6d Repair of a merge between development branches: gofmt of a one-line accessor and a changelog sentence after a merge, no product behaviour
+ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour
+# f26dfe2355 corrects f06ba8fd15, which hid the symptom of the same bug (its trailer names f06ba8fd15 back): the entry is the correction's.
+f06ba8fd15 see f26dfe2355

@@ -1,11 +1,15 @@
 package ai
 
+// pi: packages/ai/src/providers/cloudflare-stream.ts
+
 import (
 	"context"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
 // Go's Provider.Stream is the shared implementation of native stream and streamSimple; coding.TestCloudflareModelRuntimeRequestEnvironment exercises both runtime entrypoints.
@@ -46,5 +50,29 @@ func TestCloudflareProviderStreamsUpstream(t *testing.T) {
 				t.Fatal("request mutated model endpoint")
 			}
 		})
+	}
+}
+
+// resolveCloudflareModel replaces the placeholders with replaceAll, so a "$"-pattern in the environment value expands against the original base URL. Offsets come from the byte index of the ASCII placeholder in the same string, so text before and after a match, copied by "$`" and "$'", must stay identical to Pi's when it holds non-BMP characters.
+func TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs(t *testing.T) {
+	type probe struct {
+		BaseURL string            `json:"baseUrl"`
+		Env     map[string]string `json:"env"`
+	}
+	probes := []probe{
+		{"https://😀/{CLOUDFLARE_ACCOUNT_ID}/x😀/{CLOUDFLARE_ACCOUNT_ID}/ü", map[string]string{"CLOUDFLARE_ACCOUNT_ID": "[$`|$'|$&|$$|$1|$<a>|$]"}},
+		{"https://😀/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/é😀", map[string]string{"CLOUDFLARE_ACCOUNT_ID": "😀$`", "CLOUDFLARE_GATEWAY_ID": "$'😀"}},
+		{"𝒳{CLOUDFLARE_GATEWAY_ID}𝒳{CLOUDFLARE_GATEWAY_ID}", map[string]string{"CLOUDFLARE_GATEWAY_ID": "$&$&"}},
+		{"https://h/{CLOUDFLARE_ACCOUNT_ID}", map[string]string{"CLOUDFLARE_ACCOUNT_ID": "plain😀"}},
+		{"https://h/{CLOUDFLARE_ACCOUNT_ID}/😀", map[string]string{"CLOUDFLARE_ACCOUNT_ID": "$"}},
+	}
+	var want []string
+	pioracle.Run(t, `
+const { resolveCloudflareModel } = await load("pi-ai/providers/cloudflare-stream.js");
+emit(input.map((p) => resolveCloudflareModel({ baseUrl: p.baseUrl }, p.env).baseUrl));`, probes, &want)
+	for i, p := range probes {
+		if got := resolveCloudflarePlaceholders(p.BaseURL, ProviderEnv(p.Env)); got != want[i] {
+			t.Errorf("%q with %v = %q, Pi %q", p.BaseURL, p.Env, got, want[i])
+		}
 	}
 }

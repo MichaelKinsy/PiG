@@ -35,6 +35,7 @@ var FeatureNames = map[string][]string{
 	pigstrip.ExtensionSDKGo:     {`extension init.*\bGo\b`},
 	pigstrip.ExtensionSDKRust:   {`extension init.*\bRust\b`},
 	pigstrip.ExtensionSDKPython: {`extension init.*\bPython\b`},
+	pigstrip.ExtensionSDKLisp:   {`extension init.*\bLisp\b`},
 	pigstrip.SyntaxHighlight:    {},
 	pigstrip.WordDictionaries:   {},
 	pigstrip.ExportHTML:         {`--export\b`},

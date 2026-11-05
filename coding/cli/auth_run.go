@@ -1,7 +1,7 @@
 package cli
 
-// Mirrors runAuthCommand in upstream packages/coding-agent/src/main.ts: the
-// `auth` command dispatch, its output, and its exit codes.
+// Ports packages/coding-agent/src/main.ts runAuthCommand: the `auth` command
+// dispatch, its output, and its exit codes.
 
 import (
 	"bytes"

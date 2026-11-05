@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/status-indicator.ts
+
 import (
 	"context"
 	"encoding/json"

@@ -12,7 +12,7 @@ into generated runner subprocesses.
 
 ## Breaking changes in 0.3.0
 
-Host-backed `Context` getters raise `HostCallError` on a host failure or a reply that lacks its field, and never return an empty value. `get_session_name`, `get_session_file` and `get_leaf_id` return `None` when absent, and `get_branch` and `get_entries` raise a failed session-log subscription. `timeout` options accept a float. See the migration tables in `docs/site/docs/extensions.md`.
+Host-backed `Context` getters raise `HostCallError` on a host failure or a reply that lacks its field, and never return an empty value. `get_session_name`, `get_session_file` and `get_leaf_id` return `None` when absent, and `get_branch` and `get_entries` raise a failed session-log subscription. `timeout` options accept a float. `Context.exec(..., max_buffer=...)` caps stdout and stderr together; past it the command is terminated and `ExecResult.truncated` is true, and a command that ignores SIGTERM is killed five seconds later. See the migration tables in `docs/site/docs/extensions.md`.
 
 ## Status
 
@@ -61,6 +61,8 @@ def save_note(text: str) -> None:
     notes = os.path.join(pig_sdk.get_agent_dir(), "notes.txt")
     pig_sdk.with_file_mutation_queue(notes, lambda: pathlib.Path(notes).write_text(text))
 ```
+
+`tui.get_select_page_index(keybindings, data, selected_index, item_count, page_size)` is Pi's `getSelectPageIndex`: the clamped index a `tui.select.pageUp` (-1) or `tui.select.pageDown` (+1) key moves a select list to (0 for an empty list), or `None` for any other key. A `ctx.custom` component, an `EditorComponent` and a `TuiAltScreen` component may have `captures_viewport_input` (a bool attribute, property or method; Pi's `capturesViewportInput`): each `ui.custom.render` and `ui.editor.render` frame carries `capturesViewportInput: true` while it is true (a change alone sends a frame), and a tui.alt component's `caps` report the member and answer the host's `capturesViewportInput` callback with its current value. `ctx.exec(..., max_buffer=n)` sends `options.maxBuffer` and `ExecResult.truncated` reports an overflow.
 
 `is_tool_call_event_type(name, event)` is Pi's `isToolCallEventType` (the tool name must match exactly). `get_package_dir()` and `get_shell_config(custom_shell_path=None)` are Pi's `getPackageDir()` and `getShellConfig()`. Pi's pure pi-ai helpers are in `pig_sdk` too (`string_enum`, `clamp_thinking_level`, `get_supported_thinking_levels`, `calculate_cost`, `content_text`, `normalize_context`, `get_current_system_prompt`, `is_context_overflow`, `is_retryable_assistant_error`, `env_api_key_auth`, `create_assistant_message_event_stream` and the rest of `pi_ai_helpers.py`), over the dicts the wire carries. `ctx.set_working_message("")` shows an empty working label and `ctx.set_working_message(None)` restores the default one, as in Pi; `set_hidden_thinking_label` follows the same rule. `truncate_head`, `truncate_tail`, `truncate_line` and `format_size` are Pi's `truncateHead`, `truncateTail`, `truncateLine` and `formatSize`; byte limits count UTF-8 bytes and `truncate_line` counts UTF-16 units like a JavaScript string. `get_agent_dir`, `get_config_dir_name` and `get_version` are Pi's `getAgentDir()`, `CONFIG_DIR_NAME` and `VERSION`; they raise `HostInfoUnavailable`, never return a made-up path, when the process was not started by a PiG host. `ctx.get_editor_component()` returns the factory this extension installed with `ctx.set_editor_component`, or `None`. Pi's `getEditorComponent` returns the factory installed by any extension, so one extension can wrap another's editor; PiG returns only the calling extension's own factory.
 
@@ -155,6 +157,18 @@ def on_turn_start(event, ctx):
     if signal is not None:
         signal.subscribe(stop_background_work)
 ```
+
+## Waiting for a run you started
+
+`ctx.send_message(..., trigger_turn=True)` marks the session busy, and `ctx.is_idle()` stays busy until the code that sent the message yields, as Pi's does until its handler reaches its first `await`. Python has no `await` in a handler, so the SDK has explicit helpers: `ctx.yield_now()` tells the host this handler yields, and `ctx.sleep(seconds)` yields and then blocks the thread. A handler that waits for the run it started must use one of them:
+
+```python
+ctx.send_message("note", "go", True, True)
+while not ctx.is_idle():
+    ctx.sleep(0.01)
+```
+
+A raw `time.sleep` keeps the hold until the handler returns, so such a poll would read busy for as long as the handler runs.
 
 ## Terminal strings
 

@@ -2,6 +2,8 @@
 
 package tui
 
+// Ports packages/tui/src/terminal.ts (ProcessTerminal on Windows: console input and the terminal size).
+
 import (
 	"context"
 	"encoding/binary"
@@ -356,6 +358,9 @@ func (c *consoleInput) appendUTF8(buf []byte, units []uint16) []byte {
 	}
 	return buf
 }
+
+// inForeground is always true: a Windows console has no foreground process group that stops a background writer.
+func (*ProcessTerminal) inForeground() (bool, error) { return true, nil }
 
 // isEINTR reports whether a read error is an interrupted syscall. Windows has
 // no EINTR, so this is always false.

@@ -5,12 +5,15 @@ package tui
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // Mirrors upstream renderers/{grep,find,ls}.ts formatGrepCall, formatFindCall,
 // and formatLsCall byte for byte: str() invalid-arg markers, $HOME shortening
 // of the search path, and `limit !== undefined` suffixes.
 func TestListToolHeaders(t *testing.T) {
+	t.Cleanup(resolvepath.OverridePlatform("linux")) // the fixture home is POSIX; a Windows host writes the rest of a shortened path with backslashes
 	th := ActiveTheme()
 	title := func(s string) string { return th.ToolTitle + "\x1b[1m" + s + SGRBoldDimReset + SGRFgReset }
 	c := func(color, s string) string { return color + s + SGRFgReset }

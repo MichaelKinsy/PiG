@@ -109,8 +109,12 @@ func waitingIteratorAllocsPerEvent(t *testing.T, ctx context.Context, events int
 }
 
 // A waiting next() on a cancelable context (the agent loop's) shares one cancellation registration per iteration instead of arming context.AfterFunc and a ready channel per event: it costs no more allocations per event than a never-canceled context.
+//
+// The producer and the iterator are two goroutines, and what an event allocates follows how the scheduler interleaves them: with GOMAXPROCS at its default one window spent 4.1 to 5.0 allocations per event (sd 0.36) in a quiet fresh process, so the difference of two
+// windows passed 0.5 in one of 120 samples, and in 2 of 20 `go test -race -count=3 ./ai` runs. The test runs on one P, as testing.AllocsPerRun does for the same reason, which fixes that order: both windows then spend 5.01 allocations per event (120 samples, difference 0.000 to 0.001).
 func TestCancelableIteratorWaitingAllocations(t *testing.T) {
 	const events = 2048
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
 	cancelable, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	base := waitingIteratorAllocsPerEvent(t, context.WithoutCancel(t.Context()), events)

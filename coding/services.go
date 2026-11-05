@@ -6,6 +6,8 @@
 // AgentSession responsibilities while using Go ownership and error semantics.
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (createAgentSession's default settingsManager).
+
 import (
 	"context"
 	"errors"
@@ -73,7 +75,7 @@ type AgentSessionServices struct {
 	modelRuntime *ModelRuntime
 
 	// Keep the deterministic provider's counters across request-level model reconstruction.
-	testFauxProvider func() *ai.TestFauxProvider
+	testFauxProvider func() (ai.Provider, error)
 
 	// sharedRuntime marks a ModelRuntime owned by the caller: Close leaves it running.
 	sharedRuntime       bool
@@ -244,15 +246,13 @@ func CreateAgentSessionServices(opts CreateAgentSessionServicesOptions) (*AgentS
 
 func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentials ai.CredentialStore, sm *icodingagent.SettingsManager, reg *icodingagent.ModelRegistry) (*AgentSessionServices, error) {
 	services := &AgentSessionServices{
-		cwd:         cwd,
-		agentDir:    agentDir,
-		auth:        auth,
-		credentials: credentials,
-		settings:    sm,
-		registry:    &ModelRegistry{ModelRegistry: reg},
-		testFauxProvider: sync.OnceValue(func() *ai.TestFauxProvider {
-			return &ai.TestFauxProvider{Scenario: os.Getenv("PIG_TEST_FAUX_SCENARIO")}
-		}),
+		cwd:              cwd,
+		agentDir:         agentDir,
+		auth:             auth,
+		credentials:      credentials,
+		settings:         sm,
+		registry:         &ModelRegistry{ModelRegistry: reg},
+		testFauxProvider: sync.OnceValues(newTestFauxProvider),
 	}
 	modelRuntime, err := NewModelRuntime(services)
 	if err != nil {
@@ -260,7 +260,7 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 	}
 	services.modelRuntime = modelRuntime
 	services.registry = NewModelRegistry(modelRuntime)
-	if os.Getenv("PIG_TEST_FAUX") == "1" { //perf:ok once per Services construction, test-only registration
+	if TestFauxProviderEnabled() {
 		if err := registerHarnessTestFaux(reg); err != nil {
 			return nil, err
 		}

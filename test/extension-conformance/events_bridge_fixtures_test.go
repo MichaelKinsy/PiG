@@ -429,6 +429,111 @@ def new_extension():
     return e
 `
 
+// lispBusFixture is the Lisp realm of the bus rows: the listeners of its configuration subscribe while the factory runs, and the commands drive the bus.
+const lispBusFixture = `(defpackage %[2]q (:use "COMMON-LISP"))
+(in-package %[2]q)
+
+(defun read-config ()
+  (with-open-file (in %[1]s :external-format :utf-8)
+    (let* ((text (make-string (file-length in))) (n (read-sequence text in))) (pig:from-json (subseq text 0 n)))))
+
+(defun split-on (char text &optional limit)
+  (let ((parts '()) (start 0))
+    (loop for hit = (position char text :start start)
+          while (and hit (or (null limit) (< (1+ (length parts)) limit)))
+          do (push (subseq text start hit) parts) (setf start (1+ hit)))
+    (push (subseq text start) parts)
+    (nreverse parts)))
+
+#+win32
+(sb-alien:load-shared-object "kernel32.dll")
+
+#+win32
+(defun win32-error (what path)
+  (error "~A ~A failed: Windows error ~D" what path
+         (sb-alien:alien-funcall (sb-alien:extern-alien "GetLastError" (function (sb-alien:unsigned 32))))))
+
+#+win32
+(defun append-octets (path octets)
+  "OCTETS written to PATH through a handle opened for FILE_APPEND_DATA alone (0x4), as Go, Node (libuv), and Rust open an O_APPEND file. With that access the file system places each write at the end of the file itself. The C runtime's _open does not: with _O_APPEND it seeks to the end of the file before each _write, so another process can append between the seek and the write and the later write overwrites its line. CreateFileW also writes the bytes as given, with no newline translation."
+  (let* ((wide (concatenate '(simple-array (unsigned-byte 8) (*))
+                            (sb-ext:string-to-octets path :external-format :utf-16le)
+                            #(0 0)))
+         (handle (sb-sys:with-pinned-objects (wide)
+                   (sb-alien:alien-funcall
+                    (sb-alien:extern-alien "CreateFileW" (function (sb-alien:unsigned 64) sb-sys:system-area-pointer (sb-alien:unsigned 32) (sb-alien:unsigned 32) sb-sys:system-area-pointer (sb-alien:unsigned 32) (sb-alien:unsigned 32) (sb-alien:unsigned 64)))
+                    (sb-sys:vector-sap wide) #x4 #x7 (sb-sys:int-sap 0) 4 #x80 0))))
+    (when (= handle (1- (expt 2 64))) (win32-error "open" path))
+    (unwind-protect
+         (let ((written (make-array 4 :element-type '(unsigned-byte 8) :initial-element 0)))
+           (sb-sys:with-pinned-objects (octets written)
+             (when (zerop (sb-alien:alien-funcall
+                           (sb-alien:extern-alien "WriteFile" (function sb-alien:int (sb-alien:unsigned 64) sb-sys:system-area-pointer (sb-alien:unsigned 32) sb-sys:system-area-pointer sb-sys:system-area-pointer))
+                           handle (sb-sys:vector-sap octets) (length octets) (sb-sys:vector-sap written) (sb-sys:int-sap 0)))
+               (win32-error "append to" path))
+             (unless (= (sb-sys:sap-ref-32 (sb-sys:vector-sap written) 0) (length octets))
+               (error "short append to ~A: wrote ~D of ~D bytes" path (sb-sys:sap-ref-32 (sb-sys:vector-sap written) 0) (length octets)))))
+      (sb-alien:alien-funcall
+       (sb-alien:extern-alien "CloseHandle" (function sb-alien:int (sb-alien:unsigned 64)))
+       handle))))
+
+#-win32
+(defun append-octets (path octets)
+  "OCTETS written to PATH as one write(2) on an O_APPEND descriptor, which the kernel places at the end of the file."
+  (let ((fd (sb-posix:open path (logior sb-posix:o-wronly sb-posix:o-append sb-posix:o-creat) #o600)))
+    (unwind-protect
+         (sb-sys:with-pinned-objects (octets)
+           (let ((written (sb-posix:write fd (sb-sys:vector-sap octets) (length octets))))
+             (unless (= written (length octets)) (error "short append to ~A: wrote ~D of ~D bytes" path written (length octets)))))
+      (sb-posix:close fd))))
+
+(defun append-line (path line)
+  "One log line as one write at the end of the file, even when another process appends at the same time."
+  (append-octets path (sb-ext:string-to-octets line :external-format :utf-8)))
+
+(defun new-extension ()
+  (let* ((cfg (read-config)) (name (pig:jget cfg "name"))
+         (e (pig:make-extension (if (eq (pig:jget cfg "failLoad") t) (concatenate 'string name "-rejected") name)))
+         (lock (sb-thread:make-mutex)) (subs '()) (counts (pig:obj)))
+    (labels ((logf (channel data)
+               (append-line (pig:jget cfg "log")
+                            (format nil "~A|~A|~A~%%" name channel (handler-case (pig:to-json data) (error () "\"<unserializable>\"")))))
+             (run (ctx channel actions data)
+               (dolist (op (split-on #\+ actions))
+                 (let* ((parts (split-on #\= op 2)) (op-name (first parts)) (arg (or (second parts) "")))
+                   (cond ((equal op-name "record") (logf channel data))
+                         ((equal op-name "echo") (pig:events-emit (pig:ctx-events ctx) arg (pig:obj "by" name "got" data)))
+                         ((equal op-name "inc") (setf (gethash "n" data) (1+ (gethash "n" data))))
+                         ((equal op-name "fail") (error "listener-failed"))
+                         ((equal op-name "panic") (error "listener-panicked"))
+                         ((equal op-name "unsub") (funcall (sb-thread:with-mutex (lock) (nth (parse-integer arg) subs))))
+                         ((equal op-name "exit") (sb-ext:exit :code 3 :abort t))
+                         ((equal op-name "sleep") (sleep (/ (parse-integer arg) 1000)))
+                         ((equal op-name "count") (sb-thread:with-mutex (lock) (setf (gethash channel counts) (1+ (or (gethash channel counts) 0)))))
+                         ((equal op-name "hang") (loop until (probe-file (concatenate 'string (pig:jget cfg "log") ".release")) do (sleep 0.005)))))))
+             (subscribe (bus channel actions)
+               (let ((unsubscribe (pig:events-on bus channel (lambda (ctx data) (run ctx channel actions data)))))
+                 (sb-thread:with-mutex (lock) (setf subs (append subs (list unsubscribe)))))))
+      (loop for listener across (pig:jget cfg "listeners")
+            do (subscribe (pig:extension-events e) (pig:jget listener "channel") (pig:jget listener "actions")))
+      (pig:command e "emit" "" (lambda (ctx args)
+                                 (destructuring-bind (channel kind &rest rest) (split-on #\Space args)
+                                   (cond ((equal kind "json") (pig:events-emit (pig:ctx-events ctx) channel (pig:from-json (format nil "~{~A~^ ~}" rest))))
+                                         ((equal kind "undefined") (pig:events-emit (pig:ctx-events ctx) channel nil))
+                                         (t (error "payload kind ~A is JavaScript-only" kind))))))
+      (pig:command e "emitmark" "" (lambda (ctx args)
+                                     (let ((parts (split-on #\Space args 2)))
+                                       (pig:events-emit (pig:ctx-events ctx) (first parts) (pig:from-json (second parts)))
+                                       (logf (concatenate 'string (first parts) ":returned") nil))))
+      (pig:command e "sub" "" (lambda (ctx args) (let ((parts (split-on #\Space args 2))) (subscribe (pig:ctx-events ctx) (first parts) (or (second parts) "")))))
+      (pig:command e "unsub" "" (lambda (ctx args) (declare (ignore ctx)) (funcall (sb-thread:with-mutex (lock) (nth (parse-integer args) subs)))))
+      (pig:command e "burst" "" (lambda (ctx args)
+                                  (let ((parts (split-on #\Space args 2)))
+                                    (dotimes (i (parse-integer (second parts))) (pig:events-emit (pig:ctx-events ctx) (first parts) (pig:obj "i" i))))))
+      (pig:command e "report" "" (lambda (ctx args) (declare (ignore ctx args)) (logf "counts" (sb-thread:with-mutex (lock) (let ((copy (pig:obj))) (maphash (lambda (k v) (setf (gethash k copy) v)) counts) copy))))))
+    e))
+`
+
 const rustBusFixture = `use pig_sdk::{CommandResult, Context, EventBus, Extension, Subscription};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -591,6 +696,9 @@ func busNativeSource(t *testing.T, root, language, name, configFile string) subp
 	case "python":
 		path = filepath.Join(cfg.Source, cfg.Package+".py")
 		code = fmt.Sprintf(pythonBusFixture, configFile)
+	case "lisp":
+		path = filepath.Join(cfg.Source, name+".lisp")
+		code = fmt.Sprintf(lispBusFixture, configFile, name)
 	case "rust":
 		path = filepath.Join(cfg.Source, "src", "lib.rs")
 		code = fmt.Sprintf(rustBusFixture, configFile)

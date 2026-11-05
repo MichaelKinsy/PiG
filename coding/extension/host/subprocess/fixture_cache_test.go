@@ -1,9 +1,12 @@
 package subprocess
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -38,22 +41,30 @@ func TestFixtureBuildsHavePackageLifetime(t *testing.T) {
 func TestHomeIsolationKeepsGoBuildCaches(t *testing.T) {
 	t.Setenv("GOCACHE", "")
 	t.Setenv("GOMODCACHE", "")
-	readPaths := func() string {
+	goEnv := func(keys ...string) string {
 		t.Helper()
-		out, err := exec.CommandContext(t.Context(), "go", "env", "GOCACHE", "GOMODCACHE").Output()
+		out, err := exec.CommandContext(t.Context(), "go", append([]string{"env"}, keys...)...).Output()
 		if err != nil {
 			t.Fatal(err)
 		}
 		return string(out)
 	}
-	want := readPaths()
-	keepGoBuildCaches(t)
+	want := goEnv("GOCACHE", "GOMODCACHE")
+	// Go keeps its telemetry state under the configuration directory, which follows HOME only where XDG_CONFIG_HOME is empty.
+	t.Setenv("XDG_CONFIG_HOME", "")
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	isolateHome(t, home)
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("XDG_CACHE_HOME", filepath.Join(home, "cache"))
-	if got := readPaths(); got != want {
+	if got := goEnv("GOCACHE", "GOMODCACHE"); got != want {
 		t.Fatalf("HOME isolation changed compiler caches: %q, want %q", got, want)
+	}
+	// A go command that finds telemetry on in a fresh home claims the upload token and forks a detached sidecar. The sidecar outlives the command and creates files in the home while the cleanup of this test removes it: TempDir RemoveAll "directory not empty".
+	telemetry := strings.TrimSpace(goEnv("GOTELEMETRYDIR"))
+	if rel, err := filepath.Rel(home, telemetry); err == nil && filepath.IsLocal(rel) {
+		if _, err := os.Stat(filepath.Join(telemetry, "local")); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("a go command in the isolated home opened telemetry counters in %q (stat err = %v); it forked a sidecar that outlives the test", telemetry, err)
+		}
 	}
 }
 

@@ -54,5 +54,21 @@ class GoPinStrayTests(unittest.TestCase):
         }))
 
 
+class GoPinSourceTests(unittest.TestCase):
+    def pins(self, go_version: str) -> list[str]:
+        real = compliance.read
+        compliance.read = lambda path: go_version + "\n" if path == ".go-version" else real(path)
+        try:
+            return compliance.check_pins()
+        finally:
+            compliance.read = real
+
+    def test_pins_follow_go_version_file_not_agents_md(self):
+        drift = [problem for problem in self.pins("1.0.0") if "from .go-version" in problem]
+        self.assertTrue(any("go.mod toolchain" in problem for problem in drift), drift)
+        self.assertTrue(any("ci-parity Dockerfile ARG GO_VERSION" in problem for problem in drift), drift)
+        self.assertFalse(any("AGENTS.md" in problem for problem in self.pins(compliance.read(".go-version").strip())))
+
+
 if __name__ == "__main__":
     unittest.main()

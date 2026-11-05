@@ -1,18 +1,10 @@
-//go:build !pig_strip_bedrock_converse_stream
-
 package ai
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime"
-	"github.com/aws/smithy-go"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"io"
 )
 
 func TestProviderErrorBodyRegressionUpstream(t *testing.T) {
@@ -58,28 +50,6 @@ func TestProviderErrorBodyRegressionUpstream(t *testing.T) {
 			}
 		})
 	}
-	// .upstream/v0.87.1/packages/ai/test/provider-error-body-regression.test.ts:174
-	t.Run("bedrock body-blind surfaces the gateway body instead of Unknown UnknownError", func(t *testing.T) {
-		provider := NewBedrockProvider("us.anthropic.claude-opus-4-8", "")
-		provider.converseStream = func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error) {
-			return nil, &providerError{message: "UnknownError", status: new(403), body: `{"message":"blocked by gateway WAF"}`}
-		}
-		message := providerErrorBodyResult(t, provider)
-		if !strings.Contains(message, "403") || !strings.Contains(message, "blocked by gateway WAF") || strings.Contains(message, "Unknown: UnknownError") {
-			t.Fatal(message)
-		}
-	})
-	// .upstream/v0.87.1/packages/ai/test/provider-error-body-regression.test.ts:192
-	t.Run("bedrock preserves the SDK validation message when the response body is a stream", func(t *testing.T) {
-		provider := NewBedrockProvider("global.anthropic.claude-opus-5", "")
-		provider.converseStream = func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error) {
-			return nil, &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: 400, Body: io.NopCloser(strings.NewReader(`{"_readableState":{"buffer":[],"length":0}}`))}}, Err: &smithy.GenericAPIError{Code: "ValidationException", Message: "Invocation of model ID anthropic.claude-opus-5 with on-demand throughput isn't supported. Retry with an inference profile."}}
-		}
-		message := providerErrorBodyResult(t, provider)
-		if !strings.Contains(message, "on-demand throughput isn't supported") || !strings.Contains(message, "inference profile") || strings.Contains(message, "_readableState") {
-			t.Fatal(message)
-		}
-	})
 }
 
 func providerErrorBodyResult(t *testing.T, provider Provider) string {

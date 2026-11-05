@@ -16,10 +16,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
-	"github.com/MichaelKinsy/PiG/internal/typebox"
+	pischema "github.com/MichaelKinsy/PiG/schema"
 )
 
 // ProtocolVersion is the link protocol version, announced in hello. Peers of different versions do not talk: the side
@@ -420,37 +421,72 @@ func FromWireError(err WireError) *ChordError {
 
 // ─── validation ──────────────────────────────────────────────────────────────
 
+// The schemas below are the JSON pi-schema's builders write (builders.ts): `int` is `{ type: "integer" }`, `lit` is
+// `{ const }` without a type, `oneOf` is an `enum`, `map` is `additionalProperties`, `obj` lists `properties` and then
+// `required`; an object is closed unless the caller says `open`.
+
 func integer(minimum ...int) Schema {
-	schema := Schema{"type": "integer"}
+	schema := chordjson.ObjectOf("type", "integer")
 	if len(minimum) > 0 {
-		schema["minimum"] = minimum[0]
+		schema.Set("minimum", float64(minimum[0]))
 	}
 	return schema
 }
 
-func object(required []string, properties ...any) Schema {
-	props := Schema{}
+func str(options ...any) Schema {
+	return chordjson.ObjectOf(append([]any{"type", "string"}, options...)...)
+}
+
+// optional is `opt(schema)`: an object property that may be left out.
+type optional struct{ schema Schema }
+
+func opt(schema Schema) optional { return optional{schema} }
+
+// object is `obj(properties, { open: true })`: the properties are name and schema (or opt(schema)) pairs, in order.
+func object(properties ...any) Schema {
+	//portlint:allow numbers an integer capacity hint for the object's backing slice: allocation only, no JS equivalent and no observable effect
+	props := chordjson.NewObject(len(properties) / 2)
+	var required []any
 	for index := 0; index < len(properties); index += 2 {
-		props[properties[index].(string)] = properties[index+1]
+		name := properties[index].(string)
+		if wrapped, ok := properties[index+1].(optional); ok {
+			props.Set(name, wrapped.schema)
+			continue
+		}
+		props.Set(name, properties[index+1])
+		required = append(required, name)
 	}
-	schema := Schema{"type": "object", "properties": props}
+	schema := chordjson.ObjectOf("type", "object", "properties", props)
 	if len(required) > 0 {
-		schema["required"] = stringValues(required)
+		schema.Set("required", required)
 	}
 	return schema
 }
 
-// closed is schema with additionalProperties: false ({ additionalProperties: false } in Type.Object's options).
+// closed is `obj(properties)`: schema without any other property.
 func closed(schema Schema) Schema {
-	schema["additionalProperties"] = false
+	schema.Set("additionalProperties", false)
 	return schema
 }
 
-func literal(value string) Schema { return Schema{"const": value, "type": "string"} }
+// literal is `lit(value)`.
+func literal(value any) Schema { return chordjson.ObjectOf("const", value) }
 
-// record is Type.Record(Type.String(), value).
+// union is `union([...])`.
+func union(schemas ...Schema) Schema {
+	branches := make([]any, len(schemas))
+	for index, schema := range schemas {
+		branches[index] = schema
+	}
+	return chordjson.ObjectOf("anyOf", branches)
+}
+
+// list is `arr(item)`.
+func list(item Schema) Schema { return chordjson.ObjectOf("type", "array", "items", item) }
+
+// record is `map(value)`.
 func record(value Schema) Schema {
-	return Schema{"type": "object", "patternProperties": Schema{"^.*$": value}}
+	return chordjson.ObjectOf("type", "object", "additionalProperties", value)
 }
 
 func errorCodes() []any {
@@ -463,55 +499,68 @@ func errorCodes() []any {
 
 var (
 	wireID         = integer(1)
-	wireName       = Schema{"type": "string", "minLength": 1}
-	wireString     = Schema{"type": "string"}
-	wireUnknown    = Schema{}
-	wireStrings    = Schema{"type": "array", "items": wireString}
-	wireRoot       = object([]string{"rootId", "codeVersion"}, "rootId", wireName, "codeVersion", integer(1))
-	wireErrorShape = object([]string{"code", "message"}, "code", Schema{"enum": errorCodes()}, "message", wireString, "reason", wireString)
+	wireName       = str("minLength", float64(1))
+	wireString     = str()
+	wireUnknown    = chordjson.NewObject(0)
+	wireStrings    = list(wireString)
+	wireRoot       = object("rootId", wireName, "codeVersion", integer(1))
+	wireErrorShape = object("code", chordjson.ObjectOf("enum", errorCodes()), "message", wireString, "reason", opt(wireString))
 	wireReload     = integer(1)
 	wireRecord     = record(wireUnknown)
 )
 
-// frameSchema is the JSON Schema TypeBox builds for wire.ts FrameSchema, the one declaration of every frame. Payloads
-// (hold inputs, call args, results, snapshots) are validated where they are used, against the contract; state ops are
-// checked op by op by the delta decoder.
-var frameSchema = Schema{"anyOf": []any{
-	object([]string{"t", "name", "kind", "codeVersion"}, "t", literal("hello"), "protocol", integer(1), "name", wireName, "kind", Schema{"anyOf": []any{literal("host"), literal("client")}}, "codeVersion", integer(0), "acks", Schema{"type": "boolean"}),
-	object([]string{"t", "n"}, "t", literal("ack"), "n", integer(1)),
-	object([]string{"t", "id", "at", "token", "input"}, "t", literal("hold"), "id", wireID, "at", wireName,
+// frameSchema is wire.ts FrameSchema, the one declaration of every frame. Payloads (hold inputs, call args, results,
+// snapshots) are validated where they are used, against the contract; state ops are checked op by op by the delta
+// decoder.
+var frameSchema = union(
+	object("t", literal("hello"), "protocol", opt(integer(1)), "name", wireName, "kind", union(literal("host"), literal("client")), "codeVersion", integer(0), "acks", opt(chordjson.ObjectOf("type", "boolean"))),
+	object("t", literal("ack"), "n", integer(1)),
+	object("t", literal("hold"), "id", wireID, "at", wireName,
 		"token", descriptionSchema,
-		"input", wireUnknown, "principal", wireUnknown, "origin", wireName,
-		"state", Schema{"const": false, "type": "boolean"}, "again", Schema{"const": true, "type": "boolean"}),
-	object([]string{"t", "id"}, "t", literal("release"), "id", wireID),
-	object([]string{"t", "id", "members", "contract", "state"}, "t", literal("shape"), "id", wireID, "variant", wireString, "members", wireStrings, "contract", wireString, "state", Schema{"type": "array", "items": wireName}),
-	object([]string{"t", "id", "error"}, "t", literal("gone"), "id", wireID, "error", wireErrorShape),
-	object([]string{"t", "id", "hold", "member"}, "t", literal("call"), "id", wireID, "hold", wireID, "member", wireName, "args", wireUnknown, "root", wireRoot),
-	object([]string{"t", "id"}, "t", literal("result"), "id", wireID, "value", wireUnknown, "error", wireErrorShape),
-	object([]string{"t", "id"}, "t", literal("cancel"), "id", wireID),
-	object([]string{"t", "hold"}, "t", literal("sub"), "hold", wireID),
-	object([]string{"t", "hold"}, "t", literal("unsub"), "hold", wireID),
-	object([]string{"t", "hold", "m"}, "t", literal("resync"), "hold", wireID, "m", wireName),
-	object([]string{"t", "hold", "m", "as"}, "t", literal("state"), "hold", wireID, "m", wireName,
-		"as", Schema{"anyOf": []any{literal("snap"), literal("reset"), literal("ops"), literal("error")}},
-		"value", wireUnknown, "ops", Schema{"type": "array", "items": Schema{"type": "array", "items": wireUnknown}}, "error", wireErrorShape),
-	object([]string{"t", "n"}, "t", literal("ping"), "n", integer()),
-	object([]string{"t", "n"}, "t", literal("pong"), "n", integer()),
-	object([]string{"t"}, "t", literal("bye"), "reason", wireString),
-	object([]string{"t", "rootId"}, "t", literal("root_end"), "rootId", wireName),
-	object([]string{"t", "pattern"}, "t", literal("invalidate"), "pattern", wireRecord),
-	object([]string{"t", "reload", "codeVersion", "plugins", "options"}, "t", literal("prepare"), "reload", wireReload, "codeVersion", integer(1), "plugins", wireStrings,
-		"options", object(nil, "remove", wireStrings, "gateDeadline", Schema{"type": "number"}, "retireDeadline", Schema{"type": "number"})),
-	object([]string{"t", "reload"}, "t", literal("vote"), "reload", wireReload, "error", wireErrorShape,
-		"report", object([]string{"codeVersion", "previous", "changed", "removed", "prepared", "gated"}, "codeVersion", integer(), "previous", integer(), "changed", wireStrings, "removed", wireStrings, "prepared", wireStrings, "gated", wireStrings)),
-	object([]string{"t", "reload"}, "t", literal("commit"), "reload", wireReload),
-	object([]string{"t", "codeVersion"}, "t", literal("retire"), "codeVersion", integer(1)),
-	object([]string{"t", "reload"}, "t", literal("abort"), "reload", wireReload),
-}}
+		"input", wireUnknown, "principal", opt(wireUnknown), "origin", opt(wireName),
+		"state", opt(literal(false)), "again", opt(literal(true))),
+	object("t", literal("release"), "id", wireID),
+	object("t", literal("shape"), "id", wireID, "variant", opt(wireString), "members", wireStrings, "contract", wireString, "state", list(wireName)),
+	object("t", literal("gone"), "id", wireID, "error", wireErrorShape),
+	object("t", literal("call"), "id", wireID, "hold", wireID, "member", wireName, "args", opt(wireUnknown), "root", opt(wireRoot)),
+	object("t", literal("result"), "id", wireID, "value", opt(wireUnknown), "error", opt(wireErrorShape)),
+	object("t", literal("cancel"), "id", wireID),
+	object("t", literal("sub"), "hold", wireID),
+	object("t", literal("unsub"), "hold", wireID),
+	object("t", literal("resync"), "hold", wireID, "m", wireName),
+	object("t", literal("state"), "hold", wireID, "m", wireName,
+		"as", union(literal("snap"), literal("reset"), literal("ops"), literal("error")),
+		"value", opt(wireUnknown), "ops", opt(list(list(wireUnknown))), "error", opt(wireErrorShape)),
+	object("t", literal("ping"), "n", integer()),
+	object("t", literal("pong"), "n", integer()),
+	object("t", literal("bye"), "reason", opt(wireString)),
+	object("t", literal("root_end"), "rootId", wireName),
+	object("t", literal("invalidate"), "pattern", wireRecord),
+	object("t", literal("prepare"), "reload", wireReload, "codeVersion", integer(1), "plugins", wireStrings,
+		"options", object("remove", opt(wireStrings), "gateDeadline", opt(chordjson.ObjectOf("type", "number")), "retireDeadline", opt(chordjson.ObjectOf("type", "number")))),
+	object("t", literal("vote"), "reload", wireReload, "error", opt(wireErrorShape),
+		"report", opt(object("codeVersion", integer(), "previous", integer(), "changed", wireStrings, "removed", wireStrings, "prepared", wireStrings, "gated", wireStrings))),
+	object("t", literal("commit"), "reload", wireReload),
+	object("t", literal("retire"), "codeVersion", integer(1)),
+	object("t", literal("abort"), "reload", wireReload),
+)
 
 // IsFrame is wire.ts isFrame: whether value (decoded JSON) passes structural validation; anything else is a protocol
 // violation.
-func IsFrame(value any) bool { return typebox.Check(frameSchema, value) }
+func IsFrame(value any) bool {
+	valid, err := frameValidator().Check(value)
+	return err == nil && valid
+}
+
+// frameValidator is frameSchema compiled once, on the first frame: every frame a link carries passes IsFrame (Pi's
+// isFrame holds its compiled check, wire.ts).
+var frameValidator = sync.OnceValue(func() *pischema.Validator {
+	validator, err := pischema.Compile(frameSchema, pischema.CompileOptions{})
+	if err != nil {
+		panic("chord: the frame schema does not compile: " + err.Error())
+	}
+	return validator
+})
 
 // DecodeFrame parses and validates one frame. It fails when the data is not JSON or not a frame.
 func DecodeFrame(data []byte) (Frame, error) {

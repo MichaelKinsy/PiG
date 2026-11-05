@@ -16,6 +16,7 @@ type GitPackageSource struct {
 	Pinned bool
 }
 
+// Ports packages/coding-agent/src/core/package-manager.ts (buildNoMatchingPackageMessage, findSuggestedConfiguredSource, parseSource for npm and git sources).
 func noMatchingPackageMessage(source string, pkgs []ConfiguredPackage) string {
 	if suggestion := findSuggestedConfiguredSource(source, pkgs); suggestion != "" {
 		return fmt.Sprintf("No matching package found for %s. Did you mean %s?", source, suggestion)

@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+6c384aa3",
+  "piVersion": "1.5.0",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -191,7 +191,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 38
+        "durationMs": 34
       }
     },
     {
@@ -2777,7 +2777,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2965,7 +2965,7 @@
         "responseId": "r1",
         "rawStopReason": "error",
         "errorMessage": "Provider stopped with: error (server error)",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3137,7 +3137,7 @@
         "stopReason": "length",
         "responseId": "r1",
         "rawStopReason": "model_length",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -3450,7 +3450,7 @@
         "stopReason": "toolUse",
         "responseId": "r1",
         "rawStopReason": "tool_calls",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -4496,7 +4496,7 @@
         "stopReason": "error",
         "responseId": "r1",
         "errorMessage": "Cannot read properties of null (reading 'type')",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {

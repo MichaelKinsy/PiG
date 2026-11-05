@@ -45,11 +45,21 @@ impl Host {
         let listener = UnixListener::bind(&socket).unwrap();
         let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (mut stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
         let register = read(&mut stream);
         assert_eq!(register["type"], "register");
-        send(&mut stream, &json!({"type":"ready","ready":{"state":state,"width":80,"mode":"tui"}}));
-        Host { stream, thread: Some(thread), root, register }
+        send(
+            &mut stream,
+            &json!({"type":"ready","ready":{"state":state,"width":80,"mode":"tui"}}),
+        );
+        Host {
+            stream,
+            thread: Some(thread),
+            root,
+            register,
+        }
     }
 
     /// The next frame that is not a request_state.
@@ -70,16 +80,17 @@ impl Host {
     }
 
     fn reply(&mut self, call: &Value, result: Value) {
-        send(&mut self.stream, &json!({"type":"call_result","id":call["id"],"call_result":{"result":result}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"call_result","id":call["id"],"call_result":{"result":result}}),
+        );
     }
 
-
-
-
-
-
     fn finish(mut self) {
-        send(&mut self.stream, &json!({"type":"shutdown","shutdown":{"reason":"done"}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+        );
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -110,7 +121,12 @@ fn unsubscribe_before_connect_removes_the_declaration() {
         .as_array()
         .unwrap()
         .iter()
-        .map(|h| (h["event"].as_str().unwrap().to_string(), h["handler_id"].as_u64().unwrap()))
+        .map(|h| {
+            (
+                h["event"].as_str().unwrap().to_string(),
+                h["handler_id"].as_u64().unwrap(),
+            )
+        })
         .collect();
     assert_eq!(handlers, vec![("turn_start".to_string(), 1)]);
     host.finish();
@@ -122,7 +138,12 @@ fn project_trust_registration_returns_its_unsubscribe() {
     let subscription = ext.on_project_trust(|_, _| Err("unused".to_string()));
     subscription.unsubscribe();
     let host = Host::start(ext, json!({}));
-    assert_eq!(host.register["register"]["handlers"].as_array().map_or(0, |h| h.len()), 0);
+    assert_eq!(
+        host.register["register"]["handlers"]
+            .as_array()
+            .map_or(0, |h| h.len()),
+        0
+    );
     host.finish();
 }
 
@@ -137,10 +158,16 @@ fn subscribe_and_unsubscribe_after_connect_are_host_calls() {
         subscription.unsubscribe();
     });
     let subscribed = host.expect_call("event.subscribe");
-    assert_eq!(subscribed["call"]["args"], json!({"event":"turn_start","handlerId":1}));
+    assert_eq!(
+        subscribed["call"]["args"],
+        json!({"event":"turn_start","handlerId":1})
+    );
     host.reply(&subscribed, json!({}));
     let unsubscribed = host.expect_call("event.unsubscribe");
-    assert_eq!(unsubscribed["call"]["args"], json!({"event":"turn_start","handlerId":1}));
+    assert_eq!(
+        unsubscribed["call"]["args"],
+        json!({"event":"turn_start","handlerId":1})
+    );
     host.reply(&unsubscribed, json!({}));
     // The second unsubscribe sent nothing: the worker returns without another call to answer.
     worker.join().unwrap();

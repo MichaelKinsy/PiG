@@ -21,6 +21,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
@@ -318,18 +319,19 @@ type imageSettingsWire struct {
 
 // settingsWire mirrors upstream settings JSON.
 type settingsWire struct {
-	LastChangelogVersion    string                  `json:"lastChangelogVersion,omitempty"`
-	DefaultProvider         *string                 `json:"defaultProvider,omitempty"`
-	DefaultModel            *string                 `json:"defaultModel,omitempty"`
-	DefaultThinkingLevel    string                  `json:"defaultThinkingLevel,omitempty"`
-	Transport               string                  `json:"transport,omitempty"`
-	SessionShareDestination SessionShareDestination `json:"sessionShareDestination,omitempty"`
-	SteeringMode            string                  `json:"steeringMode,omitempty"`
-	FollowUpMode            string                  `json:"followUpMode,omitempty"`
-	TuiMode                 string                  `json:"tuiMode,omitempty"`
-	FullscreenExitOutput    FullscreenExitOutput    `json:"fullscreenExitOutput,omitempty"`
-	FullscreenScrollbar     string                  `json:"fullscreenScrollbar,omitempty"`
-	FullscreenCopyOnSelect  *bool                   `json:"fullscreenCopyOnSelect,omitempty"`
+	LastChangelogVersion       string                  `json:"lastChangelogVersion,omitempty"`
+	ExtensionChangelogVersions map[string]string       `json:"extensionChangelogVersions,omitzero"`
+	DefaultProvider            *string                 `json:"defaultProvider,omitempty"`
+	DefaultModel               *string                 `json:"defaultModel,omitempty"`
+	DefaultThinkingLevel       string                  `json:"defaultThinkingLevel,omitempty"`
+	Transport                  string                  `json:"transport,omitempty"`
+	SessionShareDestination    SessionShareDestination `json:"sessionShareDestination,omitempty"`
+	SteeringMode               string                  `json:"steeringMode,omitempty"`
+	FollowUpMode               string                  `json:"followUpMode,omitempty"`
+	TuiMode                    string                  `json:"tuiMode,omitempty"`
+	FullscreenExitOutput       FullscreenExitOutput    `json:"fullscreenExitOutput,omitempty"`
+	FullscreenScrollbar        string                  `json:"fullscreenScrollbar,omitempty"`
+	FullscreenCopyOnSelect     *bool                   `json:"fullscreenCopyOnSelect,omitempty"`
 	// FullscreenWheelScrollLines keeps the authored JSON value, including null.
 	FullscreenWheelScrollLines  json.RawMessage         `json:"fullscreenWheelScrollLines,omitempty"`
 	DeviceID                    string                  `json:"deviceId,omitempty"`
@@ -347,6 +349,7 @@ type settingsWire struct {
 	QuietStartup           json.RawMessage          `json:"quietStartup,omitempty"`
 	ShellCommandPrefix     *string                  `json:"shellCommandPrefix,omitempty"`
 	NpmCommand             []string                 `json:"npmCommand,omitzero"`
+	SelfUpdateCommand      []string                 `json:"selfUpdateCommand,omitzero"`
 	CollapseChangelog      *bool                    `json:"collapseChangelog,omitempty"`
 	ShowCacheMissNotices   *bool                    `json:"showCacheMissNotices,omitempty"`
 	EnableInstallTelemetry *bool                    `json:"enableInstallTelemetry,omitempty"`
@@ -565,6 +568,9 @@ type Settings struct {
 	// "what's new" display to only new entries since last run.
 	// Mirrors upstream settings.lastChangelogVersion (settings-manager.ts:66).
 	LastChangelogVersion string `json:"lastChangelogVersion,omitempty"`
+	// ExtensionChangelogVersions records the last changelog version seen per extension package, keyed by GetSourcePackageKey.
+	// Mirrors upstream settings.extensionChangelogVersions (settings-schema.ts).
+	ExtensionChangelogVersions map[string]string `json:"extensionChangelogVersions,omitzero"`
 
 	// Compaction mirrors upstream settings.compaction (settings-manager.ts:74).
 	// Nested to match upstream JSON schema:
@@ -752,6 +758,12 @@ type Settings struct {
 	// Default: ["npm"].
 	// Mirrors upstream settings.npmCommand (settings-manager.ts:830).
 	NpmCommand []string `json:"npmCommand,omitempty"`
+
+	// SelfUpdateCommand is the argv `pi update` runs to update the program itself, with {packageName}, {version}
+	// and {installSpec} placeholders. Only the global settings file is read for it, so a project cannot inject a
+	// command; PI_SELF_UPDATE_COMMAND takes precedence.
+	// Mirrors upstream settings.selfUpdateCommand (settings-schema.ts).
+	SelfUpdateCommand []string `json:"selfUpdateCommand,omitzero"`
 
 	// Markdown holds markdown rendering settings.
 	// Mirrors upstream settings.markdown (settings-manager.ts:965).
@@ -1003,6 +1015,7 @@ func cloneSettings(s Settings) Settings {
 		DefaultTools:                   slices.Clone(s.DefaultTools),
 		ModelThinkingLevels:            maps.Clone(s.ModelThinkingLevels),
 		LastChangelogVersion:           s.LastChangelogVersion,
+		ExtensionChangelogVersions:     maps.Clone(s.ExtensionChangelogVersions),
 		Compaction:                     cloneCompactionSettings(s.Compaction),
 		BranchSummary:                  cloneBranchSummary(s.BranchSummary),
 		DoubleEscapeAction:             s.DoubleEscapeAction,
@@ -1049,6 +1062,7 @@ func cloneSettings(s Settings) Settings {
 		terminalTrueColor:              slices.Clone(s.terminalTrueColor),
 		ThinkingBudgets:                cloneThinkingBudgets(s.ThinkingBudgets),
 		NpmCommand:                     slices.Clone(s.NpmCommand),
+		SelfUpdateCommand:              slices.Clone(s.SelfUpdateCommand),
 		Markdown:                       cloneMarkdownSettings(s.Markdown),
 		Warnings:                       cloneWarningSettings(s.Warnings),
 	}
@@ -1088,6 +1102,7 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		Retry:                       s.Retry,
 		ShellPath:                   optionalString(s.ShellPath, s.emptyStrings.shellPath),
 		NpmCommand:                  s.NpmCommand,
+		SelfUpdateCommand:           s.SelfUpdateCommand,
 		EnableInstallTelemetry:      s.EnableInstallTelemetry,
 		EnableAnalytics:             s.EnableAnalytics,
 		TrackingID:                  s.TrackingID,
@@ -1100,6 +1115,7 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		EnabledModels:               s.EnabledModels,
 		DefaultTools:                s.DefaultTools,
 		ModelThinkingLevels:         s.ModelThinkingLevels,
+		ExtensionChangelogVersions:  s.ExtensionChangelogVersions,
 		DoubleEscapeAction:          s.DoubleEscapeAction,
 		TreeFilterMode:              s.TreeFilterMode,
 		DefaultProjectTrust:         s.DefaultProjectTrust,
@@ -1325,6 +1341,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.EnabledModels = w.EnabledModels
 	s.DefaultTools = w.DefaultTools
 	s.ModelThinkingLevels = w.ModelThinkingLevels
+	s.ExtensionChangelogVersions = w.ExtensionChangelogVersions
 	s.DoubleEscapeAction = w.DoubleEscapeAction
 	s.TreeFilterMode = w.TreeFilterMode
 	s.DefaultProjectTrust = w.DefaultProjectTrust
@@ -1364,6 +1381,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	}
 	s.CacheWarming = w.CacheWarming
 	s.NpmCommand = w.NpmCommand
+	s.SelfUpdateCommand = w.SelfUpdateCommand
 	return nil
 }
 
@@ -2205,6 +2223,31 @@ func (sm *SettingsManager) GetLastChangelogVersion() string {
 func (sm *SettingsManager) SetLastChangelogVersion(version string) error {
 	return sm.UpdateGlobal(func(s *Settings) {
 		s.LastChangelogVersion = version
+	})
+}
+
+// GetExtensionChangelogVersion returns the last changelog version seen for the extension package key (GetSourcePackageKey), if any.
+// Mirrors upstream getExtensionChangelogVersion (settings-manager.ts).
+func (sm *SettingsManager) GetExtensionChangelogVersion(key string) (string, bool) {
+	type seen struct {
+		version string
+		ok      bool
+	}
+	got := readMerged(sm, func(s *Settings) seen {
+		version, ok := s.ExtensionChangelogVersions[key]
+		return seen{version, ok}
+	})
+	return got.version, got.ok
+}
+
+// SetExtensionChangelogVersion records that the user has seen the changelog of the extension package key up to version. Persists to
+// global settings, changing only that key. Mirrors upstream setExtensionChangelogVersion.
+func (sm *SettingsManager) SetExtensionChangelogVersion(key, version string) error {
+	return sm.UpdateGlobal(func(s *Settings) {
+		if s.ExtensionChangelogVersions == nil {
+			s.ExtensionChangelogVersions = map[string]string{}
+		}
+		s.ExtensionChangelogVersions[key] = version
 	})
 }
 
@@ -3748,7 +3791,7 @@ func mergeSettingsExtra(global, project map[string]json.RawMessage) map[string]j
 	if len(project) == 0 {
 		return global
 	}
-	merged := make(map[string]json.RawMessage, len(global)+len(project))
+	merged := make(map[string]json.RawMessage, allocsize.Add(len(global), len(project)))
 	maps.Copy(merged, global)
 	for name, value := range project {
 		merged[name] = deepMergeJSONObjects(merged[name], value)
@@ -3859,11 +3902,23 @@ func mergeSettings(global, project Settings) Settings {
 		maps.Copy(merged, project.ModelThinkingLevels)
 		m.ModelThinkingLevels = merged
 	}
+	if project.ExtensionChangelogVersions != nil {
+		// Upstream deep-merges nested objects: project keys override global.
+		merged := maps.Clone(m.ExtensionChangelogVersions)
+		if merged == nil {
+			merged = map[string]string{}
+		}
+		maps.Copy(merged, project.ExtensionChangelogVersions)
+		m.ExtensionChangelogVersions = merged
+	}
 	if project.EnabledModels != nil {
 		m.EnabledModels = append([]string{}, project.EnabledModels...)
 	}
 	if project.NpmCommand != nil {
 		m.NpmCommand = append([]string{}, project.NpmCommand...)
+	}
+	if project.SelfUpdateCommand != nil {
+		m.SelfUpdateCommand = append([]string{}, project.SelfUpdateCommand...)
 	}
 	if project.BranchSummary != nil {
 		if m.BranchSummary == nil {

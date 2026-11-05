@@ -18,9 +18,9 @@ func pageTestItems(count int) []SelectItem {
 	return items
 }
 
-// Pi #7629, PR #7680 (packages/tui/src/selection-navigation.ts getPageSelectionIndex): the page keys move a selection
-// by one visible page and clamp at both ends, without the wraparound of tui.select.up and tui.select.down.
-func TestPageSelectionIndex(t *testing.T) {
+// packages/tui/src/keybindings.ts getSelectPageIndex: the page keys move a selection by one visible page and clamp at
+// both ends, without the wraparound of tui.select.up and tui.select.down.
+func TestGetSelectPageIndex(t *testing.T) {
 	kb := GetTUIKeybindings()
 	for name, tc := range map[string]struct {
 		data               string
@@ -37,9 +37,9 @@ func TestPageSelectionIndex(t *testing.T) {
 		"another key":            {"j", 2, 30, 5, 0, false},
 		"up arrow is not a page": {"\x1b[A", 2, 30, 5, 0, false},
 	} {
-		got, ok := PageSelectionIndex(kb, tc.data, tc.selected, tc.count, tc.n)
+		got, ok := GetSelectPageIndex(kb, tc.data, tc.selected, tc.count, tc.n)
 		if got != tc.want || ok != tc.ok {
-			t.Errorf("%s: PageSelectionIndex = %d, %v; want %d, %v", name, got, ok, tc.want, tc.ok)
+			t.Errorf("%s: GetSelectPageIndex = %d, %v; want %d, %v", name, got, ok, tc.want, tc.ok)
 		}
 	}
 }
@@ -71,8 +71,8 @@ func TestSelectListPageKeysMoveByAPage(t *testing.T) {
 	if len(changed) == 0 || changed[0] != "v5" {
 		t.Fatalf("selection changes = %v, want the page jump reported", changed)
 	}
-	if !CapturesSelectPageInput(list) {
-		t.Fatal("a SelectList must capture the selection page keys")
+	if !CapturesViewportInput(list) {
+		t.Fatal("a SelectList must capture viewport input")
 	}
 }
 
@@ -104,12 +104,12 @@ func TestSettingsListPageKeysMoveByAPage(t *testing.T) {
 	if list.SelectedIndex() != 7 {
 		t.Fatalf("page up: index = %d, want 7", list.SelectedIndex())
 	}
-	if !CapturesSelectPageInput(list) {
-		t.Fatal("a SettingsList must capture the selection page keys")
+	if !CapturesViewportInput(list) {
+		t.Fatal("a SettingsList must capture viewport input")
 	}
 }
 
-// editor.ts handleInput (PR #7680): with the autocomplete list open the page keys reach it; with it closed they do not.
+// editor.ts handleInput (#7629): with the autocomplete list open the page keys reach it; with it closed they do not.
 func TestEditorAutocompletePageKeys(t *testing.T) {
 	commands := make([]SlashCommand, 12)
 	for i := range commands {
@@ -117,12 +117,12 @@ func TestEditorAutocompletePageKeys(t *testing.T) {
 	}
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(commands))
-	if CapturesSelectPageInput(editor) {
-		t.Fatal("an editor without an open autocomplete list must not capture the page keys")
+	if CapturesViewportInput(editor) {
+		t.Fatal("an editor without an open autocomplete list must not capture viewport input")
 	}
 	editor.HandleInput("/")
-	if !CapturesSelectPageInput(editor) {
-		t.Fatal("an editor with an open autocomplete list must capture the page keys")
+	if !CapturesViewportInput(editor) {
+		t.Fatal("an editor with an open autocomplete list must capture viewport input")
 	}
 	page := editor.AutocompleteMaxVisible()
 	editor.HandleInput(testPageDownKey)
@@ -143,21 +143,22 @@ func TestEditorAutocompletePageKeys(t *testing.T) {
 	}
 }
 
-func TestContainerCapturesSelectPageInputFromItsChildren(t *testing.T) {
+// tui.ts capturesViewportInput: only the focused component itself reports the flag, so a container does not forward its
+// children's flag and a nil component does not capture.
+func TestContainerDoesNotForwardViewportCapture(t *testing.T) {
 	container := NewContainer()
-	container.AddChild(NewText("static"))
-	if CapturesSelectPageInput(container) {
-		t.Fatal("a container of plain children must not capture")
-	}
 	container.AddChild(NewSelectList(pageTestItems(3), 3, SelectListTheme{}))
-	if !CapturesSelectPageInput(container) {
-		t.Fatal("a container with a capturing child must capture")
+	if CapturesViewportInput(container) {
+		t.Fatal("a container must not report its child's viewport capture")
+	}
+	if CapturesViewportInput(nil) {
+		t.Fatal("a nil component must not capture")
 	}
 }
 
-// tui-alt-screen.ts handleViewportInput (PR #7680): tui.select.pageUp and tui.select.pageDown share their default keys
-// with tui.altScreen.pageUp and pageDown. A focused selection that captures them keeps them; otherwise the viewport
-// scrolls.
+// tui-alt-screen.ts shouldDeferViewportInput (#7629): tui.select.pageUp and tui.select.pageDown share their default keys
+// with tui.altScreen.pageUp and pageDown. A focused component that captures viewport input keeps them; otherwise the
+// viewport scrolls.
 func TestAltScreenGivesSelectionPageKeysToACapturingFocus(t *testing.T) {
 	useAltScreenBindings(t, nil)
 	h := newAltHarness(t, 20, 8, TuiAltScreenOptions{})
@@ -192,15 +193,13 @@ func TestAltScreenGivesSelectionPageKeysToACapturingFocus(t *testing.T) {
 	}
 }
 
-// Each selector of Pi PR #7680 moves its selection by its visible page (getPageSelectionIndex), clamped at both ends, and
-// captures the selection page keys so fullscreen leaves them to it.
+// Each selector Pi flags with capturesViewportInput moves its selection by its visible page (getSelectPageIndex), clamped
+// at both ends, and captures viewport input so fullscreen leaves the keys to it.
 func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 	models := make([]ModelSelectorItem, 25)
 	scoped := make([]ModelItem, 25)
 	providers := make([]OAuthProvider, 20)
 	messages := make([]UserMessageItem, 25)
-	options := make([]string, 20)
-	labels := make([]string, 30)
 	for i := range 25 {
 		models[i] = ModelSelectorItem{Provider: "p", ID: fmt.Sprintf("m%02d", i)}
 		scoped[i] = ModelItem{FullID: fmt.Sprintf("p/m%02d", i), Name: fmt.Sprintf("m%02d", i), Provider: "p"}
@@ -208,20 +207,12 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 	}
 	for i := range 20 {
 		providers[i] = OAuthProvider{ID: fmt.Sprintf("prov%02d", i), Name: fmt.Sprintf("Provider %02d", i), AuthType: "oauth"}
-		options[i] = fmt.Sprintf("option %02d", i)
-	}
-	for i := range labels {
-		labels[i] = fmt.Sprintf("label %02d", i)
 	}
 	model := NewStaticModelSelectorComponent("Select model", nil, models, "p/m00")
 	model.SetFilter("m")
 	oauth := NewOAuthSelectorComponent("login", providers, func(string, string) {}, func() {})
 	scopedList := NewScopedModelsList(ScopedModelsConfig{AllModels: scoped})
 	userMessages := NewUserMessageSelectorComponent(messages, func(string) {}, func() {}, "u00")
-	extension := NewExtensionSelectorComponent("Pick", options, func(string) {}, func() {})
-	filterable := NewFilterableList("", labels)
-	filterable.EnableSearch = false
-	filterable.MaxVisible = 7
 
 	type selector struct {
 		name   string
@@ -235,13 +226,11 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 		{"model", model.HandleInput, func() int { return model.cursor }, 10, len(model.filtered) - 1, model},
 		{"oauth", oauth.HandleInput, func() int { return oauth.cursor }, 8, 19, oauth},
 		{"scoped models", scopedList.HandleInput, func() int { return scopedList.cursor }, 8, 24, scopedList},
-		{"user messages", userMessages.HandleInput, func() int { return userMessages.list.selectedIndex }, 10, 24, userMessages},
-		{"extension", extension.HandleInput, func() int { return extension.cursor }, 8, 19, extension},
-		{"select list without search", filterable.HandleInput, func() int { return filterable.cursor }, 7, 29, filterable},
+		{"user messages", userMessages.HandleInput, func() int { return userMessages.list.selectedIndex }, 10, 24, userMessages.GetMessageList()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if !CapturesSelectPageInput(tc.captor) {
-				t.Fatal("selector does not capture the selection page keys")
+			if !CapturesViewportInput(tc.captor) {
+				t.Fatal("selector does not capture viewport input")
 			}
 			start := tc.cursor()
 			tc.input(testPageDownKey)
@@ -268,6 +257,100 @@ func TestSelectorComponentsMoveByTheirPage(t *testing.T) {
 	}
 }
 
+// extension-selector.ts has no select page keys and does not set capturesViewportInput: PageUp and PageDown leave the
+// selection where it is, and the fullscreen viewport keeps the keys.
+func TestExtensionSelectorIgnoresSelectionPageKeys(t *testing.T) {
+	options := make([]string, 20)
+	for i := range options {
+		options[i] = fmt.Sprintf("option %02d", i)
+	}
+	selected := ""
+	extension := NewExtensionSelectorComponent("Pick", options, func(option string) { selected = option }, func() {})
+	if CapturesViewportInput(extension) {
+		t.Fatal("the extension selector must not capture viewport input")
+	}
+	extension.HandleInput("j")
+	extension.HandleInput(testPageDownKey)
+	if extension.cursor != 1 {
+		t.Fatalf("page down moved the cursor to %d, want it to stay at 1", extension.cursor)
+	}
+	extension.HandleInput(testPageUpKey)
+	if extension.cursor != 1 {
+		t.Fatalf("page up moved the cursor to %d, want it to stay at 1", extension.cursor)
+	}
+	extension.HandleInput("\r")
+	if selected != "option 01" {
+		t.Fatalf("confirm after the page keys selected %q, want option 01", selected)
+	}
+}
+
+// config-selector.ts pages natively on tui.select.pageUp and tui.select.pageDown by maxVisible rows and moves on to the
+// nearest item, but does not set capturesViewportInput.
+func TestConfigSelectorPagesNativelyAndDoesNotCaptureViewportInput(t *testing.T) {
+	resources := make([]ResourceItem, 30)
+	for i := range resources {
+		name := fmt.Sprintf("prompt%02d.md", i)
+		resources[i] = ResourceItem{Path: "/agent/prompts/" + name, ResourceType: ResourcePrompts, DisplayName: name, Enabled: true, Scope: "user", Origin: "top-level", Source: "auto"}
+	}
+	cs := NewConfigSelector(BuildResourceGroups(resources), 0)
+	if CapturesViewportInput(cs) {
+		t.Fatal("the config selector must not capture viewport input")
+	}
+	start, last := cs.cursor, len(cs.filtered)-1
+	if cs.filtered[start].entryType != "item" || last-start <= cs.maxVisible {
+		t.Fatalf("fixture: cursor %d (%s) and last row %d must leave more than one page of items", start, cs.filtered[start].entryType, last)
+	}
+	cs.HandleInput(testPageDownKey)
+	if want := start + cs.maxVisible; cs.cursor != want {
+		t.Fatalf("page down: cursor = %d, want %d", cs.cursor, want)
+	}
+	for range 5 {
+		cs.HandleInput(testPageDownKey)
+	}
+	if cs.cursor != last {
+		t.Fatalf("page down at the end: cursor = %d, want %d", cs.cursor, last)
+	}
+	cs.HandleInput(testPageUpKey)
+	if want := last - cs.maxVisible; cs.cursor != want {
+		t.Fatalf("page up: cursor = %d, want %d", cs.cursor, want)
+	}
+	for range 5 {
+		cs.HandleInput(testPageUpKey)
+	}
+	if cs.cursor != start {
+		t.Fatalf("page up at the start: cursor = %d, want the first item %d", cs.cursor, start)
+	}
+}
+
+// FilterableList stands in for Pi's SelectList inside hosts that set capturesViewportInput themselves (the llama.cpp and
+// /mcp views, the settings submenu); the list pages by MaxVisible rows and reports no capture of its own.
+func TestFilterableListPagesByItsVisibleRowsWithoutCapturingViewportInput(t *testing.T) {
+	labels := make([]string, 30)
+	for i := range labels {
+		labels[i] = fmt.Sprintf("label %02d", i)
+	}
+	list := NewFilterableList("", labels)
+	list.EnableSearch = false
+	list.MaxVisible = 7
+	if CapturesViewportInput(list) {
+		t.Fatal("a filterable list must not capture viewport input on its own")
+	}
+	list.HandleInput(testPageDownKey)
+	if list.cursor != 7 {
+		t.Fatalf("page down: cursor = %d, want 7", list.cursor)
+	}
+	for range 10 {
+		list.HandleInput(testPageDownKey)
+	}
+	if list.cursor != 29 {
+		t.Fatalf("page down at the end: cursor = %d, want 29 without wrapping", list.cursor)
+	}
+	list.HandleInput(testPageUpKey)
+	if list.cursor != 22 {
+		t.Fatalf("page up: cursor = %d, want 22", list.cursor)
+	}
+}
+
 // select-list.ts setFilter uses `item.value.toLowerCase().startsWith(filter.toLowerCase())`: JavaScript lowercases İ (U+0130)
 // to i followed by U+0307, where Go's strings.ToLower gives a plain i.
 func TestSelectListFilterLowercasesAsJavaScriptDoes(t *testing.T) {
@@ -275,5 +358,28 @@ func TestSelectListFilterLowercasesAsJavaScriptDoes(t *testing.T) {
 	list.SetFilter("i\u0307s")
 	if len(list.filteredItems) != 1 || list.filteredItems[0].Value != "İstanbul" {
 		t.Fatalf("filter i+U+0307+s kept %+v, want only İstanbul", list.filteredItems)
+	}
+}
+
+// tree-selector.ts capturesViewportInput: the tree selector captures viewport input except while its label editor is open.
+func TestTreeSelectorCapturesViewportInputUnlessEditingALabel(t *testing.T) {
+	selector := NewTreeSelectorComponentFrom(treeSelectorTestNodes(), nil, 24, nil, nil, nil, nil, "default")
+	if !CapturesViewportInput(selector) {
+		t.Fatal("a tree selector must capture viewport input")
+	}
+	selector.labelInput = NewInput(InputOptions{})
+	if CapturesViewportInput(selector) {
+		t.Fatal("a tree selector with its label editor open must not capture viewport input")
+	}
+}
+
+// user-message-selector.ts: the list reports the flag and its selector container does not forward it.
+func TestUserMessageSelectorReportsViewportCaptureOnItsList(t *testing.T) {
+	selector := NewUserMessageSelectorComponent([]UserMessageItem{{ID: "a", Text: "a"}}, func(string) {}, func() {}, "")
+	if CapturesViewportInput(selector) {
+		t.Fatal("the selector container must not report its list's flag")
+	}
+	if !CapturesViewportInput(selector.GetMessageList()) {
+		t.Fatal("the message list must capture viewport input")
 	}
 }

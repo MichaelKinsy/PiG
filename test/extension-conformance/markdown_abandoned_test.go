@@ -18,7 +18,7 @@ import (
 func TestMarkdownAbandonedBodyKeepsOrderAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	for _, tc := range allHarnessCases() {
-		if tc.name != "subprocess-python" && tc.name != "subprocess-rust" {
+		if tc.name != "subprocess-python" && tc.name != "subprocess-rust" && tc.name != "subprocess-lisp" {
 			continue
 		}
 		t.Run(tc.name, func(t *testing.T) {

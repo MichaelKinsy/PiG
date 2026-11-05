@@ -58,6 +58,7 @@ func load(path string) ([]classifierModel, error) {
 	script := `import { pathToFileURL } from "node:url";
 const mod = await import(pathToFileURL(process.argv[1]).href);
 process.stdout.write(JSON.stringify(Object.entries(mod.CLASSIFIER_MODELS).map(([provider, models]) => [provider, Object.entries(models).map(([id, model]) => [id, model])])));`
+	//nolint:gosec // G204 (class a): program is literal node; its path argument is the -src flag value placed after -e script with no -- separator.
 	data, err := exec.Command("node", "--input-type=module", "-e", script, path).CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("import published classifier catalog: %w\n%s", err, data)

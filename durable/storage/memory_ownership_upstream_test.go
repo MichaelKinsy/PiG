@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -15,14 +16,14 @@ import (
 func TestMemoryStorageClonesRetainedWritesAndReads(t *testing.T) {
 	ctx := t.Context()
 	memory := storage.NewMemoryStorage()
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}}}); err != nil {
 		t.Fatal(err)
 	}
 	entryID := durable.IdFromNumber[durable.EntryId](2)
 	data := map[string]any{"nested": []any{1}}
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
+	if _, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
 		Id: entryID, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "test", Data: data,
-	}}}, func(durable.Seq) {}); err != nil {
+	}}}); err != nil {
 		t.Fatal(err)
 	}
 	data["nested"].([]any)[0] = 99 // edit the value passed to commit
@@ -62,10 +63,10 @@ func TestMemoryStorageConversationReadsAreCopies(t *testing.T) {
 	ctx := t.Context()
 	memory := storage.NewMemoryStorage()
 	child := durable.IdFromNumber[durable.ConversationId](5)
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: child, Parent: &durable.ConversationParent{ConversationId: durable.ROOT_CONVERSATION_ID, At: durable.IdFromNumber[durable.EntryId](2)}}},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	first, err := memory.Conversation(ctx, child)

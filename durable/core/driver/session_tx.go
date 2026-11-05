@@ -173,6 +173,17 @@ func (p *txProxy) LatestHeadMarker(conversationId durable.ConversationId) (*dura
 	return decodeOptional[durable.EntryRecord](p.op("latestHeadMarker", map[string]any{"conversationId": conversationId}))
 }
 
+// LatestEntryId is the newest visible entry of the conversation: the first of a descending scan of one (the core has no
+// separate op for it; Pi's Tx.latestEntryId is that read).
+func (p *txProxy) LatestEntryId(conversationId durable.ConversationId) (*durable.EntryId, error) {
+	page, err := p.ScanEntries(durable.EntryQuery{ConversationId: conversationId}, 1, nil)
+	if err != nil || len(page.Items) == 0 {
+		return nil, err
+	}
+	id := page.Items[0].Id
+	return &id, nil
+}
+
 func (p *txProxy) ScanTasks(query durable.TaskQuery, limit int, cursor durable.Cursor) (durable.Page[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], durable.Cursor], error) {
 	return decodePage[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]](p.op("scanTasks", map[string]any{"query": wireTaskQuery(query), "limit": limit, "cursor": cursor}))
 }
@@ -335,6 +346,9 @@ func (p *txProxy) Doc(token durable.AnyDocToken, args ...any) (*delta.Object, er
 	// The core checks a stored document record against the definition's semantics; without them it would assume
 	// history "latest", so a rewindable document (pi.agent: rewindable, asOf) would not match its own record.
 	wire := map[string]any{"address": wireAddress(resolved.Address), "version": def.Version, "def": wireDef(def)}
+	// The value the host holds of the document names the revision the core answers relative to (PROTOCOL.md, `doc`).
+	held := p.tx.client.replicas.held(resolved.Id)
+	wire["revisions"] = revisions(held)
 	if def.Family {
 		if resolved.NextArgument < len(args) {
 			wire["seed"] = args[resolved.NextArgument]
@@ -342,15 +356,18 @@ func (p *txProxy) Doc(token durable.AnyDocToken, args ...any) (*delta.Object, er
 	}
 	// The core asks for the values only definition code can compute: initial(seed) for an absent document and migrate(value, from)
 	// for an older stored version (PROTOCOL.md, `doc`; transaction.ts acquire). It asks at most twice, once for each.
-	type docAnswer struct {
+	type docReply struct {
 		Value           durable.JsonObject `json:"value"`
+		Ops             json.RawMessage    `json:"ops"`
+		Epoch           *uint64            `json:"epoch"`
+		Adopted         int                `json:"adopted"`
 		Need            string             `json:"need"`
 		From            int                `json:"from"`
 		Entry           *int               `json:"entry"`
 		DeltasSinceBase *int               `json:"deltasSinceBase"`
 	}
 	migratedHere := false
-	answer, err := decode[docAnswer](p.op("doc", wire))
+	answer, err := decode[docReply](p.op("doc", wire))
 	for i := 0; err == nil && answer.Need != "" && i < 2; i++ {
 		switch answer.Need {
 		case "initial":
@@ -376,15 +393,28 @@ func (p *txProxy) Doc(token durable.AnyDocToken, args ...any) (*delta.Object, er
 		default:
 			return nil, fmt.Errorf("the core asked for %q while opening document %s", answer.Need, def.Kind)
 		}
-		answer, err = decode[docAnswer](p.op("doc", wire))
+		answer, err = decode[docReply](p.op("doc", wire))
 	}
 	if err != nil {
 		return nil, err
 	}
-	if answer.Value == nil {
-		answer.Value = delta.NewJsonObject(0)
+	reading := docReading{value: answer.Value, incremental: answer.Ops != nil, revised: answer.Epoch != nil}
+	if answer.Ops != nil {
+		if err := json.Unmarshal(answer.Ops, &reading.ops); err != nil {
+			return nil, err
+		}
 	}
-	tracker := delta.Track(answer.Value)
+	if answer.Epoch != nil {
+		reading.epoch, reading.adopted = *answer.Epoch, answer.Adopted
+	}
+	value, err := p.tx.client.replicas.resolve(resolved.Id, held, reading)
+	if err != nil {
+		return nil, err
+	}
+	if value == nil {
+		value = delta.NewJsonObject(0)
+	}
+	tracker := delta.Track(value)
 	change := tracker.BeginChange()
 	p.order = append(p.order, resolved.Id)
 	draft := change.State()

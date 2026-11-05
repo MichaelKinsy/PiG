@@ -31,7 +31,7 @@ func scriptedWatchFrames(t *testing.T, target durableenv.WatchTarget, frames ...
 	return scriptedConnection(t, script.String(), nil)
 }
 
-// watch.ts:104-125 an `error` event is delivered and then the watcher is closed (stop), so a later change is not delivered; a callback that throws does
+// watch.ts:104-125 an `error` event is delivered and then the watcher is stopped (stop), so a later change is not delivered; a callback that throws does
 // not stop the watching (deliver's try/catch), and a change after it is still delivered.
 func TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback(t *testing.T) {
 	target := durableenv.WatchTarget{Path: "/watched"}
@@ -55,14 +55,14 @@ func TestRemoteWatcherStopsAfterAnErrorEventAndSurvivesAThrowingCallback(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { connection.Close(); _ = watcher.Close(background) }()
+	defer func() { connection.Close(); _ = watcher.Stop(background) }()
 	log.wait(t, 3)
 	time.Sleep(200 * time.Millisecond)
 	changes := log.wait(t, 3)
 	if len(changes) != 3 {
 		t.Fatalf("saw %d changes %v, want a, b and the error and nothing after it", len(changes), changes)
 	}
-	if _, ok := changes[2].(durableenv.FileChangeError); !ok {
+	if _, ok := changes[2].(durableenv.FileChangeFailed); !ok {
 		t.Fatalf("third change %#v, want the error", changes[2])
 	}
 }
@@ -84,9 +84,9 @@ func TestRemoteWatcherReportsAFailedRequestBeforeAndAfterCoverage(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = watcher.Close(background) }()
+	defer func() { _ = watcher.Stop(background) }()
 	changes := log.wait(t, 1)
-	if reported, ok := changes[0].(durableenv.FileChangeError); !ok || reported.Error == nil || !strings.Contains(reported.Error.Message, "boom") {
+	if reported, ok := changes[0].(durableenv.FileChangeFailed); !ok || reported.Error == nil || !strings.Contains(reported.Error.Message, "boom") {
 		t.Fatalf("first change %#v, want the failure as an error change", changes[0])
 	}
 }
@@ -108,7 +108,7 @@ func TestRemoteWatcherSendsEachTargetsExcludeAndThePollInterval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { connection.Close(); _ = watcher.Close(background) }()
+	defer func() { connection.Close(); _ = watcher.Stop(background) }()
 	sent := string(must(os.ReadFile(captured)))
 	for _, want := range []string{
 		`{"exclude":{"hidden":false,"names":[]},"path":"/plain","recursive":false}`,
@@ -123,12 +123,12 @@ func TestRemoteWatcherSendsEachTargetsExcludeAndThePollInterval(t *testing.T) {
 }
 
 // watch.ts:62-68 close aborts the watch request and then `await this.#request`: when close returns, the request has finished, not merely been told to stop.
-// mutation-checked: skipping the wait for the request in RemoteWatcher.Close fails it.
-func TestRemoteWatcherCloseReturnsOnlyAfterTheWatchRequestHasFinished(t *testing.T) {
+// mutation-checked: skipping the wait for the request in RemoteWatcher.Stop fails it.
+func TestRemoteWatcherStopReturnsOnlyAfterTheWatchRequestHasFinished(t *testing.T) {
 	env, _ := remoteEnvironment(t)
 	for range 3 {
 		watcher := must(env.Watch(background, []durableenv.WatchTarget{{Path: "."}}, func(durableenv.FileChange) {})).(*RemoteWatcher)
-		if err := watcher.Close(background); err != nil {
+		if err := watcher.Stop(background); err != nil {
 			t.Fatal(err)
 		}
 		watcher.mu.Lock()

@@ -106,7 +106,9 @@ fn make_provider() -> Arc<Provider> {
                         Some(get) => get()?,
                         None => "none".to_string(),
                     };
-                    Ok(json!({"type":"oauth","access":format!("{key}@{device}"),"refresh":"refresh","expires":100}))
+                    Ok(
+                        json!({"type":"oauth","access":format!("{key}@{device}"),"refresh":"refresh","expires":100}),
+                    )
                 }),
                 refresh: Arc::new(|mut credential, _| {
                     credential["access"] = json!("rotated");
@@ -142,13 +144,11 @@ fn make_provider() -> Arc<Provider> {
             })
         }),
         filter_all_models: Some(Arc::new(|models, credential| {
-            Ok(
-                if credential.as_ref().is_some_and(|c| c["key"] == "all") {
-                    models.to_vec()
-                } else {
-                    vec![]
-                },
-            )
+            Ok(if credential.as_ref().is_some_and(|c| c["key"] == "all") {
+                models.to_vec()
+            } else {
+                vec![]
+            })
         })),
         refresh_models: Some(Arc::new(move |input| {
             if input.force != Some(true) {
@@ -157,7 +157,10 @@ fn make_provider() -> Arc<Provider> {
             let models = models.clone();
             let model = model.clone();
             // An SDK that drops RefreshModelsContext.baseUrl publishes "refreshed:None".
-            let refreshed_id = format!("refreshed:{}", input.base_url.clone().unwrap_or_else(|| "None".to_string()));
+            let refreshed_id = format!(
+                "refreshed:{}",
+                input.base_url.clone().unwrap_or_else(|| "None".to_string())
+            );
             (input.publish)(ModelsPublication {
                 persist: Some(Value::Null),
                 update: Some(Arc::new(move || {
@@ -235,7 +238,10 @@ fn probe(ctx: &Context, path: &str) -> Result<(), String> {
     let api_login = api.login.as_ref().unwrap()(interaction.clone())?;
     let login = (oauth.login)(
         interaction,
-        LoginOptions { get_device_id: Some(Arc::new(|| Ok("caller-device".to_string()))), agent_name: None },
+        LoginOptions {
+            get_device_id: Some(Arc::new(|| Ok("caller-device".to_string()))),
+            agent_name: None,
+        },
     )?;
     let rotated = (oauth.refresh)(login.clone(), ProviderSignal::new())?;
     let oauth_auth = (oauth.to_auth)(rotated.clone())?;

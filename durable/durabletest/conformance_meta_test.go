@@ -57,8 +57,8 @@ func failed(run func() error) (failed bool) {
 // brokenStorage forgets every commit: reads see nothing.
 type brokenStorage struct{ durable.Storage }
 
-func (brokenStorage) Commit(context.Context, []durable.StorageWrite, func(durable.Seq)) (durable.Seq, error) {
-	return 0, nil
+func (brokenStorage) Commit(context.Context, [][]durable.StorageWrite, func(int, durable.Seq)) (durable.CommitResult, error) {
+	return durable.CommitResult{}, nil
 }
 
 // TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage is the negative control of the storage

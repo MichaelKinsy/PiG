@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/api/openai-codex-responses.ts (resolveCodexUrl and the provider construction of stream).
+
 import (
 	"context"
 	"fmt"

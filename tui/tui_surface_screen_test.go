@@ -61,6 +61,7 @@ func screenSurface(t *testing.T, document, dock Component) (*TuiSurface, *screen
 	session := &screenSession{recordingSession: newRecordingSession(), ok: true,
 		screen: frontend.Screen{Rows: -2, MainRow: 1, MainColumn: 3, DockColumn: 2}}
 	surface := NewTuiSurfaceWithSize(session, 60, 20, func(err error) { t.Fatalf("apply: %v", err) })
+	renderOnlyWhenAsked(surface)
 	surface.SetLayout(document, dock)
 	surface.Start()
 	return surface, session
@@ -297,6 +298,7 @@ func TestTuiSurfaceKeepsTheDockUnderAFullscreenOverlayWhenTheSessionShowsIt(t *t
 		editor := NewEditor()
 		session := &screenSession{recordingSession: newRecordingSession(), ok: true, screen: frontend.Screen{ShowsDock: showsDock}}
 		surface := NewTuiSurfaceWithSize(session, 60, 20, func(err error) { t.Fatalf("apply: %v", err) })
+		renderOnlyWhenAsked(surface)
 		surface.SetLayout(NewContainer(), NewContainer(NewContainer(editor), NewText("footer")))
 		surface.SetHooks(SurfaceHooks{Editor: func() *Editor { return editor }, EditorSendable: func() bool { return surface.GetFocusedComponent() == Component(editor) }})
 		surface.SetFocus(editor)

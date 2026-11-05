@@ -24,9 +24,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// ErrUnsupported is the error of a public operation the native session does not serve yet (PROTOCOL.md, "Not supported").
-var ErrUnsupported = errors.New("not supported by the Durable core session yet")
-
 // RootConversationID is the reserved ID of the root conversation.
 const RootConversationID durable.ConversationId = 1
 
@@ -73,21 +70,24 @@ type coreSession struct {
 	table    *handlerTable
 	settings durable.Settings
 	envs     *Envs
+	models   *Models
 	tasks    *taskRuntimes
 	timers   durable.Timers
 	unsub    func()
 	watches  *watchHub
 	commits  commitListeners
 
-	mu          sync.Mutex
-	resumed     bool
-	closed      bool
-	admitted    int           // calls admitted before Close began that have not returned (session.ts #tail)
-	drained     chan struct{} // closed when Close began and the last admitted call returned
-	ended       chan struct{} // closed once the Session ended, with end set
-	end         durable.SessionEnd
-	instruction map[string]*durable.PromptSection
-	callbacks   map[string]Callback
+	mu sync.Mutex
+	// documentValues are the values of the documents the core published, which it leaves out of a change when the host holds them (commits.go).
+	documentValues map[durable.DocumentId]durable.JsonObject
+	resumed        bool
+	closed         bool
+	admitted       int           // calls admitted before Close began that have not returned (session.ts #tail)
+	drained        chan struct{} // closed when Close began and the last admitted call returned
+	ended          chan struct{} // closed once the Session ended, with end set
+	end            durable.SessionEnd
+	instruction    map[string]*durable.PromptSection
+	callbacks      map[string]Callback
 	// wakes are the wake notices waiting for OnWake, lastWake the last value it took; wakeRunning is set while deliverWakes runs.
 	wakes       []harness.Wake
 	lastWake    *harness.Wake
@@ -119,19 +119,16 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	if cfg.Core == nil || cfg.DB == nil || (cfg.Harness.Models == nil && cfg.Harness.ModelsFunc == nil) || cfg.Harness.Registry == nil {
 		return nil, errors.New("driver.Open needs Core, DB, Harness.Models and Harness.Registry")
 	}
-	if cfg.Harness.ReadOnly {
-		// HarnessOptions.readOnly (Pi be14d9732) is served by the Go Harness only; ignoring it would open a writer.
-		return nil, fmt.Errorf("HarnessOptions.ReadOnly: %w", ErrUnsupported)
-	}
 	// Pi harness.ts:178-179: `const report = safeReport(options.onReport); const now = safeNow(options.now, report)`.
-	cfg.Harness.OnReport = harness.SafeReport(cfg.Harness.OnReport)
+	safeReport := harness.SafeReport(cfg.Harness.OnReport)
+	cfg.Harness.OnReport = func(report durable.Report) { safeReport(report.Error, report.ReportInfo) }
 	cfg.Harness = cfg.Harness.WithModelsView()
 	if cfg.Harness.Now != nil {
-		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, cfg.Harness.OnReport)
+		cfg.Harness.Now = harness.SafeNow(cfg.Harness.Now, safeReport)
 	}
 	s := &coreSession{ended: make(chan struct{}), cfg: cfg, table: newHandlerTable(), instruction: map[string]*durable.PromptSection{}, callbacks: map[string]Callback{}}
 	s.timers = durable.HostTimers(cfg.Harness.SetTimer, func(err error) {
-		s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+		s.report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 	})
 	s.watches = newWatchHub(s.reportListener)
 	s.settings = s.resolveSettings()
@@ -142,14 +139,15 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 	}
 	handlers := map[abi.EffectKind]sqlhost.Handler{}
 	models := NewModels(cfg.Harness.CurrentModels, now, func(err error) {
-		report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackModels})
+		report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackModels})
 	})
 	models.monotonic = cfg.Monotonic
+	s.models = models
 	maps.Copy(handlers, models.Handlers())
 	var client *Client
 	getClient := func() *Client { return client }
 	s.envs = &Envs{Build: cfg.Harness.Env, Reader: func() durable.DocumentReader { return &invocation{s: s} }}
-	hooks := &Hooks{Lookup: s.table.lookupHook, Task: func(kind string) (durable.AnyTask, bool) {
+	hooks := &Hooks{Lookup: s.table.lookupHook, Models: cfg.Harness.CurrentModels, Task: func(kind string) (durable.AnyTask, bool) {
 		task := s.cfg.Harness.Registry.Snapshot().Task(kind)
 		return task, task.Definition != nil
 	}, API: func(task durable.TaskId, conversation durable.ConversationId) harness.HookApi {
@@ -176,7 +174,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		SetTimer: s.armTimer,
 		Handlers: handlers, OnNotice: func(n abi.Notice) { s.watches.notice(n); s.commitNotice(n); s.reportNotice(n); s.wakeNotice(n) }, OnCommit: cfg.onCommit, OnCommitted: cfg.OnCommitted, TimerFired: cfg.TimerFired,
 		OnRejected: func(kind abi.EventKind, err *sqlhost.RejectedError) {
-			report(err, durable.ReportInfo{Type: durable.ReportListenerError})
+			report(err, durable.ReportInfo{Kind: durable.ReportListenerError})
 		},
 		// Pi reads HarnessSettings at each use: the owner resends them to the core when they changed (sqlhost Options.Settings).
 		// A settings reader that throws fails the reads that need it (resolveAgent, the task runtime), not the owner: the
@@ -184,13 +182,12 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		Settings: func() (text []byte) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)), durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings})
+					report(fmt.Errorf("Harness settings: %s", durable.ErrorMessage(recovered)), durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSettings})
 					text = nil
 				}
 			}()
 			//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's
-			text, _ = json.Marshal(s.settingsJSON())
-			return text
+			return s.settingsText()
 		},
 		OnCancel: func(id uint32) {
 			if s.tasks != nil {
@@ -240,16 +237,37 @@ func (s *coreSession) resolveSettings() durable.Settings {
 	return harness.ResolveSettings(s.cfg.Harness.Settings())
 }
 
+// settingsText is the settings the host compares before every event: the resolved settings as JSON, read afresh each time as Pi
+// reads them (packages/durable/src/harness/harness.ts:236 `settings = () => resolveSettings(hostSettings())`). The resolved Stream holds the maps the host's
+// settings own (headers, metadata), so a copy of the settings cannot tell that one changed in place; the host compares the text.
+func (s *coreSession) settingsText() []byte {
+	st := s.resolveSettings()
+	names := extensionNames(st)
+	st.Extensions = nil
+	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's
+	text, _ := json.Marshal(settingsMap(st, names))
+	return text
+}
+
+// extensionNames is the names of the settings' extensions, nil when the settings name none (every installed extension).
+func extensionNames(st durable.Settings) []string {
+	if st.Extensions == nil {
+		return nil
+	}
+	names := make([]string, 0, len(st.Extensions))
+	for _, e := range st.Extensions {
+		names = append(names, e.Name)
+	}
+	return names
+}
+
 // settingsJSON is the resolved settings as data: extensions are names (PROTOCOL.md, open).
 func (s *coreSession) settingsJSON() map[string]any {
 	st := s.resolveSettings()
-	names := []string(nil)
-	if st.Extensions != nil {
-		names = make([]string, 0, len(st.Extensions))
-		for _, e := range st.Extensions {
-			names = append(names, e.Name)
-		}
-	}
+	return settingsMap(st, extensionNames(st))
+}
+
+func settingsMap(st durable.Settings, names []string) map[string]any {
 	out := map[string]any{
 		"stream": st.Stream, "retry": st.Retry, "compaction": st.Compaction, "progress": st.Progress,
 		"toolExecution": st.ToolExecution, "steeringMode": st.SteeringMode, "followUpMode": st.FollowUpMode,
@@ -285,7 +303,7 @@ func (s *coreSession) openPayload() ([]byte, error) {
 	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads its members by name and stores none of this object
 	return json.Marshal(map[string]any{
 		"mode": mode, "settings": s.settingsJSON(), "models": s.catalogue(), "registry": snapshot, "sidecar": sidecar, "delta": true, "hostAdmission": true,
-		"hasEnv": s.cfg.Harness.Env != nil, "onWake": s.cfg.Harness.OnWake != nil,
+		"hasEnv": s.cfg.Harness.Env != nil, "onWake": s.cfg.Harness.OnWake != nil, "readOnly": s.cfg.Harness.ReadOnly,
 	})
 }
 
@@ -337,6 +355,10 @@ func (s *coreSession) Resume() {
 		s.mu.Unlock()
 		panic(harness.ErrClosed)
 	}
+	if s.cfg.Harness.ReadOnly {
+		s.mu.Unlock()
+		panic(durable.NewReadOnlySession("running tasks")) // scheduler.ts resume throws ReadOnlySession
+	}
 	s.resumed = true
 	s.mu.Unlock()
 	//portlint:allow ctxbackground Harness.resume() takes no context (harness.ts resume): the event is a notification, not cancellable work
@@ -344,9 +366,15 @@ func (s *coreSession) Resume() {
 }
 
 // kick is the scheduler's own resume, which the calls that ask for progress make (scheduler.ts resume: it enables scheduling and
-// never fails). Only Harness.resume asserts that the Harness is open (harness.ts :238), so a call that races Close is rejected
-// as closed by the call itself and must not panic here.
-func (s *coreSession) kick() { s.resume() }
+// fails only on a read-only Harness, with ReadOnlySession). Only Harness.resume asserts that the Harness is open (harness.ts :238), so
+// a call that races Close is rejected as closed by the call itself and must not fail here.
+func (s *coreSession) kick() error {
+	if s.cfg.Harness.ReadOnly {
+		return durable.NewReadOnlySession("running tasks")
+	}
+	s.resume()
+	return nil
+}
 
 // resume enables scheduling and reports false when the Session is closed.
 func (s *coreSession) resume() bool {
@@ -392,14 +420,18 @@ func (s *coreSession) Close(ctx context.Context) error {
 	s.closeListeners = nil
 	drained := s.drained
 	s.mu.Unlock()
+	// Harness.close()'s synchronous part (session.ts close, #notifyClose): the scheduler's seal and the close listeners run in one
+	// synchronous pass, so nothing a listener frees can reach the scheduler before its seal. The seal is posted first for that reason:
+	// a listener cancels the waits of calls in flight (closeAware), the goroutines it frees post their completions at once (a tool
+	// that ends because the close cancelled its nested call posts toolDone), and a seal posted after the listeners can queue behind
+	// them. The core would then settle the caller as if the Harness stayed open and abort its nested calls, and the store would keep
+	// those marks for the next Harness. The seal queues behind the events that arrived before the call, as the microtasks that ran
+	// before close() did in Pi, so a step the owner has queued already (a failed phase's) sees the closing flag and writes no fault.
+	s.host.Post(abi.Event{Kind: abi.EventSeal})
 	// A close listener's panic is reported and the others still run (session.ts subscribeClose).
 	for _, call := range calls {
 		session.Contained(call, s.reportListener)
 	}
-	// Harness.close()'s synchronous part (session.ts close :352-366): the scheduler seals at the call, so a step the owner has queued
-	// already (a failed phase's) sees the closing flag and writes no fault. The seal queues behind the events that arrived before
-	// the call, as the microtasks that ran before close() did in Pi.
-	s.host.Post(abi.Event{Kind: abi.EventSeal})
 	// Admission is sealed; work admitted before it settles before the core and the store close (session.ts close :351-368,
 	// where the close job is enqueued behind the line). The caller's context bounds only the wait, as awaitWithContext does:
 	// the close itself finishes on its own.
@@ -416,12 +448,21 @@ func (s *coreSession) Close(ctx context.Context) error {
 	}
 }
 
+// failure is the error that failed the Session, nil while it has not failed.
+func (s *coreSession) failure() error {
+	if fatal := s.client.poisoned.Load(); fatal != nil {
+		return fatal
+	}
+	return nil
+}
+
 // finishClose ends the watches, seals the core and closes the store, once nothing admitted is in flight.
 func (s *coreSession) finishClose(ctx context.Context) error {
 	if s.unsub != nil {
 		s.unsub()
 	}
-	s.watches.closeSession()
+	s.watches.closeSession(s.failure())
+	s.endAllCommits()
 	// The handlers join while the core still takes events: a run's end is reported to the core, which ends its invocation and
 	// answers the abort that joined it (scheduler.ts abort awaits run.done; close joins every invocation before it closes Storage).
 	if err := s.host.WaitEffects(ctx); err != nil {
@@ -457,9 +498,9 @@ func (s *coreSession) settleEnd() {
 		return
 	default:
 	}
-	s.end = durable.SessionEnd{Reason: durable.SessionEndClosed}
+	s.end = durable.SessionEnd{Kind: durable.SessionEndClosed}
 	if fatal := s.client.poisoned.Load(); fatal != nil {
-		s.end = durable.SessionEnd{Reason: durable.SessionEndFailed, Error: fatal}
+		s.end = durable.SessionEnd{Kind: durable.SessionEndFailed, Error: fatal}
 	}
 	close(s.ended)
 }
@@ -528,6 +569,20 @@ func (s *coreSession) hookHandler(hooks *Hooks) sqlhost.Handler {
 			return s.argumentsHook(call, head.Name, head.Payload)
 		case "complete":
 			return s.completeHook(ctx, call, head.Payload)
+		case "modelPayload":
+			// The core's answer to a provider's onPayload (host/PROTOCOL.md, "Provider request bodies").
+			var in struct {
+				Effect  uint32          `json:"effect"`
+				Call    int             `json:"call"`
+				Payload json.RawMessage `json:"payload"`
+				Aborted bool            `json:"aborted"`
+			}
+			if err := json.Unmarshal(head.Payload, &in); err != nil {
+				return fmt.Errorf("modelPayload payload: %w", err)
+			}
+			s.models.answerPayload(in.Effect, in.Call, payloadAnswer{payload: in.Payload, sent: in.Payload != nil, aborted: in.Aborted})
+			call.Post(abi.Event{Kind: abi.EventHookDone, ID: call.ID, Phase: abi.OutcomeResult, Payload: []byte("null")})
+			return nil
 		case "registrySnapshot":
 			// registry.snapshot() where Pi's #decide calls it (scheduler.ts:955): the snapshot JSON of open.registry.
 			body, err := s.registryJSON()
@@ -549,7 +604,7 @@ func (s *coreSession) hookHandler(hooks *Hooks) sqlhost.Handler {
 			}
 		}
 		agent := harness.ResolveAgent(in.State, s.cfg.Harness.Registry.Snapshot(), s.resolveSettings(), func(err error, extension string) {
-			s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &head.ConversationId, Extension: extension})
+			s.report(err, durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: &head.ConversationId, Extension: extension})
 		})
 		//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads its members by name and stores none of this object
 		body, err := json.Marshal(s.agentJSON(agent))
@@ -780,10 +835,11 @@ type reportBody struct {
 	Name    string `json:"name"`
 	Message string `json:"message"`
 	Info    struct {
-		Type           durable.ReportType      `json:"type"`
+		Kind           durable.ReportKind      `json:"kind"`
 		Task           *durable.ReportTask     `json:"task"`
 		Extension      string                  `json:"extension"`
 		Reason         string                  `json:"reason"`
+		Restarts       int                     `json:"restarts"`
 		Callback       durable.HostCallback    `json:"callback"`
 		ConversationId *durable.ConversationId `json:"conversationId"`
 	} `json:"info"`
@@ -791,10 +847,10 @@ type reportBody struct {
 
 func (b reportBody) info() durable.ReportInfo {
 	i := b.Info
-	if i.Type == "" {
-		return durable.ReportInfo{Type: durable.ReportListenerError}
+	if i.Kind == "" {
+		return durable.ReportInfo{Kind: durable.ReportListenerError}
 	}
-	return durable.ReportInfo{Type: i.Type, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Callback: i.Callback, ConversationId: i.ConversationId}
+	return durable.ReportInfo{Kind: i.Kind, Task: i.Task, Extension: i.Extension, Reason: i.Reason, Restarts: i.Restarts, Callback: i.Callback, ConversationId: i.ConversationId}
 }
 
 // Report is session.ts report: it hands a non-fatal failure, such as the error of a state listener or of the typed listener of
@@ -803,12 +859,12 @@ func (s *coreSession) Report(err error) { s.reportListener(err) }
 
 // reportListener is report for a listener's failure, the default source of a report.
 func (s *coreSession) reportListener(err error) {
-	s.report(err, durable.ReportInfo{Type: durable.ReportListenerError})
+	s.report(err, durable.ReportInfo{Kind: durable.ReportListenerError})
 }
 
 func (s *coreSession) report(err error, info durable.ReportInfo) {
 	if s.cfg.Harness.OnReport != nil {
-		s.cfg.Harness.OnReport(err, info)
+		s.cfg.Harness.OnReport(durable.Report{ReportInfo: info, Error: err})
 	}
 }
 
@@ -882,6 +938,9 @@ func (s *coreSession) agentJSON(agent durable.Agent) map[string]any {
 	if agent.Cwd != nil {
 		out["cwd"] = *agent.Cwd
 	}
+	if agent.MaxTurns != nil {
+		out["maxTurns"] = *agent.MaxTurns
+	}
 	return out
 }
 
@@ -954,7 +1013,7 @@ func (s *coreSession) deliverWakes() {
 			continue
 		}
 		if err := s.callOnWake(wake); err != nil {
-			s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake})
+			s.report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackOnWake})
 			continue
 		}
 		s.mu.Lock()

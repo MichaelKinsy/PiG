@@ -113,6 +113,12 @@ type RemoteEditorHost interface {
 	EditorClosed()
 }
 
+// RemoteEditorViewportHost is an optional [RemoteEditorHost] that takes the component's capturesViewportInput with each frame
+// (Component.capturesViewportInput in packages/tui/src/tui.ts). It is called before the frame's EditorFrame.
+type RemoteEditorViewportHost interface {
+	EditorCapturesViewportInput(captures bool)
+}
+
 // LiveRemoteEditor is a [RemoteEditor] that runs in the host's process and renders on demand: the host shows what RenderFrame returns at the width
 // of each render instead of the last frame the editor pushed.
 type LiveRemoteEditor interface {

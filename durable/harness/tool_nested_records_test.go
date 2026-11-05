@@ -100,12 +100,12 @@ func TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart(
 					return durable.ToolExecutionResult{}, err
 				}
 				owned := durable.TaskOptions{Ownership: durable.TaskOwnership{Kind: durable.TaskOwnedByTask, TaskId: api.TaskId()}}
-				byDefault, err := api.CreateTaskErased(ctx, child.Erased(), durable.JsonValue(nil), owned)
+				byDefault, err := durable.ToolCreateTask(ctx, api, child, childInput{}, owned)
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
 				owned.AbandonOnRestart = new(false)
-				explicit, err := api.CreateTaskErased(ctx, child.Erased(), durable.JsonValue(nil), owned)
+				explicit, err := durable.ToolCreateTask(ctx, api, child, childInput{}, owned)
 				if err != nil {
 					return durable.ToolExecutionResult{}, err
 				}
@@ -255,7 +255,7 @@ func TestANestedCallsBrokenStructuredOutputIsAnErrorResult(t *testing.T) {
 // harness-structured-output.test.ts:227, 233 and 240: error results and structured output for callers.
 func TestNestedErrorResultsAndStructuredOutput(t *testing.T) {
 	yes := true
-	// harness-structured-output.test.ts:227 it("gives callers the output of an error result of a tool without a schema")
+	// harness-structured-output.test.ts:221 it("gives callers the output of an error result of a tool without a schema")
 	t.Run("gives callers the output of an error result of a tool without a schema", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, tlTool("bad", func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -360,7 +360,7 @@ func TestNestedErrorResultsAndStructuredOutput(t *testing.T) {
 	})
 }
 
-// harness-nested-tools.test.ts:724 it("aborts a nested call whose admission was still committing when its caller returned"): a
+// harness-nested-tools.test.ts:707 it("aborts a nested call whose admission was still committing when its caller returned"): a
 // nested call whose admission was still committing when its caller returned is
 // listed and aborted by the caller's settlement (tool.ts:399-401: ended, then the admissions underway are awaited). The
 // admission's storage commit is held until the caller's execute has returned.

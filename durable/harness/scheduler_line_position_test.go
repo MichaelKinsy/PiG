@@ -30,7 +30,7 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 		var commits []string
 		var started atomic.Bool
 		secondErr := make(chan error, 1)
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		opened.harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 			var writes []string
 			for _, change := range publication.Changes {
 				if write, ok := change.(durable.TaskWrite); ok && write.Value.State.Status != durable.TaskTerminal {
@@ -48,19 +48,17 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 			}
 			// The scheduler takes its line position once the host listeners ran: hold its own goroutine back, start the second
 			// creation, and return once it is queued, ahead of the pass.
-			impl.tasks.mu.Lock()
-			defer impl.tasks.mu.Unlock()
-			jobs := impl.LineJobs()
+			entered := make(chan struct{})
 			go func() {
 				_, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.TaskId, error) {
+					close(entered)
 					return tx.CreateTaskErased(second.Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
 				})
 				secondErr <- err
 			}()
-			for impl.LineJobs() <= jobs {
-				flush()
-			}
-		})
+			// Its callback runs on the line: the creation holds its position ahead of the pass.
+			<-entered
+		}})
 		opened.harness.Resume()
 		// Resume's own pass has ended, so the creation below starts a pass of its own.
 		eventually(t, func() bool {
@@ -81,6 +79,9 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 		mu.Lock()
 		got := strings.Join(commits, " | ")
 		mu.Unlock()
+		// Either the pass saw both creations and reserves them in one commit, or it missed the second one and the pass its
+		// publication starts reserves it: both keep the order.
+		got = strings.Replace(got, "test.line-first:running | test.line-second:running", "test.line-first:running,test.line-second:running", 1)
 		want := "test.line-first:pending | test.line-second:pending | test.line-first:running,test.line-second:running"
 		if got != want {
 			t.Fatalf("run %d: task commits %s\nwant %s", run, got, want)

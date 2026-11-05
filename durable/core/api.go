@@ -16,6 +16,7 @@ import (
 )
 
 func (h *handler) apiOK(id uint32, value any) {
+	delete(h.cancels, id)
 	if c, ok := value.(contextAnswer); ok {
 		value = rawJSON(c.json())
 	}
@@ -29,6 +30,7 @@ func (h *handler) apiOK(id uint32, value any) {
 }
 
 func (h *handler) apiError(id uint32, err error) {
+	delete(h.cancels, id)
 	out := append(make([]byte, 0, 64), `{"error":`...)
 	out = append(out, errorJSON(err)...)
 	h.notice(abi.NoticeAPIResult, id, append(out, '}'))
@@ -45,7 +47,26 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	}
 	req, ok := v.(*jv.Object)
 	if !ok {
-		return &Rejection{"TypeError", "api: the request is not an object"}
+		return reject("TypeError", "api: the request is not an object")
+	}
+	switch strOf(req, "op") {
+	case "receive":
+		// The host's Storage made batch index of the call the writer sent durable (gate.go).
+		if err := h.onReceive(int(numOf(req, "index")), session.Seq(numOf(req, "seq"))); err != nil {
+			return err
+		}
+		h.apiOK(ev.ID, nil)
+		return nil
+	case "publish":
+		h.onPublish()
+		h.apiOK(ev.ID, nil)
+		return nil
+	case "touch":
+		return h.onTouch(ev.ID, req)
+	case "cancel":
+		h.onCancel(req)
+		h.apiOK(ev.ID, nil)
+		return nil
 	}
 	if strOf(req, "op") == "opened" {
 		// Harness.open completes when the scheduler's open commit did: it waits for the host's Storage when it gates commits.
@@ -82,16 +103,13 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		})
 		return nil
 	}
-	if strOf(req, "op") == "watch.open" && h.loop != nil && strOf(objOf(req, "target"), "kind") != "" {
+	if strOf(req, "op") == "watch.open" && strOf(objOf(req, "target"), "kind") != "" {
 		// Opening a watch is a job on the Session line (session.ts watchDoc, view.ts and task-graph.ts readOnLine): it takes
 		// its turn behind the jobs already queued, so a step that ends the caller's invocation runs before it.
 		var value any
 		// ConversationViews.attach is Session.readOnLine over the Storage reads of #build (view.ts :135-175): its caller awaits the run
 		// promise, so the answer of a view leaves a hop before the line frees.
 		run := func() error {
-			if strOf(objOf(req, "target"), "kind") == "view" {
-				h.job.readLine = true
-			}
 			var err error
 			value, err = h.api("watch.open", req)
 			return err
@@ -104,7 +122,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			h.apiOK(ev.ID, value)
 		}
 		if strOf(objOf(req, "target"), "kind") == "view" {
-			h.loop.ClientReadLine(run, done)
+			h.loop.ReadLineLead(run, done, hostReadLead)
 			return nil
 		}
 		h.loop.Line(run, done)
@@ -118,17 +136,15 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		// task-graph.ts) or a snapshot that misses the cache: a job on the Session line, which waits behind the queued
 		// commits and holds the line for its reads.
 		var value any
-		h.loop.ClientReadLine(func() error {
+		h.loop.ReadLineLead(func() error {
 			var err error
-			h.job.readLine = true
 			// A read that returns the Storage promise itself (readOnLine(() => storage.submission(id)): status, get) settles one tick earlier than
 			// Submissions.wait's async arrow, which awaits it (submissions.ts :63-86).
-			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || (op == "submission" && !req.Has("wait"))
-			if op == "view.attach" {
-				value, err = h.viewAttach(req)
-			} else {
-				value, err = h.api(op, req)
+			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || op == "entries" || (op == "submission" && !req.Has("wait"))
+			if err = h.touchClientRead(op, req); err != nil {
+				return err
 			}
+			value, err = h.api(op, req)
 			return err
 		}, func(err error) {
 			if err != nil {
@@ -136,19 +152,29 @@ func (h *handler) onAPI(ev *abi.Event) error {
 				return
 			}
 			h.apiOK(ev.ID, value)
-		})
+		}, hostReadLead)
 		return nil
 	}
+	return h.answerDirect(ev.ID, req)
+}
+
+// hostFailed is the error the core fails the Session with when the host did (api op "fail"); the host keeps the error itself.
+type hostFailed struct{}
+
+func (hostFailed) Error() string { return "the host failed the Session" }
+
+// answerDirect serves an api request on the spot: its value, or its error, as the api_result of id.
+func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 	value, err := h.api(strOf(req, "op"), req)
 	if errors.Is(err, ErrNotImplemented) {
 		return err
 	}
 	h.answerAfterReads(func() {
 		if err != nil {
-			h.apiError(ev.ID, err)
+			h.apiError(id, err)
 			return
 		}
-		h.apiOK(ev.ID, value)
+		h.apiOK(id, value)
 	})
 	return nil
 }
@@ -157,8 +183,14 @@ func (h *handler) onAPI(ev *abi.Event) error {
 // snapshot whose document is not loaded.
 func (h *handler) onLine(op string, req *jv.Object) bool {
 	switch op {
-	case "conversation", "getTask", "submission", "scanEntries", "context", "entry", "taskGraph", "snapshotAsOf", "view.attach":
+	case "entry":
+		// runtime.entry answers an entry of the conversation's kept context range from it: no line job (scheduler.ts runtime.entry).
+		return h.sched == nil || !h.sched.KeptEntry(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
+	case "conversation", "getTask", "submission", "scanEntries", "entries", "context", "taskGraph", "snapshotAsOf":
 		return true
+	case "unloadDocuments":
+		// Storing held changes first is a Storage commit: a job on the Session line (session.ts unloadDocuments).
+		return h.sess.HeldDocuments() > 0
 	case "snapshot":
 		def, args, err := docDef(req)
 		return err == nil && !h.sess.Loaded(def, args)
@@ -171,48 +203,18 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.storageAPI(method, req)
 	}
 	switch op {
-	case "unloadDocuments":
-		// session.ts unloadDocuments: the loaded-document cache is dropped; later reads load from the store (and migrate again).
-		h.sess.UnloadDocuments()
+	case "fail":
+		// session.ts fail: the host failed the Session (a test's, or a Storage call of its own that threw): nothing more is stored.
+		h.sess.Fail(hostFailed{})
 		return nil, nil
-	case "snapshot":
-		def, args, err := docDef(req)
-		if err != nil {
-			return nil, err
-		}
-		migrating := hostMigration(def, req)
-		v, err := h.sess.Snapshot(def, args)
-		if err != nil || v == nil {
-			return nil, migrating.need(err)
-		}
-		return v, nil
-	case "snapshotAsOf":
-		def, args, err := docDef(req)
-		if err != nil {
-			return nil, err
-		}
-		migrating := hostMigration(def, req)
-		v, err := h.sess.SnapshotAsOf(def, args, session.ID(numOf(req, "at")))
-		if err != nil || v == nil {
-			return nil, migrating.need(err)
-		}
-		return v, nil
-	case "conversation":
-		// readOnLine(() => storage.conversation(id)): one single-statement Storage read (harness.ts :313-316).
-		h.read(hopcost.ReadRow)
-		c, err := h.mir.Conversation(session.ID(numOf(req, "conversationId")))
-		if err != nil || c == nil {
-			return nil, err
-		}
-		return c, nil
-	case "getTask":
-		// readOnLine(() => storage.task(id)): one single-statement Storage read (harness.ts :243).
-		h.read(hopcost.ReadRow)
-		t, err := h.mir.Task(session.ID(numOf(req, "taskId")))
-		if err != nil || t == nil {
-			return nil, err
-		}
-		return t, nil
+	case "unloadDocuments":
+		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
+		// store (and migrate again).
+		return nil, h.sess.UnloadDocuments()
+	case "snapshot", "snapshotAsOf":
+		return h.apiSnapshot(op, req)
+	case "conversation", "getTask", "submission", "entry":
+		return h.apiRecord(op, req)
 	case "context":
 		conv := int64(numOf(req, "conversationId"))
 		tail, head, found, err := h.contextBounds(conv, int64(numOf(req, "at")))
@@ -220,34 +222,8 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 			return nil, err
 		}
 		return contextAnswer{conv, head, tail, found}, nil
-	case "submission":
-		// Submissions.status/get/wait read the record on the Session line (submissions.ts :63-86): one single-statement Storage read.
-		h.read(hopcost.ReadRow)
-		rec, _ := h.mir.Submission(session.ID(numOf(req, "submissionId")))
-		if rec == nil {
-			return nil, nil
-		}
-		return rec, nil
-	case "scanEntries":
-		// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
-		q := objOf(req, "query")
-		if q == nil {
-			q = jv.NewObject()
-		}
-		cursor, _ := req.Get("cursor")
-		order, after, err := scanStart(q, cursor, "descending")
-		if err != nil {
-			return nil, err
-		}
-		h.read(hopcost.ReadScanEntries)
-		items, next, err := h.mir.scanEntriesRaw(session.EntryQuery{
-			ConversationID: session.ID(numOf(q, "conversationId")), MinEntryID: session.ID(numOf(q, "minEntryId")),
-			MaxEntryID: session.ID(numOf(q, "maxEntryId")), Ascending: order == "ascending",
-		}, int(numOf(req, "limit")), after)
-		if err != nil {
-			return nil, err
-		}
-		return rawPage(items, next, order), nil
+	case "entries", "scanEntries":
+		return h.apiEntries(op, req)
 	case "taskGraph":
 		if h.graph != nil {
 			return jv.Clone(h.graph.value), nil
@@ -257,21 +233,137 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.usage()
 	case "commits":
 		h.changes, _ = boolOf(req, "on")
+		h.sess.TrackDropped = h.changes
+		if !h.changes {
+			h.sent = h.sent[:0]
+		}
 		return nil, nil
 	case "watch.open":
 		return h.watchOpen(req)
 	case "watch.close":
 		return h.watchClose(req)
-	case "entry":
-		// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts :1216-1228): the conversation's row, then the entry.
-		h.read(hopcost.ReadEntryIn)
-		e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
-		if err != nil || e == nil {
-			return nil, err
-		}
-		return e, nil
 	}
 	return nil, ErrNotImplemented
+}
+
+// apiSnapshot answers the read-only document reads "snapshot" and "snapshotAsOf".
+//
+//go:noinline
+func (h *handler) apiSnapshot(op string, req *jv.Object) (any, error) {
+	def, args, err := docDef(req)
+	if err != nil {
+		return nil, err
+	}
+	migrating := hostMigration(def, req)
+	if op == "snapshotAsOf" {
+		v, err := h.sess.SnapshotAsOf(def, args, session.ID(numOf(req, "at")))
+		if err != nil || v == nil {
+			return nil, migrating.need(err)
+		}
+		return v, nil
+	}
+	v, err := h.sess.Snapshot(def, args)
+	if err != nil || v == nil {
+		return nil, migrating.need(err)
+	}
+	return v, nil
+}
+
+// apiRecord answers the single-row reads "conversation", "getTask", "submission" and "entry": one Storage read on the line each.
+//
+//go:noinline
+func (h *handler) apiRecord(op string, req *jv.Object) (any, error) {
+	switch op {
+	case "conversation":
+		// readOnLine(() => storage.conversation(id)): one single-statement Storage read (harness.ts :313-316).
+		id := session.ID(numOf(req, "conversationId"))
+		hit := h.readRecord(hopcost.RecordConversation, id)
+		c, err := h.mir.Conversation(id)
+		if err != nil || c == nil {
+			return nil, err
+		}
+		if hit == hopcost.CacheMiss {
+			h.sess.KeepRecord(hopcost.RecordConversation, id, c)
+		}
+		return c, nil
+	case "getTask":
+		// readOnLine(() => storage.task(id)): one single-statement Storage read (harness.ts :243).
+		id := session.ID(numOf(req, "taskId"))
+		hit := h.readRecord(hopcost.RecordTask, id)
+		t, err := h.mir.Task(id)
+		if err != nil || t == nil {
+			return nil, err
+		}
+		if hit == hopcost.CacheMiss {
+			h.sess.KeepRecord(hopcost.RecordTask, id, t)
+		}
+		return t, nil
+	case "submission":
+		// Submissions.status/get/wait read the record on the Session line (submissions.ts :63-86): one single-statement Storage read.
+		h.readRecord(hopcost.RecordSubmission, session.ID(numOf(req, "submissionId")))
+		rec, _ := h.mir.Submission(session.ID(numOf(req, "submissionId")))
+		if rec == nil {
+			return nil, nil
+		}
+		return rec, nil
+	}
+	// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts runtime.entry): the conversation's row, then the entry; an
+	// entry of the conversation's kept context range is read from it instead.
+	if h.sched == nil || !h.sched.KeptEntry(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId"))) {
+		h.read(hopcost.ReadEntryIn)
+	}
+	e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
+	if err != nil || e == nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// apiEntries answers "entries" (a task's view of its conversation's history) and "scanEntries".
+//
+//go:noinline
+func (h *handler) apiEntries(op string, req *jv.Object) (any, error) {
+	if op == "entries" {
+		// TaskRuntime.entries and HookApi.entries: the committed raw history of the task's conversation, as Conversation.entries
+		// (scheduler.ts runtime.entries: readOnLine(() => storage.scanEntries(conversationEntries(conversationId, query), ...))). Only the
+		// entry ID bounds and the order of the query are used.
+		var conv float64
+		if rt := h.runtimes[session.ID(numOf(req, "taskId"))]; rt != nil {
+			conv = float64(rt.ConversationID())
+		} else if t, err := h.mir.Task(session.ID(numOf(req, "taskId"))); err != nil {
+			return nil, err
+		} else if t != nil {
+			conv = numOf(t, "conversationId")
+		}
+		asked := objOf(req, "query")
+		scan := jobj("conversationId", conv)
+		for _, key := range [...]string{"minEntryId", "maxEntryId", "order"} {
+			if v, ok := asked.Get(key); ok {
+				scan.Set(key, v)
+			}
+		}
+		cursor, _ := req.Get("cursor")
+		return h.api("scanEntries", jobj("query", scan, "limit", valueOf(req, "limit"), "cursor", cursor))
+	}
+	// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
+	q := objOf(req, "query")
+	if q == nil {
+		q = jv.NewObject()
+	}
+	cursor, _ := req.Get("cursor")
+	order, after, err := scanStart(q, cursor, "descending")
+	if err != nil {
+		return nil, err
+	}
+	h.read(hopcost.ReadScanEntries)
+	items, next, err := h.mir.scanEntriesRaw(session.EntryQuery{
+		ConversationID: session.ID(numOf(q, "conversationId")), MinEntryID: session.ID(numOf(q, "minEntryId")),
+		MaxEntryID: session.ID(numOf(q, "maxEntryId")), Ascending: order == "ascending",
+	}, int(numOf(req, "limit")), after)
+	if err != nil {
+		return nil, err
+	}
+	return rawPage(items, next, order), nil
 }
 
 // migration is the host-run migrate of one read-only document access: the definition's migrate(value, from) is host code, so

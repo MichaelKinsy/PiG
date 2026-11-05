@@ -180,3 +180,68 @@ func TestRestoreLeavesSelfDecodingMembersAlone(t *testing.T) {
 		t.Fatalf("self-decoding member = %#v, want the value its decoder produced", target.Self.Value)
 	}
 }
+
+// Promoted reflect.Type methods can turn cached metadata into a reflection root
+// when another linked package performs method lookup.
+func TestFieldMetadataDoesNotPromoteReflectTypeMethods(t *testing.T) {
+	for _, typ := range []reflect.Type{reflect.TypeFor[field](), reflect.TypeFor[*field]()} {
+		if got := typ.NumMethod(); got != 0 {
+			t.Errorf("%v has %d methods, want metadata without promoted reflect.Type methods", typ, got)
+		}
+	}
+}
+
+func TestRestoreEmbeddedFieldsAndCachedMetadata(t *testing.T) {
+	type Promoted struct {
+		Shadowed any `json:"shadowed"`
+	}
+	type Pointer struct {
+		Payload any `json:"payload"`
+	}
+	type Tagged struct {
+		Value any `json:"value"`
+	}
+	type target struct {
+		Promoted
+		*Pointer
+		Tagged   `json:"tagged"`
+		Shadowed any `json:"shadowed"`
+		Ignored  any `json:"-"`
+	}
+	for _, input := range []string{
+		`{"shadowed":{"z":3,"a":4},"tagged":{"value":{"z":5,"a":6}},"Ignored":{"z":7,"a":8}}`,
+		`{"payload":{"z":9,"a":10},"shadowed":{"z":3,"a":4},"tagged":{"value":{"z":5,"a":6}}}`,
+	} {
+		// Repeat with the same type so both field and dynamic-type caches are used.
+		for range 2 {
+			var decoded target
+			if err := json.Unmarshal([]byte(input), &decoded); err != nil {
+				t.Fatal(err)
+			}
+			tree, err := delta.DecodeJson([]byte(input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			Restore(&decoded, tree)
+			if decoded.Promoted.Shadowed != nil || decoded.Ignored != nil {
+				t.Fatalf("shadowed or ignored fields were restored: %+v", decoded)
+			}
+			if got := encode(t, decoded.Shadowed); got != `{"z":3,"a":4}` {
+				t.Errorf("shadowed = %s", got)
+			}
+			if got := encode(t, decoded.Value); got != `{"z":5,"a":6}` {
+				t.Errorf("tagged = %s", got)
+			}
+			if strings.Contains(input, `"payload"`) {
+				if decoded.Pointer == nil {
+					t.Fatal("decoded embedded pointer is nil")
+				}
+				if got := encode(t, decoded.Payload); got != `{"z":9,"a":10}` {
+					t.Errorf("embedded pointer payload = %s", got)
+				}
+			} else if decoded.Pointer != nil {
+				t.Fatalf("absent embedded pointer was allocated: %+v", decoded.Pointer)
+			}
+		}
+	}
+}

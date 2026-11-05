@@ -25,6 +25,7 @@ jiti="$agent/node_modules/jiti"
 core="$agent/node_modules/@earendil-works/pi-agent-core"
 codemode="$agent/node_modules/@earendil-works/pi-codemode"
 telemetry="$agent/node_modules/@earendil-works/pi-telemetry"
+schema="$agent/node_modules/@earendil-works/pi-schema"
 mcp="$agent/node_modules/@earendil-works/pi-mcp"
 ignore="$agent/node_modules/ignore"
 jsdiff="$agent/node_modules/diff"
@@ -41,6 +42,10 @@ copy() {
   done
 }
 
+# The oracle builds are read-only, and cp keeps their modes: make what an earlier run copied owner-writable so rm can remove it.
+for stale in "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"; do
+  if [ -e "$stale" ]; then chmod -R u+w "$stale"; fi
+done
 rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/marked-cjk-friendly/dist" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
@@ -63,13 +68,18 @@ while IFS= read -r file; do
   copy "$telemetry/dist" "$dist/pi-telemetry" "$file"
 done < <(cd "$telemetry/dist" && find . -name '*.js' -not -path './testing/*' | sed 's#^\./##' | sort)
 
+# pi-schema: every runtime module (the validator pi-ai's tool-argument validation and configuration schemas compile with); it imports nothing outside itself.
+while IFS= read -r file; do
+  copy "$schema/dist" "$dist/pi-schema" "$file"
+done < <(cd "$schema/dist" && find . -name '*.js' | sed 's#^\./##' | sort)
+
 # pi-ai: the whole release (its compat entry is what Pi serves for the pi-ai
 # root), except the builtin API implementations, which are bridge stubs.
 bridged_apis="anthropic-messages azure-openai-responses bedrock-converse-stream google-generative-ai google-vertex mistral-conversations openai-codex-responses openai-completions openai-responses pi-messages"
 sdk_only="google-shared"
 (cd "$ai/dist" && find . \( -name '*.js' -o -path './providers/data/*.json' \) | sed 's#^\./##' | sort) | while read -r file; do
   case "$file" in
-    utils/json-parse.js | utils/validation.js | utils/typebox-helpers.js | index.js | api/openrouter-images.js) continue ;;
+    utils/json-parse.js | api/openrouter-images.js) continue ;;
   esac
   name=${file#api/}
   name=${name%.js}
@@ -82,17 +92,23 @@ for api in $bridged_apis; do
   printf '// PiG: the %s implementation runs in PiG'"'"'s host (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeApi } from "../../../pi-ai-bridge.mjs";\nexport const { stream, streamSimple } = bridgeApi("%s");\n' "$api" "$api" >"$dist/pi-ai/api/$api.js"
 done
 printf '// PiG: image generation has no host provider (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeImages } from "../../../pi-ai-bridge.mjs";\nexport const generateImages = bridgeImages("openrouter-images");\n' >"$dist/pi-ai/api/openrouter-images.js"
-sed 's#^export { Type } from "typebox";$#export { Type } from "../../typebox.mjs";#' "$ai/dist/index.js" >"$dist/pi-ai/index.js"
 sed 's#^\(import .* from \)"@earendil-works/pi-telemetry";$#\1"../pi-telemetry/index.js";#' "$ai/dist/telemetry.js" >"$dist/pi-ai/telemetry.js"
 sed 's#^import { parse as partialParse } from "partial-json";$#import { parse as partialParse } from "../../../partial-json/dist/index.js";#' \
   "$ai/dist/utils/json-parse.js" >"$dist/pi-ai/utils/json-parse.js"
-sed -e 's#^import { Compile } from "typebox/compile";$#import { Compile } from "../../../typebox-compile.mjs";#' \
-  -e 's#^import { Value } from "typebox/value";$#import { Value } from "../../../typebox-value.mjs";#' \
-  "$ai/dist/utils/validation.js" >"$dist/pi-ai/utils/validation.js"
-sed 's#^import { Type } from "typebox";$#import { Type } from "../../../typebox.mjs";#' \
-  "$ai/dist/utils/typebox-helpers.js" >"$dist/pi-ai/utils/typebox-helpers.js"
 
-# Every other copied pi-ai module that imports typebox (the model and compat schemas, and any a later Pi adds) reaches the vendored typebox shims by its own depth.
+# Every copied pi-ai module that imports pi-schema (tool-argument validation, the model and compat schemas, and any a later Pi adds) reaches the vendored copy by its own depth.
+while IFS= read -r file; do
+  prefix=".."
+  rest=${file%/*}
+  [ "$rest" = "$file" ] || while :; do
+    prefix="$prefix/.."
+    case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
+  done
+  sed -i -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
+    -e "s#\(from \)\"@earendil-works/pi-schema/formats\";\$#\1\"$prefix/pi-schema/formats/index.js\";#" "$dist/pi-ai/$file"
+done < <(cd "$dist/pi-ai" && grep -lE 'from "@earendil-works/pi-schema(/formats)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
+
+# Every other copied pi-ai module that imports typebox (any a later Pi adds) reaches the vendored typebox shims by its own depth.
 while IFS= read -r file; do
   prefix="../.."
   rest=${file%/*}
@@ -116,6 +132,7 @@ node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
     "@earendil-works/pi-codemode": { "root": "$codemode", "to": "pi-dist/pi-codemode" },
     "@earendil-works/pi-mcp": { "root": "$mcp", "to": "pi-dist/pi-mcp" },
     "@earendil-works/pi-telemetry": { "root": "$telemetry", "to": "pi-dist/pi-telemetry", "vendored": true },
+    "@earendil-works/pi-schema": { "root": "$schema", "to": "pi-dist/pi-schema", "vendored": true },
     "@earendil-works/pi-ai": { "root": "$ai", "to": "pi-dist/pi-ai", "vendored": true }
   },
   "overrides": {
@@ -177,6 +194,7 @@ cp -R "$jiti/lib" "$jiti/dist" "$shims/jiti/"
 cp "$jiti/package.json" "$jiti/LICENSE" "$shims/jiti/"
 cp "$ignore/index.js" "$ignore/package.json" "$ignore/LICENSE-MIT" "$shims/ignore/"
 cp -R "$jsdiff/libesm" "$shims/diff/libesm"
+chmod -R u+w "$shims/diff" # the copy of a read-only oracle build is read-only
 find "$shims/diff/libesm" -name '*.d.ts' -delete -o -name '*.d.ts.map' -delete
 cp "$jsdiff/package.json" "$jsdiff/LICENSE" "$shims/diff/"
 
@@ -197,10 +215,9 @@ rewrote "$dist/pi-tui/utils.js" "$tui/dist/utils.js" get-east-asian-width ../../
 rewrote "$dist/pi-tui/components/markdown.js" "$tui/dist/components/markdown.js" marked ../../../marked/lib/marked.esm.js
 rewrote "$dist/pi-tui/components/markdown.js" "$tui/dist/components/markdown.js" marked-cjk-friendly ../../../marked-cjk-friendly/dist/index.js
 rewrote "$dist/pi-ai/utils/json-parse.js" "$ai/dist/utils/json-parse.js" partial-json ../../../partial-json/dist/index.js
-rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" typebox/compile ../../../typebox-compile.mjs
-rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" typebox/value ../../../typebox-value.mjs
-rewrote "$dist/pi-ai/utils/typebox-helpers.js" "$ai/dist/utils/typebox-helpers.js" typebox ../../../typebox.mjs
-rewrote "$dist/pi-ai/index.js" "$ai/dist/index.js" typebox ../../typebox.mjs
+rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" @earendil-works/pi-schema ../../pi-schema/index.js
+rewrote "$dist/pi-ai/utils/validation.js" "$ai/dist/utils/validation.js" @earendil-works/pi-schema/formats ../../pi-schema/formats/index.js
+rewrote "$dist/pi-ai/providers/model-schema.js" "$ai/dist/providers/model-schema.js" @earendil-works/pi-schema ../../pi-schema/index.js
 rewrote "$dist/pi-ai/telemetry.js" "$ai/dist/telemetry.js" @earendil-works/pi-telemetry ../pi-telemetry/index.js
 rewrote "$dist/pi-coding-agent/utils/frontmatter.js" "$agent/dist/utils/frontmatter.js" yaml ../../../yaml/index.js
 rewrote "$dist/pi-coding-agent/utils/syntax-highlight.js" "$agent/dist/utils/syntax-highlight.js" highlight.js/lib/core.js ../../../highlight.js/lib/core.js
@@ -223,7 +240,12 @@ done
 
 node "$root/automation/gen/bundle-pi-libraries.mjs" "$shims"
 node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
+# After the bundles: a package root entry may forward to a bundled module.
+node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
+
+# Leave the copies owner-writable too, so the next run (and a checkout cleanup) can remove them; u+w changes no content.
+chmod -R u+w "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 
 version() { node -p "require('$1/package.json').version"; }
 echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), marked-cjk-friendly $(version "$markedCjk"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"

@@ -17,9 +17,6 @@ package hopcost
 // profiles only; every other profile has no queue (Memory: no statements; Node: Promise.resolve) and its code never reaches
 // this file's types.
 //
-// Not modelled: the occupancy of the queue by a commit transaction while an off-line scan is in flight. Occupy is the rule; no
-// core call site registers a commit job's transaction, and no row measures a scan that overlaps one.
-//
 // Time is the handler's virtual tick (core.handler.vnow): a hops chain that began at tick t ends at t+n, and a chain's
 // end is the only event that moves it, so a statement's enqueue tick is known to the tick whenever a chain started the work
 // that enqueues it.
@@ -105,7 +102,7 @@ func appendDelay(steps []Step, n int) []Step {
 func AppendDelay(steps []Step, n int) []Step { return appendDelay(steps, n) }
 
 // Trim removes one hop from the end of steps (a delay): `direct` jobs return the Storage promise itself and settle a tick before
-// the read's caller would resume (ReadOnLine).
+// the read's caller would resume (ReadReturn).
 func Trim(steps []Step) []Step {
 	if k := len(steps); k > 0 && !steps[k-1].Statement && steps[k-1].Ticks > 0 {
 		steps[k-1].Ticks--
@@ -124,4 +121,38 @@ func Sum(steps []Step) int {
 		}
 	}
 	return n
+}
+
+// Busy is the occupancy of the Storage adapter's serial queue by a commit's transaction, whose COMMIT ran at tick commit.
+//
+// The capsql facade: the transaction is one queue item (`serial(async () => { begin; await cb; commit })`). The async work settles at
+// COMMIT, `r = queue.then(work)` follows one tick after it, `queue = r.catch(...)` one tick after that, and the next statement's work starts
+// one tick later: Occupy's free tick is commit+2.
+//
+// The Node adapter (chord sqlite/node.ts SerialOperationQueue): `runAsync` publishes a barrier before the transaction starts, and
+// `started.finally(...)` releases it one tick after the transaction's promise settled at COMMIT (commit+1). A read that finds the queue busy
+// waits for the barrier: `tail.then(operation)` runs the operation one tick after it (commit+2), `release` settles the operation's promise
+// through `finally` three ticks after that (commit+5: the finally callback, the returned promise's own reaction, its adoption), and the
+// awaiting method resumes one tick later, where an idle queue's `Promise.resolve(operation())` resumes it at issue+1. A statement issued at
+// commit+1 or later finds the barrier released and the queue idle.
+type Busy struct {
+	Commit int // the tick COMMIT ran
+	Set    bool
+}
+
+// Delay is the ticks beyond an idle queue at which a statement issued at tick issued resolves, for the profile.
+func (b Busy) Delay(p Profile, issued int) int {
+	if !b.Set {
+		return 0
+	}
+	switch p {
+	case Node:
+		if issued > b.Commit {
+			return 0
+		}
+		return b.Commit + 5 - issued
+	case Gate, GateCapsql:
+		return max(b.Commit+2-issued, 0)
+	}
+	return 0
 }

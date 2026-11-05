@@ -16,6 +16,7 @@ var nonRetryablePatterns = []string{
 	`billing`,
 	`subscription_sharing_usage_limit_exceeded`,
 	`subscription_sharing_workplace_individual_usage_limit_exceeded`,
+	`"code"\s*:\s*"?1308(?![0-9])`,
 }
 
 // Read-only: assigned once at initialization.
@@ -80,6 +81,7 @@ var overflowPatterns = []string{
 	`input is too long for requested model`,
 	`exceeds the context window`,
 	`exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))`,
+	`context window exceeded`,
 	`input token count.*exceeds the maximum`,
 	`maximum prompt length is \d+`,
 	`reduce the length of the messages`,

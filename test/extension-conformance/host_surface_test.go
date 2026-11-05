@@ -33,7 +33,7 @@ func (u *hostSurfaceUI) GetToolsExpanded() bool { return u.expanded.Load() }
 func (u *hostSurfaceUI) Bell()                  { u.bells.Add(1) }
 
 // hostSurfaceSource is the SourceInfo the rows load every fixture with.
-var hostSurfaceSource = extension.SourceInfo{Path: "/c3/source/entry", Source: "local", Scope: "project", Origin: "package", BaseDir: "/c3/source"}
+var hostSurfaceSource = extension.SourceInfo{Path: "/c3/source/entry", Source: "local", Scope: "project", Origin: "package", BaseDir: "/c3/source", ChangelogPath: "/c3/source/CHANGELOG.md"}
 
 // eventually polls check until it holds or the deadline passes.
 func eventually(t *testing.T, what string, check func() bool) {
@@ -86,6 +86,34 @@ func TestOnThemeChangeAcrossSDKs(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		if got := logOf(r.tool("c3_theme_log")); len(got) != 2 {
 			t.Fatalf("a handler that unsubscribed was called again: %q", got)
+		}
+	})
+}
+
+// ctx.ui.onThemeChange: a handler receives the theme of its own change, in order, even when the host changed the theme again before the handler ran. A gate handler, subscribed ahead of the logger, holds the delivery of the light theme; the host switches to the dark theme and the SDK takes it; then the gate opens and the logger runs. It must log light for the first delivery and dark for the second, so an SDK that hands every handler the theme it holds when the handler runs (the live ctx.ui.theme) logs dark twice.
+func TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs(t *testing.T) {
+	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+		registry := tui.NewThemeRegistry()
+		dark, light := registry.Get("dark"), registry.Get("light")
+		entry := func(theme *tui.Theme) string { return theme.Name + "|" + theme.Fg("accent", "x") }
+		if entry(dark) == entry(light) {
+			t.Fatal("the two themes are indistinguishable")
+		}
+		defer r.tool("c3_theme_gate_release") // a handler held at the gate must not keep the extension from stopping; releasing twice is harmless
+
+		r.setTheme(codingagent.ExtensionThemePalette(dark))
+		r.tool("c3_theme_log") // the first state carries the dark palette: not a change
+		r.tool("c3_theme_gate_arm")
+		r.tool("c3_theme_arm")
+		r.setTheme(codingagent.ExtensionThemePalette(light))
+		eventually(t, "the gate to take the light delivery", func() bool { return r.tool("c3_theme_gate_state")["entered"] == true })
+
+		r.setTheme(codingagent.ExtensionThemePalette(dark))
+		eventually(t, "the extension to hold the dark theme", func() bool { return r.tool("c3_theme_gate_state")["live"] == dark.Name })
+		r.tool("c3_theme_gate_release")
+		eventually(t, "both deliveries", func() bool { return len(logOf(r.tool("c3_theme_log"))) == 2 })
+		if got := logOf(r.tool("c3_theme_log")); !reflect.DeepEqual(got, []any{entry(light), entry(dark)}) {
+			t.Fatalf("log = %q, want %q then %q: each handler gets the theme of its own change", got, entry(light), entry(dark))
 		}
 	})
 }
@@ -238,7 +266,7 @@ func TestToolCallInputAcrossSDKs(t *testing.T) {
 func TestExtensionSourceInfoAcrossSDKs(t *testing.T) {
 	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		report := r.tool("c3_source")
-		want := map[string]any{"path": hostSurfaceSource.Path, "source": hostSurfaceSource.Source, "scope": hostSurfaceSource.Scope, "origin": hostSurfaceSource.Origin, "baseDir": hostSurfaceSource.BaseDir}
+		want := map[string]any{"path": hostSurfaceSource.Path, "source": hostSurfaceSource.Source, "scope": hostSurfaceSource.Scope, "origin": hostSurfaceSource.Origin, "baseDir": hostSurfaceSource.BaseDir, "changelogPath": hostSurfaceSource.ChangelogPath}
 		if got, _ := report["info"].(map[string]any); !reflect.DeepEqual(got, want) {
 			t.Fatalf("info = %v, want %v", report["info"], want)
 		}

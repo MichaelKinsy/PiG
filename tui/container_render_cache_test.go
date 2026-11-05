@@ -73,7 +73,7 @@ func TestMainScreenCursorLineCrossesViewportBoundary(t *testing.T) {
 		ui.Add(fixture())
 		ui.doRender()
 		out.Reset()
-		ui.height = 2
+		ui.SetFixedSize(ui.Width(), 2)
 		ui.doRender()
 		if got := out.String(); !strings.Contains(got, widthx.CursorMarker) {
 			t.Fatalf("marker above viewport was lost through reset-cache reuse: %q", got)
@@ -86,7 +86,7 @@ func TestMainScreenCursorLineCrossesViewportBoundary(t *testing.T) {
 		ui.Add(fixture())
 		ui.doRender()
 		out.Reset()
-		ui.height = 10
+		ui.SetFixedSize(ui.Width(), 10)
 		ui.doRender()
 		if got := out.String(); strings.Contains(got, widthx.CursorMarker) {
 			t.Fatalf("cursor marker reached terminal through reset-cache reuse: %q", got)

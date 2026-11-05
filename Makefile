@@ -202,11 +202,14 @@ generate help-text: export FORCE_COLOR := 0
 generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
 	@$(MAKE) divergences
 	@$(MAKE) piglet-strip-ids
+	@$(MAKE) sdk-bundles
 	@$(MAKE) model-catalogs
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
 	@$(MAKE) help-text
 	@$(MAKE) knowledge-graph
+	@$(MAKE) additive-list
+	@$(MAKE) docs-bundle
 	@$(MAKE) interface-proposals
 	@$(MAKE) test-inventory-generate
 	@$(MAKE) known-gaps
@@ -253,7 +256,14 @@ piglet-strip-ids-drift: ## Fail when the Piglet strip ID table or the schema str
 piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag (D92)
 	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && go vet -tags "$$tags" ./... && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
 
-.PHONY: generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+# The compressed SDK copies are pure Go to regenerate (go generate runs automation/gen/embed-bundle.go and pack-lisp-sdk.go): the .gz of each SDK source, the bundle_embed.go lists, the Lisp sdk.tgz and bundle_pack.go. Each generator keeps an existing copy that already holds the source's text, so only a stale copy is rewritten.
+sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensions/sdk, sdk-lisp, sdk-py and sdk-rs from their sources (go generate)
+	@for dir in extensions/sdk extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs; do (cd $$dir && go generate .) || exit 1; done
+
+sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (regenerate with make sdk-bundles)
+	@./automation/ci/sdk-bundles-drift.sh
+
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -340,6 +350,11 @@ test-aot-conformance: ## Run the extension conformance suite on the compiled aot
 test-sdk-rs: ## Run the Rust extension SDK's unit tests
 	@cd extensions/sdk-rs && cargo test --quiet
 
+# Every tracked Rust crate (the SDK, the example, the conformance and parity fixtures, the benchmark extension) must be rustfmt-clean and clippy-clean with warnings denied.
+# Needs the rustfmt and clippy components: rustup component add rustfmt clippy
+lint-rust: ## cargo fmt --check and cargo clippy --all-targets -D warnings over every Rust crate
+	@./automation/ci/lint-rust.sh
+
 # The Python SDK's pytest suite, in a cached venv holding the hash-locked dev dependencies. Regenerate the lock after
 # changing the dev group in extensions/sdk-py/pyproject.toml with the command at the top of requirements-dev.txt.
 test-sdk-py: ## Run the Python extension SDK's pytest suite with its hash-locked dev dependencies
@@ -347,7 +362,22 @@ test-sdk-py: ## Run the Python extension SDK's pytest suite with its hash-locked
 
 .PHONY: test-sdk-py
 
-# The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python and Rust scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
+# The Lisp SDK's own tests (JSON vectors, the wire against an in-process fake host), run by the pinned SBCL that
+# automation/ci/install-sbcl.sh builds; PIG_SBCL names it. A missing SBCL fails: it is an environment failure, never a skip.
+test-sdk-lisp: ## Run the Lisp extension SDK's own tests with the pinned SBCL
+	@./automation/ci/test-sdk-lisp.sh
+
+.PHONY: test-sdk-lisp
+
+# D205's terminal-engine A/B test: the scroll-region frames and Pi's bytes (PIG_TUI_SCROLL_ROWS=0) of a corpus the tui package generates,
+# replayed through xterm.js, alacritty_terminal, wezterm-term, libvterm and pyte, which must show the same screen after every frame.
+# Builds the pinned engines from their locks (docs/testing/term-engines.md); a missing toolchain fails, never skips.
+test-term-engines: ## Replay D205's scroll-region and Pi-byte frames through five terminal emulators and require equal screens
+	@./automation/ci/test-term-engines.sh
+
+.PHONY: test-term-engines
+
+# The SDK scenario table (test/extension-conformance/sdkscenarios) runs once per SDK through the real host, with the Go, Node, Python, Rust and Lisp scenario drivers, and each SDK must produce the observation the table gives. A row in a scenario's Red map must still produce exactly its recorded Got, so the lane that fixes it deletes the entry and a regression inside a red row still fails. CI runs it in the test-conformance shard and in the Windows and macOS extension-conformance shards, because it is a test of ./test/extension-conformance; this target runs it alone, with the wiring checks that tie the table to the wire methods the code derives.
 test-sdk-conformance: ## Run the SDK conformance scenario table against every extension SDK through the real host
 	@go test ./test/extension-conformance -run '^TestSDKScenarios$$' $(GO_TEST_CI_COUNT)
 	@go test ./test/wiring -run 'TestScenarioCoversNameRealWireMethods|TestEveryAuthObjectMethodIsExercisedByAScenario' $(GO_TEST_CI_COUNT)
@@ -382,11 +412,12 @@ test-prereqs: ## Require every toolchain the core suite exercises
 	for tool in go git node npm python3 cargo rustc tmux; do \
 		command -v "$$tool" >/dev/null 2>&1 || missing="$$missing $$tool"; \
 	done; \
+	command -v "$${PIG_SBCL:-sbcl}" >/dev/null 2>&1 || missing="$$missing sbcl(PIG_SBCL)"; \
 	if [ -n "$$missing" ]; then \
 		echo "missing required Pig test toolchains:$$missing" >&2; \
 		exit 1; \
 	fi
-	@echo "test prerequisites: go, git, node, npm, python3, cargo, rustc, tmux"
+	@echo "test prerequisites: go, git, node, npm, python3, cargo, rustc, tmux, sbcl"
 
 test-fixtures: ## Build the Go and Rust extension fixtures that tests load
 	@./automation/ci/test-fixtures.sh
@@ -431,7 +462,12 @@ test-race-nightly: ## Whole-package -race and goroutine-leak gate (nightly)
 fuzz-nightly: ## Run every Fuzz target for PIG_FUZZ_TIME, default 30s (nightly)
 	@./automation/ci/fuzz-nightly.sh
 
-.PHONY: test-race-nightly fuzz-nightly
+# The fast tier runs a covering subset of each sweep that sends every combination of inputs and options through Pi's own code; this runs the full
+# product. Pi resizes an image in a new worker thread per call, so the full PNG sweep (7952 cases) takes 150 s on 4 CPUs, 97% of it in Pi.
+test-oracle-sweeps-nightly: ## Full Pi-oracle sweeps that the fast tier runs as covering subsets (nightly)
+	@PIG_IMAGE_ORACLE_SWEEP=full go test -count=1 -timeout 30m -run '^TestProcessImagePNGMatchesPi$$' ./internal/imageprocessing
+
+.PHONY: test-race-nightly fuzz-nightly test-oracle-sweeps-nightly
 
 # go-fix-clean enforces AGENTS.md rule #3 (Go 1.27 idiom compliance).
 # `go fix -diff ./...` must produce zero output. If this target fails,
@@ -513,6 +549,8 @@ alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls fro
 # every page must be reachable from the index.
 docs-drift: ## Fail when generated documentation no longer matches its source
 	@python3 automation/gen/gen-knowledge-graph.py --check
+	@python3 automation/gen/gen-additive-list.py --check
+	@python3 automation/gen/gen-docs-bundle.py --check
 	@# -count=1: public_claims_test.go runs check-public-claims.py, whose file reads the go test cache cannot see.
 	@go test ./test/docs-drift/ -count=1
 
@@ -555,7 +593,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
@@ -713,6 +751,12 @@ bench-report: ## Re-render report.md and summary.csv from a raw.json: make bench
 
 ##@ Docs
 
+additive-list: ## Regenerate the agent docs page additive-features.md from docs/additive-features.md
+	@python3 automation/gen/gen-additive-list.py
+
+docs-bundle: ## Regenerate the shared pages of the agent docs bundle, the glossary and the customize chooser from the site pages (internal/pigdocs/bundle-manifest.json)
+	@python3 automation/gen/gen-docs-bundle.py
+
 knowledge-graph: ## Regenerate the knowledge graph page, JSON-LD, and Mermaid from docs/knowledge-graph/pig.graph.json
 	@python3 automation/gen/gen-knowledge-graph.py
 
@@ -745,12 +789,15 @@ pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit>, regenerate what deriv
 	@old=$$(env -u PI_UPSTREAM_REF $(PIN_TOOL) get ref); env -u PI_UPSTREAM_REF $(PIN_TOOL) bump "$(PI_UPSTREAM_REF)"; \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= upstream-mirror interface-proposals test-inventory-generate && \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= PIN_FROM="$$old" pin-ledgers && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist model-catalogs && \
+		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist vendor-chord-plugins-node model-catalogs && \
 		./automation/gen/regenerate-observation-oracles.sh && \
 		./automation/gen/refresh-pi-test-sources.sh
 
 vendor-pi-dist: parity-deps ## Regenerate the vendored Pi runtime (runtime-node/shims) from the installed oracle of the pinned Pi
 	@./automation/gen/vendor-pi-dist.sh
+
+vendor-chord-plugins-node: parity-deps upstream-mirror ## Regenerate chord/nextnode/plugins/node/pi, Pi's chord sources for the plugins component's Node subprocess
+	@./automation/gen/vendor-chord-plugins-node.sh
 
 generate-schemas: ## Regenerate schemas/*.schema.json, the JSON Schemas of models.json, settings.json, keybindings.json and themes (Pi scripts/generate-schemas.ts)
 	@go run ./cmd/generate-schemas
@@ -770,7 +817,7 @@ durable-core-host-deps: durable-interop-deps ## Install the locked npm tree of t
 	@python3 automation/ci/npm-locked.py durable/core/host/cf
 	@$(PIN_TOOL) link-durable-host durable/core/host/cf
 
-durable-core-host-check: durable-contract-setup durable-core-host-deps ## Typecheck and test the Cloudflare host and its pi-durable facade against the probe core built with TinyGo and Go
+durable-core-host-check: durable-contract-setup durable-core-host-deps upstream-mirror ## Typecheck and test the Cloudflare host and its pi-durable facade against the probe core built with TinyGo and Go; the upstream examples type-check against the pin's source mirror
 	@durable/core/host/cf/check.sh
 
 durable-core-budget: durable-core-host-deps ## Build the core and host bundle with TinyGo and Go and check their size budgets (durable/core/budget/budget.json) and the TinyGo heap policy (fixed step, ceiling trap)
@@ -782,6 +829,20 @@ durable-contract-setup: ## Check out the Pi reference the Durable core conforman
 durable-contract-test: durable-contract-setup ## Unit, pipeline and matrix tests of the Durable conformance tooling (negative controls included)
 	@go test ./durable/core/contracttest/...
 	@cd durable/contract && node cli/contract.mjs fixtures 50 >/dev/null && node --test --test-timeout=600000 test/*.test.mjs
+
+# The Go files of durable/harness that mirror the harness test files of Pi's packages/durable/vitest.store.config.ts include list
+# (the files that take a SQLite storage), which Pi re-runs over StoreStorage. See durable/harness/store_variant_support_test.go.
+DURABLE_STORE_FILES = harness_after_run_test.go harness_blocked_test.go harness_compaction_test.go harness_continue_test.go \
+	harness_conversations_test.go harness_generation_recovery_test.go harness_inbox_test.go harness_input_entries_test.go \
+	harness_lifecycle_test.go tool_nested_restart_test.go tool_nested_test.go tool_nested_records_test.go \
+	tool_nested_calls_doc_test.go harness_ownership*_test.go harness_read_only_test.go harness_restart_failure_test.go \
+	scheduler_indexes_test.go scheduler_retention_test.go scheduler_retention_chains_test.go harness_structured_test.go \
+	harness_submissions_test.go harness_task_graph_test.go harness_tasks_recovery_test.go harness_tool_hooks_test.go \
+	harness_tools_recovery_test.go harness_tools_recovery_group_commit_test.go harness_turn_limit_test.go harness_view_test.go
+
+test-durable-store: ## Run those durable/harness tests over Durable's StoreStorage (PIG_DURABLE_TEST_STORAGE=store; the four raw-SQL cases of Pi's config are skipped)
+	@names=$$(cd durable/harness && grep -h '^func Test' $(DURABLE_STORE_FILES) | sed 's/^func \(Test[A-Za-z0-9_]*\).*/\1/' | paste -sd'|' -); \
+	PIG_DURABLE_TEST_STORAGE=store go test -count=1 -timeout 600s -run "^($$names)$$" ./durable/harness/
 
 durable-contract-trace: durable-contract-setup ## Compare a candidate's call/commit interleaving with Pi's golden traces (IMPL=native|wasm-go|wasm-tinygo); red until the core schedules like Pi
 	@cd durable/contract && node cli/trace.mjs check --impl $${IMPL:-native} && node cli/trace.mjs check-u --impl $${IMPL:-native}
@@ -801,7 +862,7 @@ durable-counts-update: durable-contract-setup ## Rewrite durable/contract/counts
 durable-contract: durable-contract-setup ## Run the Durable core conformance gate (CONTRACT sections 5-7) against the TinyGo, Go and native builds; per-lane pass/fail
 	@cd durable/contract && node cli/contract.mjs all $(DURABLE_CONTRACT_ARGS)
 
-parity-deps: interface-deps ## Build the Pi comparator from source at the pin (PIG_PARITY_PI_PUBLISHED=1 installs the published release of a tag pin) and the TypeScript compiler its scenarios import
+parity-deps: interface-deps durable-interop-deps ## Build the Pi comparator from source at the pin (PIG_PARITY_PI_PUBLISHED=1 installs the published release of a tag pin) and the TypeScript compiler its scenarios import
 	@$(PIN_TOOL) install-oracle
 	@python3 automation/ci/npm-locked.py internal/typebox/testdata/npm
 	@python3 automation/ci/npm-locked.py ai/testdata/sdk
@@ -809,7 +870,7 @@ parity-deps: interface-deps ## Build the Pi comparator from source at the pin (P
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@$(PIN_TOOL) check-oracle
 
-.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-bump pin-ledgers vendor-pi-dist bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
+.PHONY: bug-ledger-refresh port-lens pin-show pin-sync pin-check pin-bump pin-ledgers vendor-pi-dist vendor-chord-plugins-node bench-test bench-lock-verify bench-lock-bump bench-arms bench-overhead bench-reliability bench-longhistory bench-startup bench-aggregate bench-soak bench-local bench-durable bench-harbor bench-report durable-interop-deps durable-contract durable-contract-setup durable-contract-test node-runtime bug-ledger bug-ledger-check release-notes-draft npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build build-env-daemons check check-core clean dev divergence-guard divergence-quality doctor port-lint any-trap perf-lint evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-mcp-conformance test-prereqs test-sdk-conformance test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet durable-counts durable-bar durable-flat durable-counts-update durable-contract-trace durable-core-host-deps durable-core-host-check durable-core-budget
 
 include automation/make/parity.mk
 include automation/make/ci.mk

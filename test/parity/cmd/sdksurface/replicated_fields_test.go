@@ -56,7 +56,8 @@ func funcBody(t *testing.T, src string, start *regexp.Regexp) string {
 		end := i + 1
 		for ; end < len(lines); end++ {
 			l := lines[end]
-			if strings.TrimSpace(l) != "" && len(l)-len(strings.TrimLeft(l, " \t")) <= indent {
+			// A signature rustfmt wrapped over several lines closes its parameter list with ")" at the function's own indent.
+			if strings.TrimSpace(l) != "" && len(l)-len(strings.TrimLeft(l, " \t")) <= indent && !strings.HasPrefix(strings.TrimSpace(l), ")") {
 				break
 			}
 		}

@@ -98,7 +98,7 @@ export async function runProgramRow(row, impl, ctx) {
 	}
 	// A diff row names the storage backend's hop profile (S7): `node` runs the reference's own Node SQLite adapter, for Pi and the candidate alike.
 	const rowEnv = row.profile === "node" ? { CONTRACT_STORAGE_PROFILE: "node" } : {}
-	const common = { script, scenario: row.id, tmpKey: row.id }
+	const common = { script, scenario: row.id, tmpKey: row.id, source: piSource() }
 	const ref = await memo(`ref:${row.id}`, async () => runScenario({ ...common, args: await withFixture(join(ctx.out, "ref")), out: join(ctx.out, "ref"), name: row.id, env: rowEnv }))
 	if (ref.code !== 0) return referenceFailed("scenario", ref)
 	const candidate = { impl: impl.name, candidate: impl.control ? undefined : impl.candidateDir }
@@ -134,7 +134,8 @@ export async function vitestRun(impl, ctx, include, label = "sc", isSc = label =
 	mkdirSync(join(ctx.out, impl.name), { recursive: true })
 	rmSync(outFile, { force: true })
 	const sc = isSc && impl.scExe
-	const env = { ...process.env, CONTRACT_PI_SOURCE: piSource(), ...(include ? { CONTRACT_TEST_INCLUDE: include } : {}), ...(impl.candidateDir && !sc ? { CONTRACT_CANDIDATE: impl.candidateDir, ...impl.env } : {}), ...(sc ? { CONTRACT_SC_EXE: impl.scExe, CONTRACT_SC_PROVIDER: join(CONTRACT_DIR, "impls", "sc-native-provider.ts") } : {}) }
+	// The run's own cache directory: vitest writes it, and the reference checkout (the working directory of the E rows' `ls`) must not change.
+	const env = { ...process.env, CONTRACT_PI_SOURCE: piSource(), CONTRACT_VITEST_CACHE: resolve(ctx.out, impl.name, `vitest-cache-${label}`), ...(include ? { CONTRACT_TEST_INCLUDE: include } : {}), ...(impl.candidateDir && !sc ? { CONTRACT_CANDIDATE: impl.candidateDir, ...impl.env } : {}), ...(sc ? { CONTRACT_SC_EXE: impl.scExe, CONTRACT_SC_PROVIDER: join(CONTRACT_DIR, "impls", "sc-native-provider.ts") } : {}) }
 	const bin = join(piSource(), "node_modules", ".bin", "vitest")
 	const child = spawnGroup(bin, ["run", "--config", join(CONTRACT_DIR, "scenarios", "vitest.contract.config.mjs"), "--reporter=json", `--outputFile=${outFile}`], { cwd: join(piSource(), "packages", "durable"), env, stdio: ["ignore", "ignore", "pipe"] })
 	let err = ""
@@ -160,13 +161,24 @@ export async function vitestRun(impl, ctx, include, label = "sc", isSc = label =
  * itself). A reference run made once, at another moment, judged the candidate's run against a different load: under load ~600
  * the candidate failed tests the earlier reference run had passed. Run together, a test both fail under the load of the moment
  * is not counted against the candidate, and the row names it; a test only the candidate fails still fails the row.
+ *
+ * A row marked `exclusive` (corpus: its upstream test asserts inside a real-time window that the run itself has to fill) is the one
+ * exception: the gate runs it alone (runRows) and its two runs one after the other, so the window is filled by a machine nothing else
+ * of the gate is running on. `ctx.run` replaces vitestRun; a test passes its own to see the order the runs start and end in.
  */
 export async function runVitestRow(row, impl, ctx) {
+	const run = ctx.run ?? vitestRun
 	if (!impl.control && !impl.vitest) return pending(lacks(impl))
 	const file = row.source.split("/test/").pop()
 	const label = `u-${file.replace(/[^\w.-]/g, "_")}`
 	const { ref, cand } = await memo(`vitest:${impl.name}:${file}`, async () => {
-		const [ref, cand] = await Promise.all([vitestRun({ name: "ref" }, ctx, `test/${file}`, label, false), impl.control ? undefined : vitestRun(impl, ctx, `test/${file}`, label, false)])
+		const runRef = () => run({ name: "ref" }, ctx, `test/${file}`, label, false)
+		const runCand = () => (impl.control ? undefined : run(impl, ctx, `test/${file}`, label, false))
+		if (row.exclusive) {
+			const ref = await runRef()
+			return { ref, cand: (await runCand()) ?? ref }
+		}
+		const [ref, cand] = await Promise.all([runRef(), runCand()])
 		return { ref, cand: cand ?? ref }
 	})
 	if (ref.timedOut) return failed({ problem: `the reference did not finish ${file} within ${VITEST_TIMEOUT_MS / 1000} s` })
@@ -176,7 +188,17 @@ export async function runVitestRow(row, impl, ctx) {
 	const r = ref.get(file), c = cand.get(file)
 	if (!r) return failed({ problem: `the reference did not run ${file}` })
 	if (!c) return failed({ problem: "the file did not run", reference: r.status })
-	const bad = [...r.tests].filter(([name, st]) => st === "passed" && c.tests.get(name) !== "passed").map(([name]) => `${name}: ${c.tests.get(name) ?? "missing"}`)
+	let bad = [...r.tests].filter(([name, st]) => st === "passed" && c.tests.get(name) !== "passed").map(([name]) => `${name}: ${c.tests.get(name) ?? "missing"}`)
+	// The measured value of a numbered divergence (corpus measured_*): the candidate fails this test with the stated failure, and only
+	// with it. A pass means the divergence is over, so the entry goes; another failure is a failure of the row like any other.
+	let measured
+	if (row.measured_test && !impl.control) {
+		const name = [...r.tests.keys()].find(n => n.startsWith(row.measured_test))
+		const failure = name === undefined ? undefined : c.failures.get(name)
+		if (name === undefined || r.tests.get(name) !== "passed") return failed({ problem: `the reference does not pass the measured test ${row.measured_test}` })
+		if (c.tests.get(name) === "passed") return failed({ problem: `${row.measured_divergence} (${row.measured_failure}) passes ${name}: the divergence is over; delete the row's measured_* fields and the record` })
+		if (failure?.includes(row.measured_failure)) { bad = bad.filter(b => !b.startsWith(`${name}: `)); measured = `${row.measured_divergence}: ${name} fails with "${row.measured_failure}"` }
+	}
 	if (c.status === "failed" && !c.tests.size) return failed({ problem: "the file failed to load", message: c.message?.slice(0, 400) })
 	// A test whose assertion depends on a real-time window the reference shares (corpus `real_time_tests`: a throttle interval
 	// against a setTimeout of the test itself) fails in the reference too when the process stalls for longer than the window
@@ -184,7 +206,7 @@ export async function runVitestRow(row, impl, ctx) {
 	// rerun of its file, and the row says it was retried.
 	let retried = []
 	if (bad.length && row.real_time_tests?.length && bad.every(b => row.real_time_tests.some(t => b.startsWith(t)))) {
-		const again = await vitestRun(impl, ctx, `test/${file}`, `u-${file.replace(/[^\w.-]/g, "_")}-retry`, false)
+		const again = await run(impl, ctx, `test/${file}`, `u-${file.replace(/[^\w.-]/g, "_")}-retry`, false)
 		const c2 = again.get(file)
 		if (c2 && bad.every(b => c2.tests.get(b.slice(0, b.lastIndexOf(": "))) === "passed")) { retried = bad.map(b => b.slice(0, b.lastIndexOf(": "))); bad.length = 0 }
 	}
@@ -193,10 +215,11 @@ export async function runVitestRow(row, impl, ctx) {
 	if (bad.length) return failed({ problem: `${bad.length} test(s) the reference passes did not pass`, first: bad.slice(0, 5), ...(detail.length ? { detail } : {}) })
 	const count = [...r.tests.values()].filter(s => s === "passed").length
 	const refFailed = [...r.tests].filter(([, st]) => st === "failed").map(([name]) => name)
+	const stated = measured ? `; ${measured}` : ""
 	const alongside = refFailed.length ? `; the reference failed ${refFailed.length} alongside: ${refFailed.slice(0, 5).join("; ")}` : ""
-	if (retried.length) return passed(`${count} tests${alongside}; retried once (real-time window shared with the reference): ${retried.join("; ")}`)
+	if (retried.length) return passed(`${count} tests${alongside}${stated}; retried once (real-time window shared with the reference): ${retried.join("; ")}`)
 	// A file whose every test the reference skips (a missing key) proves nothing about the candidate.
-	return count ? passed(`${count} tests${alongside}`) : { status: "skipped", detail: `the reference passes no test of ${file} here (${r.tests.size} not passed${alongside})` }
+	return count ? passed(`${count} tests${alongside}${stated}`) : { status: "skipped", detail: `the reference passes no test of ${file} here (${r.tests.size} not passed${alongside})` }
 }
 
 /** W rows: the bench scenario on a copy of the fixture, reference against implementation. */
@@ -275,6 +298,23 @@ export async function runScRow(row, impl, ctx) {
 
 const RUNNERS = { example: runProgramRow, interop: runProgramRow, diff: runProgramRow, vitest: runVitestRow, "storage-conformance": runScRow, bench: runBenchRow, matrix: runMatrixRow }
 
+/**
+ * Run `rows` through `runRow` (it returns a result), `concurrency` at a time, and return the results in completion order. A row marked
+ * `exclusive` runs alone: before any other row starts, one at a time. Such a row's upstream test asserts inside a real-time window that
+ * the run has to fill itself (corpus `exclusive`: `U-codemode` gives a script 300 ms to start the sandbox and reach a tool, which costs
+ * the reference 150-230 ms of CPU). Next to the other rows, whose vitest forks outnumber the CPUs of a gate host several times over,
+ * the wall time of that work doubled and either run, the reference's as often as the candidate's, missed the window.
+ */
+export async function runRows(rows, concurrency, runRow) {
+	const results = []
+	for (const row of rows.filter(r => r.exclusive)) results.push(await runRow(row))
+	const queue = rows.filter(r => !r.exclusive)
+	await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+		for (let row = queue.shift(); row; row = queue.shift()) results.push(await runRow(row))
+	}))
+	return results
+}
+
 /** Run the selected rows against one implementation; returns result rows. */
 export async function gate({ impl: implName, ids, lanes, out, concurrency = 8, onResult, rows: given }) {
 	const corpus = loadCorpus()
@@ -285,23 +325,19 @@ export async function gate({ impl: implName, ids, lanes, out, concurrency = 8, o
 	mkdirSync(out, { recursive: true })
 	const ctx = { out, concurrency: Math.max(1, Math.floor(concurrency / 2)) }
 	const rows = given ?? corpus.scenario.filter(r => (!ids || ids.some(id => r.id === id || (id.endsWith("*") && r.id.startsWith(id.slice(0, -1))))) && (!lanes || lanes.includes(r.owner)))
-	const results = []
-	const queue = [...rows]
-	await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
-		for (let row = queue.shift(); row; row = queue.shift()) {
-			const t0 = Date.now()
-			let result
-			if (row.status === "skipped") result = { status: "skipped", detail: row.reason }
-			else if (row.status === "pending") result = pending(row.reason)
-			else if (!RUNNERS[row.runner]) result = pending(`no runner for ${row.runner} rows yet`)
-			else {
-				try { result = await RUNNERS[row.runner](row, impl, ctx, corpus) } catch (e) { result = failed({ problem: "the gate itself failed", error: String(e?.stack ?? e).slice(0, 800) }) }
-			}
-			const r = { id: row.id, owner: row.owner, family: row.family, impl: implName, ms: Date.now() - t0, ...result }
-			results.push(r)
-			onResult?.(r)
+	const results = await runRows(rows, concurrency, async row => {
+		const t0 = Date.now()
+		let result
+		if (row.status === "skipped") result = { status: "skipped", detail: row.reason }
+		else if (row.status === "pending") result = pending(row.reason)
+		else if (!RUNNERS[row.runner]) result = pending(`no runner for ${row.runner} rows yet`)
+		else {
+			try { result = await RUNNERS[row.runner](row, impl, ctx, corpus) } catch (e) { result = failed({ problem: "the gate itself failed", error: String(e?.stack ?? e).slice(0, 800) }) }
 		}
-	}))
+		const r = { id: row.id, owner: row.owner, family: row.family, impl: implName, ms: Date.now() - t0, ...result }
+		onResult?.(r)
+		return r
+	})
 	const order = new Map(corpus.scenario.map((s, i) => [s.id, i]))
 	return results.sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity) || (a.id < b.id ? -1 : 1))
 }

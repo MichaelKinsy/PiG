@@ -124,6 +124,11 @@ func packageExports(root string) ([]probePackage, error) {
 			}
 			pkg.Exports = append(pkg.Exports, exp)
 		}
+		// Pi serves both pi-ai specifiers from the coding agent's extension view (core/extensions/virtual-modules.ts, pi-ai-extension-view.ts): the
+		// compat entry plus TypeBox's Type, which pi-ai's own entrypoints no longer export, so the .d.ts inventory has no row for it.
+		if p.module == "pi-ai" || p.module == "pi-ai/compat" {
+			pkg.Exports = append(pkg.Exports, probeExport{Name: "Type", Kind: "external"})
+		}
 		if len(pkg.Exports) == 0 {
 			return nil, fmt.Errorf("inventory has no runtime exports for %s %s", p.name, p.entrypoint)
 		}
@@ -158,6 +163,7 @@ func runProbe(root string, packages []probePackage) (*probeResult, error) {
 		return nil, err
 	}
 	outputPath := filepath.Join(dir, "report.json")
+	//nolint:gosec // G204 (class a): program is literal node; args are the repo probe.mjs, runtime dir from root, and temp request/output paths.
 	cmd := exec.Command("node", probe, runtimeDir, requestPath, outputPath)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {

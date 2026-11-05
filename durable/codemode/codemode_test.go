@@ -20,6 +20,7 @@ import (
 	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
 
 func expectText(t *testing.T, got string, isError bool, want string, wantError bool) {
@@ -84,7 +85,7 @@ func TestDurableCodeMode(t *testing.T) {
 		// the journal (with one processor, 2's tool can return and 1's result still post first).
 		arrived := newGate()
 		f.onFirstOpen = func(opened harness.Harness) {
-			unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(_ context.Context, publication durable.CommitPublication) {
 				for _, change := range publication.Changes {
 					document, ok := change.(durable.DocumentChange)
 					if !ok || document.Record.Kind != "pi.codemode.journal" || document.Value == nil {
@@ -921,7 +922,7 @@ func TestDurableCodeMode(t *testing.T) {
 		// document's last commit).
 		var orderMu sync.Mutex
 		var lastJournalOnly, lastRun, commits int
-		unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(_ context.Context, publication durable.CommitPublication) {
 			orderMu.Lock()
 			defer orderMu.Unlock()
 			commits++
@@ -970,7 +971,7 @@ func TestDurableCodeMode(t *testing.T) {
 		opened, root := f.setup.open(t, openSqlite(t, filepath.Join(t.TempDir(), "session.sqlite")))
 		mustSubmitDone(t, root)
 		text, isError := resultText(t, root)
-		expectText(t, text, isError, "Validation failed for tool \"echo\":\n  - root: must be object\n\nReceived arguments:\n[\n  1\n]", false)
+		expectText(t, text, isError, "Validation failed for tool \"echo\":\n  - root: expected object, got array\n\nReceived arguments:\n[\n  1\n]", false)
 		if got := nestedCount(t, opened); got != 0 {
 			t.Fatalf("%d nested calls, want 0", got)
 		}

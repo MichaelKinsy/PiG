@@ -2,7 +2,7 @@
 // scenario is data: the extension every SDK's scenario driver builds from its
 // Spec, the host-side Steps the harness runs against the real host, and the
 // observation Want that every SDK must produce byte for byte. The Go, Node,
-// Python and Rust drivers (test/extension-conformance/testdata/scenario-driver-*)
+// Python, Rust and Lisp drivers (test/extension-conformance/testdata/scenario-driver-*)
 // each read the same Spec and register it through their SDK's public API, so a
 // scenario exists once and an SDK that differs fails its own row.
 package sdkscenarios
@@ -15,10 +15,11 @@ const (
 	Node   SDK = "node"
 	Python SDK = "python"
 	Rust   SDK = "rust"
+	Lisp   SDK = "lisp"
 )
 
 // SDKs lists every SDK in a stable order.
-var SDKs = []SDK{Go, Node, Python, Rust}
+var SDKs = []SDK{Go, Node, Python, Rust, Lisp}
 
 // Red records an SDK's row that is known to fail today. While the entry exists
 // the row must produce exactly Got, so a further regression inside a red row
@@ -136,6 +137,8 @@ const (
 	// ToolSoftError returns the text "soft failure" with isError set: a failure
 	// reported without throwing.
 	ToolSoftError = "soft-error"
+	// ToolRetain echoes like ToolEcho and keeps 16 KiB of the process's heap for every call it serves, as an extension that leaks per call does. Only the Node driver implements it: the soak's memory gate on Node is tested against it.
+	ToolRetain = "retain"
 	// ToolEmpty returns a result with no content at all.
 	ToolEmpty = "empty"
 	// ToolBlocks returns two text blocks, "a" then "b".
@@ -171,6 +174,8 @@ const (
 	CommandRegisteredProvider = "registered-provider"
 	// CommandFlag writes the JSON of the extension's getFlag(Arg).
 	CommandFlag = "flag"
+	// CommandLiveMemory runs a full garbage collection and writes the bytes of live memory the process holds after it, as a decimal number: Node's heapUsed plus external. Only the Node driver implements it, because only a Node process's resident size moves with the schedule of a collector the host cannot make run (V8 keeps garbage it has not collected yet and does not give the pages back), so the soak reads what the collection left instead.
+	CommandLiveMemory = "live-memory"
 	// CommandNoop returns at once and writes nothing: the cheapest round trip
 	// the host can make to the extension.
 	CommandNoop = "noop"
@@ -286,7 +291,7 @@ type Step struct {
 	// "login", "authjson", "setcredential", "resolve" (providers and auth);
 	// "host-calls" (the fire-and-forget host actions an extension triggered);
 	// "host-provider", "load-peer", "command", "reload", "end-input" (host events); "abort-tool"
-	// (the abort rule); "registrations", "tool", "tool-result", "tool-call-event", "tool-result-event", "input-event", "before-agent-start-event", "run-signal", "abort-run-in-command", "emit-event" (the runner emits the event Name with the JSON payload Args and the step records the lines EventRecord handlers wrote), "shortcut" (tools, commands,
+	// (the abort rule); "registrations", "tool", "tool-wire" (a tool step that also records how its result was written on the wire: the escape \ud83d or raw surrogate bytes), "tool-result", "tool-call-event", "tool-result-event", "input-event", "before-agent-start-event", "run-signal", "abort-run-in-command", "emit-event" (the runner emits the event Name with the JSON payload Args and the step records the lines EventRecord handlers wrote), "shortcut" (tools, commands,
 	// shortcuts and flags), "footer-state" (the host's footer data).
 	Op       string
 	Provider string

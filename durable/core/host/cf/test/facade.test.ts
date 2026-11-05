@@ -5,9 +5,10 @@ import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxProvider } from "@earendil-works/pi-ai/providers/faux"
 import { EFFECT, EVENT, NOTICE } from "../src/abi.ts"
-import { AgentDoc, createRegistry, defineDoc, defineExtension, defineTool, ConversationBusy } from "../src/facade/index.ts"
+import { AgentDoc, createRegistry, defineDoc, defineExtension, defineTool, ConversationBusy, ConversationIdle, ReadAfterWrite } from "../src/facade/index.ts"
 import { MemoryStorage } from "../src/facade/storage.ts"
-import { Harness } from "../src/facade/harness.ts"
+import { Conversation, Harness } from "../src/facade/harness.ts"
+import { applyChange } from "../src/facade/agent.ts"
 import { FatalError } from "../src/host.ts"
 import { apiResult, published, ScriptedCore, txResult, type Seen } from "./scripted.ts"
 
@@ -22,7 +23,7 @@ function line(handler: (ev: Seen, txOps: { op: string; [k: string]: any }[]) => 
       const op = ev.body
       if (op.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
       if (op.op === "end") { log.push(op); return { notices: [txResult(ev.id!, { result: null })] } }
-      if (op.op === "abort") { log.push(op); return undefined }
+      if (op.op === "abort") { log.push(op); return { notices: [txResult(ev.id!, { result: null })] } }
       log.push(op)
       const answer = handler(ev, log) as any
       return { notices: [txResult(ev.id!, { result: answer && "result" in answer ? answer.result : null })] }
@@ -127,7 +128,7 @@ test("a fatal core failure rejects a pending wait with its cause instead of leav
     return undefined
   })
   const reports: unknown[] = []
-  const h = await harness(core, { onReport: (e: unknown) => reports.push(e) })
+  const h = await harness(core, { onReport: (report: { error: unknown }) => reports.push(report.error) })
   const conversation = new (await import("../src/facade/harness.ts")).Conversation(h, 1)
   const submission = await conversation.submit({ type: "input", content: "hi" }, context)
   ;(h as any).store.run("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY, conversation_id INTEGER, request_id TEXT, status TEXT, record TEXT)", [])
@@ -146,6 +147,72 @@ test("a rejected submit is Pi's error: ConversationBusy", async () => {
   const h = await harness(core)
   const c = new (await import("../src/facade/harness.ts")).Conversation(h, 1)
   await assert.rejects(c.submit({ type: "input", content: "x", whenBusy: "reject" }, context), (e: Error) => e instanceof ConversationBusy && (e as ConversationBusy).conversationId === 1, "Pi's ConversationBusy carries the conversation ID as a number")
+})
+
+test("a rejected input with whenIdle reject is Pi's error: ConversationIdle", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.submit ? { notices: [apiResult(ev.body.id, { error: { name: "ConversationIdle", message: "Conversation 1 is idle", conversationId: 1 } })] } : undefined)
+  const h = await harness(core)
+  const c = new Conversation(h, 1)
+  await assert.rejects(c.submit({ type: "input", content: "x", whenBusy: "steer", whenIdle: "reject" }, context), (e: Error) => e instanceof ConversationIdle && e.conversationId === 1 && e.message === "Conversation 1 is idle")
+  assert.deepEqual(core.ofKind(EVENT.submit)[0]!.body.whenIdle, "reject", "the draft's whenIdle reaches the core")
+})
+
+test("a continue submits as a draft of its own type, with no content", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.submit ? { notices: [published({ submissions: [{ id: 4, requestId: "", status: "placed" }] }), apiResult(ev.body.id, { ok: { id: 4, status: "placed" } })] } : undefined)
+  const h = await harness(core)
+  const c = new Conversation(h, 1)
+  const submission = await c.submit({ type: "continue" }, context)
+  assert.equal(submission.id, 4)
+  const body = core.ofKind(EVENT.submit)[0]!.body
+  assert.equal(body.type, "continue")
+  assert.equal("content" in body, false)
+})
+
+test("submit(tx, draft) admits through the transaction's submit operation and answers the submission ID", async () => {
+  const { core, log } = line(ev => ev.body.op === "submit" ? { result: { id: 7, status: "queued" } } : { result: null })
+  const h = await harness(core)
+  const c = new Conversation(h, 3)
+  const id = await h.commit(tx => c.submit(tx, { type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" }), context)
+  assert.equal(id, 7)
+  const op = log.find(entry => entry.op === "submit")!
+  assert.deepEqual({ conversationId: op.conversationId, type: op.type, content: op.content, whenBusy: op.whenBusy, whenIdle: op.whenIdle, requestId: op.requestId }, { conversationId: 3, type: "input", content: "steer", whenBusy: "steer", whenIdle: "reject", requestId: "r1" })
+  assert.equal(core.ofKind(EVENT.submit).length, 0, "no submit event: the admission is part of the caller's commit")
+})
+
+test("submit(tx, draft) throws for a transaction of another Session, or a wrapped or plain one, before any operation", async () => {
+  const { core, log } = line(() => ({ result: null }))
+  const h = await harness(core)
+  const { core: otherCore } = line(() => ({ result: { id: 1, status: "queued" } }))
+  const other = await harness(otherCore)
+  const c = new Conversation(h, 1)
+  const draft = { type: "input", content: "hi" }
+  await assert.rejects(other.commit(tx => c.submit(tx, draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(h.commit(tx => c.submit(new Proxy(tx, {}), draft), context), /The transaction belongs to another Session/)
+  await assert.rejects(h.commit(() => c.submit({ doc: () => undefined }, draft), context), /The transaction belongs to another Session/)
+  assert.equal(log.some(entry => entry.op === "submit"), false)
+})
+
+test("a submit(tx, draft) after a table write is Pi's ReadAfterWrite, which names the operation", async () => {
+  const { core } = line(() => ({ result: null }))
+  const h = await harness(core)
+  core.respond = ev => {
+    if (ev.kind !== EVENT.tx) return undefined
+    if (ev.body.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
+    if (ev.body.op === "submit") return { notices: [txResult(ev.id!, { rejected: { name: "ReadAfterWrite", message: "submit(tx, draft) cannot read tables after the first table write" } })] }
+    return { notices: [txResult(ev.id!, { result: null })] }
+  }
+  const c = new Conversation(h, 1)
+  const late = h.commit(async tx => { await tx.appendEntry(1, { kind: "app.note" }); await c.submit(tx, { type: "continue" }) }, context)
+  await assert.rejects(late, (e: Error) => e instanceof ReadAfterWrite && e.message === "submit(tx, draft) cannot read tables after the first table write")
+})
+
+test("configure validates maxTurns as Pi does: an integer 1 or more, null clears", () => {
+  const state: Record<string, unknown> = {}
+  applyChange(state, { maxTurns: 3 })
+  assert.equal(state.maxTurns, 3)
+  for (const bad of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 2]) assert.throws(() => applyChange(state, { maxTurns: bad }), (e: Error) => e instanceof RangeError && e.message === `maxTurns must be an integer 1 or more, got ${String(bad)}`)
+  applyChange(state, { maxTurns: null })
+  assert.equal("maxTurns" in state, false)
 })
 
 test("agent() resolves the stored agent state against the live registry in the host, wraps included", async () => {
@@ -198,19 +265,40 @@ test("settings are live: a change to the caller's settings object reaches the co
   assert.ok(kinds.lastIndexOf(EVENT.registry) < kinds.indexOf(EVENT.api, kinds.lastIndexOf(EVENT.registry)), "the settings event precedes the event that needs them")
 })
 
-test("subscribeCommits asks the core for the complete publication while a listener exists, and hands listeners {seq, changes}", async () => {
+test("observeCommits asks the core for the complete publication while an observer is attached, and hands it {seq, changes}", async () => {
   const core = new ScriptedCore(ev => ev.kind === EVENT.api ? { notices: [apiResult(ev.id!, { ok: null })] } : undefined)
   const h = await harness(core)
   const modes = () => core.seen.filter(e => e.kind === EVENT.api && e.body.op === "commits").map(e => e.body.on)
   const seen: unknown[] = []
-  const off = h.subscribeCommits(p => { seen.push(p) })
-  const off2 = h.subscribeCommits(() => {})
-  assert.deepEqual(modes(), [true], "the first listener turns it on")
+  const first = h.observeCommits({ advance: p => { seen.push(p) }, end: () => {} })
+  const second = h.observeCommits({ advance: () => {}, end: () => {} })
+  assert.deepEqual(modes(), [true], "the first observer turns it on")
   ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 3, entries: [], changes: [{ type: "entry", value: { id: 1 } }] })))
   ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 4, entries: [] })))
+  // session.ts #notifyHosts: the observers are called one microtask after the adoption, outside it.
+  assert.deepEqual(seen, [], "the dispatch is one microtask after the notice")
+  await Promise.resolve()
   assert.deepEqual(seen, [{ seq: 3, changes: [{ type: "entry", value: { id: 1 } }] }])
-  off(); assert.deepEqual(modes(), [true])
-  off2(); assert.deepEqual(modes(), [true, false], "the last one turns it off")
+  first.detach(); assert.deepEqual(modes(), [true])
+  second.detach(); assert.deepEqual(modes(), [true, false], "the last one turns it off")
+})
+
+test("an observeCommits observer that throws is reported, detached and ended listener_error; the Session's close ends the others ended, after their last publication", async () => {
+  const core = new ScriptedCore(ev => ev.kind === EVENT.api ? { notices: [apiResult(ev.id!, { ok: null })] } : undefined)
+  const reports: { error: unknown; kind: string }[] = []
+  const h = await harness(core, { onReport: (report: { error: unknown; kind: string }) => reports.push(report) })
+  const boom = new Error("boom")
+  const log: unknown[] = []
+  h.observeCommits({ advance: () => { throw boom }, end: end => log.push(["thrower", end]) })
+  h.observeCommits({ advance: p => log.push(["kept", p]), end: end => log.push(["kept", end]) })
+  const detached = h.observeCommits({ advance: () => log.push("detached"), end: () => log.push("detached end") })
+  detached.detach()
+  ;(h as any).onNotice(1, new TextEncoder().encode(JSON.stringify({ seq: 3, entries: [], changes: [{ type: "entry", value: { id: 1 } }] })))
+  await Promise.resolve()
+  assert.deepEqual(reports.map(r => [r.kind, r.error]), [["listener_error", boom]])
+  assert.deepEqual(log, [["thrower", { kind: "listener_error", error: boom }], ["kept", { seq: 3, changes: [{ type: "entry", value: { id: 1 } }] }]])
+  await h.close(context)
+  assert.deepEqual(log.slice(2), [["kept", { kind: "ended" }]], "never after detach, and not again for the one that was ended")
 })
 
 test("close lets a caller's open transaction end before the final close event, and does not wait for a task invocation's", async () => {
@@ -237,13 +325,13 @@ test("close lets a caller's open transaction end before the final close event, a
 })
 
 test("inspect() hands a blocked task's error over as an Error", async () => {
-  const body = { scheduling: "paused", submissions: [], tasks: [{ record: { id: 3 }, state: { kind: "blocked", reason: "migration_failed", error: { name: "Error", message: "no migration" } } }, { record: { id: 4 }, state: { kind: "ready", migrates: false } }] }
+  const body = { scheduling: "paused", submissions: [], tasks: [{ record: { id: 3 }, state: { kind: "blocked", reason: "migration_failed", error: { name: "Error", message: "no migration" } } }, { record: { id: 4 }, state: { kind: "pending", migrates: false } }] }
   const core = new ScriptedCore(ev => ev.kind === EVENT.inspect ? { notices: [apiResult(ev.body.requestId, { ok: body })] } : undefined)
   const h = await harness(core)
   const inspection: any = await h.inspect(context)
   assert.ok(inspection.tasks[0].state.error instanceof Error)
   assert.equal(inspection.tasks[0].state.error.message, "no migration")
-  assert.deepEqual(inspection.tasks[1].state, { kind: "ready", migrates: false })
+  assert.deepEqual(inspection.tasks[1].state, { kind: "pending", migrates: false })
 })
 
 test("open rejects a registry without the built-in tasks, as Harness.open does", async () => {
@@ -259,23 +347,25 @@ test("open rejects a registry without the built-in tasks, as Harness.open does",
 
 test("a report notice from the core reaches HarnessOptions.onReport as an Error", async () => {
   const reports: Error[] = []
-  const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op !== "opened" ? { notices: [{ kind: NOTICE.report, payload: new TextEncoder().encode(JSON.stringify({ name: "RangeError", message: "no sandbox" })) }, apiResult(ev.id!, { ok: null })] } : undefined)
-  const h = await harness(core, { onReport: (error: Error) => reports.push(error) })
+  const infos: unknown[] = []
+  const core = new ScriptedCore(ev => ev.kind === EVENT.api && ev.body.op !== "opened" ? { notices: [{ kind: NOTICE.report, payload: new TextEncoder().encode(JSON.stringify({ name: "RangeError", message: "no sandbox", info: { kind: "host_error", callback: "env" } })) }, apiResult(ev.id!, { ok: null })] } : undefined)
+  const h = await harness(core, { onReport: ({ error, ...info }: { error: Error }) => { reports.push(error); infos.push(info) } })
   await h.snapshot(AgentDoc, 1, context)
   assert.equal(reports.length, 1)
+  assert.deepEqual(infos, [{ kind: "host_error", callback: "env" }], "the report is the notice's ReportInfo with the error")
   assert.ok(reports[0] instanceof Error)
   assert.equal(reports[0]!.message, "no sandbox")
   assert.equal(reports[0]!.name, "RangeError")
 })
 
-test("the resolved agent names the hooks of its selected extensions, in extension order, as handler indices", async () => {
+test("the resolved agent names the hooks of its selected extensions, in extension order, with the extension that registered each, as handler indices", async () => {
   const { agentJSON } = await import("../src/facade/agent.ts")
   const before = () => undefined, after = () => undefined
   const ids = new Map<unknown, number>()
   const id = (o: unknown) => { if (!ids.has(o)) ids.set(o, ids.size + 1); return ids.get(o)! }
   const agent: any = { thinkingLevel: "off", extensions: [{ name: "a", hooks: [{ task: "pi.tool", handlers: { beforeTool: before, ignored: 3 } }] }, { name: "b", hooks: [{ task: "pi.tool", handlers: { beforeTool: after } }] }, { name: "c" }], tools: [], callable: [], sections: [] }
   const json: any = agentJSON(agent, id)
-  assert.deepEqual(json.hooks, [{ task: "pi.tool", handlers: { beforeTool: id(before) } }, { task: "pi.tool", handlers: { beforeTool: id(after) } }])
+  assert.deepEqual(json.hooks, [{ extension: "a", task: "pi.tool", handlers: { beforeTool: id(before) } }, { extension: "b", task: "pi.tool", handlers: { beforeTool: id(after) } }])
 })
 
 test("the resolved agent's callable tools are encoded like its model tools, and a structuredOutputSchema flags the tool for the core (agent.ts resolveAgent callers)", async () => {

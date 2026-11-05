@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 // PiSessionSnapshotArtifact is the harness artifact that carries the Session JSONL snapshot.
@@ -178,9 +179,9 @@ func validateScore(value *float64) (*float64, error) {
 	return new(*value), nil
 }
 
-// ClassifyCaseStatus maps a failed case to errored, a skipped, to-do or disabled case to skipped, and a pending case to
+// classifyCaseStatus maps a failed case to errored, a skipped, to-do or disabled case to skipped, and a pending case to
 // pending. It returns "" for any other status.
-func ClassifyCaseStatus(status ReportCaseStatus) EvalOutcome {
+func classifyCaseStatus(status ReportCaseStatus) EvalOutcome {
 	switch status {
 	case ReportCaseStatusFailed:
 		return EvalOutcomeErrored
@@ -239,26 +240,34 @@ func ReadTaskObservation(task EvalTask, reportPath, artifactDirectory string) (E
 	}
 	workspace := collectReportCases(report)
 	reportedFullName := task.EvalSet + " " + task.CaseID
+	// A report may hold sibling cases of the same file; only the requested case is this task's observation.
 	var assertions []vitestAssertion
 	for _, file := range report.TestResults {
-		assertions = append(assertions, file.AssertionResults...)
+		for _, assertion := range file.AssertionResults {
+			if assertion.FullName == reportedFullName {
+				assertions = append(assertions, assertion)
+			}
+		}
 	}
 	if len(assertions) != 1 {
 		return errored, nil
 	}
 	assertion := assertions[0]
-	if assertion.FullName != reportedFullName {
-		return errored, nil
-	}
-	statusOutcome := ClassifyCaseStatus(assertion.Status)
+	statusOutcome := classifyCaseStatus(assertion.Status)
 	if statusOutcome == EvalOutcomeSkipped || statusOutcome == EvalOutcomePending {
 		return EvalObservation{EvalRunIdentity: identity, Outcome: statusOutcome}, nil
 	}
-	if len(workspace) != 1 {
+	var caseResults []reportCase
+	for _, candidate := range workspace {
+		if candidate.FullName == reportedFullName {
+			caseResults = append(caseResults, candidate)
+		}
+	}
+	if len(caseResults) != 1 {
 		return errored, nil
 	}
-	caseResult := workspace[0]
-	if caseResult.FullName != reportedFullName || caseResult.Status != assertion.Status {
+	caseResult := caseResults[0]
+	if caseResult.Status != assertion.Status {
 		return errored, nil
 	}
 	run := caseResult.Run
@@ -379,7 +388,7 @@ func groupPairs(expectedRuns []ExpectedEvalRun, observations []EvalObservation) 
 		group := getGroup(observation.EvalRunIdentity)
 		group.observations[observation.Variant] = append(group.observations[observation.Variant], observation)
 	}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(order, func(left, right *pairGroup) int {
 		if c := collator.CompareString(left.evalSet, right.evalSet); c != 0 {
 			return c
@@ -550,7 +559,7 @@ func SummarizeEvalObservations(protocolDigest string, expectedRuns []ExpectedEva
 			pairsByEvalSet[group.evalSet] = append(pairsByEvalSet[group.evalSet], *p)
 		}
 	}
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(evalSets, collator.CompareString)
 	comparisons := []EvalSetComparison{}
 	for _, evalSet := range evalSets {

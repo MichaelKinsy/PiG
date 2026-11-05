@@ -322,39 +322,45 @@ func TestAfterToolCallTerminate(t *testing.T) {
 
 // ─── Parallel tool execution ────────────────────────────────────────────
 
-// TestParallelToolBatch: wall-clock must be < sum of serial sleeps.
+// TestParallelToolBatch: every call of a parallel batch is executing at once.
+// No call is released until all of them have started, so a dispatcher that ran
+// them one after another never reaches the barrier. Overlap is proven by that
+// barrier, not by a wall-clock budget, which loaded runners overrun.
 // Upstream ref: agent-loop.ts executeToolCallsParallel (lines 412-469).
 func TestParallelToolBatch(t *testing.T) {
-	const sleep = 60 * time.Millisecond
-	names := []struct{ id, name string }{
-		{"tc-0", "ptool0"},
-		{"tc-1", "ptool1"},
-		{"tc-2", "ptool2"},
-	}
-	tools := make([]AgentTool, len(names))
-	for i, n := range names {
-		tools[i] = &fakeTool{name: n.name, mode: ToolModeParallel, delay: sleep, content: "ok"}
-	}
+	ids := []string{"tc-0", "tc-1", "tc-2"}
+	var started atomic.Int32
+	allStarted := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseAll := func() { releaseOnce.Do(func() { close(release) }) }
 
-	prov := providerFromSeqs(toolCallSeq(names...), textSeq("done"))
+	tool := &scriptTool{name: "ptool", mode: ToolModeParallel, params: map[string]any{"type": "object"},
+		execute: func(_ context.Context, _ string, _ json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
+			if started.Add(1) == int32(len(ids)) {
+				close(allStarted)
+			}
+			<-release
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}, nil
+		}}
+	calls := make([]ai.ToolCall, len(ids))
+	for i, id := range ids {
+		calls[i] = toolCall(id, "ptool", nil)
+	}
 	a := mustNewAgent(AgentOptions{
-		Model:    fakeTestModel(prov),
-		Tools:    tools,
+		Model:    scriptedModel(&scriptedProvider{respond: toolCallsThenText(calls...)}),
+		Tools:    []AgentTool{tool},
 		MaxTurns: 5,
 	})
 
-	start := time.Now()
-	_, err := a.Send(context.Background(), "parallel")
-	elapsed := time.Since(start)
-	if err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-
-	serial := sleep * time.Duration(len(names))
-	if elapsed >= serial {
-		t.Errorf("elapsed %v >= serial %v: tools did not run concurrently", elapsed, serial)
-	}
-	t.Logf("%d tools x %v: elapsed=%v (serial=%v): concurrent OK", len(names), sleep, elapsed, serial)
+	done := sendAsync(t, a, "parallel")
+	t.Cleanup(func() {
+		releaseAll()
+		<-done
+	})
+	waitSignal(t, allStarted, "all three tool calls to be executing at once")
+	releaseAll()
+	waitSignal(t, done, "the run")
 }
 
 // TestParallelResultsInSourceOrder: results must be in source order even if tools

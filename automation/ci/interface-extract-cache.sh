@@ -104,9 +104,11 @@ if [ -f "$EXTRACTOR_DIR/package-lock.json" ]; then
 fi
 SOURCE_HASH=$(hash_tree "$SOURCE_ROOT")
 PUBLISHED_HASH=$(hash_tree "$PUBLISHED_ROOT")
+# The extractor reads the tracked package list at run time (inventory.mjs PACKAGE_LIST); a package added to it changes the output.
+PACKAGES_HASH=$(hash_file "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)/test/parity/upstreampackages/packages.json")
 
-KEY=$(printf 'node=%s\nupstream-version=%s\ninvocation=%s\nextractor-src=%s\npackage-lock=%s\nsource=%s\npublished=%s\n' \
-  "$NODE_VERSION" "$UPSTREAM_VERSION" "$EXTRACT_INVOCATION" "$EXTRACTOR_SRC_HASH" "$LOCK_HASH" "$SOURCE_HASH" "$PUBLISHED_HASH" \
+KEY=$(printf 'node=%s\nupstream-version=%s\ninvocation=%s\nextractor-src=%s\npackage-lock=%s\nsource=%s\npublished=%s\npackages=%s\n' \
+  "$NODE_VERSION" "$UPSTREAM_VERSION" "$EXTRACT_INVOCATION" "$EXTRACTOR_SRC_HASH" "$LOCK_HASH" "$SOURCE_HASH" "$PUBLISHED_HASH" "$PACKAGES_HASH" \
   | shasum -a 256 | awk '{print $1}')
 
 CACHE_ENTRY="$CACHE_ROOT/$KEY"

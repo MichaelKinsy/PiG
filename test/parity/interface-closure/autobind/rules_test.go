@@ -71,6 +71,7 @@ var (
 	B   bool
 	SS  []string
 	M   map[string]int
+	MA  map[string]any
 	Fn  func(a string) error
 	Lsn func(event string)
 	GSet *guarded
@@ -134,6 +135,8 @@ func (*EvBad) Str(s string) iter.Seq[string]                       { return nil 
 		// T6g: a Set may be a struct of its set map and a mutex.
 		{"Set<string>", "GSet", yes}, {"Set<number>", "GSet", no},
 		{"unknown", "Any", yes}, {"unknown", "S", unknown},
+		// T4o: an upstream object is the Go map from string to any, and no other map or type.
+		{"object", "MA", yes}, {"object", "M", unknown}, {"object", "S", unknown}, {"unknown", "MA", unknown},
 		{"Named", "Nm", yes}, {"Named", "Ot", unknown}, {"Alias", "Ot", yes}, {"T", "Ot", yes},
 		{"Lits", "St", yes}, {"Open", "St", yes}, {"Open", "N", no}, {"Rec", "M", yes},
 		{"A | B", "Sm", yes}, {"A | B", "Any", unknown},
@@ -466,6 +469,7 @@ func TestValueRuleDecodesTypeScriptEscapes(t *testing.T) {
 // flattens, a method member as a Go method (T12m), and a string-literal member as the JSON discriminator the type marshals (T12d).
 func TestObjectLiteralMembers(t *testing.T) {
 	gt := goTypes(t, `
+import "fmt"
 type Base struct{ ID string `+"`json:\"id\"`"+` }
 type Tagged struct{ Base `+"`json:\"base\"`"+` }
 type Draft struct {
@@ -494,6 +498,9 @@ var (
 	Op Opts
 	H  Hello
 	A  any
+	Sm map[string]any
+	Bm map[string][]byte
+	Im map[string]fmt.Stringer
 	Ns struct{ Kind struct{ Name string } }
 	TI TaskID
 	Gs func(id ...string) string
@@ -513,6 +520,10 @@ var (
 	}{
 		{"{ /** the id */ readonly id: string; readonly count: number }", "D", yes},
 		{"{ id: string; count: number; missing: string }", "D", no},
+		{"{ readonly [keyword: string]: unknown }", "Sm", unknown},              // T12i: a Go map loses the member order, so it is not the Go form
+		{"{ readonly [keyword: string]: unknown }", "Bm", unknown},              // base64 on the wire: not an unknown value
+		{"{ readonly [keyword: string]: unknown }", "Im", unknown},              // an interface that is not empty cannot hold every value
+		{"{ readonly [keyword: string]: unknown }", "D", no},                    // a struct is not an index signature's Go form
 		{"{ id: string; count: number; readonly [rowBrand]: true }", "D", yes},  // T12k: a unique-symbol brand is no field
 		{"{ id: string; count: number; readonly [rowBrand]: string }", "D", no}, // only the boolean tag is a brand
 		{"{ id: string; count: number; readonly [rowKey]: true }", "D", no},     // any other computed key is a member
@@ -579,6 +590,126 @@ func NoCtx(in In) {}`)
 	} {
 		if n, typ, ok := objectMember(tc.part); !ok || n != tc.name || typ != tc.typ {
 			t.Errorf("objectMember(%q) = %q, %q, %v", tc.part, n, typ, ok)
+		}
+	}
+}
+
+// TestPiSchemaStaticTypes: TB1 reads pi-schema's builders (Pi 6536f801 moved pi-ai's and pi-durable's schemas from TypeBox to them):
+// str/num/int/bool/nul/unknown/lit, oneOf over an `as const` list, union, nullable, arr, map, opt, obj, and pi-ai's openObject,
+// stringLiteral and stringRecord, an import alias of one of them, a property map shared through a spread, a helper whose parameters are
+// pi-schema's Annotations or strings used only in descriptions, and mergeCompatProperties. A helper whose string parameter shapes the
+// schema keeps its Static body.
+func TestPiSchemaStaticTypes(t *testing.T) {
+	src := `import { type Annotations, arr, bool, nul, num, obj, oneOf, opt, str, union } from "@earendil-works/pi-schema";
+import { openObject as object, stringLiteral, stringRecord } from "./schema-builders.ts";
+export const LEVELS = ["low", "high"] as const;
+export const MODEL_LEVELS = ["off", ...LEVELS] as const;
+export const LevelSchema = oneOf(LEVELS);
+export const ModelLevelSchema = oneOf(MODEL_LEVELS);
+const RateProperties = {
+	input: num({ description: "Input, in USD." }),
+	output: num(),
+};
+export const RatesSchema = object(RateProperties);
+export const TierSchema = obj({ above: num(), ...RateProperties }, { open: true });
+export const CostSchema = object({ ...RateProperties, tiers: opt(arr(TierSchema, { description: "tiers, (a)" })) });
+function resize(options?: Annotations<StaticObject<typeof ResizeProperties>>) {
+	return object({ width: opt(int({ minimum: 1 })) }, options);
+}
+export const ResizeSchema = resize();
+export const LimitsSchema = object({ resize: opt(resize({ description: "profile" })) });
+function affinity(
+	options?: Annotations<"a" | "b">,
+) {
+	return union(
+		[stringLiteral("a"), stringLiteral("b")],
+		options,
+	);
+}
+export const AffinitySchema = affinity({ description: "how" });
+export const KwargSchema = union([str(), num(), bool(), nul(), object({ $var: stringLiteral("x"), omit: opt(bool()) })]);
+export const RoutingSchema = object({ order: opt(arr(str())) });
+export interface Routing extends Static<typeof RoutingSchema> {}
+export const HolderSchema = object({ routing: opt(RoutingSchema) });
+export const RecordSchema = stringRecord(str());
+export const MappedSchema = obj({ nick: nullable(str()), any: unknown(), by: map(num()) });
+function shaped(metric: string) {
+	return object({ p50: opt(num({ description: ` + "`${metric} at the 50th percentile.`" + ` })) });
+}
+export const ShapedSchema = shaped("latency");
+function tagged(kind: string) {
+	return object({ kind: stringLiteral(kind) });
+}
+export const TaggedSchema = tagged("x");
+const GroupA = { a: str(), shared: num() };
+const GroupB = { b: opt(bool()), shared: str() };
+const Overrides = {
+	a: opt(str()),
+	shared: opt(num()),
+} satisfies Properties;
+export const MergedSchema = object(mergeCompatProperties([GroupA, GroupB], Overrides));
+`
+	schemas := typeBoxSchemas{}
+	readTypeBoxSchemas(src, schemas)
+	aliases := map[string]*string{}
+	for _, name := range []string{"Level", "ModelLevel", "Rates", "Tier", "Cost", "Resize", "Limits", "Affinity", "Kwarg", "Holder", "Record", "Mapped", "Shaped", "Tagged", "Merged"} {
+		body := "Static<typeof " + name + "Schema>"
+		aliases[name] = &body
+	}
+	staticTypes(aliases, schemas)
+	for name, want := range map[string]string{
+		"Level":      `"low" | "high"`,
+		"ModelLevel": `"off" | "low" | "high"`,
+		"Rates":      `{ input: number; output: number }`,
+		"Tier":       `{ above: number; input: number; output: number }`,
+		"Cost":       `{ input: number; output: number; tiers?: Array<Tier> }`,
+		"Resize":     `{ width?: number }`,
+		"Limits":     `{ resize?: { width?: number } }`,
+		"Affinity":   `"a" | "b"`,
+		"Kwarg":      `string | number | boolean | null | { $var: "x"; omit?: boolean }`,
+		"Holder":     `{ routing?: Routing }`,
+		"Record":     `Record<string, string>`,
+		"Mapped":     `{ nick: string | null; any: unknown; by: Record<string, number> }`,
+		"Shaped":     `{ p50?: number }`,
+		"Tagged":     "Static<typeof TaggedSchema>",
+		"Merged":     `{ a?: string; shared?: number; b?: boolean }`,
+	} {
+		if got := *aliases[name]; got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
+}
+
+// TestStaticRefinementAliasIsItsBase (TB3): an alias that re-declares exactly the omitted members of a generic base, each typed through
+// Static, is judged as the base; another intersection, or members typed otherwise, is left for the intersection rules.
+func TestStaticRefinementAliasIsItsBase(t *testing.T) {
+	body := func(s string) *string { return &s }
+	aliases := map[string]*string{
+		"Refined": body(`Omit<
+	AgentTool<TParams, TDetails>,
+	"prepareArguments" | "execute"
+> & {
+	/** doc */
+	prepareArguments?: (args: unknown) => Static<TParams>;
+	execute: (toolCallId: string, params: Static<TParams>, signal?: AbortSignal) => Promise<AgentToolResult<TDetails>>;
+}`),
+		"OtherKeys":  body(`Omit<AgentTool<P, D>, "prepareArguments" | "execute"> & { prepareArguments?: (args: unknown) => Static<P> }`),
+		"PlainTypes": body(`Omit<AgentTool<P, D>, "execute"> & { execute: (id: string) => void }`),
+		"NotOmit":    body(`AgentTool<P, D> & { execute: (id: Static<P>) => void }`),
+	}
+	original := map[string]string{}
+	for name, b := range aliases {
+		original[name] = *b
+	}
+	staticRefinements(aliases)
+	for name, want := range map[string]string{
+		"Refined":    "AgentTool<TParams, TDetails>",
+		"OtherKeys":  original["OtherKeys"],
+		"PlainTypes": original["PlainTypes"],
+		"NotOmit":    original["NotOmit"],
+	} {
+		if got := *aliases[name]; got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
 		}
 	}
 }
@@ -1752,12 +1883,14 @@ func TestInvocationContextIsTheGoContext(t *testing.T) {
 	w("chord/src/types.ts", "export interface Context {\n\treadonly abortSignal: AbortSignal | undefined;\n}\n")
 	w("durable/src/a.ts", "import type { AttachedReplicatedState, Context, Draft } from \"@earendil-works/chord\";\n")
 	w("durable/src/b.ts", "import type {\n\tContext,\n\tJsonValue,\n} from \"@earendil-works/chord\";\n")
+	w("server/src/c.ts", "import type { Context } from \"@earendil-works/chord/context\";\n") // the subpath export is the same Context (durable harness/registry-reader.ts)
+	w("client/src/c.ts", "import type { Context } from \"@earendil-works/chord/context\";\nimport type { Context as Other } from \"@earendil-works/pi-ai\";\n")
 	w("coding-agent/src/a.ts", "import type { Context } from \"@earendil-works/chord\";\n")
 	w("coding-agent/src/b.ts", "import { type Context, type Model } from \"@earendil-works/pi-ai\";\n")
 	w("ai/src/types.ts", "export interface Context {\n\tsystemPrompt?: string;\n}\n")
 	w("env/src/a.ts", "import type { Logger } from \"@earendil-works/chord\";\n")
 	tab := tsAliases(root)
-	for pkg, want := range map[string]bool{"chord": true, "durable": true, "coding-agent": false, "ai": false, "env": false, "nope": false} {
+	for pkg, want := range map[string]bool{"chord": true, "durable": true, "server": true, "client": false, "coding-agent": false, "ai": false, "env": false, "nope": false} {
 		if got := tab.invocationContext(pkg); got != want {
 			t.Errorf("invocationContext(%s) = %v, want %v", pkg, got, want)
 		}
@@ -1784,6 +1917,34 @@ func WithAbortSignal(parent context.Context, signal context.Context) context.Con
 	with := callShape{Parameters: []param{{Name: "signal", Type: "AbortSignal"}, {Name: "context", Type: "Context"}}, Returns: "Context"}
 	if got := c.signature(with, sigs["WithAbortSignal"].(*types.Signature)); got.ok == no {
 		t.Errorf("S1c fallback: a Go function that takes a Context value of its own reads the parameter as ordinary: %v %s", got.ok, got.why)
+	}
+}
+
+// TestNextEntryDeclarationsAreKeptApartFromTheRoot: chord's root entry (src/errors.ts) and its next entry (src/next/data/errors.ts)
+// both export ChordErrorCode. Read under one package key the name was declared twice and every row that names it was undecided; each
+// entry reads its own declaration, and the next entry still reads the names it imports from the root.
+func TestNextEntryDeclarationsAreKeptApartFromTheRoot(t *testing.T) {
+	root := t.TempDir()
+	w := func(p, s string) { write(t, filepath.Join(root, ".upstream/current/packages", p), s) }
+	w("chord/src/errors.ts", "export type ChordErrorCode = \"invalid\" | \"forbidden\";\nexport type JsonValue = string | number;\n")
+	w("chord/src/next/data/errors.ts", "export type ChordErrorCode = \"invalid\" | \"missing\" | \"gone\";\n")
+	tab := tsAliases(root)
+	rootBody, nextBody := tab.lookup("chord", "ChordErrorCode"), tab.lookup("chord/next", "ChordErrorCode")
+	if rootBody == nil || *rootBody != `"invalid" | "forbidden"` {
+		t.Errorf("the root entry reads its own ChordErrorCode, got %v", rootBody)
+	}
+	if nextBody == nil || *nextBody != `"invalid" | "missing" | "gone"` {
+		t.Errorf("the next entry reads its own ChordErrorCode, got %v", nextBody)
+	}
+	if got := tab.lookup("chord/next", "JsonValue"); got == nil || *got != "string | number" {
+		t.Errorf("the next entry reads a name only the root declares, got %v", got)
+	}
+	d := &detector{l: &ledger{}, aliases: tab}
+	for id, want := range map[string]string{"pkg:chord/.#ChordErrorCode": `"invalid" | "forbidden"`, "pkg:chord/next#ChordErrorCode": `"invalid" | "missing" | "gone"`} {
+		got := d.checker(&upstreamEntry{ID: id}).alias("ChordErrorCode")
+		if got == nil || *got != want {
+			t.Errorf("%s: alias = %v, want %s", id, got, want)
+		}
 	}
 }
 

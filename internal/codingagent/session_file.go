@@ -487,7 +487,7 @@ func forEachPreparedLine(r io.Reader, batching lineBatching, visit func(line []b
 			return true
 		}
 		err := forEachJSONLLineOffset(r, func(line []byte, off int64) error {
-			batch.add(line, off)
+			batch.add(line, off, batching.batchBytes)
 			if len(batch.buf) >= batching.batchBytes && !send() {
 				return errIndexStopped
 			}
@@ -542,7 +542,12 @@ type batchLine struct {
 	off        int64
 }
 
-func (b *lineBatch) add(line []byte, off int64) {
+// add copies line into the batch, which forEachPreparedLine ends once it holds batchBytes, so it is sized for that and the line that crosses it in one allocation
+// rather than grown by doubling, which allocates about three times the bytes a batch holds for every batch not reused.
+func (b *lineBatch) add(line []byte, off int64, batchBytes int) {
+	if cap(b.buf)-len(b.buf) < len(line) {
+		b.buf = slices.Grow(b.buf, max(batchBytes, len(b.buf))+len(line)-len(b.buf))
+	}
 	start := len(b.buf)
 	b.buf = append(b.buf, line...)
 	b.lines = append(b.lines, batchLine{start: start, end: len(b.buf), off: off})

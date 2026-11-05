@@ -1,31 +1,42 @@
 # llama.cpp
 
-PiG supports the [llama.cpp](https://github.com/ggml-org/llama.cpp) router server. The router discovers multiple GGUF models and loads or unloads them on demand.
+PiG supports the [llama.cpp](https://llama.app) router server. The router discovers multiple GGUF models and loads or unloads them on demand.
 
-Use a current llama.cpp build with router support. Follow the [build instructions](https://github.com/ggml-org/llama.cpp/blob/master/docs/build.md) or install a [prebuilt release](https://github.com/ggml-org/llama.cpp/releases) for your platform.
+## Install llama.cpp
+
+Install llama.cpp with the [official installer](https://llama.app/docs/installation):
+
+```bash
+curl -LsSf https://llama.app/install.sh | sh
+```
+
+Verify the installation:
+
+```bash
+llama cli --version
+```
+
+See [llama.app](https://llama.app) for other installation methods, including package managers and building from source.
 
 ## Start the router
 
-Start `llama-server` without `--model` or `-m`. Passing a model starts single-model mode instead of router mode.
+Start `llama serve` without `--model`, `-m`, or `-hf`. Passing a model starts single-model mode instead of router mode. See the [llama.cpp server guide](https://llama.app/docs/serve#serving-multiple-models-router-mode) for router configuration.
 
 ```bash
-llama-server \
-  --models-dir ~/models \
+llama serve \
   --no-models-autoload \
-  --jinja \
   --host 127.0.0.1 \
   --port 8080 \
-  -ngl 999 \
+  -ngl all \
   -c 32768
 ```
 
 Important options:
 
-- `--models-dir ~/models` discovers local GGUF files.
 - `--no-models-autoload` keeps loading explicit through `/llama`.
 - `--jinja` enables compatible chat templates and tool calling.
-- `-ngl 999` offloads as many layers as possible to the GPU.
-- `-c 32768` sets the context window for each loaded model. Omit it to use the model's native context, which may require substantially more memory.
+- `-ngl all` offloads all layers to the GPU. Omit it to use automatic GPU offloading.
+- `-c 32768` sets the context size in tokens. Use `-c 0` for the model's full context window, which may require substantially more memory. Context is shared across parallel server slots.
 
 A single-file model can sit directly in the model directory. Put multimodal and multi-shard models in separate subdirectories:
 
@@ -41,7 +52,7 @@ A single-file model can sit directly in the model directory. Put multimodal and 
     └── large-model-Q4_K_M-00003-of-00003.gguf
 ```
 
-Restart the router after manually adding files. For per-model context sizes and other options, use [llama.cpp model presets](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md#model-presets). For settings tuned to a specific NVIDIA GPU and model, see [Run PiG with NVIDIA RTX and llama.cpp](nvidia-rtx-llama-cpp.md).
+Restart the router after manually adding files. The router also supports cached models and preset files via `--models-preset`, as described in the [server guide](https://llama.app/docs/serve#serving-multiple-models-router-mode).
 
 ## Configure PiG
 
@@ -63,7 +74,7 @@ export LLAMA_API_KEY=optional-secret
 pig
 ```
 
-If the server uses an API key, start `llama-server` with the matching `--api-key` value. Keep `--host 127.0.0.1` for local-only access.
+If the server uses an API key, start `llama serve` with the matching `--api-key` value. Keep `--host 127.0.0.1` for local-only access.
 
 ## Manage models
 
@@ -85,6 +96,32 @@ If other models are loaded, PiG asks whether to unload them first or keep them l
 Loaded and sleeping models appear in `/model`. A sleeping model wakes when you select it. With router autoload enabled, unloaded preset models also appear and load when you select them. With `--no-models-autoload`, load a model through `/llama` before you select it.
 
 If the router disconnects, `/llama` shows **Retry** and **Close**. Retry reconnects and refreshes model state without replaying the interrupted operation.
+
+## llama-swap
+
+[llama-swap](https://github.com/mostlygeek/llama-swap) puts several llama.cpp (or other) servers behind one OpenAI-compatible endpoint and starts the one a request names. It is not a llama.cpp router, so `/llama` does not manage it. llama-swap lists its models at `/models` the way a router does, but it has no endpoint to load or unload one: it loads a model when a request names it in `model`, and by default stops the model it replaces. Pi's `/llama` behaves the same way. Against llama-swap, PiG's `/llama` says so instead of "llama.cpp returned HTTP 404" (D212).
+
+Use llama-swap as a custom provider instead, the way you would use Ollama or vLLM. Add it to `~/.pig/agent/models.json`, with one `models` entry for each model ID in your llama-swap configuration:
+
+```json
+{
+  "providers": {
+    "llama-swap": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "llama-swap",
+      "models": [
+        { "id": "qwen3.8-27b-q4-split-layer", "contextWindow": 131072 },
+        { "id": "qwen3.8-flash-next-q2", "contextWindow": 32768 }
+      ]
+    }
+  }
+}
+```
+
+The key can be any text unless your llama-swap sets `apiKeys`; then use one of them. Set `contextWindow` to the context size each model starts with, so the footer's context percentage is right.
+
+Run `/model` and pick a model. The first request after a switch makes llama-swap start that model, so the reply waits for the start and streams llama-swap's loading progress as reasoning text first; a model that fails to start ends the reply with llama-swap's error. To unload models yourself, call llama-swap directly, for example `curl -X POST http://127.0.0.1:8080/api/models/unload`. The other `models.json` fields are described on the models page, under "Configure a compatible endpoint".
 
 ## Thinking levels
 
@@ -121,6 +158,7 @@ curl http://127.0.0.1:8080/models
 - **Model missing from `/model` with `--no-models-autoload`:** Load it with `/llama` first.
 - **Load fails or uses too much memory:** Lower `-c` or unload another model.
 - **Server is not in router mode:** Start it without `--model`, `-m`, or `-hf`.
+- **`/llama` says it cannot load or unload models on llama-swap:** The server is [llama-swap](#llama-swap), not a llama.cpp router. Configure it as a `models.json` provider and pick models with `/model`.
 
 To remove the `llama.cpp` provider and `/llama`, disable `llama.cpp` under Built-in in `pig config`, or set `"extensions": ["-builtin:llama.cpp"]` in [settings](settings.md).
 

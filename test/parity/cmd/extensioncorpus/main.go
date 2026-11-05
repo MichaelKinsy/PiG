@@ -205,6 +205,7 @@ func validateExample(parent context.Context, root, binary, corpusRoot, path stri
 
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
+	//nolint:gosec // G204 (class c): program is the -pig-bin operator flag (default bin/pig-parity under root); args are install, an absolute corpus path, and fixed flags.
 	command := exec.CommandContext(ctx, binary, "install", path, "--validate-only", "--json")
 	command.Dir = root
 	command.Env = corpusEnvironment(home)
@@ -298,6 +299,7 @@ func hashFile(path string) (string, error) {
 }
 
 func commandVersion(name string, args ...string) string {
+	//nolint:gosec // G204 (class a): commandVersion is only called with the literal "node","--version".
 	output, err := exec.Command(name, args...).Output()
 	if err != nil {
 		return "unavailable"

@@ -188,54 +188,57 @@ type intro struct {
 
 // introductions maps each "### Fixed" bullet ever added to the changelog files after base to the first commit that added it. A bullet that the fold of a fragment moves into CHANGELOG.md keeps its first commit. The slice lists the bullets in the order of their first commits.
 func introductions(r repo, base, since string) (map[string]intro, []string, error) {
-	first := map[string]intro{}
-	var order []string
+	scan := &introScan{since: since, first: map[string]intro{}}
 	// Bullets a merge brings in, such as the changelog of a pull request merged from the public repository, are found in a second pass; a bullet a commit added keeps that commit.
 	for _, mode := range [][]string{{"--no-merges"}, {"--merges", "-m", "--first-parent"}} {
 		args := append([]string{"log", "--reverse", "-U100000", "--format=@@%H", "-p"}, mode...)
-		out, err := r.git(append(args, base+"..HEAD", "--", "CHANGELOG.md", "changelog.d")...)
-		if err != nil {
+		if err := r.gitLines(append(args, base+"..HEAD", "--", "CHANGELOG.md", "changelog.d"), scan.line); err != nil {
 			return nil, nil, err
 		}
-		order = scanIntroductions(out, since, first, order)
+		scan.record()
 	}
-	return first, order, nil
+	return scan.first, scan.order, nil
 }
 
-func scanIntroductions(out, since string, first map[string]intro, order []string) []string {
-	var hash string
-	var file *scanner
-	fragment := false
-	record := func() {
-		if file == nil {
-			return
-		}
-		file.flush()
-		for _, b := range file.out {
-			if _, seen := first[b.Text]; b.Added && !seen {
-				first[b.Text] = intro{Hash: hash, Fragment: fragment}
-				order = append(order, b.Text)
-			}
-		}
-		file = nil
+// introScan reads the patch text of git log -p one line at a time and records the first commit that added each bullet.
+type introScan struct {
+	since    string
+	first    map[string]intro
+	order    []string
+	hash     string
+	file     *scanner
+	fragment bool
+}
+
+// record ends the file being read and records the bullets it added that no earlier commit did.
+func (s *introScan) record() {
+	if s.file == nil {
+		return
 	}
-	for l := range strings.SplitSeq(out, "\n") {
-		switch {
-		case strings.HasPrefix(l, "@@") && len(l) == 42:
-			record()
-			hash = l[2:]
-		case strings.HasPrefix(l, "diff --git "):
-			record()
-		case strings.HasPrefix(l, "+++ "):
-			path := strings.TrimPrefix(l, "+++ b/")
-			if path != "/dev/null" && !strings.HasPrefix(l, "+++ /dev") {
-				file = &scanner{since: since}
-				fragment = strings.HasPrefix(path, "changelog.d/")
-			}
-		case file != nil && l != "" && (l[0] == ' ' || l[0] == '+') && !strings.HasPrefix(l, "+++ "):
-			file.line(l[1:], fragment, l[0] == '+')
+	s.file.flush()
+	for _, b := range s.file.out {
+		if _, seen := s.first[b.Text]; b.Added && !seen {
+			s.first[b.Text] = intro{Hash: s.hash, Fragment: s.fragment}
+			s.order = append(s.order, b.Text)
 		}
 	}
-	record()
-	return order
+	s.file = nil
+}
+
+func (s *introScan) line(l string) {
+	switch {
+	case strings.HasPrefix(l, "@@") && len(l) == 42:
+		s.record()
+		s.hash = l[2:]
+	case strings.HasPrefix(l, "diff --git "):
+		s.record()
+	case strings.HasPrefix(l, "+++ "):
+		path := strings.TrimPrefix(l, "+++ b/")
+		if path != "/dev/null" && !strings.HasPrefix(l, "+++ /dev") {
+			s.file = &scanner{since: s.since}
+			s.fragment = strings.HasPrefix(path, "changelog.d/")
+		}
+	case s.file != nil && l != "" && (l[0] == ' ' || l[0] == '+') && !strings.HasPrefix(l, "+++ "):
+		s.file.line(l[1:], s.fragment, l[0] == '+')
+	}
 }

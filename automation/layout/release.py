@@ -309,6 +309,8 @@ def apply(root):
     if fragments.is_dir() and not any(fragments.iterdir()):fragments.rmdir()
     if (root/'docs/knowledge-graph/pig.graph.json').is_file():
         subprocess.run(['python3','-B','automation/gen/gen-knowledge-graph.py'],cwd=root,check=True)
+    if (root/'internal/pigdocs/bundle-manifest.json').is_file():
+        subprocess.run(['python3','-B','automation/gen/gen-docs-bundle.py'],cwd=root,check=True)
     print(f'layout-release: moved {sum(moved(p)!=p for p in paths) if relocating else 0} tracked files; rewrote {len(changes)} files')
 
 

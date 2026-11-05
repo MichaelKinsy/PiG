@@ -14,7 +14,7 @@ import (
 func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 	t.Parallel()
 	cases := allHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	first := conformanceSystemPromptOptions()
@@ -83,7 +83,7 @@ func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 func TestMessageUpdateDeliversEveryDeltaInOrderAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	cases := sdkHarnessCases()
-	for _, language := range []string{"go", "rust", "python"} {
+	for _, language := range []string{"go", "rust", "python", "lisp"} {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	const deltas = 48

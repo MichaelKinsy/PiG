@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { test } from "node:test"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { Type } from "typebox"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { Harness } from "../src/facade/harness.ts"
@@ -78,18 +78,20 @@ async function turns(count: number, thin: boolean): Promise<Counts[]> {
   return out
 }
 
-test("a line job's statements ride on its hops chain: no hopped step carries a commit", async () => {
+// The group-commit core (ABI section 5.5) applies the statements of a Storage call in the step of the wait that ends at the tick its
+// receipts come: a `hopped` step. The chains carry no commits any more (the host side of `at` stays for a core that parks them).
+test("a line job's statements leave in the hopped step of the wait where its Storage receipts come", async () => {
   const [, ...warm] = await turns(4, true)
   assert.ok(warm.every(w => w.commits > 0), "a turn commits")
-  for (const w of warm) assert.equal(w.hoppedCommit, 0, "the commit a line job parks for its COMMIT hop is applied by its chain, not by a step of its own")
+  for (const w of warm) assert.equal(w.hoppedCommit, w.commits, "every commit of the turn is applied by a hopped step")
 })
 
 test("warm turns run the same events: equal counts, under the ceilings of the hop work", async () => {
   const [, a, b, c] = await turns(4, true)
   for (const w of [b!, c!]) assert.deepEqual({ ...w, statements: w.statements.length }, { ...a!, statements: a!.statements.length })
-  assert.ok(a!.steps <= 980, `${a!.steps} steps per warm turn (1049 before)`)
-  assert.ok(a!.hopped <= 830, `${a!.hopped} hopped events per warm turn (898 before)`)
-  assert.equal(a!.hopTicks, 6776, "the chains spend the microtask hops Pi's awaits spend: fusing chains moves no tick (6,776 at Pi 1.3.0)")
+  assert.ok(a!.steps <= 2880, `${a!.steps} steps per warm turn (1049 before; 1018 with the span hops of Pi 6c384aa3; 1036 with the afterRun and turn-limit reads of Pi e7a0df27; 2844 with the group-commit Loop of Pi b556cfe5, whose line stages (free, floor, publication, delivery) are chains of their own)`)
+  assert.ok(a!.hopped <= 2720, `${a!.hopped} hopped events per warm turn (898 before; 875 with the span hops of Pi 6c384aa3; 893 with the reads of Pi e7a0df27; 2684 with the group-commit Loop of Pi b556cfe5)`)
+  assert.equal(a!.hopTicks, 11610, "the chains spend the microtask hops Pi's awaits spend: fusing chains moves no tick (6,776 at Pi 1.3.0, 6,900 at Pi 6c384aa3: the spans of submit and of each task phase, and runtime.commit's return; 6,935 at Pi e7a0df27: finishToolRound's `await runtime.agent` for maxTurns in each of the eight rounds, and the answer's asksAfterRun; 11,610 at Pi b556cfe5 (the core's ticks as the F-ticks rows pin them): the group-commit Session's Storage call, receipts, publication and fences between the commits; the F-ticks rows, equal to Pi's, pin the same hops)")
 })
 
 test("the hop export answers an integer for a step the host would not decode, and the run is the same either way", async () => {

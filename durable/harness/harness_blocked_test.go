@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 )
 
 type blockedState struct {
@@ -32,15 +33,15 @@ type failOnceCommit struct {
 	err    error
 }
 
-func (s *failOnceCommit) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (s *failOnceCommit) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	s.mu.Lock()
 	fail := !s.failed
 	s.failed = true
 	s.mu.Unlock()
 	if fail {
-		return 0, s.err
+		return durable.CommitResult{}, s.err
 	}
-	return s.Storage.Commit(ctx, writes, adopt)
+	return s.Storage.Commit(ctx, batches, receive)
 }
 
 func TestBlockedTasksOnTheReference(t *testing.T) {
@@ -70,7 +71,7 @@ func TestBlockedTasksOnTheReference(t *testing.T) {
 		completing := *record
 		completing.Memos = nil
 		completing.State = durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskCompleting, Outcome: &durable.TaskOutcome[durable.JsonValue]{Status: durable.OutcomeCompleted, Result: &completed}}
-		if _, err := raw.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: completing}}, func(durable.Seq) {}); err != nil {
+		if _, err := durabletest.CommitWrites(testContext, raw, []durable.StorageWrite{durable.TaskWrite{Value: completing}}); err != nil {
 			t.Fatal(err)
 		}
 		if err := raw.Close(testContext); err != nil {
@@ -90,7 +91,7 @@ func TestBlockedTasksOnTheReference(t *testing.T) {
 			t.Fatal(err)
 		}
 		<-harness.Closed()
-		if end := harness.End(); end.Reason != durable.SessionEndFailed {
+		if end := harness.End(); end.Kind != durable.SessionEndFailed {
 			t.Fatalf("session end %+v, want failed", end)
 		}
 		// The host was told work is underway, and never that it ended: its recovery alarm stays.
@@ -171,11 +172,11 @@ func TestBlockedTasksOnTheReference(t *testing.T) {
 func tkMarkAdmitted(t *testing.T, harness Harness, id durable.TaskId) <-chan tkAbortResult {
 	t.Helper()
 	aborting := make(chan tkAbortResult, 1)
-	queueOnLineIn(t, "TaskScheduler).Abort", func() <-chan struct{} {
+	queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			result, err := harness.AbortTask(testContext, id)
+			result, err := harness.AbortTask(ctx, id)
 			aborting <- tkAbortResult{result: result, err: err}
 		}()
 		return done

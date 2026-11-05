@@ -110,7 +110,7 @@ func codemodeRenderCall(args json.RawMessage, _ extension.Theme, context extensi
 	startToolTimer(context)
 	// The code includes the `// @options:` line, so options show as part of the script.
 	code, valid := codemodeCodeArg(args)
-	title := codemodeFg("toolTitle", "\x1b[1mcodemode\x1b[22m")
+	title := codemodeFg("toolTitle", tui.ChalkBold("codemode"))
 	component := codemodeContainer(context.LastComponent)
 	if !valid {
 		component.Add(codemodeTextComponent(title + " " + codemodeFg("error", "[invalid arg]")))
@@ -118,7 +118,11 @@ func codemodeRenderCall(args json.RawMessage, _ extension.Theme, context extensi
 	}
 	component.Add(codemodeTextComponent(title))
 	if code != "" {
-		highlighted := strings.Join(tui.HighlightCode(replaceTabs(jsstring.TrimEnd(strings.ReplaceAll(code, "\r", ""))), "javascript"), "\n")
+		// Progress, timer ticks and expanding redraw the call, so the row keeps the script's highlighting.
+		state := builtInState(context)
+		state.mu.Lock()
+		highlighted := strings.Join(state.highlighter.Highlight(replaceTabs(jsstring.TrimEnd(strings.ReplaceAll(code, "\r", ""))), "javascript"), "\n")
+		state.mu.Unlock()
 		if context.Expanded {
 			component.Add(codemodeTextComponent(highlighted))
 		} else {

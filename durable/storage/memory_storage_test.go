@@ -31,9 +31,9 @@ func TestMemoryStorageConformance(t *testing.T) {
 func TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit(t *testing.T) {
 	ctx := context.Background()
 	memory := storage.NewMemoryStorage()
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	entryId := durable.IdFromNumber[durable.EntryId](2)
@@ -136,5 +136,63 @@ func TestCreateStorageConformanceDetectsABrokenStorage(t *testing.T) {
 	}()
 	if recorder.failure == "" {
 		t.Fatalf("case %q passed against a storage that mints the wrong ID", broken[0].Name)
+	}
+}
+
+// failingApplyWrite is a write that prepares like an entry write but that apply cannot index: the type switch of apply
+// meets an unknown type and panics, where Pi's test replaces prepared.apply with a function that throws.
+type failingApplyWrite struct{ durable.EntryWrite }
+
+// memory-storage.test.ts "delivers the receipts of the batches applied before one whose apply throws, then rejects".
+// Pi overrides prepareCommit so the second batch's apply throws; Go reaches the same state with a write apply cannot
+// index, and a throw is a panic that Commit propagates after the receipts.
+func TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects(t *testing.T) {
+	ctx := context.Background()
+	memory := storage.NewMemoryStorage()
+	root, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{
+		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstNumber, err := memory.MintId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondNumber, err := memory.MintId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, second := durable.IdFromNumber[durable.EntryId](firstNumber), durable.IdFromNumber[durable.EntryId](secondNumber)
+	entry := func(id durable.EntryId) durable.EntryWrite {
+		return durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "m"}}
+	}
+	type receipt struct {
+		index int
+		seq   durable.Seq
+	}
+	var receipts []receipt
+	var thrown any
+	func() {
+		defer func() { thrown = recover() }()
+		_, _ = memory.Commit(ctx, [][]durable.StorageWrite{
+			{entry(first)},
+			{failingApplyWrite{entry(second)}},
+		}, func(index int, seq durable.Seq) { receipts = append(receipts, receipt{index, seq}) })
+	}()
+	// Pi's `rejects.toBe(failure)`: the very error its apply threw; here the panic of apply's own type switch.
+	if want := "durable storage: unresolved entry write"; thrown != want {
+		t.Fatalf("Commit threw %#v, want %q", thrown, want)
+	}
+	if want := []receipt{{0, root + 1}}; !reflect.DeepEqual(receipts, want) {
+		t.Fatalf("receipts = %v, want %v", receipts, want)
+	}
+	stored, err := memory.Entry(ctx, first)
+	if err != nil || stored == nil || stored.CommitSeq != root+1 {
+		t.Fatalf("first entry = %+v, %v, want stored at commit seq %d", stored, err, root+1)
+	}
+	missing, err := memory.Entry(ctx, second)
+	if err != nil || missing != nil {
+		t.Fatalf("second entry = %+v, %v, want undefined", missing, err)
 	}
 }

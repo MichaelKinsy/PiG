@@ -43,10 +43,10 @@ func TestTheContextSummaryNamesTheSystemMessagesAndTheEstimate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := `{"tail":5,"head":null,"system":[{"role":"system","content":"be brief","timestamp":2}],"tokens":140}`; got != want {
+	if want := `{"tail":5,"head":null,"system":[{"role":"system","content":"be brief","timestamp":2}],"tokens":140,"owes":true}`; got != want {
 		t.Fatalf("summary\n%s\nwant\n%s", got, want)
 	}
-	if got, _ := r.contextRead(store.TextContextSummary, 1, 5, 0, 0, 0); !strings.HasSuffix(got, `"tokens":0}`) {
+	if got, _ := r.contextRead(store.TextContextSummary, 1, 5, 0, 0, 0); !strings.HasSuffix(got, `"tokens":0,"owes":true}`) {
 		t.Fatalf("summary without the estimate %s", got)
 	}
 }
@@ -64,7 +64,7 @@ func TestTheContextReadsCheckTheHeadMarkerTheCoreNamed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := `{"tail":4,"head":4,"entries":[[4,"pi.compaction"],[3,"pi.user"]],"system":[],"tokens":0}`; got != want {
+	if want := `{"tail":4,"head":4,"entries":[[4,"pi.compaction"],[3,"pi.user"]],"system":[],"tokens":0,"owes":true}`; got != want {
 		t.Fatalf("summary\n%s\nwant\n%s", got, want)
 	}
 	messages, err := r.contextRead(store.TextContextMessages, 1, 4, 4, 3)

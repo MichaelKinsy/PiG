@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"maps"
-	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -31,8 +30,24 @@ type liveOps struct {
 
 func observeLiveOps(harness Harness) *liveOps {
 	collected := &liveOps{}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind == "pi.live" && len(change.Ops) > 0 {
+				collected.mu.Lock()
+				collected.commits = append(collected.commits, slices.Clone(change.Ops))
+				collected.mu.Unlock()
+			}
+		}
+	})
+	return collected
+}
+
+// observeStoredLiveOps collects the pi.live operations of the stored publications, as Pi's observeCommits: a held
+// (deferred) operation is part of the stored commit that takes it, first.
+func observeStoredLiveOps(harness Harness) *liveOps {
+	collected := &liveOps{}
+	observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
+		for _, change := range documentValues(publication.Changes) {
 			if change.Record.Kind == "pi.live" && len(change.Ops) > 0 {
 				collected.mu.Lock()
 				collected.commits = append(collected.commits, slices.Clone(change.Ops))
@@ -143,7 +158,7 @@ func TestLiveDeltas(t *testing.T) {
 		addTool(t, setup.Registry, noopTool("noop"))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("noop", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		ops := observeLiveOps(harness)
+		ops := observeStoredLiveOps(harness)
 		must(submitInput(t, root, "go").Wait(testContext))
 		tasks := conversationTasks(t, harness, root)
 		ids := func(kind string) []durable.TaskId {
@@ -164,21 +179,27 @@ func TestLiveDeltas(t *testing.T) {
 			}
 		}
 		commits := ops.all()
-		if len(commits) != 8 {
+		if len(commits) != 5 {
 			t.Fatalf("commits = %s", jsonText(t, commits))
 		}
-		expectLike(t, commits[0], jsonText(t, []any{[]any{"s", []any{"run"}, map[string]any{"taskId": generations[0], "inputs": []any{"$number"}}}}))
-		expectLike(t, commits[1], `[["s",["generation"],{"attempt":1}]]`)
-		expectContainsLike(t, commits[2], jsonText(t, []any{[]any{"d", []any{"generation"}}, []any{"s", []any{"tools"}, []any{map[string]any{"callId": "c1", "name": "noop", "taskId": tools[0], "status": "pending"}}}}))
-		expectLike(t, commits[3], `[["s",["tools",0,"status"],"running"]]`)
-		expectContainsLike(t, commits[4], jsonText(t, []any{[]any{"s", []any{"tools", 0, "status"}, "done"}, []any{"s", []any{"tools", 0, "entry"}, result}}))
-		expectContainsLike(t, commits[5], jsonText(t, []any{[]any{"d", []any{"tools"}}, []any{"s", []any{"run", "taskId"}, generations[1]}}))
-		expectLike(t, commits[6], `[["s",["generation"],{"attempt":1}]]`)
-		expectContainsLike(t, commits[7], `[["d",["run"]],["d",["generation"]]]`)
-		for _, index := range []int{2, 4, 5} {
-			if len(commits[index]) != 2 {
-				t.Fatalf("commit %d = %s, want two operations", index, jsonText(t, commits[index]))
-			}
+		// submission
+		expectLike(t, commits[0], jsonText(t, []any{[]any{"s", []any{"run"}, map[string]any{"taskId": generations[0], "inputs": []any{"$number"}, "turns": 0, "first": "$number"}}}))
+		// the generation starts its tool round and keeps the run, counting the round as one turn (#11043); the request's
+		// attempt is deferred, so it is stored here, its held operation first
+		expectLike(t, commits[1], jsonText(t, []any{
+			[]any{"s", []any{"generation"}, map[string]any{"attempt": 1}},
+			[]any{"s", []any{"tools"}, []any{map[string]any{"callId": "c1", "name": "noop", "taskId": tools[0], "status": "pending"}}},
+			[]any{"d", []any{"generation"}},
+			[]any{"s", []any{"run", "turns"}, 1},
+		}))
+		// result: the running status is deferred like progress, so it is stored with the result, folded into its write
+		expectLike(t, commits[2], jsonText(t, []any{[]any{"s", []any{"tools", 0, "status"}, "done"}, []any{"s", []any{"tools", 0, "entry"}, result}}))
+		// the generation's tools phase hands the run to the next generation
+		expectContainsLike(t, commits[3], jsonText(t, []any{[]any{"d", []any{"tools"}}, []any{"s", []any{"run", "taskId"}, generations[1]}}))
+		// the answer ends the run, with the second request's deferred attempt first
+		expectLike(t, commits[4], `[["s",["generation"],{"attempt":1}],["d",["run"]],["d",["generation"]]]`)
+		if len(commits[3]) != 2 {
+			t.Fatalf("commit 3 = %s, want two operations", jsonText(t, commits[3]))
 		}
 		closeHarness(t, harness)
 	})
@@ -310,23 +331,26 @@ func TestLiveDeltas(t *testing.T) {
 		}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("first", map[string]any{}, &ai.FauxToolCallOptions{ID: "a"}), ai.FauxToolCall("second", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})
 		setup.SetSettings(func(settings *HarnessSettings) { settings.ToolExecution = durable.ToolExecutionSequential })
+		// Store deferred progress within each tool's run, so running slots reach Storage as deltas.
+		setup.SetSettings(func(settings *HarnessSettings) { settings.Progress = &ProgressPolicyPatch{PersistWithinMs: new(50.0)} })
 		harness, root := openChat(t, store, setup)
 		var mu sync.Mutex
 		values := map[durable.Seq]LiveState{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range documentChanges(publication.Changes) {
-				if change.Record.Kind != "pi.live" {
+				record := documentRecordOf(change)
+				if record.Kind != "pi.live" {
 					continue
 				}
-				store.setLive(change.Record.Id)
-				if change.Value != nil {
-					value := must(durable.FromJsonValue[LiveState](change.Value))
+				store.setLive(record.Id)
+				if changed, ok := change.(durable.DocumentChange); ok {
+					value := must(durable.FromJsonValue[LiveState](changed.Value))
 					mu.Lock()
 					values[publication.Seq] = value
 					mu.Unlock()
 				}
 			}
-		})
+		}})
 		must(submitInput(t, root, "go").Wait(testContext))
 		nothingRuns := func(value LiveState) bool {
 			return value.Generation == nil && !slices.ContainsFunc(value.Tools, func(slot ToolSlot) bool { return slot.Status == ToolSlotRunning })
@@ -339,7 +363,11 @@ func TestLiveDeltas(t *testing.T) {
 		mu.Unlock()
 		bases, deltas := 0, 0
 		for seq, kind := range written {
-			if (kind == "base") != nothingRuns(observed[seq]) {
+			value, seen := observed[seq]
+			if !seen {
+				t.Fatalf("commit %d wrote pi.live as a %s but published no pi.live value", seq, kind)
+			}
+			if (kind == "base") != nothingRuns(value) {
 				t.Fatalf("commit %d wrote a %s for %s", seq, kind, jsonText(t, observed[seq]))
 			}
 			if kind == "base" {
@@ -355,28 +383,20 @@ func TestLiveDeltas(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	// harness-live-deltas.test.ts:343 it("starts calls the request did not offer as done and marks a faulted tool's slot done without an entry")
-	t.Run("starts calls the request did not offer as done and marks a faulted tool's slot done without an entry", func(t *testing.T) {
+	// harness-live-deltas.test.ts:357 it("starts calls the request did not offer as flagged tasks and marks a faulted tool's slot done without an entry")
+	t.Run("starts calls the request did not offer as flagged tasks and marks a faulted tool's slot done without an entry", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "bad", Description: "bad", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
-			// Not strict JSON: the result commit fails and the scheduler faults the task. A Go value cannot hold a
-			// function, so a non-finite number stands for upstream's function.
+			// Not strict JSON: the result commit fails and the scheduler faults the task.
 			Execute: func(context.Context, any, durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
-				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": math.NaN()}, HasDetails: true}, nil
+				return durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Details: map[string]any{"fn": func() int { return 1 }}, HasDetails: true}, nil
 			},
 		}))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("ghost", map[string]any{}, &ai.FauxToolCallOptions{ID: "g"}), ai.FauxToolCall("bad", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		ops := observeLiveOps(harness)
 		must(submitInput(t, root, "go").Wait(testContext))
-		var ghostResult durable.EntryId
-		for _, entry := range allEntries(t, root) {
-			if entry.Kind == "pi.tool-result" {
-				ghostResult = entry.Id
-				break
-			}
-		}
 		commits := ops.all()
 		var handover []durable.Op
 		for _, commit := range commits {
@@ -385,8 +405,9 @@ func TestLiveDeltas(t *testing.T) {
 				break
 			}
 		}
+		// #11043: an unoffered call gets a task too, flagged on its slot.
 		expectContainsLike(t, handover, jsonText(t, []any{[]any{"s", []any{"tools"}, []any{
-			map[string]any{"callId": "g", "name": "ghost", "status": "done", "entry": ghostResult},
+			map[string]any{"callId": "g", "name": "ghost", "taskId": "$number", "status": "pending", "unoffered": true},
 			map[string]any{"callId": "b", "name": "bad", "taskId": "$number", "status": "pending"},
 		}}}))
 		// The fault cleanup writes only the status.
@@ -402,8 +423,8 @@ func TestLiveDeltas(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		var handover *durable.CommitPublication
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				tools, _ := change.Value.Value("tools").([]any)
 				mu.Lock()
 				if change.Record.Kind == "pi.live" && len(tools) == 2 && handover == nil {
@@ -411,7 +432,7 @@ func TestLiveDeltas(t *testing.T) {
 				}
 				mu.Unlock()
 			}
-		})
+		}})
 		must(submitInput(t, root, "go").Wait(testContext))
 		mu.Lock()
 		published := handover
@@ -469,7 +490,7 @@ func TestLiveDeltas(t *testing.T) {
 			return must(LiveDoc.AnyDefinition().CheckpointWhen(object, nil, durable.CheckpointInfo{DeltasSinceBase: 1000}))
 		}
 		slot := func(status string) string { return `{"callId":"c","name":"n","status":"` + status + `"}` }
-		run := `"run":{"taskId":1,"inputs":[]}`
+		run := `"run":{"taskId":1,"inputs":[],"turns":0}`
 		if !base(`{}`) || base(`{`+run+`,"generation":{"attempt":1}}`) || !base(`{`+run+`,"tools":[`+slot("pending")+`,`+slot("done")+`]}`) ||
 			base(`{`+run+`,"tools":[`+slot("done")+`,`+slot("running")+`]}`) || !base(`{`+run+`}`) {
 			t.Fatal("pi.live checkpoint predicate disagrees with whether something runs")
@@ -491,23 +512,26 @@ func (store *recordingStorage) setLive(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *recordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *recordingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	store.mu.Lock()
 	liveId := store.liveId
 	store.mu.Unlock()
-	kind := ""
-	for _, write := range writes {
-		if change, ok := write.(durable.DocumentChangeWrite); ok && liveId != nil && change.Id == *liveId {
-			kind = string(change.Content.Kind)
+	kinds := make([]string, len(batches))
+	for index, writes := range batches {
+		for _, write := range writes {
+			if change, ok := write.(durable.DocumentChangeWrite); ok && liveId != nil && change.Id == *liveId {
+				kinds[index] = string(change.Content.Kind)
+			}
 		}
 	}
-	seq, err := store.MemoryStorage.Commit(ctx, writes, adopt)
-	if err == nil && kind != "" {
-		store.mu.Lock()
-		store.written[seq] = kind
-		store.mu.Unlock()
-	}
-	return seq, err
+	return store.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {
+		if kinds[index] != "" {
+			store.mu.Lock()
+			store.written[seq] = kinds[index]
+			store.mu.Unlock()
+		}
+		receive(index, seq)
+	})
 }
 
 func itoa(value int) string { return strconv.Itoa(value) }

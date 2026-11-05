@@ -25,6 +25,105 @@ type toolRenderSession struct {
 	card       string
 	conn       *Conn
 	invalidate atomic.Pointer[func()]
+	// order runs the card's render requests one at a time in the order the card asked for them.
+	order renderOrder
+}
+
+// renderOrder makes a card's renderers reach the extension as upstream runs them. ToolExecutionComponent.updateDisplay runs renderCall and then
+// renderResult synchronously on one card, so a result renderer always reads the state the call renderer just wrote. The card's proxies each run their
+// own request loop, and an extension serves requests concurrently, so without this order a result render overtakes the call render that precedes it
+// (a card whose call and result are both known at its first frame: a resumed session, a tool that finishes before the first frame).
+//
+// A proxy that needs a request says so with want, from the thread that runs the card's renderers, so the order is the order the card asked in; the
+// proxy's loop then waits for its turn. A turn is taken when the proxy's request is the oldest wanted and no other request of the card is running, and
+// it ends when the answer arrived or the renderer inactivity boundary (D56) abandoned the request: a call renderer that fails or stalls holds the
+// result renderer back for the length of its request at most, never for good. The zero value is ready to use.
+type renderOrder struct {
+	mu      sync.Mutex
+	next    uint64
+	wanted  map[*toolRenderProxy]uint64
+	busy    bool
+	changed chan struct{}
+}
+
+// want records that p needs a request, after every request wanted so far. A proxy that already waits moves behind them, for its newer inputs are
+// the ones the card asked for last.
+func (o *renderOrder) want(p *toolRenderProxy) {
+	o.mu.Lock()
+	o.next++
+	if o.wanted == nil {
+		o.wanted = make(map[*toolRenderProxy]uint64)
+	}
+	o.wanted[p] = o.next
+	o.wake()
+	o.mu.Unlock()
+}
+
+// wait blocks until it is p's turn and takes it. The request p was wanted for is consumed: a newer want is a request of its own.
+func (o *renderOrder) wait(p *toolRenderProxy) {
+	for {
+		o.mu.Lock()
+		if o.turn(p) {
+			o.busy = true
+			o.mu.Unlock()
+			return
+		}
+		if o.changed == nil {
+			o.changed = make(chan struct{})
+		}
+		changed := o.changed
+		o.mu.Unlock()
+		<-changed
+	}
+}
+
+// turn reports whether p may send its request now and, when it may, consumes the want. A proxy with no want (its loop runs only for one) is wanted
+// now, after the others, so a loop never waits for a turn that nothing will grant.
+func (o *renderOrder) turn(p *toolRenderProxy) bool {
+	if o.busy {
+		return false
+	}
+	seq, ok := o.wanted[p]
+	if !ok {
+		if o.wanted == nil {
+			o.wanted = make(map[*toolRenderProxy]uint64)
+		}
+		o.next++
+		seq = o.next
+		o.wanted[p] = seq
+	}
+	for _, other := range o.wanted {
+		if other < seq {
+			return false
+		}
+	}
+	delete(o.wanted, p)
+	return true
+}
+
+// clear drops what p still wants: its loop ends having rendered inputs newer than the want that was left.
+func (o *renderOrder) clear(p *toolRenderProxy) {
+	o.mu.Lock()
+	delete(o.wanted, p)
+	o.wake()
+	o.mu.Unlock()
+}
+
+// leave ends the turn p took.
+func (o *renderOrder) leave() {
+	o.mu.Lock()
+	o.busy = false
+	o.wake()
+	o.mu.Unlock()
+}
+
+// wake tells the waiting loops that the order changed. o.mu is held.
+func (o *renderOrder) wake() {
+	if o.changed != nil {
+		//portlint:allow doubleclose every caller holds o.mu, and the channel is set to nil as it is closed, so each channel is closed once
+		close(o.changed)
+		o.changed = nil
+	}
 }
 
 // toolRenderSessions routes an extension's invalidate notifications to live
@@ -237,6 +336,7 @@ func (p *toolRenderProxy) update(payload RenderToolPayload) {
 	start := false
 	if p.width > 0 {
 		p.generation++
+		p.session.order.want(p)
 		if !p.requesting {
 			p.requesting = true
 			start = true
@@ -255,6 +355,7 @@ func (p *toolRenderProxy) Render(width int) []string {
 	if width > 0 && width != p.width {
 		p.width = width
 		p.generation++
+		p.session.order.want(p)
 		if !p.requesting {
 			p.requesting = true
 			start = true
@@ -262,6 +363,7 @@ func (p *toolRenderProxy) Render(width int) []string {
 	}
 	// pig divergence (D56): the first frame after an abandoned render's retry came due asks the extension again.
 	if p.retry.takeDue() && !start && !p.requesting && p.width > 0 {
+		p.session.order.want(p)
 		p.requesting = true
 		start = true
 	}
@@ -313,10 +415,12 @@ func (p *toolRenderProxy) RenderNow(width int) (lines []string, failed, answered
 // invalidation, which schedules a new generation through update.
 func (p *toolRenderProxy) Invalidate() {}
 
-// requestLoop renders the newest generation. A request that a newer
-// generation overtook is discarded and the loop renders again.
+// requestLoop renders the newest generation, when the card's order gives it
+// the turn. A request that a newer generation overtook is discarded and the
+// loop renders again.
 func (p *toolRenderProxy) requestLoop() {
 	for {
+		p.session.order.wait(p)
 		p.mu.Lock()
 		generation := p.generation
 		payload := p.payload
@@ -325,7 +429,7 @@ func (p *toolRenderProxy) requestLoop() {
 		p.rerender = false
 		p.mu.Unlock()
 
-		lines, failed, ok, stall := p.request(payload)
+		lines, failed, ok, stall := p.requestInTurn(payload)
 
 		p.mu.Lock()
 		if !ok && payload.Rerender {
@@ -340,6 +444,8 @@ func (p *toolRenderProxy) requestLoop() {
 		}
 		if current {
 			p.requesting = false
+			// A want a newer update left while the request ran is answered by this request's inputs: it carried them.
+			p.session.order.clear(p)
 			var epoch uint64
 			var backoff time.Duration
 			var settled <-chan struct{}
@@ -359,6 +465,12 @@ func (p *toolRenderProxy) requestLoop() {
 		}
 		p.mu.Unlock()
 	}
+}
+
+// requestInTurn is request that gives the card's turn back when it returns: an answer, a failed renderer and an abandoned request (D56) all end it.
+func (p *toolRenderProxy) requestInTurn(payload RenderToolPayload) (lines []string, failed, ok bool, stall *HandlerStalledError) {
+	defer p.session.order.leave()
+	return p.request(payload)
 }
 
 // retryDue makes the retry of abandonment epoch due and asks for the frame

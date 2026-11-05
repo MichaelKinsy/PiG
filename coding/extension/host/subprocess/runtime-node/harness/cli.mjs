@@ -6,11 +6,12 @@
 // status. package.json names the package the way Pi's CLI entry's does, which
 // is how extensions (pi-subagents) recognize a Pi entry.
 import { spawn } from "node:child_process";
+import { exitAfterStderr } from "../exit-after-stderr.mjs";
 
 const binary = process.env.PIG_HARNESS_BINARY;
 if (!binary) {
-  console.error("PIG_HARNESS_BINARY is not set: this entry runs the PiG binary that started the extension");
-  process.exit(1);
+  exitAfterStderr("PIG_HARNESS_BINARY is not set: this entry runs the PiG binary that started the extension");
+  await new Promise(() => {});
 }
 
 const signals = ["SIGINT", "SIGTERM", "SIGHUP"];
@@ -18,8 +19,7 @@ const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" });
 const forward = (signal) => child.kill(signal);
 for (const signal of signals) process.on(signal, forward);
 child.on("error", (error) => {
-  console.error(`${binary}: ${error.message}`);
-  process.exit(1);
+  exitAfterStderr(`${binary}: ${error.message}`);
 });
 child.on("exit", (code, signal) => {
   if (signal) {

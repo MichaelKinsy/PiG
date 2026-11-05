@@ -1,9 +1,11 @@
-// Type-check the 32 upstream examples against the candidate API: the examples run unmodified (CONTRACT section 6), so every
-// export they use must have pi-durable's declaration. The temporary tree is the reference's `packages/durable` with the
+// Type-check the upstream examples against the candidate API: the examples run unmodified (CONTRACT section 6), so every
+// export they use must have pi-durable's declaration. The reference is the FOLLOW pin's source mirror (`.upstream/current`, which
+// `make upstream-mirror` materializes and `make durable-core-host-check` runs first: packages/durable/src and test/examples at the Pi the facade's types come from), not the
+// corpus pin's checkout (durable/contract/PIN), which is older. The temporary tree is the reference's `packages/durable` with the
 // candidate's index.ts and storage modules over it; `@earendil-works/pi-durable` (the facade's type source) maps to the
 // reference's own index, so both sides of every type are one declaration tree.
 //
-//   node tools/check-examples-types.mjs [--keep]      CONTRACT_PI_SOURCE or the gate's cache names the reference checkout
+//   node tools/check-examples-types.mjs [--keep]      DURABLE_EXAMPLES_PI_SOURCE names another reference checkout
 import { execFileSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -12,13 +14,15 @@ import { fileURLToPath } from "node:url"
 
 const cf = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repo = resolve(cf, "..", "..", "..", "..")
-const pi = resolve(process.env.CONTRACT_PI_SOURCE ?? join(process.env.DURABLE_CONTRACT_CACHE ?? join(repo, "durable", "contract", ".cache"), "pi-main"))
+const pi = resolve(process.env.DURABLE_EXAMPLES_PI_SOURCE ?? join(repo, ".upstream", "current"))
 const durable = join(pi, "packages", "durable")
-if (!existsSync(join(durable, "src", "index.ts"))) { console.error(`reference checkout not found at ${pi}; run make durable-contract-setup or set CONTRACT_PI_SOURCE`); process.exit(2) }
+if (!existsSync(join(durable, "src", "index.ts"))) { console.error(`reference checkout not found at ${pi}; run make upstream-mirror or set DURABLE_EXAMPLES_PI_SOURCE`); process.exit(2) }
 
 const work = mkdtempSync(join(tmpdir(), "durable-examples-types-"))
 cpSync(join(durable, "src"), join(work, "src"), { recursive: true })
 cpSync(join(durable, "test", "examples"), join(work, "test", "examples"), { recursive: true })
+// The mirror is read-only (mirror-upstream.sh chmod -R u-w) and cpSync keeps its modes; the temporary tree is ours to rewrite.
+execFileSync("chmod", ["-R", "u+w", work])
 renameSync(join(work, "src", "index.ts"), join(work, "src", "ref-index.ts"))
 const marks = { "@@FACADE@@": join(cf, "src", "facade"), "@@HOST@@": join(cf, "src") }
 const fill = text => Object.entries(marks).reduce((t, [k, v]) => t.replaceAll(k, v), text)
@@ -33,7 +37,9 @@ writeFileSync(join(work, "tsconfig.json"), JSON.stringify({
 	compilerOptions: {
 		target: "ES2024", module: "ESNext", moduleResolution: "Bundler", strict: true, noEmit: true, allowImportingTsExtensions: true, skipLibCheck: true,
 		types: ["node", "workers-types"], typeRoots: [join(modules, "@types"), join(modules, "@cloudflare")], lib: ["ES2024"],
-		paths: { "@earendil-works/pi-durable": [join(work, "src", "ref-index.ts")], "@earendil-works/pi-durable/*": [join(durable, "src", "*", "index.ts")] },
+		paths: { "@earendil-works/pi-durable": [join(work, "src", "ref-index.ts")], "@earendil-works/pi-durable/*": [join(durable, "src", "*", "index.ts")],
+			// pi-schema is a dependency of the reference's own sources, not of the host: its source mirror.
+			"@earendil-works/pi-schema": [join(pi, "packages", "schema", "src", "index.ts")], "@earendil-works/pi-schema/formats": [join(pi, "packages", "schema", "src", "formats", "index.ts")] },
 	},
 	include: ["test/examples/*.ts"],
 }))
@@ -50,4 +56,4 @@ try {
 }
 if (process.argv.includes("--keep")) console.log(work)
 else rmSync(work, { recursive: true, force: true })
-process.exit(status)
+process.exitCode = status

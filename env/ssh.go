@@ -288,6 +288,7 @@ func runSsh(ctx context.Context, target SshTarget, command string, options sshRu
 	}
 	runContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	//nolint:gosec // G204 (class c): program is the ssh option of the user's SSH target (default ssh); args come from SshArguments, which validates host, user, port and alias, then the remote command PiG builds.
 	cmd := exec.CommandContext(runContext, sshProgram(target), append(slices.Clone(args), command)...)
 	cmd.Stdin = bytes.NewReader(options.stdin)
 	var stdout bytes.Buffer
@@ -400,6 +401,7 @@ func ScanHostKey(ctx context.Context, target SshTarget) (lines, fingerprints []s
 	if len(lines) == 0 {
 		return nil, nil, fmt.Errorf("No host key received from %s", target.Host)
 	}
+	//nolint:gosec // G204 (class a): program is the literal ssh-keygen; args are fixed -lf plus the temporary known-hosts scan file PiG wrote.
 	keygen := exec.CommandContext(ctx, "ssh-keygen", "-lf", scanned)
 	output, keygenErr := keygen.Output()
 	if _, isExit := errors.AsType[*exec.ExitError](keygenErr); keygenErr != nil && !isExit {
@@ -981,4 +983,37 @@ func ConnectSsh(ctx context.Context, options SshConnectOptions) (*Connection, Re
 		}
 	}
 	return sshConnectionFor(options, &sshState{remote: &remote, verified: verified}), remote, nil
+}
+
+// jsonString is JSON.stringify of a string, for error messages: it escapes only `"`, `\` and control characters, and
+// keeps U+2028 and U+2029, which encoding/json escapes. Bytes that are not UTF-8 become U+FFFD, as Node decodes them.
+func jsonString(value string) string {
+	var builder strings.Builder
+	builder.WriteByte('"')
+	for _, r := range value {
+		switch r {
+		case '"':
+			builder.WriteString(`\"`)
+		case '\\':
+			builder.WriteString(`\\`)
+		case '\b':
+			builder.WriteString(`\b`)
+		case '\f':
+			builder.WriteString(`\f`)
+		case '\n':
+			builder.WriteString(`\n`)
+		case '\r':
+			builder.WriteString(`\r`)
+		case '\t':
+			builder.WriteString(`\t`)
+		default:
+			if r < 0x20 {
+				_, _ = fmt.Fprintf(&builder, `\u%04x`, r)
+			} else {
+				builder.WriteRune(r)
+			}
+		}
+	}
+	builder.WriteByte('"')
+	return builder.String()
 }

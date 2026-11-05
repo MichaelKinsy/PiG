@@ -163,6 +163,7 @@ func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []e
 		hostRuntime = previousRunner.Runtime()
 	}
 	m.newRunner = inproc.NewRunner(allExts, m.opts.CWD, hostRuntime)
+	m.bindThinkingRuns()
 	m.opts.ExtensionRunner = m.newRunner
 	m.wireInprocContextActions()
 	if session, ok := m.opts.SessionHandle.(interface{ ReplaceRunner(*inproc.Runner) }); ok {
@@ -202,6 +203,7 @@ func (m *InteractiveMode) refreshToolsAfterReload() []error {
 	return append(errs, m.refreshAgentTools()...)
 }
 
+// Ports packages/coding-agent/src/core/resource-loader.ts (reload, updateSkillsFromPaths, extendResources).
 // reloadSkillsFromPaths loads the paths already selected by the resolver, including explicit paths when automatic discovery is disabled.
 func (m *InteractiveMode) reloadSkillsFromPaths() {
 	m.opts.SkillDiagnostics = nil

@@ -76,7 +76,7 @@ type resumeKey struct {
 }
 
 // markdownPureHighlight is the code of the highlighter of GetMarkdownTheme.
-var markdownPureHighlight = reflect.ValueOf(highlightMarkdownCode).Pointer()
+var markdownPureHighlight = reflect.ValueOf(HighlightCode).Pointer()
 
 // resumeKey is the key of a render now, and false when the render cannot be resumed from or by another: a quote or list item
 // (it renders inside its document), or a style function that is not one of tui's own, whose result may depend on what the

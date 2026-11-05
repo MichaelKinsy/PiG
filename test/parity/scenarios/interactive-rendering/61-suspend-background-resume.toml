@@ -1,0 +1,26 @@
+# Ctrl+Z, bg, fg against the pinned Pi (handleCtrlZ, interactive-mode.ts): the job stopped by Ctrl+Z is resumed in the background, stops again,
+# and fg returns to the session with its draft. Pi stops on its first terminal call (SIGTTOU); PiG stops itself before it touches the
+# terminal (D227). The shell's stop reason differs, so the probe asserts the process state (stopped after bg) and the resumed Session, not the
+# shell's job message. Before #397 was fixed a macOS PiG ended with "interrupted system call" on this fg.
+# Same driver, private tmux session and job-control shell as 40-suspend-resume-session; its comments explain the harness.
+name = "61-suspend-background-resume"
+description = "A session resumed in the background stops again, and fg returns to it with its draft."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui", "posix-signals"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["bash", "./test/parity/testdata/suspend-session-native.sh", "pig", "bg-first"]
+pi_args = ["bash", "./test/parity/testdata/suspend-session-native.sh", "pi", "bg-first"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 100
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SUSPEND_NATIVE", "RESUMED_SOURCE_PROOF", "\"stopped\":true", "\"stoppedAfterBg\":true", "\"aliveAfterResume\":true"]
+runs = 3

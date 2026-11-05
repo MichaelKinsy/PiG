@@ -1,0 +1,23 @@
+from = "1.4.0+b556cfe5"
+to = "1.5.0"
+
+[[files]]
+path = "packages/ai/src/utils/version.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi", "test:ai/user_agent_test.go#TestPiUserAgentFormat", "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion", "test:coding/cli/main_test.go#TestVersionStringIncludesPigAndUpstreamVersions", "test:coding/cli/main_test.go#TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion", "test:coding/extension/host/subprocess/runtime_node_product_version_test.go#TestNodeExtensionUserAgentNamesPiGAndItsVersion", "test:coding/extension/host/subprocess/runtime_node_pi_ai_version_test.go#TestVendoredPiAiExportsThePinnedPackageVersion"]
+rationale = "The release commit moves PI_AI_VERSION from 1.4.0 to 1.5.0 (b556cfe5..v1.5.0), and the number reaches users on three surfaces. The User-Agent (pig/<ver>) and `pig --version` report PiG's composite release version (ai/user_agent.go ProductVersion, D65: <PiG release>+<Pi release>), which stands for Pi's constant there: TestUserAgentVersionFieldFollowsPi compares the User-Agent version field with Pi's PI_AI_VERSION default and the product version, TestPiUserAgentFormat and TestClientIdentityVersionDefaultsToTheProductVersion pin the User-Agent and the identity default, TestVersionStringIncludesPigAndUpstreamVersions and TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion pin `--version` (PIG_VERSION_FORMAT=pi reports the package version). The PI_AI_VERSION a Node extension imports is the vendored pi-ai module's, which exports Pi's package version: runtime-node/shims/pi-dist/pi-ai/utils/version.js carries \"1.5.0\" and TestVendoredPiAiExportsThePinnedPackageVersion requires it to equal the pinned package version."
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/compaction/branch_summarization_test.go#TestPrepareBranchEntries_AppliesContextEdits", "test:coding/session_branch_summary_upstream_test.go#TestNavigateTreeSummaryOmitsFailedRetriedAttempt"]
+rationale = "Pi d0fe21308 (#11680): prepareBranchEntries collects the latest context_edit for each target in the branch and applies it to the entries it converts through projectContextEntry, so an omission (replacement null) drops the entry and a replacement swaps its content; a failed partial attempt hidden by a successful retry no longer reaches the /tree summary request. Ported in internal/codingagent/compaction/branch_summarization.go (PrepareBranchEntries, getMessageFromEntryForBranch) through codingagent.ProjectContextEntry. Tool results stay skipped; compaction and branch_summary entries still become summary messages. The unit test is red on the code before the change; the caller test drives NavigateTree with summarize after a failed partial attempt and a successful retry."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/compaction/branch_summarization_test.go#TestPrepareBranchEntries_AppliesContextEdits"]
+rationale = "Pi d0fe21308 exports projectContextEntry so branch summarization shares the projection the live context and compaction use. Ported as the exported codingagent.ProjectContextEntry in internal/codingagent/session_manager_projection.go (the one function the live context builder, compaction and PrepareBranchEntries call; no second copy of the logic)."

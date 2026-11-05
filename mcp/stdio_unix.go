@@ -9,6 +9,8 @@ import (
 	"syscall"
 )
 
+// Ports packages/mcp/src/transports/stdio.ts (USE_PROCESS_GROUPS, killProcessTree, the exit hook that ends live server groups)
+
 var (
 	liveMu     sync.Mutex
 	liveGroups = map[int]struct{}{}

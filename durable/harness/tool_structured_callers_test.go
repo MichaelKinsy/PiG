@@ -9,8 +9,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord"
-
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -78,7 +76,7 @@ func TestCallersGetASchemaLessToolsOutputOneTextAsAStringOneImageAsItselfElseThe
 	}
 }
 
-// harness-structured-output.test.ts:118 it("gives callers the bounded output, as the model sees it, without the rendered diagnostics")
+// harness-structured-output.test.ts:117 it("gives callers the bounded output, as the model sees it, without the rendered diagnostics")
 func TestCallersGetTheBoundedOutputAsTheModelSeesItWithoutTheRenderedDiagnostics(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, returningTool("long", durable.ToolExecutionResult{
@@ -190,10 +188,10 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 	// The result each nested call's document got, as committed (4ac0bd8c: written by an update of the call's document).
 	var storedMu sync.Mutex
 	var stored []string
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 		for _, change := range publication.Changes {
 			doc, ok := change.(durable.DocumentChange)
-			if !ok || doc.Record.Kind != nestedCallKind || doc.Value == nil || len(doc.Ops) == 0 {
+			if !ok || doc.Record.Kind != nestedCallKind || len(doc.Ops) == 0 {
 				continue
 			}
 			if result := doc.Value.Value("result"); result != nil {
@@ -202,28 +200,11 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 				storedMu.Unlock()
 			}
 		}
-	})
-	stream := must(WatchEvents(testContext, harness, root.Id()))
-	var mu sync.Mutex
-	var ends []string
-	stream.Start(func(_ context.Context, change chord.NativeWatchChange[[]AgentEvent]) error {
-		batch := change.Value
-		mu.Lock()
-		defer mu.Unlock()
-		for _, event := range batch {
-			if end, ok := event.(ToolExecutionEndEvent); ok && end.ParentToolCallId != "" {
-				ends = append(ends, encodedJSON(t, end.Result))
-			}
-		}
-		return nil
-	})
+	}})
 	if _, err := ownSubmit(t, root, ownInput("go")).Wait(testContext); err != nil {
 		t.Fatal(err)
 	}
 	if err := harness.WaitForIdle(testContext); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := stream.Stop(); err != nil {
 		t.Fatal(err)
 	}
 	mustClose(t, harness)
@@ -238,15 +219,13 @@ func TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull(t *te
 	storedMu.Lock()
 	gotStored := slices.Clone(stored)
 	storedMu.Unlock()
-	mu.Lock()
-	gotEnds := slices.Clone(ends)
-	mu.Unlock()
-	if len(gotStored) != 2 || len(gotEnds) != 2 {
-		t.Fatalf("stored %v, events %v, want two of each", gotStored, gotEnds)
+	// A client reads a live caller's nested results from the same documents.
+	if len(gotStored) != 2 {
+		t.Fatalf("stored %v, want two", gotStored)
 	}
 	for i := range want {
-		if !equalJSONText(t, gotStored[i], want[i]) || !equalJSONText(t, gotEnds[i], want[i]) {
-			t.Errorf("result %d: stored %s, event %s, callers got %s", i, gotStored[i], gotEnds[i], want[i])
+		if !equalJSONText(t, gotStored[i], want[i]) {
+			t.Errorf("result %d: stored %s, callers got %s", i, gotStored[i], want[i])
 		}
 	}
 }

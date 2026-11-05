@@ -5,7 +5,7 @@ import { getTerminalColorMode, } from "../../../../pi-tui/terminal-image.js";
 import chalk from "../../../../../chalk/source/index.js";
 import { getCustomThemesDir, getThemesDir } from "../../../config.js";
 import { closeWatcher, watchWithErrorHandler } from "../../../utils/fs-watch.js";
-import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";
+import { getHighlightLanguageCount, highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";
 import { stripBom } from "../../../utils/text.js";
 import { generateSystemThemeColors, SYSTEM_THEME_NAME, terminalAppearance } from "./system-theme.js";
 import { THEME_TOKENS, } from "./theme-tokens.js";
@@ -513,6 +513,10 @@ export const theme = new Proxy({}, {
         return t[prop];
     },
 });
+/** The theme instance behind the `theme` proxy, whose own identity never changes. */
+function getGlobalTheme() {
+    return globalThis[THEME_KEY];
+}
 function setGlobalTheme(t) {
     globalThis[THEME_KEY] = t;
     globalThis[THEME_KEY_OLD] = t;
@@ -768,7 +772,31 @@ export function highlightCode(code, lang) {
         return highlight(code, opts).split("\n");
     }
     catch {
-        return code.split("\n");
+        return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
+    }
+}
+/**
+ * Highlights code for one owner, such as a tool row, and reuses the last result while the code, the language, the
+ * theme and the registered grammars stay the same. Each owner keeps its own highlighter, so cached results live as long
+ * as the code they show instead of in a process-wide cache.
+ */
+export class CodeHighlighter {
+    last;
+    /** Like {@link highlightCode}. The result is shared with later calls, so callers must not modify it. */
+    highlight(code, lang) {
+        // Renderers cannot tell a theme change from any other redraw, so the highlighter checks what its result depends on.
+        const currentTheme = getGlobalTheme();
+        const languageCount = getHighlightLanguageCount();
+        const last = this.last;
+        if (last?.code === code &&
+            last.lang === lang &&
+            last.theme === currentTheme &&
+            last.languageCount === languageCount) {
+            return last.lines;
+        }
+        const lines = highlightCode(code, lang);
+        this.last = { code, lang, theme: currentTheme, languageCount, lines };
+        return lines;
     }
 }
 /**
@@ -856,27 +884,7 @@ export function getMarkdownTheme() {
         italic: (text) => theme.italic(text),
         underline: (text) => theme.underline(text),
         strikethrough: (text) => theme.strikethrough(text),
-        highlightCode: (code, lang) => {
-            // Validate language before highlighting to avoid stderr spam from cli-highlight
-            const validLang = lang && supportsLanguage(lang) ? lang : undefined;
-            // Skip highlighting when no valid language is specified. cli-highlight's
-            // auto-detection is unreliable and can misidentify prose as AppleScript,
-            // LiveCodeServer, etc., coloring random English words as keywords.
-            if (!validLang) {
-                return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
-            }
-            const opts = {
-                language: validLang,
-                ignoreIllegals: true,
-                theme: getCliHighlightTheme(theme),
-            };
-            try {
-                return highlight(code, opts).split("\n");
-            }
-            catch {
-                return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
-            }
-        },
+        highlightCode,
     };
 }
 export function getSelectListTheme() {

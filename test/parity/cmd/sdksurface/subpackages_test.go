@@ -75,13 +75,15 @@ func TestLedgerCellsNameSubpackageSymbolsQualified(t *testing.T) {
 		"go":     {"TruncateHead": true, "kit.Text": true, "tui.VisibleWidth": true},
 		"rust":   {"truncate_head": true, "kit::Text": true, "tui::visible_width": true},
 		"python": {"truncate_head": true, "kit.Text": true, "tui.visible_width": true},
+		"lisp":   {"pig:truncate-head": true, "pig:kit-text": true, "pig:tui-visible-width": true},
 	}
 	in.Corpus = map[string]string{
 		"go":     "TruncateHead(x); kit.Text(1); tui.VisibleWidth(s)",
 		"rust":   "truncate_head(x); kit::Text::new(1); tui::visible_width(s)",
 		"python": "truncate_head(x); kit.Text(1); tui.visible_width(s)",
+		"lisp":   "(pig:truncate-head x) (pig:kit-text 1) (pig:tui-visible-width s)",
 	}
-	in.File.Export["pi-tui: visibleWidth"] = map[string]string{"go": "native:tui.VisibleWidth", "rust": "native:tui::visible_width", "python": "native:tui.visible_width"}
+	in.File.Export["pi-tui: visibleWidth"] = map[string]string{"go": "native:tui.VisibleWidth", "rust": "native:tui::visible_width", "python": "native:tui.visible_width", "lisp": "native:pig:tui-visible-width"}
 	if p := checkLedger(in); len(p) > 0 {
 		t.Fatalf("qualified cells failed:\n  %s", strings.Join(p, "\n  "))
 	}

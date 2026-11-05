@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"debug/elf"
 	"errors"
 	"fmt"
 	"os"
@@ -86,10 +87,15 @@ func buildSmallPigletBinary(t *testing.T, extraArgs ...string) string {
 // startPigletBinary runs startup verification without a model call or access to the caller's home, project, or trust stores. It returns the exit code (-1 when the OS killed it) and combined output.
 func startPigletBinary(t *testing.T, path string, args ...string) (int, string) {
 	t.Helper()
+	return startPigletBinaryHome(t, t.TempDir(), path, args...)
+}
+
+// startPigletBinaryHome is startPigletBinary with a home directory the caller may fill first.
+func startPigletBinaryHome(t *testing.T, home, path string, args ...string) (int, string) {
+	t.Helper()
 	if len(args) == 0 {
 		args = []string{"--offline", "--list-models"}
 	}
-	home := t.TempDir()
 	cmd := exec.CommandContext(t.Context(), path, args...)
 	cmd.Dir = t.TempDir()
 	// Agent-directory overrides take precedence over HOME, including Pi's override when shared-directory mode is selected.
@@ -281,5 +287,31 @@ func assertRefusesCommand(t *testing.T, path string, author ed25519.PrivateKey, 
 	}
 	if code != 1 || !strings.Contains(output, "pig: Piglet Binary verification failed:") || !strings.Contains(output, want) {
 		t.Fatalf("altered Piglet Binary: exit %d, output:\n%s", code, output)
+	}
+}
+
+// A Piglet Binary needs no libc when nothing in it uses cgo: with CGO_ENABLED
+// unset, the build is static even where the Go default is cgo on.
+func TestNativePigletBinaryIsStaticByDefault(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("static linkage is checked on ELF binaries")
+	}
+	t.Setenv("CGO_ENABLED", "")
+	if err := os.Unsetenv("CGO_ENABLED"); err != nil {
+		t.Fatal(err)
+	}
+	artifact := buildSmallPigletBinary(t)
+	file, err := elf.Open(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Close() }()
+	for _, prog := range file.Progs {
+		if prog.Type == elf.PT_INTERP {
+			t.Fatal("Piglet Binary has an ELF interpreter; it is dynamically linked")
+		}
+	}
+	if libs, err := file.ImportedLibraries(); err != nil || len(libs) > 0 {
+		t.Fatalf("Piglet Binary needs shared libraries %v (err=%v)", libs, err)
 	}
 }

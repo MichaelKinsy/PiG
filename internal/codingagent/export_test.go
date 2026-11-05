@@ -37,6 +37,8 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.editorContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
+	m.widgetContainer = tui.NewContainer(tui.NewSpacer(1))
+	m.widgetContainerBelow = tui.NewContainer()
 	m.rendererOut = io.Discard
 	m.tuiInst = tui.NewWithOutput(m.rendererOut, 100, 30)
 	m.statusLine = NewFooterComponent(opts.Model, "", nil)
@@ -46,7 +48,7 @@ func NewTestHarness(t testing.TB, opts InteractiveModeOptions, onEvent func(h *T
 	m.tuiInst.SetFocus(m.editor)
 	m.newRunner = opts.ExtensionRunner
 	m.wireInprocContextActions()
-	m.keybindings = DefaultKeybindingsManager()
+	m.keybindings = NewKeybindingsManagerFromBindings(harnessUserBindings, "")
 	m.slashRegistry = NewSlashRegistry()
 	m.agent = opts.SessionHandle.Agent()
 	m.installRunPromptTurnRefresh()
@@ -132,6 +134,35 @@ func (h *TestHarness) SubmitInitialMessages(messages []string) {
 func (h *TestHarness) Key(data string) {
 	_ = h.m.dispatchKey(h.ctx, data)
 }
+
+// PendingDisplay returns the pending-messages rows as plain text.
+func (h *TestHarness) PendingDisplay() string {
+	var text string
+	h.Do(func() {
+		lines := h.m.pendingMessagesContainer.Render(100)
+		for i, line := range lines {
+			lines[i] = widthx.StripAnsi(line)
+		}
+		text = strings.Join(lines, "\n")
+	})
+	return text
+}
+
+// BelowEditor returns the rows under the editor as plain text.
+func (h *TestHarness) BelowEditor() string {
+	var text string
+	h.Do(func() {
+		lines := h.m.widgetContainerBelow.Render(100)
+		for i, line := range lines {
+			lines[i] = widthx.StripAnsi(line)
+		}
+		text = strings.Join(lines, "\n")
+	})
+	return text
+}
+
+// SetEditorText replaces the editor's text. Call it on the owner loop.
+func (h *TestHarness) SetEditorText(text string) { h.m.editor.SetText(text) }
 
 // EditorText returns the editor's text.
 func (h *TestHarness) EditorText() string {
@@ -279,4 +310,27 @@ func (h *TestHarness) ApplyScopedSelection(models []tui.ModelItem, enabled []str
 		selection, _ := newScopedModelsSelection(models, nil, nil)
 		selection.apply(h.m, enabled)
 	})
+}
+
+// HostDequeueInputs are the legacy terminal inputs for the host platform's default app.message.dequeue key: Alt+Up (CSI 1;3A, or ESC p as a terminal in
+// application mode sends it) except with Windows keybindings (native Windows and WSL), where it is Alt+Q, as upstream keybindings.ts.
+func HostDequeueInputs() []string {
+	if key := keybindingDefinitionsFor(tui.HostKeybindingPlatform())["app.message.dequeue"].DefaultKeys[0]; key != "alt+up" {
+		return []string{"\x1bq"}
+	}
+	return []string{"\x1b[1;3A", "\x1bp"}
+}
+
+// HostFollowUpInput is the legacy terminal input for the host platform's default app.message.followUp key (Alt+Enter, Ctrl+Q with Windows keybindings).
+func HostFollowUpInput() string { return hostFollowUpInput() }
+
+// harnessUserBindings are the user bindings the next TestHarness starts with.
+var harnessUserBindings map[string][]KeyID
+
+// BindDequeueToAltUp makes the harnesses of the test bind app.message.dequeue to Alt+Up, its default except with Windows keybindings. The Terminal.app
+// divergence D228 acts only while the action is bound to the key Option+Up stands for.
+func BindDequeueToAltUp(t *testing.T) {
+	t.Helper()
+	harnessUserBindings = map[string][]KeyID{"app.message.dequeue": {"alt+up"}}
+	t.Cleanup(func() { harnessUserBindings = nil })
 }

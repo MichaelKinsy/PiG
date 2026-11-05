@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// skills.ts loadSkills returns [...allDiagnostics, ...collisionDiagnostics]: each path's load and validation warnings, then the name collisions. Interactive mode lists them under [Skill conflicts]; no mode writes them to stderr (Pi 1.1.0 print mode with --skill on a misnamed skill prints only the answer).
+// skills.ts loadSkills returns [...allDiagnostics, ...collisionDiagnostics]: each path's load and validation warnings, then the name collisions. Interactive mode lists them under [Skill warnings]; no mode writes them to stderr (Pi 1.1.0 print mode with --skill on a misnamed skill prints only the answer).
 func TestLoadSkillsReturnsValidationWarningsBeforeCollisionsAndWritesNothing(t *testing.T) {
 	root := t.TempDir()
 	write := func(dir, body string) string {

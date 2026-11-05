@@ -7,7 +7,6 @@ package tui
 // Ports packages/tui/src/stdin-buffer.ts.
 
 import (
-	"bytes"
 	"cmp"
 	"strings"
 	"time"
@@ -50,8 +49,8 @@ type StdinBuffer struct {
 	pendingKittyCP int
 	timeout        time.Duration
 	escapeTimeout  time.Duration
-	// utf8Pending holds the leading bytes of a character split across reads.
-	utf8Pending []byte
+	// utf8 holds the leading bytes of a character split across reads.
+	utf8 utf8Decoder
 	// events are the "data" and "paste" listeners (stdin-buffer.ts extends EventEmitter).
 	events stdinListeners
 }
@@ -86,36 +85,103 @@ func (b *StdinBuffer) FlushTimeout() time.Duration {
 // byte is never rewritten as a Meta key; the decoded text then goes through
 // ProcessString.
 func (b *StdinBuffer) ProcessTerminalBytes(data []byte) []string {
-	if len(b.utf8Pending) > 0 {
-		data = append(b.utf8Pending, data...)
-		b.utf8Pending = nil
+	text, ok := b.decodeTerminalBytes(data)
+	if !ok {
+		return nil
 	}
-	if cut := incompleteUTF8Suffix(data); cut > 0 {
-		b.utf8Pending = bytes.Clone(data[len(data)-cut:])
-		data = data[:len(data)-cut]
-		if len(data) == 0 {
-			return nil
-		}
-	}
-	return b.ProcessString(jsstring.FromUTF8(data))
+	return b.ProcessString(text)
 }
 
-// incompleteUTF8Suffix returns the length of a trailing UTF-8 sequence that is
-// still missing continuation bytes, or 0.
-func incompleteUTF8Suffix(data []byte) int {
-	for back := 1; back <= utf8.UTFMax-1 && back <= len(data); back++ {
-		c := data[len(data)-back]
-		if c < utf8.RuneSelf {
-			return 0
-		}
-		if utf8.RuneStart(c) {
-			if utf8.FullRune(data[len(data)-back:]) {
-				return 0
+// decodeTerminalBytes is the decoding half of ProcessTerminalBytes. ok is false when the read decodes to the empty string
+// (every byte held for a later read): Node emits no data event for it, so upstream's process() does not run and neither
+// restarts nor clears the flush timeout. A caller that owns the timer must skip ProcessString and its timer update then.
+func (b *StdinBuffer) decodeTerminalBytes(data []byte) (text string, ok bool) {
+	return b.utf8.write(data)
+}
+
+// utf8Decoder ports Node's StringDecoder for "utf8" (src/string_decoder.cc
+// StringDecoder::DecodeData). It holds a trailing run that starts with a lead
+// byte (110xxxxx, 1110xxxx or 11110xxx) and is shorter than that lead byte's
+// length, judging by bit pattern alone: C0, C1 and F5-F7 are held, and a
+// second byte is never checked, so E0 80 is held like E0 A0.
+type utf8Decoder struct {
+	buf      [utf8.UTFMax]byte
+	buffered int // bytes of an incomplete character held in buf
+	missing  int // bytes still wanted to complete it
+}
+
+func (d *utf8Decoder) reset() { *d = utf8Decoder{} }
+
+// write returns the text decoded from data and any held bytes; ok is false
+// when Node's decoder would return the empty string without a body.
+func (d *utf8Decoder) write(data []byte) (text string, ok bool) {
+	var prepend string
+	if d.missing > 0 {
+		// A byte that is not a continuation ends the held character early; it
+		// starts a new one.
+		for i := 0; i < len(data) && i < d.missing; i++ {
+			if data[i]&0xC0 != 0x80 {
+				d.missing = 0
+				d.buffered += copy(d.buf[d.buffered:], data[:i])
+				data = data[i:]
+				break
 			}
-			return back
+		}
+		n := min(len(data), d.missing)
+		d.buffered += copy(d.buf[d.buffered:], data[:n])
+		data = data[n:]
+		d.missing -= n
+		if d.missing == 0 {
+			prepend = jsstring.FromUTF8(d.buf[:d.buffered])
+			d.buffered = 0
 		}
 	}
-	return 0
+	if len(data) == 0 {
+		return prepend, prepend != ""
+	}
+	if data[len(data)-1]&0x80 != 0 {
+		d.holdTrailing(data)
+		data = data[:len(data)-d.buffered]
+	}
+	body := jsstring.FromUTF8(data)
+	return prepend + body, prepend != "" || body != ""
+}
+
+// holdTrailing is the tail scan of DecodeData: it sets buffered and missing
+// for an unfinished character at the end of data, and copies those bytes to buf.
+func (d *utf8Decoder) holdTrailing(data []byte) {
+	d.buffered = 0
+	for i := len(data) - 1; ; i-- {
+		d.buffered++
+		c := data[i]
+		if c&0xC0 == 0x80 {
+			if d.buffered >= utf8.UTFMax || i == 0 {
+				d.buffered = 0
+				return
+			}
+			continue
+		}
+		var want int
+		switch {
+		case c&0xE0 == 0xC0:
+			want = 2
+		case c&0xF0 == 0xE0:
+			want = 3
+		case c&0xF8 == 0xF0:
+			want = 4
+		default:
+			d.buffered = 0
+			return
+		}
+		if d.buffered >= want {
+			d.buffered = 0
+			d.missing = 0
+			return
+		}
+		d.missing = want - d.buffered
+		copy(d.buf[:], data[len(data)-d.buffered:])
+		return
+	}
 }
 
 // ProcessBytes mirrors upstream process(Buffer): it feeds raw bytes and
@@ -244,7 +310,7 @@ func (b *StdinBuffer) Clear() {
 	b.pasteMode = false
 	b.pasteChunks = nil
 	b.pendingKittyCP = 0
-	b.utf8Pending = nil
+	b.utf8.reset()
 }
 
 // appendPaste is upstream's `pasteBuffer += buffer` followed by the search for the end marker. text is canonical; the joined

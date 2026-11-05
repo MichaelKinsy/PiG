@@ -126,10 +126,10 @@ func TestUpstreamSystemPrompt(t *testing.T) {
 			}
 		}
 	})
-	// .upstream/v0.87.1/packages/coding-agent/test/system-prompt.test.ts:41
+	// Pi 705d047c packages/coding-agent/test/system-prompt.test.ts:51
 	t.Run("keeps the default and custom prompt prefixes exact", func(t *testing.T) {
 		// D22 substitutes pig for pi in the default product preamble, not in custom text.
-		if prompt := BuildDefaultPrompt(Options{Cwd: "/tmp", Tools: []string{}}); !strings.HasPrefix(prompt, "You are an expert coding assistant operating inside pig") {
+		if prompt := BuildDefaultPrompt(Options{Cwd: "/tmp", Tools: []string{}}); !strings.HasPrefix(prompt, "You are a coding assistant running inside pig, a coding agent harness.") {
 			t.Fatal(prompt)
 		}
 		if prompt := BuildDefaultPrompt(Options{Cwd: "/tmp", Tools: []string{}, CustomPrompt: "You are Exact.", AppendMode: "replace"}); !strings.HasPrefix(prompt, "You are Exact.\n\n<cwd>") {

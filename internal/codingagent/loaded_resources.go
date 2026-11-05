@@ -10,11 +10,13 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -81,7 +83,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 		return
 	}
 	theme := tui.ActiveTheme()
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	sectionHeader := func(name string) string { return theme.Fg("mdHeading", "["+name+"]") }
 	formatCompactList := func(items []string, sorted bool) string {
 		labels := make([]string, 0, len(items))
@@ -134,7 +136,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 				m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 			}
 		}
-		addDiagnostics("Skill conflicts", m.opts.SkillDiagnostics)
+		addDiagnostics("Skill warnings", m.opts.SkillDiagnostics)
 		addDiagnostics("Prompt conflicts", m.promptDiagnostics)
 		addDiagnostics("Extension issues", m.extensionDiagnostics())
 		addDiagnostics("Theme conflicts", m.themeDiagnostics)
@@ -144,7 +146,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 // addLoadedListing appends the Context, Skills, Prompts and Extensions
 // sections. Upstream 0.99.1 has no Themes section (interactive-mode.ts
 // showLoadedResources lists themes only through source info and conflicts).
-func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsedBody, expandedBody string), formatCompactList func([]string, bool) string, theme *tui.Theme, collator *jsstring.Collator) {
+func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsedBody, expandedBody string), formatCompactList func([]string, bool) string, theme *tui.Theme, collator *localecompare.Collator) {
 	contextPaths := append(slices.Clone(m.opts.SystemPromptSourcePaths), contextFilePaths(m.opts.ContextFiles)...)
 	if len(contextPaths) > 0 {
 		m.loadedResourcesContainer.Add(tui.NewSpacer(1))
@@ -255,10 +257,10 @@ func (m *InteractiveMode) loadedResourceFor(path, kind string) loadedResource {
 // the home directory shows it as "~".
 func formatDisplayPath(path string) string {
 	home, err := os.UserHomeDir()
-	if err == nil && home != "" && strings.HasPrefix(path, home) {
-		return "~" + path[len(home):]
+	if err != nil {
+		return path
 	}
-	return path
+	return resolvepath.ShortenHomePath(path, home)
 }
 
 func formatDisplayPathItem(item loadedResource) string { return formatDisplayPath(item.path) }
@@ -532,7 +534,7 @@ func buildScopeGroups(items []loadedResource) []loadedScopeGroup {
 }
 
 // formatScopeGroups is upstream formatScopeGroups.
-func formatScopeGroups(theme *tui.Theme, collator *jsstring.Collator, groups []loadedScopeGroup, formatPath, formatPackagePath func(loadedResource) string) string {
+func formatScopeGroups(theme *tui.Theme, collator *localecompare.Collator, groups []loadedScopeGroup, formatPath, formatPackagePath func(loadedResource) string) string {
 	byPath := func(a, b loadedResource) int { return collator.CompareString(a.path, b.path) }
 	var lines []string
 	for _, group := range groups {

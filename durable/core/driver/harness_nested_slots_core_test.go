@@ -73,7 +73,7 @@ func TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus(t *testing.T) 
 	}
 }
 
-// harness-nested-tools.test.ts:936 "shows a nested call's arguments in its slot: as made, then, unbounded, as it runs with them"
+// harness-nested-tools.test.ts:980 "shows a nested call's arguments in its slot: as made, then, unbounded, as it runs with them"
 // (tool.ts:157-161).
 func TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith(t *testing.T) {
 	hookEntered, hookRelease := make(chan struct{}), make(chan struct{})
@@ -128,7 +128,7 @@ func TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith(t *testing.T) {
 	nestedCoreWait(t, sub, durable.SubmissionDone)
 }
 
-// harness-nested-tools.test.ts:1020 "finds each nested call's slot after slots in the middle were removed" (live.ts:161-175
+// harness-nested-tools.test.ts:1056 "finds each nested call's slot after slots in the middle were removed" (live.ts:161-175
 // toolSlot's binary search, :187-196 removeNestedSlots).
 func TestCoreFindsEachNestedSlotAfterSlotsInTheMiddleWereRemoved(t *testing.T) {
 	before, checked := make(chan struct{}), make(chan struct{})
@@ -181,7 +181,7 @@ func TestCoreFindsEachNestedSlotAfterSlotsInTheMiddleWereRemoved(t *testing.T) {
 	_ = h
 }
 
-// harness-nested-tools.test.ts:1114 "shows a finished nested call as a done slot with its summary until its caller settles"
+// harness-nested-tools.test.ts:1150 "shows a finished nested call as a done slot with its summary until its caller settles"
 // (tool.ts:773-795 summaryOf, errorTextOf).
 func TestCoreAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles(t *testing.T) {
 	checked, release := make(chan struct{}), make(chan struct{})

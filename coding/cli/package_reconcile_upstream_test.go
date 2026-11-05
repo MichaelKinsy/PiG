@@ -68,7 +68,7 @@ func TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes(t *testing.T) {
 				if err := json.Unmarshal([]byte(line), &args); err != nil {
 					t.Fatal(err)
 				}
-				if len(args) != 5 {
+				if len(args) != 7 {
 					t.Fatalf("unexpected command: %q", args)
 				}
 				if _, duplicate := calls[args[3]]; duplicate {
@@ -79,7 +79,7 @@ func TestNpmUpdateSkipsExactVersionsAndIncludesBothScopes(t *testing.T) {
 			// npm gets the real path of each install root (Pi 5f960a0e2 getNpmInstallArgs), which the update created.
 			userRoot, projectRoot := realPathSync(t, filepath.Join(agentDir, "npm")), realPathSync(t, filepath.Join(codingagent.ProjectConfigDir(cwd), "npm"))
 			for _, root := range []string{userRoot, projectRoot} {
-				want := []string{"install", "shared@latest", "--prefix", root, "--legacy-peer-deps"}
+				want := []string{"install", "shared@latest", "--prefix", root, "--legacy-peer-deps", "--no-audit", "--no-fund"}
 				if !reflect.DeepEqual(calls[root], want) {
 					t.Fatalf("scope %s calls=%q, want %q", root, calls[root], want)
 				}
@@ -164,7 +164,7 @@ func TestNpmUpdateVersionReconciliationUpstream(t *testing.T) {
 			if tc.install {
 				// npm gets the real path of the install root (Pi 5f960a0e2 getNpmInstallArgs), which the install created.
 				projectRoot = realPathSync(t, projectRoot)
-				want = append(want, []string{"install", spec, "--prefix", projectRoot, "--legacy-peer-deps"})
+				want = append(want, []string{"install", spec, "--prefix", projectRoot, "--legacy-peer-deps", "--no-audit", "--no-fund"})
 			}
 			if !reflect.DeepEqual(calls, want) {
 				t.Fatalf("commands=%q, want %q", calls, want)

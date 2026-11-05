@@ -520,6 +520,17 @@ export class SettingsManager {
         this.markModified("lastChangelogVersion");
         this.save();
     }
+    getExtensionChangelogVersion(key) {
+        return this.settings.extensionChangelogVersions?.[key];
+    }
+    setExtensionChangelogVersion(key, version) {
+        this.globalSettings.extensionChangelogVersions = {
+            ...(this.globalSettings.extensionChangelogVersions ?? {}),
+            [key]: version,
+        };
+        this.markModified("extensionChangelogVersions", key);
+        this.save();
+    }
     getSessionDir() {
         const sessionDir = this.settings.sessionDir;
         return sessionDir ? normalizePath(sessionDir) : sessionDir;

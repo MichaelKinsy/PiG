@@ -3,6 +3,7 @@
 package driver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -44,6 +45,9 @@ type Models struct {
 	owner  map[uint32]int64 // the conversation of a kept list that names one
 	newest map[int64]uint32 // each conversation's newest kept list
 	total  int              // messages across kept
+
+	payloads map[payloadKey]chan payloadAnswer // the provider's open onPayload calls
+	nextCall map[uint32]int                    // the next onPayload call number of each effect
 
 	ranges     map[int64]*decodedRange // the messages each conversation's last request decoded
 	rangeOrder []int64                 // the conversations of ranges, oldest request first
@@ -234,6 +238,9 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 	}
 	// generation.ts passes the invocation's signal: an extension-owned provider callback (a faux step) reads options.Signal.
 	options.Signal = ctx
+	if p.OnPayload {
+		options.OnPayload = m.onPayload(ctx, call)
+	}
 	startedAt, started := m.now(), m.mono()
 	// The decoded messages are shared with the next request of the conversation and nothing modifies them, so the provider
 	// layer need not copy the whole history for each call.
@@ -247,7 +254,8 @@ func (m *Models) modelContext(ctx context.Context, call *sqlhost.Call) error {
 			return fmt.Errorf("model_context %d event: %w", call.ID, err)
 		}
 		body = withDuration(body, event, startedAt, started, m.mono())
-		call.Post(abi.Event{Kind: abi.EventModelEvent, ID: call.ID, Payload: append(append(make([]byte, 0, len(body)+2), '['), append(body, ']')...)})
+		// The event is posted as the one element of a JSON array; Join sizes its one allocation itself.
+		call.Post(abi.Event{Kind: abi.EventModelEvent, ID: call.ID, Payload: bytes.Join([][]byte{[]byte("["), body, []byte("]")}, nil)})
 	}
 	if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
 		return err

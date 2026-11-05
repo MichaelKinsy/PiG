@@ -160,6 +160,7 @@ func runGoPrebuild(output string, logf func(format string, args ...any), dir str
 		return fmt.Errorf("%s: %w", command, err)
 	}
 	start := time.Now()
+	//nolint:gosec // G204 (class a): program is literal go; args are "build"/"test -c" with -o <temp> and a pkg schema-validated as ./-relative.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()

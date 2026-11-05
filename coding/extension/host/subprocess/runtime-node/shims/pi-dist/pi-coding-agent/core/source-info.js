@@ -1,3 +1,10 @@
+import { canonicalizePath, getPathComparisonKey } from "../utils/paths.js";
+export function getSourcePackageKey(identity) {
+    return JSON.stringify({
+        source: identity.source,
+        scope: identity.scope,
+    });
+}
 /** Prefix of built-in tool and extension paths, such as `builtin:read` or `builtin:mcp`. */
 export const BUILTIN_PATH_PREFIX = "builtin:";
 /**
@@ -14,6 +21,10 @@ export function getSyntheticPathSource(path) {
 export function isSyntheticPath(path) {
     return path.startsWith(BUILTIN_PATH_PREFIX) || path.startsWith("<");
 }
+/** Key for deduplicating resource paths: synthetic paths as-is, file paths via realpath and platform casing. */
+export function getResourcePathKey(path) {
+    return isSyntheticPath(path) ? path : getPathComparisonKey(canonicalizePath(path));
+}
 export function createSourceInfo(path, metadata) {
     return {
         path,
@@ -21,6 +32,7 @@ export function createSourceInfo(path, metadata) {
         scope: metadata.scope,
         origin: metadata.origin,
         baseDir: metadata.baseDir,
+        ...(metadata.changelogPath ? { changelogPath: metadata.changelogPath } : {}),
     };
 }
 export function createSyntheticSourceInfo(path, options) {
@@ -30,6 +42,7 @@ export function createSyntheticSourceInfo(path, options) {
         scope: options.scope ?? "temporary",
         origin: options.origin ?? "top-level",
         baseDir: options.baseDir,
+        ...(options.changelogPath ? { changelogPath: options.changelogPath } : {}),
     };
 }
 //# sourceMappingURL=source-info.js.map

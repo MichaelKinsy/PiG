@@ -479,19 +479,17 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 			}
 			var entry SessionEntry
 			var record []byte
-			var ok, owned bool
+			var ok bool
 			if cold := s.coldPart(slot); cold.block == 0 && file != nil && cold.off >= 0 {
-				// Records close together share one read; the record is a slice of that buffer, which the decoded entry may keep.
-				record, owned = run.record(file, s, indexes, order, k)
-				ok = owned
+				// Records close together share one read, and the record is a slice of that buffer. The decoded entry keeps its record, so the
+				// entry gets its own copy: a slice would pin the whole read, the gaps between the records included, while the entry is resident.
+				record, ok = run.record(file, s, indexes, order, k)
 			}
 			if !ok {
 				record, ok = reader.record(s.coldPart(slot))
 			}
 			if ok {
-				if !owned {
-					record = bytes.Clone(record)
-				}
+				record = bytes.Clone(record) // the lone reader's buffer is valid only until its next call
 				// An indexed line is never a header (the load skips records of type "session"), so it decodes as DecodeFileEntry decodes it.
 				if decoded := sessionentry.DecodeSessionEntry(record); decoded.Base().ID == slot.id && decoded.Base().Type == slot.typ() {
 					entry = decoded

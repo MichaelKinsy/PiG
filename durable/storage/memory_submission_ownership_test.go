@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -20,10 +21,10 @@ func TestMemorySubmissionReadsAreCopies(t *testing.T) {
 		Id: submissionID, ConversationId: durable.ROOT_CONVERSATION_ID, RequestId: &requestID, Type: durable.SubmissionTypeWrite,
 		Status: durable.SubmissionUnanswered, Reason: &reason, Detail: map[string]any{"nested": []any{1}},
 	}
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ROOT_CONVERSATION_ID}},
 		durable.SubmissionWrite{Value: record},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	reason = "edited after commit"

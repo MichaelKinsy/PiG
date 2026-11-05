@@ -3,6 +3,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -29,6 +31,119 @@ const maxCommitFiles = 500
 
 // testIndex lists, for every Go test function in the tree under root, the files that declare it.
 type testIndex map[string][]string
+
+// movedTestsPath lists the tests a later commit renamed or moved away from the file a fix commit added them to, one per line.
+const movedTestsPath = "automation/ci/bugledger/moved-tests.txt"
+
+// movedTests maps a test reference a fix commit adds ("old-file::OldName") to the reference the tree declares it under.
+type movedTests map[string]string
+
+// movedLine is one line of moved-tests.txt.
+type movedLine struct{ from, to string }
+
+// readMovedTests reads moved-tests.txt: "<old-file>::<OldName> <new-file>::<NewName>" lines, with # comments and blank lines. A moved test that keeps its name needs no line when exactly one file in the tree declares it (see resolveTest); a renamed one, or a name the tree declares more than once, does. The file may be absent.
+func readMovedTests(root string) ([]movedLine, error) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(movedTestsPath)))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var lines []movedLine
+	for l := range strings.SplitSeq(string(data), "\n") {
+		l = strings.TrimSpace(l)
+		if l == "" || strings.HasPrefix(l, "#") {
+			continue
+		}
+		fields := strings.Fields(l)
+		if len(fields) != 2 || !strings.Contains(fields[0], "::") || !strings.Contains(fields[1], "::") {
+			return nil, fmt.Errorf("%s: %q must be \"<old-file>::<OldName> <new-file>::<NewName>\"", movedTestsPath, l)
+		}
+		lines = append(lines, movedLine{from: fields[0], to: fields[1]})
+	}
+	return lines, nil
+}
+
+func loadMovedTests(root string) (movedTests, error) {
+	lines, err := readMovedTests(root)
+	if err != nil {
+		return nil, err
+	}
+	moved := movedTests{}
+	for _, l := range lines {
+		moved[l.from] = l.to
+	}
+	return moved, nil
+}
+
+// checkMovedTests reports the lines of moved-tests.txt that no longer say anything true: a line whose new test the tree does not declare, whose old test the tree still declares (nothing moved), or whose old test an earlier line already maps.
+func checkMovedTests(root string) []string {
+	lines, err := readMovedTests(root)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	var problems []string
+	seen := map[string]bool{}
+	for _, l := range lines {
+		switch {
+		case seen[l.from]:
+			problems = append(problems, fmt.Sprintf("%s: %s is mapped twice", movedTestsPath, l.from))
+		case !testExists(root, l.to):
+			problems = append(problems, fmt.Sprintf("%s: %s names the test %s, which does not exist", movedTestsPath, l.from, l.to))
+		case testExists(root, l.from):
+			problems = append(problems, fmt.Sprintf("%s: %s still exists, so %s is a stale line", movedTestsPath, l.from, l.to))
+		}
+		seen[l.from] = true
+	}
+	return problems
+}
+
+// resolveTest names where the tree declares the test name that a commit declared or edited in file. A test file the tree still declares it in keeps it; a test that moved is the one moved-tests.txt maps, or else the one file that declares a test of that name.
+func resolveTest(root string, idx testIndex, moved movedTests, file, name string) (string, bool) {
+	if declares(idx, name, file) {
+		return file + "::" + name, true
+	}
+	if to, ok := moved[file+"::"+name]; ok && testExists(root, to) {
+		return to, true
+	}
+	if files := idx[name]; len(files) == 1 {
+		return files[0] + "::" + name, true
+	}
+	return "", false
+}
+
+// recordedTests returns the tests a committed entry records that the tree still has: a test the tree no longer declares follows moved-tests.txt to the test it became, and is dropped when no line names it or its target is missing too. A port that retires or renames a test no longer names anything, and the entry keeps the guard only through a line the reviewer wrote.
+func recordedTests(root string, moved movedTests, recorded []string) []string {
+	out := make([]string, 0, len(recorded))
+	followed := false
+	for _, t := range recorded {
+		if !testExists(root, t) {
+			to, ok := moved[t]
+			if !ok || !testExists(root, to) {
+				continue
+			}
+			t, followed = to, true
+		}
+		if !slices.Contains(out, t) {
+			out = append(out, t)
+		}
+	}
+	if followed {
+		slices.Sort(out)
+	}
+	return out
+}
+
+// movedByName returns where moved-tests.txt sends a test a commit message names that no file declares any more.
+func movedByName(root string, moved movedTests, name string) (string, bool) {
+	for from, to := range moved {
+		if strings.HasSuffix(from, "::"+name) && testExists(root, to) {
+			return to, true
+		}
+	}
+	return "", false
+}
 
 func buildTestIndex(root string) (testIndex, error) {
 	idx := testIndex{}
@@ -65,36 +180,33 @@ func buildTestIndex(root string) (testIndex, error) {
 }
 
 // testsOfCommit returns the tests a fix commit adds or names, resolved against the current tree: Go tests the diff adds, Go tests and parity scenarios the message names, and test files the commit adds.
-func testsOfCommit(r repo, idx testIndex, hash, message string) ([]string, error) {
+func testsOfCommit(r repo, idx testIndex, moved movedTests, hash, message string) ([]string, error) {
 	var out []string
 	add := func(s string) {
 		if !slices.Contains(out, s) {
 			out = append(out, s)
 		}
 	}
-	diff, err := r.git("show", "--format=", "-U0", "--no-renames", hash)
-	if err != nil {
-		return nil, err
-	}
 	var file string
 	touched := map[string]bool{}
 	var addedFiles []string
 	var newFile bool
-	// hunkTest is the test function whose body a hunk of a test file edits: git names the nearest preceding function in the hunk header, and the first added line must be indented to count as inside it.
+	// hunkTest is the reference of the test function whose body a hunk of a test file edits: git names the nearest preceding function in the hunk header, and the first added line must be indented to count as inside it.
 	hunkTest := ""
 	var edited []string
-	for l := range strings.SplitSeq(diff, "\n") {
+	// The diff is read as git prints it: a commit that adds large generated files is a gigabyte of patch text.
+	err := r.gitLines([]string{"show", "--format=", "-U0", "--no-renames", hash}, func(l string) {
 		switch {
 		case strings.HasPrefix(l, "@@ "):
 			hunkTest = ""
 			if _, ctx, ok := strings.Cut(strings.TrimPrefix(l, "@@ "), " @@"); ok && strings.HasSuffix(file, "_test.go") {
-				if m := goTestDecl.FindStringSubmatch(strings.TrimSpace(ctx)); m != nil && declares(idx, m[1], file) {
-					hunkTest = m[1]
+				if m := goTestDecl.FindStringSubmatch(strings.TrimSpace(ctx)); m != nil {
+					hunkTest, _ = resolveTest(r.root, idx, moved, file, m[1])
 				}
 			}
 		case hunkTest != "" && strings.HasPrefix(l, "+") && !strings.HasPrefix(l, "+++"):
-			if strings.HasPrefix(l, "+\t") && !slices.Contains(edited, file+"::"+hunkTest) {
-				edited = append(edited, file+"::"+hunkTest)
+			if strings.HasPrefix(l, "+\t") && !slices.Contains(edited, hunkTest) {
+				edited = append(edited, hunkTest)
 			}
 			hunkTest = ""
 		case strings.HasPrefix(l, "diff --git "):
@@ -109,11 +221,14 @@ func testsOfCommit(r repo, idx testIndex, hash, message string) ([]string, error
 			}
 		case strings.HasPrefix(l, "+func ") && strings.HasSuffix(file, "_test.go"):
 			if m := goTestDecl.FindStringSubmatch(l[1:]); m != nil {
-				if declares(idx, m[1], file) {
-					add(file + "::" + m[1])
+				if ref, ok := resolveTest(r.root, idx, moved, file, m[1]); ok {
+					add(ref)
 				}
 			}
 		}
+	})
+	if err != nil {
+		return nil, err
 	}
 	// A commit that edits many tests in place is a sweep, not a guard for one bug.
 	if len(edited) <= maxEditedTests {
@@ -129,6 +244,9 @@ func testsOfCommit(r repo, idx testIndex, hash, message string) ([]string, error
 	for _, m := range goTestMention.FindAllStringSubmatch(message, -1) {
 		files := idx[m[1]]
 		if len(files) == 0 {
+			if to, ok := movedByName(r.root, moved, m[1]); ok {
+				add(to)
+			}
 			continue
 		}
 		pick := files[0]

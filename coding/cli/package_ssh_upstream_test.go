@@ -17,7 +17,7 @@ func TestBareSCPPackageSourceRemainsLocalAtCLIAndIdentityBoundaries(t *testing.T
 	if kind := packagemanager.DetectSourceKind(source); kind != "local" {
 		t.Fatalf("source kind=%q", kind)
 	}
-	if identity := packagemanager.PackageSourceIdentity(cwd, source); identity != "local:"+filepath.Join(cwd, source) {
+	if identity := packagemanager.PackageSourceIdentity(cwd, source); identity != "local:"+localIdentityPath(filepath.Join(cwd, source)) {
 		t.Fatalf("identity=%q", identity)
 	}
 	stdout, stderr, code := captureStdoutStderr(t, func() int { return runPackageCommand([]string{"install", source}) })

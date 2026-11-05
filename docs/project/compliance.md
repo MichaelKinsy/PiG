@@ -90,6 +90,9 @@ Status values:
 |---|---|---|
 | Go toolchain | `.go-version` | Workflows read it (`go-version-file`); devcontainer; CI image Dockerfiles and tags; documented setup. The `go.mod` and `go.work` `toolchain` lines name the same release. Build scripts read `.go-version` instead of repeating it, and `make compliance` rejects any other Go release in a build, CI, image or setup file |
 | Node | `.node-version` | Workflows read it (`node-version-file`); devcontainer; CI parity image tag |
-| Rust | `ci.yml` `RUST_VERSION` | Devcontainer; CI parity image tag |
+| Rust | `ci.yml` `RUST_VERSION` | Devcontainer; CI parity image tag. `nightly.yml` and `live-providers.yml` read it from `ci.yml`. |
+| npm | `ci.yml` `NPM_VERSION` | `automation/ci/npm-toolchain/package.json` and `automation/images/npm-runtime/package.json`; the CI parity image check; the README, development guide and quickstart. `nightly.yml` and `live-providers.yml` read it from `ci.yml`. |
 | Pi | `.upstream/pin` (`make pin-sync` derives every copy; `internal/coding/pigversion/pigversion.go` is generated from it) | `extensions/sdk-ts` dependencies; CI parity oracle image; `test/parity/known-gaps.toml`; `test/parity/behavior-contracts.toml`; README badge. `ci.yml` checks the installed oracle with `automation/pin/pin.py check-oracle`. |
-| Reviewed Pi baseline | `coding/upstream.go` `UpstreamReviewedVersion` | The Makefile derives the leap ledgers from it |
+| Reviewed Pi baseline | `coding/upstream.go` `UpstreamReviewedVersion` | The Makefile derives the leap ledgers from it. `TestUpstreamReviewedVersionIsNotAfterThePinAndItsLedgersExist` checks that it is not after the pin and that every ledger it names exists |
+
+`TestBuildAutomationNamesNoUnrecordedVersionLiteral` (`test/ci-images`) guards the rest. It scans the scripts, make recipes, Dockerfiles and image metadata under `automation`, the top-level `Makefile` and the workflows for any dotted version. A version that is not in its source or in `versionLiteralAllowlist` fails the test. Each allowlist entry gives its reason. A Pi version comes from `automation/pin/pinlib.py`, as the defaults of `automation/gen/test-ported-baseline.py` and `automation/gen/pending-test-batches.py` do.

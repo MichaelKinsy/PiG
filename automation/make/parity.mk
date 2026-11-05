@@ -118,6 +118,10 @@ source-hygiene: check-scratch-paths
 source-hygiene-full: check-scratch-paths
 	@go run ./test/parity/cmd/sourcehygiene -full
 
+# fixture-guard refuses test fixtures that look like verbatim provider captures (encrypted or signature blobs, billing rows, real ids, reasoning text, home paths). Set PIG_PRIVATE_TERMS_FILE to a file outside the repository to also fail on private terms; see `go run ./automation/ci/fixtureguard -h`.
+fixture-guard: ## Refuse captured provider data in test fixtures and any private term from PIG_PRIVATE_TERMS_FILE
+	@go run ./automation/ci/fixtureguard
+
 # check-scratch-paths rejects a tracked file outside delivery/ that leaks an
 # internal scratch-cache path or this operator's absolute machine path into
 # the public tree (see RELEASE-DRYRUN.md blocker 4).
@@ -186,7 +190,7 @@ custom-factory-ledger-drift: ## Validate the checked-in internal draft
 	@go test $(GO_TEST_CI_COUNT) ./test/parity/cmd/customfactoryledger
 	@go run ./test/parity/cmd/customfactoryledger -check
 
-check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift piglet-strip-build ## Local generated contract validation and drift gates
+check-contracts-fast: closure-check correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta interface-gaps portmap-check behavior-contracts test-inventory-drift test-inventory test-porting-release known-gaps-drift format-version-inventory custom-factory-ledger-drift sdk-surface-drift sdk-apidiff piglet-strip-ids-drift sdk-bundles-drift piglet-strip-build ## Local generated contract validation and drift gates
 
 check-contracts: check-contracts-fast interface-inventory-drift ## Fast contracts + exact published-package inventory regeneration
 
@@ -208,7 +212,7 @@ parity-bin: parity-deps node-runtime
 # require-parity-ran is the loud-fail counterpart to TestParity's quiet
 # skips. ResolvePigBin/ResolveUpstreamPiBin (test/parity/runner/binaries.go) call
 # t.Skip with an explicit reason when PIG_PARITY_PIG_BIN/PIG_BIN is unset, or
-# when tmux or the pinned Pi 0.87.1 binary is missing - and that skip happens
+# when tmux or the pinned Pi binary is missing - and that skip happens
 # before TestParity runs a single scenario or writes RESULTS, so `go test`
 # still exits 0. A results file with zero outcomes (or no results file at
 # all - the two are equivalent here) means nothing was actually compared
@@ -595,7 +599,10 @@ coverage-strict:
 	    -scenarios test/parity/scenarios \
 	    -strict -out - >/dev/null
 
+# The audit compares the pin with the exact earlier pin its manifest names (`from`): that mirror is built here, from the
+# source alone, because the audit fails closed without it.
 upstream-delta: ## Audit every changed source file in the pinned upstream leap
+	@./automation/gen/mirror-upstream.sh --version "v$$($(PIN_TOOL) sync-from)" --sources-only
 	@go run ./test/parity/cmd/upstreamdelta
 
 # Honest gap ledger: reconcile the upstream interface inventory against PORT_MAP
@@ -692,5 +699,5 @@ parity-new: ## Scaffold a new parity scenario (optionally under FAMILY=...)
 	@echo "wrote test/parity/scenarios/$(if $(FAMILY),$(FAMILY)/,)$(NAME).toml"
 
 .PHONY: go-stubs go-stub-fields behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
-.PHONY: sdk-exports-release sdk-apidiff interface-gaps interface-gaps-update ledger-check ledger-update ledger-frontier ledger-equivalence async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta
+.PHONY: fixture-guard sdk-exports-release sdk-apidiff interface-gaps interface-gaps-update ledger-check ledger-update ledger-frontier ledger-equivalence async-contracts behavior-contracts sdk-surface-drift behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta
 .PHONY: parity-live-owner

@@ -1,0 +1,87 @@
+# Behavior family: interactive-rendering
+# Surface: plain Up (ESC [ A) as the dequeue key in macOS Terminal.app.
+#
+# Terminal.app's default profile sends Option+Up as plain Up (ESC [ A), captured on the owner's Mac (issue #402).
+# Pi 1.5.0 (interactive-mode.ts:3097, editor.ts cursorUp) recalls history for it: the queued message stays queued and is
+# sent after the tool.
+#
+# pig divergence (D228): with TERM_PROGRAM=Apple_Terminal, an empty editor and a queued message, plain Up runs
+# app.message.dequeue: the queue is restored to the editor and nothing is sent after the tool.
+#
+# Both binaries get the same bytes, so the screens differ by design. The assertions state each side: Pi keeps the
+# "Steering:" row and, after the tool, sends the message (test-faux answers "test-faux: unhandled request"); PiG shows
+# "Restored 1 queued message to editor" and sends nothing. Alt+Up bytes already match Pi in scenario 58.
+
+# Upstream evidence (Pi 1.5.0 source build f9a26365 oracle, parity harness on a Linux amd64 host in the CI image, 2026-11-02, 100x35 tmux, test-faux,
+# TERM_PROGRAM=Apple_Terminal): "Run: tui live tool pause" (a 10 s bash tool), wait LIVE-TOOL-08, "queued steer text" Enter, hex 1b 5b 41,
+# 18 BSpace, wait for the tool to end. Pi: the text is recalled into the editor, the Steering row stays, the editor is emptied, and when the
+# tool ends the pane shows `Error: test-faux: unhandled request "queued steer text"`: the message was sent. PiG: "Restored 1 queued message
+# to editor", then "LIVE-TOOL-DONE" (the answer to the tool result) and no second request. Against a PiG build of 0d8500283a the PiG side
+# fails: no "Restored" row and the visible wait for it times out.
+#
+# lint-known-gap: no equality comparator, because the two panes differ by design under divergence D228 (PiG dequeues, Pi recalls history and
+# still sends); the asserted rows state each side's outcome. Alt+Up bytes are compared with Pi in scenario 58.
+
+name = "60-terminal-app-up-dequeues-queued-message"
+description = "In Terminal.app plain Up restores the queued steering message to the editor in PiG; Pi recalls history and still sends it"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TERM_PROGRAM=Apple_Terminal"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TERM_PROGRAM=Apple_Terminal"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "-c", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "LIVE-TOOL-24"
+capture_end = "(auto)"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool pause", "Enter"]
+wait_contains = ["LIVE-TOOL-08"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["queued steer text", "Enter"]
+wait_contains = ["Steering: queued steer text"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 41"]
+# PiG restores the queue; Pi recalls history and has nothing new to wait for. tmux delivers the bytes of the next step in order.
+wait_visible_contains_pig = ["Restored 1 queued message to editor"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace"]
+# The tool ends after about 11 s. PiG answers the tool result; Pi sends the still-queued message, which test-faux does not know.
+wait_visible_contains_pig = ["LIVE-TOOL-DONE"]
+wait_visible_contains_pi = ["unhandled request"]
+wait_not_contains = ["Working"]
+wait_timeout_seconds = 40
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-TOOL-24"]
+both_not_contain = ["panic:", "goroutine "]
+pig_contains = ["Restored 1 queued message to editor"]
+pig_not_contain = ["test-faux: unhandled request"]
+pi_contains = ["test-faux: unhandled request"]
+runs = 3
+
+[diverge]
+pig_contains = ["Restored 1 queued message to editor"]
+pi_contains = ["test-faux: unhandled request"]
+reason = "D228 SCRUTINIZED:approved. Terminal.app sends Option+Up as plain Up; PiG runs app.message.dequeue for it with an empty editor and a queued message, Pi recalls history and still sends the queued message."

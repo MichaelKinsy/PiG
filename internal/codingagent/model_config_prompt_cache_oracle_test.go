@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
+// pi: packages/coding-agent/src/core/model-config.ts
 // ai/src/providers/model-schema.ts ModelPromptCacheSchema, used by model-config.ts for a model definition and a model
 // override: only the retention tiers "short" and "long" may appear, each a number above zero. The text models.json
 // reports for every shape of the object and of its two values, against the pinned Pi.

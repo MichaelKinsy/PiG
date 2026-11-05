@@ -123,6 +123,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	if !commandFromStdin {
 		args = append(args, command)
 	}
+	//nolint:gosec // G204 (class d): the bash tool sink: the resolved shell with its -c (or stdin) transport on the command the model proposes, exactly like Pi's bash.ts; the user's shellPath setting picks the shell.
 	cmd := exec.Command(shell.Path, args...)
 	cmd.Dir = cwd
 	// Upstream passes env as the spawn's env option.

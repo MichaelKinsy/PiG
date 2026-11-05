@@ -4,6 +4,8 @@
 
 The driver (`main.go`, `run.go`) loads the module with its tests, runs every pass, drops findings under `//portlint:allow`, and compares the rest with `baseline.toml`. The baseline is a ratchet: a finding it does not list fails, and an entry with no matching finding fails, so a fix deletes its entry in the same change. Never add an entry for new code.
 
+The driver lists the module's packages, then loads and analyzes them 40 at a time, two batches at once (`batchSize` and `scanWorkers` in `run.go`), with each package's imports read from compiler export data rather than type-checked from source. The checks read only the package they run on, so a batch's syntax trees and type tables are garbage when it is done, and the gate's peak memory is a few batches' trees (about 3.5 GB) instead of the whole module's (about 12 GB). A smaller batch or one worker lowers the peak and lengthens the run.
+
 ```sh
 make port-lint                                   # the gate (also in make check and ci-drift)
 go run ./automation/ci/portlint -report          # counts per check and every finding

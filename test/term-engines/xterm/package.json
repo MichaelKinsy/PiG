@@ -1,0 +1,11 @@
+{
+  "name": "pig-term-engine-xterm",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Replays the D205 terminal-engine corpus through xterm.js (@xterm/headless), the parser of VS Code, Cursor, Hyper, Tabby and JetBrains terminals",
+  "license": "MIT",
+  "dependencies": {
+    "@xterm/headless": "6.0.0"
+  }
+}

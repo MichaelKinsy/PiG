@@ -22,7 +22,7 @@ func TestAutocompleteCancellationPrecedesDispatchAndReleasesReferences(t *testin
 	if _, err := bridge.handleAutocompleteCancel(owner, json.RawMessage(`{"queryId":"query"}`)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridge.handleAutocompleteInvoke(t.Context(), owner, args); !errors.Is(err, context.Canceled) {
+	if _, err := bridge.handleAutocompleteInvoke(t.Context(), owner, "", args); !errors.Is(err, context.Canceled) {
 		t.Fatalf("query cancellation=%v", err)
 	}
 	bridge.releaseAutocompleteCall(owner, call)

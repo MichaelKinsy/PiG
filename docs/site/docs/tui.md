@@ -1,6 +1,6 @@
 # Terminal UI
 
-PiG provides a Go-native terminal interface that follows the observable behavior of Pi 1.4.0. The interactive application includes the startup header, transcript, editor, overlays, and footer.
+PiG provides a Go-native terminal interface that follows the observable behavior of Pi 1.5.0. The interactive application includes the startup header, transcript, editor, overlays, and footer.
 
 This page describes the PiG user and extension boundary. It does not expose PiG's internal TUI packages as a stable application SDK.
 
@@ -55,7 +55,7 @@ This is the header the [Login and header identity](#login-and-header-identity) s
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 → model          <provider/model> — Select model (opens selector UI)
   scoped-models  Enable/disable models for Ctrl+P cycling
-  import         Import and resume a session from a JSONL file
+  import         Import a JSONL session, preserving its ID and working directory
 ```
 
 Press Tab to complete the marked entry. Clear the line with Ctrl+C (the first press only clears; see step 6).
@@ -132,15 +132,15 @@ PiG supports fullscreen and regular terminal modes. Fullscreen is the default. S
 
 The TUI responds to terminal resize. It calculates width in terminal cells and preserves Unicode and ANSI rendering boundaries. Markdown horizontal rules use at most 80 content columns, including in expanded compaction summaries. Changing output padding retains user-message Markdown transforms and their pending work.
 
-A single character wider than the editor's wrap width, such as a tab in an editor two cells wide, stays on one row and overflows it. Pi 1.4.0 exhausts its stack on this input (D159).
+A single character wider than the editor's wrap width, such as a tab in an editor two cells wide, stays on one row and overflows it. Pi 1.5.0 exhausts its stack on this input (D159).
 
 ## Error notices
 
 Provider errors appear in the assistant response without a second `Provider request failed` status. After a non-retryable assistant error, PiG shows a `/bug` hint once during the interactive run. Aborted or cancelled requests do not trigger the hint. See [Slash commands](/docs/latest/slash-commands) for the `/bug` report workflow and its D62 delivery difference.
 
-If an update or another `pig` replaced or removed the `pig` executable while a session runs, or another `pig` pruned an extension cell or runtime file the session uses, PiG shows a warning once when an error is shown, in place of the `/bug` hint: `The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart.` (`The pig extension files this session runs from were removed or replaced.` for a pruned extension file), followed by the `pig --session <id>` command that continues the session. PiG checks only when an error appears, never on a timer, and does not read a version from the replaced file. This is a PiG adaptation of Pi 1.4.0's install-change warning (D95).
+If an update or another `pig` replaced or removed the `pig` executable while a session runs, or another `pig` pruned an extension cell or runtime file the session uses, PiG shows a warning once when an error is shown, in place of the `/bug` hint: `The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart.` (`The pig extension files this session runs from were removed or replaced.` for a pruned extension file), followed by the `pig --session <id>` command that continues the session. PiG checks only when an error appears, never on a timer, and does not read a version from the replaced file. This is a PiG adaptation of Pi 1.5.0's install-change warning (D95).
 
-Markdown wraps long unbroken text without truncating it. Link detection scans each word once so long text does not trigger repeated searches through the same suffix.
+Markdown wraps long unbroken text without truncating it. Link detection scans each word once so long text does not trigger repeated searches through the same suffix. Markdown renders each paragraph with the link state at its position: a bare URL inside a raw `<a>` tag that is still open stays plain text even when an identical paragraph earlier in the message, or in the previous version of a message being edited, was linked. Pi reuses the lines of that paragraph and links it (D220).
 
 ## Extension UI
 
@@ -177,7 +177,7 @@ For subprocess extensions:
 
 PiG suppresses identical frames. The host render path reads only the latest completed local frame.
 
-In fullscreen mode, a component opened with `ctx.ui.custom` receives mouse events as in Pi: clicks, presses, drags, the wheel and hover, with coordinates local to the component. Go (`sdk.MouseHandler`), Rust and Python (`handle_mouse`) and Node (Pi's `handleMouse`) extensions all receive them. Select and settings lists in component-kit views respond to clicks and the wheel. A wheel event that no component handles scrolls the transcript, also while an overlay has focus, as in Pi 1.4.0. Pi 1.1.0 passed it to the focused overlay as raw input. An overlay that scrolls with the wheel must handle mouse events.
+In fullscreen mode, a component opened with `ctx.ui.custom` receives mouse events as in Pi: clicks, presses, drags, the wheel and hover, with coordinates local to the component. Go (`sdk.MouseHandler`), Rust and Python (`handle_mouse`) and Node (Pi's `handleMouse`) extensions all receive them. Select and settings lists in component-kit views respond to clicks and the wheel. A wheel event that no component handles scrolls the transcript, also while an overlay has focus, as in Pi 1.5.0. Pi 1.1.0 passed it to the focused overlay as raw input. An overlay that scrolls with the wheel must handle mouse events.
 
 A custom session entry renders through its registered entry renderer. Ctrl+O re-runs the renderer with the new expansion state. A renderer that fails shows a `[type] renderer failed: ...` box in place of the entry.
 
@@ -227,7 +227,7 @@ Use a supported terminal and verify behavior at narrow and wide widths. See [Ter
 
 The package `@earendil-works/pi-tui` is the TypeScript TUI package for Pi. It is not PiG's Go API.
 
-Use [Pi's TUI documentation](https://github.com/earendil-works/pi/blob/v1.2.0/packages/coding-agent/docs/tui.md) when you are writing an in-process TypeScript extension for Pi itself.
+Use [Pi's TUI documentation](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/tui.md) when you are writing an in-process TypeScript extension for Pi itself.
 
 A Piglet can name a Go frontend member that draws the interactive mode in place of the ANSI renderer (D91). Stock PiG has no frontend member. See "Frontend members" in [Piglet Binaries](/docs/latest/piglet-binaries).
 

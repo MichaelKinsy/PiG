@@ -66,11 +66,11 @@ type agentPins struct {
 // version whose sha512 the registry publishes.
 var publishedAgentPins = agentPins{
 	files: map[string]string{
-		"pi-agent/package.json":      "9792b34aba5a94320fde5c68600eac4a5720d0d63ebc527d462bd125665b29ee",
-		"pi-agent/package-lock.json": "eb2c76ac270f099f2af3cbc6ccd08c3d22bf562b914af3690d1abba985461ade",
+		"pi-agent/package.json":      "2c0524e9556a475c087ea43c5b4ef6af232b180dfac5724a33dfe3e309349472",
+		"pi-agent/package-lock.json": "d3d2abb9ed4e078b7978ecd0f6316cc4357cb8d7777d344020acfa23190e24b4",
 		piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
 	},
-	tree: "4000b15fecd5981e749e4413bd015d3fedb9e042c6d6415d357e373662eaaa6c",
+	tree: "df258d6a334f74497115f9f2f0e9bdea855bc8c2319ef321f6c64941a9ed2c02",
 }
 
 // sourceAgentPins pin a commit pin's install, by commit: the project pinnedProject writes from the frozen closure, whose
@@ -80,6 +80,14 @@ var publishedAgentPins = agentPins{
 // is a launcher whose bytes equal the release's; its chunks differ. A pin bump to a commit adds its entry
 // (TestCommittedPinHasAgentPins).
 var sourceAgentPins = map[string]agentPins{
+	"b3a29f1111114fac696e2cfcd65acdb382a6ed5e": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "d026b90e696c79ba2248ad16e2ccde0ee8fbd3111d70f1ae92aa5b818b8fe1f0",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "910ded60a80e724b425b048f5d565e45632b6df2bd7a29ce71e77a283e7dde55",
+	},
 	"6c384aa30f619d7b28963f2bab24d8dacbe73cb6": {
 		files: map[string]string{
 			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
@@ -239,6 +247,30 @@ var sourceAgentPins = map[string]agentPins{
 			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
 		},
 		tree: "a370325fce00b85dd7639908e2548f21ff28056cc66a6db41012af45b60b5b34",
+	},
+	"e7a0df27c09d11bf4161d3605246cbf57a129cb2": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "729d2abc0debadf2d1d4ecebdb2aca8224b9a0937adf342b83cfcd40110607e4",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "33c54058aaa189d1f8eb9b23b63c8c240ed6e522b4c62496d22f6854cdac2ad3",
+	},
+	"2c8d1feb147f6b3d97e855da803bfe7b19f3c403": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "b1364e14f092535561200beec7037ec7b66e3319b83612b5dd8993430f727afd",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "5dc52e9affe1549d7d726e6929b97407b9ef3b316e84ffa70cbb3f161f9179f7",
+	},
+	"b556cfe5b0300a91f39c7bc5369a65a25fb7fcd5": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "6a4e410fa74d30721aafa685c521737709c3273ef4df5fe6459b156b992cc7fe",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "798c5b09a1f48406ed8c8ff21d6a457e87b888ba82596cf63ef03ffc5fc2ba59",
 	},
 }
 
@@ -1001,6 +1033,7 @@ func writeArtifactList(dir string) error {
 
 // output runs a command in dir with extra environment and returns its trimmed stdout; a failure carries its stderr.
 func output(ctx context.Context, dir string, env []string, name string, args ...string) (string, error) {
+	//nolint:gosec // G204 (class a): generic output helper whose names are literals from its callers (git, go, npm, node, sh, goBuildSteps step[0]), and the TinyGo path that exec.LookPath resolves.
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
 	if env != nil {

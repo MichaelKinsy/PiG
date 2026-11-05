@@ -45,11 +45,20 @@ impl Host {
         let listener = UnixListener::bind(&socket).unwrap();
         let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (mut stream, _) = listener.accept().unwrap();
-        stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
         let register = read(&mut stream);
         assert_eq!(register["type"], "register");
-        send(&mut stream, &json!({"type":"ready","ready":{"state":state,"width":80,"mode":"tui"}}));
-        Host { stream, thread: Some(thread), root }
+        send(
+            &mut stream,
+            &json!({"type":"ready","ready":{"state":state,"width":80,"mode":"tui"}}),
+        );
+        Host {
+            stream,
+            thread: Some(thread),
+            root,
+        }
     }
 
     /// The next frame that is not a request_state.
@@ -70,16 +79,17 @@ impl Host {
     }
 
     fn reply(&mut self, call: &Value, result: Value) {
-        send(&mut self.stream, &json!({"type":"call_result","id":call["id"],"call_result":{"result":result}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"call_result","id":call["id"],"call_result":{"result":result}}),
+        );
     }
 
-
-
-
-
-
     fn finish(mut self) {
-        send(&mut self.stream, &json!({"type":"shutdown","shutdown":{"reason":"done"}}));
+        send(
+            &mut self.stream,
+            &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+        );
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -113,7 +123,11 @@ fn before_agent_start_reads_the_prompt_its_current_options_render() {
     let (record, seen) = std::sync::mpsc::channel::<String>();
     ext.on_before_agent_start(move |ctx, event| {
         let read = |event: &BeforeAgentStartEvent| -> Result<String, String> {
-            Ok(format!("{} {}", event.system_prompt().map_err(|e| e.to_string())?, ctx.get_system_prompt().map_err(|e| e.to_string())?))
+            Ok(format!(
+                "{} {}",
+                event.system_prompt().map_err(|e| e.to_string())?,
+                ctx.get_system_prompt().map_err(|e| e.to_string())?
+            ))
         };
         record.send(read(event)?).unwrap();
         event.edit_system_prompt_options(|options| options["appendSystemPrompt"] = json!("EDITED"));
@@ -122,16 +136,32 @@ fn before_agent_start_reads_the_prompt_its_current_options_render() {
         Ok(None)
     });
     let mut host = Host::start(ext, json!({}));
-    event(&mut host, json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"customPrompt":"BASE","sections":{}}}));
+    event(
+        &mut host,
+        json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"customPrompt":"BASE","sections":{}}}),
+    );
     let call = host.expect_call("renderSystemPrompt");
     assert_eq!(call["call"]["args"]["options"]["customPrompt"], "BASE");
-    assert_eq!(call["call"]["args"]["options"]["appendSystemPrompt"], "EDITED");
+    assert_eq!(
+        call["call"]["args"]["options"]["appendSystemPrompt"],
+        "EDITED"
+    );
     host.reply(&call, json!({"prompt":"RENDERED"}));
     let reply = response(&mut host);
     assert!(reply["response"]["error"].is_null(), "reply: {reply}");
-    assert_eq!(reply["response"]["result"]["_pigPromptOptions"]["appendSystemPrompt"], "EDITED");
+    assert_eq!(
+        reply["response"]["result"]["_pigPromptOptions"]["appendSystemPrompt"],
+        "EDITED"
+    );
     // The unedited options read the prompt the host sent without a call; the edit renders once and is then reused.
-    assert_eq!(seen.try_iter().collect::<Vec<_>>(), vec!["RECEIVED RECEIVED", "RENDERED RENDERED", "RENDERED RENDERED"]);
+    assert_eq!(
+        seen.try_iter().collect::<Vec<_>>(),
+        vec![
+            "RECEIVED RECEIVED",
+            "RENDERED RENDERED",
+            "RENDERED RENDERED"
+        ]
+    );
     host.finish();
 }
 
@@ -141,14 +171,24 @@ fn ctx_get_system_prompt_sees_the_handlers_own_edit() {
     let mut ext = Extension::new("rs-ctx-read");
     let (record, seen) = std::sync::mpsc::channel::<String>();
     ext.on_before_agent_start(move |ctx, event| {
-        event.set_system_prompt_options(json!({"customPrompt":"BASE","appendSystemPrompt":"EDITED","sections":{}}));
-        record.send(ctx.get_system_prompt().map_err(|e| e.to_string())?).unwrap();
+        event.set_system_prompt_options(
+            json!({"customPrompt":"BASE","appendSystemPrompt":"EDITED","sections":{}}),
+        );
+        record
+            .send(ctx.get_system_prompt().map_err(|e| e.to_string())?)
+            .unwrap();
         Ok(None)
     });
     let mut host = Host::start(ext, json!({}));
-    event(&mut host, json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"customPrompt":"BASE","sections":{}}}));
+    event(
+        &mut host,
+        json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"customPrompt":"BASE","sections":{}}}),
+    );
     let call = host.expect_call("renderSystemPrompt");
-    assert_eq!(call["call"]["args"]["options"]["appendSystemPrompt"], "EDITED");
+    assert_eq!(
+        call["call"]["args"]["options"]["appendSystemPrompt"],
+        "EDITED"
+    );
     host.reply(&call, json!({"prompt":"RENDERED"}));
     let reply = response(&mut host);
     assert!(reply["response"]["error"].is_null(), "reply: {reply}");
@@ -166,7 +206,10 @@ fn the_event_hides_the_options_that_change_and_keeps_the_rest() {
         Ok(None)
     });
     let mut host = Host::start(ext, json!({}));
-    event(&mut host, json!({"prompt":"hi","images":[],"systemPrompt":"RECEIVED","systemPromptOptions":{"customPrompt":"BASE"}}));
+    event(
+        &mut host,
+        json!({"prompt":"hi","images":[],"systemPrompt":"RECEIVED","systemPromptOptions":{"customPrompt":"BASE"}}),
+    );
     let reply = response(&mut host);
     assert!(reply["response"]["error"].is_null(), "reply: {reply}");
     let seen = seen.try_iter().collect::<Vec<_>>();
@@ -180,9 +223,18 @@ fn before_agent_start_registered_through_on_event_fails_instead_of_reading_stale
     let mut ext = Extension::new("rs-render-prompt-old");
     ext.on_event("before_agent_start", |_, _| None);
     let mut host = Host::start(ext, json!({}));
-    event(&mut host, json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"sections":{}}}));
+    event(
+        &mut host,
+        json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"sections":{}}}),
+    );
     let reply = response(&mut host);
-    assert!(reply["response"]["error"]["message"].as_str().unwrap().contains("on_before_agent_start"), "reply: {reply}");
+    assert!(
+        reply["response"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("on_before_agent_start"),
+        "reply: {reply}"
+    );
     host.finish();
 }
 
@@ -195,10 +247,22 @@ fn before_agent_start_render_error_is_the_readers_error() {
         Ok(None)
     });
     let mut host = Host::start(ext, json!({}));
-    event(&mut host, json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"sections":{}}}));
+    event(
+        &mut host,
+        json!({"prompt":"hi","systemPrompt":"RECEIVED","systemPromptOptions":{"sections":{}}}),
+    );
     let call = host.expect_call("renderSystemPrompt");
-    send(&mut host.stream, &json!({"type":"call_result","id":call["id"],"call_result":{"error":{"message":"invalid section preamble"}}}));
+    send(
+        &mut host.stream,
+        &json!({"type":"call_result","id":call["id"],"call_result":{"error":{"message":"invalid section preamble"}}}),
+    );
     let reply = response(&mut host);
-    assert!(reply["response"]["error"]["message"].as_str().unwrap().contains("invalid section preamble"), "reply: {reply}");
+    assert!(
+        reply["response"]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("invalid section preamble"),
+        "reply: {reply}"
+    );
     host.finish();
 }

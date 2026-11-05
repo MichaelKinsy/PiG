@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -28,6 +29,7 @@ var fixtureRoot, fixtureSourceRoot string
 
 // TestMain isolates the config root and points the SDK roots at this tree.
 func TestMain(m *testing.M) {
+	coding.EnableTestFauxProvider()
 	switch os.Getenv(execEchoHelperEnv) {
 	case "1":
 		fmt.Println(strings.Join(os.Args[1:], " "))
@@ -43,6 +45,11 @@ func TestMain(m *testing.M) {
 	}
 	if log := os.Getenv(managerLogEnv); log != "" {
 		os.Exit(runLoggingManager(log))
+	}
+	if record := os.Getenv(selfUpdateFixtureEnv); record != "" {
+		if code, ok := runSelfUpdateFixture(record); ok {
+			os.Exit(code)
+		}
 	}
 	if root := os.Getenv(npmUpdateFixtureRootEnv); root != "" {
 		if code, ok := runNpmUpdateFixture(root); ok {

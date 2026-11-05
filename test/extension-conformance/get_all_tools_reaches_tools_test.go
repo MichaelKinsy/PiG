@@ -24,7 +24,7 @@ import (
 func TestGetAllToolsReachesToolsAcrossSDKs(t *testing.T) {
 	t.Parallel()
 	root := findModuleRoot(t)
-	prefixes := map[string]string{"go": "go", "python": "py", "rust": "rs", "node": "node"}
+	prefixes := map[string]string{"go": "go", "python": "py", "rust": "rs", "node": "node", "lisp": "lisp"}
 	hostTools := []subprocess.ToolInfo{
 		{Name: "host_reach", Description: "Host", Parameters: json.RawMessage(`{}`), Exposure: extension.ToolExposureDirect,
 			ReachesTools: func(input json.RawMessage) extension.ToolReach {
@@ -40,7 +40,7 @@ func TestGetAllToolsReachesToolsAcrossSDKs(t *testing.T) {
 		{Name: "host_fail", Description: "Host", Parameters: json.RawMessage(`{}`), Exposure: extension.ToolExposureDirect,
 			ReachesTools: func(json.RawMessage) extension.ToolReach { panic(errors.New("reach exploded")) }},
 	}
-	for _, language := range []string{"go", "python", "rust", "node"} {
+	for _, language := range []string{"go", "python", "rust", "node", "lisp"} {
 		for _, isolation := range []string{"strict", "shared-ok"} {
 			t.Run(language+"/"+isolation, func(t *testing.T) {
 				t.Parallel()
@@ -171,6 +171,33 @@ def new_extension():
         e.tool("probe", "Probe", {"type": "object"}, probe)
     return e
 `, name))
+	case "lisp":
+		write(filepath.Join(cfg.Source, name+".lisp"), fmt.Sprintf(`(defpackage %q (:use "COMMON-LISP"))
+(in-package %q)
+(defvar *name* %q)
+(defun reach (input)
+  (if (pig:jget input "all")
+      "all"
+      (sort (loop for key being the hash-keys of input collect (format nil "lisp:~A:~A" *name* key)) #'string<)))
+(defun show (reach) (if (equal reach "all") "all" (format nil "~{~A~^,~}" (coerce reach 'list))))
+(defun probe (ctx args)
+  (declare (ignore args))
+  (let ((tools (make-hash-table :test 'equal)))
+    (loop for tool across (pig:ctx-get-all-tools ctx) do (setf (gethash (pig:jget tool "name") tools) tool))
+    (flet ((hook (name) (pig:jget (gethash name tools) "reachesTools")))
+      (let ((failed (handler-case (progn (funcall (hook "host_fail") (pig:obj)) "returned")
+                      (pig:host-call-error (e) (if (search "reach exploded" (princ-to-string e)) "threw" (princ-to-string e))))))
+        (format nil "~{~A~^|~}"
+                (list (show (funcall (hook "reach_finder") (pig:obj "b" 1 "a" 2))) (show (funcall (hook "reach_finder") (pig:obj "all" t)))
+                      (show (funcall (hook "peer_finder") (pig:obj "c" 1))) (show (funcall (hook "host_reach") (pig:obj "x" 1)))
+                      (if (hook "probe") "true" "false") failed))))))
+(defun new-extension ()
+  (let ((e (pig:make-extension *name*)))
+    (pig:register-tool e (concatenate 'string *name* "_finder") :label "finder" :description "Finds" :parameters (pig:obj "type" "object")
+                         :reaches-tools #'reach :execute (lambda (ctx args) (declare (ignore ctx args)) "ok"))
+    (when (equal *name* "reach") (pig:tool e "probe" "Probe" (pig:obj "type" "object") #'probe))
+    e))
+`, name, name, name))
 	case "rust":
 		write(filepath.Join(cfg.Source, "Cargo.toml"), fmt.Sprintf("[package]\nname=%q\nversion=\"0.0.0\"\nedition=\"2024\"\n[dependencies]\npig-sdk={path=%q}\nserde_json=\"1\"\n", name, filepath.ToSlash(filepath.Join(root, "extensions", "sdk-rs"))))
 		write(filepath.Join(cfg.Source, "src", "lib.rs"), fmt.Sprintf(`use pig_sdk::{Extension,ToolDefinition,ToolReach,ToolResult,empty_schema};

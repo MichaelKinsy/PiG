@@ -132,6 +132,7 @@ func runUpdatedExtensionUpgrade() error {
 	if err != nil {
 		return err
 	}
+	//nolint:gosec // G204 (class b): program is os.Executable, the installed pig itself; args are the fixed extension upgrade --all --summary.
 	cmd := exec.Command(path, "extension", "upgrade", "--all", "--summary")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = nil, os.Stderr, os.Stderr
 	return cmd.Run()

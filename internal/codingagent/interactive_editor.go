@@ -1,17 +1,20 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (handleOpenExternalEditor, toggleToolOutputExpansion).
+
 import (
 	"context"
+	"errors"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func (m *InteractiveMode) openExternalEditor(ctx context.Context) {
-	m.openExternalEditorBuffer(ctx, m.externalEditorCommand(), m.editor.GetExpandedText(), m.editor.SetText)
+	m.openExternalEditorBuffer(ctx, m.externalEditorCommand(), m.editor.GetExpandedText(), m.editor.SetText, m.showStatus)
 }
 
 // openExternalEditorBuffer hands terminal input and output to the child off the UI loop. Completion returns to the owner loop and only a successful edit replaces the caller's buffer.
-func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command, initial string, apply func(string)) {
+func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command, initial string, apply func(string), report func(message string)) {
 	if m.externalEditorActive {
 		return
 	}
@@ -52,6 +55,10 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command,
 			m.rawDrain = drain
 			if runErr == nil && ctx.Err() == nil {
 				apply(result)
+			}
+			var failure *ExternalEditorFailure
+			if errors.As(runErr, &failure) && ctx.Err() == nil && report != nil {
+				report(failure.Message)
 			}
 			if m.surface != nil {
 				// pig additive (D91): the frame after the handoff carries

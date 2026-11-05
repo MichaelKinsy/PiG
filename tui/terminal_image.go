@@ -172,6 +172,11 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 	if os.Getenv("HERDR_ENV") == "1" {
 		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
 	}
+	// Orca supports Kitty graphics but only advertises it through ORCA_IMAGE_PROTOCOL. Require both signals so Orca releases
+	// predating that advertisement keep the text fallback instead of reserving image rows that nothing renders.
+	if termProgram == "orca" && os.Getenv("ORCA_IMAGE_PROTOCOL") == "kitty" {
+		return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
+	}
 	if os.Getenv("KITTY_WINDOW_ID") != "" || termProgram == "kitty" {
 		return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
 	}

@@ -8,7 +8,7 @@ import (
 
 // applySubmissionChange (transaction.ts:67-82): a settled record (done, unanswered) stays; placing a queued submission turns an input placed and a
 // write done and records its entry; placing anything not queued fails "Submission N is not queued"; only a placed input can be answered (done)
-// ("Submission N is not a placed input"); an unanswered settlement keeps the record's entry and adds the reason and detail, a done one the answer.
+// ("Submission N is not a placed input or continue"); an unanswered settlement keeps the record's entry and adds the reason and detail, a done one the answer.
 // Pi: packages/durable/src/session/transaction.ts:67-82
 func TestApplySubmissionChangeFollowsPisStateMachine(t *testing.T) {
 	record := func(kind durable.SubmissionType, status durable.SubmissionStatus) durable.SubmissionRecord {
@@ -40,7 +40,9 @@ func TestApplySubmissionChangeFollowsPisStateMachine(t *testing.T) {
 		{name: "a queued write is done", current: record(durable.SubmissionTypeWrite, durable.SubmissionQueued), change: placeAt, changed: true, status: durable.SubmissionDone, entry: new(durable.EntryId(9))},
 		{name: "a placed record cannot be placed again", current: record(durable.SubmissionTypeInput, durable.SubmissionPlaced), change: placeAt, wantErr: "Submission 3 is not queued"},
 		{name: "a placed input is answered", current: record(durable.SubmissionTypeInput, durable.SubmissionPlaced), change: answer, changed: true, status: durable.SubmissionDone, entry: new(durable.EntryId(7)), answer: new(durable.EntryId(11))},
-		{name: "a queued input cannot be answered", current: record(durable.SubmissionTypeInput, durable.SubmissionQueued), change: answer, wantErr: "Submission 3 is not a placed input"},
+		{name: "a queued input cannot be answered", current: record(durable.SubmissionTypeInput, durable.SubmissionQueued), change: answer, wantErr: "Submission 3 is not a placed input or continue"},
+		{name: "a placed continue is answered", current: record(durable.SubmissionTypeContinue, durable.SubmissionPlaced), change: answer, changed: true, status: durable.SubmissionDone, entry: new(durable.EntryId(7)), answer: new(durable.EntryId(11))},
+		{name: "a placed continue can be left unanswered", current: record(durable.SubmissionTypeContinue, durable.SubmissionPlaced), change: giveUp, changed: true, status: durable.SubmissionUnanswered, entry: new(durable.EntryId(7)), reason: "cancelled"},
 		{name: "a queued input can be left unanswered", current: record(durable.SubmissionTypeInput, durable.SubmissionQueued), change: giveUp, changed: true, status: durable.SubmissionUnanswered, reason: "cancelled"},
 		{name: "a placed input keeps its entry when left unanswered", current: record(durable.SubmissionTypeInput, durable.SubmissionPlaced), change: giveUp, changed: true, status: durable.SubmissionUnanswered, entry: new(durable.EntryId(7)), reason: "cancelled"},
 	} {

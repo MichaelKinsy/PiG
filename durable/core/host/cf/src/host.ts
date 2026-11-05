@@ -110,6 +110,8 @@ export interface TimerDriver {
   liveness(at: number): void
   /** The handle was recycled: forget every timer, the reopened core arms its own from the store. */
   reset?(): void
+  /** The Harness closed: disarm every pending timer. */
+  dispose?(): void
 }
 
 /**
@@ -186,6 +188,14 @@ const GUARD = /^UPDATE durable_metadata\b/
 // queueMicrotask keeps every callback it is given past the young-generation collections (measured: 30 MB of promoted
 // allocation per 4 objects x 4 turns at 3,500 turns, the largest part of the isolate's peak), and a reaction does not.
 const RESOLVED = Promise.resolve()
+
+/** Queue one macrotask: `setImmediate` where there is one (Node), else a `MessageChannel` message (Workers, browsers), as pi-durable's writer.ts `hop()`. Microtasks queued before it run first. */
+function macrotask(run: () => void): void {
+  if (typeof setImmediate === "function") { setImmediate(run); return }
+  const channel = new MessageChannel()
+  channel.port1.onmessage = () => { channel.port1.close(); run() }
+  channel.port2.postMessage(undefined)
+}
 
 /**
  * One open hops chain (ABI section 5.3). Its state lives in these fields and `run` is bound once, so a hop queues the same
@@ -442,9 +452,7 @@ export class HostSession {
       if (step.effects.length) return this.discard(new FatalError("a step with reads must have no effects"))
       // ABI section 3, invariant 3: the step's commits are applied, in order, before its reads run (cold open's schema prelude).
       const tc = performance.now()
-      for (const commit of step.commits) {
-        try { this.commit(commit) } catch (e) { return this.discard(new FatalError(`a commit failed: ${(e as Error).message}`, e)) }
-      }
+      try { this.commits(step.commits) } catch (e) { return this.discard(new FatalError(`a commit failed: ${(e as Error).message}`, e)) }
       this.counters.msApply += performance.now() - tc
       let answers: Rows[]
       const t0 = performance.now()
@@ -466,9 +474,7 @@ export class HostSession {
       return this.apply(next, { ...rows, now: q.now })
     }
     const t0 = performance.now()
-    for (const commit of step.commits) {
-      try { this.commit(commit) } catch (e) { return this.discard(new FatalError(`a commit failed: ${(e as Error).message}`, e)) }
-    }
+    try { this.commits(step.commits) } catch (e) { return this.discard(new FatalError(`a commit failed: ${(e as Error).message}`, e)) }
     this.counters.msApply += performance.now() - t0
     const t1 = performance.now()
     if (step.order) {
@@ -488,19 +494,33 @@ export class HostSession {
     this.counters.msEffects += performance.now() - t1
   }
 
-  private commit(commit: Commit) {
-    this.opts.trace?.commit?.(commit, this.sqlTable)
+  /** Apply `commits` in order, each in its own transaction, except that a run of joined commits (one Storage call, ABI section 5.5) is one: all of it or none. */
+  private commits(commits: readonly Commit[]) {
+    for (let from = 0; from < commits.length;) {
+      let to = from + 1
+      while (to < commits.length && commits[to]!.joined) to++
+      this.commitRun(commits, from, to)
+      from = to
+    }
+  }
+
+  private commitRun(commits: readonly Commit[], from: number, to: number) {
+    for (let i = from; i < to; i++) this.opts.trace?.commit?.(commits[i]!, this.sqlTable)
     this.store.tx(() => {
-      for (const stmt of commit.stmts) {
-        const text = this.sqlTable[stmt.sql]
-        if (text === undefined) throw new Error(`statement ${stmt.sql} is not in the core's sql_table`)
-        const written = this.store.run(text, stmt.params)
-        if (GUARD.test(text) && written !== 1) throw new Error(`single-writer guard: the durable_metadata update changed ${written} rows, not 1`)
-        this.opts.history?.statement(text, stmt.params)
+      for (let i = from; i < to; i++) {
+        for (const stmt of commits[i]!.stmts) {
+          const text = this.sqlTable[stmt.sql]
+          if (text === undefined) throw new Error(`statement ${stmt.sql} is not in the core's sql_table`)
+          const written = this.store.run(text, stmt.params)
+          if (GUARD.test(text) && written !== 1) throw new Error(`single-writer guard: the durable_metadata update changed ${written} rows, not 1`)
+          this.opts.history?.statement(text, stmt.params)
+        }
       }
     })
-    this.counters.commits++
-    this.counters.statements += commit.stmts.length
+    for (let i = from; i < to; i++) {
+      this.counters.commits++
+      this.counters.statements += commits[i]!.stmts.length
+    }
   }
 
   /** Observe every notice after the step's commits are applied (ABI section 3, invariant 4). Returns the unsubscribe function. */
@@ -560,6 +580,7 @@ export class HostSession {
         try { hops = decodeHops(effect.payload) } catch (e) { return this.discard(new FatalError(`hops effect ${effect.id} is malformed: ${(e as Error).message}`, e)) }
         return this.openChain(effect.id, hops.n, hops.at, hops.commits.length === 0 ? undefined : hops.commits)
       }
+      case EFFECT.macrotask: return this.openMacrotask(effect.id)
       case EFFECT.cancel: {
         const id = new DataView(effect.payload.buffer, effect.payload.byteOffset, 4).getUint32(0, true)
         this.running.get(id)?.abort()
@@ -594,6 +615,19 @@ export class HostSession {
     void RESOLVED.then(chain.run)
   }
 
+  /** ABI section 5.5: one macrotask, queued now (the order of the macrotasks the core queued and the host's own is the order they were queued in), then `hopped`. `cancel` and a dropped handle drop it. */
+  private openMacrotask(id: number) {
+    const chain = new Chain(this)
+    chain.id = id
+    this.chains.set(id, chain)
+    macrotask(() => {
+      if (this.chains.get(id) !== chain) return
+      this.chains.delete(id)
+      if (chain.aborted || this.dead) return
+      this.sendHopped(id)
+    })
+  }
+
   /** One hop of a chain: the nth sends `hopped`. */
   hop(chain: Chain) {
     if (chain.aborted || this.dead) return this.endChain(chain)
@@ -601,7 +635,7 @@ export class HostSession {
       if (chain.commits !== undefined && chain.n - chain.left === chain.at) {
         const commits = chain.commits
         chain.commits = undefined
-        try { for (const commit of commits) this.commit(commit) } catch (e) { this.endChain(chain); return this.discard(new FatalError(`a commit failed: ${(e as Error).message}`, e)) }
+        try { this.commits(commits) } catch (e) { this.endChain(chain); return this.discard(new FatalError(`a commit failed: ${(e as Error).message}`, e)) }
       }
       return void RESOLVED.then(chain.run)
     }
@@ -833,16 +867,28 @@ export class HostSession {
     this.send(EVENT.seal)
   }
 
-  async closeAndJoin(): Promise<void> {
+  /** Resolves with whether the core's close failed: the store of held changes at close failed (session.ts close: the Session fails and close() rejects after the backend closed). */
+  async closeAndJoin(): Promise<boolean> {
     // Pi's close joins the invocations the seal signalled before it closes the Session (harness.ts close: scheduler.join(), then session.close()): a handler that outlives its signal still delivers its completion to the core, which is open until the terminal close.
     while (this.handlers.size > 0 && !this.dead) await Promise.allSettled([...this.handlers])
-    if (this.dead) return
+    if (this.dead) return false
     // The core closes behind its Session line (handler.go EventClose) and reports it as the api_result of request 0: work admitted before the close settles first, and its hop chains must still run.
     const closed = this.waitForNotice(n => n.kind === NOTICE.api_result && new DataView(n.payload.buffer, n.payload.byteOffset, 4).getUint32(0, true) === 0)
     closed.catch(() => {})
-    try { this.send(EVENT.close) } catch (error) { this.discard(new FatalError("closed")); throw error }
-    try { await closed } catch { /* the handle was discarded while it closed */ }
+    try { this.send(EVENT.close) } catch (error) {
+      this.discard(new FatalError("closed"))
+      // scheduler.ts join: a failed write-back of the tasks the close stopped is caught (`.catch(() => {})`): the Session fails and reports it, and the
+      // close still resolves. Another process that advanced the store (the single-writer guard) fails it this way.
+      if (error instanceof FatalError && error.message.startsWith("a commit failed")) return false
+      throw error
+    }
+    let failed = false
+    try {
+      const answer = await closed
+      failed = new TextDecoder().decode(answer.payload.subarray(4)).startsWith('{"error"')
+    } catch { /* the handle was discarded while it closed */ }
     this.discard(new FatalError("Harness is closed"))
+    return failed
   }
 }
 

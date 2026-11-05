@@ -22,7 +22,7 @@ func bindingsNotesContract(version int, extra Fields[MethodSpec]) *Contract {
 	methods := Fields[MethodSpec]{{"add", Method(tString(), nil)}, {"rename", Method(tString(), nil)}}
 	methods = append(methods, extra...)
 	return Remote("t.e8-notes", RemoteDef{
-		Version: version, Input: tObject("list", tOptional(tString(Schema{"default": "main"}))), Host: NewHostNamed("server"),
+		Version: version, Input: tObject("list", tOptional(tString(kw("default", "main")))), Host: NewHostNamed("server"),
 		Variants: Fields[VariantDef]{{"main", VariantDef{
 			State:   Fields[Schema]{{"notes", bindingsNoteSchema}, {"title", tString()}},
 			Methods: methods,

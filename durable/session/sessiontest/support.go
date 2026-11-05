@@ -57,9 +57,10 @@ type ControlledStorage struct {
 	commitGate        *Gate
 	findGate          *Gate
 	commitFailure     error
-	// adopting is set while adopt runs, the storage's synchronous step: code that sees it set runs inside Storage.Commit's adopt.
+	// adopting is set while a receipt runs, the storage's synchronous step: code that sees it set runs inside
+	// Storage.Commit's receive.
 	adopting atomic.Bool
-	// afterAdopt runs once, in the next commit's synchronous step right after adopt returned.
+	// afterAdopt runs once, in the next commit's synchronous step right after its first receipt returned.
 	afterAdopt func()
 }
 
@@ -149,21 +150,41 @@ func (controlled *ControlledStorage) FailNextCommit(err error) {
 	controlled.mu.Unlock()
 }
 
-// Adopting reports whether the caller runs inside the adopt callback of a Storage.Commit, the storage's synchronous step.
+// Adopting reports whether the caller runs inside a receipt callback of a Storage.Commit, the storage's synchronous step.
 func (controlled *ControlledStorage) Adopting() bool { return controlled.adopting.Load() }
 
-// AfterAdopt makes the next commit run after, once, in its synchronous step right after adopt returned.
+// AfterAdopt makes the next commit run after, once, in its synchronous step right after its first receipt returned.
 func (controlled *ControlledStorage) AfterAdopt(after func()) {
 	controlled.mu.Lock()
 	controlled.afterAdopt = after
 	controlled.mu.Unlock()
 }
 
-// Commit records the batch, honors a held gate and an injected failure, then commits.
-func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+// RefusingAt commits batches through commit up to the first one refuses matches, which it refuses with err: what a
+// storage does whose own check refuses that batch.
+func RefusingAt(
+	commit func(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error),
+	ctx context.Context,
+	batches [][]durable.StorageWrite,
+	receive func(index int, seq durable.Seq),
+	refuses func(writes []durable.StorageWrite) bool,
+	err error,
+) (durable.CommitResult, error) {
+	at := slices.IndexFunc(batches, refuses)
+	if at < 0 {
+		return commit(ctx, batches, receive)
+	}
+	result, commitErr := commit(ctx, batches[:at], receive)
+	if commitErr != nil || result.Stored < at {
+		return result, commitErr
+	}
+	return durable.CommitResult{Stored: at, Refused: err}, nil
+}
+
+// Commit records and holds the call, then fails its first batch if a failure is set (a refusal: nothing stored), or commits
+// it in memory, Adopting set while each receipt runs and AfterAdopt run after the first one.
+func (controlled *ControlledStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	controlled.mu.Lock()
-	controlled.admittedCommits = append(controlled.admittedCommits, writes)
-	controlled.commits = append(controlled.commits, slices.Clone(writes))
 	held := controlled.commitGate
 	controlled.mu.Unlock()
 	if held != nil {
@@ -172,16 +193,29 @@ func (controlled *ControlledStorage) Commit(ctx context.Context, writes []durabl
 	controlled.mu.Lock()
 	failure := controlled.commitFailure
 	controlled.commitFailure = nil
+	recorded := batches
+	if failure != nil {
+		recorded = batches[:1]
+	}
+	for _, writes := range recorded {
+		controlled.admittedCommits = append(controlled.admittedCommits, writes)
+		controlled.commits = append(controlled.commits, slices.Clone(writes))
+	}
 	controlled.mu.Unlock()
 	if failure != nil {
-		return 0, failure
+		return durable.CommitResult{Refused: failure}, nil
 	}
-	return controlled.MemoryStorage.Commit(ctx, writes, func(seq durable.Seq) {
+	first := true
+	return controlled.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {
 		controlled.adopting.Store(true)
 		func() {
 			defer controlled.adopting.Store(false)
-			adopt(seq)
+			receive(index, seq)
 		}()
+		if !first {
+			return
+		}
+		first = false
 		controlled.mu.Lock()
 		after := controlled.afterAdopt
 		controlled.afterAdopt = nil
@@ -261,7 +295,7 @@ func OpenReportingTestSession(report func(error)) Harness {
 	}
 	kernel := session.NewSessionImpl(controlled, hooks, nil, nil)
 	publications := &Publications{}
-	kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	ObserveCommitsFunc(kernel, func(_ context.Context, publication durable.CommitPublication) {
 		publications.mu.Lock()
 		publications.items = append(publications.items, publication)
 		publications.mu.Unlock()
@@ -269,11 +303,40 @@ func OpenReportingTestSession(report func(error)) Harness {
 	return Harness{Storage: controlled, Session: kernel, Publications: publications}
 }
 
-// DocumentChanges returns the document changes of a publication.
+// CommitFunc is a CommitObserver that runs a function for each publication and ignores its end.
+type CommitFunc func(ctx context.Context, publication durable.CommitPublication)
+
+// Advance runs the function.
+func (f CommitFunc) Advance(ctx context.Context, publication durable.CommitPublication) {
+	f(ctx, publication)
+}
+
+// End ignores the end.
+func (CommitFunc) End(durable.WatchEnd) {}
+
+// ObserveCommitsFunc observes the commits of s (a Session or a Harness) with f and returns the observation's Detach.
+func ObserveCommitsFunc(s interface {
+	ObserveCommits(durable.CommitObserver) durable.CommitObservation
+}, f func(ctx context.Context, publication durable.CommitPublication)) func() {
+	return s.ObserveCommits(CommitFunc(f)).Detach
+}
+
+// DocumentChanges returns the document changes of a publication that carry a value: creations and updates, no retirements.
 func DocumentChanges(publication durable.CommitPublication) []durable.DocumentChange {
 	var changes []durable.DocumentChange
 	for _, change := range publication.Changes {
 		if document, ok := change.(durable.DocumentChange); ok {
+			changes = append(changes, document)
+		}
+	}
+	return changes
+}
+
+// DocumentRetireChanges returns the document retirements of a publication.
+func DocumentRetireChanges(publication durable.CommitPublication) []durable.DocumentRetireChange {
+	var changes []durable.DocumentRetireChange
+	for _, change := range publication.Changes {
+		if document, ok := change.(durable.DocumentRetireChange); ok {
 			changes = append(changes, document)
 		}
 	}

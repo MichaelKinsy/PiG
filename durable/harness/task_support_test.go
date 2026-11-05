@@ -5,14 +5,14 @@ package harness
 import (
 	"context"
 	"errors"
-	"runtime"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -35,8 +35,19 @@ func deferred() *deferredGate { return &deferredGate{done: make(chan struct{})} 
 
 func (gate *deferredGate) resolve() { gate.once.Do(func() { close(gate.done) }) }
 
+// reject settles the gate with err, which every wait returns.
+func (gate *deferredGate) reject(err error) {
+	gate.once.Do(func() {
+		gate.err = err
+		close(gate.done)
+	})
+}
+
 // wait blocks until the gate settles or ctx is cancelled.
 func (gate *deferredGate) wait(ctx context.Context) error {
+	// A test's await: a watch listener that waits here has run the synchronous part of its call, as an upstream listener that
+	// awaits a promise has (chord.DeliveryEntered).
+	chord.DeliveryEntered()
 	select {
 	case <-gate.done:
 		return gate.err
@@ -54,13 +65,18 @@ func abortedBy(signal context.Context) error {
 // flush is session-support.ts flush(): let pending work run for one scheduling turn.
 func flush() { time.Sleep(time.Millisecond) }
 
-// eventually flushes scheduling turns until check holds (200 attempts, as upstream).
+// eventually is task-support.ts eventually: check, then await flush(), up to 200 times. A turn is awaitQuiescent, then flush().
+// The barrier returns once every other goroutine has run up to a wait, so the work a check waits for (a reopen, a resume, a
+// delivery) has finished or is parked before the next attempt, however slowly a starved scheduler runs it. A goroutine parked
+// on a timer counts as idle to the barrier, so flush() keeps what a Pi turn also is, a macrotask (setTimeout) of wall time: a
+// handover that sleeps 10 ms after its commit still gets the turn spacing Pi gives it.
 func eventually(t *testing.T, check func() bool) {
 	t.Helper()
 	for range 200 {
 		if check() {
 			return
 		}
+		awaitQuiescent(t)
 		flush()
 	}
 	t.Fatal("Condition was not reached")
@@ -93,11 +109,11 @@ type reportLog struct {
 	infos   []durable.ReportInfo
 }
 
-func (log *reportLog) add(err error, info durable.ReportInfo) {
+func (log *reportLog) add(report durable.Report) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
-	log.reports = append(log.reports, err)
-	log.infos = append(log.infos, info)
+	log.reports = append(log.reports, report.Error)
+	log.infos = append(log.infos, report.ReportInfo)
 }
 
 // allInfos is the info of every report, in order (task-support.ts openTasks infos).
@@ -193,47 +209,23 @@ func (reader *countingRegistry) subscriptions() int {
 
 var errUnreachable = errors.New("unreachable")
 
-// queueOnLine runs start and waits until the operation it began has queued one more job on the Session line, which a held line job keeps queued, or has already settled without one (a cached read).
-func queueOnLine(t *testing.T, harness Harness, start func() <-chan struct{}) {
+// queueOnLineAdmitted runs start with a context that reports when the Session line admits its call, and waits for that or for the
+// operation to settle: the call then holds its position behind the jobs ahead of it, as a TypeScript call that extended
+// the line's chain synchronously does (internal/lineadmission).
+func queueOnLineAdmitted(t *testing.T, start func(ctx context.Context) <-chan struct{}) {
 	t.Helper()
-	impl := harness.(*harnessImpl)
-	jobs := impl.LineJobs()
-	done := start()
-	eventually(t, func() bool { return impl.LineJobs() > jobs || settled(done) })
+	queueOnLineAdmittedFrom(t, testContext, start)
 }
 
-// waitingOnLine counts the goroutines running operation (a stack substring such as "harnessImpl).Inspect") that wait on the Session
-// line behind a held job. Unlike LineJobs it cannot mistake other line work, such as the scheduler's, for the operation's own job.
-func waitingOnLine(operation string) int {
-	return goroutinesMatching(func(stack string) bool {
-		header, _, _ := strings.Cut(stack, "\n")
-		return strings.Contains(header, "[chan receive") && strings.Contains(stack, "durable/session.enqueue[") && strings.Contains(stack, operation)
-	})
-}
-
-// queueOnLineIn runs start and waits until a goroutine running operation waits on the Session line behind a held job, or until the
-// operation settled.
-func queueOnLineIn(t *testing.T, operation string, start func() <-chan struct{}) {
+// queueOnLineAdmittedFrom is queueOnLineAdmitted for an operation whose context derives from base.
+func queueOnLineAdmittedFrom(t *testing.T, base context.Context, start func(ctx context.Context) <-chan struct{}) {
 	t.Helper()
-	done := start()
-	eventually(t, func() bool { return settled(done) || waitingOnLine(operation) > 0 })
-}
-
-func goroutinesMatching(match func(stack string) bool) int {
-	buffer := make([]byte, 1<<20)
-	for {
-		n := runtime.Stack(buffer, true)
-		if n < len(buffer) {
-			buffer = buffer[:n]
-			break
-		}
-		buffer = make([]byte, 2*len(buffer))
+	admitted := make(chan struct{})
+	done := start(lineadmission.With(base, func() { close(admitted) }))
+	select {
+	case <-admitted:
+	case <-done:
+	case <-time.After(gcTimeout):
+		t.Fatal("the operation was neither admitted to the Session line nor settled")
 	}
-	count := 0
-	for stack := range strings.SplitSeq(string(buffer), "\n\n") {
-		if match(stack) {
-			count++
-		}
-	}
-	return count
 }

@@ -6,7 +6,7 @@ package jv
 
 // surrogateAt reports the code unit when s[i:] starts with a three-byte
 // surrogate encoding.
-func surrogateAt(s string, i int) (uint16, bool) {
+func surrogateAt[S ~string | ~[]byte](s S, i int) (uint16, bool) {
 	if i+2 < len(s) && s[i] == 0xED && s[i+1] >= 0xA0 && s[i+1] <= 0xBF && s[i+2]&0xC0 == 0x80 {
 		return uint16(s[i]&0x0f)<<12 | uint16(s[i+1]&0x3f)<<6 | uint16(s[i+2]&0x3f), true
 	}
@@ -99,6 +99,21 @@ func Concat(a, b string) string {
 		}
 	}
 	return a + b
+}
+
+// AppendConcat appends text to dst as UTF-16 concatenation does: a trailing high surrogate of dst (a lone one, in its
+// three-byte generalized form) and a leading low surrogate of text join into one code point. It is dst + text on bytes,
+// without the intermediate strings Concat builds.
+func AppendConcat(dst []byte, text string) []byte {
+	if n := len(dst); n >= 3 && len(text) >= 3 {
+		hi, ok1 := surrogateAt(dst, n-3)
+		lo, ok2 := surrogateAt(text, 0)
+		if ok1 && ok2 && hi >= 0xD800 && hi <= 0xDBFF && lo >= 0xDC00 && lo <= 0xDFFF {
+			dst = appendCodePoint(dst[:n-3], 0x10000+(int(hi)-0xD800)<<10+(int(lo)-0xDC00))
+			text = text[3:]
+		}
+	}
+	return append(dst, text...)
 }
 
 // HasPrefix reports whether s starts with p as a UTF-16 sequence. A prefix

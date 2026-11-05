@@ -20,7 +20,7 @@ timeout_seconds = 15
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"--legacy-peer-deps"', 'Installed npm:@scope/pkg']
+both_contain = ['"--legacy-peer-deps"', '"--no-audit"', '"--no-fund"', 'Installed npm:@scope/pkg']
 both_not_contain = ['"--config.auto-install-peers=false"']
 runs = 3
 

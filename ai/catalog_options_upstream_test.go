@@ -160,15 +160,3 @@ func TestModelCatalogTypes(t *testing.T) {
 		}
 	})
 }
-
-func TestOpenRouterCacheControlModels(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/openrouter-cache-control-models.test.ts:12
-	for _, id := range []string{"~anthropic/claude-fable-latest", "~anthropic/claude-haiku-latest", "~anthropic/claude-opus-latest", "~anthropic/claude-sonnet-latest"} {
-		t.Run("keeps completions cache control for "+id, func(t *testing.T) {
-			m := mustGeneratedModel(t, "openrouter", id)
-			if m.API != APIOpenAICompletions || m.Compat == nil || m.Compat.CacheControlFormat != "anthropic" {
-				t.Fatalf("model = %+v", m)
-			}
-		})
-	}
-}

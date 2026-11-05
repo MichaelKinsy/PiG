@@ -29,9 +29,10 @@ func TestBedrockWithoutAnAWSSignalNeedsAuthLikePi(t *testing.T) {
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			AcknowledgeEvent(event)
 		}
 	}()

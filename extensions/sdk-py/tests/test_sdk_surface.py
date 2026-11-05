@@ -413,6 +413,60 @@ def _probe_getter(call: Callable[[pig_sdk.Context], Any], answer: dict[str, Any]
         host.close()
 
 
+def test_yield_now_sends_the_yield_call_with_the_request_parent() -> None:
+    """``yield_now`` is a plain synchronous ``yield`` call with empty args, carrying the request's id like isIdle does."""
+    calls, response = _run_command(lambda ctx: ctx.yield_now(), {"yield": {}})
+    assert [c["call"]["method"] for c in calls] == ["yield"]
+    assert calls[0]["call"]["args"] == {}
+    assert calls[0]["call"]["parent_request_id"] == "r1"
+    assert response["response"].get("error") is None
+
+
+def test_sleep_yields_before_it_sleeps(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+    real_sleep = pig_sdk.time.sleep
+
+    def fake_sleep(seconds: float) -> None:
+        if seconds == 0.0123:
+            events.append("sleep")
+        else:
+            real_sleep(seconds)
+
+    monkeypatch.setattr(pig_sdk.time, "sleep", fake_sleep)
+    ext = pig_sdk.Extension("py-sleep")
+    ext.command("go", "run", lambda ctx, _args: ctx.sleep(0.0123))
+    host = _Host(ext)
+    try:
+        host.request("r1", {"method": "command", "tool": "go"})
+        while True:
+            env = host.read()
+            if env["type"] == "call":
+                events.append("call:" + env["call"]["method"])
+                assert env["call"]["parent_request_id"] == "r1"
+                host.answer(env, {})
+            elif env["type"] == "response":
+                break
+    finally:
+        host.close()
+    assert events == ["call:yield", "sleep"]
+
+
+def test_yield_and_sleep_propagate_a_host_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failed ``yield`` raises as ``wait_for_idle`` does, and ``sleep`` does not sleep then."""
+    failure = {"code": "host_failed", "message": "boom"}
+    slept: list[float] = []
+    real_sleep = pig_sdk.time.sleep
+    monkeypatch.setattr(pig_sdk.time, "sleep", lambda seconds: slept.append(seconds) if seconds == 0.0123 else real_sleep(seconds))
+    for name, call in (
+        ("wait_for_idle", lambda c: c.wait_for_idle()),
+        ("yield_now", lambda c: c.yield_now()),
+        ("sleep", lambda c: c.sleep(0.0123)),
+    ):
+        raised = _probe_getter(call, None, failure)
+        assert isinstance(raised, pig_sdk.HostCallError) and "boom" in str(raised), name
+    assert slept == []
+
+
 def test_getters_distinguish_absent_empty_and_failure() -> None:
     """Pi's getters return undefined for absent state and throw for a failed host call."""
     assert _probe_getter(lambda c: c.get_session_name(), {"name": "named"}) == "named"
@@ -444,3 +498,47 @@ def test_session_log_getters_report_subscription_failure() -> None:
     for name in ("get_branch", "get_entries"):
         raised = _probe_getter(lambda c, name=name: getattr(c, name)(), None, failure)
         assert isinstance(raised, pig_sdk.HostCallError) and "log unavailable" in str(raised), name
+
+
+def test_exec_max_buffer_option_and_truncated_result() -> None:
+    results: list[pig_sdk.ExecResult] = []
+    calls, _ = _run_command(
+        lambda ctx: results.append(ctx.exec("yes", [], max_buffer=1024)),
+        {"exec": {"stdout": "yyyy", "stderr": "", "code": 1, "killed": True, "truncated": True}},
+    )
+    assert calls[0]["call"]["args"] == {"command": "yes", "args": [], "options": {"maxBuffer": 1024}}
+    assert results == [pig_sdk.ExecResult(stdout="yyyy", stderr="", exit_code=1, killed=True, truncated=True)]
+
+
+def test_select_page_index_follows_the_page_keys() -> None:
+    from pig_sdk import tui
+
+    keys = tui.get_keybindings()
+    up, down = keys.get_keys("tui.select.pageUp")[0], keys.get_keys("tui.select.pageDown")[0]
+    assert (up, down) == ("pageUp", "pageDown")
+    page_up, page_down = "\x1b[5~", "\x1b[6~"
+    assert tui.get_select_page_index(keys, page_down, 2, 20, 5) == 7
+    assert tui.get_select_page_index(keys, page_down, 18, 20, 5) == 19
+    assert tui.get_select_page_index(keys, page_up, 2, 20, 5) == 0
+    assert tui.get_select_page_index(keys, page_up, 12, 20, 5) == 7
+    assert tui.get_select_page_index(keys, page_down, 0, 0, 5) == 0
+    assert tui.get_select_page_index(keys, page_up, 0, 0, 5) == 0
+    assert tui.get_select_page_index(keys, "x", 3, 20, 5) is None
+
+
+def test_exec_result_without_truncated_reads_false_and_a_non_finite_max_buffer_sends_no_call() -> None:
+    results: list[pig_sdk.ExecResult] = []
+    errors: list[BaseException] = []
+
+    def handler(ctx: pig_sdk.Context) -> None:
+        results.append(ctx.exec("true", []))
+        for value in (float("nan"), float("inf"), float("-inf")):
+            try:
+                ctx.exec("true", [], max_buffer=value)
+            except ValueError as error:
+                errors.append(error)
+
+    calls, _ = _run_command(handler, {"exec": {"stdout": "", "stderr": "", "code": 0, "killed": False}})
+    assert len(calls) == 1, "only the exec without a cap reached the host"
+    assert results == [pig_sdk.ExecResult()]
+    assert len(errors) == 3 and all("maxBuffer must be an integer" in str(error) for error in errors)

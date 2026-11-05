@@ -22,6 +22,7 @@ func Create(ctx context.Context, root, indexPath string) (string, error) {
 		"GIT_COMMITTER_DATE=2000-01-01T00:00:00Z",
 	)
 	run := func(input string, args ...string) (string, error) {
+		//nolint:gosec // G204 (class a): program is literal git; args are "-C root" plus fixed plumbing subcommands (read-tree/add/write-tree/commit-tree) with the tree from git output, and GIT_INDEX_FILE from the caller.
 		command := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
 		command.Env = env
 		if input != "" {

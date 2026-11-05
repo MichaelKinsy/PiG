@@ -140,6 +140,34 @@ def test_the_host_dispatches_to_a_factory_listener_while_a_call_waits_and_run_do
     assert fake.accepted == 1
 
 
+@pytest.mark.parametrize("package_attribute", [True, False], ids=["package-attribute-bound", "package-attribute-unbound"])
+def test_a_shutdown_read_during_a_factory_call_ends_the_run_after_it_registers(host, monkeypatch: pytest.MonkeyPatch, package_attribute: bool) -> None:
+    """A shutdown the host sends while a factory-time call waits does not fail the call: it returns the host's result, and the run that takes the connection registers and then ends on the shutdown.
+
+    The run reads the shutdown through ``host_helpers.take_shutdown``, so the run's registering step imports ``host_helpers`` itself instead of relying on the import that bound it as an attribute of the package; the unbound case removes that attribute."""
+    if not package_attribute:
+        monkeypatch.delattr(pig_sdk, "host_helpers")
+    ext = pig_sdk.Extension("bus")
+    fake = host(None)
+
+    def script() -> None:
+        fake.thread.join(timeout=15)
+        assert fake.conn is not None
+        env = _read_frame_raw(fake.conn)
+        assert env["type"] == "call"
+        _write_frame(fake.conn, {"type": "shutdown", "shutdown": {"reason": "test"}})
+        _write_frame(fake.conn, {"type": "call_result", "id": env["id"], "call_result": {"result": None}})
+
+    worker = threading.Thread(target=script, daemon=True)
+    worker.start()
+    ext.events.on("ch", lambda ctx, data: None)
+    worker.join(timeout=5)
+    ext.run_with_socket(fake.path)
+    assert fake.conn is not None
+    assert _read_frame_raw(fake.conn)["type"] == "register"
+    assert fake.conn.recv(1) == b""
+
+
 def test_a_listener_failure_fails_only_its_dispatch(host) -> None:
     ext = pig_sdk.Extension("bus")
     fake = host(None, None, None)

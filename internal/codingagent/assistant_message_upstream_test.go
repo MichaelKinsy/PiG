@@ -81,6 +81,42 @@ func TestAssistantMessageUpstream(t *testing.T) {
 			t.Fatalf("hidden runs: %q", got)
 		}
 	})
+	trimmedRows := func(block *tui.AssistantMessageComponent, width int) []string {
+		rows := block.Render(width)
+		for i, row := range rows {
+			rows[i] = strings.TrimSpace(widthx.StripAnsi(row))
+		}
+		return rows
+	}
+	// packages/coding-agent/test/assistant-message.test.ts "renders nothing for hidden thinking with an empty label" (Pi a6a7bac8, #11402)
+	t.Run("renders nothing for hidden thinking with an empty label", func(t *testing.T) {
+		thinkingOnly := upstreamAssistantBlock(upstreamAssistant(ai.ThinkingContent{Thinking: "reasoning"}, ai.ToolCall{ID: "tool-1", Name: "read", Arguments: ai.JsonObject{"path": "file.txt"}}), true, nil)
+		thinkingOnly.SetHiddenThinkingLabel("")
+		if rows := thinkingOnly.Render(80); len(rows) != 0 {
+			t.Fatalf("thinking before a tool call rendered %q, want no rows", rows)
+		}
+
+		withText := upstreamAssistantBlock(upstreamAssistant(ai.ThinkingContent{Thinking: "reasoning"}, ai.TextContent{Text: "answer"}), true, nil)
+		withText.SetHiddenThinkingLabel("")
+		if rows := trimmedRows(withText, 80); !slices.Equal(rows, []string{"", "answer"}) {
+			t.Fatalf("thinking before text rendered %q, want a spacer and the answer", rows)
+		}
+	})
+	// packages/coding-agent/test/assistant-message.test.ts "keeps label row and spacing for hidden thinking with a label" (Pi a6a7bac8)
+	t.Run("keeps label row and spacing for hidden thinking with a label", func(t *testing.T) {
+		block := upstreamAssistantBlock(upstreamAssistant(ai.ThinkingContent{Thinking: "reasoning"}, ai.TextContent{Text: "answer"}), true, nil)
+		if rows := trimmedRows(block, 80); !slices.Equal(rows, []string{"", "Thinking...", "", "answer"}) {
+			t.Fatalf("hidden thinking with the default label rendered %q", rows)
+		}
+	})
+	// updateContent adds a spacer only before a visible block that follows a visible thinking run, so a skipped run between text blocks adds none (Pi a6a7bac8).
+	t.Run("skipped hidden thinking with an empty label adds no spacing between text blocks", func(t *testing.T) {
+		block := upstreamAssistantBlock(upstreamAssistant(ai.TextContent{Text: "before"}, ai.ThinkingContent{Thinking: "reasoning"}, ai.TextContent{Text: "after"}), true, nil)
+		block.SetHiddenThinkingLabel("")
+		if rows := trimmedRows(block, 80); !slices.Equal(rows, []string{"", "before", "after"}) {
+			t.Fatalf("a skipped run between text blocks rendered %q, want the two blocks one under the other", rows)
+		}
+	})
 	// .upstream/v0.87.1/packages/coding-agent/test/assistant-message.test.ts:95
 	t.Run("collapses individual thinking runs when clicked", func(t *testing.T) {
 		block := upstreamAssistantBlock(upstreamAssistant(ai.ThinkingContent{Thinking: "first reasoning"}, ai.TextContent{Text: "answer"}, ai.ThinkingContent{Thinking: "second reasoning"}), false, nil)

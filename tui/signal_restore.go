@@ -44,6 +44,7 @@ func RestoreTerminalFromSignal() bool {
 	if restore == nil {
 		return false
 	}
-	processTerminal.disableKeyboardProtocol()
-	return term.Restore(restore.fd, restore.state) == nil
+	// The terminal's own failed write may be what called the handler that got here, with the output lock held, so do not wait for it.
+	processTerminal.disableKeyboardProtocolLocked(false)
+	return restoreCooked(restore.fd, restore.state) == nil
 }

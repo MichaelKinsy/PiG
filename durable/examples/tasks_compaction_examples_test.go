@@ -190,7 +190,7 @@ func TestExample23ChildTasks(t *testing.T) {
 	opened.Resume()
 	graph := must(opened.WatchTaskGraph(background))
 	// A started watch keeps its value current.
-	graph.Start(func(context.Context, chord.WatchChange[harness.TaskGraph]) error { return nil })
+	graph.Start(func(context.Context, chord.WatchCall[harness.TaskGraph]) error { return nil })
 	eventually(t, func() bool {
 		nodes := graph.Value().Tasks
 		node, ok := nodes[idKey(id)]

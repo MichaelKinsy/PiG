@@ -5,17 +5,18 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
 
-// session.ts:385 subscribeCommits adds the listener to the session's set and returns a function removing exactly that listener: disposing one
+// session.ts observeCommits adds the observer to the session's set and returns an observation whose detach removes exactly that observer: disposing one
 // subscription leaves the others receiving every later commit, and disposing twice is harmless.
 // Pi: packages/durable/src/session/session.ts:385
-func TestSessionSubscribeCommitsDisposeRemovesOnlyItsOwnListener(t *testing.T) {
+func TestSessionObserveCommitsDetachRemovesOnlyItsOwnListener(t *testing.T) {
 	harness := open()
 	conversationId := createConversation(t, harness)
 	counts := map[string]int{}
 	subscribe := func(name string) func() {
-		return harness.Session.SubscribeCommits(func(context.Context, durable.CommitPublication) { counts[name]++ })
+		return sessiontest.ObserveCommitsFunc(harness.Session, func(context.Context, durable.CommitPublication) { counts[name]++ })
 	}
 	stopFirst := subscribe("first")
 	subscribe("second")

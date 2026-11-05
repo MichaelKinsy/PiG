@@ -93,6 +93,7 @@ func spawnTrash(args []string) trashSpawnResult {
 }
 
 func runTrashCommand(ctx context.Context, path string, args []string, output *trashOutput) (*exec.Cmd, error) {
+	//nolint:gosec // G204 (class a): program is the literal trash, found by PATH; args are the session file path, with -- first when the path starts with a dash, as Pi runs trash.
 	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Args[0] = "trash"
 	linkerexec.Prepare(cmd)

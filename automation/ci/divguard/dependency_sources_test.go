@@ -113,3 +113,38 @@ func TestDependencyLiteralProofAcceptsALockfilePin(t *testing.T) {
 		}
 	}
 }
+
+// A source file of Node's own tree is admitted through the Node release PiG pins in .node-version, which its record must name.
+func TestDependencyLiteralProofAcceptsANodeRuntimeSource(t *testing.T) {
+	fixture := func(t *testing.T, pin string) (string, string) {
+		root, mirror := dependencyProofFixture(t)
+		source := []byte("const maxDepth = opt.maxExtglobRecursion ?? 2;\n")
+		digest := sha256.Sum256(source)
+		raw, err := json.Marshal([]map[string]string{{"reference": "node-deps/minimatch/index.js", "manifest": ".node-version", "package": "node", "version": "24.22.1",
+			"source": "test/parity/dependency-sources/node/index.js", "sha256": hex.EncodeToString(digest[:]), "integrity": "sha256-" + strings.Repeat("ab", 32)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name, body := range map[string][]byte{"test/parity/dependency-sources/node/index.js": source, "test/parity/dependency-sources.json": raw, ".node-version": []byte(pin)} {
+			if err := os.MkdirAll(filepath.Dir(filepath.Join(root, filepath.FromSlash(name))), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), body, 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return root, mirror
+	}
+	environment, err := loadEnv(fixture(t, "24.22.1\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := []byte("package packagecontent\n// upstream: node-deps/minimatch/index.js:maxExtglobRecursion\nconst globMaxExtglobRecursion = 2\n")
+	hits, problems, err := scanSource("coding/packagecontent/glob_ast.go", source, environment, []check{magicLiteral})
+	if err != nil || len(hits) != 0 || len(problems) != 0 {
+		t.Fatalf("verified Node source rejected: hits=%v problems=%v error=%v", hits, problems, err)
+	}
+	if _, err := loadEnv(fixture(t, "24.19.0\n")); err == nil {
+		t.Fatal("Node source proof accepted for another Node release")
+	}
+}

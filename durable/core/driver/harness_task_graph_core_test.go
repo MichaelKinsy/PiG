@@ -146,7 +146,7 @@ func TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAn
 	replica := graphJSON(t, watch.Value())
 	var frames [][]durable.Op
 	var replayErr error
-	watch.Start(func(_ context.Context, change durable.WatchChange[harness.TaskGraph]) error {
+	watch.Start(func(_ context.Context, change durable.WatchCall[harness.TaskGraph]) error {
 		value, ops := change.Value, change.Ops
 		mu.Lock()
 		defer mu.Unlock()
@@ -183,32 +183,43 @@ func TestCoreTaskGraphBuildsFromCommittedTasksShowsSurvivorsPendingAfterReopenAn
 		t.Fatalf("abort %q %v", marked, err)
 	}
 	waitSettled(t, h, ids.background)
-	pollUntil(t, "the final frame", func() bool {
+	// Frame boundaries are not part of the contract: a frame is one publication, and the abort mark and the abort's terminal
+	// commit may land in one (frame [s abortRequested, d]) or in two. The operations in delivery order are.
+	backgroundPath := []any{"tasks", taskKey(ids.background)}
+	flatOps := func() []any {
+		var flat []any
+		for _, frame := range graphJSON(t, frames).([]any) {
+			flat = append(flat, frame.([]any)...)
+		}
+		return flat
+	}
+	deleteAt := func(flat []any) int {
+		return slices.IndexFunc(flat, func(op any) bool {
+			parts := op.([]any)
+			return parts[0] == "d" && reflect.DeepEqual(parts[1], backgroundPath)
+		})
+	}
+	pollUntil(t, "the abort's delete", func() bool {
 		mu.Lock()
 		defer mu.Unlock()
-		if len(frames) == 0 {
-			return false
-		}
-		last := graphJSON(t, frames[len(frames)-1]).([]any)
-		return reflect.DeepEqual(last, []any{[]any{"d", []any{"tasks", taskKey(ids.background)}}})
+		return deleteAt(flatOps()) >= 0
 	})
 	mu.Lock()
 	if replayErr != nil {
 		t.Fatal(replayErr)
 	}
-	recorded := graphJSON(t, frames).([]any)
+	recorded := flatOps()
 	finalReplica := replica
 	mu.Unlock()
-	if !slices.ContainsFunc(recorded, func(frame any) bool {
-		ops := frame.([]any)
-		if len(ops) != 1 {
+	if !slices.ContainsFunc(recorded[:deleteAt(recorded)], func(op any) bool {
+		parts := op.([]any)
+		if parts[0] != "s" || !reflect.DeepEqual(parts[1], backgroundPath) {
 			return false
 		}
-		op := ops[0].([]any)
-		node, isNode := op[2].(map[string]any)
-		return op[0] == "s" && reflect.DeepEqual(op[1], []any{"tasks", taskKey(ids.background)}) && isNode && node["abortRequested"] == true
+		node, isNode := parts[2].(map[string]any)
+		return isNode && node["abortRequested"] == true
 	}) {
-		t.Fatalf("no frame marks the abort: %v", recorded)
+		t.Fatalf("no operation marks the abort before the delete: %v", recorded)
 	}
 	var keys []string
 	for key := range finalReplica.(map[string]any)["tasks"].(map[string]any) {
@@ -316,6 +327,6 @@ func startedTaskGraph(ctx context.Context, opener interface {
 	if err != nil {
 		return nil, err
 	}
-	watch.Start(func(_ context.Context, change durable.WatchChange[harness.TaskGraph]) error { return nil })
+	watch.Start(func(_ context.Context, change durable.WatchCall[harness.TaskGraph]) error { return nil })
 	return watch, nil
 }

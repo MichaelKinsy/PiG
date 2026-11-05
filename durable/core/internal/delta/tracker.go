@@ -7,6 +7,11 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 )
 
+// Ports packages/chord/src/delta/tracker.ts: the core copy of the delta tracker over jv values. It keeps no registry of
+// open drafts: a draft is stale when its base revision is not the tracker's (assertOpen, Change.Prepare, Tracker.Adopt),
+// which is what Pi's #open/#competitors registry computes (the registry mechanics are designed out: the core's purity
+// rules forbid sync, reflect and runtime). chord/delta/tracker.go is the port with the registry.
+
 // maxDeltaOperations is tracker.ts MAX_DELTA_OPERATIONS: a larger batch folds
 // into one root replacement.
 const maxDeltaOperations = 4_096
@@ -110,6 +115,12 @@ func (change *Change) Elements() *Arr {
 		return nil
 	}
 	return &Arr{n: root}
+}
+
+// BaseRevision returns the revision of the tracker the change started from. It panics with ErrRevoked once the change settled.
+func (change *Change) BaseRevision() int {
+	change.root()
+	return change.ctx.baseRevision
 }
 
 func (change *Change) root() *node {
@@ -276,8 +287,11 @@ type node struct {
 	readded     map[string]bool // base keys deleted and then written again
 	kids        map[string]*node
 
-	// Array overlay; nil until the array is first accessed.
+	// Array overlay. Both are nil until the array is first changed or an element read as a container; tail holds what
+	// an array whose changes touch only its tail keeps, entries one entry per element (tail.go).
 	entries    []*entry
+	tail       tailOverlay
+	tailed     bool
 	structural bool
 
 	changed bool
@@ -351,7 +365,7 @@ func (n *node) modified() bool {
 			return true
 		}
 	}
-	return false
+	return n.tailed && n.tail.modified()
 }
 
 // wrap stores a value as an overlay slot: containers become placement nodes.
@@ -360,17 +374,6 @@ func (n *node) wrap(value any, key string, e *entry) any {
 		return value
 	}
 	return &node{ctx: n.ctx, parent: n, key: key, entry: e, base: value}
-}
-
-func (n *node) ensureEntries() {
-	if n.entries != nil {
-		return
-	}
-	base := n.base.([]any)
-	n.entries = make([]*entry, len(base))
-	for index := range base {
-		n.entries[index] = &entry{index: index, live: true}
-	}
 }
 
 func (n *node) objectLookup(key string) (any, bool) {
@@ -470,11 +473,22 @@ func (n *node) entryValue(e *entry) any {
 	return e.kid
 }
 
-func (n *node) newEntry(stored any) *entry {
-	e := &entry{index: -1, set: true, live: true}
-	e.value = n.wrap(stored, "", e)
+// newEntryAt is the entry of the base element at index.
+func (n *node) newEntryAt(index int) *entry { return n.makeEntry(index, false, nil) }
+
+func (n *node) newEntry(stored any) *entry { return n.makeEntry(-1, true, stored) }
+
+// makeEntry is the one place an entry is made: of the base element at index (-1: an inserted element holding stored).
+func (n *node) makeEntry(index int, set bool, stored any) *entry {
+	e := &entry{index: index, set: set, live: true}
+	if set {
+		e.value = n.wrap(stored, "", e)
+	}
 	return e
 }
+
+// makeEntries is the one place an entry list is made.
+func makeEntries(length, capacity int) []*entry { return make([]*entry, length, capacity) }
 
 // current materializes the node's present content, sharing unchanged
 // containers with its base.
@@ -506,10 +520,20 @@ func (n *node) current() any {
 		}
 		return result
 	}
-	if n.entries == nil {
+	if n.entries == nil && !n.tailed {
 		return n.base
 	}
-	result := make([]any, len(n.entries))
+	result := make([]any, n.arrayLen())
+	if t := n.tail; n.entries == nil {
+		copy(result, n.base.([]any)[:t.kept])
+		for _, e := range t.touched {
+			result[e.index] = storedCurrent(n.entryValue(e))
+		}
+		for offset, e := range t.appended {
+			result[t.kept+offset] = storedCurrent(n.entryValue(e))
+		}
+		return result
+	}
 	for index, e := range n.entries {
 		result[index] = storedCurrent(n.entryValue(e))
 	}
@@ -580,6 +604,17 @@ func collectEmissions(n *node, path Path, fold int, out *[]emission) {
 		*out = append(*out, emission{n, path, n.seq})
 	}
 	if n.isArray() {
+		if n.tailed && !n.structural && len(n.tail.touched) >= denseRegionMinimum {
+			n.ensureEntries()
+		}
+		if n.tailed {
+			for _, e := range n.tail.touched {
+				if !e.set && e.kid != nil && e.kid.modified() {
+					collectEmissions(e.kid, childIdx(path, e.index), fold, out)
+				}
+			}
+			return
+		}
 		regions := denseRegions(n)
 		if len(regions) > 0 && !n.changed {
 			*out = append(*out, emission{n, path, fold + len(*out) + 1})
@@ -683,8 +718,18 @@ func emitFold(n *node, path Path, ops *[]Op) {
 // emitArray emits removals of base elements (from the end), a permutation of
 // retained base elements, insertion runs, and then element changes at final
 // indices, mirroring tracker.ts emitArrayOperations and buildArrayPlan.
+//
+// Out of line: TinyGo would inline this single-caller function into emitOperations, and V8 compiles a function that runs hot as one unit, at a cost that grows with its body (host/cf/test/functionsize.test.ts).
+//
+//go:noinline
 func emitArray(n *node, path Path, ops *[]Op) {
+	if n.tailed && n.tail.overwrites() > 1 {
+		n.ensureEntries()
+	}
 	if n.entries == nil {
+		if n.tailed {
+			n.tail.emit(n, path, ops)
+		}
 		return
 	}
 	base := n.base.([]any)
@@ -694,7 +739,7 @@ func emitArray(n *node, path Path, ops *[]Op) {
 		for offset := range items {
 			items[offset] = jv.Clone(storedCurrent(n.entryValue(n.entries[region.start+offset])))
 		}
-		*ops = append(*ops, Op{Verb: Splice, Path: slices.Clone(path), Index: region.start, Remove: region.length, Items: items})
+		*ops = append(*ops, spliceOp(path, region.start, region.length, items))
 	}
 	if n.structural {
 		retained := make([]bool, len(base))
@@ -714,7 +759,7 @@ func emitArray(n *node, path Path, ops *[]Op) {
 			for start > 0 && !retained[start-1] {
 				start--
 			}
-			*ops = append(*ops, Op{Verb: Splice, Path: slices.Clone(path), Index: start, Remove: end - start, Items: []any{}})
+			*ops = append(*ops, spliceOp(path, start, end-start, noItems))
 			end = start
 		}
 		retainedBase := make([]int, 0, len(targetBase))
@@ -740,12 +785,10 @@ func emitArray(n *node, path Path, ops *[]Op) {
 				continue
 			}
 			start := index
-			var items []any
 			for index < len(n.entries) && n.entries[index].index < 0 {
-				items = append(items, storedCurrent(n.entries[index].value))
 				index++
 			}
-			*ops = append(*ops, Op{Verb: Splice, Path: slices.Clone(path), Index: start, Items: items})
+			*ops = append(*ops, spliceOp(path, start, 0, insertionItems(n.entries[start:index])))
 		}
 	}
 	var overrides []int
@@ -869,6 +912,23 @@ func emitChangedValue(ops *[]Op, path Path, before any, present bool, after any)
 		}
 	}
 	*ops = append(*ops, Op{Verb: Set, Path: path, Value: after})
+}
+
+// noItems is the items of a splice that inserts nothing. Read-only: assigned once at initialization.
+var noItems = []any{}
+
+// spliceOp is the splice at index of the array at path that removes remove elements and inserts items.
+func spliceOp(path Path, index, remove int, items []any) Op {
+	return Op{Verb: Splice, Path: slices.Clone(path), Index: index, Remove: remove, Items: items}
+}
+
+// insertionItems are the present values of entries, which are inserted elements.
+func insertionItems(entries []*entry) []any {
+	items := make([]any, len(entries))
+	for offset, e := range entries {
+		items[offset] = storedCurrent(e.value)
+	}
+	return items
 }
 
 func isContainer(value any) bool {

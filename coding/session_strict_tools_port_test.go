@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/tools/tool-definition-wrapper.ts
+
 import (
 	"encoding/json"
 	"os"

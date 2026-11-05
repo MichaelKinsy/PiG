@@ -18,6 +18,9 @@ func nativeDock(t *testing.T, component tui.Component) (*tui.TuiSurface, *fakeFr
 	t.Helper()
 	session := &fakeFrontendSession{}
 	surface := tui.NewTuiSurfaceWithSize(session, 80, 24, func(err error) { t.Fatalf("apply: %v", err) })
+	// The frames draw on the test goroutine, as the owner loop draws them: a frame the surface schedules for itself must not
+	// apply on a timer goroutine beside the test's reads of the session.
+	surface.SetRenderDispatcher(func(func()) {})
 	surface.SetLayout(tui.NewContainer(), tui.NewContainer(component))
 	surface.Start()
 	t.Cleanup(surface.Stop)

@@ -71,7 +71,7 @@ func TestWatchTargetExcludeSuppressesNamedAndHiddenChanges(t *testing.T) {
 		Path: "tree", Recursive: true, Exclude: &durableenv.WatchExclude{Hidden: true, Names: []string{"skip.txt"}},
 	}}, func(change durableenv.FileChange) { changes <- change })
 	mustDo(t, err)
-	defer func() { _ = watcher.Close(background) }()
+	defer func() { _ = watcher.Stop(background) }()
 
 	mustDo(t, env.WriteFile(background, "tree/skip.txt", "x"))
 	mustDo(t, env.WriteFile(background, "tree/.hidden", "x"))
@@ -109,6 +109,6 @@ func TestNodeWatchOptionsModeForcesTheWatcherMode(t *testing.T) {
 		if got := watcher.Mode(); got != mode {
 			t.Errorf("forced mode %q: watcher mode = %q", mode, got)
 		}
-		mustDo(t, watcher.Close(background))
+		mustDo(t, watcher.Stop(background))
 	}
 }

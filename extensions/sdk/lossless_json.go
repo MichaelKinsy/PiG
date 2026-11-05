@@ -45,7 +45,7 @@ func protectSurrogates(text []byte) ([]byte, map[rune]bool, func([]byte) []byte)
 				}
 				at += i + 2
 				if at+4 <= len(text) {
-					if v, err := strconv.ParseUint(string(text[at:at+4]), 16, 32); err == nil {
+					if v, err := strconv.ParseUint(string(text[at:at+4]), 16, 16); err == nil {
 						used[rune(v)] = true
 					}
 				}

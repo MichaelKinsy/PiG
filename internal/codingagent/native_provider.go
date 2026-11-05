@@ -13,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/allocsize"
 )
 
 type registeredNativeProvider struct {
@@ -341,7 +342,7 @@ func nativeTypedModels(providerID string, configs []extension.ProviderModelConfi
 			return nil, err
 		}
 		// data is an object with at least id and name, so the provider member follows a comma.
-		record := make(json.RawMessage, 0, len(data)+len(`,"provider":`)+len(id))
+		record := make(json.RawMessage, 0, allocsize.Add(allocsize.Add(len(data), len(`,"provider":`)), len(id)))
 		record = append(record, data[:len(data)-1]...)
 		record = append(record, `,"provider":`...)
 		record = append(record, id...)

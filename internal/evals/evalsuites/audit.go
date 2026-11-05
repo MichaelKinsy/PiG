@@ -11,10 +11,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/evals"
 	"github.com/MichaelKinsy/PiG/internal/evals/bridge"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 )
 
 const auditToolName = "submit_documentation_audit"
@@ -25,14 +25,20 @@ func submitAudit() evals.CustomTool {
 			Name: auditToolName, Label: "Submit documentation audit",
 			Description:   "Submit the final verdict after completing the documentation investigation.",
 			PromptSnippet: "Submit the final documentation audit as validated structured data",
-			Parameters: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"verdict":     ai.StringEnum([]string{"match", "mismatch", "inconclusive"}, nil),
-					"explanation": map[string]any{"type": "string", "minLength": 1, "maxLength": 2000},
-				},
-				"required": []string{"verdict", "explanation"}, "additionalProperties": false,
-			},
+			// TypeBox's Type.Object writes type, required, properties, then the options; Type.Union of Type.Literal writes anyOf of {type, const}.
+			Parameters: chordjson.ObjectOf(
+				"type", "object",
+				"required", []string{"verdict", "explanation"},
+				"properties", chordjson.ObjectOf(
+					"verdict", chordjson.ObjectOf("anyOf", []any{
+						chordjson.ObjectOf("type", "string", "const", "match"),
+						chordjson.ObjectOf("type", "string", "const", "mismatch"),
+						chordjson.ObjectOf("type", "string", "const", "inconclusive"),
+					}),
+					"explanation", chordjson.ObjectOf("type", "string", "minLength", 1, "maxLength", 2000),
+				),
+				"additionalProperties", false,
+			),
 			ConstrainedSampling: &bridge.ConstrainedSampling{Type: "json_schema", Strict: "prefer"},
 		},
 		Execute: func(_ context.Context, _ string, params map[string]any) (evals.CustomToolResult, error) {
@@ -56,9 +62,18 @@ func documentationPages(docsRoot string) ([]string, error) {
 		return nil
 	})
 	// Pi sorts the pages with localeCompare.
-	collator := jsstring.NewCollator()
+	collator := localecompare.NewCollator()
 	slices.SortStableFunc(pages, collator.CompareString)
 	return pages, err
+}
+
+// readsImplementation reports whether path is under root and outside docsRoot (documentation-audit.eval.ts: relative(sourceRoot, path) neither starts with ".." nor is empty).
+func readsImplementation(root, docsRoot, path string) bool {
+	inside := func(directory string) bool {
+		relative, err := filepath.Rel(directory, path)
+		return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative)
+	}
+	return inside(root) && !inside(docsRoot)
 }
 
 // DocumentationAudit audits each documentation page against the implementation; the verdict arrives through a
@@ -66,7 +81,7 @@ func documentationPages(docsRoot string) ([]string, error) {
 func DocumentationAudit() evals.Suite {
 	suite := evals.Suite{
 		Name: "Audit documentation against implementation",
-		File: "evals/documentation-audit.eval.go",
+		File: evals.AuditEvalFile,
 		Harness: func(ctx context.Context, input evals.PiCodingAgentInput) (*evals.HarnessRun, error) {
 			return evals.RunPiCodingAgent(ctx, input, evals.PiCodingAgentHarnessOptions{
 				Name: "documentation-page-audit", Tools: []string{"read", "grep", "find", "ls", auditToolName}, CustomTools: []evals.CustomTool{submitAudit()},
@@ -103,12 +118,32 @@ Call %s exactly once as your final action. Do not return prose.`, documentationP
 			if err != nil {
 				return err
 			}
-			var calls []evals.ToolCall
-			for _, call := range evals.ToolCalls(result.Events) {
-				if call.Name == auditToolName {
-					calls = append(calls, call)
+			// The audit must have read the page and some implementation: Pi requires a read under packages/coding-agent/src,
+			// where PiG's implementation is every file of the repository outside the documentation it audits.
+			calls := evals.ToolCalls(result.Events)
+			var readPaths []string
+			for _, call := range calls {
+				if path, ok := call.Arguments["path"].(string); ok && call.Name == "read" && call.Status == "ok" {
+					absolute, err := filepath.Abs(path)
+					if err != nil {
+						return err
+					}
+					readPaths = append(readPaths, absolute)
 				}
 			}
+			if !slices.Contains(readPaths, documentationPath) {
+				return fmt.Errorf("expected the audit to read %s, it read %v", documentationPath, readPaths)
+			}
+			if !slices.ContainsFunc(readPaths, func(path string) bool { return readsImplementation(root, docsRoot, path) }) {
+				return fmt.Errorf("expected the audit to read the implementation under %s, it read %v", root, readPaths)
+			}
+			var auditCalls []evals.ToolCall
+			for _, call := range calls {
+				if call.Name == auditToolName {
+					auditCalls = append(auditCalls, call)
+				}
+			}
+			calls = auditCalls
 			if len(calls) != 1 {
 				return fmt.Errorf("expected one %s call, got %d", auditToolName, len(calls))
 			}

@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -276,7 +277,7 @@ func (h configSelectorHeader) Render(width int) []string {
 		scopeHint = ".pig/settings.json · inherited global resources are dimmed"
 		action = "cycle inherit/+/-"
 	}
-	title := "\x1b[1m" + titleText + "\x1b[22m"
+	title := ChalkBold(titleText)
 	sep := t.Muted + " · " + "\x1b[39m"
 	hint := RawKeyHint("space", action) + sep + RawKeyHint("esc", "close")
 	if cs.projectModeAvailable {
@@ -329,7 +330,7 @@ func (l configResourceList) Render(width int) []string {
 					label += " · inherited global"
 					color = t.Dim
 				}
-				gl := color + "\x1b[1m" + label + "\x1b[22m\x1b[39m"
+				gl := color + ChalkBold(label) + "\x1b[39m"
 				lines = append(lines, fit("  "+gl))
 			case "subgroup":
 				color := t.Muted
@@ -369,7 +370,7 @@ func (l configResourceList) Render(width int) []string {
 				}
 				name := e.item.DisplayName
 				if isSelected && !dimmed {
-					name = "\x1b[1m" + name + "\x1b[22m"
+					name = ChalkBold(name)
 				}
 				if dimmed {
 					name = t.Dim + name + "\x1b[39m"
@@ -403,9 +404,6 @@ func (l configResourceList) Render(width int) []string {
 
 	return lines
 }
-
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (cs *ConfigSelectorComponent) CapturesSelectPageInput() bool { return true }
 
 // HandleInput processes keyboard input.
 func (cs *ConfigSelectorComponent) HandleInput(data string) {
@@ -651,7 +649,7 @@ func sortGroups(groups []*ResourceGroup) {
 		// Sort items by name.
 		for _, sg := range g.Subgroups {
 			for i := 1; i < len(sg.Items); i++ {
-				for j := i; j > 0 && jsstring.LocaleCompare(sg.Items[j].DisplayName, sg.Items[j-1].DisplayName) < 0; j-- {
+				for j := i; j > 0 && localecompare.Compare(sg.Items[j].DisplayName, sg.Items[j-1].DisplayName) < 0; j-- {
 					sg.Items[j], sg.Items[j-1] = sg.Items[j-1], sg.Items[j]
 				}
 			}
@@ -666,5 +664,5 @@ func groupLess(a, b *ResourceGroup) bool {
 	if a.Scope != b.Scope {
 		return a.Scope == "user"
 	}
-	return jsstring.LocaleCompare(a.Source, b.Source) < 0
+	return localecompare.Compare(a.Source, b.Source) < 0
 }

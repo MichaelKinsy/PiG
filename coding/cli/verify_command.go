@@ -294,6 +294,7 @@ func verifyProvenance(path, repo, signerWorkflow string) verifyCheck {
 	if err != nil {
 		return verifyCheck{Name: "provenance", Status: "unavailable", Detail: "install the GitHub CLI (https://cli.github.com), then run: gh " + strings.Join(args, " ")}
 	}
+	//nolint:gosec // G204 (class b): program is gh from exec.LookPath; args are fixed attestation verify with the file, --repo and --signer-workflow values the user gave to pig verify.
 	output, err := exec.Command(gh, args...).CombinedOutput()
 	if err != nil {
 		return verifyCheck{Name: "provenance", Status: "failed", Detail: strings.TrimSpace(string(output))}
@@ -320,6 +321,7 @@ func verifyPath(self, path string, sums map[string]string, opts verifyOptions) v
 // keeps its own flags, output, and exit status.
 func delegate(self, path, kind string, command ...string) verifyTarget {
 	var output bytes.Buffer
+	//nolint:gosec // G204 (class b): program is the running pig binary (linkerexec.Executable); args are fixed validator subcommands plus the file path the user gave to pig verify.
 	cmd := exec.Command(self, command...)
 	cmd.Stdout, cmd.Stderr = &output, &output
 	check := verifyCheck{Name: "pig " + strings.Join(command[:len(command)-1], " "), Status: "ok", Detail: strings.TrimSpace(output.String())}
@@ -344,6 +346,7 @@ func verifyInstalledPackages() []verifyTarget {
 		if lookErr != nil {
 			target.Checks = append(target.Checks, verifyCheck{Name: "registry signatures", Status: "unavailable", Detail: "npm is not on PATH"})
 		} else {
+			//nolint:gosec // G204 (class b): program is npm from exec.LookPath; args are the fixed audit signatures, run in PiG's own npm install root.
 			cmd := exec.Command(npm, "audit", "signatures")
 			cmd.Dir = npmRoot
 			output, err := cmd.CombinedOutput()
@@ -362,7 +365,9 @@ func verifyInstalledPackages() []verifyTarget {
 		}
 		repo := filepath.Dir(path)
 		target := verifyTarget{Path: repo, Kind: "git package"}
+		//nolint:gosec // G204 (class a): program is the literal git; args are fixed rev-parse HEAD with -C set to a Package directory found by walking PiG's own git install root.
 		head, headErr := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()
+		//nolint:gosec // G204 (class a): program is the literal git; args are fixed status flags with -C set to a Package directory found by walking PiG's own git install root.
 		status, statusErr := exec.Command("git", "-C", repo, "status", "--porcelain", "--untracked-files=no").Output()
 		switch {
 		case headErr != nil || statusErr != nil:

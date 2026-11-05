@@ -222,8 +222,8 @@ function txAnswer(id: number, body: unknown): Uint8Array {
   return out
 }
 
-// The caller of a commit resumes the hops after the core's ack that Pi's does after the line job: the ack promise, one reaction, and one
-// adoption (Pi: `run` = tail.then(job) adopting #runCommit's promise). The baseline builds exactly that chain from a bare deferred.
+// The caller of a commit resumes 2 passes after the core's ack (PROTOCOL.md, `end`: the ack settles end()'s promise itself, a transaction end
+// takes 2 passes to its caller; the core counts them in the job's duration). The baseline is a bare deferred and one reaction.
 test("api.commit: the commit's promise settles two hops after the ack, like Pi's run after the job", async () => {
   const { invocationCommit, UNBOUND } = await import("../src/facade/hostapi.ts")
   const { BACKGROUND_CONTEXT } = await import("@earendil-works/chord/context")
@@ -242,8 +242,7 @@ test("api.commit: the commit's promise settles two hops after the ack, like Pi's
   let baseline = -1
   let ack!: () => void
   const deferred = new Promise<void>(resolve => { ack = resolve })
-  const reaction = deferred.then(() => 7)
-  void (async () => reaction)().then(() => { baseline = clock.ticks })
+  void deferred.then(() => 7).then(() => { baseline = clock.ticks })
   host.send(EVENT.resume)   // the ack notice resolves the commit's chain here ...
   ack()                     // ... and the baseline's deferred in the same tick
   assert.equal(await p, 7)
@@ -267,9 +266,9 @@ test("hops: hopped carries the chain's effect ID as a little-endian u32, whole r
 const i64 = (v: number) => { const b = new Uint8Array(9); b[0] = 1; new DataView(b.buffer).setBigInt64(1, BigInt(v), true); return b }
 const commitBytes = (seq: number, value: number) => {
   const stmt = Uint8Array.of(0, 0, 1, ...i64(value))
-  const body = new Uint8Array(8 + 2 + stmt.length)
+  const body = new Uint8Array(8 + 1 + 2 + stmt.length)   // i64 seq, u8 flags, u16 nStmts, statements
   const dv = new DataView(body.buffer)
-  dv.setBigInt64(0, BigInt(seq), true); dv.setUint16(8, 1, true); body.set(stmt, 10)
+  dv.setBigInt64(0, BigInt(seq), true); dv.setUint16(9, 1, true); body.set(stmt, 11)
   const out = new Uint8Array(4 + body.length)
   new DataView(out.buffer).setUint32(0, body.length, true); out.set(body, 4)
   return out
