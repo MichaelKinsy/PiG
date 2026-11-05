@@ -54,19 +54,34 @@ ci-closure: closure-check
 # The Durable core conformance gate in CI: the host's npm tree linked to the pinned Pi build first (durable-contract only checks out the reference); the job picks one build with DURABLE_CONTRACT_ARGS="--impls <pi|wasm-tinygo|native> -j 4".
 ci-durable-contract: durable-core-host-deps durable-contract
 # portmap-check runs the evidence tests of every proven PORT_MAP row under coverage. It builds each evidence package's test binary once and
-# caches each green row in build/portmap-coverage, but a cold run is still about 18 CPU-minutes of 4-CPU runner time, so CI runs it as
-# PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
+# caches each green row in build/portmap-coverage, but a cold run is still about 170 minutes of 4-CPU runner time (run 41987378567: three shards took 44, 49 and more than 58
+# minutes, the third until the job's 60-minute limit cancelled it), so CI runs it as PORTMAP_SHARDS parallel jobs; every shard computes the same plan, judges its own rows and skips the rest, and the Linux verification
 # job requires all of them.
-PORTMAP_SHARDS := 3
+PORTMAP_SHARDS := 8
 ci-portmap-1: portmap-check-1
 ci-portmap-2: portmap-check-2
 ci-portmap-3: portmap-check-3
+ci-portmap-4: portmap-check-4
+ci-portmap-5: portmap-check-5
+ci-portmap-6: portmap-check-6
+ci-portmap-7: portmap-check-7
+ci-portmap-8: portmap-check-8
 portmap-check-1:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=1/$(PORTMAP_SHARDS)
 portmap-check-2:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=2/$(PORTMAP_SHARDS)
 portmap-check-3:
 	@$(MAKE) -s portmap-check PORTMAP_SHARD=3/$(PORTMAP_SHARDS)
+portmap-check-4:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=4/$(PORTMAP_SHARDS)
+portmap-check-5:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=5/$(PORTMAP_SHARDS)
+portmap-check-6:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=6/$(PORTMAP_SHARDS)
+portmap-check-7:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=7/$(PORTMAP_SHARDS)
+portmap-check-8:
+	@$(MAKE) -s portmap-check PORTMAP_SHARD=8/$(PORTMAP_SHARDS)
 
 # Run after upstream-mirror under each selected Node runtime. Do not reinstall
 # npm dependencies here: the qualified npm requires a newer Node than Pi does.
