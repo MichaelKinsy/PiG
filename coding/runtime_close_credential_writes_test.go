@@ -243,3 +243,97 @@ func TestNativeProviderCatalogRefreshSavesTheRotatedTokenAfterItsContextEnded(t 
 		t.Fatalf("auth.json after Close = %+v, %v; want the rotated token", got, err)
 	}
 }
+
+// The request-time refresh of a subprocess extension's provider (NativeProviderAuth): the caller that stopped waiting (its request was cancelled, as at an exit) returns at once with the abort, the refresh that has started goes on and is saved, and Close waits for it. Red without the detached transaction: the cancelled caller's lock context discards the rotated token after the request and Close returns at once.
+func TestNativeProviderAuthSavesTheRotatedTokenAfterTheCallerWasCancelled(t *testing.T) {
+	runtime, services, _, respond := rotatingOAuthRuntime(t)
+	defer respond()
+	if err := services.Auth().Set("native-oauth", ai.Credential{Type: ai.CredentialOAuth, Access: "old-access", Refresh: "old-refresh", Expires: time.Now().Add(-time.Second).UnixMilli()}); err != nil {
+		t.Fatal(err)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(release) })
+	provider := &extension.NativeProvider{
+		ID: "native-oauth", Name: "Native OAuth", BaseURL: "https://example.test/v1",
+		Models:    []extension.ProviderModelConfig{{ID: "model", Name: "model"}},
+		Auth:      ai.ProviderAuth{OAuth: &ai.OAuthAuth{Name: "Native subscription"}},
+		CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
+		ResolveAuth: func(_ context.Context, _ *ai.Credential, _ ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
+			close(started)
+			<-release
+			next := ai.Credential{Type: ai.CredentialOAuth, Access: "new-access", Refresh: "new-refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}
+			return &ai.AuthResult{}, &next, nil
+		},
+		ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
+		Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return nil, errors.New("unused")
+		},
+	}
+	if err := services.Registry().RegisterNativeProvider(t.Context(), provider); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	returned := make(chan error, 1)
+	go func() {
+		_, err := services.Registry().NativeProviderAuth(ctx, "native-oauth", ai.AuthResolutionOverrides{})
+		returned <- err
+	}()
+	<-started
+	cancel(errors.New("exit"))
+	if err := <-returned; err == nil {
+		t.Fatal("NativeProviderAuth returned no error to a caller whose request was cancelled")
+	}
+
+	closed := make(chan error, 1)
+	go func() { closed <- runtime.Close() }()
+	select {
+	case err := <-closed:
+		t.Fatalf("Close returned %v while the refresh was in flight", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	releaseOnce.Do(func() { close(release) })
+	if err := <-closed; err != nil {
+		t.Fatalf("Close = %v", err)
+	}
+	got, err := services.Registry().ReadCredential(t.Context(), "native-oauth")
+	if err != nil || got == nil || got.Refresh != "new-refresh" {
+		t.Fatalf("auth.json after Close = %+v, %v; want the rotated token", got, err)
+	}
+}
+
+// Pi's dispose awaits settleCredentialWrites right after session.dispose(), with the extensions still running. PiG's own teardown of a Close (the factory's Dispose: Host.Shutdown kills the extension processes, Services.Close cancels the model tasks) comes after the wait, or it would cut the in-flight refresh request that the wait is for. Red when Close retires first: the retirement runs while the token request is in flight.
+func TestRuntimeCloseSettlesCredentialWritesBeforeItRetiresTheFactoryResources(t *testing.T) {
+	runtime, services, refreshStarted, respond := rotatingOAuthRuntime(t)
+	defer respond()
+	var mu sync.Mutex
+	var order []string
+	runtime.replacement.current.Load().Dispose = func(reason string) {
+		mu.Lock()
+		defer mu.Unlock()
+		order = append(order, "retire:"+reason)
+	}
+	go func() {
+		_, _ = services.Registry().NativeModels().GetAuth(t.Context(), "rotating-oauth", ai.AuthResolutionOverrides{})
+	}()
+	<-refreshStarted
+	closed := make(chan error, 1)
+	go func() { closed <- runtime.Close() }()
+	time.Sleep(50 * time.Millisecond)
+	mu.Lock()
+	early := append([]string(nil), order...)
+	mu.Unlock()
+	if len(early) != 0 {
+		t.Fatalf("Close retired %v while the token request was in flight", early)
+	}
+	respond()
+	if err := <-closed; err != nil {
+		t.Fatalf("Close = %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(order) != 1 || order[0] != "retire:quit" {
+		t.Fatalf("retirements after Close = %v, want [retire:quit]", order)
+	}
+}

@@ -94,16 +94,31 @@ func (r *ModelRegistry) NativeProviderAuth(ctx context.Context, id string, overr
 	if key, ok := r.RuntimeAPIKey(id); ok && overrides.APIKey == nil {
 		overrides.APIKey = &key
 	}
-	var resolution *ai.AuthResult
-	_, err := credentials.Modify(ctx, id, func(current *ai.Credential) (*ai.Credential, error) {
-		resolved, updated, err := p.ResolveAuth(ctx, current, overrides)
-		if err != nil {
-			return nil, err
-		}
-		resolution = resolved
-		return updated, nil
-	})
-	return resolution, err
+	// pig divergence (D237): the transaction is Pi's refreshStoredOAuthCredential. The caller returns when ctx ends (Pi's abortable race), but the transaction goes on without ctx: a refresh that has started may already have spent the single-use token, so its result must reach auth.json, and the caller's exit waits for it (RuntimeCredentials.Settled). ctx ends only the wait for the lock. The reverse callback runs on the detached context to the end, so the refresh's result is in the snapshot when it returns, and nothing reads the snapshot while a late refresh writes it.
+	type outcome struct {
+		resolution *ai.AuthResult
+		err        error
+	}
+	detached := context.WithoutCancel(ctx)
+	done := make(chan outcome, 1)
+	go func() {
+		var resolution *ai.AuthResult
+		_, err := ai.ModifyCredentialDetached(ctx, credentials, id, func(current *ai.Credential) (*ai.Credential, error) {
+			resolved, updated, err := p.ResolveAuth(detached, current, overrides)
+			if err != nil {
+				return nil, err
+			}
+			resolution = resolved
+			return updated, nil
+		})
+		done <- outcome{resolution, err}
+	}()
+	select {
+	case result := <-done:
+		return result.resolution, result.err
+	case <-ctx.Done():
+		return nil, ai.AbortReason(ctx)
+	}
 }
 
 func (r *ModelRegistry) refreshNativeProviders(ctx context.Context, selected []string, network bool, force *bool) map[string]error {

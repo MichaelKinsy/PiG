@@ -234,13 +234,14 @@ func (rt *Runtime) Close() error {
 			runner.Invalidate("")
 		}
 		err := current.Session.Close()
+		// pig divergence (D237): Pi main b2cb62923 makes dispose wait for a started OAuth refresh to be saved, right after session.dispose and while the extensions are still running. PiG's own teardown below stops the extension processes and cancels the model tasks, which would cut an in-flight refresh request.
+		//portlint:allow ctxbackground Pi's dispose awaits settleCredentialWrites with no signal (agent-session-runtime.ts dispose); Close has no caller context
+		settleErr := rt.SettleCredentialWrites(context.Background())
 		current.retireResources("quit")
 		if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
 			rt.extCtx.AbortFunc()
 		}
-		// pig divergence (D237): Pi main b2cb62923 makes dispose wait for a started OAuth refresh to be saved.
-		//portlint:allow ctxbackground Pi's dispose awaits settleCredentialWrites with no signal (agent-session-runtime.ts dispose); Close has no caller context
-		return errors.Join(err, rt.SettleCredentialWrites(context.Background()))
+		return errors.Join(err, settleErr)
 	}
 	if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
 		rt.extCtx.AbortFunc()

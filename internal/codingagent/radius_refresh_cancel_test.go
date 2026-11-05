@@ -10,9 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// Models.resolveRefreshCredential passes the operation signal through
-// credentials.modify to Radius oauth.refresh and its token fetch.
-func TestRadiusExpiredOAuthRefreshHonorsOperationCancellation(t *testing.T) {
+// Pi 1.5.0 Models.resolveRefreshCredential refreshes Radius through refreshStoredOAuthCredential (resolve.ts:119-155): the operation's signal cancels the caller and the wait for the lock, but the refresh itself gets AbortSignal.timeout(15 s), so a token request that has started is not cut (it may already have spent the refresh token) and the caller returns at once. Before D237 PiG passed the operation signal to the token fetch, as Pi 0.87.1 did.
+func TestRadiusExpiredOAuthRefreshReturnsToACancelledCallerWithoutCuttingTheTokenRequest(t *testing.T) {
 	for _, catalog := range []bool{false, true} {
 		name := "request_auth"
 		if catalog {
@@ -65,12 +64,12 @@ func TestRadiusExpiredOAuthRefreshHonorsOperationCancellation(t *testing.T) {
 			select {
 			case <-done:
 			case <-time.After(time.Second):
-				t.Fatal("token refresh ignored operation cancellation")
+				t.Fatal("the cancelled caller did not return")
 			}
 			select {
 			case <-cancelled:
-			case <-time.After(time.Second):
-				t.Fatal("token HTTP request retained after cancellation")
+				t.Fatal("the operation's cancellation cut the token request that had started")
+			case <-time.After(100 * time.Millisecond):
 			}
 			stored, _, err := auth.GetRaw("radius-dev")
 			if err != nil || stored.Access != "old" || stored.Refresh != "old-refresh" {

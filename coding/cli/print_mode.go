@@ -281,7 +281,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	go func() {
 		select {
 		case sig := <-intCh:
-			// pig divergence (D234): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1). The watcher starts before anything that can wait on that disposal.
+			// pig divergence (D234): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1), including a wait for a credential write (D237). The watcher starts before anything that can wait on that disposal.
 			go func() {
 				select {
 				case again := <-intCh:
@@ -294,19 +294,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			}()
 			sysSig, ok := noteTerminationSignal(sig)
 			tools.KillTrackedDetachedChildren()
-			// A second signal while the disposal waits for a credential write exits at once: Pi's handler stays registered, finds the runtime already disposing, and exits without waiting (print-mode.ts:58-61).
-			if ok {
-				go func() {
-					select {
-					case second := <-intCh:
-						if secondSig, isSignal := second.(syscall.Signal); isSignal {
-							exitProcess(128 + int(secondSig))
-						}
-						exitProcess(128 + int(sysSig))
-					case <-ctx.Done():
-					}
-				}()
-			}
 			disposeFromSignal()
 			// Then process.exit(128+signum): the aborted run's remaining work (tool hooks, turn boundaries, extension errors) never runs.
 			if ok {

@@ -27,4 +27,11 @@ export default function (pi) {
     stream: () => { throw new Error("unused"); },
     streamSimple: () => { throw new Error("unused"); },
   });
+  // A request-time refresh that nobody awaits when the run ends: the extension asks for the provider's credentials at session start and goes on, as a request that its caller abandoned does.
+  if (process.env.RPC_OAUTH_REFRESH_ON_SESSION_START) {
+    pi.on("session_start", (_event, ctx) => {
+      const model = ctx.modelRegistry.find("rotating-oauth", "rotating-model");
+      void ctx.modelRegistry.getApiKeyAndHeaders(model).catch(() => {});
+    });
+  }
 }

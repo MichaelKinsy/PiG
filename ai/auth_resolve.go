@@ -397,6 +397,12 @@ func refreshStoredOAuthLocked(ctx context.Context, credentials CredentialStore, 
 	return post, nil
 }
 
+// RefreshStoredOAuth is [refreshStoredOAuthCredential] for a provider whose OAuth refresh is not an [OAuthAuth] of a Models provider: refreshes the stored OAuth credential under the store's lock when needsRefresh still holds, and persists the result, with the caller's cancellation ending only the wait for the lock. It returns nil when the credential was removed or replaced by a non-OAuth one meanwhile.
+// upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential
+func RefreshStoredOAuth(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
+	return refreshStoredOAuthCredential(ctx, credentials, providerID, oauth, needsRefresh)
+}
+
 // ModifyCredentialDetached is credentials.Modify for a transaction that may rotate a single-use token: ctx cancels only the wait for the store's lock. Once fn starts, a cancelled ctx neither stops fn's store write nor discards its result, so the rotated token is persisted; fn itself must not use ctx for the provider request, which is bounded by [RefreshOAuthDetached]. A ctx that ended before fn started returns [AbortReason]. A caller that returns when ctx ends owns running the transaction to its end, as refreshStoredOAuthCredential's goroutine does.
 // upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential (modify under the store's lock; the refresh signal is AbortSignal.timeout only)
 func ModifyCredentialDetached(ctx context.Context, credentials CredentialStore, providerID string, fn func(current *Credential) (*Credential, error)) (*Credential, error) {
@@ -421,10 +427,15 @@ func RefreshOAuthDetached(ctx context.Context, oauth *OAuthAuth, credential Cred
 // refreshOAuthWithTimeout refreshes with a signal bounded only by the fifteen-second timeout, which stays live through refresh settlement and GC: ctx's cancellation does not reach the provider.
 // upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential (AbortSignal.timeout(DEFAULT_OAUTH_REFRESH_TIMEOUT_MS))
 func refreshOAuthWithTimeout(ctx context.Context, oauth *OAuthAuth, credential Credential) (Credential, error) {
+	return oauth.Refresh(DetachedRefreshContext(ctx), credential)
+}
+
+// DetachedRefreshContext is the signal of a stored-credential refresh: bounded only by the fifteen-second timeout, which stays live through refresh settlement and GC, and marked with [WithOAuthRefreshTimeout]. ctx's cancellation and values do not reach it.
+func DetachedRefreshContext(ctx context.Context) context.Context {
 	refreshCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultOAuthRefreshTimeout)
 	// Cleanup follows the timeout; refresh return and Context-wrapper collection are not cancellation events.
 	context.AfterFunc(refreshCtx, cancel)
-	return oauth.Refresh(WithOAuthRefreshTimeout(refreshCtx, defaultOAuthRefreshTimeout), credential)
+	return WithOAuthRefreshTimeout(refreshCtx, defaultOAuthRefreshTimeout)
 }
 
 type oauthRefreshTimeoutKey struct{}

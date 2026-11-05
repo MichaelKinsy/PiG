@@ -88,9 +88,13 @@ func AcquireAuthSync(path string) (*Lock, error) {
 	return acquireSyncWithRetry(path, func(err error) bool { return retryableLockErrorCode(err) != "" }, realpathLockTarget)
 }
 
-// realpathLockTarget is proper-lockfile's default realpath option (lib/lockfile.js resolveCanonicalPath): the lock guards fs.realpath(file), and each attempt resolves it again. The file must exist; a missing file or a link loop fails the attempt with the Node fs error, which no retry loop retries.
+// realpathLockTarget is proper-lockfile's default realpath option (lib/lockfile.js resolveCanonicalPath): the lock guards fs.realpath(file), and each attempt resolves it again. The file must exist; a missing file or a link loop fails the attempt with the Node fs error (ENOENT: no such file or directory, lstat 'path'), which no retry loop retries.
 func realpathLockTarget(path string) (string, error) {
-	return filepath.EvalSymlinks(path)
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", nodeerrno.FromPathError(err)
+	}
+	return resolved, nil
 }
 
 // maxEPERMRetries is auth-storage.ts MAX_EPERM_RETRIES: acquireLockAsync's cap on EPERM retries, apart from the 30 s deadline that bounds waiting for another holder.
