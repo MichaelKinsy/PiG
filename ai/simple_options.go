@@ -188,8 +188,11 @@ const (
 
 // ClampMaxTokensToContext reduces a requested output budget to what fits in
 // the model's context window after the estimated request context and a safety
-// margin that leaves room for the input being counted higher than estimated, never below one token. Mirrors upstream clampMaxTokensToContext,
-// which buildBaseOptions applies to every request.
+// margin that leaves room for the input being counted higher than estimated,
+// never below one token. Mirrors upstream clampMaxTokensToContext, which
+// buildBaseOptions applies to every request.
+//
+// pig divergence (D238): Pi 0a4fad548 keeps 15% of the estimated input unused (Pi 1.5.0 keeps a flat 4096).
 func ClampMaxTokensToContext(model *Model, context TranscriptContext, maxTokens int) int {
 	contextWindow := model.Capabilities.ContextWindow
 	if contextWindow <= 0 {
