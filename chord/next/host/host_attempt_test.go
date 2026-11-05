@@ -195,6 +195,9 @@ func TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordError
 }
 
 func TestAttemptAnOpenThatThrowsFailsTransientReportedTheGetWaitsThroughRetries(t *testing.T) {
+	// The getter's deadline is the host's fake clock: it moves only once the first activation has failed (its report), so
+	// the get ends with that failure on any scheduler; the retry's 1 s backoff is far past the 10 ms.
+	loop := newScopeLoop()
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(attemptBroken, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, errors.New("offline") },
@@ -203,10 +206,16 @@ func TestAttemptAnOpenThatThrowsFailsTransientReportedTheGetWaitsThroughRetries(
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("")},
 			}}, nil
 		}, ServeOptions{})
-	}, loadedOptions{})
+	}, loadedOptions{Loop: loop})
 	ten := 10 * time.Millisecond
-	_, err := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ten})
-	wantChordError(t, err, data.CodeUnavailable, "", "app.broken(1): offline")
+	got := make(chan error, 1)
+	go func() {
+		_, err := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ten})
+		got <- err
+	}()
+	until(t, "the first activation's failure", func() bool { return errs.Len() == 1 })
+	advanceHost(loop, host, 10)
+	wantChordError(t, receive(t, got), data.CodeUnavailable, "", "app.broken(1): offline")
 	all := errs.All()
 	if len(all) != 1 || all[0].Kind != ErrActivationFailed || all[0].Object != "app.broken(1)" ||
 		all[0].Failure.Kind != data.FailureTransient || all[0].Failure.Error.Code != data.CodeUnavailable {
