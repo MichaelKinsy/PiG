@@ -817,29 +817,45 @@ func TestChangeClassifierReadsMergeGroups(t *testing.T) {
 }
 
 // gitleaks-action reports "event not yet supported" on merge_group and fails the job; the commits of a merge group are the pull
-// request's own, which its pull_request run scanned. TruffleHog runs in both and scans the commits the queue added.
+// request's own, which its pull_request run scanned. TruffleHog runs in both and scans the commits the queue added. The two
+// scanners are separate jobs so each has its own timeout, and the result job requires both.
 func TestSecretScanRunsInTheMergeGroup(t *testing.T) {
-	job := readWorkflow(t, "security.yml").Jobs["secret-scan"]
+	workflow := readWorkflow(t, "security.yml")
 	var gitleaks, trufflehog bool
-	for _, step := range job.Steps {
-		switch {
-		case strings.HasPrefix(step.Uses, "gitleaks/gitleaks-action@"):
-			gitleaks = true
-			if step.If != "github.event_name != 'merge_group'" {
-				t.Errorf("the Gitleaks step has if: %q, want it skipped on merge_group, which the action rejects", step.If)
-			}
-		case strings.HasPrefix(step.Uses, "trufflesecurity/trufflehog@"):
-			trufflehog = true
-			if step.If != "" {
-				t.Errorf("the TruffleHog step has if: %q, want it to run on every event", step.If)
-			}
-			if step.With["base"] != "${{ github.event.merge_group.base_sha }}" || step.With["head"] != "${{ github.event.merge_group.head_sha }}" {
-				t.Errorf("TruffleHog scans base %v head %v, want the merge group's range", step.With["base"], step.With["head"])
+	for _, name := range []string{"secret-scan-gitleaks", "secret-scan-trufflehog"} {
+		job, ok := workflow.Jobs[name]
+		if !ok {
+			t.Fatalf("security.yml has no %s job", name)
+		}
+		if !slices.Contains(needsOf(workflow.Jobs["result"].Needs), name) {
+			t.Errorf("Security result does not need %s", name)
+		}
+		for _, step := range job.Steps {
+			switch {
+			case strings.HasPrefix(step.Uses, "gitleaks/gitleaks-action@"):
+				gitleaks = true
+				if name != "secret-scan-gitleaks" {
+					t.Errorf("%s runs Gitleaks", name)
+				}
+				if step.If != "github.event_name != 'merge_group'" {
+					t.Errorf("the Gitleaks step has if: %q, want it skipped on merge_group, which the action rejects", step.If)
+				}
+			case strings.HasPrefix(step.Uses, "trufflesecurity/trufflehog@"):
+				trufflehog = true
+				if name != "secret-scan-trufflehog" {
+					t.Errorf("%s runs TruffleHog", name)
+				}
+				if step.If != "" {
+					t.Errorf("the TruffleHog step has if: %q, want it to run on every event", step.If)
+				}
+				if step.With["base"] != "${{ github.event.merge_group.base_sha }}" || step.With["head"] != "${{ github.event.merge_group.head_sha }}" {
+					t.Errorf("TruffleHog scans base %v head %v, want the merge group's range", step.With["base"], step.With["head"])
+				}
 			}
 		}
 	}
 	if !gitleaks || !trufflehog {
-		t.Fatalf("secret-scan has gitleaks = %v, trufflehog = %v", gitleaks, trufflehog)
+		t.Fatalf("secret scan jobs have gitleaks = %v, trufflehog = %v", gitleaks, trufflehog)
 	}
 }
 

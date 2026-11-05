@@ -179,8 +179,10 @@ jobs:
           path: evidence/
           retention-days: 30
 
-  secret-scan:
-    name: Secret scanning
+  # Gitleaks (the whole history) and TruffleHog (the pull request range) each take several minutes, so they run as two jobs in
+  # parallel, each under its own timeout.
+  secret-scan-gitleaks:
+    name: Secret scanning (Gitleaks)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -195,6 +197,16 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  secret-scan-trufflehog:
+    name: Secret scanning (TruffleHog)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       # base and head are empty outside a merge group, which keeps the action's per-event range there; in a merge group
       # they scan the commits the queue added to the base branch.
       - name: TruffleHog verified findings
@@ -283,7 +295,7 @@ jobs:
   result:
     name: Security result
     # The one required check for this workflow; see CI result in ci.yml.
-    needs: [changes, source-assurance, secret-scan, dependency-review, codeql]
+    needs: [changes, source-assurance, secret-scan-gitleaks, secret-scan-trufflehog, dependency-review, codeql]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -295,7 +307,8 @@ jobs:
           PRODUCT: ${{ needs.changes.outputs.product }}
           CHANGES: ${{ needs.changes.result }}
           SOURCE: ${{ needs.source-assurance.result }}
-          SECRETS: ${{ needs.secret-scan.result }}
+          GITLEAKS: ${{ needs.secret-scan-gitleaks.result }}
+          TRUFFLEHOG: ${{ needs.secret-scan-trufflehog.result }}
           REVIEW: ${{ needs.dependency-review.result }}
           CODEQL: ${{ needs.codeql.result }}
         shell: bash
@@ -317,7 +330,8 @@ jobs:
           { [ "$PRIVATE" = true ] || [ "$product_skip" = true ]; } && codeql_skip=true
           expect "Changed paths" "$CHANGES" false
           expect "Source assurance" "$SOURCE" "$product_skip"
-          expect "Secret scanning" "$SECRETS" false
+          expect "Secret scanning (Gitleaks)" "$GITLEAKS" false
+          expect "Secret scanning (TruffleHog)" "$TRUFFLEHOG" false
           expect "Dependency review" "$REVIEW" "$review_skip"
           expect "CodeQL" "$CODEQL" "$codeql_skip"
           exit "$status"
