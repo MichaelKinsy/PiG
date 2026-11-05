@@ -146,7 +146,7 @@ func TestApplyClaudeFamilyRules(t *testing.T) {
 		{"opus 4.7 adds xhigh and drops the temperature", "anthropic", "claude-opus-4-7", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
 		{"a dotted prefixed id matches", "openrouter", "anthropic/claude-opus-4.7", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
 		{"sonnet 5.5 drops the temperature", "anthropic", "claude-sonnet-5-5", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
-		{"sonnet 5 keeps the temperature", "anthropic", "claude-sonnet-5", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true}`},
+		{"sonnet 5 drops the temperature", "anthropic", "claude-sonnet-5", "anthropic-messages", `{"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true,"supportsTemperature":false}`},
 		{"fable 5 can not turn thinking off", "anthropic", "claude-fable-5-1", "anthropic-messages", `{"off":null,"xhigh":"xhigh","max":"max"}`, `{"forceAdaptiveThinking":true}`},
 		{"mythos 5 is adaptive without effort levels", "anthropic", "claude-mythos-5", "anthropic-messages", `null`, `{"forceAdaptiveThinking":true}`},
 		{"the latest alias is adaptive", "openrouter", "~anthropic/claude-opus-latest", "anthropic-messages", `null`, `{"forceAdaptiveThinking":true}`},
