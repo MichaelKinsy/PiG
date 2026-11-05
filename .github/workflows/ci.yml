@@ -460,10 +460,9 @@ jobs:
           TEST_BASE: origin/${{ github.base_ref || 'main' }}
           # A shard that groups several gates runs every one of them and fails if any failed.
           MAKEFLAGS: -k
-          # The fast group's package pool (automation/ci/test-grouped.sh, default 12) is 1.5 packages per CPU of a 4-CPU runner. A package
-          # then gets a third of a CPU, and go test's 10-minute limit bounds its wall time, not its CPU time: on 0.7.0 imageprocessing,
-          # codingagent/tools, photonimage and pigletbuild ran 555 to 600 s. At 6 the same run took the same 30 minutes (1778 s against 1893 s) and the longest
-          # packages 333 to 387 s.
+          # The fast group's package pool (automation/ci/test-grouped.sh, default 12) is 1.5 packages per CPU of a 4-CPU runner.
+          # go test's 10-minute limit bounds a package's wall time, not its CPU time, and at 12 the slowest packages (imageprocessing,
+          # codingagent/tools, photonimage, pigletbuild) reach 555-600 s; at 6 the pool takes the same total time and they finish in 333-387 s.
           TEST_FAST_PARALLEL: 6
         run: make "$TARGET"
       - name: Save the golangci-lint cache
