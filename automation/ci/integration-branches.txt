@@ -1,0 +1,7 @@
+# The long-lived integration branches, one exact name per line. Lane branches (fix/follow-pi-<lane>) are not integration branches, so no glob.
+# ci.yml reads this list to choose the job order (changes.os-parallel) and integration-ci.yml reads it to choose the branches it dispatches nightly
+# (the repository variable PIG_INTEGRATION_BRANCHES overrides it there). ci.yml's push filter cannot read a file, so
+# TestIntegrationBranchesHaveOneSource requires that filter to list exactly these names. release/** and integration/** are patterns, not names, and
+# stay in ci.yml and that test.
+fix/follow-pi-next
+fix/071-next
