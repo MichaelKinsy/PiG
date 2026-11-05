@@ -122,7 +122,15 @@ class FramedPort extends EventEmitter {
 	}
 
 	#finish() {
-		this.#socket.end(() => this.#socket.destroy());
+		const t0 = Date.now();
+		const dump = (what) => process.stderr.write(`DIAG ${what} +${Date.now() - t0}ms resources=${JSON.stringify(process.getActiveResourcesInfo())}\n`);
+		dump("finish");
+		for (const ms of [500, 1500, 3000, 4500]) setTimeout(() => dump("tick"), ms).unref();
+		process.on("exit", () => dump("exit"));
+		this.#socket.end(() => {
+			dump("ended");
+			this.#socket.destroy();
+		});
 	}
 }
 

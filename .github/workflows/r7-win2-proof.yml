@@ -2,7 +2,7 @@ name: r7 win2 proof
 # A proof run of two plugins tests on Windows, on these branches only. Not for merging.
 on:
   push:
-    branches: [fix/r7-win2-proof, fix/r7-win2-red]
+    branches: [fix/r7-win2-diag]
 permissions:
   contents: read
 jobs:
@@ -41,7 +41,7 @@ jobs:
           go test -c -o plugins.test.exe ./chord/nextnode/plugins
           if ($LASTEXITCODE -ne 0) { throw "build failed" }
           Set-Location chord/nextnode/plugins
-          & ..\..\..\plugins.test.exe '-test.timeout=40m' '-test.count=50' '-test.run=TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat|HostStoppedCleanlyDirtiesNothing|Watcher'
+          & ..\..\..\plugins.test.exe '-test.timeout=40m' '-test.count=12' '-test.run=TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat'
           $code = $LASTEXITCODE
           $jobs | Stop-Job
           if ($code -ne 0) { throw "tests failed" }
