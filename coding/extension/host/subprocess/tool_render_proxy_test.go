@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -162,8 +163,15 @@ func TestToolRenderersAcrossSDKs(t *testing.T) {
 			case <-time.After(10 * time.Second):
 				t.Fatal("context invalidate did not reach the card")
 			}
+			// The card keeps the component its renderCall returned, as upstream's ToolExecutionComponent keeps callRendererComponent
+			// (tool-execution.ts:37,304-305), and the host frees a card's extension-side state once no component of the card is
+			// reachable. A collection between the call and the result therefore leaves the state in place. Without the KeepAlive
+			// below the call component is dead here, and a collection (CI Windows: calls=<nil>) frees the state.
+			runtime.GC()
+			time.Sleep(20 * time.Millisecond)
 			result := card.RenderResult(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "out"}}, Details: map[string]any{"k": "v"}}, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(*toolRenderProxy)
 			waitForLines(t, result, 40, "result out v expanded=true calls=1 w=40")
+			runtime.KeepAlive(call)
 
 			throwing := loaded[0].Tools["throwing_tool"].Definition
 			if throwing.RenderCall == nil || throwing.RenderResult != nil {
