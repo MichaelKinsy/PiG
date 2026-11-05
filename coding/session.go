@@ -208,7 +208,7 @@ type Session struct {
 	queuedSteering []string
 	// queuedImageMessages holds the queued user messages that carry images, keyed by the first block of their content, until delivery normalizes them (agent-session.ts _queuedMessagesWithImages).
 	queuedImageMessages sync.Map
-	queuedFollowUp []string
+	queuedFollowUp      []string
 
 	// completer is the SimpleCompleter used by Compact and NavigateTree.
 	// nil → compaction.ProviderCompleter{} (real LLM call via s.Model()).
