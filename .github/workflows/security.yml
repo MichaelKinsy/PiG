@@ -190,6 +190,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # fetch-depth 0 also fetches every branch and tag of the repository, and gitleaks without --log-opts scans every ref. A scheduled
+      # or push run on main would then report commits that exist only on pushed fix/* and release/* branches. Keep the checked-out
+      # commit (a pull request's merge commit, or the ref the event names) and drop the other refs: the scan covers the history that
+      # commit reaches, which is the history the event is about.
+      - name: Scan only the checked-out history
+        shell: bash
+        run: git for-each-ref --format='delete %(refname)' refs/remotes refs/tags | git update-ref --stdin
       # gitleaks-action supports only push, pull_request, workflow_dispatch and schedule; on merge_group it exits with an
       # error. The commits a merge group adds are the queued pull request's own, which the pull_request run scanned.
       - name: Gitleaks
