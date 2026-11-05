@@ -372,15 +372,7 @@ func refreshStoredOAuthCredential(ctx context.Context, credentials CredentialSto
 }
 
 func refreshStoredOAuthLocked(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error) {
-	lockWait, cancelLockWait := context.WithCancelCause(context.WithoutCancel(ctx))
-	defer cancelLockWait(nil)
-	stopLockWait := context.AfterFunc(ctx, func() { cancelLockWait(context.Cause(ctx)) })
-	defer stopLockWait()
-	post, err := credentials.Modify(lockWait, providerID, func(current *Credential) (*Credential, error) {
-		stopLockWait()
-		if err := ctx.Err(); err != nil {
-			return nil, AbortReason(ctx)
-		}
+	post, err := ModifyCredentialDetached(ctx, credentials, providerID, func(current *Credential) (*Credential, error) {
 		if current == nil || current.Type != CredentialOAuth || !needsRefresh(*current) {
 			return nil, nil // logged out meanwhile, or another process or request refreshed
 		}
@@ -403,6 +395,27 @@ func refreshStoredOAuthLocked(ctx context.Context, credentials CredentialStore, 
 		return nil, nil
 	}
 	return post, nil
+}
+
+// ModifyCredentialDetached is credentials.Modify for a transaction that may rotate a single-use token: ctx cancels only the wait for the store's lock. Once fn starts, a cancelled ctx neither stops fn's store write nor discards its result, so the rotated token is persisted; fn itself must not use ctx for the provider request, which is bounded by [RefreshOAuthDetached]. A ctx that ended before fn started returns [AbortReason]. A caller that returns when ctx ends owns running the transaction to its end, as refreshStoredOAuthCredential's goroutine does.
+// upstream: packages/ai/src/auth/resolve.ts:refreshStoredOAuthCredential (modify under the store's lock; the refresh signal is AbortSignal.timeout only)
+func ModifyCredentialDetached(ctx context.Context, credentials CredentialStore, providerID string, fn func(current *Credential) (*Credential, error)) (*Credential, error) {
+	lockWait, cancelLockWait := context.WithCancelCause(context.WithoutCancel(ctx))
+	defer cancelLockWait(nil)
+	stopLockWait := context.AfterFunc(ctx, func() { cancelLockWait(context.Cause(ctx)) })
+	defer stopLockWait()
+	return credentials.Modify(lockWait, providerID, func(current *Credential) (*Credential, error) {
+		stopLockWait()
+		if err := ctx.Err(); err != nil {
+			return nil, AbortReason(ctx)
+		}
+		return fn(current)
+	})
+}
+
+// RefreshOAuthDetached refreshes credential with a signal bounded only by the fifteen-second refresh timeout: ctx's cancellation does not reach the provider, because the request may already have spent the single-use refresh token.
+func RefreshOAuthDetached(ctx context.Context, oauth *OAuthAuth, credential Credential) (Credential, error) {
+	return refreshOAuthWithTimeout(ctx, oauth, credential)
 }
 
 // refreshOAuthWithTimeout refreshes with a signal bounded only by the fifteen-second timeout, which stays live through refresh settlement and GC: ctx's cancellation does not reach the provider.

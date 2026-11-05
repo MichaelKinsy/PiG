@@ -476,6 +476,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			invocation.Acknowledge(shutdownContext)
 			sess().Dispose()
 			release()
+			// pig divergence (D237): Pi main b2cb62923 makes runtimeHost.dispose() wait for credential writes in progress, so a started OAuth refresh is saved before the process exits. A second signal takes the default action at once (forced above), as in Pi.
+			_ = rt.SettleCredentialWrites(shutdownContext)
 		},
 		func() {
 			select {

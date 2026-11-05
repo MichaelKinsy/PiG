@@ -250,6 +250,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			resultMu.Unlock()
 			rt.Session().Dispose()
 			release()
+			// pig divergence (D237): Pi main b2cb62923 makes runtimeHost.dispose() wait for credential writes in progress, so a started OAuth refresh is saved before the signal's exit.
+			//portlint:allow ctxbackground Pi's SIGTERM/SIGHUP handler awaits runtimeHost.dispose() with no signal (print-mode.ts:57-60); this signal hook has no caller context
+			_ = rt.SettleCredentialWrites(context.Background())
 		})
 	}
 	setTerminationShutdownHook(disposeFromSignal)
@@ -261,6 +264,19 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		case sig := <-intCh:
 			sysSig, ok := noteTerminationSignal(sig)
 			tools.KillTrackedDetachedChildren()
+			// A second signal while the disposal waits for a credential write exits at once: Pi's handler stays registered, finds the runtime already disposing, and exits without waiting (print-mode.ts:58-61).
+			if ok {
+				go func() {
+					select {
+					case second := <-intCh:
+						if secondSig, isSignal := second.(syscall.Signal); isSignal {
+							exitProcess(128 + int(secondSig))
+						}
+						exitProcess(128 + int(sysSig))
+					case <-ctx.Done():
+					}
+				}()
+			}
 			disposeFromSignal()
 			// Then process.exit(128+signum): the aborted run's remaining work (tool hooks, turn boundaries, extension errors) never runs. Extension processes end with the process, as the RPC signal exit ends them.
 			if ok {

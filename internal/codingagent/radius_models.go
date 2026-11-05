@@ -389,12 +389,13 @@ func (r *ModelRegistry) resolveRefreshCredential(ctx context.Context, provider *
 
 func (r *ModelRegistry) refreshRadiusOAuth(ctx context.Context, provider *ai.RadiusProvider) (*ai.Credential, error) {
 	r.mu.RLock()
-	storage := r.credentialStore
+	hasStore := r.credentialStore != nil
 	r.mu.RUnlock()
-	if storage == nil {
+	if !hasStore {
 		return nil, nil
 	}
-	post, err := storage.Modify(ctx, provider.ID(), func(current *ai.Credential) (*ai.Credential, error) {
+	// pig divergence (D237): the refresh goes through the registry's credential overlay, whose pending modifications process exit waits for.
+	post, err := registryCredentials{r}.Modify(ctx, provider.ID(), func(current *ai.Credential) (*ai.Credential, error) {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}

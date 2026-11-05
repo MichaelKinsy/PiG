@@ -217,7 +217,8 @@ func (r *ModelRegistry) refreshNativeProvider(parent context.Context, p *extensi
 		}
 		if network {
 			var refreshCredential *ai.Credential
-			_, err = credentials.Modify(ctx, p.ID, func(current *ai.Credential) (*ai.Credential, error) {
+			// pig divergence (D237): a refresh that started before exit must be saved; the cancellation of the catalog refresh ends only the wait for the lock.
+			_, err = ai.ModifyCredentialDetached(ctx, credentials, p.ID, func(current *ai.Credential) (*ai.Credential, error) {
 				// The transaction owns this overlay; reacquiring r.mu here inverts the registry-to-credential lock order used by catalog readers.
 				if key, ok := credentials.RuntimeAPIKey(p.ID); ok {
 					current = &ai.Credential{Type: ai.CredentialAPIKey, Key: key}
