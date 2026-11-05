@@ -748,6 +748,8 @@ memory overhead while retaining exact component-plan identity. The
 `factory().RunWithConn` serve funcs; non-fused components use subprocess or
 external realization.
 
+Startup cost: a fused extension reads no source and builds nothing, so a start whose only extensions are fused does not stage the extension SDKs (`subprocess.RunsFused`, `loadNeedsStagedSDK`). Staging wrote about 300 files into a clean config root before the first prompt, 45 ms on the measured host, and a Piglet Binary with plan mode fused took 75 ms to its first prompt there against 30 ms for a bare pig. A load that has any non-fused configuration or an embedded cell still stages first (`TestFusedLoadStagesNoSDK`).
+
 Observational identity: stock pig never calls `LoadInProcess`. The
 `managedExt.inProcServe` field is nil for every extension a normal pig loads, so
 `connectExt` takes the unchanged listen/spawn/accept path, so its behavior is
