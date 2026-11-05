@@ -3389,6 +3389,8 @@ func (h *Host) acceptExtConn(ctx context.Context, cancel context.CancelFunc, me 
 func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, extCtx context.Context, cancel context.CancelFunc, isRestart bool) (*extension.Extension, error) {
 	// Wrap in managed connection.
 	conn := NewConn(me.config.Name, rawConn)
+	// The process's exit ends the connection's read when the socket does not (peer_exit.go); the share's exit channel for a process other extensions share.
+	conn.watchPeerExit(me.exited())
 	h.observeXref(conn)
 	// Adopt before Start so this connection's own close finds it as me's current connection.
 	h.mu.Lock()
