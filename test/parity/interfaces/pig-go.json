@@ -178437,6 +178437,17 @@
       "shapeHash": "sha256:698f11839240ae9295b8ab7202ca4d841fd33a1e235b179c2f6d89c36afccb0e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildNeedsCgo",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "buildNeedsCgo",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, source pigSource, goToolchain github.com/MichaelKinsy/PiG/internal/toolchain.GoToolchain, overlayPath string, tags []string) (bool, error)"
+      },
+      "shapeHash": "sha256:a0d2069162dad0ce721456db58fb503cc1bc43eae31d22d82f9a8150e7619221"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildNodeCell",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "buildNodeCell",
@@ -178578,6 +178589,17 @@
         "type": "func(cell github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.CellSpec, plan github.com/MichaelKinsy/PiG/coding/piglet/artifact.Plan) (github.com/MichaelKinsy/PiG/coding/piglet/artifact.Realization, github.com/MichaelKinsy/PiG/coding/piglet/artifact.Materialization, error)"
       },
       "shapeHash": "sha256:df451983af940f63e96e198cd6bbdf474d7a8841dcda54cc2411916a947e0645"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#cgoPackagesFormat",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "cgoPackagesFormat",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#collectFused",
@@ -179240,6 +179262,17 @@
       "shapeHash": "sha256:335d45799e90e49622653e632e63f1bc2b01b2ba126f431006ee43c3127776e4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#goCgoUserSet",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "goCgoUserSet",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, source pigSource, goToolchain github.com/MichaelKinsy/PiG/internal/toolchain.GoToolchain) (bool, error)"
+      },
+      "shapeHash": "sha256:924810082ddf2b44338a1660145ce85e7713bda540a4d8d12212f59bfaa7bc24"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#goExtensions",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "goExtensions",
@@ -179273,6 +179306,17 @@
       "shapeHash": "sha256:005dc38a2634055b614b96c0cc93327ddaf306ae7e2f97fba61de69403750d9f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#goOutput",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "goOutput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cmd *os/exec.Cmd) ([]byte, error)"
+      },
+      "shapeHash": "sha256:e6f90d197139a9a3f810dab558eca1f700334a3befef6886d283af67ed64a21e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#hasBuildFlag",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "hasBuildFlag",
@@ -179282,6 +179326,17 @@
         "type": "func(args []string, name string) bool"
       },
       "shapeHash": "sha256:31d6dc642b057ba4b3a03a9d160a2f6ff35c46c7c004e5534a785ef442c326d7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#hasEnvKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "hasEnvKey",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env []string, key string) bool"
+      },
+      "shapeHash": "sha256:044eb79d792addc3886b722f824217b1a82a30e0493700f637bd88c33b3fd85c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#hashBufferSize",
@@ -180714,6 +180769,17 @@
       "shapeHash": "sha256:f725dfa8564c7fc5771e0927b6fee9c437637026276b66b3024260449ae5bdc2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#staticPigletBuildEnv",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "staticPigletBuildEnv",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, source pigSource, goToolchain github.com/MichaelKinsy/PiG/internal/toolchain.GoToolchain, build *os/exec.Cmd, overlayPath string, tags []string, target Target) []string"
+      },
+      "shapeHash": "sha256:3b1641c448cb304193f33291d8666fd508131b118ef2306fa6b2e6e3352497b4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#stripRuntimeConflict",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "stripRuntimeConflict",
@@ -180789,6 +180855,17 @@
         "type": "func(ctx context.Context, fused []fusedEntry) error"
       },
       "shapeHash": "sha256:9cefc9d5354f46a669a16ef61a5d65c05064273b927070804ddbb33cd55ada43"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#withStaticCgoDefault",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "withStaticCgoDefault",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env []string, target Target, userSet func() (bool, error), needsCgo func() (bool, error)) ([]string, error)"
+      },
+      "shapeHash": "sha256:6ae4327ecdd6085cd4f2643d34bc8988027814c23bac548a2c191242cd6cb0a9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#writeArchiveDir",
