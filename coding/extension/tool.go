@@ -38,7 +38,11 @@ type ToolRenderContext struct {
 	// Card identifies the tool card being rendered. Go mechanic (not a
 	// divergence): a renderer that runs in an extension process keeps State
 	// and its last component there, so the host names the card they belong
-	// to; upstream passes the card's objects themselves.
+	// to; upstream passes the card's objects themselves. The host frees the
+	// extension-side state of a card once no component its renderers returned
+	// is reachable, so a caller that goes on rendering a card keeps those
+	// components, as upstream's card keeps callRendererComponent and
+	// resultRendererComponent (tool-execution.ts).
 	Card string `json:"-"`
 }
 
