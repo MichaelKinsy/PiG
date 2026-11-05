@@ -4,9 +4,13 @@ package plugins
 
 import (
 	"context"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"slices"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -33,6 +37,10 @@ type watcherFixture struct {
 	scheduler *chord.DeliveryScheduler
 	mu        sync.Mutex
 	failures  []error
+	// barrier is a directory outside the root and the base code that the watcher watches too, where settle makes the
+	// directories that tell it the events of everything before them were handled; sentinels counts them.
+	barrier   string
+	sentinels int
 }
 
 // run runs work as a section of the loop: what the host's callers of the watcher do.
@@ -134,7 +142,75 @@ func watched(t *testing.T) *watcherFixture {
 			used("@test/b", "server", filepath.Join(root, "b", "server.ts"), contract),
 		})
 	})
+	// The fixture's own files were written, and discovery read them, as the watcher started: what the file system reports
+	// of that arrives on its own time (Windows reports a directory's last-write time, and a file's, lazily), and must not
+	// be a mark of the case. The case starts from marks of nothing but what it does.
+	f.settle()
+	f.forget()
 	return f
+}
+
+// settle returns once the watcher handled the events of every file operation made before the call: a directory made in the
+// barrier's directory, which the watcher watches, is watched when its event was handled, and the events of one file system
+// arrive in order (see settle, the barrier of a component's watcher). On Windows each watched directory is opened and closed
+// first, which has the file system report the last-write time of the directories whose entries changed before the barrier
+// does (see settleDirectoryStamps).
+func (f *watcherFixture) settle() {
+	f.t.Helper()
+	if f.barrier == "" {
+		f.barrier = f.t.TempDir()
+	}
+	var watching bool
+	var directories []string
+	f.run(func() {
+		if f.watcher.fs == nil {
+			return
+		}
+		watching = true
+		// A discovery drops the trees that are no root's, base's or linked plugin's: the barrier's is put back each time.
+		f.watcher.watchTree(f.barrier)
+		directories = slices.Collect(maps.Keys(f.watcher.watched))
+	})
+	if !watching {
+		return
+	}
+	if runtime.GOOS == "windows" {
+		settleDirectoryStamps(directories)
+	}
+	f.sentinels++
+	sentinel := filepath.Join(f.barrier, "sentinel-"+strconv.Itoa(f.sentinels))
+	if err := os.Mkdir(sentinel, 0o755); err != nil {
+		f.t.Fatal(err)
+	}
+	eventually(f.t, 15*time.Second, "the watcher to handle a directory made after the edits", func() bool {
+		var reached bool
+		f.run(func() { _, reached = f.watcher.watched[sentinel] })
+		return reached
+	})
+}
+
+// forget clears every mark the watcher holds: what a case sees is what it does from here.
+func (f *watcherFixture) forget() {
+	f.run(func() {
+		clear(f.watcher.dirty)
+		clear(f.watcher.install)
+		f.watcher.set, f.watcher.manifest, f.watcher.baseChanged = 0, 0, false
+		f.watcher.marksChanged()
+	})
+}
+
+// marksOf is the marks as a case that changed files for real reads them: on Windows without what it adds to the directories
+// the case changed an entry of (exTouch) that want does not have (see withoutDirectoryStamps).
+func (f *watcherFixture) marksOf(want PluginsState) PluginsState {
+	f.t.Helper()
+	return f.withoutStamps(f.marks(), want)
+}
+
+func (f *watcherFixture) withoutStamps(marks, want PluginsState) PluginsState {
+	if runtime.GOOS == "windows" {
+		return withoutDirectoryStamps(f.t, marks, want)
+	}
+	return marks
 }
 
 func (f *watcherFixture) mark(path string) { f.run(func() { f.watcher.mark(path) }) }
@@ -281,10 +357,13 @@ func TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch(t *testing
 		}
 	})
 	changes := changesOf(watch)
+	want := PluginsState{Dirty: list("@test/a")}
 	writeFiles(t, filepath.Join(f.root, "a"), map[string]string{"node_modules-free.ts": "export {};"})
 	writeFiles(t, filepath.Join(f.root, "b", "node_modules", "pkg"), map[string]string{"index.js": ""})
+	// b got an entry (node_modules, which no change under it marks): Windows reports b's own last-write time as a change of b.
+	exTouch(t, filepath.Join(f.root, "b"))
 	eventually(t, 5*time.Second, `dirty ["@test/a"]`, func() bool {
-		return reflect.DeepEqual(f.marks().Dirty, list("@test/a"))
+		return reflect.DeepEqual(f.marksOf(want).Dirty, want.Dirty)
 	})
 	f.scheduler.Wait()
 	calls := changes.items()
@@ -299,7 +378,7 @@ func TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch(t *testing
 	if !ok {
 		t.Fatalf("last value = %#v, want a JSON object", last.Value)
 	}
-	if got := stateOf(t, object).Dirty; !reflect.DeepEqual(got, list("@test/a")) {
+	if got := f.withoutStamps(stateOf(t, object), want).Dirty; !reflect.DeepEqual(got, want.Dirty) {
 		t.Fatalf("last frame's dirty = %v, want [@test/a]", got)
 	}
 	f.close()
@@ -345,6 +424,9 @@ func TestTheWatcherFixRound1WatchesADirectoryThatAppearsLaterAndMarksTheFilesInI
 	f := watched(t)
 	writeFiles(t, filepath.Join(f.root, "a", "lib"), map[string]string{"first.ts": ""})
 	eventually(t, 5*time.Second, `dirty ["@test/a"]`, func() bool { return reflect.DeepEqual(f.marks().Dirty, list("@test/a")) })
+	// What the file system still reports of the first file (lib's last-write time, a's) must come before the mark clears, or
+	// it would stand for the second file's event.
+	f.settle()
 	f.applied(f.snapshot("@test/a"), "@test/a")
 	writeFiles(t, filepath.Join(f.root, "a", "lib"), map[string]string{"second.ts": "export {};"})
 	eventually(t, 5*time.Second, `dirty ["@test/a"]`, func() bool { return reflect.DeepEqual(f.marks().Dirty, list("@test/a")) })
