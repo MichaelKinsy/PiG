@@ -287,8 +287,20 @@ func TestClientRequestErrorsMirrorFetch(t *testing.T) {
 	closed.Close()
 	offline, _ := NewLlamaClient(closedURL, "")
 	var failure *fetchError
-	if _, err := offline.List(context.Background(), false); !errors.As(err, &failure) || err.Error() != "fetch failed" {
-		t.Fatalf("connection error = %v, want fetch failed", err)
+	// Pi ea0f49a36 (#11745, llama-extension.test.ts "names the server and the cause when it cannot be reached"): the error names the server and the transport
+	// error. Node's text is `connect ECONNREFUSED 127.0.0.1:<port>`; Go's is `dial tcp 127.0.0.1:<port>: connect: connection refused`.
+	_, err := offline.List(context.Background(), false)
+	host := strings.TrimPrefix(closedURL, "http://")
+	if want := "Could not reach llama.cpp server at " + closedURL + ": dial tcp " + host + ": connect: connection refused"; err == nil || err.Error() != want || !errors.As(err, &failure) {
+		t.Fatalf("connection error = %v, want %q wrapping the fetch error", err, want)
+	}
+	if _, err := offline.List(context.Background(), false); strings.Contains(err.Error(), "fetch failed") {
+		t.Fatalf("connection error %q still reads fetch failed", err)
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := offline.List(cancelled, false); err == nil || strings.Contains(err.Error(), "Could not reach") {
+		t.Fatalf("aborted request error = %v, want the abort rethrown unchanged", err)
 	}
 }
 

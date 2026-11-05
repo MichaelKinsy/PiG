@@ -696,7 +696,7 @@ func init() {
 		case "alt+up to edit all queued messages":
 			expandedHints[i] = "alt+q to edit all queued messages"
 		case "ctrl+v to paste files on macOS, images, or text":
-			expandedHints[i] = "alt+v to paste files on macOS, images, or text"
+			expandedHints[i] = "alt+v/ctrl+v to paste files on macOS, images, or text"
 		}
 	}
 }

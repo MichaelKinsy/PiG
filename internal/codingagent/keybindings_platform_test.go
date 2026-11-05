@@ -34,13 +34,13 @@ func TestWindowsAltVPasteImageReachable(t *testing.T) {
 // TestPlatformDivergentControlKeys asserts the platform-correct classification
 // of the keys whose bindings differ on Windows, so the Windows column is
 // covered rather than assumed. Mirrors keybindings.ts: paste-image is alt+v
-// with Windows keybindings (win32 and WSL; ctrl+v elsewhere), and suspend is
+// with Windows keybindings (win32 and WSL, where ctrl+v also pastes, Pi 37b38e9f6), and suspend is
 // unbound only on native win32 (no SIGTSTP).
 func TestPlatformDivergentControlKeys(t *testing.T) {
 	ctrlV, ctrlZ, altV := actionPasteImage, actionSuspend, actionInsert
 	platform := tui.HostKeybindingPlatform()
 	if platform.UsesWindowsKeybindings() {
-		ctrlV, altV = actionInsert, actionPasteImage
+		altV = actionPasteImage
 	}
 	if platform == tui.KeybindingPlatformWin32 {
 		ctrlZ = actionInsert
@@ -108,6 +108,10 @@ func TestKeybindingDefinitionsApplyPlatformDefaults(t *testing.T) {
 			}
 			return []string{otherKey}
 		}
+		pickPaste := []string{"ctrl+v"}
+		if windows {
+			pickPaste = []string{"alt+v", "ctrl+v"}
+		}
 		undo := []string{"ctrl+-"}
 		switch platform {
 		case tui.KeybindingPlatformWin32:
@@ -116,7 +120,7 @@ func TestKeybindingDefinitionsApplyPlatformDefaults(t *testing.T) {
 			undo = []string{"alt+z"}
 		}
 		for id, want := range map[string][]string{
-			"app.clipboard.pasteImage": pick("alt+v", "ctrl+v"),
+			"app.clipboard.pasteImage": pickPaste,
 			"app.message.followUp":     pick("ctrl+q", "alt+enter"),
 			"app.model.cycleBackward":  pick("alt+p", "shift+ctrl+p"),
 			"app.message.dequeue":      pick("alt+q", "alt+up"),

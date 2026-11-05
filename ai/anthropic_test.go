@@ -1105,6 +1105,7 @@ func TestAnthropicTemperatureCompatibility(t *testing.T) {
 	}{
 		{name: "omits zero for Claude Opus 4.7", model: "claude-opus-4-7", temperature: 0, set: true},
 		{name: "omits zero for Claude Opus 4.8", model: "claude-opus-4-8", temperature: 0, set: true},
+		{name: "omits zero for Claude Sonnet 5", model: "claude-sonnet-5", temperature: 0, set: true},
 		{name: "omits one for Claude Opus 4.7", model: "claude-opus-4-7", temperature: 1, set: true},
 		{name: "keeps zero for Claude Opus 4.6", model: "claude-opus-4-6", temperature: 0, set: true, want: new(float64)},
 		{name: "keeps zero for Claude Sonnet 4.6", model: "claude-sonnet-4-6", temperature: 0, set: true, want: new(float64)},

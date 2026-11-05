@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptrace"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -31,6 +32,42 @@ type fetchError struct{ cause error }
 
 func (e *fetchError) Error() string { return "fetch failed" }
 func (e *fetchError) Unwrap() error { return e.cause }
+
+// unreachableError is client.ts fetchServer's `Could not reach llama.cpp server at <url>: <cause>` with the original fetch error as its cause.
+//
+// pig divergence (D256): Pi ea0f49a36. Pi 1.5.0 lets the bare "fetch failed" through.
+type unreachableError struct {
+	serverURL string
+	cause     error
+}
+
+func (e *unreachableError) Error() string {
+	return "Could not reach llama.cpp server at " + e.serverURL + ": " + connectionErrorDetail(e.cause)
+}
+func (e *unreachableError) Unwrap() error { return e.cause }
+
+// connectionErrorDetail is client.ts connectionErrorDetail: the message of the transport error behind a failed fetch (undici's error.cause), without the
+// request URL Go's url.Error prefixes.
+func connectionErrorDetail(err error) string {
+	var fetch *fetchError
+	if !errors.As(err, &fetch) || fetch.cause == nil {
+		return err.Error()
+	}
+	var urlErr *url.Error
+	if errors.As(fetch.cause, &urlErr) && urlErr.Err != nil {
+		return urlErr.Err.Error()
+	}
+	return fetch.cause.Error()
+}
+
+// serverFailure is client.ts fetchServer's catch: a network-level failure names the server and its cause; an abort or a timeout is rethrown unchanged.
+func serverFailure(serverURL string, err error) error {
+	var fetch *fetchError
+	if errors.As(err, &fetch) {
+		return &unreachableError{serverURL: serverURL, cause: err}
+	}
+	return err
+}
 
 // fetchResponse is the part of a fetch Response the clients read: the status
 // and the body parsed as JSON, or nil when the body is not JSON.

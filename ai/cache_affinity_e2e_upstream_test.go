@@ -82,10 +82,7 @@ func cacheAffinityFauxEndpoint(t *testing.T, codex bool) string {
 			w.WriteHeader(400)
 			return
 		}
-		header := "session_id"
-		if codex {
-			header = "session-id"
-		}
+		header := "session-id"
 		if payload["prompt_cache_key"] != upstreamCacheAffinitySessionID || r.Header.Get(header) != upstreamCacheAffinitySessionID || r.Header.Get("x-client-request-id") != upstreamCacheAffinitySessionID {
 			t.Errorf("unaligned affinity: payload=%#v headers=%#v", payload, r.Header)
 			w.WriteHeader(400)

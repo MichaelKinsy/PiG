@@ -133,8 +133,8 @@ type OpenAICompat struct {
 	DeferredToolsMode string `json:"deferredToolsMode,omitempty"`
 	// SessionAffinityFormat selects which session-affinity headers are sent
 	// from options.SessionID. "openai" sends session_id + x-client-request-id
-	// + x-session-affinity (Completions) / session_id + x-client-request-id
-	// (Responses); "openai-nosession" omits session_id; "openrouter" sends
+	// + x-session-affinity (Completions) / session-id + x-client-request-id
+	// (Responses); "openai-nosession" omits the session header; "openrouter" sends
 	// x-session-id. Empty = auto-detect (openrouter base URL => "openrouter",
 	// else "openai"). Replaces the pre-0.81 sendSessionIdHeader flag.
 	SessionAffinityFormat SessionAffinityFormat `json:"sessionAffinityFormat,omitempty"`
@@ -1877,7 +1877,12 @@ func applyOpenAISessionAffinityHeaders(headers http.Header, sessionID string, fo
 		return
 	}
 	if format == SessionAffinityOpenAI {
-		headers.Set("session_id", sessionID)
+		if completions {
+			headers.Set("session_id", sessionID)
+		} else {
+			// pig divergence (D246): Pi c5d397835 sends session-id on Responses; nginx drops an underscored header by default and Envoy can reject it. Pi 1.5.0 sends session_id.
+			headers.Set("session-id", sessionID)
+		}
 	}
 	headers.Set("x-client-request-id", sessionID)
 	if completions {

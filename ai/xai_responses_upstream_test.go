@@ -87,8 +87,8 @@ func TestXAIResponsesRequestUpstream(t *testing.T) {
 			if got := headers.Get("User-Agent"); got != FormatUserAgent(nil) {
 				t.Errorf("user-agent = %q", got)
 			}
-			if tc.opts.SessionID != "" && headers.Get("session_id") != tc.opts.SessionID {
-				t.Errorf("session_id = %q", headers.Get("session_id"))
+			if tc.opts.SessionID != "" && (headers.Get("session-id") != tc.opts.SessionID || headers.Get("session_id") != "") {
+				t.Errorf("session-id = %q, session_id = %q", headers.Get("session-id"), headers.Get("session_id"))
 			}
 			for key, want := range tc.want {
 				if got, ok := captured[key]; !ok || !reflect.DeepEqual(got, want) {

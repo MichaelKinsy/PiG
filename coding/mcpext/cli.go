@@ -41,6 +41,9 @@ type McpCommandOptions struct {
 	ConfigDirName string
 	// Credentials defaults to `mcp-auth.json` in AgentDir.
 	Credentials *McpOAuthCredentialStore
+	// ProviderToken returns the token of a pi provider, refreshed when expired, for servers with `auth.provider`; "" when the provider has none. Nil sends no token.
+	// pig divergence (D255): Pi 4d72d05bc. Pi 1.5.0 sends no token in `pi mcp list`, so a signed-in provider's server shows as needing sign-in.
+	ProviderToken func(ctx context.Context, provider string) string
 	// OpenURL opens the sign-in URL in the platform browser. Nil opens nothing.
 	OpenURL func(url string)
 	// IsProjectTrusted reports whether the project at cwd is trusted; an error ends the command with exit code 1. Nil means untrusted.
@@ -146,8 +149,10 @@ type serverReport struct {
 	enabled   bool
 	exposure  string
 	transport string
-	state     string
-	tools     []string
+	// authProvider is the pi provider whose token the server receives, from `auth.provider`.
+	authProvider string
+	state        string
+	tools        []string
 	// toolExposure lists the tools whose exposure differs from the server's, in tool order.
 	toolExposure [][2]string
 	// resources is whether the server offers resources; they are not listed.
@@ -164,12 +169,21 @@ func (r serverReport) toolExposureOf(tool string) (string, bool) {
 	return "", false
 }
 
+// authProviderOf is the pi provider named by an HTTP server's `auth.provider`, or "".
+func authProviderOf(entry McpServerEntry) string {
+	if entry.Config.IsHTTP() && entry.Config.Auth != nil {
+		return entry.Config.Auth.Provider
+	}
+	return ""
+}
+
 func (c *mcpCLI) newConnection(entry McpServerEntry, credentials *McpOAuthCredentialStore) (*Connection, error) {
 	return NewConnection(ConnectionOptions{
 		Entry:           entry,
 		Cwd:             c.options.Cwd,
 		CreateTransport: CreateDefaultTransport,
 		Credentials:     credentials,
+		ProviderToken:   c.options.ProviderToken,
 		Log:             NewMcpServerLog(filepath.Join(c.options.AgentDir, "mcp.log")),
 		OnTools:         func(*Connection) {},
 	})
@@ -337,6 +351,11 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 		}
 		if parsed.flags["local"] && entry.Scope != "project" {
 			c.error(fmt.Sprintf(`MCP server "%s" is defined in %s, not in the project; omit --local.`, name, entry.Source))
+			return 1
+		}
+		// pig divergence (D255): Pi 4d72d05bc points a provider-backed server to /login and /logout instead of failing with "does not use OAuth".
+		if provider := authProviderOf(*entry); provider != "" {
+			c.error(fmt.Sprintf(`MCP server "%s" uses the credentials of provider "%s". Run /%s %s in %s.`, name, provider, command, provider, c.app))
 			return 1
 		}
 		connection, err := c.newConnection(*entry, credentials)
@@ -636,11 +655,12 @@ func (c *mcpCLI) report(ctx context.Context, entry McpServerEntry, credentials *
 	}
 	report := serverReport{
 		name: entry.Name, scope: scope, source: entry.Source, override: entry.Override,
-		enabled:   config.Enabled == nil || *config.Enabled,
-		exposure:  string(exposureOf(entry)),
-		transport: describeTransport(entry),
-		state:     "disabled",
-		tools:     []string{},
+		enabled:      config.Enabled == nil || *config.Enabled,
+		exposure:     string(exposureOf(entry)),
+		transport:    describeTransport(entry),
+		authProvider: authProviderOf(entry),
+		state:        "disabled",
+		tools:        []string{},
 	}
 	if !report.enabled {
 		return report
@@ -678,6 +698,9 @@ func (r serverReport) jsonObject() *orderedjson.Object {
 	_ = object.SetValue("enabled", r.enabled)
 	_ = object.SetValue("exposure", r.exposure)
 	_ = object.SetValue("transport", r.transport)
+	if r.authProvider != "" {
+		_ = object.SetValue("authProvider", r.authProvider)
+	}
 	_ = object.SetValue("state", r.state)
 	_ = object.SetValue("tools", r.tools)
 	if len(r.toolExposure) > 0 {
@@ -761,7 +784,12 @@ func (c *mcpCLI) list(ctx context.Context, loaded LoadedMcpConfig, asJSON bool, 
 			c.log("  project override: " + report.override)
 		}
 		if report.state == string(StateNeedsAuth) {
-			c.log(fmt.Sprintf("  sign in with: %s mcp login %s", c.app, report.name))
+			// pig divergence (D255): Pi 4d72d05bc names /login <provider> for a provider-backed server.
+			if report.authProvider != "" {
+				c.log(fmt.Sprintf("  sign in with: /login %s in %s", report.authProvider, c.app))
+			} else {
+				c.log(fmt.Sprintf("  sign in with: %s mcp login %s", c.app, report.name))
+			}
 		}
 		if len(report.tools) > 0 {
 			tools := make([]string, len(report.tools))

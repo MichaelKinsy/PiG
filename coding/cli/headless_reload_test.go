@@ -403,3 +403,106 @@ func TestFailedExtensionReloadLeavesTheOldInstanceStale(t *testing.T) {
 		})
 	}
 }
+
+const reloadBusyProbeNode = `import { appendFileSync, existsSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+const dir = process.env.RELOAD_BUSY_DIR;
+const log = (line) => appendFileSync(join(dir, "log"), line + "\n");
+const until = async (name) => { while (!existsSync(join(dir, name))) await new Promise((resolve) => setTimeout(resolve, 20)); };
+export default function (pi) {
+  pi.on("session_shutdown", async (event) => log("shutdown:" + event.reason));
+  pi.registerTool({
+    name: "wait_then_succeed", label: "Wait then succeed", description: "Use the tool context after waiting",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, _params, _signal, _update, ctx) {
+      writeFileSync(join(dir, "started"), "");
+      await until("release");
+      try {
+        ctx.getSystemPrompt();
+        log("tool:ctx live");
+      } catch (error) {
+        log("tool:ctx threw:" + error.message);
+      }
+      writeFileSync(join(dir, "done"), "");
+      return { content: [{ type: "text", text: "tool succeeded" }], details: {} };
+    },
+  });
+  pi.registerCommand("reloadbusy", {
+    description: "Start the tool, then reload while it runs",
+    handler: async (_args, ctx) => {
+      pi.sendUserMessage("Run: ext tool wait_then_succeed");
+      await until("started");
+      try {
+        await ctx.reload();
+        log("resolved");
+      } catch (error) {
+        log("rejected:" + error.message);
+      }
+      try {
+        pi.getActiveTools();
+        log("command pi live");
+      } catch (error) {
+        log("command pi threw:" + error.message);
+      }
+      writeFileSync(join(dir, "release"), "");
+      await until("done");
+    },
+  });
+}
+`
+
+// Ports the "command" case of packages/coding-agent/test/suite/regressions/9221-reload-during-tool.test.ts (Pi c3b938e3e): a reload refused while a tool
+// runs must leave the tool's context and the command's captured pi live and the tool's result successful. The refusal touched nothing, so the print and RPC
+// reload closures must not invalidate the extension host.
+func TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the pig binary and extensions")
+	}
+	binary := buildPigBinaryForSignalTest(t)
+	extension := filepath.Join(t.TempDir(), "reload-busy.mjs")
+	if err := os.WriteFile(extension, []byte(reloadBusyProbeNode), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	const refusal = "Wait for the current response to finish before reloading."
+	want := "rejected:" + refusal + "\ncommand pi live\ntool:ctx live\nshutdown:quit"
+	for _, mode := range []string{"print", "rpc"} {
+		t.Run(mode, func(t *testing.T) {
+			home, cwd, sessionDir, busyDir := t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir()
+			agentDir := filepath.Join(home, "pig")
+			if err := os.MkdirAll(agentDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_OFFLINE=1", "RELOAD_BUSY_DIR=" + busyDir}
+			args := []string{"--no-extensions", "--model", "test-faux/faux-1", "--session-dir", sessionDir, "-e", extension}
+			if mode == "rpc" {
+				p := startRPCProcessAt(t, cwd, env, args...)
+				p.send(`{"id":"busy","type":"prompt","message":"/reloadbusy"}`)
+				toolFailed := false
+				p.await("the tool's result", func(record rpcRecord) bool {
+					if record["type"] == "extension_error" {
+						t.Fatalf("extension_error: %v", record)
+					}
+					if record["type"] == "tool_execution_end" && record["isError"] == true {
+						toolFailed = true
+					}
+					return record["type"] == "agent_end"
+				})
+				if toolFailed {
+					t.Fatal("the tool result is an error")
+				}
+				p.closeAndWait("the tool finished")
+			} else {
+				ctx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
+				defer cancel()
+				cmd := exec.CommandContext(ctx, binary, append(args, "--print", "/reloadbusy")...)
+				cmd.Dir, cmd.Env = cwd, append(os.Environ(), env...)
+				if out, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(out), "Extension error") || strings.Contains(string(out), "stale") {
+					t.Fatalf("print: %v\n%s\nlog:\n%s", err, out, mustReadFile(filepath.Join(busyDir, "log")))
+				}
+			}
+			if got := strings.Join(readReloadLog(t, filepath.Join(busyDir, "log")), "\n"); got != want {
+				t.Fatalf("extension log:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
