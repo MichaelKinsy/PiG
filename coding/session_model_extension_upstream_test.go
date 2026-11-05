@@ -127,6 +127,31 @@ func TestSessionModelExtensionCyclesUpstream(t *testing.T) {
 			t.Fatal("scoped thinking preference was lost")
 		}
 	})
+	// pi main 5732bac06 agent-session-model-extension.test.ts "cycles to the only scoped model and to the first scoped model from outside the scope" (D258)
+	t.Run("cycles to the only scoped model and to the first scoped model from outside the scope", func(t *testing.T) {
+		h := newModelExtensionHarness(t, []bool{true, true, true}, "", true, extension.Extension{}, nil)
+		h.session.SetScopedModels([]ScopedModel{{Model: h.models[1]}})
+		result, err := h.session.CycleModel("forward")
+		if err != nil || result == nil || result.Model.ID != "faux-2" || h.session.Model().ID != "faux-2" {
+			t.Fatalf("cycle into a one-model scope = %+v, %v; model %s", result, err, h.session.Model().ID)
+		}
+		if again, err := h.session.CycleModel("forward"); err != nil || again != nil || h.session.Model().ID != "faux-2" {
+			t.Fatalf("cycle of the active only model = %+v, %v; model %s", again, err, h.session.Model().ID)
+		}
+		if err := h.session.SetModel(h.models[0]); err != nil {
+			t.Fatal(err)
+		}
+		h.session.SetScopedModels([]ScopedModel{{Model: h.models[1]}, {Model: h.models[2]}})
+		if _, err := h.session.CycleModel("forward"); err != nil || h.session.Model().ID != "faux-2" {
+			t.Fatalf("forward from outside the scope selected %s, err %v; want faux-2", h.session.Model().ID, err)
+		}
+		if err := h.session.SetModel(h.models[0]); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := h.session.CycleModel("backward"); err != nil || h.session.Model().ID != "faux-3" {
+			t.Fatalf("backward from outside the scope selected %s, err %v; want faux-3", h.session.Model().ID, err)
+		}
+	})
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/agent-session-model-extension.test.ts:200
 	t.Run("clamps thinking levels to model capabilities and cycles available levels", func(t *testing.T) {
 		h := newModelExtensionHarness(t, []bool{false}, "", true, extension.Extension{}, nil)

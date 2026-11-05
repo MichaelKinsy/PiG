@@ -73,18 +73,15 @@ func (s *Session) beginModelCycle(ctx context.Context, direction string, deferTh
 			candidates = append(candidates, ScopedModel{Model: model})
 		}
 	}
-	if len(candidates) <= 1 {
+	current := s.Model()
+	index := slices.IndexFunc(candidates, func(entry ScopedModel) bool {
+		return current != nil && entry.Model.ID == current.ID && providerID(entry.Model) == providerID(current)
+	})
+	nextIndex := nextCycleIndex(index, len(candidates), direction == "backward")
+	if nextIndex < 0 {
 		return nil, nil, nil
 	}
-	current := s.Model()
-	index := max(slices.IndexFunc(candidates, func(entry ScopedModel) bool {
-		return current != nil && entry.Model.ID == current.ID && providerID(entry.Model) == providerID(current)
-	}), 0)
-	delta := 1
-	if direction == "backward" {
-		delta = -1
-	}
-	next := candidates[(index+delta+len(candidates))%len(candidates)]
+	next := candidates[nextIndex]
 	var explicit *ai.ModelThinkingLevel
 	if next.ThinkingLevel != "" {
 		explicit = new(next.ThinkingLevel)
@@ -94,6 +91,28 @@ func (s *Session) beginModelCycle(ctx context.Context, direction string, deferTh
 		return nil, nil, err
 	}
 	return &ModelCycleResult{Model: next.Model, ThinkingLevel: s.ThinkingLevel(), IsScoped: isScoped}, complete, nil
+}
+
+// nextCycleIndex is the index of the model to cycle to, or -1 when there is nothing to switch to. When the current model is not in the
+// list (currentIndex -1), forward picks the first entry and backward the last, so a one-entry list still selects its only model.
+//
+// pig divergence (D258): Pi 1.5.0 returns early for a list of at most one entry and counts a missing current model as index 0; Pi main
+// 5732bac06 (#11832) selects the only model and the first/last entry from outside the list.
+func nextCycleIndex(currentIndex, length int, backward bool) int {
+	switch {
+	case length == 0:
+		return -1
+	case currentIndex < 0:
+		if backward {
+			return length - 1
+		}
+		return 0
+	case length == 1:
+		return -1
+	case backward:
+		return (currentIndex - 1 + length) % length
+	}
+	return (currentIndex + 1) % length
 }
 
 // CycleThinkingLevel advances through supported levels, returning an empty level for a non-reasoning model.
