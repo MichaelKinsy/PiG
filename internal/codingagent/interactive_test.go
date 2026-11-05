@@ -1740,6 +1740,11 @@ func (h *recordingCompactHandle) ExportToJsonl(outputPath string) (string, error
 }
 func (h *recordingCompactHandle) ReplaceInner(s *Session) { h.inner = s }
 
+// QueuedUserMessage builds the plain user message a Session builds for text without images.
+func (h *recordingCompactHandle) QueuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
+	return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: promptContent(text, images), Timestamp: time.Now().UnixMilli()}}
+}
+
 // RecordUserBashResult appends to the inner Session, or returns bashRecordErr, as coding.Session.recordBashResult does when idle.
 func (h *recordingCompactHandle) RecordUserBashResult(command string, result BashResult, excludeFromContext bool) error {
 	if h.bashRecordErr != nil {

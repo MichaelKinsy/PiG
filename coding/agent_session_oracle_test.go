@@ -164,7 +164,8 @@ func agentSessionScenarios() []agentSessionScenario {
 // cycleDiffersFromPinnedPi reports whether a cycle in the given direction would start from a model outside its candidate list in a way
 // the pinned Pi 1.5.0 and Pi main 5732bac06 (D258) cycle differently: forward from outside any non-empty list (1.5.0 skips the first
 // entry), or any direction from outside a one-entry list (1.5.0 finds nothing to cycle to). A backward cycle from outside a list of two
-// or more entries selects the last entry in both, so it stays compared.
+// or more entries selects the last entry in both, so it stays compared, and so does a forward cycle whose first two entries are the
+// same model with the same thinking level: 1.5.0's second entry is main's first.
 func cycleDiffersFromPinnedPi(session *Session, direction string) bool {
 	available := session.modelRuntime.GetAvailableSnapshot()
 	scoped := session.ScopedModels()
@@ -172,20 +173,30 @@ func cycleDiffersFromPinnedPi(session *Session, direction string) bool {
 		return slices.ContainsFunc(available, func(m *ai.Model) bool { return providerID(m) == providerID(model) && m.ID == model.ID })
 	}
 	current := session.Model()
-	var candidates []*ai.Model
+	var candidates []ScopedModel
 	if len(scoped) > 0 {
 		for _, entry := range scoped {
 			if entry.Model != nil && inList(entry.Model) {
-				candidates = append(candidates, entry.Model)
+				candidates = append(candidates, entry)
 			}
 		}
 	} else {
-		candidates = available
+		for _, model := range available {
+			candidates = append(candidates, ScopedModel{Model: model})
+		}
 	}
-	outside := len(candidates) > 0 && !slices.ContainsFunc(candidates, func(m *ai.Model) bool {
-		return current != nil && m.ID == current.ID && providerID(m) == providerID(current)
+	outside := len(candidates) > 0 && !slices.ContainsFunc(candidates, func(entry ScopedModel) bool {
+		return current != nil && entry.Model.ID == current.ID && providerID(entry.Model) == providerID(current)
 	})
-	return outside && (direction != "backward" || len(candidates) == 1)
+	if !outside {
+		return false
+	}
+	if direction == "backward" {
+		return len(candidates) == 1
+	}
+	first, second := candidates[0], candidates[1%len(candidates)]
+	sameEntry := len(candidates) > 1 && first.Model.ID == second.Model.ID && providerID(first.Model) == providerID(second.Model) && first.ThinkingLevel == second.ThinkingLevel
+	return !sameEntry
 }
 
 func pick2(rng *rand.Rand, items []any) any { return items[rng.IntN(len(items))] }
