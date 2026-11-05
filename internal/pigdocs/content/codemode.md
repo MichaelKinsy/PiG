@@ -326,7 +326,9 @@ The interpreter is slow. Measured on a Linux amd64 machine (Go 1.27.2, wazero 1.
 | Names of `ALL_TOOLS` (does nothing else) | 26 ms | 1.2 s |
 | 20,000 records filtered, mapped, grouped, sorted, round-tripped through JSON | 152 ms | 8.4 s |
 
-That is about 50 times slower for both. A script that does nothing still costs over a second, because starting the VM runs the prelude interpreted. A run of the first script on a macOS 26 arm64 laptop under heavy load took 2 to 7 s per run on the interpreter. Choose it only for a host that cannot take the entitlement, and keep script deadlines (300 s by default) and agent loops in mind. Another way around the entitlement is to run `ServeRemote` in a helper process that you sign differently.
+That is about 50 times slower for both. A script that does nothing still costs over a second, because starting the VM runs the prelude interpreted. A run of the first script on a macOS 26 arm64 laptop under heavy load took 2 to 7 s per run on the interpreter. Two behaviors differ besides speed. A script that recurses without end is not given a catchable `RangeError`: wazero's interpreter stops the VM first and the execution fails with a sandbox error (`wasm error: stack overflow`), where the compiler lets the script catch the `RangeError`. And the script deadline and the half-second halt grace are wall-clock, so a script that needs a second of compiled time needs about a minute on the interpreter; raise `TimeoutMs` for it. The `codemode` test suite, run with the interpreter forced on, passed except for tests that assert the compiler (the cache directory), tests whose deadlines are a few hundred milliseconds, and the two deep-recursion tests above.
+
+Choose it only for a host that cannot take the entitlement, and keep script deadlines (300 s by default) and agent loops in mind. Another way around the entitlement is to run `ServeRemote` in a helper process that you sign differently.
 
 ## Tool search
 
