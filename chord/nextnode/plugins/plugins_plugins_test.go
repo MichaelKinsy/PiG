@@ -69,6 +69,27 @@ type pcComponent struct {
 	*Plugins
 	cache    string
 	reported *pcReported
+	// quieted is whether quiet ran with the watcher started.
+	quieted bool
+}
+
+// quiet is called after a use of the component: once its watcher started, it settles it and clears the marks. What the case
+// wrote before its first use (the plugins' directories and files, a fixture's copy) is reported by the file system on its own
+// time (Windows reports a directory's last-write time lazily), and would be marks the case did not make: the case starts from the
+// marks of what it does.
+func (c *pcComponent) quiet(t *testing.T) {
+	t.Helper()
+	if c.quieted {
+		return
+	}
+	var watching bool
+	c.section(func() { watching = c.watcher.fs != nil })
+	if !watching {
+		return
+	}
+	c.quieted = true
+	settle(t, c.Plugins)
+	c.section(func() { forgetMarks(c.watcher) })
 }
 
 // pcKinds is the fixtures' app's kinds (support.ts's `kindsOf`).
@@ -140,6 +161,7 @@ func (c *pcComponent) loadWorkerWith(t *testing.T, ops string, modules HostPacka
 	if err != nil {
 		t.Fatal(err)
 	}
+	c.quiet(t)
 	t.Cleanup(func() { _ = node.Close(background) })
 	parent := serverFor(t, workerRoute(node))
 	return pcLoaded{node: node, parent: parent, report: report, probe: probeOn(t, parent)}
@@ -173,6 +195,7 @@ func (c *pcComponent) build(t *testing.T, names ...string) *Built {
 	if err != nil {
 		t.Fatal(err)
 	}
+	c.quiet(t)
 	return built
 }
 
@@ -183,6 +206,7 @@ func (c *pcComponent) reload(t *testing.T, h pcLoaded, built *Built) host.Reload
 	if err != nil {
 		t.Fatal(err)
 	}
+	c.quiet(t)
 	return report
 }
 

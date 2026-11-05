@@ -190,13 +190,14 @@ func (f *watcherFixture) settle() {
 }
 
 // forget clears every mark the watcher holds: what a case sees is what it does from here.
-func (f *watcherFixture) forget() {
-	f.run(func() {
-		clear(f.watcher.dirty)
-		clear(f.watcher.install)
-		f.watcher.set, f.watcher.manifest, f.watcher.baseChanged = 0, 0, false
-		f.watcher.marksChanged()
-	})
+func (f *watcherFixture) forget() { f.run(func() { forgetMarks(f.watcher) }) }
+
+// forgetMarks clears the marks of w; it runs in a section of its host.
+func forgetMarks(w *pluginWatcher) {
+	clear(w.dirty)
+	clear(w.install)
+	w.set, w.manifest, w.baseChanged = 0, 0, false
+	w.marksChanged()
 }
 
 // marksOf is the marks as a case that changed files for real reads them: on Windows without what it adds to the directories
