@@ -186643,6 +186643,17 @@
       "shapeHash": "sha256:323894adc0a171d68deca3ddd2cf1cf04a599abef6f8594da237db37674f2e34"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.EditorWithoutPrefill",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Context.EditorWithoutPrefill",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string) (any, bool, error)"
+      },
+      "shapeHash": "sha256:0fa651b6c3b093d24f88057b2c007fc4e45001e0774dede38186cedf68c9ac97"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.Err",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Context.Err",
@@ -187059,6 +187070,28 @@
         "type": "func(title string, placeholder string, opts DialogOptions) (any, bool, error)"
       },
       "shapeHash": "sha256:4c889cca81bdbea740367926efeede1c5c339d842ae0627f4bf271dc8cd2fdf8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.InputWithoutPlaceholder",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Context.InputWithoutPlaceholder",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string) (any, bool, error)"
+      },
+      "shapeHash": "sha256:0fa651b6c3b093d24f88057b2c007fc4e45001e0774dede38186cedf68c9ac97"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.InputWithoutPlaceholderWithOptions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Context.InputWithoutPlaceholderWithOptions",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string, opts DialogOptions) (any, bool, error)"
+      },
+      "shapeHash": "sha256:5656625247e4c69a6a558eb3f9568cc124530865e7b870edee4d697b124ad92b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.IsIdle",
@@ -198336,6 +198369,17 @@
       "shapeHash": "sha256:323894adc0a171d68deca3ddd2cf1cf04a599abef6f8594da237db37674f2e34"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.EditorWithoutPrefill",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ReplacedSessionContext.EditorWithoutPrefill",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string) (any, bool, error)"
+      },
+      "shapeHash": "sha256:0fa651b6c3b093d24f88057b2c007fc4e45001e0774dede38186cedf68c9ac97"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.Err",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "ReplacedSessionContext.Err",
@@ -198752,6 +198796,28 @@
         "type": "func(title string, placeholder string, opts DialogOptions) (any, bool, error)"
       },
       "shapeHash": "sha256:4c889cca81bdbea740367926efeede1c5c339d842ae0627f4bf271dc8cd2fdf8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.InputWithoutPlaceholder",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ReplacedSessionContext.InputWithoutPlaceholder",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string) (any, bool, error)"
+      },
+      "shapeHash": "sha256:0fa651b6c3b093d24f88057b2c007fc4e45001e0774dede38186cedf68c9ac97"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.InputWithoutPlaceholderWithOptions",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "ReplacedSessionContext.InputWithoutPlaceholderWithOptions",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(title string, opts DialogOptions) (any, bool, error)"
+      },
+      "shapeHash": "sha256:5656625247e4c69a6a558eb3f9568cc124530865e7b870edee4d697b124ad92b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ReplacedSessionContext.IsIdle",
@@ -216682,17 +216748,6 @@
         "type": "func(message map[string]any, content any) map[string]any"
       },
       "shapeHash": "sha256:f7fefa35c4c1b429881db66d9e5b7b452f377c076ca1f055a806e572eb8e8446"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#withNonEmpty",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "withNonEmpty",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(args map[string]any, key string, value string) map[string]any"
-      },
-      "shapeHash": "sha256:d83fd1a002da139c867cc050e68ca007ad0a12214606713a154b840713a6b696"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#withSessionEntry",

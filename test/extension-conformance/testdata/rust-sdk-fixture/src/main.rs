@@ -1809,9 +1809,11 @@ fn main() {
             ctx.set_editor_text("");
             let _ = ctx.select("T", &[]);
             let _ = ctx.confirm("", "");
-            let _ = ctx.input("T1", "");
+            let _ = ctx.input_without_placeholder("T1");
+            let _ = ctx.input("T2", "");
             let _ = ctx.input("T3", "ph");
-            let _ = ctx.editor("E1", "");
+            let _ = ctx.editor_without_prefill("E1");
+            let _ = ctx.editor("E2", "");
             let _ = ctx.editor("E3", "pre");
             CommandResult::Ok
         },
