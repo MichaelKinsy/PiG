@@ -285,7 +285,8 @@ func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenThei
 
 // The Node subprocess keeps V8's code cache of the modules it imports (Pi's type-stripped closure) in the extracted tree, so a
 // start after the first begins from compiled code: BenchmarkNodeStart/warm/v8-cache against /no-v8-cache is the measure (about
-// 0.31 s to `started` against 0.63 s on the reference machine). The cache is written when the process ends.
+// 0.31 s to `started` against 0.63 s on the reference machine). The process writes the cache once it is up, and after a load or
+// reload, not as it exits (TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits).
 func TestNodeTheSubprocessKeepsV8sCompileCacheInTheExtractedTree(t *testing.T) {
 	cache := t.TempDir()
 	node, _, err := NewPluginRuntime(NodeOptions{CacheDir: cache}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
