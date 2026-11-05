@@ -22,7 +22,7 @@ on:
   # A long-lived integration branch gets GitHub CI on every push that touches platform-sensitive code; the nightly
   # integration-ci workflow runs the whole of ci.yml and security.yml on it (it cannot be a schedule here: schedules run on main only).
   push:
-    branches: ['release/**', 'integration/**', 'fix/follow-pi-**']
+    branches: ['release/**', 'integration/**', 'fix/follow-pi-next', 'fix/071-next']
     paths:
       - 'internal/**/*path*/**'
       - '**/*path*.go'
@@ -78,8 +78,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # On release/* and integration branches (the pull request's base, or the pushed or dispatched ref) the compile gate and the
-      # OS shards do not wait for Bookkeeping or the compile gate, so one run shows every failure. main keeps the cheap-first order.
+      # On release/* and the named integration branches (the pull request's base, or the pushed or dispatched ref) the compile gate, the
+      # Linux shards, the Node, Durable and Android jobs, and the Windows and macOS shards still wait for Bookkeeping or the compile gate
+      # to finish, but they are not skipped when it fails, so one run shows every failure. main keeps the cheap-first order.
+      # Keep the branch names in step with the push filter above and the PIG_INTEGRATION_BRANCHES default in integration-ci.yml.
       - name: Choose the job order for this branch
         id: branch
         env:
@@ -87,7 +89,7 @@ jobs:
         shell: bash
         run: |
           case "$BRANCH" in
-            release/*|integration/*|fix/follow-pi-*) echo "os-parallel=true" ;;
+            release/*|integration/*|fix/follow-pi-next|fix/071-next) echo "os-parallel=true" ;;
             *) echo "os-parallel=false" ;;
           esac | tee -a "$GITHUB_OUTPUT"
       - name: Classify the change
@@ -251,8 +253,10 @@ jobs:
     name: Linux / preflight
     # The compile gate: every package builds, vets for each shipped platform, and needs no go fix. Windows, macOS and the Node
     # loader wait for it, so a change that cannot pass them does not spend their minutes; the Linux shards start at once.
+    # On release and integration branches (os-parallel) a failed Bookkeeping or preflight no longer skips them. !cancelled(), not
+    # always(): a run that concurrency cancels must stop these jobs too.
     needs: [changes, bookkeeping]
-    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -288,7 +292,7 @@ jobs:
   linux:
     name: Linux / ${{ matrix.shard }}
     needs: [changes, bookkeeping]
-    if: needs.changes.outputs.product == 'true'
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -521,7 +525,7 @@ jobs:
   node-runtime:
     name: Node extensions
     needs: [changes, bookkeeping]
-    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true'
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -594,7 +598,7 @@ jobs:
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
-    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true'
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -630,7 +634,7 @@ jobs:
   durable-cf-host:
     name: Durable Cloudflare host
     needs: [changes, bookkeeping]
-    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true'
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -687,7 +691,7 @@ jobs:
   durable-contract:
     name: Durable contract / ${{ matrix.impl }}
     needs: [changes, bookkeeping]
-    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true'
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -761,7 +765,7 @@ jobs:
   windows:
     name: Windows ${{ matrix.shard }}
     needs: [changes, preflight]
-    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
@@ -1004,7 +1008,7 @@ jobs:
   macos:
     name: macOS ${{ matrix.shard }}
     needs: [changes, preflight]
-    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: macos-15
     timeout-minutes: 40
     env:
@@ -1161,7 +1165,7 @@ jobs:
   android:
     name: Android build
     needs: [changes, bookkeeping]
-    if: needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true'
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     # Termux runs this binary. The runner image provides the NDK; no hosted
     # runner executes the result, so this builds it with cgo and checks its ELF
     # headers (PIE, /system/bin/linker64, bionic libc) as the release does.
@@ -1273,9 +1277,10 @@ jobs:
               status=1
             fi
           }
-          # Every job that spends real minutes waits for bookkeeping, so when it fails they were skipped, not run.
+          # Every job that spends real minutes waits for bookkeeping, and on main it skips when bookkeeping fails; on a release or
+          # integration branch it still runs, so this message names the failure and the other jobs' own results follow in the log.
           if [ "$BOOKKEEPING" != success ]; then
-            echo "::error::Bookkeeping: $BOOKKEEPING; the jobs that wait for it did not run (see the Bookkeeping job's log)"
+            echo "::error::Bookkeeping: $BOOKKEEPING; the jobs that wait for it did not run, or on a release or integration branch ran regardless (see the Bookkeeping job's log)"
             exit 1
           fi
           product_skip=false; docs_skip=false
