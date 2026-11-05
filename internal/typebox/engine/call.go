@@ -247,6 +247,9 @@ func Serve(request []byte) []byte {
 	if !ok {
 		return fail("TypeError", "bad engine request: args is not a list")
 	}
+	if req.Member == memberValueCheck || req.Member == memberValueErrors {
+		return serveValue(req.Member, args, fail)
+	}
 	value, err := Call(req.Member, args)
 	if err != nil {
 		var e *Error

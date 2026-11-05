@@ -60,6 +60,8 @@ func (e ValueError) ParamsObject() *chordjson.Object {
 		return chordjson.ObjectOf("passingSchemas", e.params.val1)
 	case "if":
 		return chordjson.ObjectOf("failingKeyword", e.params.val1)
+	case RefineKey:
+		return chordjson.ObjectOf("index", e.params.val1, "message", e.params.val2)
 	case "exclusiveMaximum", "exclusiveMinimum", "maximum", "minimum":
 		return chordjson.ObjectOf("comparison", e.params.val1, "limit", e.params.val2)
 	case "dependencies", "dependentRequired":
