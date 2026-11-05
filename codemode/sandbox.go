@@ -201,7 +201,7 @@ func (s *Sandbox) Close() error {
 	return nil
 }
 
-// engineKey identifies a shared engine: the compilation cache location, whether it runs on the interpreter, and the heap
+// engineKey identifies a shared engine: the compilation cache location (empty on the interpreter), whether it runs on the interpreter, and the heap
 // limit its runtime is sized for.
 type engineKey struct {
 	cacheDir    string
@@ -243,11 +243,12 @@ func (s *engineSource) load(ctx context.Context, memoryLimit uint32) (*engine, e
 	if s.wasm == nil {
 		defaultEnginesMu.Lock()
 		defer defaultEnginesMu.Unlock()
-		key := engineKey{s.cacheDir, s.interpreter, memoryLimit}
+		cacheDir := s.compilationCache()
+		key := engineKey{cacheDir, s.interpreter, memoryLimit}
 		if e := defaultEngines[key]; e != nil {
 			return e, nil
 		}
-		e, err := newEngine(context.WithoutCancel(ctx), QuickJSWasm(), s.cacheDir, memoryLimit, s.interpreter)
+		e, err := newEngine(context.WithoutCancel(ctx), QuickJSWasm(), cacheDir, memoryLimit, s.interpreter)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +264,7 @@ func (s *engineSource) load(ctx context.Context, memoryLimit uint32) (*engine, e
 	if err != nil {
 		return nil, err
 	}
-	e, err := customEngine(context.WithoutCancel(ctx), wasm, s.cacheDir, memoryLimit, s.interpreter)
+	e, err := customEngine(context.WithoutCancel(ctx), wasm, s.compilationCache(), memoryLimit, s.interpreter)
 	if err != nil {
 		return nil, err
 	}
@@ -272,6 +273,15 @@ func (s *engineSource) load(ctx context.Context, memoryLimit uint32) (*engine, e
 	}
 	s.loaded[memoryLimit] = e
 	return e, nil
+}
+
+// compilationCache is the compilation cache directory the engine is built with: none on the interpreter, which keeps no
+// compiled code, so interpreter sandboxes that differ only in CacheDir share one engine.
+func (s *engineSource) compilationCache() string {
+	if s.interpreter {
+		return ""
+	}
+	return s.cacheDir
 }
 
 // release forgets the custom engines the source holds; the process-wide set keeps them for other sandboxes.
