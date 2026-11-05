@@ -41,7 +41,10 @@ jobs:
           go test -c -o plugins.test.exe ./chord/nextnode/plugins
           if ($LASTEXITCODE -ne 0) { throw "build failed" }
           Set-Location chord/nextnode/plugins
-          & ..\..\..\plugins.test.exe '-test.timeout=40m' '-test.count=12' '-test.run=TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat'
+          & ..\..\..\plugins.test.exe '-test.timeout=40m' '-test.count=20' '-test.run=TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat|HostStoppedCleanlyDirtiesNothing|Watcher' *> $env:TEMP\out.txt
           $code = $LASTEXITCODE
+          $all = Get-Content $env:TEMP\out.txt
+          $lines = @($all | Where-Object { $_ -match 'DIAG' } | Select-Object -First 7) + @($all | Where-Object { $_ -match '--- FAIL' } | Select-Object -First 2)
+          foreach ($l in $lines) { Write-Output ('::error::' + ($l -replace '%','%25')) }
           $jobs | Stop-Job
           if ($code -ne 0) { throw "tests failed" }
