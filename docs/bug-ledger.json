@@ -23795,6 +23795,36 @@
       ]
     },
     {
+      "id": "BF-8bf0832",
+      "title": "A tool card whose call and result are both known when it is first drawn, as after resuming a session or when…",
+      "symptom": "A tool card whose call and result are both known when it is first drawn, as after resuming a session or when a tool finishes before the card is drawn, now runs an extension's `renderCall` before its `renderResult`, as Pi does, so a result renderer that reads state its call renderer wrote (`context.state`) sees it.",
+      "rootCause": "A card draws its call region and then its result region, and each region's proxy ran its own request loop, while an extension serves requests concurrently. A card whose call and result were both known at its first frame (a resumed session, a tool that finishes before the card is first drawn) therefore sent the two renders in whichever order the loops reached the socket, and the result renderer ran before the call renderer had written the card's state: 47 of 300 Go cards drew the result without it. Pi's ToolExecutionComponent.updateDisplay runs renderCall and then renderResult synchronously, so the result renderer always reads the state the call renderer just wrote.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool card whose call and result are both known when it is first drawn, as after resuming a session or when a tool finishes before the card is drawn, now runs an extension's `renderCall` before its `renderResult`, as Pi does, so a result renderer that reads state its call renderer wrote (`context.state`) sees it. The host sent the two renders to the extension at the same moment and the extension could run them in either order (between 47 and 153 of 300 such cards in a Go SDK test), in every SDK and in Node. It now sends a card's renders one at a time in the order the card asked; a call render that fails, or that the renderer inactivity boundary abandons, holds its result render back for that request only (D56).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8bf083217b",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestRenderOrderDoesNotWedgeOnAStaleOrMissingWant",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestRenderOrderGrantsTurnsInTheOrderTheCardAsked",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestRenderOrderMovesAProxyThatWantsAgainBehindTheOthers",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderOrderHoldsAcrossPasses",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderProxiesSendTheResultRenderAfterTheCallRenderAnswered",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderResultDoesNotWaitForACallThatIsNotDrawn",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderResultIsNotHeldForeverByAnAbandonedCallRender",
+        "coding/extension/host/subprocess/tool_render_order_test.go::TestToolRenderResultIsSentAfterACallRenderThatFailed",
+        "coding/extension/host/subprocess/tool_render_proxy_test.go::TestToolRenderCardsOrderTheCallBeforeTheResultAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-8c3f5a1",
       "title": "fix(tui): a finished block's hidden thinking run keeps no streaming memos",
       "symptom": "fix(tui): a finished block's hidden thinking run keeps no streaming memos",

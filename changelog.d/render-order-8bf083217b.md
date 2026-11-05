@@ -1,0 +1,3 @@
+### Fixed
+
+- A tool card whose call and result are both known when it is first drawn, as after resuming a session or when a tool finishes before the card is drawn, now runs an extension's `renderCall` before its `renderResult`, as Pi does, so a result renderer that reads state its call renderer wrote (`context.state`) sees it. The host sent the two renders to the extension at the same moment and the extension could run them in either order (between 47 and 153 of 300 such cards in a Go SDK test), in every SDK and in Node. It now sends a card's renders one at a time in the order the card asked; a call render that fails, or that the renderer inactivity boundary abandons, holds its result render back for that request only (D56). <!-- fix: 8bf083217b -->
