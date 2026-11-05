@@ -42,7 +42,7 @@ func (c *stalledCloseConn) SetReadDeadline(t time.Time) error {
 
 func (c *stalledCloseConn) SetDeadline(t time.Time) error {
 	_ = c.SetReadDeadline(t)
-	return c.Conn.SetWriteDeadline(t)
+	return c.SetWriteDeadline(t)
 }
 
 func (c *stalledCloseConn) Close() error {

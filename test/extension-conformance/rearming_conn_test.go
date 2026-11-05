@@ -28,7 +28,7 @@ func newRearmingConn(conn net.Conn) *rearmingConn {
 
 func (c *rearmingConn) SetDeadline(t time.Time) error {
 	c.setReadDeadline(t)
-	return c.Conn.SetWriteDeadline(t)
+	return c.SetWriteDeadline(t)
 }
 
 func (c *rearmingConn) SetReadDeadline(t time.Time) error {
