@@ -239,7 +239,7 @@ func (e *ExtensionSelectorComponent) rowsBesidePreview(width int, preview []stri
 	listMax := width - cells - previewGapCells - previewRightCells
 	listWidth := 0
 	start, end := e.visibleWindow()
-	for i := start; i < end; i++ {
+	for i := range e.options { // the longest of every row, not of the window, so the preview column does not move as the window scrolls
 		listWidth = max(listWidth, 2+widthx.VisibleWidth(e.rowText(i)))
 	}
 	listWidth = min(listWidth, listMax)
