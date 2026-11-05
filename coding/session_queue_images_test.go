@@ -120,3 +120,32 @@ func TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages(t *testing.T) {
 		t.Fatalf("pending = %d", h.session.PendingMessageCount())
 	}
 }
+
+// pi main 4cf69332c (#11782; D249): the interactive mode queues on the Agent with a message built by QueuedUserMessage; delivery resizes it.
+func TestSessionQueuedUserMessageBuiltForAgentQueueIsResizedAtDelivery(t *testing.T) {
+	waiting := createQueueWaitingHarness(t, extension.Extension{})
+	h := waiting.h
+	original := tallPNG(t)
+	var sent []ai.ImageContent
+	waiting.setResponses(fauxToolCall("wait"), func(messages []ai.Message) *ai.AssistantMessage {
+		sent = append(sent, providerImages(messages)...)
+		return fauxReply("ok", ai.StopReasonStop, 0)(messages)
+	})
+	<-waiting.waitForToolStart
+	h.session.agent.Steer(h.session.QueuedUserMessage("steer", []ai.ImageContent{original}))
+	waiting.releaseToolExecution()
+	waiting.join()
+	if len(sent) == 0 {
+		t.Fatal("no image reached the model")
+	}
+	for _, image := range sent {
+		if image.Data == original.Data {
+			t.Fatal("a request carried the original image")
+		}
+	}
+	for _, message := range h.session.Messages() {
+		if message.User != nil && strings.HasPrefix(extractUserMessageText(message.User.Content), "steer") && !strings.Contains(extractUserMessageText(message.User.Content), "displayed at 267x2000") {
+			t.Fatalf("saved message lacks the resize hint: %q", extractUserMessageText(message.User.Content))
+		}
+	}
+}

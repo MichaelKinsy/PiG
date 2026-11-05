@@ -63,7 +63,7 @@ func (s *Session) handleAgentEvent(ctx context.Context, event agent.AgentEvent) 
 				s.notifyAgentEventListeners(update)
 				s.publishQueueEvent(update)
 			}
-			s.normalizeDeliveredImages(event)
+			s.normalizeDeliveredImages(event) // pig divergence (D249): queued images are resized at delivery (Pi main 4cf69332c)
 		}
 	case agent.AgentStartEvent:
 		s.boundaryTurnIndex = 0

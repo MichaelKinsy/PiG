@@ -324,29 +324,35 @@ func visibleText(frames [][]string) [][]string {
 	return out
 }
 
-// normalizeTreeSearchLinesD248 removes what Pi main 2cfab7c26 adds to the search line (the cursor cell and the empty query's trailing space), which the pinned Pi 1.5.0 does not draw. A line that fills the width is not comparable: Pi main keeps its last column for the cursor, so it truncates one column earlier. Both sides are blanked there.
+// normalizeTreeSearchLinesD248 compares the search line past what Pi main 2cfab7c26 adds (D248): the cursor cell in the last column and, for an
+// empty query, a trailing space. Pi main keeps the last column for the cursor, so it truncates the line to width-1; the pinned Pi's line is
+// truncated the same way before the comparison. The one case left uncompared is an empty-query line exactly width-1 wide, where Pi main's
+// trailing space no longer fits and the ellipsis lands one cell earlier.
 func normalizeTreeSearchLinesD248(got, want [][]string, width int) {
 	cursorCell := widthx.CursorMarker + "\x1b[7m \x1b[27m"
 	for frame := range got {
 		for i := range got[frame] {
-			if i >= len(want[frame]) {
+			if i >= len(want[frame]) || !strings.Contains(want[frame][i], "Type to search:") && !strings.HasSuffix(got[frame][i], cursorCell) {
 				continue
 			}
-			if strings.Contains(want[frame][i], "Type to search:") && strings.HasSuffix(got[frame][i], " ") && !strings.HasSuffix(want[frame][i], " ") {
-				got[frame][i] = strings.TrimSuffix(got[frame][i], " ") // no cursor while the label input has the focus
-				continue
+			emptyQuery := strings.HasSuffix(want[frame][i], "Type to search:\x1b[39m")
+			line := got[frame][i]
+			if strings.HasSuffix(line, cursorCell) {
+				line = strings.TrimSuffix(line, cursorCell)
+				if wantLine := want[frame][i]; strings.Contains(wantLine, "Type to search:") || widthx.VisibleWidth(wantLine) >= width-1 {
+					if emptyQuery && widthx.VisibleWidth(wantLine) == width-1 {
+						got[frame][i], want[frame][i] = "", ""
+						continue
+					}
+					want[frame][i] = widthx.TruncateToWidth(wantLine, width-1, "...", false)
+				} else {
+					continue // a cursor line of something else (the label input) is compared as it is
+				}
 			}
-			if !strings.HasSuffix(got[frame][i], cursorCell) || strings.HasSuffix(want[frame][i], cursorCell) {
-				continue
+			if emptyQuery || strings.HasSuffix(want[frame][i], "Type to search:\x1b[39m") {
+				line = strings.TrimSuffix(line, " ") // the empty query's trailing space, with or without the cursor
 			}
-			if !strings.Contains(want[frame][i], "Type to search:") && widthx.VisibleWidth(want[frame][i]) < width-1 {
-				continue // a cursor line of something else (the label input) is compared as it is
-			}
-			if widthx.VisibleWidth(want[frame][i]) >= width-1 {
-				got[frame][i], want[frame][i] = "", ""
-				continue
-			}
-			got[frame][i] = strings.TrimSuffix(strings.TrimSuffix(got[frame][i], cursorCell), " ")
+			got[frame][i] = line
 		}
 	}
 }
