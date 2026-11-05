@@ -112,6 +112,18 @@ Run it like `pig`, with no `--piglet` option, because the Piglet is built in (a 
 
 Copy the file to another computer of the same operating system and architecture and it runs there with no PiG installed. It still needs a model and credentials on that computer.
 
+### Static linking
+
+A Binary is statically linked when nothing in it uses cgo, so on Linux it needs no libc and runs in an empty container. The builder chooses `CGO_ENABLED=0` for the Go build unless one of these holds:
+
+- you set `CGO_ENABLED` in the environment or with `go env -w CGO_ENABLED=...`; your value is used unchanged;
+- a package the Binary builds has cgo sources (a fused Go member or one of its dependencies imports `"C"`); the Go default stays, which links dynamically where cgo is on;
+- the target is Android outside arm64, where the Go linker requires cgo.
+
+Standard-library cgo files, such as those of `net` and `os/user`, do not count: they have pure-Go fallbacks that the static build selects. The choice is not stored in the build or provenance records, which do not carry the build environment.
+
+To confirm, run `file ./pig-reviewer` (a static Linux Binary reports `statically linked`) or `ldd ./pig-reviewer` (`not a dynamic executable`).
+
 ## Sign a Binary
 
 Create an Ed25519 author key once. Keep the private file secret and publish the `.pub` file:

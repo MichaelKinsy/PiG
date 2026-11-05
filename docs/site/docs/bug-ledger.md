@@ -431,6 +431,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5654e71-2](#bf-5654e71-2) | A JSON-RPC request or notification with a malformed `error` member is no longer rejected, and a `method` that… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56731e9](#bf-56731e9) | `/login` runs a provider object's OAuth login with Pi's login interaction, so an `info` event shows in the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56731e9-2](#bf-56731e9-2) | An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | Unreleased |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
@@ -7277,6 +7278,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `56731e90d8` (2026-10-09)
 - **Tests:** `ai/credential_key_order_test.go::TestAuthStorageKeepsEnvOrderAndFirstPositionOfARepeatedKey`, `internal/codingagent/device_code_native_test.go::TestProviderOwnedAuthDialogNotifications`, `internal/codingagent/login_info_event_test.go::TestOAuthInteractionSecretPromptHonorsMaskSecretInput`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt`, `test/parity/scenarios/oauth/31-provider-object-login-info-links.toml`
 - **Release note:** An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL. Pi shows that line only after a device code.
+
+### BF-5689853
+
+**`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary needed libc although nothing in it uses cgo.
+- **Root cause:** the native build ran `go build` with the caller's environment, and the host Go default is CGO_ENABLED=1, which links net and os/user against libc even when no package of the build has cgo sources.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5689853654` (2026-11-04)
+- **Tests:** `coding/pigletbuild/realbuild_test.go::TestNativePigletBinaryIsStaticByDefault`, `coding/pigletbuild/static_build_test.go::TestBuildNeedsCgoListsNonStandardCgoPackages`, `coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultFollowsAndroidLinkerRequirement`, `coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultForCgoFreeBuild`, `coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultKeepsCgoWhenBuildNeedsIt`, `coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultKeepsExplicitEnvironment`, `coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultKeepsGoEnvFileSetting`, `coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultPropagatesProbeErrors`
+- **Release note:** `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary needed libc although nothing in it uses cgo. The build now sets `CGO_ENABLED=0` unless you set `CGO_ENABLED` yourself (in the environment or with `go env -w`) or a package of the Binary has cgo sources, so a cgo-free Binary is static and runs in an empty container.
 
 ### BF-56a0400
 

@@ -12290,6 +12290,35 @@
       ]
     },
     {
+      "id": "BF-5689853",
+      "title": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary…",
+      "symptom": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary needed libc although nothing in it uses cgo.",
+      "rootCause": "the native build ran `go build` with the caller's environment, and the host Go default is CGO_ENABLED=1, which links net and os/user against libc even when no package of the build has cgo sources.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary needed libc although nothing in it uses cgo. The build now sets `CGO_ENABLED=0` unless you set `CGO_ENABLED` yourself (in the environment or with `go env -w`) or a package of the Binary has cgo sources, so a cgo-free Binary is static and runs in an empty container.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5689853654",
+          "date": "2026-11-04"
+        }
+      ],
+      "tests": [
+        "coding/pigletbuild/realbuild_test.go::TestNativePigletBinaryIsStaticByDefault",
+        "coding/pigletbuild/static_build_test.go::TestBuildNeedsCgoListsNonStandardCgoPackages",
+        "coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultFollowsAndroidLinkerRequirement",
+        "coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultForCgoFreeBuild",
+        "coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultKeepsCgoWhenBuildNeedsIt",
+        "coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultKeepsExplicitEnvironment",
+        "coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultKeepsGoEnvFileSetting",
+        "coding/pigletbuild/static_build_test.go::TestStaticCgoDefaultPropagatesProbeErrors"
+      ]
+    },
+    {
       "id": "BF-56a0400",
       "title": "Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input…",
       "symptom": "Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input does; the multi-line editor still accepts them.",
