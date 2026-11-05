@@ -29,7 +29,9 @@ impl Value {
     pub fn check(schema: impl Into<TSchema>, value: &Json) -> Result<bool, String> {
         match call("Value.Check", schema.into(), value)? {
             Json::Bool(valid) => Ok(valid),
-            other => Err(format!("Value.Check: the host answered {other}, not a boolean")),
+            other => Err(format!(
+                "Value.Check: the host answered {other}, not a boolean"
+            )),
         }
     }
 
@@ -200,9 +202,12 @@ mod tests {
                 &json!([false, "too short", true, "Refine Error"]),
             ]
         );
-        assert!(sent.iter().all(|request| request["member"] == "Value.Errors"
-            && request["args"][0] == wire
-            && request["args"][1] == json!("ab")));
+        assert!(
+            sent.iter()
+                .all(|request| request["member"] == "Value.Errors"
+                    && request["args"][0] == wire
+                    && request["args"][1] == json!("ab"))
+        );
     }
 
     #[test]
