@@ -1610,7 +1610,7 @@ func Main(args []string, options *MainOptions) {
 	defer setTerminationShutdownHook(nil)
 
 	if startupBenchmark {
-		runStartupBenchmark(ctx, interactive)
+		runStartupBenchmark(ctx, interactive, rt.Close)
 		return
 	}
 
@@ -1626,11 +1626,21 @@ func Main(args []string, options *MainOptions) {
 	}
 }
 
+// startupBenchmarkMode is the part of interactive mode the startup benchmark drives.
+type startupBenchmarkMode interface {
+	Init(ctx context.Context) error
+	Stop(fullscreenExitOutput ...codingagent.FullscreenExitOutput) error
+}
+
 // runStartupBenchmark initializes interactive mode, gives the terminal input reader 150 ms to consume the terminal's query
-// replies, and stops it without entering the input loop.
+// replies, and stops it without entering the input loop. It then disposes the session runtime, as a normal interactive quit does after it stops
+// the TUI, so extensions receive session_shutdown and release what they hold.
+//
+// pig divergence (D262): Pi efb45b51d disposes the runtime right after interactiveMode.stop() and before the timings print; Pi 1.5.0 never disposes it
+// on this path. The error path disposes too, where the process would otherwise exit without session_shutdown.
 //
 // upstream: packages/coding-agent/src/main.ts:964-978 (startupBenchmark)
-func runStartupBenchmark(ctx context.Context, interactive *codingagent.InteractiveMode) {
+func runStartupBenchmark(ctx context.Context, interactive startupBenchmarkMode, dispose func() error) {
 	err := interactive.Init(ctx)
 	if err == nil {
 		trace.Mark("interactiveMode.init")
@@ -1639,6 +1649,9 @@ func runStartupBenchmark(ctx context.Context, interactive *codingagent.Interacti
 	}
 	if stopErr := interactive.Stop(); stopErr != nil {
 		err = errors.Join(err, stopErr)
+	}
+	if disposeErr := dispose(); disposeErr != nil {
+		err = errors.Join(err, disposeErr)
 	}
 	timings.PrintTimings()
 	if err != nil {
