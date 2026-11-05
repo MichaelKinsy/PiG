@@ -49,11 +49,12 @@ func applyD240SonnetFiveTemperature(encoded json.RawMessage) (json.RawMessage, e
 	}
 	const adaptive = `"forceAdaptiveThinking":true`
 	patched := compat.String()
-	if strings.Contains(patched, adaptive) {
+	switch {
+	case strings.Contains(patched, adaptive):
 		patched = strings.Replace(patched, adaptive, adaptive+`,"supportsTemperature":false`, 1)
-	} else if patched == "{}" {
+	case patched == "{}":
 		patched = `{"supportsTemperature":false}`
-	} else {
+	default:
 		patched = strings.TrimSuffix(patched, "}") + `,"supportsTemperature":false}`
 	}
 	return json.RawMessage(strings.Replace(entry.String(), compat.String(), patched, 1)), nil

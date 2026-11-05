@@ -140,7 +140,7 @@ func TestCustomEditorExtensionShortcutThenPasteImageComeFirst(t *testing.T) {
 	}
 
 	// keybindings.ts:143 binds app.clipboard.pasteImage to alt+v with Windows keybindings and to ctrl+v elsewhere.
-	pasteKey := "\x16" // Ctrl+V pastes on every platform since Pi 37b38e9f6
+	pasteKey := "\x16"          // Ctrl+V pastes on every platform since Pi 37b38e9f6
 	probe.HandleInput("\x10")   // consumed by the extension shortcut before app.model.cycleForward
 	probe.HandleInput(pasteKey) // not an extension shortcut, so the image paste runs
 	if !slices.Equal(calls, []string{"shortcut:\x10", "shortcut:" + pasteKey, "paste"}) || len(probe.superKeys) != 0 {
