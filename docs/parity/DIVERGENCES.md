@@ -3027,3 +3027,30 @@ Call-site markers: `mcp/streamable_http.go` (`Send`'s `application/json` case, `
 Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7188739: the 2 KB reply is accepted), `TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter`, `TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest` (`mcp/streamable_http_body_cap_pi_test.go`, Pi's three tests), `TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody` (`mcp/review_regression_test.go`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
+
+## D234 PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a repeated signal forces exit
+
+What: PiG takes Pi main commit ace560c30 ("let a started RPC or print shutdown finish; only a repeated signal forces exit", Pi #11752, fixing #11599) before the pin reaches a release that contains it.
+
+1. RPC mode. Once a shutdown has started, from stdin end, `ctx.shutdown()` or a signal, a later stdin end, shutdown request or single SIGTERM/SIGHUP does not interrupt it: the dispose finishes, then the process exits with the code of the trigger that started it (0 for stdin end or a request, 128 plus the signal number for a signal). A second signal exits at once with 128 plus its own number, without waiting for the dispose or flushing stdout. The signal handlers stay until exit; PiG no longer removes them and re-raises the signal. A signal that arrives before the first signal's handler was taken is not a repeated signal.
+2. Print mode. The signal handlers stay until the teardown, including the final disposal, has ended (also after a stdout or conversion error cancelled the run). A signal during the final disposal waits for that disposal and then exits 143 (SIGHUP 129); a repeated signal exits at once.
+
+Go signal limit: two termination signals the operating system delivers back to back may reach the process as one. The Go runtime drops a signal whose bit is still pending before its signal loop took the first (`runtime.sigsend`), and every `os/signal` channel then sees one delivery; Go cannot observe two such signals separately. PiG counts every delivery it gets: it neither counts one signal twice nor loses one that the runtime delivered. A supervisor that must force an exit with a second signal sends it after a short delay (the first signal is taken within milliseconds); two signals sent back to back from one process can be one signal to PiG and the dispose then finishes. Measured with 20 back-to-back `kill` pairs: a Go `signal.Notify` receiver counted 1 each time, a Node receiver counted 2 in 19. Pi's Node handler therefore sees a repeated signal in more cases. A follow-up second signal always works, and SIGKILL always works.
+
+Why: Pi 1.5.0 removes its signal handlers when shutdown starts, so a signal that follows stdin end (a host that closes stdin and sends SIGTERM together, or systemd) kills the process in the middle of the dispose and cuts off cleanup such as a pending MCP token refresh; print mode removes its handlers before the final disposal. The owner asked for the fix to ship in 0.7.1.
+
+Pi bug: Pi 1.5.0 (`rpc-mode.ts` `shutdown`, the signal handlers; `print-mode.ts` `disposeRuntime`), fixed by Pi main ace560c30 ([#11599](https://github.com/earendil-works/pi/issues/11599), #11752).
+
+Scope: RPC mode and print mode, termination signals (SIGTERM, SIGHUP; SIGTERM on Windows). Interactive mode already lets a started shutdown finish. Extension processes: the dispose runs `session_shutdown` in the isolated and the packed extension runtimes before the process exits; a repeated signal ends the extension processes with the process.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M3).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing ace560c30. Then the call-site markers and this record go, and the Go signal limit stays as a note in the RPC documentation.
+
+Call-site markers: `coding/cli/rpc_shutdown.go` (`rpcShutdown`, `inputEnd`, `requested`, `signal`, `repeatedSignal`, `repeatedTermination`), `coding/cli/rpc_mode.go` (`watchRepeatedTermination`, the stdin-end branch), `coding/cli/print_mode.go` (`finalDisposing`, `teardownDone`, the signal goroutine).
+
+Evidence: `TestRPCSingleSignalDuringInputEndShutdownLetsItFinish`, `TestRPCInputEndDuringSignalShutdownLetsItFinish`, `TestRPCRepeatedSignalDuringShutdownExitsAtOnce`, `TestRPCShutdownTriggers`, `TestRPCShutdownRepeatedSignalKeepsItsExitStatus`, `TestPrintModeSignalDuringFinalDisposalWaitsForIt`, `TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce` (`coding/cli`; Pi's four tests ported, the rest cover PiG's wiring).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior, and Pi main's tests are ported.

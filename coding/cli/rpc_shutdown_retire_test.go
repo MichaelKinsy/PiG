@@ -23,12 +23,17 @@ func TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet(t *test
 				out = append(out, r)
 				return isSuccessResponse(r, "c")
 			})
-			if err := p.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			if impl.name == "pig" {
+				// pig divergence (D234): follows Pi main ace560c30, where the first signal does not interrupt the started shutdown and a repeated one exits 143.
+				signalRPC(t, p, syscall.SIGTERM, syscall.SIGTERM)
+			} else if err := p.cmd.Process.Signal(syscall.SIGTERM); err != nil {
 				t.Fatal(err)
 			}
 			out = append(out, drainRPCOutput(p)...)
 			status := waitForRPCTermination(t, p)
-			if !status.Signaled() || status.Signal() != syscall.SIGTERM {
+			if impl.name == "pig" {
+				requireExited(t, status, 143)
+			} else if !status.Signaled() || status.Signal() != syscall.SIGTERM {
 				t.Fatalf("wait status = %v, want SIGTERM", status)
 			}
 			want := []rpcRecord{
