@@ -1241,6 +1241,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
 | [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | Unreleased |
+| [BF-cbf4a52](#bf-cbf4a52) | The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of… | PiG's own defect | All platforms | Unreleased |
 | [BF-cc9370b](#bf-cc9370b) | A Node extension's `setWidget`, `setHeader` and `setFooter` factories receive the same `tui` as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ccaade2](#bf-ccaade2) | The `/thinking` selector edits its search like Pi's input, selects with the input's submit key, and no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cd7fa1c](#bf-cd7fa1c) | A read-only config root no longer prints warnings at every start | PiG's own defect | All platforms | 0.5.0 |
@@ -18517,6 +18518,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cbc986b4ca` (2026-10-30)
 - **Tests:** `internal/imageprocessing/decode_image_test.go::TestDecodeImageMatchesPhotonBitfieldBMP`, `internal/imageprocessing/decode_image_test.go::TestDecodeImageMatchesPhotonOnMalformedBitfieldBMP`, `internal/imageprocessing/decode_image_test.go::TestNormalizeToolResultImagesConvertsBitfieldBMP`
 - **Release note:** BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's decoders. A BMP with non-zero reserved bytes in its file header, an OS/2 core header, any header version, a 16-bit or bitfield layout, RLE4 or RLE8 data, a pixel array offset inside the headers or a top-down height decodes as Photon decodes it (and the ones Photon refuses are refused), and a GIF is read as its first frame placed on the logical screen, with Photon's rules for local and global palettes, transparency, interlacing, frames that do not fit the screen and damaged LZW data. A clipboard bitmap, an attachment, a tool-result image and a file handed to the terminal image conversion or to the durable `read` tool are converted or resized as Pi converts them.
+
+### BF-cbf4a52
+
+**The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi.
+- **Root cause:** Pi's `ctx.ui.editor(title, "")` reaches an RPC client as `prefill: ""` and `editor(title)` as a request with no prefill member (rpc-mode.ts editor); input and placeholder behave the same. The host, the Node runtime, Python and Lisp already told the two apart, but the Go and Rust SDKs dropped an empty string (`withNonEmpty` / `with_non_empty`), so a port of Pi's plan-mode example, which calls `editor("Refine the plan:", "")`, wrote a different request than Pi.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cbf4a52c17` (2026-11-04)
+- **Tests:** `extensions/sdk/ui_empty_members_test.go::TestEmptyAndUnsetUIMembersStayDistinctOnTheWire`, `test/extension-conformance/ui_empty_members_test.go::TestConformance_UIEmptyMembersAgreeAcrossSDKs`
+- **Release note:** The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of `Input`/`input` as given, as Pi's `ctx.ui.editor(title, "")` and `ctx.ui.input(title, "")` do (an RPC client sees `prefill: ""`). They used to drop it, so a port of Pi's plan-mode example wrote a different RPC request than Pi. Pi's `editor(title)` and `input(title)`, which write no such member, are now `EditorWithoutPrefill`, `InputWithoutPlaceholder` and `InputWithoutPlaceholderWithOptions` in Go and `editor_without_prefill`, `input_without_placeholder` and `input_without_placeholder_with_options` in Rust, as `ClearStatus` is for `SetStatus`. `TestConformance_UIEmptyMembersAgreeAcrossSDKs` now requires every SDK (isolated, packed, fused) to tell the empty string from the unset member.
 
 ### BF-cc9370b
 
