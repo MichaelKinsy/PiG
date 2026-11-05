@@ -4172,6 +4172,28 @@
       ]
     },
     {
+      "id": "BF-20b9d05",
+      "title": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its…",
+      "symptom": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with \"nothing to embed or fuse\", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [\u003cextension\u003e]`.",
+      "rootCause": "The component plan records a Lisp extension as binary-packed, but buildNativeArtifact had no packed-lisp case: the cell fell to the default branch, which warned [not-embedded] and embedded nothing. The Binary then refused to start because its plan named an extension its cells lacked, and a Piglet with no other member to fuse failed with \"nothing to embed or fuse\". Build the SBCL image through runtimecell.BuildLispPackedCell, as the Go and Rust cells are built, and embed it; the startup path already starts an embedded packed-lisp cell.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig piglet build` planned a Common Lisp extension as packed into the Piglet Binary but did not embed its SBCL image: it warned `[not-embedded]`, a Piglet with no other member to fuse failed with \"nothing to embed or fuse\", and a Piglet with a fused member built a Binary that exited at startup with `baked Piglet Binary binary-packed extensions do not match its plan: missing [\u003cextension\u003e]`. The build now builds the Lisp image and embeds it, the Binary starts it without SBCL, and a Piglet whose only extensions are Lisp extensions builds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "20b9d0592b",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/pigletbuild/lisp_binary_test.go::TestPigletBinaryRunsItsLispExtension"
+      ]
+    },
+    {
       "id": "BF-211af49",
       "title": "`/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's…",
       "symptom": "`/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's `getShortcuts` Map (load order, registration order, a re-registered key keeps its first position) instead of path then key / Go map order (`coding/extension/host/inproc/runner.go` OrderedShortcuts, `internal/codingagent/interactive_hotkeys.go`, `interactive_helpers.go`; `TestRunnerShortcutsMatchPi` now compares Map order, regression `TestHotkeysCommandListsExtensionShortcutsInRegistrationOrder`).",
