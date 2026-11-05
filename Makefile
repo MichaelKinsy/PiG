@@ -311,6 +311,11 @@ test-changed: test-prereqs interface-deps parity-deps durable-interop-deps ## Te
 
 .PHONY: test-changed
 
+pre-push: ## CI's cheap checks run locally the CI way: DCO, source-hygiene, shellcheck, gitleaks, ruff, docs-drift, vet, staticcheck (PIG_GATE_BASE, default origin/main)
+	@./automation/ci/pre-push-gate.sh
+
+.PHONY: pre-push
+
 # Long real-PTY sessions run on PiG and Pi; see docs/testing/journeys.md.
 JOURNEY_BASE ?= @{upstream}
 journeys: parity-deps ## Run every PTY journey against PiG and Pi (CI); timings in tmp/journeys/timing.json

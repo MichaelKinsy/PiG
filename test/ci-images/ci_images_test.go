@@ -88,7 +88,7 @@ func TestNpmLocksPinPatchedCopiesInsteadOfBundledOnes(t *testing.T) {
 				t.Fatalf("%s/%s: %v", dir, name, err)
 			}
 		}
-		for _, dependency := range []string{"http-cache-semantics", "ip-address", "postcss-selector-parser", "undici"} {
+		for _, dependency := range []string{"http-cache-semantics", "ip-address", "minimatch", "postcss-selector-parser", "undici"} {
 			want, ok := manifest.Dependencies[dependency]
 			if !ok {
 				t.Errorf("%s does not pin %s directly", dir, dependency)

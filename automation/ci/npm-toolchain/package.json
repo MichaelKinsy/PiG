@@ -6,8 +6,12 @@
   "dependencies": {
     "http-cache-semantics": "4.3.0",
     "ip-address": "10.7.4",
-    "npm": "12.1.0",
+    "minimatch": "11.0.3",
+    "npm": "12.2.1",
     "postcss-selector-parser": "7.1.6",
     "undici": "6.29.1"
+  },
+  "overrides": {
+    "minimatch": "11.0.3"
   }
 }
