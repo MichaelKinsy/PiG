@@ -505,7 +505,11 @@ func compileCacheFiles(t *testing.T, dir string) int {
 // status 1). The process writes the cache once it is up, so its exit has none left to write.
 func TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits(t *testing.T) {
 	cache := t.TempDir()
-	_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
+	runtime, node := probeNode(t, `echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
+	// The load's reply precedes the write of its cache; a request after it is handled only once that write is done.
+	if _, err := runtime.Reload(node, nil, background); err != nil {
+		t.Fatal(err)
+	}
 	tree, err := extractNode(cache)
 	if err != nil {
 		t.Fatal(err)
@@ -949,11 +953,10 @@ export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main",
 	}
 }
 
-// Not Pi's wording: the exit of the process is what the Go side waits for (Pi's server awaits `child.process.exited`), not the
-// end of its output pipes. A process the plugins started that inherited the pipes (here a Node that sleeps) outlives the host's
-// process and holds them; the host's exit must not wait for it, as `exec.Cmd.Wait` does without a WaitDelay, and the exit is a
-// clean one: the process exited with code 0.
-func TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit(t *testing.T) {
+// holdingNode is a Node host (stop grace one second) whose process started a child that inherited its output pipes and sleeps
+// for a minute; the child is killed with the test.
+func holdingNode(t *testing.T) *NodeHost {
+	t.Helper()
 	grace := time.Second
 	_, node := probeNode(t, `hold: async () => { const { spawn } = await import("node:child_process"); const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: ["ignore", "inherit", "inherit"], detached: true }); child.unref(); return child.pid; }`, NodeOptions{StopGrace: &grace}, nil)
 	pid := probeOn(t, serverFor(t, workerRoute(node))).must("hold", nil)
@@ -964,6 +967,15 @@ func TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit(t *testin
 			}
 		}
 	})
+	return node
+}
+
+// Not Pi's wording: the exit of the process is what the Go side waits for (Pi's server awaits `child.process.exited`), not the
+// end of its output pipes. A process the plugins started that inherited the pipes (here a Node that sleeps) outlives the host's
+// process and holds them; the host's exit must not wait for it, as `exec.Cmd.Wait` does without a WaitDelay, and the exit is a
+// clean one: the process exited with code 0.
+func TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit(t *testing.T) {
+	node := holdingNode(t)
 	done := make(chan error, 1)
 	go func() { done <- node.Close(background) }()
 	select {
@@ -981,5 +993,25 @@ func TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit(t *testin
 	}
 	if node.Err() != nil {
 		t.Fatalf("Err = %v after a requested close", node.Err())
+	}
+}
+
+// The same child holds the pipes when the link closes: the process exits by itself, so the grace of the closed link, which ends
+// before the exit is seen (the exit waits for the pipes up to the grace after the process ended), kills nothing and the exit says
+// no kill happened: it is a clean one that nobody asked for, not "its link closed and it did not exit within the grace".
+func TestNodeAProcessThatExitedByItselfAfterItsLinkClosedWhileAChildHeldItsPipesIsNotReportedKilled(t *testing.T) {
+	node := holdingNode(t)
+	node.Link().Close()
+	select {
+	case <-node.Exited():
+	case <-time.After(20 * time.Second):
+		t.Fatal("the process's exit waited for what holds its pipes")
+	}
+	var exit *NodeExit
+	if !errors.As(node.Err(), &exit) {
+		t.Fatalf("Err = %v, want the process's exit", node.Err())
+	}
+	if exit.Err != nil || exit.Reason != "" || exit.Signal != "" || exit.Code != 0 {
+		t.Fatalf("exit = %+v, want a clean exit with no kill reason (the Go side killed nothing)", exit)
 	}
 }

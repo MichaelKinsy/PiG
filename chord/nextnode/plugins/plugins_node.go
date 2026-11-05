@@ -815,10 +815,13 @@ func (h *NodeHost) channelEnded() {
 	select {
 	case <-h.exited:
 	case <-timer.C:
+		// The reason is recorded only if the kill took effect, under the lock wait takes to build the exit: a process that exited
+		// by itself after the grace began (Exited waits for what holds its pipes) was not killed, whatever the timer says.
 		h.mu.Lock()
-		h.killReason = fmt.Sprintf("its link closed and it did not exit within %s", wait)
+		if h.kill() {
+			h.killReason = fmt.Sprintf("its link closed and it did not exit within %s", wait)
+		}
 		h.mu.Unlock()
-		h.kill()
 	}
 }
 
@@ -830,10 +833,13 @@ func (h *NodeHost) stopGrace() time.Duration {
 	return defaultStopGrace
 }
 
-func (h *NodeHost) kill() {
+// kill kills the process and reports whether it took effect: a process that was waited for already is not killed.
+func (h *NodeHost) kill() bool {
 	if h.cmd.Process != nil && h.cmd.Process.Kill() == nil {
 		h.killed.Store(true)
+		return true
 	}
+	return false
 }
 
 // stop kills the process and waits until it ended (a process that was killed ends at once; the stop grace bounds the wait for what
