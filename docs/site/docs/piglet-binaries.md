@@ -348,7 +348,7 @@ A normal Piglet Binary can start exact subprocess components when its plan permi
 Advantages:
 
 - process failure isolation;
-- support for Go, Rust, Python, Node, and native programs;
+- support for Go, Rust, Python, Lisp, Node, and native programs;
 - independent heartbeat and cancellation handling;
 - easier source development and reload.
 
@@ -379,6 +379,14 @@ Hint: Start without extensions using "pig -ne".
 ```
 
 A Piglet that strips `node-extensions` cannot carry a Node extension. The build stops with the conflict described in [Stripped built-ins](#stripped-built-ins).
+
+### Common Lisp extensions
+
+A Piglet Binary can carry Common Lisp extensions. The build builds each packed Lisp cell (the Lisp factories that share one image) into an executable SBCL image through the same cache that Stock PiG uses, and embeds the image in the Binary. The build needs SBCL 2.6.9 on its `PATH`, as Stock PiG needs it to build the image. A build without SBCL fails; it does not leave the cell to be built at run time. A Piglet whose only extensions are Lisp extensions builds: the embedded cell is what the Binary carries.
+
+The Binary needs no SBCL. The image holds the SBCL runtime, the Lisp SDK and the compiled members. At startup the Binary extracts the image under the PiG configuration directory and starts it through the packed-cell path that Stock PiG uses for the same extensions, so each member registers the same tools, commands and hooks as it does there. The component plan records a Lisp extension as a subprocess component with binary materialization, and the startup check refuses a Binary whose embedded cells name a different set of extensions than the plan.
+
+The image is built for the builder's own target. A Lisp extension has no cross-target build: for another target the plan reports it as host-reliant.
 
 ## External components
 
