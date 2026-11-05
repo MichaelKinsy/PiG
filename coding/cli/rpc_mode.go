@@ -414,10 +414,10 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			extensionHost.TerminateProcesses()
 		}
 	}
-	exitRPC := func(code int) {
+	// exitRPC ends the process. Upstream flushes stdout before process.exit unless the signal is SIGTERM, and a repeated signal never waits for it (process.exit at once, rpc-mode.ts signalCount > 1); the queued tail is that pending output.
+	exitRPC := func(code int, waitStdout bool) {
 		stdoutClosed.Store(true)
-		if code != 128+int(syscall.SIGTERM) {
-			// Upstream flushes stdout before process.exit unless the signal is SIGTERM; the queued tail is that pending output.
+		if waitStdout {
 			rawStdout.Wait(context.Background())
 		}
 		terminateProcesses()
@@ -503,8 +503,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}()
 			_ = sess().WaitForIdle(settleCtx)
 		},
-		exitRPC,
+		func(code int) { exitRPC(code, code != 128+int(syscall.SIGTERM)) },
 	)
+	shutdown.abort = func(code int) { exitRPC(code, false) }
 	host.drain = shutdown.drained
 	// pig additive (D19): the host waits in-process for the commands Pi answers before it reads stdin's end, because their runtimes are other processes whose frames race the shutdown's own writes.
 	shutdown.settle = func() bool {
@@ -553,7 +554,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	defer repeated.Stop()
 	setTerminationShutdownHook(func() {
 		if !shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) {
-			// A shutdown is already running and a single signal does not interrupt it. Main cancels the root context, which owns the extension processes, once this hook returns, so it waits for the exit.
+			// A shutdown is already running and a single signal does not interrupt it. The prelude held the Session's agent events for this signal, and nothing else ends that hold: a run a session_shutdown handler starts would block on it while the dispose waits for the handler. Main cancels the root context, which owns the extension processes, once this hook returns, so it waits for the exit or for the mode's own end (a stdout write failure ends it during the dispose too).
+			release()
 			<-ctx.Done()
 		}
 	})

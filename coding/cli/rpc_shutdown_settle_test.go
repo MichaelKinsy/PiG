@@ -59,3 +59,32 @@ func TestRPCShutdownRepeatedSignalKeepsItsExitStatus(t *testing.T) {
 		t.Fatalf("exits = %v, want only the repeated signal's [143]", exits)
 	}
 }
+
+// Pi's repeated signal calls process.exit at once (rpc-mode.ts signalCount > 1). An exit that is already waiting for stdout does not hold it back: the repeated signal ends the process through its own exit, which does not wait for stdout either (D234).
+func TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes(t *testing.T) {
+	flushing := make(chan struct{})
+	release := make(chan struct{})
+	var mu sync.Mutex
+	var exits, aborts []int
+	s := newRPCShutdown(func() {}, func() {}, func() { close(flushing); <-release }, func(code int) {
+		mu.Lock()
+		exits = append(exits, code)
+		mu.Unlock()
+	})
+	s.abort = func(code int) {
+		mu.Lock()
+		aborts = append(aborts, code)
+		mu.Unlock()
+	}
+	done := make(chan struct{})
+	go func() { s.inputEnd(); close(done) }()
+	<-flushing
+	s.repeatedSignal(syscall.SIGHUP)
+	close(release)
+	<-done
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Equal(aborts, []int{129}) || len(exits) != 0 {
+		t.Fatalf("aborts = %v, exits = %v, want the repeated signal's abort [129] and no exit after it", aborts, exits)
+	}
+}

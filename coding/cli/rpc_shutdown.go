@@ -41,7 +41,10 @@ type rpcShutdown struct {
 	// settle runs before stdin end starts shutdown: Pi reads stdin's end in an event-loop iteration of its own, after the microtasks of every earlier line and of a published agent_end (rpc-mode.ts:355-360,802-805). It returns false when the mode ended meanwhile, which abandons the shutdown. It may be nil.
 	settle func() bool
 
-	// exiting is set when an exit starts; a later exit does nothing.
+	// abort ends the process for a repeated signal: it does not wait for stdout. It is nil in tests that need no separate path, and the repeated signal then uses exit.
+	abort func(code int)
+
+	// exiting is set when an exit starts; a later exit does nothing, except the repeated signal's.
 	exiting atomic.Bool
 
 	mu        sync.Mutex
@@ -108,10 +111,15 @@ func (s *rpcShutdown) signal(sig syscall.Signal) bool {
 	return true
 }
 
-// repeatedSignal handles a second or later termination signal: it exits at once with 128+signum, without waiting for the dispose or flushing stdout.
+// repeatedSignal handles a second or later termination signal: it exits at once with 128+signum, without waiting for the dispose or for stdout. Pi calls process.exit directly here (rpc-mode.ts signalCount > 1), so an exit that is already flushing a stuck stdout does not hold it back: the exiting guard is set, not consulted, and the exit skips the stdout wait (D234).
 func (s *rpcShutdown) repeatedSignal(sig syscall.Signal) {
 	tools.KillTrackedDetachedChildren()
-	s.flushAndExit(false, 128+int(sig))
+	s.exiting.Store(true)
+	exit := s.abort
+	if exit == nil {
+		exit = s.exit
+	}
+	exit(128 + int(sig))
 }
 
 // finish disposes the runtime when no trigger did, for a mode exit that had

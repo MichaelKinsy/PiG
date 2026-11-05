@@ -240,6 +240,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	}
 	disposeFromSignal := func() {
 		if finalDisposing.Load() {
+			// The termination prelude held the Session's agent events for this signal; a run a session_shutdown handler starts during the final disposal would block on that hold and stall the disposal this signal waits for.
+			release()
 			<-finalDisposed
 			return
 		}
