@@ -287,7 +287,7 @@ func (w errorWalker) checkObject(context *checkContext, n node, object map[strin
 			if matcher != nil && matcher.MatchString(key) {
 				continue
 			}
-			if !(w.checkPush(context, additional, object[key]) && context.addKey(key)) {
+			if !w.checkPush(context, additional, object[key]) || !context.addKey(key) {
 				return false
 			}
 		}
@@ -320,7 +320,7 @@ func (w errorWalker) checkObject(context *checkContext, n node, object map[strin
 			matcher, err := CompilePattern(pattern)
 			patternSchema, _ := patterns.get(pattern)
 			for _, key := range w.keys(object) {
-				if err == nil && matcher.MatchString(key) && !(w.checkPush(context, patternSchema, object[key]) && context.addKey(key)) {
+				if err == nil && matcher.MatchString(key) && (!w.checkPush(context, patternSchema, object[key]) || !context.addKey(key)) {
 					return false
 				}
 			}
@@ -333,7 +333,7 @@ func (w errorWalker) checkObject(context *checkContext, n node, object map[strin
 				continue
 			}
 			propertySchema, _ := properties.get(key)
-			if !(w.checkPush(context, propertySchema, item) && context.addKey(key)) {
+			if !w.checkPush(context, propertySchema, item) || !context.addKey(key) {
 				return false
 			}
 		}
@@ -357,7 +357,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 	tuple, isTuple := n.list("items")
 	if additional, ok := n.get("additionalItems"); ok && isTuple {
 		for index, item := range items {
-			if index >= len(tuple) && !(w.checkPush(context, additional, item) && context.addIndex(index)) {
+			if index >= len(tuple) && (!w.checkPush(context, additional, item) || !context.addIndex(index)) {
 				return false
 			}
 		}
@@ -380,7 +380,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 	if itemsSchema, ok := n.get("items"); ok {
 		if isTuple {
 			for index, schema := range tuple {
-				if len(items) > index && !(w.checkPush(context, schema, items[index]) && context.addIndex(index)) {
+				if len(items) > index && (!w.checkPush(context, schema, items[index]) || !context.addIndex(index)) {
 					return false
 				}
 			}
@@ -390,7 +390,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 				offset = len(prefix)
 			}
 			for index := offset; index < len(items); index++ {
-				if !(w.checkPush(context, itemsSchema, items[index]) && context.addIndex(index)) {
+				if !w.checkPush(context, itemsSchema, items[index]) || !context.addIndex(index) {
 					return false
 				}
 			}
@@ -428,7 +428,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 	}
 	if prefix, ok := n.list("prefixItems"); ok && len(items) > 0 {
 		for index, schema := range prefix {
-			if len(items) > index && !(w.checkPush(context, schema, items[index]) && context.addIndex(index)) {
+			if len(items) > index && (!w.checkPush(context, schema, items[index]) || !context.addIndex(index)) {
 				return false
 			}
 		}
@@ -505,7 +505,7 @@ func (w errorWalker) checkUnevaluatedItems(context *checkContext, n node, items 
 	indices := context.top().indices
 	extra, _ := n.get("unevaluatedItems")
 	for index, item := range items {
-		if !((indices[index] || w.check(context, extra, item)) && context.addIndex(index)) {
+		if (!indices[index] && !w.check(context, extra, item)) || !context.addIndex(index) {
 			return false
 		}
 	}
@@ -518,14 +518,14 @@ func (w errorWalker) checkUnevaluatedProperties(context *checkContext, n node, v
 	switch typed := value.(type) {
 	case map[string]any:
 		for _, key := range w.keys(typed) {
-			if !(keys[key] || (w.check(context, extra, typed[key]) && context.addKey(key))) {
+			if !keys[key] && (!w.check(context, extra, typed[key]) || !context.addKey(key)) {
 				return false
 			}
 		}
 	case []any:
 		for index, item := range typed {
 			key := strconv.Itoa(index)
-			if !(keys[key] || (w.check(context, extra, item) && context.addKey(key))) {
+			if !keys[key] && (!w.check(context, extra, item) || !context.addKey(key)) {
 				return false
 			}
 		}

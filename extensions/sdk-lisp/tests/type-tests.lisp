@@ -418,3 +418,69 @@ encoder writes something that reads back as the same schema."
     (pig:tool ext "t" "d" (pig:type-object (pig:obj) (pig:obj "x-extra" (pig:type-refine (pig:type-string) (lambda (v) v))))
               (lambda (ctx args) (declare (ignore ctx args)) "ok"))
     (check (= 1 (length (pig::extension-tools ext))))))
+
+;;; ---------------------------------------------------------------- Value.Check / Value.Errors: the refinement loop
+
+(defun tt-scripted-send (replies requests)
+  "A send function that answers with REPLIES in order and records each request's answers list (as JSON) in the cell REQUESTS."
+  (lambda (request)
+    (push (pig:to-json (aref (pig:jget request "args") 2)) (car requests))
+    (when (null replies) (error "the loop asked once more than the script answers"))
+    (pop replies)))
+
+(defun tt-refine-call (id message value) (pig:obj "call" (pig:obj "id" id "message" message "value" value)))
+
+(deftest the-value-loop-runs-each-refinement-once-in-order
+  (let* ((log '())
+         (schema (pig:type-refine (pig:type-string)
+                                  (lambda (v) (push (list :check v) log) (> (length v) 3))
+                                  (lambda (v) (push (list :error v) log) (concatenate 'string "short: " v))))
+         (requests (list '())))
+    (let ((result (pig::te-value-run "Value.Errors" schema "ab"
+                                     (tt-scripted-send (list (tt-refine-call 0 :false "ab") (tt-refine-call 0 t "ab") (pig:obj "value" (vector)))
+                                                       requests))))
+      (check-equal (vector) result)
+      (check-equal '((:check "ab") (:error "ab")) (reverse log))
+      (check-equal '("[]" "[false]" "[false,\"short: ab\"]") (reverse (car requests))))))
+
+(deftest the-value-loop-truthiness-and-default-message
+  (let* ((schema (pig:type-refine (pig:type-string) (lambda (v) (declare (ignore v)) :null)))
+         (requests (list '())))
+    (pig::te-value-run "Value.Errors" schema "x"
+                       (tt-scripted-send (list (tt-refine-call 0 :false "x") (tt-refine-call 0 t "x") (pig:obj "value" (vector))) requests))
+    (check-equal '("[]" "[false]" "[false,\"Refine Error\"]") (reverse (car requests)))))
+
+(deftest a-refinement-condition-aborts-the-value-loop
+  (let* ((runs 0)
+         (schema (pig:type-refine (pig:type-string) (lambda (v) (declare (ignore v)) (incf runs) (error "kaboom"))))
+         (requests (list '()))
+         (message (handler-case (progn (pig::te-value-run "Value.Check" schema "x" (tt-scripted-send (list (tt-refine-call 0 :false "x")) requests)) nil)
+                    (error (e) (princ-to-string e)))))
+    (check-equal "kaboom" message)
+    (check-equal 1 runs)
+    (check-equal 1 (length (car requests)))))
+
+(deftest an-error-reply-fails-the-value-call
+  (let ((message (handler-case (pig::te-value-run "Value.Check" (pig:type-string) "x"
+                                                  (tt-scripted-send (list (pig:obj "error" (pig:obj "name" "Error" "message" "no such member"))) (list '())))
+                   (pig:type-schema-error (e) (pig:type-schema-error-message e)))))
+    (check-equal "no such member" message)))
+
+(deftest value-check-asks-the-host-with-the-schema-value-and-answers
+  (let ((ext (pig:make-extension "value-probe")) (answer :unset) (ran nil))
+    (with-host (host ext)
+      (tt-wait-running)
+      (let* ((schema (pig:type-refine (pig:type-integer) (lambda (v) (setf ran v) t)))
+             (thread (sb-thread:make-thread (lambda () (setf answer (pig:value-check schema 4))))))
+        (let* ((call (hread-type host "call")) (request (pig:jget (pig:jget call "call") "args")))
+          (check-equal "Value.Check" (pig:jget request "member"))
+          (check-equal "4" (pig:to-json (aref (pig:jget request "args") 1)))
+          (check-equal "[]" (pig:to-json (aref (pig:jget request "args") 2)))
+          (hsend host "type" "call_result" "id" (pig:jget call "id")
+                      "call_result" (pig:obj "result" (pig:obj "call" (pig:obj "id" 0 "message" :false "value" 4)))))
+        (let* ((call (hread-type host "call")) (request (pig:jget (pig:jget call "call") "args")))
+          (check-equal "[true]" (pig:to-json (aref (pig:jget request "args") 2)))
+          (tt-engine-reply host (pig:jget call "id") t))
+        (sb-thread:join-thread thread)
+        (check-equal 4 ran)
+        (check-equal t answer)))))

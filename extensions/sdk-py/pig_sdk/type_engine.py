@@ -3,7 +3,7 @@
 ``build/type/{action,engine,extends,script}`` for every SDK (``internal/typebox/engine``). A call encodes its arguments in the engine's wire form, asks the host (the
 ``type.engine`` call, which the host answers before the extension registers, so a schema built at import time works) and decodes the schema the host returns: the enumerable
 members in the order TypeBox wrote them and the hidden ones (``~kind``, ``~optional``, ...). What TypeBox throws raises ``ValueError`` with its message."""
-from typing import Any, Callable, Mapping, Optional, Sequence
+from typing import Any, Callable, Mapping, NamedTuple, Optional, Sequence
 
 _ENVELOPE = "\x00"
 _CALL_TYPE_ENGINE = "type.engine"
@@ -126,6 +126,69 @@ def engine_call(member: str, *args: Any) -> Any:
     if "error" in reply:
         raise ValueError(reply["error"].get("message", ""))
     return _decode(reply.get("value"), refs)
+
+
+class ValueCheckError(NamedTuple):
+    """One entry of ``Value.errors`` (TypeBox's ``TLocalizedValidationError``, the members the host answers in this order; not named ``ValueError``, which would shadow the builtin): ``params`` is a dict whose keys keep the order TypeBox wrote them."""
+
+    keyword: str
+    schema_path: str
+    instance_path: str
+    params: dict
+    message: str
+
+
+_DEFAULT_REFINE_ERROR = "Refine Error"
+
+
+def _value_call(member: str, schema: Any, value: Any) -> Any:
+    """Run ``member`` (``Value.Check`` or ``Value.Errors``) of the host's engine on ``schema`` and ``value`` and return the JSON value it answers.
+
+    A schema's refinements are functions of this process, so the host walks the schema as TypeBox does and asks for each call of a refinement it reaches: ``{"call": {"id", "message",
+    "value"}}`` wants the check of refinement ``id`` on ``value`` (``message`` false; the answer is whether it passed) or its error message (``message`` true). The call is run here, its answer is
+    appended and the same request is sent again with the answers so far; the host replays them in order, so each refinement runs once, in the order TypeBox calls them. What a refinement raises
+    ends the call and propagates unchanged; a host ``error`` raises ``ValueError`` with its message, as ``engine_call`` does."""
+    from . import host_helpers
+
+    refs: list = []
+    wire = [_encode(schema, refs), _encode(value, refs)]
+    answers: list = []
+    while True:
+        reply = host_helpers._helper_call(_CALL_TYPE_ENGINE, {"member": member, "args": [*wire, list(answers)]})
+        if "error" in reply:
+            raise ValueError(reply["error"].get("message", ""))
+        call = reply.get("call")
+        if call is None:
+            return reply.get("value")
+        refinement = refs[call["id"]]
+        argument = _decode(call.get("value"), refs)
+        if call.get("message"):
+            error = refinement.error
+            text = _DEFAULT_REFINE_ERROR if error is None else error(argument)
+            if not isinstance(text, str):
+                raise TypeError(f"a refinement's error function must return a str, not {type(text).__name__}")
+            answers.append(text)
+        else:
+            answers.append(bool(refinement.check(argument)))
+
+
+class Value:
+    """TypeBox's ``Value`` namespace (``import { Value } from "typebox/value"``) as far as it validates: ``Value.check(schema, value)`` and ``Value.errors(schema, value)``. Pi never runs the
+    refinements of ``Type.refine`` on a tool's arguments, so an extension that wants them run runs them here; the host walks the schema as TypeBox 1.3.27 does and the refinements run in this
+    process (see ``_value_call``). ``value`` is plain JSON: dicts, lists, str, int, float, bool, None."""
+
+    @staticmethod
+    def check(schema: Any, value: Any) -> bool:
+        """``Value.Check(schema, value)``: whether ``value`` passes the schema and every refinement TypeBox reaches."""
+        return bool(_value_call("Value.Check", schema, value))
+
+    @staticmethod
+    def errors(schema: Any, value: Any) -> list:
+        """``Value.Errors(schema, value)``: the :class:`ValueCheckError` list of what is wrong with ``value``, in TypeBox's order (empty when it passes)."""
+        return [
+            ValueCheckError(failure["keyword"], failure["schemaPath"], failure["instancePath"], failure["params"], failure["message"])
+            for failure in _value_call("Value.Errors", schema, value)
+        ]
 
 
 def _match_count(args: Sequence[Any], low: int, high: int) -> None:

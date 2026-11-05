@@ -2,9 +2,9 @@ package sdk
 
 import "slices"
 
-// Refinement is one entry of a schema's hidden `~refine` list (TypeBox's `{check, error}`): Check decides whether a value passes and Error words the failure. TypeBox's
-// own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's registration or call consults the
-// list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler.
+// Refinement is one entry of a schema's hidden `~refine` list (TypeBox's `{check, error}`): Check decides whether a value passes and Error words the failure. A tool's arguments are
+// validated as plain JSON Schema (Pi 1.5.0 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's registration or call consults the
+// list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler, which runs it with [valueNamespace.Check] or [valueNamespace.Errors].
 type Refinement struct {
 	// Check reports whether value passes.
 	Check func(value any) (bool, error)
@@ -14,7 +14,7 @@ type Refinement struct {
 
 // Refine is `Type.Refine(type, check, error?)`: a copy of the schema whose hidden `~refine` list has the refinement appended. The schema's JSON does not change. A schema made of an
 // array, or anything that is not an object, panics as Unsafe does.
-// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
+// pig divergence (D226): the stored check runs only through Value.Check and Value.Errors, never on a tool's arguments (as in Pi); the other members of TypeBox's Value are not served.
 func (t typeNamespace) Refine(schema any, check func(value any) (bool, error), errorFn ...func(value any) (string, error)) *TSchema {
 	refinement := Refinement{Check: check}
 	if len(errorFn) > 0 {

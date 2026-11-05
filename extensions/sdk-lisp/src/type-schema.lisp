@@ -213,13 +213,13 @@ out when there are none. Keys that are array indexes come first and ascending, a
 
 (defstruct (type-refinement (:constructor make-type-refinement (check message)))
   "One entry of a schema's hidden ~refine list: (funcall CHECK value) decides whether a value passes and (funcall MESSAGE value) words the
-failure (NIL is TypeBox's \"Refine Error\"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing consults the list: arguments a refinement would reject are accepted and the constraint belongs in the tool's handler."
+failure (NIL is TypeBox's \"Refine Error\"). VALUE-CHECK and VALUE-ERRORS run them (Value.Check, Value.Errors). A tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so they are not refined: arguments a refinement would reject are accepted, as in Pi, and the handler calls VALUE-CHECK."
   check message)
 
-;; pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
+;; pig divergence (D226): tool arguments are not refined (as in Pi); Value.Check and Value.Errors, served through the host by value-check and value-errors, run the refinements.
 (defun type-refine (&rest arguments)
   "Type.Refine (schema check) or (schema check error): a copy of the schema whose hidden ~refine list has the refinement appended; the schema's
-JSON does not change. The refinements are not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler. TypeBox matches the arguments by count, so
+JSON does not change. VALUE-CHECK and VALUE-ERRORS run the refinements; a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler. TypeBox matches the arguments by count, so
 any other count signals TYPE-SCHEMA-ERROR \"Invalid Arguments\", as Pi's does."
   (unless (<= 2 (length arguments) 3) (ts-fail "Invalid Arguments"))
   (destructuring-bind (schema check &optional message) arguments

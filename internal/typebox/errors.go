@@ -510,7 +510,7 @@ func (w errorWalker) object(context *errorContext, spath *pathSeg, path string, 
 			if matcher != nil && matcher.MatchString(key) {
 				continue
 			}
-			if !(w.pushed(context, w.seg(spath, "additionalProperties"), join(path, key), additional, object[key]) && context.addKey(key)) {
+			if !w.pushed(context, w.seg(spath, "additionalProperties"), join(path, key), additional, object[key]) || !context.addKey(key) {
 				rejected = append(rejected, key)
 			}
 		}
@@ -589,7 +589,7 @@ func (w errorWalker) array(context *errorContext, spath *pathSeg, path string, n
 	if additional, ok := n.get("additionalItems"); ok && isTuple {
 		// additionalItems.mjs uses Every: it stops at the first failing extra element.
 		for i := len(tuple); i < len(items); i++ {
-			if !(w.pushed(context, w.seg(spath, "additionalItems"), index(i), additional, items[i]) && context.addIndex(i)) {
+			if !w.pushed(context, w.seg(spath, "additionalItems"), index(i), additional, items[i]) || !context.addIndex(i) {
 				step(false)
 				break
 			}

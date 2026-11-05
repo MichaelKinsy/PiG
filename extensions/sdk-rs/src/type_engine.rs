@@ -11,7 +11,7 @@ use serde_json::{Map, Value, json};
 use crate::type_schema::{BigInt, Refinement, TSchema, TValue, Type};
 
 const ENVELOPE: &str = "\u{0}";
-const CALL_TYPE_ENGINE: &str = "type.engine";
+pub(crate) const CALL_TYPE_ENGINE: &str = "type.engine";
 
 type Options<'a> = Option<&'a Map<String, Value>>;
 
@@ -95,7 +95,7 @@ fn encode_object(members: Map<String, Value>) -> Value {
     Value::Object(members)
 }
 
-fn encode_json(value: &Value) -> Value {
+pub(crate) fn encode_json(value: &Value) -> Value {
     match value {
         Value::Array(items) => Value::Array(items.iter().map(encode_json).collect()),
         Value::Object(map) => encode_object(
@@ -107,7 +107,7 @@ fn encode_json(value: &Value) -> Value {
     }
 }
 
-fn encode(value: &TValue, refs: &mut Vec<Refinement>) -> Value {
+pub(crate) fn encode(value: &TValue, refs: &mut Vec<Refinement>) -> Value {
     match value {
         TValue::Json(value) => encode_json(value),
         TValue::BigInt(value) => json!({ENVELOPE: "n", "v": value.digits()}),

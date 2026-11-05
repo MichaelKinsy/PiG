@@ -93,7 +93,7 @@ from .llm_convert import convert_to_llm as convert_to_llm
 from .serialize_conversation import _ordered_keys, serialize_conversation as serialize_conversation
 from .session_entry_messages import session_entry_to_context_messages as session_entry_to_context_messages
 from .session_context import SESSION_LEAF_LAST as SESSION_LEAF_LAST, build_session_context as build_session_context
-from .type_engine import BIGINT_STRINGIFY_ERROR, BigInt as BigInt, holds_bigint as _holds_bigint
+from .type_engine import BIGINT_STRINGIFY_ERROR, BigInt as BigInt, Value as Value, ValueCheckError as ValueCheckError, holds_bigint as _holds_bigint
 from .type_schema import Refinement as Refinement, TSchema as TSchema, TSchemaArray as TSchemaArray, Type as Type, type_to_json as type_to_json
 from .stored_credential import read_stored_credential as read_stored_credential
 from .pi_ai_helpers import (

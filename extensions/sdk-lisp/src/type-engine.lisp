@@ -182,3 +182,41 @@ other argument count signals TYPE-SCHEMA-ERROR as Pi's does."
   (if (type-extends-true-like-p result)
       (funcall on-true (ts-member result "inferred"))
       (funcall on-false)))
+
+;;; ---------------------------------------------------------------- Value.Check and Value.Errors
+
+;; pig divergence (D226): TypeBox's Value.Check and Value.Errors run in the host, which asks this process for each refinement call (internal/typebox/engine/value_check.go).
+(defun te-value-run (member schema value send)
+  "Value.Check / Value.Errors of MEMBER on SCHEMA and VALUE. SEND takes the request object of the type.engine call and returns its reply. The host walks the
+schema and, at each refinement call it has no answer for, replies with that call: it is run here once and its answer is sent with every later request, in call
+order. A condition a refinement signals propagates; an error reply signals TYPE-SCHEMA-ERROR."
+  (let* ((refs (make-array 0 :adjustable t :fill-pointer t))
+         (wire-schema (te-encode schema refs))
+         (wire-value (te-encode value refs))
+         (answers '()))
+    (loop
+      (let* ((reply (funcall send (obj "member" member "args" (vector wire-schema wire-value (coerce (reverse answers) 'simple-vector)))))
+             (err (jget reply "error"))
+             (call (jget reply "call")))
+        (when (hash-table-p err) (ts-fail "~A" (jget err "message" "")))
+        (unless (hash-table-p call) (return (jget reply "value")))
+        (let* ((refinement (aref refs (jget call "id")))
+               (argument (jget call "value")))
+          (push (if (eq (jget call "message") t)
+                    (let ((message (type-refinement-message refinement)))
+                      (if message (funcall message argument) "Refine Error"))
+                    (if (member (funcall (type-refinement-check refinement) argument) '(nil :false :null)) :false t))
+                answers))))))
+
+(defun te-value-call (member schema value)
+  (te-value-run member schema value (lambda (request) (helper-call "type.engine" request))))
+
+(defun value-check (schema value)
+  "Value.Check: T when VALUE (plain JSON: objects as hash tables, arrays as vectors, :false, :null) satisfies SCHEMA, refinements included, else NIL. Each
+refinement's check runs on the value it tests, in the order TypeBox calls them; a condition it signals propagates."
+  (eq (te-value-call "Value.Check" schema value) t))
+
+(defun value-errors (schema value)
+  "Value.Errors: a list of the errors of VALUE against SCHEMA as TypeBox words them, each a hash table with keyword, schemaPath, instancePath, params and
+message; a refinement's message comes from its error function (\"Refine Error\" when it has none)."
+  (coerce (te-value-call "Value.Errors" schema value) 'list))

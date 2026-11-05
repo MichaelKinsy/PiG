@@ -64,8 +64,6 @@ type refineCase struct {
 	Value  any    `json:"value"`
 }
 
-type refineCall [3]json.RawMessage
-
 type refineAnswer struct {
 	Wire       json.RawMessage   `json:"wire"`
 	Check      bool              `json:"check"`
