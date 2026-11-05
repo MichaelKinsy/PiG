@@ -1,0 +1,47 @@
+name: r7 win2 proof
+# A proof run of two plugins tests on Windows, on these branches only. Not for merging.
+on:
+  push:
+    branches: [fix/r7-win2-proof, fix/r7-win2-red]
+permissions:
+  contents: read
+jobs:
+  windows:
+    name: Windows loop ${{ matrix.n }}
+    runs-on: windows-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: The two tests, 50 times, with files and CPUs churning beside them
+        shell: pwsh
+        run: |
+          $jobs = @()
+          $jobs += Start-Job -ScriptBlock {
+            $dir = Join-Path $env:TEMP 'churn'
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            while ($true) {
+              1..200 | ForEach-Object { Set-Content -Path (Join-Path $dir "f$_.txt") -Value ('x' * 4096) }
+              Remove-Item -Recurse -Force "$dir\*"
+            }
+          }
+          1..3 | ForEach-Object { $jobs += Start-Job -ScriptBlock { while ($true) { [math]::Sqrt(12345.678) | Out-Null } } }
+          go test -c -o plugins.test.exe ./chord/nextnode/plugins
+          if ($LASTEXITCODE -ne 0) { throw "build failed" }
+          Set-Location chord/nextnode/plugins
+          ..\..\..\plugins.test.exe -test.timeout 40m -test.count=50 -test.run 'TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat|HostStoppedCleanlyDirtiesNothing|Watcher'
+          $code = $LASTEXITCODE
+          $jobs | Stop-Job
+          if ($code -ne 0) { throw "tests failed" }
