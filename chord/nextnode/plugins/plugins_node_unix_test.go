@@ -5,6 +5,7 @@ package plugins
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 // Not upstream's: the parts of the start tests (plugins_node_start_test.go) and the file tests that only a unix has: a pid
@@ -175,5 +177,34 @@ func TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly(t *testing.
 		}
 	case <-time.After(15 * time.Second):
 		t.Fatal("the read did not return")
+	}
+}
+
+// A host that ended its link ends its channel and leaves the process to exit with it, as the process exits once nothing keeps it
+// alive: it must not wait for the Go side's close to reach it. On Windows a pending read can miss the peer's close on an AF_UNIX
+// socket (the process then stayed alive until the Go side killed it after the stop grace, exit status 1); a descriptor of the Go
+// side's connection that stays open does the same here: the Go side closes its own, and the process never gets the end of the
+// stream.
+func TestNodeTheProcessEndsWithItsLinkThoughTheGoSidesCloseNeverReachesIt(t *testing.T) {
+	ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
+	_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{}, &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter})
+	conn, ok := node.port.Load().conn.(*net.UnixConn)
+	if !ok {
+		t.Fatalf("the channel's connection is a %T, want a *net.UnixConn", node.port.Load().conn)
+	}
+	held, err := conn.File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = held.Close() })
+	node.Link().OnMessage(func([]byte) {})
+	select {
+	case <-node.Exited():
+	case <-time.After(30 * time.Second):
+		t.Fatal("the process outlived its closed link")
+	}
+	var exit *NodeExit
+	if !errors.As(node.Err(), &exit) || exit.Err != nil || exit.Reason != "" {
+		t.Fatalf("Err = %v, want an exit by itself, not one the Go side forced", node.Err())
 	}
 }
