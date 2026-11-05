@@ -86,6 +86,7 @@ func TestAcquireFollowsALinkLockPathAsProperLockfileDoes(t *testing.T) {
 		for _, a := range linkAcquirers {
 			t.Run(kind+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				target := linkLockPath(t, path, kind)
 				targetBefore, targetErr := os.Lstat(target)
 				lock, err := a.run(path)
@@ -168,6 +169,7 @@ func TestProperLockfileOnLinkLockPathUpstream(t *testing.T) {
 		for _, api := range []string{"sync", "async"} {
 			t.Run(kind+"/"+api, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				linkLockPath(t, path, kind)
 				got := runProperLockfile(t, path, api)
 				want := linkOutcome(kind)

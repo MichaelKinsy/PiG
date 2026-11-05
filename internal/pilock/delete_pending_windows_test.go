@@ -61,6 +61,7 @@ func TestAcquireTreatsLockBeingRemovedAtStatAsHeld(t *testing.T) {
 	for _, a := range acquirers {
 		t.Run(a.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			if err := os.Mkdir(path+".lock", 0o777); err != nil {
 				t.Fatal(err)
 			}
@@ -104,6 +105,7 @@ func TestAcquireRetriesLockBeingRemovedAtMkdirThenSurfacesIt(t *testing.T) {
 	for _, a := range rows {
 		t.Run(a.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			if err := os.Mkdir(path+".lock", 0o777); err != nil {
 				t.Fatal(err)
 			}
@@ -132,6 +134,7 @@ func TestAuthAcquireWaitsOutLockBeingRemovedAtMkdir(t *testing.T) {
 	for _, a := range acquirers {
 		t.Run(a.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			if err := os.Mkdir(path+".lock", 0o777); err != nil {
 				t.Fatal(err)
 			}
@@ -233,6 +236,7 @@ func TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T) {
 		for _, a := range lockfileAttempts {
 			t.Run(kind+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				makeHeldLockPath(t, path+".lock", kind)
 				calls := stubMkdir(t, func(call int, real func() error) error {
 					if call > 1 {
@@ -272,6 +276,7 @@ func TestAuthAcquireRetriesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T
 		for _, a := range acquirers {
 			t.Run(kind+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				makeHeldLockPath(t, path+".lock", kind)
 				calls := stubMkdir(t, func(call int, real func() error) error {
 					err := real()
@@ -394,6 +399,7 @@ func TestAcquireSurfacesLinkToDirectoryBeingRemovedUpstream(t *testing.T) {
 	for _, api := range []string{"sync", "async"} {
 		t.Run(api, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			target := linkLockPath(t, path, "fresh-directory")
 			markBeingRemoved(t, target)
 			message := "EPERM: operation not permitted, stat '" + path + ".lock'"
@@ -483,6 +489,7 @@ func TestAcquireIgnoresRmdirAfterFailedProbeUpstream(t *testing.T) {
 	for i, api := range []string{"sync", "async"} {
 		t.Run(api, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			var finish func()
 			pi := runProperLockfileAfterMkdir(t, path, api, func(lock string) { finish = markBeingRemoved(t, lock) })
 			message, ok := strings.CutPrefix(pi, "code=EPERM message=")
@@ -521,6 +528,7 @@ func TestAcquireIgnoresRmdirAfterFailedProbeUpstream(t *testing.T) {
 // When the release of a lock taken after the abort fails, Pi's acquireLockAsync throws the release's error in place of the abort (auth-storage.ts:149-152: await release() rejects before signal.throwIfAborted()). A lock directory that another process starts removing makes that rmdir fail with EPERM. PiG's Acquire and AcquireWithOptions return the release error alone, not joined with the cancellation.
 func TestAcquireAbortedAfterAcquisitionReturnsAFailedReleaseUpstream(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -625,6 +633,7 @@ const attempt = () => lockfile.lock(file, { realpath: false, fs: custom }).then(
 // proper-lockfile caches the mtime precision on the fs object after its first successful probe (lib/mtime-precision.js:6-17), and every lock call shares graceful-fs, so later acquisitions in the process only stat their new directory. A directory that another process starts removing right after mkdir then still stats (libuv reads its parent entry), so the lock is taken, and its release fails with EPERM. PiG's cancellable acquisitions share one probe the same way. lockSync builds a new fs for each call (lib/adapter.js:5-25,63-68), so AcquireSync always probes (TestAcquireIgnoresRmdirAfterFailedProbeUpstream/sync).
 func TestAcquireAfterTheFirstProbeOnlyStatsUpstream(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	var finish func()
 	pi := runProperLockfileTwiceAfterMkdir(t, path, func(lock string) { finish = markBeingRemoved(t, lock) })
 	if pi != `["acquired","acquired, release EPERM"]` {
