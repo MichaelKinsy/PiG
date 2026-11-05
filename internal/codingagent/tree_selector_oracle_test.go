@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 type treeOracleNode struct {
@@ -276,7 +277,7 @@ func TestTreeSelectorInputMatchesPi(t *testing.T) {
 			}
 		}
 		selector.OnLabelEdit = func(id, label string) { events = append(events, "label:"+id+":"+label) }
-		got := treeOracleResult{Steps: [][]string{append([]string{}, events...)}, Frames: [][]string{selector.Render(probe.Width)}}
+		got := treeOracleResult{Steps: [][]string{append([]string{}, events...)}, Frames: [][]string{normalizeTreeSearchLineD248(selector.Render(probe.Width))}}
 		completedAt := len(probe.Keys)
 		for keyIndex, key := range probe.Keys {
 			selector.HandleInput(key)
@@ -288,7 +289,7 @@ func TestTreeSelectorInputMatchesPi(t *testing.T) {
 				}
 			}
 			got.Steps = append(got.Steps, append([]string{}, events...))
-			got.Frames = append(got.Frames, selector.Render(probe.Width))
+			got.Frames = append(got.Frames, normalizeTreeSearchLineD248(selector.Render(probe.Width)))
 			if selector.Done() {
 				completedAt = keyIndex + 1
 				break
@@ -318,6 +319,19 @@ func visibleText(frames [][]string) [][]string {
 		for j, line := range frame {
 			out[i][j] = strings.TrimRight(styleSGR.ReplaceAllString(line, ""), " ")
 		}
+	}
+	return out
+}
+
+// normalizeTreeSearchLineD248 removes what Pi main 2cfab7c26 adds to the search line (the cursor cell and the empty query's trailing space), which the pinned Pi 1.5.0 does not draw.
+func normalizeTreeSearchLineD248(frame []string) []string {
+	out := make([]string, len(frame))
+	for i, line := range frame {
+		if strings.Contains(line, "Type to search:") {
+			line = strings.TrimSuffix(line, widthx.CursorMarker+"\x1b[7m \x1b[27m")
+			line = strings.TrimSuffix(line, " ")
+		}
+		out[i] = line
 	}
 	return out
 }

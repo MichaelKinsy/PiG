@@ -206,6 +206,8 @@ type Session struct {
 
 	queueMu        sync.Mutex
 	queuedSteering []string
+	// queuedImageMessages holds the queued user messages that carry images, keyed by the first block of their content, until delivery normalizes them (agent-session.ts _queuedMessagesWithImages).
+	queuedImageMessages sync.Map
 	queuedFollowUp []string
 
 	// completer is the SimpleCompleter used by Compact and NavigateTree.
@@ -1859,11 +1861,7 @@ func (s *Session) QueueSteer(text string, images []ai.ImageContent) {
 	s.queuedSteering = append(s.queuedSteering, text)
 	s.queueMu.Unlock()
 	s.emitQueueUpdate()
-	s.agent.Steer(agent.AgentMessage{User: &agent.UserMessage{
-		Role:      agent.RoleUser,
-		Content:   BuildUserContent(text, images),
-		Timestamp: time.Now().UnixMilli(),
-	}})
+	s.agent.Steer(s.queuedUserMessage(text, images))
 }
 
 // QueueFollowUp admits already-processed input after the active turn. Modes that own input dispatch use this boundary to avoid running handlers twice.
@@ -1872,11 +1870,49 @@ func (s *Session) QueueFollowUp(text string, images []ai.ImageContent) {
 	s.queuedFollowUp = append(s.queuedFollowUp, text)
 	s.queueMu.Unlock()
 	s.emitQueueUpdate()
-	s.agent.FollowUp(agent.AgentMessage{User: &agent.UserMessage{
+	s.agent.FollowUp(s.queuedUserMessage(text, images))
+}
+
+// queuedUserMessage is the user message QueueSteer and QueueFollowUp admit. A message with images is marked, and its images are
+// normalized when it is delivered ([Session.normalizeDeliveredImages]).
+//
+// pig divergence (D249): Pi 1.5.0 queues the images unprocessed, so they reach the model and the session file at full size; Pi main
+// 4cf69332c (#11782) resizes them at delivery like an idle prompt's.
+func (s *Session) queuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
+	message := &agent.UserMessage{
 		Role:      agent.RoleUser,
 		Content:   BuildUserContent(text, images),
 		Timestamp: time.Now().UnixMilli(),
-	}})
+	}
+	if len(images) > 0 {
+		s.queuedImageMessages.Store(&message.Content.(ai.UserContentBlocks)[0], message)
+	}
+	return agent.AgentMessage{User: message}
+}
+
+// normalizeDeliveredImages replaces the images of a delivered queued message with normalized ones in place, appending the resize hints
+// to its text (agent-session.ts _normalizeQueuedMessageImages). The Agent's message_start carries a copy of the message that shares its
+// content array, so the transcript's message and the event both change, before listeners and persistence see either. It runs after the
+// queue entry was matched by its original text. It does nothing for a message that was not queued with images.
+func (s *Session) normalizeDeliveredImages(event agent.MessageStartEvent) {
+	user := event.Message.User
+	if user == nil {
+		return
+	}
+	blocks, isBlocks := user.Content.(ai.UserContentBlocks)
+	if !isBlocks || len(blocks) == 0 {
+		return
+	}
+	stored, ok := s.queuedImageMessages.LoadAndDelete(&blocks[0])
+	if !ok {
+		return
+	}
+	if _, isText := blocks[0].(ai.TextContent); !isText {
+		return
+	}
+	content := ai.UserContentBlocks(icodingagent.NormalizePromptContent(blocks, s.SettingsManager().GetImageAutoResize(), s.limitsModel(), s.processImage))
+	user.Content = content
+	stored.(*agent.UserMessage).Content = content
 }
 
 // GetSteeringMessages returns queued steering text in admission order.
@@ -1897,6 +1933,7 @@ func (s *Session) GetFollowUpMessages() []string {
 // pig divergence (D135): upstream clearQueue also destroys custom messages queued by sendMessage(deliverAs) without returning them (Pi #9886).
 func (s *Session) ClearQueue() (steering, followUp []string) {
 	s.agent.ClearQueuedUserMessages()
+	s.queuedImageMessages.Clear()
 	s.queueMu.Lock()
 	steering = append([]string{}, s.queuedSteering...)
 	followUp = append([]string{}, s.queuedFollowUp...)
@@ -1942,10 +1979,8 @@ func (s *Session) consumeQueuedMessage(message agent.AgentMessage) (agent.QueueU
 	if message.User == nil {
 		return agent.QueueUpdateEvent{}, false
 	}
+	// pig divergence (D250): an image-only message has empty text and still leaves the queue display (Pi main a63c4ec5c, #8612).
 	queuedText := extractUserMessageText(message.User.Content)
-	if queuedText == "" {
-		return agent.QueueUpdateEvent{}, false
-	}
 	s.queueMu.Lock()
 	defer s.queueMu.Unlock()
 	removed := removeQueuedText(&s.queuedSteering, queuedText)
