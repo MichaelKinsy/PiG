@@ -76,7 +76,7 @@ func TestKittyEncodedKeysFollowAppBindings(t *testing.T) {
 
 // Each platform column binds its own keys, and only those keys, in every
 // encoding: the Windows and WSL columns move follow-up to ctrl+q, dequeue to
-// alt+q, cycle-backward to alt+p, and paste-image to alt+v, and native
+// alt+q, cycle-backward to alt+p, and paste-image to alt+v (ctrl+v also pastes, Pi 37b38e9f6), and native
 // Windows leaves suspend unbound (core/keybindings.ts KEYBINDINGS).
 func TestKittyEncodedAppKeysFollowEachPlatformColumn(t *testing.T) {
 	for _, platform := range tui.KeybindingPlatforms {
@@ -105,7 +105,7 @@ func TestKittyEncodedAppKeysFollowEachPlatformColumn(t *testing.T) {
 			{"kitty alt+p", "\x1b[112;3u", pick(actionInsert, actionCycleModelBackward)},
 			{"kitty Cyrillic shift+ctrl+p", "\x1b[1079:1047:112;6u", pick(actionCycleModelBackward, actionInsert)},
 			{"kitty Cyrillic alt+p", "\x1b[1079::112;3u", pick(actionInsert, actionCycleModelBackward)},
-			{"kitty ctrl+v", "\x1b[118;5u", pick(actionPasteImage, actionInsert)},
+			{"kitty ctrl+v", "\x1b[118;5u", actionPasteImage},
 			{"kitty alt+v", "\x1b[118;3u", pick(actionInsert, actionPasteImage)},
 			{"kitty ctrl+z", "\x1b[122;5u", suspend},
 			{"kitty ctrl+c", "\x1b[99;5u", actionClearEditor},
