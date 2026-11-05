@@ -12,6 +12,7 @@ package typebox
 // `$ref` resolves a "#" fragment pointer, an `$id` or an `$anchor` of the root schema; $recursiveRef, $dynamicRef and refs into other documents resolve to nothing.
 
 import (
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -72,29 +73,70 @@ func (c *checkContext) merge(results []*checkContext) bool {
 	return true
 }
 
-// MaxDepth is how many schemas deep a walk may go: TypeBox's own walk of a schema that refers to itself (`{"$ref":"#"}`) ends in V8's "Maximum call stack size exceeded" at a few thousand
-// levels, and a walk here that recursed without a limit would end in Go's fatal stack overflow, which no recover catches and which would take the host down.
-const MaxDepth = 1000
+// A walk of a schema that refers to itself with no progress into the value (`{"$ref":"#"}`, `{"$id":"A","$ref":"A"}`) never ends. TypeBox's own walk ends in V8's "Maximum call stack size
+// exceeded" RangeError, and a walk here without a check would end in Go's fatal stack overflow, which no recover catches and which would take the host down. The walkers keep the
+// (schema node, value) pairs of the frames on the current path; entering a pair that is already on it is such a cycle, the walk is deterministic, and the panic is a *StackOverflowError.
+// A value is its own identity when it is a non-empty object or array; a scalar or an empty container has no children, so only one frame of the path can hold it.
+//
+// MaxFrames is the safety net for everything else: the frames a path may hold. V8's stack ends a TypeBox walk at about 3,000 frames (the deepest value typebox 1.3.27 checks, a
+// cyclic linked list 937 levels deep, takes about 3 frames a level here), so a path of 20,000 frames is nearly seven times what V8 allows and one only Go's growable stack could finish;
+// the net keeps a pathological schema from growing a goroutine's stack toward Go's 1 GB limit, at which Go ends the process.
+const MaxFrames = 20_000
 
-// StackOverflowError is the panic of a walk deeper than MaxDepth, what a JavaScript RangeError "Maximum call stack size exceeded" is.
+// StackOverflowError is the panic of a walk that cycled or went deeper than MaxFrames, what a JavaScript RangeError "Maximum call stack size exceeded" is.
 type StackOverflowError struct{}
 
 func (*StackOverflowError) Error() string { return "RangeError: Maximum call stack size exceeded" }
 
-// descend enters one schema and returns the function that leaves it.
-func (w errorWalker) descend() func() {
-	*w.depth++
-	if *w.depth > MaxDepth {
+// frameKey identifies a frame of the path: the schema node and the value it checks.
+type frameKey struct{ schema, value uintptr }
+
+// walkPath is the frames of the current path of a walk.
+type walkPath struct {
+	frames map[frameKey]struct{}
+	depth  int
+}
+
+// identity is the address that identifies a schema node or a container value; zero for a value that has none.
+func identity(value any) uintptr {
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Pointer, reflect.Map:
+		return reflected.Pointer()
+	case reflect.Slice:
+		if reflected.Len() > 0 {
+			return reflected.Pointer()
+		}
+	}
+	return 0
+}
+
+// descend enters the frame that checks value against schema and returns the function that leaves it.
+func (w errorWalker) descend(schema, value any) func() {
+	path := w.path
+	path.depth++
+	if path.depth > MaxFrames {
 		panic(&StackOverflowError{})
 	}
-	return func() { *w.depth-- }
+	key := frameKey{identity(schema), identity(value)}
+	if key.schema == 0 {
+		return func() { path.depth-- }
+	}
+	if _, cycle := path.frames[key]; cycle {
+		panic(&StackOverflowError{})
+	}
+	path.frames[key] = struct{}{}
+	return func() {
+		delete(path.frames, key)
+		path.depth--
+	}
 }
 
 // RefineCheck is Value.Check(schema, value) with the refinements of the schema run through hook.
 func RefineCheck(schema, value any, hook RefineHook) bool {
 	var orders map[uintptr][]string
 	plain := orderedPlain(value, &orders)
-	walker := errorWalker{root: schema, orders: orders, refine: hook, depth: new(int)}
+	walker := errorWalker{root: schema, orders: orders, refine: hook, path: newWalkPath()}
 	return walker.check(newCheckContext(), schema, plain)
 }
 
@@ -102,7 +144,7 @@ func RefineCheck(schema, value any, hook RefineHook) bool {
 func RefineErrors(schema, value any, hook RefineHook) []ValueError {
 	var orders map[uintptr][]string
 	plain := orderedPlain(value, &orders)
-	walker := errorWalker{root: schema, orders: orders, refine: hook, depth: new(int)}
+	walker := errorWalker{root: schema, orders: orders, refine: hook, path: newWalkPath()}
 	context := &errorContext{}
 	walker.schema(context, nil, "", schema, plain)
 	return context.errors
@@ -149,7 +191,7 @@ func (w errorWalker) runRefine(id int, value any) bool {
 }
 
 func (w errorWalker) check(context *checkContext, schema, value any) bool {
-	defer w.descend()()
+	defer w.descend(schema, value)()
 	if boolean, ok := schema.(bool); ok {
 		return boolean
 	}
@@ -551,3 +593,5 @@ func (w errorWalker) checkUnevaluatedProperties(context *checkContext, n node, v
 	}
 	return true
 }
+
+func newWalkPath() *walkPath { return &walkPath{frames: map[frameKey]struct{}{}} }

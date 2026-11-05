@@ -138,7 +138,7 @@ func (c *errorContext) addAll(from *errorContext) {
 func Errors(schema, value any) []ValueError {
 	var orders map[uintptr][]string
 	plain := orderedPlain(value, &orders)
-	walker := errorWalker{root: schema, orders: orders, depth: new(int)}
+	walker := errorWalker{root: schema, orders: orders, path: newWalkPath()}
 	context := &errorContext{}
 	walker.schema(context, nil, "", schema, plain)
 	return context.errors
@@ -148,8 +148,8 @@ type errorWalker struct {
 	root any
 	// refine runs a node's refinements (RefineKey); nil walks a schema as TypeBox's Errors does for one without refinements.
 	refine RefineHook
-	// depth is how many schemas deep the walk is (a *int: the walker is passed by value); a walk deeper than MaxDepth panics with a *StackOverflowError.
-	depth *int
+	// path is the frames of the walk's current path; a cycle or a path longer than MaxFrames panics with a *StackOverflowError.
+	path *walkPath
 	// orders is the member order of each object of the value being walked, by the address of its map: a map has no
 	// order of its own, and TypeBox lists errors and params in the instance's insertion order.
 	orders map[uintptr][]string
@@ -336,7 +336,7 @@ func typeMatches(typeName string, value any) bool {
 
 // schema is engine ErrorSchema: every applicable keyword runs, in this order, and the schema fails if any did.
 func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, schema, value any) bool {
-	defer w.descend()()
+	defer w.descend(schema, value)()
 	if context.atCapacity() {
 		return false
 	}

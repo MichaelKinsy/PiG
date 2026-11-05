@@ -484,7 +484,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	case call.Method == CallHighlightCode:
 		result, err = h.handleHighlightCode(call)
 	case call.Method == CallTypeEngine:
-		result, err = h.handleTypeEngine(call)
+		result, err = h.handleTypeEngine(conn, call)
 	case call.Method == CallLoadTheme:
 		result, err = h.handleLoadTheme(call)
 	case call.Method == CallFileMutationEnter:

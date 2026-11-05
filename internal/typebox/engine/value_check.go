@@ -6,7 +6,10 @@ package engine
 // refinement. The walk runs on a goroutine of its own, parked at each refinement call until the extension answers it: the host replies with the call and a token, the extension runs
 // the refinement and sends only its answer with the token, and the walk goes on from where it stopped. The schema and the value are sent once, every refinement runs once, in the order
 // TypeBox calls them, and the cost is linear in the number of calls. An error a refinement throws never reaches the host: the extension cancels the walk and fails the call with it, as
-// a thrown JavaScript error does. A walk the extension abandons is cancelled after valueIdleLimit, and at most maxPendingValueWalks are parked at once.
+// a thrown JavaScript error does.
+//
+// A parked walk belongs to a [Session], the extension connection that started it (a fused extension: the program): the host closes the session when the connection closes (a reload, a
+// crash, the end of the session), which cancels every walk it still holds. A walk's lifetime is the connection's; no timer or count limits it.
 //
 //	start    {"member":"Value.Check"|"Value.Errors","args":[<schema wire>,<value wire>]}
 //	answer   {"member":"Value.Answer","args":["<token>",<true|false for a check, a string for an error message>]}
@@ -23,7 +26,6 @@ import (
 	"math/big"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/typebox"
@@ -37,11 +39,48 @@ const (
 	memberValueCancel = "Value.Cancel"
 )
 
-// maxPendingValueWalks bounds the walks parked at a refinement call at once; one more is refused.
-const maxPendingValueWalks = 256
+// Session holds the walks one extension connection has parked at a refinement call. [Session.Close] cancels them all, so none outlives the connection that owns it.
+type Session struct {
+	mu     sync.Mutex
+	closed bool
+	walks  map[string]*valueWalk
+}
 
-// valueIdleLimit is how long a walk waits for the answer of a refinement call before it is cancelled: the time the refinement itself may take.
-var valueIdleLimit = 10 * time.Minute
+// NewSession is a session with no walks.
+func NewSession() *Session { return &Session{walks: map[string]*valueWalk{}} }
+
+// Close cancels every walk of the session and refuses a new one. It may be called more than once.
+func (s *Session) Close() {
+	s.mu.Lock()
+	s.closed = true
+	walks := s.walks
+	s.walks = map[string]*valueWalk{}
+	s.mu.Unlock()
+	for _, walk := range walks {
+		walk.stop()
+	}
+}
+
+// Parked is the number of walks the session holds.
+func (s *Session) Parked() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.walks)
+}
+
+func (s *Session) lookup(token string) *valueWalk {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.walks[token]
+}
+
+// forget removes the walk from the session and stops it.
+func (s *Session) forget(walk *valueWalk) {
+	s.mu.Lock()
+	delete(s.walks, walk.token)
+	s.mu.Unlock()
+	walk.stop()
+}
 
 // walkCancelled is the panic that unwinds a cancelled walk.
 type walkCancelled struct{}
@@ -65,28 +104,13 @@ type valueWalk struct {
 	answers chan any
 	cancel  chan struct{}
 	once    sync.Once
-	timer   *time.Timer
+	// mu guards message: the host call that receives the call reply and the one that answers it run on different goroutines.
+	mu sync.Mutex
 	// message is whether the call the walk waits for asks for an error message (the answer must then be a string).
 	message bool
 }
 
-var walks struct {
-	sync.Mutex
-	byToken map[string]*valueWalk
-}
-
 func (w *valueWalk) stop() { w.once.Do(func() { close(w.cancel) }) }
-
-// forget removes the walk from the registry and stops it.
-func (w *valueWalk) forget() {
-	walks.Lock()
-	delete(walks.byToken, w.token)
-	walks.Unlock()
-	if w.timer != nil {
-		w.timer.Stop()
-	}
-	w.stop()
-}
 
 func (w *valueWalk) hook(id int, message bool, value any) any {
 	select {
@@ -170,25 +194,28 @@ func valueData(value any) any {
 	return value
 }
 
-// serveValue answers one Value.* request (see the file comment).
-func serveValue(member string, args []any, fail func(name, message string) []byte) []byte {
+// Serve is [Session.Serve] on the process's default session, which no connection owns: the host gives each connection its own session, and the fused Go SDK its program's.
+func Serve(request []byte) []byte { return defaultSession.Serve(request) }
+
+var defaultSession = NewSession()
+
+// serveValue answers one Value.* request of the session (see the file comment).
+func (s *Session) serveValue(member string, args []any, fail func(name, message string) []byte) []byte {
 	switch member {
 	case memberValueAnswer:
 		if len(args) != 2 {
 			return fail("TypeError", member+" takes a token and an answer")
 		}
 		token, _ := args[0].(string)
-		walks.Lock()
-		walk := walks.byToken[token]
-		walks.Unlock()
+		walk := s.lookup(token)
 		if walk == nil {
-			return fail("Error", "no Value walk waits for this answer (it was answered, cancelled or timed out)")
+			return fail("Error", "no Value walk waits for this answer (it was answered, cancelled or its connection closed)")
 		}
-		if walk.timer != nil {
-			walk.timer.Stop()
-		}
-		if _, isString := args[1].(string); isString != walk.message {
-			walk.forget()
+		walk.mu.Lock()
+		message := walk.message
+		walk.mu.Unlock()
+		if _, isString := args[1].(string); isString != message {
+			s.forget(walk)
 			return fail("TypeError", "the answer of a refinement call is a boolean for a check and a string for an error message")
 		}
 		select {
@@ -196,14 +223,14 @@ func serveValue(member string, args []any, fail func(name, message string) []byt
 		case <-walk.cancel:
 			return fail("Error", "the Value walk was cancelled")
 		}
-		return walk.await(fail)
+		return s.await(walk, fail)
 	case memberValueCancel:
+		if len(args) != 1 {
+			return fail("TypeError", member+" takes a token")
+		}
 		token, _ := args[0].(string)
-		walks.Lock()
-		walk := walks.byToken[token]
-		walks.Unlock()
-		if walk != nil {
-			walk.forget()
+		if walk := s.lookup(token); walk != nil {
+			s.forget(walk)
 		}
 		return []byte(`{"value":null}`)
 	}
@@ -215,19 +242,16 @@ func serveValue(member string, args []any, fail func(name, message string) []byt
 		return fail("Error", "cannot make a token: "+err.Error())
 	}
 	walk := &valueWalk{token: hex.EncodeToString(raw[:]), events: make(chan walkEvent), answers: make(chan any), cancel: make(chan struct{})}
-	walks.Lock()
-	if len(walks.byToken) >= maxPendingValueWalks {
-		walks.Unlock()
-		return fail("RangeError", "too many Value walks wait for the answer of a refinement")
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return fail("Error", "the extension connection is closed")
 	}
-	if walks.byToken == nil {
-		walks.byToken = map[string]*valueWalk{}
-	}
-	walks.byToken[walk.token] = walk
-	walks.Unlock()
+	s.walks[walk.token] = walk
+	s.mu.Unlock()
 	schema, value := schemaData(args[0]), valueData(args[1])
 	go walk.run(member, schema, value)
-	return walk.await(fail)
+	return s.await(walk, fail)
 }
 
 // run is the walk: it reports its calls through hook and its end as the last event.
@@ -273,19 +297,26 @@ func (w *valueWalk) finish(reply []byte) {
 	}
 }
 
-// await waits for the walk's next event and turns it into the reply: the end of the walk, or a refinement call with the token.
-func (w *valueWalk) await(fail func(name, message string) []byte) []byte {
-	event := <-w.events
+// await waits for the walk's next event and turns it into the reply: the end of the walk, or a refinement call with the token. A cancel that wins the race with the walk's next event
+// ends the wait, so no host call hangs on a walk that is gone.
+func (s *Session) await(w *valueWalk, fail func(name, message string) []byte) []byte {
+	var event walkEvent
+	select {
+	case event = <-w.events:
+	case <-w.cancel:
+		return fail("Error", "the Value walk was cancelled")
+	}
 	if event.call == nil {
-		w.forget()
+		s.forget(w)
 		return event.result
 	}
 	text, err := chordjson.Marshal(event.call.value)
 	if err != nil {
-		w.forget()
+		s.forget(w)
 		return fail("TypeError", "the value cannot be written as JSON: "+err.Error())
 	}
+	w.mu.Lock()
 	w.message = event.call.message
-	w.timer = time.AfterFunc(valueIdleLimit, w.forget)
+	w.mu.Unlock()
 	return fmt.Appendf(nil, `{"call":{"token":%q,"id":%d,"message":%t,"value":%s}}`, w.token, event.call.id, event.call.message, text)
 }

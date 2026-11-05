@@ -350,10 +350,22 @@ type ParseDateResult struct {
 // state, so it may arrive before the register frame.
 const CallHighlightCode = "highlight.code"
 
-// CallTypeEngine (ext→host) is one member of TypeBox's `Type` namespace that computes a schema (Pick, Omit, Partial, KeyOf, Mapped, Conditional, Extends, Script, ...), run by the
-// host's one port of TypeBox's type engine (internal/typebox/engine) so every SDK returns what Pi's `Type` returns. The args are a TypeEngineArgs: the member and its arguments in
-// the engine's wire form (JSON, with an envelope for the hidden members a schema carries); the result is `{"value": <wire>}`, or `{"error": {"name", "message"}}` for what TypeBox
-// throws. It reads no session or extension state, so it may arrive before the register frame (Type.X runs while the factory is loading).
+// CallTypeEngine (ext→host) is one request to the host's port of TypeBox (internal/typebox/engine), so that every SDK answers what Pi's `Type` and `Value` answer. The args are a
+// TypeEngineArgs: the member and its arguments in the engine's wire form (JSON, with an envelope for the hidden members a schema carries). The result is `{"value": <wire>}`, or
+// `{"error": {"name", "message"}}` for what TypeBox throws. The members are:
+//
+//   - the members of `Type` that compute a schema (Pick, Omit, Partial, KeyOf, Mapped, Conditional, Extends, Script, ...): stateless, so they may arrive before the register frame
+//     (Type.X runs while the factory is loading);
+//   - `Value.Check` and `Value.Errors`, args `[schema, value]`: TypeBox's Value.Check and Value.Errors, running the `Type.Refine` refinements the schema carries. A refinement is a
+//     function of the extension, so the host's walk parks at each call of one and replies `{"call": {"token", "id", "message", "value"}}` instead of a result: `id` is the index of the
+//     refinement in the schema's wire form (`{"\u0000":"f","i":N}`), `message` asks for its error text rather than its check, and `value` is the JSON it runs on. The extension runs
+//     it and continues the walk with `Value.Answer`, args `[token, answer]` (a boolean for a check, a string for an error text), which replies with the next call or the result.
+//     `Value.Cancel`, args `[token]`, drops a parked walk (the extension sends it when a refinement fails; the reply is `{"value": null}`). The schema and the value are sent once and the
+//     cost is linear in the number of refinement calls. A walk that cycles (`{"$ref":"#"}`) or is nested more than the host's safety bound ends with the error RangeError "Maximum call
+//     stack size exceeded", as TypeBox's does. See internal/typebox/engine/value_check.go.
+//
+// The Value members keep state: the parked walks belong to the connection that started them. They are cancelled when the connection closes (a reload, a crash, the end of the
+// session) and when the host shuts down, so a walk never outlives its extension and one extension's walks are invisible to another's (a token names a walk of its own connection only).
 const CallTypeEngine = "type.engine"
 
 // TypeEngineArgs is the argument of CallTypeEngine. Args is the JSON list of the wire values of the member's arguments.

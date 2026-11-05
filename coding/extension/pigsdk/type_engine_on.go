@@ -9,4 +9,6 @@ import (
 
 // pig additive (D92): the Go, Rust and Python SDKs run TypeBox's type engine in the host (the type.engine call); the Node SDK runs TypeBox itself. A build that embeds
 // any of the three SDKs registers the host's engine, and a program that links the extension host without this package, or with all three SDKs stripped, registers none.
-func init() { subprocess.SetTypeEngine(engine.Serve) }
+func init() {
+	subprocess.SetTypeEngine(func() subprocess.TypeEngineSession { return engine.NewSession() })
+}
