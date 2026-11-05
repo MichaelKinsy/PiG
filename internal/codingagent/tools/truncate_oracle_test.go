@@ -114,7 +114,7 @@ func TestTruncateMatchesPi(t *testing.T) {
 			got, want = r, new(TruncationResult)
 		case "line":
 			r := TruncateLine(c.Content, c.N)
-			got, want = lineOutcome{r.Text, r.WasTruncated}, new(lineOutcome)
+			got, want = lineOutcome(r), new(lineOutcome)
 		case "middle":
 			r := TruncateMiddle(c.Content, c.N)
 			got, want = struct {

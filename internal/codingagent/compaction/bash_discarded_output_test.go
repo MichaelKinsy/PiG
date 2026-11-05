@@ -24,7 +24,7 @@ func TestBashExecutionToTextNamesTheLogOfDiscardedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(result.FullOutputPath)
+	defer func() { _ = os.Remove(result.FullOutputPath) }()
 	text := bashExecutionToText(map[string]any{"command": "cat build.log", "output": result.Output, "exitCode": float64(0), "truncated": result.Truncated, "fullOutputPath": result.FullOutputPath})
 	if want := "[Output truncated. Full output: " + result.FullOutputPath + "]"; result.FullOutputPath == "" || !strings.Contains(text, want) {
 		t.Fatalf("model-facing text lacks %q: %.200q", want, text[max(0, len(text)-200):])

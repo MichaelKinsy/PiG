@@ -36,7 +36,7 @@ func TestExecuteBashWithOperationsReportsDiscardedChunks10164(t *testing.T) {
 			if result.FullOutputPath == "" {
 				t.Fatal("no full output path")
 			}
-			defer os.Remove(result.FullOutputPath)
+			defer func() { _ = os.Remove(result.FullOutputPath) }()
 			full, err := os.ReadFile(result.FullOutputPath)
 			if err != nil || string(full) != first+last {
 				t.Fatalf("full output file wrong: %v (len %d)", err, len(full))
