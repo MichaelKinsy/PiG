@@ -698,13 +698,14 @@ end = "\t/**\n\t * Set a custom header"
 sha256 = "206d78c478bb120c2f19f371172e185e6cf4d64daacac101f58e6416fef4d8fc"
 keybindings = []
 
+# Pending owner decision (handoffs/0.7.1/owner-decisions-s22.md, decision 2): a message_end replacement of a custom message without content puts content last in Pi and in canonical position in PiG.
 [[contract]]
 id = "coding-agent/extensions/current-session-lifecycle-context"
 upstream_id = "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent"
 family = "extensions-runtime"
 kind = "session-replacement-lifecycle-order"
 claim = "every agent event reaches the current extension runner as Pi's typed event in Pi's member order: agent_start (resetting the turn index), agent_end with its messages (no willRetry), turn_start under the session's turn index with the dispatch time, turn_end dispatching the boundary once per assistant message with the session's turn index unless the finish-turn hook already did (consumed once) and advancing the index for every turn_end, message_start, message_update with the provider event, message_end whose same-role replacement is normalized (missing or null content becomes an empty list for the user, assistant, toolResult and custom roles, never for system) and replaces the event's message in place, tool_execution_start/update/end (durationMs only when the event has one, including 0); a resumed or replacement session exposes its resolved ID and absolute file to that runner before the handlers run. Compared with Pi's own _emitExtensionEvent over 19 directed event sequences in the JSON a handler stringifies"
-status = "ported"
+status = "pending"
 pig_targets = [
   "internal/codingagent/event_bridge.go#DispatchAgentLoopEvent",
   "coding/session_extension_hooks.go#extensionEventHook",
@@ -5070,13 +5071,14 @@ end = "\trenderResult(result, options, theme, context) {"
 sha256 = "cecf94023ad6a5976430a281be7cf4fa8df636535012885fde715be76460b8b1"
 keybindings = []
 
+# Pending owner decision (handoffs/0.7.1/owner-decisions-s22.md, decision 1): an image block with mimeType "" prints [Image: []] in Pi and [Image: [image/unknown]] in PiG.
 [[contract]]
 id = "coding-agent/codemode-renderer/result"
 upstream_id = "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderResult"
 family = "tools"
 kind = "render-layout"
 claim = "the codemode result card shows the nested call rows (status icon, name, args, duration, cost, error), the earlier-calls hint, the model-call cost total and the script output in the success or error colour, collapsed to a visual-line preview with the full-output path or expanded; cost 0.01 prints with two decimals and smaller costs with two significant digits, a zero cost is neither shown nor counted in the total, call args over 80 UTF-16 units are cut to 77 units and \"...\" when collapsed, a partial result shows no output, and image content becomes fallback lines unless the terminal shows images and they are enabled, byte for byte at widths 80 and 28"
-status = "ported"
+status = "pending"
 pig_targets = [
   "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
 ]

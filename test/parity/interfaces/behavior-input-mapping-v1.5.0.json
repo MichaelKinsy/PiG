@@ -4,7 +4,7 @@
     {
       "id": "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent",
       "ownerFamily": "extensions-runtime",
-      "disposition": "ported",
+      "disposition": "pending",
       "pigTargets": [
         "coding/session.go#currentRunner",
         "coding/session_boundaries.go#handleAgentEvent",
@@ -25,7 +25,7 @@
         "coding-agent/extensions/current-session-lifecycle-context"
       ],
       "divergence": "",
-      "rationale": ""
+      "rationale": "Pending owner decision (handoffs/0.7.1/owner-decisions-s22.md, decision 2): a message_end replacement of a custom message without `content` has `content` in canonical position in PiG and appended last in Pi."
     },
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
@@ -2181,7 +2181,7 @@
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderResult",
       "ownerFamily": "extensions-runtime",
-      "disposition": "ported",
+      "disposition": "pending",
       "pigTargets": [
         "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
       ],
@@ -2194,7 +2194,7 @@
         "coding-agent/codemode-renderer/result"
       ],
       "divergence": "",
-      "rationale": ""
+      "rationale": "Pending owner decision (handoffs/0.7.1/owner-decisions-s22.md, decision 1): an image block whose mimeType is the empty string prints `[Image: [image/unknown]]` in PiG and `[Image: []]` in Pi, because ai.ImageContent cannot tell an empty mimeType from an absent one."
     },
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/tool.ts#<module>.renderToolSection",
