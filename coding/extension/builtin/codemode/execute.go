@@ -741,6 +741,7 @@ func Execute(ctx context.Context, toolCallID string, params json.RawMessage, onU
 		TimeoutMs:        math.Max(1, math.Round(deadline-waitedMs)),
 		MemoryLimitBytes: memoryLimitBytes,
 		CacheDir:         options.CacheDir,
+		Interpreter:      options.Interpreter, // pig additive (D263)
 		AcquireWorker:    reservation.acquireWorker,
 	})
 	if err != nil {

@@ -36,8 +36,9 @@ type engine struct {
 }
 
 // newEngine compiles wasm. cacheDir, when set, holds wazero's on-disk compilation cache; a cache that cannot be
-// opened is ignored and the module compiles in memory.
-func newEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit uint32) (*engine, error) {
+// opened is ignored and the module compiles in memory. interpreter runs the module on wazero's interpreter instead of
+// its compiler, and then cacheDir is not opened: the interpreter keeps no compiled code to cache.
+func newEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit uint32, interpreter bool) (*engine, error) {
 	// A running instance is stopped through its halt global (vm.halt). WithCloseOnContextDone would also stop it, but
 	// wazero compiles that as a call into Go on every loop iteration, so it is used only for a custom module (Wasm)
 	// that instrumentHalt cannot rewrite, which wazero runs all the same.
@@ -46,7 +47,14 @@ func newEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit ui
 	if haltable {
 		wasm = instrumented
 	}
-	config := wazero.NewRuntimeConfigCompiler().WithCloseOnContextDone(!haltable)
+	// pig additive (D263): the compiler is the default; a host that cannot run generated machine code (a macOS app
+	// signed with the Hardened Runtime and without com.apple.security.cs.allow-unsigned-executable-memory) selects the
+	// interpreter, which needs no executable memory and is far slower.
+	runtimeConfig := wazero.NewRuntimeConfigCompiler()
+	if interpreter {
+		runtimeConfig = wazero.NewRuntimeConfigInterpreter()
+	}
+	config := runtimeConfig.WithCloseOnContextDone(!haltable)
 	if memoryLimit != 0 {
 		// The heap limit bounds the instance's linear memory (plus the engine's own data). The memory is not reserved
 		// at that size: wazero's slice grows by doubling on demand, so an idle session costs its live size, not the
@@ -54,7 +62,7 @@ func newEngine(ctx context.Context, wasm []byte, cacheDir string, memoryLimit ui
 		pages := (uint64(memoryLimit) + linearMemoryHeadroom + wasmPageSize - 1) / wasmPageSize
 		config = config.WithMemoryLimitPages(uint32(min(pages, 65536))).WithMemoryCapacityFromMax(false)
 	}
-	if cacheDir != "" {
+	if cacheDir != "" && !interpreter {
 		if cache, err := wazero.NewCompilationCacheWithDir(cacheDir); err == nil {
 			config = config.WithCompilationCache(cache)
 		}

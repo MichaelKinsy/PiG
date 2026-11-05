@@ -30,6 +30,12 @@ type Options struct {
 	InlineBudget *int
 	// CacheDir holds wazero's on-disk compilation cache for the sandbox module; empty compiles in memory.
 	CacheDir string
+	// pig additive (D263).
+	// Interpreter runs the sandbox on wazero's interpreter instead of its compiler. Set it only in a
+	// host that cannot run generated machine code, such as a macOS app signed with the Hardened Runtime and without the
+	// com.apple.security.cs.allow-unsigned-executable-memory entitlement; scripts then run 20 to 100 times slower. See
+	// [github.com/MichaelKinsy/PiG/codemode.SandboxOptions].
+	Interpreter bool
 	// Models declares and serves the `models` namespace of the tool [Definition] (createCodemodeToolDefinition's
 	// `models`, false by default). The [Extension] sets it unless DisableModels is set.
 	Models bool

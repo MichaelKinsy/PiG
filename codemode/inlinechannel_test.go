@@ -15,7 +15,7 @@ import (
 func launchInlineVM(t *testing.T, code string, budget int, events vmEvents) vmChannel {
 	t.Helper()
 	data := VmStartData{Code: code, Tools: []VmStartTool{{Name: "t", JSName: "t"}}, Globals: []VmStartGlobal{}, Store: map[string]string{}}
-	channel, err := inlineLauncher(wasmEngineLoader(nil, ""), PreludeSource, budget)(t.Context(), data, events)
+	channel, err := inlineLauncher(wasmEngineLoader(nil, "", false), PreludeSource, budget)(t.Context(), data, events)
 	if err != nil {
 		t.Fatal(err)
 	}

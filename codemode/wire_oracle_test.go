@@ -317,7 +317,7 @@ func (c wireCase) serve(ctx context.Context, request RemoteRequest, exchange Rem
 		return
 	}
 	serveRemote(ctx, request, exchange, options, func(budget int) vmLauncher {
-		return inlineLauncher(wasmEngineLoader(options.Wasm, ""), c.prelude, budget)
+		return inlineLauncher(wasmEngineLoader(options.Wasm, "", false), c.prelude, budget)
 	})
 }
 

@@ -48,7 +48,7 @@ func TestHaltFallsBackToClosingAModuleItCannotInstrument(t *testing.T) {
 	if _, err := instrumentHalt(module); err == nil {
 		t.Fatal("instrumentHalt rewrote the SIMD module; the test needs one it cannot rewrite")
 	}
-	eng, err := newEngine(t.Context(), module, "", 0)
+	eng, err := newEngine(t.Context(), module, "", 0, false)
 	if err != nil {
 		t.Fatalf("newEngine: %v", err)
 	}
