@@ -3209,6 +3209,28 @@ Evidence: `TestExecuteBashWithOperationsReportsDiscardedChunks10164` (`internal/
 
 Parity allowance: none needed if `TestExecuteBashWithOperationsMatchesPi` (the Pi 1.5.0 oracle) still passes; see the run recorded in the 0.7.1 tools-lane report.
 
+## D245 The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and records the current version
+
+What: PiG ports Pi main 9a1953961 (`fix(coding-agent): ignore prerelease suffix of last seen changelog version`, #11753, fixing #11703), which is not in Pi 1.5.0. `GetNewEntries` reads only the leading `major.minor.patch` of the recorded version (an optional `v`, surrounding whitespace ignored), so `0.1.5-20261020.7` and `0.1.5+build.3` count as `0.1.5`. A recorded version with no `major.minor.patch` (`latest`, `0.1`, empty text) returns "unreadable": the What's New banner and the extension changelog show nothing and the current version is recorded in its place, as on a fresh install (no install-telemetry ping).
+
+Why: Pi 1.5.0 reads `lastVersion.split(".").map(Number)`, so `0.1.5-20261020.7` becomes `0.1.0`, the `[0.1.1]` to `[0.1.5]` notes count as new on every launch, and the same string is saved again. An unreadable value was read as `0.0.0` and showed the whole changelog.
+
+Pi bug: Pi 1.5.0 (`utils/changelog.ts` `getNewEntries`), fixed by Pi main 9a1953961 ([#11703](https://github.com/earendil-works/pi/issues/11703)).
+
+Scope: the startup What's New banner (`recordChangelogVersionAndMaybeReportInstall`) and the per-package extension changelog (`getExtensionChangelogUpdates`). PiG release versions carry `+<pi>` build metadata, so mostly dev builds meet this.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S3).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 9a1953961. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/changelog.go` (`GetNewEntries`), `install_telemetry.go` (`recordChangelogVersionAndMaybeReportInstall`), `interactive_changelog.go` (`getExtensionChangelogUpdates`).
+
+Evidence: `TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes`, `TestRecordChangelogVersionRecordsCurrentVersionForUnreadableLastSeen`, `TestExtensionChangelogUpdatesUpstream` (prerelease and unreadable subtests; Pi's tests). The pinned-Pi oracle tests (`TestChangelogMatchesPiOracle`, the random oracle) skip the recorded versions on which Pi 1.5.0 reads a different triple (`pinnedReadsLastSeenLikeD245`).
+
+Parity allowance: Pi 1.5.0's oracle differs on exactly the recorded versions the oracle tests skip.
+
 ## D246 OpenAI Responses sends session-id, not session_id
 
 What: PiG's OpenAI Responses request ports Pi main c5d397835 (`fix(ai): send session-id instead of session_id on OpenAI Responses`, #11793, fixing #11639), which is not in Pi 1.5.0. With the default `openai` session-affinity format the Responses path sends the header `session-id` (Pi 1.5.0: `session_id`). `x-client-request-id`, `prompt_cache_key`, the `openai-nosession` and `openrouter` formats, and the Codex path (already `session-id`) are unchanged. The Completions path keeps `session_id` (and `x-session-affinity`), as in Pi.
@@ -3230,6 +3252,118 @@ Call-site markers: `ai/openai.go` (`applyOpenAISessionAffinityHeaders`), `test/p
 Evidence: `TestOpenAIResponsesCompatHeadersUpstream`, `TestOpenAIResponsesCacheAffinityE2EUpstream` and `TestXAIResponsesRequestUpstream` (Pi's three changed tests; red on 989927eff4: `header session-id="" want="session-123"`, `header session_id="session-123" want=""`); `TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat` keeps `session_id` on the Completions path.
 
 Parity allowance: three comparisons against the pinned Pi 1.5.0 follow the header rename on the Responses path and nothing else. `TestProviderIdentityHeadersMatchPi/openai-responses` and `TestProviderRequestHeadersMatchPi/openai-responses` rename Pi's `session_id` request header to `session-id` for `openai-responses` only (`d246PiResponsesSessionHeader`, `ai/response_oracle_support_test.go`). Parity scenario `providers-faux-streaming/15-openai-cache-affinity` has its pig probe read the Responses affinity header as `session-id` where Pi's probe reads `session_id`, and reports a Responses request that carries a `session_id` the model did not configure. A `session_id` header the model itself configures is no longer replaced by the affinity header on the Responses path (it is a different header now, as in Pi main), so it reaches the server next to `session-id`; the scenario's `override` case does not report it. The schema description stays at the pinned text (see Scope).
+
+## D247 Quit settles the interrupted run before session_shutdown and disposal
+
+What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.
+
+Why: Pi 1.5.0 disposes the runtime during a tool without waiting: persistence is disconnected before the turn settles, leaving a stored assistant tool call without its result.
+
+Pi bug: Pi 1.5.0 (`agent-session-runtime.ts` `dispose`), fixed by Pi main 7a53c310a ([#9124](https://github.com/earendil-works/pi/issues/9124)).
+
+Scope: `Runtime.Close` and the interactive quit only; session replacement already awaited the abort. Print mode's signal hook and RPC shutdown (`EmitQuitShutdownContext`) keep Pi 1.5.0's order (no abort wait) until the pin moves past 7a53c310a. Their pinned-Pi oracle tests (`TestPrintModeSignalDisposalRunsLikePisEventLoop`, `TestPrintModeJSONSignalStopsOutputAndPersistence`, `TestRPCInputEnd*`) assert Pi 1.5.0's order, in which the aborted run is not persisted; porting them needs those expectations rewritten and is left open.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S5).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 7a53c310a.
+
+Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`).
+
+Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes).
+
+Parity allowance: none needed; the pinned-Pi runtime oracle does not quit during a run.
+
+## D248 The /tree search line draws a cursor while the selector is focused
+
+What: PiG ports Pi main 2cfab7c26 (`fix(coding-agent): render session tree search cursor`, #9157), which is not in Pi 1.5.0. The "Type to search:" line of the session tree selector ends with `CURSOR_MARKER` and a reverse-video cell in its last column while the selector has focus and no label is being edited (the label input shows the cursor then, and the search line gets it back when the label edit ends). The line also carries a trailing space after "Type to search:" when the query is empty, and renders `[""]` at width 0.
+
+Why: Pi 1.5.0 shows no cursor, so the search box looks inert and IME candidate windows are misplaced; Resume Session's search already shows one.
+
+Pi bug: Pi 1.5.0 (`tree-selector.ts` `SearchLine`), fixed by Pi main 2cfab7c26.
+
+Scope: `TreeSelectorComponent` search line only.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S6).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 2cfab7c26.
+
+Call-site markers: `tui/tree_select.go` (`renderSearchLine`).
+
+Evidence: `TestTreeSelectSearchCursor` (Pi's three tests), `TestEditorSlotTreeSelectorTakesAndReturnsFocus` (runtime focus path of `/tree`). The oracle normalization of `TestTreeSelectorInputMatchesPi` (`normalizeTreeSearchLinesD248`) landed in commit 7056d2d9e1, with the queue changes of D249 and D250, not with the search-cursor commit 01a63b933a.
+
+Parity allowance: tmux parity scenario `tree/06-tree-header-spacing` compares the whole overlay with `escaped_output_equal`, so it carries a D248-cited `normalize_replace` that removes exactly the cursor cell (` ESC[7m ESC[0m` after `Type to search:ESC[0m`) from the escaped capture. The other tree scenarios crop plain text from "Type to search:" and are unaffected. `TestTreeSelectorInputMatchesPi` compares pig's search line minus the cursor cell and the empty query's trailing space with Pi's line truncated to width-1 (Pi main keeps the last column for the cursor); the one case left uncompared is an empty-query line exactly width-1 wide.
+
+## D249 Images in queued steering and follow-up messages are resized when the message is delivered
+
+What: PiG ports Pi main 4cf69332c (`fix(coding-agent): resize images in queued steering and follow-up messages`, #11782, fixing #11738), which is not in Pi 1.5.0. `Session.QueueSteer` and `QueueFollowUp` (and so `Steer`, `FollowUp`, `prompt` with a streaming behavior, and RPC `steer`/`follow_up`). The interactive mode queues on the Agent itself, so it builds its messages with `Session.QueuedUserMessage` (streaming Enter and Alt+Enter, an extension's `sendUserMessage`, the compaction-queued flush) mark a queued message that carries images. When the Agent delivers it (`message_start`), after its queue entry was matched by its original text, the images are normalized in place with the same code as an idle prompt (`NormalizePromptContent`, the model current at delivery) and the resize hints are appended to its text. This happens before extensions and listeners see the message, before it is saved and before it joins the request context. Enqueueing stays synchronous.
+
+Why: Pi 1.5.0 queues the images unprocessed, so a 1200x9000 PNG reaches the model and the session file at full size and is replayed on every later request.
+
+Pi bug: Pi 1.5.0 (`agent-session.ts` `_queueSteer`, `_queueFollowUp`), fixed by Pi main 4cf69332c ([#11738](https://github.com/earendil-works/pi/issues/11738)).
+
+Scope: queued user messages with images only. Idle prompts are unchanged.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S7).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 4cf69332c.
+
+Call-site markers: `coding/session.go` (`QueuedUserMessage`, `normalizeDeliveredImages`), `coding/session_boundaries.go` (`handleAgentEvent`), `internal/codingagent/interactive_transcript.go` (`queuedUserMessage`).
+
+Evidence: `TestInteractiveQueuedMessagesAreBuiltBySessionForImageNormalization` (the interactive mode's four queueing paths build through the Session), `TestSessionQueuedUserMessageBuiltForAgentQueueIsResizedAtDelivery`, `TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages` (Pi's test for steer and follow-up; the 1200x9000 image becomes 267x2000 with the hint, no request carries the original).
+
+Memory: the marks live in `Session.queuedImageMessages`, cleared by `Session.ClearQueue` and delivery; Pi's WeakSet also releases on garbage collection, so images dropped by an Agent-level queue clear stay referenced until the Session ends.
+
+Parity allowance: Pi 1.5.0 has no test of queued-image sizes; the agent-session oracle queues text only.
+
+## D250 A delivered image-only queued message leaves the pending queue
+
+What: PiG ports Pi main a63c4ec5c (`fix(coding-agent): clear delivered image-only queue entries`, #8612, fixing #8581), which is not in Pi 1.5.0. When a queued user message is delivered, its text is matched against the pending steering and follow-up lists even when the text is empty, so an image-only (or empty) message is removed and `PendingMessageCount` drops.
+
+Why: Pi 1.5.0 guarded the match with a truthy text, so an image-only message stayed in the pending display and count after delivery.
+
+Pi bug: Pi 1.5.0 (`agent-session.ts` `_handleAgentEvent`, user `message_start`), fixed by Pi main a63c4ec5c ([#8581](https://github.com/earendil-works/pi/issues/8581)).
+
+Scope: `Session.consumeQueuedMessage`. A non-queued user message with empty text can remove a queued empty entry, as in Pi main.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S8).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing a63c4ec5c.
+
+Call-site markers: `coding/session.go` (`consumeQueuedMessage`).
+
+Evidence: `TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery` (Pi's test), `TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery` (replaces the test that pinned 1.5.0's retention).
+
+Parity allowance: none needed; the pinned-Pi agent-session oracle makes no model call, so its queued messages are never delivered.
+
+## D251 A draft moved out of and back into the editor keeps its collapsed paste content
+
+What: PiG ports Pi main 51313540a (`fix(coding-agent): preserve pasted text during editor restoration`, #10146, fixing #9809), which is not in Pi 1.5.0. Where the interactive mode moves the editor draft elsewhere and back, it reads `GetExpandedText()` (collapsed `[paste #N ...]` markers expanded) instead of `Text()`: when an extension installs or removes a replacement editor (`setRemoteEditor`), when an editor-slot custom UI opens and its text is restored on close or failed open (`ctx.ui.custom`, both the Go-hosted and the remote-overlay path), and when queued messages are restored above the draft (`restoreQueuedMessagesToEditor`).
+
+Why: Pi 1.5.0 copies the marker text. The receiving editor has no stored paste for the marker, so the draft comes back as the literal `[paste #1 +12 lines]` and the pasted content is lost.
+
+Pi bug: Pi 1.5.0 (`interactive-mode.ts` `setCustomEditorComponent`, `showExtensionCustom`, `restoreQueuedMessagesToEditor`), fixed by Pi main 51313540a ([#9809](https://github.com/earendil-works/pi/issues/9809)).
+
+Scope: the four call sites above.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S9).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 51313540a.
+
+Call-site markers: `internal/codingagent/remote_editor.go` (`setRemoteEditor`), `ext_ui_custom.go` (`build`), `ext_ui_context.go` (remote custom overlay), `interactive_input.go` (`restoreQueuedMessagesToEditor`).
+
+Evidence: `TestRemoteOverlayEditorSlotKeepsCollapsedPasteContent` (the remote overlay path), `TestExtUIContextCustomKeepsCollapsedPasteContent`, `TestRestoreQueuedMessagesKeepsCollapsedPasteContent`, `TestSetRemoteEditorKeepsCollapsedPasteContent` (Pi's tests).
+
+Parity allowance: none needed; the tmux parity scenarios never paste more than ten lines before these transitions.
 
 ## D252 Truncating text never splits a surrogate pair
 
@@ -3342,6 +3476,94 @@ Call-site markers: `internal/codingagent/llama/fetch.go` (`unreachableError`), `
 Evidence: `TestClientRequestErrorsMirrorFetch` (`internal/codingagent/llama/client_test.go`, the connection-error block; red on 989927eff4: the error is `fetch failed`), `TestModelsProviderRefreshReportsNetworkErrorsAndAbortedCallers`, `TestLlamaCommandOffersRetryWhenTheServerIsUnreachable`.
 
 Parity allowance: Pi 1.5.0's tests expecting `fetch failed` and `Could not connect to the server.` for a refused connection follow Pi main here; the cause text is Go's.
+
+## D257 The extension selector draws a window of at most ten options with a position indicator
+
+What: PiG ports Pi main 3b57ed7e2 (`fix: limit selector window height`, #11072, fixing #6688), which is not in Pi 1.5.0. `ExtensionSelectorComponent` draws a window of up to 10 options centered on the cursor and clamped to the list, and under a windowed list one `(selection/total)` line in the muted color, indented two spaces. A list of ten or fewer options, and an empty list, render as before. Navigation, keys, callbacks and countdowns are unchanged. PiG's sprite-picker preview column (D2) uses the same window.
+
+Why: Pi 1.5.0 draws every option, so a long extension-provided list overflows the terminal and hides the selection.
+
+Pi bug: Pi 1.5.0 (`extension-selector.ts` `updateList`), fixed by Pi main 3b57ed7e2 ([#6688](https://github.com/earendil-works/pi/issues/6688)).
+
+Scope: PiG's sprite-picker preview column (D2) uses the window too and keeps the width of the longest row of the whole list, so its column does not move as the window scrolls (no test pins that width beyond `TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost`). Every user of `tui.ExtensionSelectorComponent` (extension `ui.select`, `/bug`, the login pickers, the sprite picker).
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S16).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 3b57ed7e2.
+
+Call-site markers: `tui/extension_selector.go` (`visibleWindow`).
+
+Evidence: `TestExtensionSelectorWindowsLongOptionListsAroundTheSelection`, `TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator` (Pi's two tests), `TestExtensionSelectLongListShowsAWindowAroundTheCursor` (extension dialog path through the mode's key dispatch).
+
+Parity allowance: the pinned-Pi selector oracle (`TestExtensionSelectorMatchesPi`) uses option lists of at most six options, which render identically.
+
+## D258 Model cycling selects the only model in scope and cycles into the scope from outside it
+
+What: PiG ports Pi main 5732bac06 (`fix(coding-agent): cycle to the only model in scope when the active model is outside it`, #11832, fixing #11806), which is not in Pi 1.5.0. `Session.CycleModel` (scoped and unscoped, forward and backward) now finds the active model's index in the candidate list without a fallback. When the active model is not in the list, forward selects the first entry and backward the last; the result is "nothing to cycle to" only for an empty list or a single entry that is already the active model.
+
+Why: Pi 1.5.0 returns early for a list of at most one model and counts a missing active model as index 0. Ctrl+P with `--models A` and another model active said "Only one model in scope", and with `--models A,B` it went to B, skipping A. Likewise an active model that is no longer available with one other available model.
+
+Pi bug: Pi 1.5.0 (`agent-session.ts` `_cycleScopedModel`, `_cycleAvailableModel`), fixed by Pi main 5732bac06 ([#11806](https://github.com/earendil-works/pi/issues/11806)).
+
+Scope: `Session.CycleModel`, `BeginModelCycle`, `BeginModelCycleOnMain` (Ctrl+P, Shift+Ctrl+P, RPC `cycle_model`). The interactive "Only one model in scope/available" message still shows for a nil result.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S17).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 5732bac06.
+
+Call-site markers: `coding/session_model_cycle.go` (`nextCycleIndex`).
+
+Evidence: `TestSessionModelExtensionCyclesUpstream` ("cycles to the only scoped model and to the first scoped model from outside the scope", Pi's test), `TestSessionCycleModelSeesExtensionProviderRegistration` (cycle after the active model's provider is unregistered).
+
+Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared. Measured: 141 of 600 scenarios stop, and 3606 of 4520 ops (79.8%) are still compared with Pi. The test logs those numbers on every run.
+
+## D259 Alacritty is detected for OSC 8 hyperlinks without TERM_PROGRAM
+
+What: PiG ports Pi main 2af8a42f5 (`fix(tui): detect Alacritty for OSC 8 hyperlinks without TERM_PROGRAM`, #11777, fixing #11767), which is not in Pi 1.5.0. Capability detection also treats `TERM` beginning with `alacritty` (its terminfo entry) and a non-empty `ALACRITTY_WINDOW_ID` as Alacritty: truecolor, OSC 8 hyperlinks, no image protocol. The tmux and screen checks still run first.
+
+Why: Alacritty never sets `TERM_PROGRAM`, so Pi 1.5.0 turned hyperlinks off in a default Alacritty and rendered Markdown links as `label (url)`.
+
+Pi bug: Pi 1.5.0 (`terminal-image.ts` `detectCapabilitiesFromEnvironment`), fixed by Pi main 2af8a42f5 ([#11767](https://github.com/earendil-works/pi/issues/11767)).
+
+Scope: `tui.DetectCapabilities` only.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S18).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 2af8a42f5.
+
+Call-site markers: `tui/terminal_image.go` (`DetectCapabilities`).
+
+Evidence: `TestUpstreamTerminalImageCapabilities` cases "enables hyperlinks for Alacritty by TERM" and "by ALACRITTY_WINDOW_ID" (Pi's test) and the tmux case.
+
+Parity allowance: the pinned-Pi capability oracles never set `TERM=alacritty*` or `ALACRITTY_WINDOW_ID` (the latter is cleared in every case), so they still agree with Pi 1.5.0.
+
+## D260 .dart, .nix, .groovy and .gradle files are highlighted in read and write views
+
+What: PiG ports Pi main c13f6acfb (`Highlight .dart, .nix, and .groovy files in read/write views`, #11790, fixing #11643), which is not in Pi 1.5.0. `LanguageFromPath` maps `dart` to `dart`, `nix` to `nix`, `groovy` to `groovy` and `gradle` to `groovy`.
+
+Why: Pi 1.5.0's extension table lacks them, so the files render as plain uncolored text although the grammars are loaded.
+
+Pi bug: Pi 1.5.0 (`theme.ts` `getLanguageFromPath`), fixed by Pi main c13f6acfb ([#11643](https://github.com/earendil-works/pi/issues/11643)).
+
+Scope: the host's extension table only. HTML export keeps its own map, and the SDK-exported `getLanguageFromPath` (Go, Rust, Python, Lisp copies and the Node SDK, which runs Pi 1.5.0) keeps Pi 1.5.0's table, so extension tools still get no language for these four extensions. Pi's mapping of `gradle` to `groovy` is part of c13f6acfb.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S19).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing c13f6acfb.
+
+Call-site markers: `tui/highlight.go` (`extToLang`).
+
+Evidence: `TestLanguageFromPath` (Pi's five mappings), `TestHighlightCodeHighlightsDartNixAndGroovy`.
+
+Parity allowance: `TestLanguageFromPathMatchesPi` skips paths ending in these four extensions (`d260Extension`); every other path still matches Pi 1.5.0.
 
 ## D261 SSE lines end at CR, LF or CRLF
 
