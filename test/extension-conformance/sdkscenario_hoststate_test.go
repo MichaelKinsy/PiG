@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"os"
 	"path/filepath"
@@ -109,6 +110,9 @@ func (r *scenarioRig) installHostState() {
 	b.SetHostAction("abort", func() { r.calls.add("abort") })
 	// ctx.reload() reloads the host as the command-context action of a mode does (agent-session.ts reload).
 	b.SetHostAction("reload", func(ctx context.Context) error {
+		if r.reloadRejection != "" {
+			return errors.New(r.reloadRejection)
+		}
 		_, err := r.host.Reload(ctx)
 		applyQueuedRegistrations(r.host)
 		return err
