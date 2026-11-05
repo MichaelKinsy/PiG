@@ -1,0 +1,39 @@
+name: r7 renderstate proof
+# A proof run of the Go SDK tool renderer test on Windows, on these branches only. Not for merging.
+on:
+  push:
+    branches: [fix/r7-render-state-proof, fix/r7-render-state-red]
+permissions:
+  contents: read
+jobs:
+  windows:
+    name: Windows renderers GOGC=${{ matrix.gogc }} x${{ matrix.n }}
+    runs-on: windows-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        gogc: [100, 1]
+        n: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Go SDK renderer test, 100 times
+        shell: pwsh
+        env:
+          GOGC: ${{ matrix.gogc }}
+          PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:TEMP = $acceptanceRoot
+          $env:TMP = $acceptanceRoot
+          $env:TMPDIR = $acceptanceRoot
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          go test -timeout 35m -count=100 -run 'TestToolRenderersAcrossSDKs/go$' ./coding/extension/host/subprocess
+          if ($LASTEXITCODE -ne 0) { throw "renderer test failed" }
