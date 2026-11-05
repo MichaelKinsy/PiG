@@ -533,6 +533,9 @@ func TestAgentSessionMatchesPi(t *testing.T) {
 		_ = json.Unmarshal(gotJSON, &normalized)
 		if len(normalized.Outs) < len(expected[i].Outs) && len(normalized.Outs) < len(scenario.Ops) {
 			expected[i].Outs = expected[i].Outs[:len(normalized.Outs)] // replay stopped before a D258 cycle
+			if len(expected[i].Outs) == 0 {
+				expected[i].Outs = nil
+			}
 		}
 		if reflect.DeepEqual(normalized, expected[i]) {
 			continue
