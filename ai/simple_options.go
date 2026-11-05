@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"maps"
+	"math"
 	"strconv"
 )
 
@@ -176,20 +177,31 @@ func AdjustMaxTokensForThinking(baseMaxTokens *int, modelMaxTokens int, reasonin
 // Upstream simple-options.ts request budget constants.
 const (
 	contextSafetyTokens = 4096
-	minMaxTokens        = 1
+	// OpenRouter counts the input with its own tokenizer and rejects input + max_tokens above the window before routing.
+	// It counted prose up to 12% above the provider's count (#10497), so 15% of the estimated input is kept unused.
+	contextSafetyRatio = 0.15
+	// The ratio margin is kept only while it leaves at least this much output. Otherwise only the fixed margin is kept and
+	// output is capped at this size, so an OpenRouter overcount still fits for a while before compaction.
+	minOutputWithRatioMargin = 32768
+	minMaxTokens             = 1
 )
 
 // ClampMaxTokensToContext reduces a requested output budget to what fits in
 // the model's context window after the estimated request context and a safety
-// margin, never below one token. Mirrors upstream clampMaxTokensToContext,
+// margin that leaves room for the input being counted higher than estimated, never below one token. Mirrors upstream clampMaxTokensToContext,
 // which buildBaseOptions applies to every request.
 func ClampMaxTokensToContext(model *Model, context TranscriptContext, maxTokens int) int {
 	contextWindow := model.Capabilities.ContextWindow
 	if contextWindow <= 0 {
 		return max(minMaxTokens, maxTokens)
 	}
-	available := contextWindow - EstimateContextTokens(context.messages).Tokens - contextSafetyTokens
-	return min(maxTokens, max(minMaxTokens, available))
+	input := EstimateContextTokens(context.messages).Tokens
+	margin := max(contextSafetyTokens, int(math.Ceil(float64(input)*contextSafetyRatio)))
+	room := contextWindow - input - margin
+	if room < minOutputWithRatioMargin {
+		room = min(minOutputWithRatioMargin, contextWindow-input-contextSafetyTokens)
+	}
+	return min(maxTokens, max(minMaxTokens, room))
 }
 
 // ResolveSamplingParams merges the model's sampling defaults, the overrides for the effective thinking level, and the request's sampling keys, later keys winning. The level is first clamped to one the model supports. It returns nil when none of the three is set.
