@@ -414,20 +414,32 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			extensionHost.TerminateProcesses()
 		}
 	}
-	// exitRPC ends the process. Upstream flushes stdout before process.exit unless the signal is SIGTERM, and a repeated signal never waits for it (process.exit at once, rpc-mode.ts signalCount > 1); the queued tail is that pending output.
-	exitRPC := func(code int, waitStdout bool) {
-		stdoutClosed.Store(true)
-		if waitStdout {
-			rawStdout.Wait(context.Background())
-		}
-		terminateProcesses()
-		// PIG_PROFILE files are written here because os.Exit skips main's deferred stop; unset, this is a no-op.
-		stopProfiles()
-		// pig additive (D102): a claimed exit.log line is flushed first, and an emergency exit in flight ends the process with its 129.
-		codingagent.BeforeExit()
-		// Upstream process.exit does not wait for providers or suspended extension callbacks.
-		os.Exit(code)
-	}
+	// exitRPC ends the process once (rpcExit). Upstream flushes stdout before process.exit unless the signal is SIGTERM, and a repeated signal never waits for it (process.exit at once, rpc-mode.ts signalCount > 1); the queued tail is that pending output.
+	// pig additive (D102): a single signal during a shutdown that another trigger started does not own the exit.log line; the exit that ends the process does, and it says so.
+	var ignoredSignal atomic.Int32
+	exitRPC := newRPCExit(
+		func() { stdoutClosed.Store(true) },
+		func() { rawStdout.Wait(context.Background()) },
+		func() {
+			terminateProcesses()
+			// PIG_PROFILE files are written here because os.Exit skips main's deferred stop; unset, this is a no-op.
+			stopProfiles()
+		},
+		func(code int, forced bool) {
+			switch sig := syscall.Signal(ignoredSignal.Load()); {
+			case forced:
+				codingagent.RecordEnding(codingagent.AgentDir(), fmt.Sprintf("received %s again during shutdown (exit %d)", codingagent.SignalName(syscall.Signal(code-128)), code))
+			case sig != 0:
+				codingagent.RecordEnding(codingagent.AgentDir(), fmt.Sprintf("received %s during shutdown, which completed (exit %d)", codingagent.SignalName(sig), code))
+			}
+		},
+		func(code int) {
+			// pig additive (D102): a claimed exit.log line is flushed first, and an emergency exit in flight ends the process with its 129.
+			codingagent.BeforeExit()
+			// Upstream process.exit does not wait for providers or suspended extension callbacks.
+			os.Exit(code)
+		},
+	)
 	var shutdown *rpcShutdown
 	shutdownInvoked := make(chan struct{})
 	// A termination signal holds the run from the moment it arrives, before anything is killed: Pi's handler kills
@@ -503,9 +515,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}()
 			_ = sess().WaitForIdle(settleCtx)
 		},
-		func(code int) { exitRPC(code, code != 128+int(syscall.SIGTERM)) },
+		func(code int) { exitRPC.run(code, code != 128+int(syscall.SIGTERM), false) },
 	)
-	shutdown.abort = func(code int) { exitRPC(code, false) }
+	shutdown.abort = func(code int) { exitRPC.run(code, false, true) }
 	host.drain = shutdown.drained
 	// pig additive (D19): the host waits in-process for the commands Pi answers before it reads stdin's end, because their runtimes are other processes whose frames race the shutdown's own writes.
 	shutdown.settle = func() bool {
@@ -552,12 +564,34 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. Main's handler takes the first signal; the watcher takes the repeated ones.
 	repeated := watchRepeatedTermination(shutdown.repeatedSignal)
 	defer repeated.Stop()
+	// The first signal decides, when it is recorded, whether it starts the shutdown: claiming it there makes the record and the shutdown agree (D102).
+	var signalDecided, signalClaimed atomic.Bool
+	setTerminationRecord(func(sig os.Signal) bool {
+		signalDecided.Store(true)
+		if shutdown.claim() {
+			signalClaimed.Store(true)
+			return true
+		}
+		if number, ok := sig.(syscall.Signal); ok {
+			ignoredSignal.Store(int32(number))
+		}
+		return false
+	})
+	defer setTerminationRecord(nil)
 	setTerminationShutdownHook(func() {
-		if !shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) {
+		sig := syscall.Signal(receivedTerminationSignal.Load())
+		started := signalClaimed.Load()
+		if !signalDecided.Load() {
+			// No record decided it: start the shutdown now when none is running.
+			started = shutdown.claim()
+		}
+		if !started {
 			// A shutdown is already running and a single signal does not interrupt it. The prelude held the Session's agent events for this signal, and nothing else ends that hold: a run a session_shutdown handler starts would block on it while the dispose waits for the handler. Main cancels the root context, which owns the extension processes, once this hook returns, so it waits for the exit or for the mode's own end (a stdout write failure ends it during the dispose too).
 			release()
 			<-ctx.Done()
+			return
 		}
+		shutdown.runSignal(sig)
 	})
 	defer setTerminationShutdownHook(nil)
 

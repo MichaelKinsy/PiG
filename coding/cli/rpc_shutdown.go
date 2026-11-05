@@ -104,11 +104,17 @@ func (s *rpcShutdown) requested() {
 // signal handles the first termination signal, as the handler rpc-mode.ts registers does: shutdown(128+signum, signal). It reports whether it started the shutdown: when one was already running, the signal does not interrupt it and the running shutdown's exit ends the process (D234).
 func (s *rpcShutdown) signal(sig syscall.Signal) bool {
 	tools.KillTrackedDetachedChildren()
-	if !s.begin() {
+	if !s.claim() {
 		return false
 	}
-	s.flushAndExit(sig != syscall.SIGTERM, 128+int(sig))
+	s.runSignal(sig)
 	return true
+}
+
+// runSignal runs the shutdown a signal that claimed it started, and exits.
+func (s *rpcShutdown) runSignal(sig syscall.Signal) {
+	s.runDispose()
+	s.flushAndExit(sig != syscall.SIGTERM, 128+int(sig))
 }
 
 // repeatedSignal handles a second or later termination signal: it exits at once with 128+signum, without waiting for the dispose or for stdout. Pi calls process.exit directly here (rpc-mode.ts signalCount > 1), so an exit that is already flushing a stuck stdout does not hold it back: the exiting guard is set, not consulted, and the exit skips the stdout wait (D234).
@@ -131,17 +137,29 @@ func (s *rpcShutdown) finish() {
 // begin starts shutdown and disposes the runtime when no trigger has started
 // it, and reports whether it did.
 func (s *rpcShutdown) begin() bool {
+	if !s.claim() {
+		return false
+	}
+	s.runDispose()
+	return true
+}
+
+// claim marks the shutdown as started by the caller, which must then run it (runDispose). It reports false when another trigger started it.
+func (s *rpcShutdown) claim() bool {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.started {
-		s.mu.Unlock()
 		return false
 	}
 	s.started = true
 	close(s.startedCh)
-	s.mu.Unlock()
+	return true
+}
+
+// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed.
+func (s *rpcShutdown) runDispose() {
 	s.detach()
 	s.dispose()
-	return true
 }
 
 // terminationSignals are the signals rpc-mode.ts handles.
@@ -195,4 +213,43 @@ func (w *repeatedTermination) Stop() {
 		close(w.stop)
 		<-w.done
 	})
+}
+
+// pig divergence (D234): rpcExit ends the process once. Several exits can be in flight: a shutdown's own (after its dispose) and a repeated signal's. Each stops writing stdout first; the one that reaches the commit first owns the end and runs the cleanup, the exit.log line and the process exit, once. A later normal exit never returns, because the owner ends the process; a later repeated signal returns and leaves the end to the owner, which is past its stdout wait and about to exit (D234: Pi's process.exit runs once, synchronously).
+type rpcExit struct {
+	// closeStdout stops later records from being written.
+	closeStdout func()
+	// waitStdout waits for the stdout tail to be written.
+	waitStdout func()
+	// cleanup stops the extension processes and the profiles.
+	cleanup func()
+	// record writes the exit.log line of the exit that owns the end (D102).
+	record func(code int, forced bool)
+	// end flushes the exit.log line and ends the process; it does not return in the process.
+	end func(code int)
+
+	committed atomic.Bool
+	ended     chan struct{}
+}
+
+func newRPCExit(closeStdout, waitStdout, cleanup func(), record func(code int, forced bool), end func(code int)) *rpcExit {
+	return &rpcExit{closeStdout: closeStdout, waitStdout: waitStdout, cleanup: cleanup, record: record, end: end, ended: make(chan struct{})}
+}
+
+// run ends the process with code. flushStdout waits for the stdout tail first, and forced is the exit of a repeated signal, which never waits for stdout.
+func (e *rpcExit) run(code int, flushStdout, forced bool) {
+	e.closeStdout()
+	if flushStdout {
+		e.waitStdout()
+	}
+	if !e.committed.CompareAndSwap(false, true) {
+		if !forced {
+			<-e.ended
+		}
+		return
+	}
+	e.cleanup()
+	e.record(code, forced)
+	e.end(code)
+	close(e.ended)
 }
