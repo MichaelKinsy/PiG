@@ -144,6 +144,12 @@ func TestLanguageFromPath(t *testing.T) {
 		{"foo.tsx", "typescript"},
 		{"foo.md", "markdown"},
 		{"foo.unknownext", ""},
+		// Pi main c13f6acfb (syntax-highlight.test.ts "maps file extensions of eagerly loaded languages to their language"; D260)
+		{"lib/main.dart", "dart"},
+		{"flake.nix", "nix"},
+		{"script.groovy", "groovy"},
+		{"build.gradle", "groovy"},
+		{"src/Main.kt", "kotlin"},
 		{"Makefile", "makefile"},
 		{"Dockerfile", "dockerfile"},
 		{"FOO.GO", "go"},
@@ -232,5 +238,24 @@ func TestHighlightCodeThatFailsTakesTheCodeBlockColor(t *testing.T) {
 	activeTheme.Store(broken)
 	if got := HighlightCode(code, "javascript"); !slices.Equal(got, want) {
 		t.Errorf("HighlightCode under the active theme = %q, Pi gives %q", got, want)
+	}
+}
+
+// D260: a .dart, .nix or .groovy file renders highlighted, not as plain text, through the language the path maps to.
+func TestHighlightCodeHighlightsDartNixAndGroovy(t *testing.T) {
+	for path, code := range map[string]string{
+		"main.dart":    "class A { final int x = 1; }",
+		"flake.nix":    "{ pkgs }: let x = 1; in x",
+		"build.gradle": "def x = 1\nclass A { String s = 'a' }",
+	} {
+		lang := LanguageFromPath(path)
+		if lang == "" {
+			t.Fatalf("LanguageFromPath(%q) is empty", path)
+		}
+		plain := strings.Split(code, "\n")
+		got := HighlightCode(code, lang)
+		if slices.Equal(got, plain) || !strings.Contains(strings.Join(got, "\n"), "\x1b[") {
+			t.Errorf("%s (%s) renders without highlighting: %q", path, lang, got)
+		}
 	}
 }
