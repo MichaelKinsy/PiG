@@ -2018,6 +2018,31 @@
       ]
     },
     {
+      "id": "BF-108cb7d",
+      "title": "An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its…",
+      "symptom": "An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.",
+      "rootCause": "The host's read loop waits on the socket with no deadline, and its heartbeat writes only while a request is in flight. A read that was pending when the peer closed can stay pending on a Windows AF_UNIX socket, so an extension that exited while it loaded, sat idle or shut down was never seen to be gone. The process reaper's exit channel now ends the read: each read waits one second of silence after the exit and then reports io.EOF, the error a closed socket gives, and bytes the process wrote before it exited are read first. Isolated and shared Node processes use the process's channel, each member of a packed process its own socket and the cell's channel. The wire is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "108cb7d911",
+          "date": "2026-11-04"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote",
+        "coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight",
+        "coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead",
+        "coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen"
+      ]
+    },
+    {
       "id": "BF-116b36c",
       "title": "fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read",
       "symptom": "fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read",
@@ -8997,6 +9022,30 @@
       ],
       "tests": [
         "internal/codingagent/bash_execution_oracle_test.go::TestBashExecutionComponentMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-42e2e75",
+      "title": "A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config…",
+      "symptom": "A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config root before its first prompt.",
+      "rootCause": "A Piglet Binary with fused extensions staged every embedded SDK (about 300 files, 4 MB) into a clean config root before the first extension load, although a fused extension runs in-process from its compiled factory and reads no SDK. On the measured host that was 45 ms of a 78 ms first start with plan mode fused (bare pig 30 ms); a trivial fused extension paid the same. loadNeedsStagedSDK now skips the stage when every config is fused (subprocess.RunsFused) and no embedded cell or pre-trust source extension is present.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config root before its first prompt. The first start of a Piglet with plan mode fused took 78 ms to the first usable prompt against 30 ms for a bare pig, and now takes 32 ms; later starts were never affected.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "42e2e75c19",
+          "date": "2026-11-04"
+        }
+      ],
+      "tests": [
+        "coding/cli/fused_stage_sdk_test.go::TestFusedLoadStagesNoSDK",
+        "coding/cli/fused_stage_sdk_test.go::TestLoadNeedsStagedSDK",
+        "coding/cli/fused_stage_sdk_test.go::TestLoadNeedsStagedSDKWithoutFusedResolver"
       ]
     },
     {

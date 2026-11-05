@@ -92,6 +92,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-10189c4](#bf-10189c4) | The `/tree` Summarize option sends the session's thinking level with the branch summary request when the… | PiG's own defect | All platforms | Unreleased |
+| [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
 | [BF-11866f8](#bf-11866f8) | `WaitForIdle` on the Harness or a Conversation no longer fails with "Harness is closed" when a close begins… | PiG's own defect | All platforms | Unreleased |
 | [BF-11a6fcb](#bf-11a6fcb) | fix(extension): a restart adopts the new renderers; the late-registration row runs what it registered | PiG's own defect | All platforms | Unreleased |
@@ -322,6 +323,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4259631](#bf-4259631) | An extension's direct call into a pi-ai API module (`openAICompletionsApi()` and the other bridged APIs)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4273a6a](#bf-4273a6a) | fix(durable/core): the run's abort resumes on its invocation's own resumer | PiG's own defect | All platforms | Unreleased |
 | [BF-42c059a](#bf-42c059a) | fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule | PiG's own defect | All platforms | Unreleased |
+| [BF-42e2e75](#bf-42e2e75) | A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config… | PiG's own defect | All platforms | Unreleased |
 | [BF-42e3d0e](#bf-42e3d0e) | fix(hljs): a class that negates only \r still reaches across lines; gate the streamed code block Linear | PiG's own defect | All platforms | Unreleased |
 | [BF-4312595](#bf-4312595) | fix(ai,durable): keep a value that is not JSON an error when a message or a nested result is encoded | PiG's own defect | All platforms | Unreleased |
 | [BF-4327756](#bf-4327756) | Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake`… | PiG's own defect | All platforms | Unreleased |
@@ -2619,6 +2621,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `10189c4741` (2026-10-27)
 - **Tests:** `coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryPassesTheSessionThinkingLevel`, `internal/codingagent/compaction/branch_summarization_test.go::TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels`
 - **Release note:** The `/tree` Summarize option sends the session's thinking level with the branch summary request when the model supports reasoning, as compaction does. Before, the request carried no reasoning, and a reasoning model on OpenAI Responses or Azure Responses that rejects an effort of `none` failed the summary with a 400 error.
+
+### BF-108cb7d
+
+**An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
+- **Root cause:** The host's read loop waits on the socket with no deadline, and its heartbeat writes only while a request is in flight. A read that was pending when the peer closed can stay pending on a Windows AF_UNIX socket, so an extension that exited while it loaded, sat idle or shut down was never seen to be gone. The process reaper's exit channel now ends the read: each read waits one second of silence after the exit and then reports io.EOF, the error a closed socket gives, and bytes the process wrote before it exited are read first. Isolated and shared Node processes use the process's channel, each member of a packed process its own socket and the cell's channel. The wire is unchanged.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `108cb7d911` (2026-11-04)
+- **Tests:** `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead`, `coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen`
+- **Release note:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
 
 ### BF-116b36c
 
@@ -5784,6 +5800,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `42c059a149` (2026-10-10)
 - **Tests:** `internal/codingagent/bash_execution_oracle_test.go::TestBashExecutionComponentMatchesPi`
+
+### BF-42e2e75
+
+**A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config root before its first prompt.
+- **Root cause:** A Piglet Binary with fused extensions staged every embedded SDK (about 300 files, 4 MB) into a clean config root before the first extension load, although a fused extension runs in-process from its compiled factory and reads no SDK. On the measured host that was 45 ms of a 78 ms first start with plan mode fused (bare pig 30 ms); a trivial fused extension paid the same. loadNeedsStagedSDK now skips the stage when every config is fused (subprocess.RunsFused) and no embedded cell or pre-trust source extension is present.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `42e2e75c19` (2026-11-04)
+- **Tests:** `coding/cli/fused_stage_sdk_test.go::TestFusedLoadStagesNoSDK`, `coding/cli/fused_stage_sdk_test.go::TestLoadNeedsStagedSDK`, `coding/cli/fused_stage_sdk_test.go::TestLoadNeedsStagedSDKWithoutFusedResolver`
+- **Release note:** A Piglet Binary whose extensions are all fused no longer stages the extension SDK sources into a clean config root before its first prompt. The first start of a Piglet with plan mode fused took 78 ms to the first usable prompt against 30 ms for a bare pig, and now takes 32 ms; later starts were never affected.
 
 ### BF-42e3d0e
 
