@@ -948,3 +948,38 @@ export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main",
 		t.Fatalf("hi = %v, %v", got, err)
 	}
 }
+
+// Not Pi's wording: the exit of the process is what the Go side waits for (Pi's server awaits `child.process.exited`), not the
+// end of its output pipes. A process the plugins started that inherited the pipes (here a Node that sleeps) outlives the host's
+// process and holds them; the host's exit must not wait for it, as `exec.Cmd.Wait` does without a WaitDelay, and the exit is a
+// clean one: the process exited with code 0.
+func TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit(t *testing.T) {
+	grace := time.Second
+	_, node := probeNode(t, `hold: async () => { const { spawn } = await import("node:child_process"); const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: ["ignore", "inherit", "inherit"], detached: true }); child.unref(); return child.pid; }`, NodeOptions{StopGrace: &grace}, nil)
+	pid := probeOn(t, serverFor(t, workerRoute(node))).must("hold", nil)
+	t.Cleanup(func() {
+		if number, ok := pid.(float64); ok {
+			if process, err := os.FindProcess(int(number)); err == nil {
+				_ = process.Kill()
+			}
+		}
+	})
+	done := make(chan error, 1)
+	go func() { done <- node.Close(background) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Close = %v", err)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("the process's exit waited for what holds its pipes")
+	}
+	select {
+	case <-node.Exited():
+	default:
+		t.Fatal("Close returned before the process ended")
+	}
+	if node.Err() != nil {
+		t.Fatalf("Err = %v after a requested close", node.Err())
+	}
+}
