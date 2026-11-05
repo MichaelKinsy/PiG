@@ -8,6 +8,7 @@ import (
 )
 
 // peerExitGrace is how long a read waits for a byte once the peer's process has exited. A process that exited has written everything it will write, and the socket holds it, so a read that finds nothing for this long is at the end of the stream. A read that finds a byte starts the wait again.
+// pig divergence (D56): the subprocess's exit bounds the host's read of its socket; upstream extensions run in process.
 const peerExitGrace = time.Second
 
 // watchPeerExit gives the connection the exit of the process behind it: once exited closes, the read loop ends with io.EOF, as it does when the socket reports the peer's close, and any data the process wrote before it exited is read first.
