@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand/v2"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -40,10 +42,9 @@ func execScenarios(dir string) []execScenario {
 	for _, script := range scripts {
 		scenarios = append(scenarios, execScenario{Command: "sh", Args: sh(script), CWD: dir})
 	}
-	// A timer that fires leaves each script a second on either side: on a loaded host sh can take hundreds of milliseconds to
-	// start and run its first command (bash started as "sh" also searches the PATH for itself), in Pi as in PiG, so a shorter
-	// timeout races the child and the two runs can end differently.
-	for _, timeout := range []float64{1000, 0, -5, 1e9} {
+	scenarios = append(scenarios, execTimerScenarios(dir)...)
+	// No timer fires: a timeout of zero or below starts none, and one of 1e9 ms is eleven days away. Each script runs to its end.
+	for _, timeout := range []float64{0, -5, 1e9} {
 		for _, script := range []string{"sleep 2; echo late", "echo quick", "echo before; sleep 3", "trap '' TERM; sleep 2; echo trapped"} {
 			t := timeout
 			scenarios = append(scenarios, execScenario{Command: "sh", Args: sh(script), CWD: dir, Timeout: &t})
@@ -94,6 +95,62 @@ func execScenarios(dir string) []execScenario {
 	return scenarios
 }
 
+// execTimerScenarios are the scenarios whose result depends on a timer that fires or does not fire. Pi's result is the race between the timer and the
+// script, so each row leaves far more than a stall between them: sh can take hundreds of milliseconds to start and run its first command (bash
+// started as "sh" also searches the PATH for itself, and Git for Windows' sh.exe starts a second bash), and a host that keeps the process off the CPU
+// for seconds lets a short timer expire and a short script finish before the process runs again. exec.ts appends output until the pipes end or fall
+// idle, not until the kill, so a call that wakes after such a stall reads what the script wrote meanwhile, in Pi as in PiG: `sleep 2; echo late` with
+// a 1000 ms timer resolves "late\n" killed, where a prompt run resolves no output, and `echo quick` with the same timer resolves killed, where a
+// prompt run does not. TestExecOracleTimerScenariosHoldWhileTheCallerStalls freezes the caller across these rows.
+//
+// A long sleep is `exec sleep 60`: the sleep is the process the timer ends, so no descendant is left to outlive the test run (the CI reaper fails a
+// group that leaves one).
+//
+//   - A timer that ends the shell during a sleep that outlasts any stall, before the shell writes anything: killed, no output.
+//   - A timer that is further away than a command takes: not killed.
+//   - A timer that ends the shell after its first output: killed, the output kept.
+//   - A timer that SIGTERM does not obey: the shell goes on, and its end, four seconds in, comes before the SIGKILL that follows five seconds after the
+//     timer, so the output is kept whenever the call wakes. Windows has no SIGTERM to obey: its kill ends the shell, so there the sleep outlasts a stall.
+func execTimerScenarios(dir string) []execScenario {
+	trapped := "trap '' TERM; sleep 4; echo trapped"
+	if runtime.GOOS == "windows" {
+		trapped = "trap '' TERM; exec sleep 60"
+	}
+	var scenarios []execScenario
+	for _, row := range []struct {
+		timeout float64
+		script  string
+	}{
+		{1000, "exec sleep 60"},
+		{60000, "echo quick"},
+		{3000, "echo before; exec sleep 60"},
+		{1000, trapped},
+	} {
+		timeout := row.timeout
+		scenarios = append(scenarios, execScenario{Command: "sh", Args: []string{"-c", row.script}, CWD: dir, Timeout: &timeout})
+	}
+	return scenarios
+}
+
+// pigExecOutcome runs scenario through ExecCommand and returns the outcome in the shape of the oracle's JSON.
+func pigExecOutcome(ctx context.Context, scenario execScenario) execOutcome {
+	options := &ExecOptions{MaxBuffer: scenario.MaxBuffer}
+	if scenario.Timeout != nil {
+		options.Timeout = *scenario.Timeout
+	}
+	result, err := ExecCommand(ctx, scenario.CWD, scenario.Command, scenario.Args, options)
+	var got execOutcome
+	if err != nil {
+		got.Thrown = err.Error()
+	} else {
+		got = execOutcome{Stdout: result.Stdout, Stderr: result.Stderr, Code: result.Code, Killed: result.Killed, Truncated: result.Truncated}
+	}
+	raw, _ := json.Marshal(got)
+	var normalized execOutcome
+	_ = json.Unmarshal(raw, &normalized)
+	return normalized
+}
+
 // execOracleScript is testdata/exec.mjs, which a test that changes its working
 // directory still finds.
 var execOracleScript, _ = filepath.Abs("testdata/exec.mjs")
@@ -112,28 +169,36 @@ var execOracleNode = func() string {
 // order and returns its outcomes.
 func piExecOutcomes(t *testing.T, scenarios []execScenario) []execOutcome {
 	t.Helper()
-	input, err := json.Marshal(scenarios)
+	expected, err := runPiExec(t.Context(), scenarios)
 	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), execOracleNode, execOracleScript, pigversion.UpstreamPackageVersion)
-	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
-	}
-	var expected []execOutcome
-	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
 	return expected
 }
 
+func runPiExec(ctx context.Context, scenarios []execScenario) ([]execOutcome, error) {
+	input, err := json.Marshal(scenarios)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.CommandContext(ctx, execOracleNode, execOracleScript, pigversion.UpstreamPackageVersion)
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("Pi oracle: %w\n%s", err, &stderr)
+	}
+	var expected []execOutcome
+	if err := json.Unmarshal(output, &expected); err != nil {
+		return nil, err
+	}
+	return expected, nil
+}
+
 // Timeouts under 2 ms and above 2^31 run as a 1 ms timer in Node and race the child, and so do timeouts of a few hundred milliseconds on a loaded host, so they are not generated; ExecOptions.cwd is applied by the extension API in Pi, not by execCommand, so it is not compared here.
 //
-// execCommand (core/exec.ts) against pinned Pi over about 150 real commands: exit codes (including 256, which wraps, and a signal-killed child that resolves as 0), stdout and stderr (wide text, invalid UTF-8, 300KB, output after a backgrounded child), a timeout of 1000 or 1e9 milliseconds, none, zero or negative, and the killed flag it sets, a pre-aborted signal, a child that ignores SIGTERM, a working directory that exists, is overridden or is missing, a program that cannot start (code 1), an empty or NUL-bearing command, argument or directory, and a directory as the command; the result or the error code and message agree.
+// execCommand (core/exec.ts) against pinned Pi over about 150 real commands: exit codes (including 256, which wraps, and a signal-killed child that resolves as 0), stdout and stderr (wide text, invalid UTF-8, 300KB, output after a backgrounded child), a timeout that fires after a sleep, one that is not reached, one that follows the first output and one that SIGTERM does not obey (execTimerScenarios), a timeout of 1e9 milliseconds, none, zero or negative, and the killed flag it sets, a pre-aborted signal, a child that ignores SIGTERM, a working directory that exists, is overridden or is missing, a program that cannot start (code 1), an empty or NUL-bearing command, argument or directory, and a directory as the command; the result or the error code and message agree.
 func TestExecCommandMatchesPi(t *testing.T) {
 	dir := t.TempDir()
 	scenarios := execScenarios(dir)
@@ -146,21 +211,8 @@ func TestExecCommandMatchesPi(t *testing.T) {
 			ctx, cancel = context.WithCancel(ctx)
 			cancel()
 		}
-		options := &ExecOptions{}
-		if scenario.Timeout != nil {
-			options.Timeout = *scenario.Timeout
-		}
-		options.MaxBuffer = scenario.MaxBuffer
-		result, err := ExecCommand(ctx, scenario.CWD, scenario.Command, scenario.Args, options)
-		var got execOutcome
-		if err != nil {
-			got.Thrown = err.Error()
-		} else {
-			got = execOutcome{Stdout: result.Stdout, Stderr: result.Stderr, Code: result.Code, Killed: result.Killed, Truncated: result.Truncated}
-		}
-		raw, _ := json.Marshal(got)
-		var normalized execOutcome
-		_ = json.Unmarshal(raw, &normalized)
+		normalized := pigExecOutcome(ctx, scenario)
+		raw, _ := json.Marshal(normalized)
 		want := expected[i]
 		if normalized.Thrown != "" && want.Thrown != "" {
 			// Pi's message starts with the Node error code; Pig reports Node's message text.
