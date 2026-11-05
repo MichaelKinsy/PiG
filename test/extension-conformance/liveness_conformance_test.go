@@ -115,7 +115,7 @@ func recordSDKLiveness(t *testing.T, fixture livenessFixture) livenessRecording 
 		case subprocess.CallParseDate:
 			result = json.RawMessage(`{"ms":null}`)
 		case subprocess.CallTypeEngine:
-			result = json.RawMessage(engine.Serve(register.Call.Args))
+			result = json.RawMessage(engine.NewSession().Serve(register.Call.Args))
 		}
 		writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: register.ID, CallResult: &subprocess.CallResultPayload{Result: result}})
 		register = readSDKEnvelope(t, peer)

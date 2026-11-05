@@ -61,13 +61,6 @@ func (s *Session) Close() {
 	}
 }
 
-// Parked is the number of walks the session holds.
-func (s *Session) Parked() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.walks)
-}
-
 func (s *Session) lookup(token string) *valueWalk {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -193,11 +186,6 @@ func valueData(value any) any {
 	}
 	return value
 }
-
-// Serve is [Session.Serve] on the process's default session, which no connection owns: the host gives each connection its own session, and the fused Go SDK its program's.
-func Serve(request []byte) []byte { return defaultSession.Serve(request) }
-
-var defaultSession = NewSession()
 
 // serveValue answers one Value.* request of the session (see the file comment).
 func (s *Session) serveValue(member string, args []any, fail func(name, message string) []byte) []byte {

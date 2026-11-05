@@ -9,6 +9,19 @@ import (
 	"time"
 )
 
+// The tests' own session: Serve answers on it, as the host answers on the session of a connection.
+var defaultSession = NewSession()
+
+// Serve is Session.Serve on the tests' session.
+func Serve(request []byte) []byte { return defaultSession.Serve(request) }
+
+// Parked is the number of walks the session holds.
+func (s *Session) Parked() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.walks)
+}
+
 func pendingWalks() int { return defaultSession.Parked() }
 
 // serveOn is serve on a session of its own.

@@ -27,7 +27,7 @@ func (c *refineCalls) refine(schema *sdk.TSchema, tag string, check func(any) (b
 }
 
 func TestGoValueCheckRunsRefinementsInTypeBoxOrder(t *testing.T) {
-	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.NewSession().Serve})
 	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	calls := &refineCalls{}
 	positive := func(v any) (bool, error) { n, _ := v.(float64); return n > 0, nil }
@@ -61,7 +61,7 @@ func TestGoValueCheckRunsRefinementsInTypeBoxOrder(t *testing.T) {
 }
 
 func TestGoValueErrorsReportRefinementMessagesInTypeBoxOrder(t *testing.T) {
-	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.NewSession().Serve})
 	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	calls := &refineCalls{}
 	positive := func(v any) (bool, error) { n, _ := v.(float64); return n > 0, nil }
@@ -91,7 +91,7 @@ func TestGoValueErrorsReportRefinementMessagesInTypeBoxOrder(t *testing.T) {
 }
 
 func TestGoValueCheckReturnsTheErrorOfARefinement(t *testing.T) {
-	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.NewSession().Serve})
 	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	ran := 0
 	schema := sdk.Type.Object(sdk.NewOrderedObject(
@@ -106,7 +106,7 @@ func TestGoValueCheckReturnsTheErrorOfARefinement(t *testing.T) {
 
 // A schema that refers to itself ends in the RangeError TypeBox throws for it, as the call's error, not in a stack overflow that takes the host process down.
 func TestGoValueCheckOfASelfReferringSchemaReturnsTheRangeError(t *testing.T) {
-	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.NewSession().Serve})
 	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	schema := sdk.Type.Unsafe(map[string]any{"$ref": "#"})
 	if _, err := sdk.Value.Check(schema, 1.0); err == nil || !strings.Contains(err.Error(), "Maximum call stack size exceeded") {
