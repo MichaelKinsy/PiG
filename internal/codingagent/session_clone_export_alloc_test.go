@@ -91,3 +91,21 @@ func TestCloneAndExportCostAFewBytesPerSourceByte(t *testing.T) {
 		}
 	})
 }
+
+// A batch of lines forEachPreparedLine reads ahead is a copy of the lines it holds: it is allocated once, for the batchBytes it ends at and the
+// line that crosses them, not grown by doubling. Doubling allocated about 3.5 times the bytes of a batch, and the read starts a new batch for each
+// one the index has not returned yet, so a load on more than one worker (every CI runner but a single-CPU one) cost the clone's open that much more.
+func TestLineBatchAllocatesOnceForItsLines(t *testing.T) {
+	line := []byte(strings.Repeat("x", 16<<10))
+	var batch lineBatch
+	allocated := lwAllocated(func() {
+		for off := int64(0); len(batch.buf) < indexBatchBytes; off++ {
+			batch.add(line, off, indexBatchBytes)
+		}
+	})
+	held := len(batch.buf)
+	// The lines index (24 B a line) is the only other allocation.
+	if limit := uint64(held) * 5 / 4; allocated > limit {
+		t.Fatalf("filling a batch of %d bytes allocated %d B (%.2f per byte held); want at most %d", held, allocated, float64(allocated)/float64(held), limit)
+	}
+}
