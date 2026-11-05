@@ -49,6 +49,15 @@
         ((equal tool "grep")
          (pig:make-grep-tool-options
           :operations (and (custom) (pig:make-grep-operations :is-directory (lambda (path) (note (format nil "isDirectory:~A" path)) (error "no such path for the probe"))))))
+        ((and (equal tool "find") (equal (bp-case case "ops") "globlimit"))
+         ;; Pi main 676af1d77 (pig divergence D253): the tool asks glob for one result past its limit.
+         (pig:make-find-tool-options
+          :operations (pig:make-find-operations :exists (lambda (path) (note (format nil "exists:~A" path)) t)
+                                                :glob (lambda (pattern cwd options)
+                                                        (declare (ignore cwd))
+                                                        (let ((limit (pig:jget options "limit")))
+                                                          (note (format nil "glob:~A:limit=~D" pattern (round limit)))
+                                                          (subseq (list "a.txt" "b.txt" "c.txt") 0 (min 3 (round limit))))))))
         ((equal tool "find")
          (pig:make-find-tool-options
           :operations (and (custom) (pig:make-find-operations :exists (lambda (path) (note (format nil "exists:~A" path)) nil)

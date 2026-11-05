@@ -61,7 +61,7 @@ func TestTruncatedResultDetailsShareTheReturnedText(t *testing.T) {
 		for i := range names {
 			names[i] = fmt.Sprintf("dir/%03d-%s.txt", i, strings.Repeat("n", 90))
 		}
-		res := formatFindResults(names, 1000, false)
+		res := formatFindResults(names, 1000, false, false)
 		sharesReturnedText(t, res.Text(), detailsOf[*FindDetails](t, res).Truncation)
 	})
 	t.Run("grep", func(t *testing.T) {

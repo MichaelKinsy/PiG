@@ -158,6 +158,16 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 			func() (sdk.BuiltinTool, error) { return sdk.CreateGrepTool(cwd, options) }
 	case "find":
 		options := &sdk.FindToolOptions{}
+		if c.Ops == "globlimit" {
+			// Pi main 676af1d77 (pig divergence D253): the tool asks glob for one result past its limit.
+			options.Operations = &sdk.FindOperations{
+				Exists: func(path string) (bool, error) { log.add("exists:%s", path); return true, nil },
+				Glob: func(pattern, cwd string, o sdk.FindGlobOptions) ([]string, error) {
+					log.add("glob:%s:limit=%d", pattern, int(o.Limit))
+					return []string{"a.txt", "b.txt", "c.txt"}[:min(3, int(o.Limit))], nil
+				},
+			}
+		}
 		if c.Ops == "custom" {
 			options.Operations = &sdk.FindOperations{
 				Exists: func(path string) (bool, error) { log.add("exists:%s", path); return false, nil },

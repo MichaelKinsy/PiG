@@ -6420,6 +6420,22 @@ fn builtin_options(case: &Value, log: &CallLog) -> ProbeOptions {
             })
         }));
     }
+    if case["ops"].as_str() == Some("globlimit") {
+        // Pi main 676af1d77 (pig divergence D253): the tool asks glob for one result past its limit.
+        let glob_log = log.clone();
+        options.find.operations = Some(pig_sdk::FindOperations {
+            exists: path_op(log, "exists", |_| Ok(true)),
+            glob: Arc::new(move |pattern, _cwd, glob_options| {
+                log_call(
+                    &glob_log,
+                    format!("glob:{pattern}:limit={}", glob_options.limit as i64),
+                );
+                let all = ["a.txt", "b.txt", "c.txt"];
+                let take = (glob_options.limit as usize).min(all.len());
+                Ok(all[..take].iter().map(|name| name.to_string()).collect())
+            }),
+        });
+    }
     if !custom {
         return options;
     }
