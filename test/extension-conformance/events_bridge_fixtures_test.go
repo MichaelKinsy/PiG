@@ -445,15 +445,51 @@ const lispBusFixture = `(defpackage %[2]q (:use "COMMON-LISP"))
     (push (subseq text start) parts)
     (nreverse parts)))
 
-(defun append-line (path line)
-  "One log line as one write at the end of the file, even when another process appends at the same time. On Windows the C runtime's open writes a newline as a carriage return and a newline unless the file is opened binary (_O_BINARY, #x8000), and the log holds the line as given."
-  (let ((octets (sb-ext:string-to-octets line :external-format :utf-8))
-        (fd (sb-posix:open path (logior sb-posix:o-wronly sb-posix:o-append sb-posix:o-creat #+win32 #x8000) #o600)))
+#+win32
+(sb-alien:load-shared-object "kernel32.dll")
+
+#+win32
+(defun win32-error (what path)
+  (error "~A ~A failed: Windows error ~D" what path
+         (sb-alien:alien-funcall (sb-alien:extern-alien "GetLastError" (function (sb-alien:unsigned 32))))))
+
+#+win32
+(defun append-octets (path octets)
+  "OCTETS written to PATH through a handle opened for FILE_APPEND_DATA alone (0x4), as Go, Node (libuv), and Rust open an O_APPEND file. With that access the file system places each write at the end of the file itself. The C runtime's _open does not: with _O_APPEND it seeks to the end of the file before each _write, so another process can append between the seek and the write and the later write overwrites its line. CreateFileW also writes the bytes as given, with no newline translation."
+  (let* ((wide (concatenate '(simple-array (unsigned-byte 8) (*))
+                            (sb-ext:string-to-octets path :external-format :utf-16le)
+                            #(0 0)))
+         (handle (sb-sys:with-pinned-objects (wide)
+                   (sb-alien:alien-funcall
+                    (sb-alien:extern-alien "CreateFileW" (function (sb-alien:unsigned 64) sb-sys:system-area-pointer (sb-alien:unsigned 32) (sb-alien:unsigned 32) sb-sys:system-area-pointer (sb-alien:unsigned 32) (sb-alien:unsigned 32) (sb-alien:unsigned 64)))
+                    (sb-sys:vector-sap wide) #x4 #x7 (sb-sys:int-sap 0) 4 #x80 0))))
+    (when (= handle (1- (expt 2 64))) (win32-error "open" path))
+    (unwind-protect
+         (let ((written (make-array 4 :element-type '(unsigned-byte 8) :initial-element 0)))
+           (sb-sys:with-pinned-objects (octets written)
+             (when (zerop (sb-alien:alien-funcall
+                           (sb-alien:extern-alien "WriteFile" (function sb-alien:int (sb-alien:unsigned 64) sb-sys:system-area-pointer (sb-alien:unsigned 32) sb-sys:system-area-pointer sb-sys:system-area-pointer))
+                           handle (sb-sys:vector-sap octets) (length octets) (sb-sys:vector-sap written) (sb-sys:int-sap 0)))
+               (win32-error "append to" path))
+             (unless (= (sb-sys:sap-ref-32 (sb-sys:vector-sap written) 0) (length octets))
+               (error "short append to ~A: wrote ~D of ~D bytes" path (sb-sys:sap-ref-32 (sb-sys:vector-sap written) 0) (length octets)))))
+      (sb-alien:alien-funcall
+       (sb-alien:extern-alien "CloseHandle" (function sb-alien:int (sb-alien:unsigned 64)))
+       handle))))
+
+#-win32
+(defun append-octets (path octets)
+  "OCTETS written to PATH as one write(2) on an O_APPEND descriptor, which the kernel places at the end of the file."
+  (let ((fd (sb-posix:open path (logior sb-posix:o-wronly sb-posix:o-append sb-posix:o-creat) #o600)))
     (unwind-protect
          (sb-sys:with-pinned-objects (octets)
            (let ((written (sb-posix:write fd (sb-sys:vector-sap octets) (length octets))))
              (unless (= written (length octets)) (error "short append to ~A: wrote ~D of ~D bytes" path written (length octets)))))
       (sb-posix:close fd))))
+
+(defun append-line (path line)
+  "One log line as one write at the end of the file, even when another process appends at the same time."
+  (append-octets path (sb-ext:string-to-octets line :external-format :utf-8)))
 
 (defun new-extension ()
   (let* ((cfg (read-config)) (name (pig:jget cfg "name"))
