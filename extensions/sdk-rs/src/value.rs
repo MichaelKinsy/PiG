@@ -15,7 +15,7 @@ use crate::type_schema::{Refinement, TSchema, TValue};
 
 /// One error of [`Value::errors`], TypeBox's `TLocalizedValidationError`.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ValueError {
+pub struct TLocalizedValidationError {
     pub keyword: String,
     pub schema_path: String,
     pub instance_path: String,
@@ -39,7 +39,10 @@ impl Value {
     }
 
     /// `Value.Errors(schema, value)`: the validation errors of `value` for `schema` (empty when it is valid), running its refinements.
-    pub fn errors(schema: impl Into<TSchema>, value: &Json) -> Result<Vec<ValueError>, String> {
+    pub fn errors(
+        schema: impl Into<TSchema>,
+        value: &Json,
+    ) -> Result<Vec<TLocalizedValidationError>, String> {
         let Json::Array(items) = call("Value.Errors", schema.into(), value)? else {
             return Err("Value.Errors: the host did not answer a list".to_string());
         };
@@ -47,14 +50,14 @@ impl Value {
     }
 }
 
-fn error_of(item: &Json) -> Result<ValueError, String> {
+fn error_of(item: &Json) -> Result<TLocalizedValidationError, String> {
     let text = |name: &str| {
         item.get(name)
             .and_then(Json::as_str)
             .map(str::to_string)
             .ok_or_else(|| format!("Value.Errors: an error has no {name}"))
     };
-    Ok(ValueError {
+    Ok(TLocalizedValidationError {
         keyword: text("keyword")?,
         schema_path: text("schemaPath")?,
         instance_path: text("instancePath")?,

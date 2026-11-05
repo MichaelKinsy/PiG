@@ -224,6 +224,6 @@ truthiness (NIL, :false and :null fail, everything else passes), which differs f
   (eq (te-value-call "Value.Check" schema value) t))
 
 (defun value-errors (schema value)
-  "Value.Errors: a list of the errors of VALUE against SCHEMA as TypeBox words them, each a hash table with keyword, schemaPath, instancePath, params and
+  "Value.Errors: a list of the errors of VALUE against SCHEMA as TypeBox words them, each a TypeBox TLocalizedValidationError: a hash table (the SDK's JSON object; Lisp has no named type for it) with keyword, schemaPath, instancePath, params and
 message; a refinement's message comes from its error function (\"Refine Error\" when it has none)."
   (coerce (te-value-call "Value.Errors" schema value) 'list))

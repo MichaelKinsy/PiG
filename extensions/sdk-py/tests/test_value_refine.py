@@ -131,8 +131,8 @@ def test_errors_builds_the_error_list_in_the_hosts_order(monkeypatch):
     assert len(transport.requests[0]["args"]) == 2
     assert answers(transport) == [("Value.Answer", [TOKEN, False]), ("Value.Answer", [TOKEN, "bad 5"])]
     assert errors == [
-        pig_sdk.ValueCheckError("~refine", "#/properties/b", "/b", {"z": 1, "a": [2]}, "bad 5"),
-        pig_sdk.ValueCheckError("type", "#", "", {}, "must be object"),
+        pig_sdk.TLocalizedValidationError("~refine", "#/properties/b", "/b", {"z": 1, "a": [2]}, "bad 5"),
+        pig_sdk.TLocalizedValidationError("type", "#", "", {}, "must be object"),
     ]
     assert errors[0].keyword == "~refine" and errors[0].schema_path == "#/properties/b" and errors[0].instance_path == "/b" and errors[0].message == "bad 5"
     assert list(errors[0].params) == ["z", "a"]

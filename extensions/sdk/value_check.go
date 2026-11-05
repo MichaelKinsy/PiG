@@ -16,9 +16,9 @@ type valueNamespace struct{}
 // them runs `Value.Check(schema, value)` itself, as a Node extension does with the `Value` of `typebox/value`.
 var Value valueNamespace
 
-// ValueError is one error of [valueNamespace.Errors], as TypeBox reports it: the keyword that failed (`~refine` for a refinement), the schema path of the failing schema, the instance path
+// TLocalizedValidationError is one error of [valueNamespace.Errors], as TypeBox reports it: the keyword that failed (`~refine` for a refinement), the schema path of the failing schema, the instance path
 // of the failing value, the keyword's params in TypeBox's member order and the en_US message (a refinement's is its error function's text).
-type ValueError struct {
+type TLocalizedValidationError struct {
 	Keyword      string
 	SchemaPath   string
 	InstancePath string
@@ -27,7 +27,7 @@ type ValueError struct {
 }
 
 // UnmarshalJSON reads the host's wire form of an error.
-func (e *ValueError) UnmarshalJSON(data []byte) error {
+func (e *TLocalizedValidationError) UnmarshalJSON(data []byte) error {
 	var wire struct {
 		Keyword      string         `json:"keyword"`
 		SchemaPath   string         `json:"schemaPath"`
@@ -38,7 +38,7 @@ func (e *ValueError) UnmarshalJSON(data []byte) error {
 	if err := sdkjson.Unmarshal(data, &wire); err != nil {
 		return err
 	}
-	*e = ValueError{Keyword: wire.Keyword, SchemaPath: wire.SchemaPath, InstancePath: wire.InstancePath, Params: wire.Params, Message: wire.Message}
+	*e = TLocalizedValidationError{Keyword: wire.Keyword, SchemaPath: wire.SchemaPath, InstancePath: wire.InstancePath, Params: wire.Params, Message: wire.Message}
 	return nil
 }
 
@@ -60,12 +60,12 @@ func (valueNamespace) Check(schema any, value any) (bool, error) {
 
 // Errors is `Value.Errors(schema, value)`: the errors of value against schema in TypeBox's order, at most eight; a refinement that fails adds an error of keyword `~refine` whose message is
 // its error function's text ("Refine Error" without one). Refinements run as in [valueNamespace.Check], except that the keywords of a node do not stop at the first failure.
-func (valueNamespace) Errors(schema any, value any) ([]ValueError, error) {
+func (valueNamespace) Errors(schema any, value any) ([]TLocalizedValidationError, error) {
 	raw, err := valueEngineCall("Value.Errors", schema, value)
 	if err != nil {
 		return nil, err
 	}
-	errors := []ValueError{}
+	errors := []TLocalizedValidationError{}
 	if err := sdkjson.Unmarshal(raw, &errors); err != nil {
 		return nil, fmt.Errorf("Value.Errors: the host answered %s", raw)
 	}

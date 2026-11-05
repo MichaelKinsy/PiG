@@ -77,7 +77,7 @@ func registerRefineProbe(ext *sdk.Extension) {
 		case "check":
 			result, err = sdk.Value.Check(root, request.Value)
 		default:
-			var errs []sdk.ValueError
+			var errs []sdk.TLocalizedValidationError
 			errs, err = sdk.Value.Errors(root, request.Value)
 			rows := make([]any, len(errs))
 			for i, e := range errs {

@@ -128,8 +128,8 @@ def engine_call(member: str, *args: Any) -> Any:
     return _decode(reply.get("value"), refs)
 
 
-class ValueCheckError(NamedTuple):
-    """One entry of ``Value.errors`` (TypeBox's ``TLocalizedValidationError``, the members the host answers in this order; not named ``ValueError``, which would shadow the builtin): ``params`` is a dict whose keys keep the order TypeBox wrote them."""
+class TLocalizedValidationError(NamedTuple):
+    """One entry of ``Value.errors`` (TypeBox's ``TLocalizedValidationError``, its members in the order the host answers them): ``params`` is a dict whose keys keep the order TypeBox wrote them."""
 
     keyword: str
     schema_path: str
@@ -192,9 +192,9 @@ class Value:
 
     @staticmethod
     def errors(schema: Any, value: Any) -> list:
-        """``Value.Errors(schema, value)``: the :class:`ValueCheckError` list of what is wrong with ``value``, in TypeBox's order (empty when it passes). Refinement results are coerced with ``bool()``, as in :meth:`check`."""
+        """``Value.Errors(schema, value)``: the :class:`TLocalizedValidationError` list of what is wrong with ``value``, in TypeBox's order (empty when it passes). Refinement results are coerced with ``bool()``, as in :meth:`check`."""
         return [
-            ValueCheckError(failure["keyword"], failure["schemaPath"], failure["instancePath"], failure["params"], failure["message"])
+            TLocalizedValidationError(failure["keyword"], failure["schemaPath"], failure["instancePath"], failure["params"], failure["message"])
             for failure in _value_call("Value.Errors", schema, value)
         ]
 
