@@ -217,7 +217,9 @@ func checkShard(root string, needCoverage bool, shard shardSpec) ([]result, erro
 		}
 	}
 	if needCoverage {
-		proveByEvidence(root, slots, mutants)
+		if err := proveByEvidence(root, slots, mutants); err != nil {
+			return slots, err
+		}
 	}
 	return slots, nil
 }
