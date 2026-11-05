@@ -860,6 +860,8 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 
 	h.markExtension(me.config.Name, "handshake-start")
 	conn := NewConn(me.config.Name, rawConn)
+	// Every member of a packed process has its own socket, and the process's exit ends them all (peer_exit.go).
+	conn.watchPeerExit(me.packedProcess.startWait())
 	if turns := me.processFileMutations(); turns != nil {
 		conn.shareFileMutations(turns)
 	}

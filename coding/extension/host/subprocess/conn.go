@@ -275,9 +275,13 @@ type Conn struct {
 	heartbeatIdle  chan struct{}
 	heartbeatID    atomic.Uint64
 	failOnce       sync.Once
-	retiring       atomic.Bool
-	failureMu      sync.Mutex
-	failure        error
+
+	// peerExit closes when the peer's process has exited; set by watchPeerExit before Start. peerGone is set once it has, and then reads of the socket end with io.EOF after peerExitGrace of silence (peerReader).
+	peerExit  <-chan struct{}
+	peerGone  atomic.Bool
+	retiring  atomic.Bool
+	failureMu sync.Mutex
+	failure   error
 
 	// cancel signals all goroutines to stop.
 	cancel   context.CancelFunc
@@ -358,6 +362,9 @@ func (c *Conn) Start(ctx context.Context) {
 		defer wg.Done()
 		c.heartbeatLoop(ctx)
 	}()
+	if c.peerExit != nil {
+		go c.endReadOnPeerExit(ctx)
+	}
 	go func() {
 		<-ctx.Done()
 		if c.closing.Load() {
@@ -1135,7 +1142,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 	// One length buffer for the connection: it escapes through the conn interface, so a buffer declared per frame would be allocated per frame.
 	var lenBuf [4]byte
 	// The runtime answers a request with its started state, its completed state and the response, often in one write; a buffered reader takes such a batch in one read instead of two per frame. A frame larger than the buffer is read straight into its own buffer.
-	reader := bufio.NewReaderSize(c.conn, readBufferBytes)
+	var source io.Reader = c.conn
+	if c.peerExit != nil {
+		source = peerReader{c}
+	}
+	reader := bufio.NewReaderSize(source, readBufferBytes)
 	for {
 		// Check context before each frame.
 		if ctx.Err() != nil || c.closed.Load() {
