@@ -3,6 +3,7 @@ package codemode
 import (
 	"io/fs"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -94,5 +95,34 @@ func TestInterpreterSandboxRunsScripts(t *testing.T) {
 	result, err := sandbox.Execute(t.Context(), "while (true) {}", ExecuteOptions{})
 	if err != nil || result.OK || result.Error == nil || result.Error.Kind != ErrorTimeout {
 		t.Fatalf("an endless script under the interpreter: %+v (%+v), %v; want a timeout", result, result.Error, err)
+	}
+}
+
+// The one script result the two engines do not share is unbounded recursion: the compiler's VM hits QuickJS's own stack limit and
+// the script catches a RangeError, while wazero's interpreter stops the VM at its call-depth limit first, which fails the execution
+// as a sandbox error. The difference shows which runtime ran the script, whatever CacheDir holds.
+func TestInterpreterRunsDeepRecursionDifferentlyFromTheCompiler(t *testing.T) {
+	const code = `let depth = 0;
+function dive() { depth++; dive(); }
+try { dive(); } catch (error) { return [depth > 1000, error.name]; }`
+	for _, interpreter := range []bool{false, true} {
+		sandbox, err := NewSandbox(SandboxOptions{Interpreter: interpreter, TimeoutMs: 120000})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := sandbox.Execute(t.Context(), code, ExecuteOptions{})
+		_ = sandbox.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !interpreter {
+			if !result.OK || string(result.Value) != `[true,"RangeError"]` {
+				t.Errorf("compiler: result = %+v (%+v), want [true,\"RangeError\"]", result, result.Error)
+			}
+			continue
+		}
+		if result.OK || result.Error == nil || result.Error.Kind != ErrorSandbox || !strings.Contains(result.Error.Message, "wasm error: stack overflow") {
+			t.Errorf("interpreter: result = %+v (%+v), want a sandbox error naming a wasm stack overflow", result, result.Error)
+		}
 	}
 }

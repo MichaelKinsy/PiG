@@ -170,8 +170,9 @@ type SandboxOptions struct {
 	// executable memory it did not map with a signature: a macOS app signed with the Hardened Runtime is killed
 	// (SIGKILL) on the first execution unless it carries the com.apple.security.cs.allow-unsigned-executable-memory
 	// entitlement (com.apple.security.cs.allow-jit alone is not enough). The interpreter needs no entitlement and gives the
-	// same results, but runs scripts roughly 20 to 100 times slower, and even a script that does nothing costs seconds to
-	// start a VM. Prefer the entitlement when the host can carry it. The interpreter keeps no compiled code, so CacheDir
+	// same results except that unbounded recursion ends the execution with a sandbox error (wasm error: stack overflow)
+	// instead of a catchable RangeError. It runs scripts about 50 times slower, and even a script that does nothing costs
+	// over a second to start a VM. Prefer the entitlement when the host can carry it. The interpreter keeps no compiled code, so CacheDir
 	// is ignored.
 	Interpreter bool
 	// Wasm supplies the QuickJS wasm module. Nil means the embedded module (upstream: loadQuickJSWasm()).
