@@ -3299,7 +3299,7 @@ Parity allowance: tmux parity scenario `tree/06-tree-header-spacing` compares th
 
 ## D249 Images in queued steering and follow-up messages are resized when the message is delivered
 
-What: PiG ports Pi main 4cf69332c (`fix(coding-agent): resize images in queued steering and follow-up messages`, #11782, fixing #11738), which is not in Pi 1.5.0. `Session.QueueSteer` and `QueueFollowUp` (and so `Steer`, `FollowUp`, `prompt` with a streaming behavior, and RPC `steer`/`follow_up`). The interactive mode queues on the Agent itself, so it builds its messages with `Session.QueuedUserMessage` (streaming Enter and Alt+Enter, an extension's `sendUserMessage`, the compaction-queued flush) mark a queued message that carries images. When the Agent delivers it (`message_start`), after its queue entry was matched by its original text, the images are normalized in place with the same code as an idle prompt (`NormalizePromptContent`, the model current at delivery) and the resize hints are appended to its text. This happens before extensions and listeners see the message, before it is saved and before it joins the request context. Enqueueing stays synchronous.
+What: PiG ports Pi main 4cf69332c (`fix(coding-agent): resize images in queued steering and follow-up messages`, #11782, fixing #11738), which is not in Pi 1.5.0. `Session.QueueSteer` and `QueueFollowUp` (and so `Steer`, `FollowUp`, `prompt` with a streaming behavior, and RPC `steer`/`follow_up`) mark a queued message that carries images. The interactive mode queues on the Agent itself, so it builds its messages with `Session.QueuedUserMessage` (streaming Enter and Alt+Enter, an extension's `sendUserMessage`, the compaction-queued flush), which marks them the same way; `InteractiveSessionHandle` requires the method. When the Agent delivers such a message (`message_start`), after its queue entry was matched by its original text, the images are normalized in place with the same code as an idle prompt (`NormalizePromptContent`, the model current at delivery) and the resize hints are appended to its text. This happens before extensions and listeners see the message, before it is saved and before it joins the request context. Enqueueing stays synchronous.
 
 Why: Pi 1.5.0 queues the images unprocessed, so a 1200x9000 PNG reaches the model and the session file at full size and is replayed on every later request.
 
@@ -3485,7 +3485,7 @@ Why: Pi 1.5.0 draws every option, so a long extension-provided list overflows th
 
 Pi bug: Pi 1.5.0 (`extension-selector.ts` `updateList`), fixed by Pi main 3b57ed7e2 ([#6688](https://github.com/earendil-works/pi/issues/6688)).
 
-Scope: PiG's sprite-picker preview column (D2) uses the window too and keeps the width of the longest row of the whole list, so its column does not move as the window scrolls (no test pins that width beyond `TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost`). Every user of `tui.ExtensionSelectorComponent` (extension `ui.select`, `/bug`, the login pickers, the sprite picker).
+Scope: Every user of `tui.ExtensionSelectorComponent` (extension `ui.select`, `/bug`, the login pickers, the sprite picker). PiG's sprite-picker preview column (D2) uses the window too and keeps the width of the longest row of the whole list, so its column does not move as the window scrolls (no test pins that width beyond `TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost`).
 
 Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S16).
 
@@ -3519,7 +3519,7 @@ Call-site markers: `coding/session_model_cycle.go` (`nextCycleIndex`).
 
 Evidence: `TestSessionModelExtensionCyclesUpstream` ("cycles to the only scoped model and to the first scoped model from outside the scope", Pi's test), `TestSessionCycleModelSeesExtensionProviderRegistration` (cycle after the active model's provider is unregistered).
 
-Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared. Measured: 141 of 600 scenarios stop, and 3606 of 4520 ops (79.8%) are still compared with Pi. The test logs those numbers on every run.
+Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared, and so does a forward cycle whose first two entries are the same model with the same thinking level (1.5.0's second entry is main's first). Measured: 137 of 600 scenarios stop, and 3629 of 4520 ops (80.3%) are still compared with Pi. The test logs those numbers on every run.
 
 ## D259 Alacritty is detected for OSC 8 hyperlinks without TERM_PROGRAM
 
