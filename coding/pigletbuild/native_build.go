@@ -172,6 +172,8 @@ func buildNativeArtifact(ctx context.Context, source pigSource, p *piglet.Piglet
 	}
 	buildArgs := buildprogress.ToolArgs(ctx, "go", pigletBinaryBuildArgs(abary, opts.Version, overlayPath, stripTags))
 	cmd := source.goCommand(ctx, goToolchain, buildArgs...)
+	// A Piglet Binary links statically unless the user chose CGO_ENABLED or the build has cgo sources.
+	cmd.Env = staticPigletBuildEnv(ctx, source, goToolchain, cmd, overlayPath, stripTags, host)
 	if err := buildprogress.Run(buildprogress.Member(ctx, p.Name), cmd); err != nil {
 		return nil, fmt.Errorf("build Piglet Binary: %w", err)
 	}
