@@ -121,13 +121,23 @@ fn drive(
             ));
         };
         let argument = wanted.get("value").unwrap_or(&Json::Null);
-        let answer = if wanted.get("message").and_then(Json::as_bool) == Some(true) {
-            match &refinement.error {
-                Some(error) => error(argument).map(Json::String),
-                None => Ok(Json::String("Refine Error".to_string())),
+        // A refinement that panics cancels the host's parked walk before the panic goes on: the host would otherwise hold it until the connection closes.
+        let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            if wanted.get("message").and_then(Json::as_bool) == Some(true) {
+                match &refinement.error {
+                    Some(error) => error(argument).map(Json::String),
+                    None => Ok(Json::String("Refine Error".to_string())),
+                }
+            } else {
+                (refinement.check)(argument).map(Json::Bool)
             }
-        } else {
-            (refinement.check)(argument).map(Json::Bool)
+        }));
+        let answer = match ran {
+            Ok(answer) => answer,
+            Err(panic) => {
+                cancel(send);
+                std::panic::resume_unwind(panic);
+            }
         };
         match answer {
             Ok(answer) => request = json!({"member": "Value.Answer", "args": [token, answer]}),
@@ -289,5 +299,30 @@ mod tests {
             error.params.as_object().unwrap().keys().collect::<Vec<_>>(),
             ["b", "a"]
         );
+    }
+
+    #[test]
+    fn a_panicking_refinement_cancels_the_walk_and_the_panic_goes_on() {
+        let log: Log = Default::default();
+        let (wire, refs) = schema(&log, false);
+        let refs: Vec<Refinement> = refs
+            .into_iter()
+            .map(|mut refinement| {
+                refinement.check = Arc::new(|_| panic!("boom"));
+                refinement
+            })
+            .collect();
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let mut send = scripted(
+            vec![json!({"call": {"token": "t1", "id": 0, "message": false, "value": "ab"}})],
+            &sent,
+        );
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = drive("Value.Check", wire.clone(), json!("ab"), &refs, &mut send);
+        }));
+        assert!(outcome.is_err(), "the panic must reach the caller");
+        let sent = sent.lock().unwrap();
+        assert_eq!(sent.len(), 2, "{sent:?}");
+        assert_eq!(sent[1], json!({"member": "Value.Cancel", "args": ["t1"]}));
     }
 }
