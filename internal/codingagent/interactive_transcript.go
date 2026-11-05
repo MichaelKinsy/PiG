@@ -726,11 +726,10 @@ func (m *InteractiveMode) queueCompactionMessageForActiveTurn(msg compactionQueu
 // when the message is delivered.
 // pig divergence (D249): Pi main 4cf69332c resizes queued images; Pi 1.5.0 queues them unprocessed.
 func (m *InteractiveMode) queuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
-	if session, ok := m.opts.SessionHandle.(interface {
-		QueuedUserMessage(string, []ai.ImageContent) agent.AgentMessage
-	}); ok {
-		return session.QueuedUserMessage(text, images)
+	if m.opts.SessionHandle != nil {
+		return m.opts.SessionHandle.QueuedUserMessage(text, images)
 	}
+	// No Session: a mode that drives the raw Agent has no delivery-time normalization to mark the message for.
 	return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: promptContent(text, images), Timestamp: time.Now().UnixMilli()}}
 }
 
