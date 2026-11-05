@@ -126,3 +126,34 @@ try { dive(); } catch (error) { return [depth > 1000, error.name]; }`
 		}
 	}
 }
+
+// The interpreter keeps no compiled code, so interpreter sandboxes that differ only in CacheDir share one engine, for the embedded
+// module and for a custom one, while compiler sandboxes with different cache directories stay separate.
+func TestInterpreterEnginesDoNotDependOnCacheDir(t *testing.T) {
+	engineOf := func(options SandboxOptions) *engine {
+		t.Helper()
+		sandbox, err := NewSandbox(options)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = sandbox.Close() })
+		e, err := sandbox.engineFor(t.Context(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return e
+	}
+	custom := func() ([]byte, error) { return QuickJSWasm(), nil }
+	for name, wasm := range map[string]func() ([]byte, error){"embedded": nil, "custom": custom} {
+		a := engineOf(SandboxOptions{Wasm: wasm, Interpreter: true, CacheDir: t.TempDir()})
+		b := engineOf(SandboxOptions{Wasm: wasm, Interpreter: true, CacheDir: t.TempDir()})
+		if a != b {
+			t.Errorf("%s: interpreter sandboxes that differ only in CacheDir compiled the module separately", name)
+		}
+		x := engineOf(SandboxOptions{Wasm: wasm, CacheDir: t.TempDir()})
+		y := engineOf(SandboxOptions{Wasm: wasm, CacheDir: t.TempDir()})
+		if x == y {
+			t.Errorf("%s: compiler sandboxes with different cache directories share an engine", name)
+		}
+	}
+}
