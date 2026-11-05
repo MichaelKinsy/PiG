@@ -53,8 +53,8 @@ func TestFindLimitEdgeCases7121(t *testing.T) {
 		for _, limit := range []float64{0, -5, 0.5, 1.9} {
 			result := runFind(t, dir, map[string]any{"pattern": "*.txt", "path": dir, "limit": limit})
 			parts := strings.Split(result.Text(), "\n\n")
-			if len(parts) != 2 || len(strings.Split(parts[0], "\n")) != 1 || parts[1] != "[1 results limit reached. Use limit=2 for more, or refine pattern]" {
-				t.Fatalf("limit %v: %q", limit, result.Text())
+			if len(parts) != 2 || len(strings.Split(parts[0], "\n")) != 1 || parts[1] != "[1 results limit reached. Use limit=2 for more, or refine pattern]" || limitDetails(t, result) != `{"resultLimitReached":1}` {
+				t.Fatalf("limit %v: %q %s", limit, result.Text(), limitDetails(t, result))
 			}
 		}
 	})
@@ -89,7 +89,7 @@ func TestLsLimitEdgeCases7121(t *testing.T) {
 		for _, limit := range []string{"0", "-5", "0.5", "1.9"} {
 			text, _, details := lsRun(t, &LsTool{CWD: dir}, `{"path":`+jsonString(dir)+`,"limit":`+limit+`}`)
 			data, _ := json.Marshal(details)
-			if text != "a.txt\n\n[1 entries limit reached. Use limit=2 for more]" || !strings.Contains(string(data), "1") {
+			if text != "a.txt\n\n[1 entries limit reached. Use limit=2 for more]" || string(data) != `{"entryLimitReached":1}` {
 				t.Fatalf("limit %s: %q %s", limit, text, data)
 			}
 		}
