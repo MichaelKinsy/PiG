@@ -19,3 +19,13 @@ var fusedResolver FusedResolver
 // once at startup by a Piglet Binary's generated registration; nil (the default)
 // disables fusion. Not safe for concurrent use with LoadAll.
 func SetFusedResolver(r FusedResolver) { fusedResolver = r }
+
+// RunsFused reports whether the host serves cfg from the Piglet Binary's own code, in this process, as LoadAll and a reload do. Such an
+// extension reads no source and builds nothing, so it needs no staged SDK. It is false in stock pig, which installs no resolver.
+func RunsFused(cfg ExtConfig) bool {
+	if fusedResolver == nil {
+		return false
+	}
+	_, ok := fusedResolver.FusedServe(cfg)
+	return ok
+}

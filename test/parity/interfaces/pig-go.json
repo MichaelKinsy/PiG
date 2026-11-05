@@ -92247,9 +92247,20 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, cwd string, mode github.com/MichaelKinsy/PiG/coding/extension.ExtensionMode, registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, configs []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, embedded []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.EmbeddedCell, reloadConfigs func() []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]github.com/MichaelKinsy/PiG/coding/extension.Extension, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.Host, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, []error)"
+        "type": "func(ctx context.Context, cwd string, mode github.com/MichaelKinsy/PiG/coding/extension.ExtensionMode, registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, configs []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, embedded []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.EmbeddedCell, reloadConfigs func() []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func(needsStagedSDK bool)) ([]github.com/MichaelKinsy/PiG/coding/extension.Extension, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.Host, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, []error)"
       },
-      "shapeHash": "sha256:64497be5754160d05df413a88638d55f5c562dff718ab25bc9d2cc7666ccc5cd"
+      "shapeHash": "sha256:3f5004080f96b3018959782fec7a2c7cfb05129e2802c00350510fa449a50fc2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loadNeedsStagedSDK",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "loadNeedsStagedSDK",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(configs []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, embedded []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.EmbeddedCell, preloaded *startupExtensionSet) bool"
+      },
+      "shapeHash": "sha256:2bf9a6d7006c3d82fdc2829fe3e28f45209c1af9aa818cbf1de193a73fc7be1c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loadSkills",
@@ -92269,9 +92280,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, cwd string, mode github.com/MichaelKinsy/PiG/coding/extension.ExtensionMode, registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, configs []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, embedded []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.EmbeddedCell, reloadConfigs func() []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]github.com/MichaelKinsy/PiG/coding/extension.Extension, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.Host, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, []error)"
+        "type": "func(ctx context.Context, cwd string, mode github.com/MichaelKinsy/PiG/coding/extension.ExtensionMode, registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, configs []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, embedded []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.EmbeddedCell, reloadConfigs func() []github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func(needsStagedSDK bool)) ([]github.com/MichaelKinsy/PiG/coding/extension.Extension, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.Host, *github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.UIBridge, []error)"
       },
-      "shapeHash": "sha256:64497be5754160d05df413a88638d55f5c562dff718ab25bc9d2cc7666ccc5cd"
+      "shapeHash": "sha256:3f5004080f96b3018959782fec7a2c7cfb05129e2802c00350510fa449a50fc2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loadSubprocessExtensions",
@@ -134281,6 +134292,17 @@
         "type": "ResponsePayload"
       },
       "shapeHash": "sha256:e81369d3747b829bc54d3778a1b60b43acba449c636f775e315410cc0eb71e77"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RunsFused",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "RunsFused",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(cfg ExtConfig) bool"
+      },
+      "shapeHash": "sha256:521be66c5ef7722ed26da2e521ffa73e35dd4de4c1ef00d9dd2aabfc818850bd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RuntimeRetention",

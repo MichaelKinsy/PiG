@@ -232,8 +232,11 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	var sdkDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	// beforeExtensionStart runs before an extension load starts its first extension. An extension process may read any file the system prompt
 	// names, and builds and runtimes read the staged SDKs.
-	beforeExtensionStart := func() {
+	beforeExtensionStart := func(needsStagedSDK bool) {
 		writeDocsBundle()
+		if !needsStagedSDK {
+			return
+		}
 		b.stageSDKs.Do(func() {
 			trace.Mark("sdk-sync-start")
 			defer trace.Mark("sdk-sync-done")

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -217,18 +218,18 @@ func loadSubprocessExtensions(ctx context.Context, cwd string, mode extension.Ex
 	return loadFinalSubprocessExtensions(ctx, cwd, mode, registry, configs, embedded, reloadConfigs, nil, nil)
 }
 
-func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
+func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func(needsStagedSDK bool)) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
 	return loadSubprocessExtensionSet(ctx, cwd, mode, registry, normalizeRuntimeExtensionConfigs(configs), embedded, reloadConfigs, preloaded, beforeStart)
 }
 
 // loadSubprocessExtensionSet loads configs as given, without adding the Binary's fused extensions.
-func loadSubprocessExtensionSet(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func()) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
+func loadSubprocessExtensionSet(ctx context.Context, cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, reloadConfigs func() []subprocess.ExtConfig, preloaded *startupExtensionSet, beforeStart func(needsStagedSDK bool)) ([]extension.Extension, *subprocess.Host, *subprocess.UIBridge, []error) {
 	if len(configs) == 0 && len(embedded) == 0 && (preloaded == nil || preloaded.host == nil) {
 		return nil, nil, nil, nil
 	}
 	// What only an extension reads (the staged SDKs, the docs bundle) is written before this load starts one.
 	if beforeStart != nil {
-		beforeStart()
+		beforeStart(loadNeedsStagedSDK(configs, embedded, preloaded))
 	}
 
 	var host *subprocess.Host
@@ -265,6 +266,20 @@ func loadSubprocessExtensionSet(ctx context.Context, cwd string, mode extension.
 	scheduleAutomaticExtensionCacheGC(configs)
 
 	return loaded, host, bridge, loadErrs
+}
+
+// loadNeedsStagedSDK reports whether a load reads the staged SDKs. Source extensions build against them, and an embedded cell is started from
+// the Binary's cell pack. An extension fused into a Piglet Binary runs in this process from its compiled factory, so a Binary whose only
+// extensions are fused stages nothing before its first prompt.
+// pig additive (D31): a fused extension needs no staged SDK.
+func loadNeedsStagedSDK(configs []subprocess.ExtConfig, embedded []subprocess.EmbeddedCell, preloaded *startupExtensionSet) bool {
+	if len(embedded) > 0 {
+		return true
+	}
+	if slices.ContainsFunc(configs, func(cfg subprocess.ExtConfig) bool { return !subprocess.RunsFused(cfg) }) {
+		return true
+	}
+	return preloaded != nil && slices.ContainsFunc(preloaded.configs, func(cfg subprocess.ExtConfig) bool { return !subprocess.RunsFused(cfg) })
 }
 
 // startupExtensionSet owns the pre-trust host until the final extension set has
