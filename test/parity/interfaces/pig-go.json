@@ -148891,6 +148891,83 @@
       "shapeHash": "sha256:d43be48f73fc7c16b13d9da065096e5ac4e0784ae0be512022c04d96a5fb568f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "renderOrder"
+      },
+      "shapeHash": "sha256:6ba87477fc151eae21f036ad5b394d9b217921c35fdbeed4838e8e8d2368292b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.clear",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder.clear",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *toolRenderProxy)"
+      },
+      "shapeHash": "sha256:fe40f06eac0af89ef3341a141ccf6a4a512f185e0497d119e1738c05de36d972"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.leave",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder.leave",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.turn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder.turn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *toolRenderProxy) bool"
+      },
+      "shapeHash": "sha256:7536de5d6165dec0e29f41253301cfc6fdb5a72a92852a360bd342f2d324bb3c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.wait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder.wait",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *toolRenderProxy)"
+      },
+      "shapeHash": "sha256:fe40f06eac0af89ef3341a141ccf6a4a512f185e0497d119e1738c05de36d972"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.wake",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder.wake",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderOrder.want",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "renderOrder.want",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p *toolRenderProxy)"
+      },
+      "shapeHash": "sha256:fe40f06eac0af89ef3341a141ccf6a4a512f185e0497d119e1738c05de36d972"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderProxyComponent",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "renderProxyComponent",
@@ -151567,6 +151644,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderProxy.request",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "toolRenderProxy.request",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(payload RenderToolPayload) (lines []string, failed bool, ok bool, stall *HandlerStalledError)"
+      },
+      "shapeHash": "sha256:97bfe39123be1fa0e94dccf8d59b7a1920847c660f86247cc1feee326151c0bc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderProxy.requestInTurn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "toolRenderProxy.requestInTurn",
       "kind": "function",
       "exported": false,
       "shape": {
