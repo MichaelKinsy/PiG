@@ -120,6 +120,7 @@ func (o *renderOrder) leave() {
 // wake tells the waiting loops that the order changed. o.mu is held.
 func (o *renderOrder) wake() {
 	if o.changed != nil {
+		//portlint:allow doubleclose every caller holds o.mu, and the channel is set to nil as it is closed, so each channel is closed once
 		close(o.changed)
 		o.changed = nil
 	}
