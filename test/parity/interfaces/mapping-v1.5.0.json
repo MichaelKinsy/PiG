@@ -166439,9 +166439,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
-        "test:test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs"
+        "test:test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs",
+        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166506,9 +166506,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
-        "test:test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs"
+        "test:test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs",
+        "test:test/extension-conformance/exec_rejection_test.go#TestExecRejectionsAcrossSDKs"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166529,9 +166529,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad",
-        "test:test/extension-conformance/timeout_numbers_test.go#TestTimeoutNumbersAcrossSDKs"
+        "test:test/extension-conformance/timeout_numbers_test.go#TestTimeoutNumbersAcrossSDKs",
+        "test:coding/extension/exec_test.go#TestExecCommand_Timeout"
       ]
     },
     {
@@ -166551,9 +166551,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
-        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample",
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs"
       ]
     },
     {
@@ -166573,9 +166573,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
-        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample",
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs"
       ]
     },
     {
@@ -166595,9 +166595,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
-        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
+        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad",
+        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer"
       ]
     },
     {
@@ -166617,9 +166617,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
-        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample",
+        "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad"
       ]
     },
     {
@@ -166639,9 +166639,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample",
-        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+        "test:coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample",
+        "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs"
       ]
     },
     {
@@ -166661,9 +166661,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer",
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst"
+        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst",
+        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap"
       ]
     },
     {
