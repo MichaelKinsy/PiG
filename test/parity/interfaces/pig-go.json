@@ -279841,9 +279841,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(line []byte, off int64)"
+        "type": "func(line []byte, off int64, batchBytes int)"
       },
-      "shapeHash": "sha256:1202b9264bd83c3ffd5ce0642e6eb984feb4bab9a15d0afd98cc11b74a69e369"
+      "shapeHash": "sha256:cab139d582799a48cf5278c7dd447aea387bf85638d121b81893da262c04870c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#lineBatch.prepare",
