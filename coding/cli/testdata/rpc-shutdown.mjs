@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 // tool update and stays in flight until its run is aborted. session_shutdown
 // reports that it started through a notification. Then RPC_SHUTDOWN_BLOCK
 // makes it wait on a promise that never settles, RPC_SHUTDOWN_SLOW makes it wait that many milliseconds, RPC_SHUTDOWN_HOLD also keeps
-// the event loop alive, and RPC_SHUTDOWN_DIALOG makes it wait on a select.
+// the event loop alive, and RPC_SHUTDOWN_DIALOG makes it wait on a select, and RPC_SHUTDOWN_SEND_AFTER makes it send a user message.
 // The ask command waits on a select; the quit command calls ctx.shutdown().
 export default function (pi) {
   if (process.env.RPC_SHUTDOWN_BAD_RESOURCE) {
@@ -85,6 +85,14 @@ export default function (pi) {
     if (process.env.RPC_SHUTDOWN_DIALOG) {
       record("dialog:" + (await ctx.ui.select("Shutdown dialog", ["keep"])));
     }
+    // RPC_SHUTDOWN_SEND_AFTER starts a run from the handler, as an extension that sends a message while it shuts down does, and waits that many milliseconds for the run to go on.
+    if (process.env.RPC_SHUTDOWN_SEND_AFTER) {
+      record("send");
+      pi.sendUserMessage("sent during shutdown");
+      await new Promise(resolve => setTimeout(resolve, Number(process.env.RPC_SHUTDOWN_SEND_AFTER)));
+    }
+    // RPC_SHUTDOWN_RECORD_DONE reports that the handler ran to its end.
+    if (process.env.RPC_SHUTDOWN_RECORD_DONE) record("session_shutdown:done");
   });
   pi.registerCommand("ask", {
     description: "Wait on a select",

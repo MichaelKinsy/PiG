@@ -3028,6 +3028,55 @@ Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
 
+## D234 PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a repeated signal forces exit
+
+What: PiG takes Pi main commit ace560c30 ("let a started RPC or print shutdown finish; only a repeated signal forces exit", Pi #11752, fixing #11599) before the pin reaches a release that contains it.
+
+1. RPC mode. Once a shutdown has started, from stdin end, `ctx.shutdown()` or a signal, a later stdin end, shutdown request or single SIGTERM/SIGHUP does not interrupt it: the dispose finishes, then the process exits with the code of the trigger that started it (0 for stdin end or a request, 128 plus the signal number for a signal). A second signal exits at once with 128 plus its own number, without waiting for the dispose or flushing stdout. The signal handlers stay until exit; PiG no longer removes them and re-raises the signal. A repeated signal also ends the process while another exit waits for a stdout nobody reads, and a repeated SIGHUP does not wait for stdout either, as Pi's `process.exit` does not. The repeated-signal count starts when RPC mode registers its own handler: a signal that arrives during startup, which only the main handler takes, does not make the next one a repeated signal.
+2. Print mode. The signal handlers stay until the teardown, including the final disposal, has ended (also after a stdout or conversion error cancelled the run). A signal during the final disposal waits for that disposal and then exits 143 (SIGHUP 129); a repeated signal exits at once.
+
+Go signal limit: two termination signals the operating system delivers back to back may reach the process as one. The Go runtime drops a signal whose bit is still pending before its signal loop took the first (`runtime.sigsend`), and every `os/signal` channel then sees one delivery; Go cannot observe two such signals separately. PiG counts every delivery it gets: it neither counts one signal twice nor loses one that the runtime delivered. A supervisor that must force an exit with a second signal sends it after a short delay (the first signal is taken within milliseconds); two signals sent back to back from one process can be one signal to PiG and the dispose then finishes. Measured with 20 back-to-back `kill -TERM` pairs from a shell: a Go `signal.Notify` receiver counted 1 in 20 of 20 pairs on Linux (xd670, Go 1.27.2) and in 4 of 20 on macOS arm64 (Go 1.27.3), and a Node 24 receiver counted 1 in 9 of 20 pairs on the same Linux host. With 50 ms between the signals, Go counted 2 every time on both systems. Pi's Node handler therefore sees a repeated signal in more cases, depending on the host. A follow-up second signal always works, and SIGKILL always works.
+
+Why: Pi 1.5.0 removes its signal handlers when shutdown starts, so a signal that follows stdin end (a host that closes stdin and sends SIGTERM together, or systemd) kills the process in the middle of the dispose and cuts off cleanup such as a pending MCP token refresh; print mode removes its handlers before the final disposal. The owner asked for the fix to ship in 0.7.1.
+
+Pi bug: Pi 1.5.0 (`rpc-mode.ts` `shutdown`, the signal handlers; `print-mode.ts` `disposeRuntime`), fixed by Pi main ace560c30 ([#11599](https://github.com/earendil-works/pi/issues/11599), #11752).
+
+Scope: RPC mode and print mode, termination signals (SIGTERM, SIGHUP; SIGTERM on Windows). Interactive mode already lets a started shutdown finish. Extension processes: the dispose runs `session_shutdown` in the isolated and the packed extension runtimes before the process exits; a repeated signal ends the extension processes with the process.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M3).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing ace560c30. Then the call-site markers and this record go, and the Go signal limit stays as a note in the RPC documentation.
+
+Call-site markers: `coding/cli/rpc_shutdown.go` (`rpcShutdown`, `inputEnd`, `requested`, `signal`, `repeatedSignal`, `abort`, `repeatedTermination`), `coding/cli/rpc_mode.go` (`watchRepeatedTermination`, the stdin-end branch), `coding/cli/print_mode.go` (`finalDisposing`, `teardownDone`, the signal goroutine).
+
+Evidence: `TestRPCSingleSignalDuringInputEndShutdownLetsItFinish`, `TestRPCInputEndDuringSignalShutdownLetsItFinish`, `TestRPCRepeatedSignalDuringShutdownExitsAtOnce`, `TestRPCShutdownTriggers`, `TestRPCShutdownRepeatedSignalKeepsItsExitStatus`, `TestPrintModeSignalDuringFinalDisposalWaitsForIt`, `TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce`, `TestRPCSingleSignalDuringShutdownDoesNotBlockARunTheHandlerStarts`, `TestPrintModeSignalDuringFinalDisposalDoesNotBlockARunTheHandlerStarts`, `TestRPCRepeatedSignalExitsWhileStdoutIsStuck`, `TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes` (`coding/cli`; Pi's four tests ported, the rest cover PiG's wiring).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior, and Pi main's tests are ported.
+
+## D235 A session-graph client's two live runs with no "no run" read between them are one context
+
+What: in a Host whose run signal comes from a session-graph client (an ExtensionRunner an extension constructed), `ctx.signal` is the same object for two runs that follow each other with no read of "no run" in between. Pi's `agent.signal` is a new AbortSignal for every run (`agent.ts:345-347`, one `AbortController` per `activeRun`). The client's `getSignal` answers only none, live or aborted, so the binding (`graphSignal.read`, `coding/session_graph_extension_runner.go`) keeps one context from the first read that reports a run until a read reports none. A handler that holds `ctx.signal` of the first run and reads it in the second sees the second run's abort, where Pi's signal of the first run stays live.
+
+Why: the wire carries no run identity. A new context per read would renumber an aborted run on every sync (the busy loop fixed in 892827ff8c). A run that follows an aborted one is told apart, because the abort cancelled the context.
+
+Pi bug: none. The difference comes from the wire.
+
+Scope: back-to-back runs with no idle read between them; only a session-graph client's ExtensionRunner. A Host over a Session reads the agent's own context, one per run.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M4, record only; the wire fix is a later row).
+
+SCRUTINIZED:approved
+
+Remove when: the getSignal wire carries a run token in all SDKs and the binding makes a new context when the token changes (a later lane).
+
+Call-site markers: `graphSignal.read` (`coding/session_graph_extension_runner.go`), `actions.GetSignal` in `contextActions` (`coding/session_graph_extension_runner_bind.go`).
+
+Evidence: `TestGraphGetSignalIsOneObjectForARunAndItsAbort`. A two-live-runs test arrives with the run token.
+
+Pre-existing: yes (an earlier variant made a new context per read). Found by RevCtxAbort on 2026-11-04.
+
 ## D243 A bash or PowerShell timeout after the shell already exited reports the shell's exit code
 
 What: PiG ports Pi main 06aa6563e (`fix(coding-agent): report the shell exit code when bash times out after the shell exited`, #11813, fixing #11613), which is not in Pi 1.5.0. The local shell backend returns a `*ShellTimeoutError` whose message stays `timeout:<seconds>` (the contract custom operations rely on) and whose `ShellExit` holds the shell's exit code and the seconds it ran when the shell had exited before the deadline. The shell tool then says `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` A shell still running at the deadline keeps the plain `Command timed out after N seconds`.

@@ -187,6 +187,7 @@ func (g *GraphExtensionRunner) contextActions(ids callbackIDs) extension.Context
 		}
 	}
 	if has("getSignal") {
+		// pig divergence (D235): see graphSignal.read.
 		actions.GetSignal = func() context.Context {
 			return g.signal.read(func() (*graphSignalState, error) {
 				return runDecoded[*graphSignalState](g, bg(), ids, "getSignal")

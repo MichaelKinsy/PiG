@@ -12,22 +12,23 @@ import (
 )
 
 // rpcShutdown is rpc-mode.ts shutdown(). Stdin end, an extension's
-// ctx.shutdown(), or a termination signal starts it once: it removes the
-// signal handlers, writes the Session events already published and stops
-// writing later ones, disposes the runtime (session_shutdown, then
-// AgentSession.dispose), waits for stdout, and exits. Only SIGTERM skips the
-// stdout flush, during which the aborted run's in-process tail finishes.
+// ctx.shutdown(), or a termination signal starts it once: it writes the
+// Session events already published and stops writing later ones, disposes the
+// runtime (session_shutdown, then AgentSession.dispose), waits for stdout, and
+// exits. Only SIGTERM skips the stdout flush, during which the aborted run's
+// in-process tail finishes.
 //
-// Once shutdown has started, a termination signal takes Node's default
-// action, and stdin end or a shutdown request re-enters shutdown(), which
-// exits 0 at once. Stdin end after the dispose finished does nothing, because
-// shutdown() detached the input then.
+// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. Once
+// shutdown has started, a later stdin end, shutdown request or single signal
+// does nothing, so the dispose finishes; a repeated signal exits at once with
+// 128+signum (rpc-mode.ts signalCount). Pi 1.5.0 removed its signal handlers when
+// shutdown() began, so the next signal killed the process mid-dispose, and a
+// second shutdown() call exited 0 at once.
 //
-// Node's default action ends the process before anything else runs. Pig stops the extension processes first, and their exit completes a pending dispose or reports a drained event loop, which would exit 0 before the signal ends the process. So no exit starts once a termination signal's default action has begun.
+// An exit stops the extension processes first, and their exit completes a
+// pending dispose or reports a drained event loop, which would exit 0 before
+// the exit that started. The first exit that starts decides the status.
 type rpcShutdown struct {
-	// removeSignalHandlers makes a later termination signal take its
-	// default action.
-	removeSignalHandlers func()
 	// detach writes the Session events already published to stdout and
 	// stops writing later ones.
 	detach func()
@@ -39,41 +40,33 @@ type rpcShutdown struct {
 	exit  func(code int)
 	// settle runs before stdin end starts shutdown: Pi reads stdin's end in an event-loop iteration of its own, after the microtasks of every earlier line and of a published agent_end (rpc-mode.ts:355-360,802-805). It returns false when the mode ended meanwhile, which abandons the shutdown. It may be nil.
 	settle func() bool
-	// die ends the process with a termination signal's default action.
-	die func(sig os.Signal)
 
-	// dying is set when a termination signal's default action begins.
-	dying atomic.Bool
-	// exiting is set when an exit starts; a later exit does nothing.
+	// abort ends the process for a repeated signal: it does not wait for stdout. It is nil in tests that need no separate path, and the repeated signal then uses exit.
+	abort func(code int)
+
+	// exiting is set when an exit starts; a later exit does nothing, except the repeated signal's.
 	exiting atomic.Bool
 
 	mu        sync.Mutex
 	started   bool
 	startedCh chan struct{}
-	disposed  chan struct{}
 }
 
-func newRPCShutdown(removeSignalHandlers, detach, dispose, flush func(), exit func(code int), die func(os.Signal)) *rpcShutdown {
+func newRPCShutdown(detach, dispose, flush func(), exit func(code int)) *rpcShutdown {
 	return &rpcShutdown{
-		removeSignalHandlers: removeSignalHandlers, detach: detach, dispose: dispose, flush: flush, exit: exit, die: die,
-		startedCh: make(chan struct{}), disposed: make(chan struct{}),
+		detach: detach, dispose: dispose, flush: flush, exit: exit,
+		startedCh: make(chan struct{}),
 	}
 }
 
-// forceDie ends the process with sig's default action. Nothing exits after it starts.
-func (s *rpcShutdown) forceDie(sig os.Signal) {
-	s.dying.Store(true)
-	s.die(sig)
-}
-
-// flushAndExit ends the process with code after an optional stdout flush, unless a termination signal's default action has begun: the process then ends by that signal and no exit status may replace it. The first exit that starts decides the status, as the first process.exit does (rpc-mode.ts:728-744): stopping the extension processes inside an exit completes a pending dispose, whose own exit would otherwise race the first one's os.Exit.
+// flushAndExit ends the process with code after an optional stdout flush. The first exit that starts decides the status, as the first process.exit does (rpc-mode.ts:728-744): stopping the extension processes inside an exit completes a pending dispose, whose own exit would otherwise race the first one's os.Exit.
 func (s *rpcShutdown) flushAndExit(flush bool, code int) {
-	if s.dying.Load() || s.exiting.Load() {
+	if s.exiting.Load() {
 		return
 	}
 	if flush {
 		s.flush()
-		if s.dying.Load() || s.exiting.Load() {
+		if s.exiting.Load() {
 			return
 		}
 	}
@@ -89,41 +82,44 @@ func (s *rpcShutdown) drained() { s.flushAndExit(false, 0) }
 // Started returns a channel closed when a trigger has started shutdown.
 func (s *rpcShutdown) Started() <-chan struct{} { return s.startedCh }
 
-// inputEnd handles stdin end.
-func (s *rpcShutdown) inputEnd() {
+// inputEnd handles stdin end. After shutdown started it does nothing: the started dispose finishes and exits (D234). It reports false in that case, so the caller leaves the process to that shutdown's exit.
+func (s *rpcShutdown) inputEnd() bool {
 	if s.settle != nil && !s.settle() {
-		return
+		return true
 	}
 	if s.begin() {
 		s.flushAndExit(true, 0)
-		return
+		return true
 	}
-	select {
-	case <-s.disposed:
-	default:
-		s.flushAndExit(false, 0)
-	}
+	return false
 }
 
-// requested handles an extension's ctx.shutdown() once upstream checks for
-// it: after a command's response and at agent_settled.
+// requested handles an extension's ctx.shutdown() once the gate's check passes. After shutdown started it does nothing (D234).
 func (s *rpcShutdown) requested() {
 	if s.begin() {
 		s.flushAndExit(true, 0)
-		return
 	}
-	s.flushAndExit(false, 0)
 }
 
-// signal handles a termination signal, as the handler rpc-mode.ts registers
-// does: shutdown(128+signum, signal).
-func (s *rpcShutdown) signal(sig syscall.Signal) {
+// signal handles the first termination signal, as the handler rpc-mode.ts registers does: shutdown(128+signum, signal). It reports whether it started the shutdown: when one was already running, the signal does not interrupt it and the running shutdown's exit ends the process (D234).
+func (s *rpcShutdown) signal(sig syscall.Signal) bool {
 	tools.KillTrackedDetachedChildren()
 	if !s.begin() {
-		s.forceDie(sig)
-		return
+		return false
 	}
 	s.flushAndExit(sig != syscall.SIGTERM, 128+int(sig))
+	return true
+}
+
+// repeatedSignal handles a second or later termination signal: it exits at once with 128+signum, without waiting for the dispose or for stdout. Pi calls process.exit directly here (rpc-mode.ts signalCount > 1), so an exit that is already flushing a stuck stdout does not hold it back: the exiting guard is set, not consulted, and the exit skips the stdout wait (D234).
+func (s *rpcShutdown) repeatedSignal(sig syscall.Signal) {
+	tools.KillTrackedDetachedChildren()
+	s.exiting.Store(true)
+	exit := s.abort
+	if exit == nil {
+		exit = s.exit
+	}
+	exit(128 + int(sig))
 }
 
 // finish disposes the runtime when no trigger did, for a mode exit that had
@@ -143,10 +139,8 @@ func (s *rpcShutdown) begin() bool {
 	s.started = true
 	close(s.startedCh)
 	s.mu.Unlock()
-	s.removeSignalHandlers()
 	s.detach()
 	s.dispose()
-	close(s.disposed)
 	return true
 }
 
@@ -158,34 +152,41 @@ func terminationSignals() []os.Signal {
 	return []os.Signal{syscall.SIGTERM, syscall.SIGHUP}
 }
 
-// forcedTermination stands in for the default action upstream restores when
-// shutdown() removes its signal handlers: a termination signal after that ends
-// the process at once, without further cleanup.
-type forcedTermination struct {
+// repeatedTermination counts the termination signals that arrive while RPC mode runs. Main's handler takes the first one and runs the shutdown hook; every later one is a repeated signal that exits at once (rpc-mode.ts signalCount > 1).
+type repeatedTermination struct {
 	received chan os.Signal
 	stop     chan struct{}
 	done     chan struct{}
 	once     sync.Once
 }
 
-// watchForcedTermination starts watching for termination signals; die ends
-// the process.
-func watchForcedTermination(die func(os.Signal)) *forcedTermination {
-	w := &forcedTermination{received: make(chan os.Signal, 1), stop: make(chan struct{}), done: make(chan struct{})}
+// watchRepeatedTermination starts counting termination signals; repeat runs for each one after the first.
+func watchRepeatedTermination(repeat func(syscall.Signal)) *repeatedTermination {
+	w := &repeatedTermination{received: make(chan os.Signal, 8), stop: make(chan struct{}), done: make(chan struct{})}
 	signal.Notify(w.received, terminationSignals()...)
 	go func() {
 		defer close(w.done)
-		select {
-		case sig := <-w.received:
-			die(sig)
-		case <-w.stop:
+		first := true
+		for {
+			select {
+			case sig := <-w.received:
+				if first {
+					first = false
+					continue
+				}
+				if number, ok := sig.(syscall.Signal); ok {
+					repeat(number)
+				}
+			case <-w.stop:
+				return
+			}
 		}
 	}()
 	return w
 }
 
-// Stop stops watching and joins the watcher.
-func (w *forcedTermination) Stop() {
+// Stop stops counting and joins the watcher.
+func (w *repeatedTermination) Stop() {
 	if w == nil {
 		return
 	}
