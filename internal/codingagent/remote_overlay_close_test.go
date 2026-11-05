@@ -104,3 +104,40 @@ func deliverModalInput(t *testing.T, m *InteractiveMode, buf []byte) {
 		}
 	}
 }
+
+// pi main 51313540a (#9809; D251) for the remote editor-slot overlay (ctx.ui.custom of a subprocess extension): the draft the editor held
+// when the component opened comes back with its collapsed paste content after the component closes.
+func TestRemoteOverlayEditorSlotKeepsCollapsedPasteContent(t *testing.T) {
+	m, _ := newExtensionDialogProbe(t)
+	u := &ExtUIContext{m: m}
+	draft := pastedDraft("draft")
+	pasteInto(t, m.editor, draft)
+
+	handleCh := make(chan extension.RemoteOverlayHandle, 1)
+	done := make(chan any, 1)
+	go func() {
+		result, _ := u.RunRemoteOverlay(extension.RemoteOverlayOptions{Title: "ask"}, overlayInputSpy{onInput: func(string) {}}, func(h extension.RemoteOverlayHandle) { handleCh <- h })
+		done <- result
+	}()
+	var handle extension.RemoteOverlayHandle
+	select {
+	case handle = <-handleCh:
+	case task := <-m.uiTaskCh:
+		task()
+		handle = <-handleCh
+	case <-time.After(5 * time.Second):
+		t.Fatal("overlay never opened")
+	}
+	handle.Close("done")
+	select {
+	case <-done:
+	case task := <-m.uiTaskCh:
+		task()
+		<-done
+	case <-time.After(5 * time.Second):
+		t.Fatal("overlay stayed open")
+	}
+	if got := m.editor.GetExpandedText(); got != draft {
+		t.Fatalf("restored draft = %q, want %q", got, draft)
+	}
+}

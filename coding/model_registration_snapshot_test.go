@@ -344,8 +344,13 @@ func TestSessionCycleModelSeesExtensionProviderRegistration(t *testing.T) {
 			t.Fatalf("cycle after registration=%+v, want %s/registered", result, extensionID)
 		}
 		shared.UnregisterProvider(extensionID)
+		// pig divergence (D258): the active model is no longer available, so cycling selects the one available model (Pi main 5732bac06).
+		result, err = session.CycleModel("forward")
+		if err != nil || result == nil || providerID(result.Model) != baseID {
+			t.Fatalf("cycle after unregister=%+v err=%v, want %s/registered", result, err, baseID)
+		}
 		if result, err := session.CycleModel("forward"); err != nil || result != nil {
-			t.Fatalf("cycle after unregister=%+v err=%v, want no other available model", result, err)
+			t.Fatalf("second cycle after unregister=%+v err=%v, want no other available model", result, err)
 		}
 	})
 }

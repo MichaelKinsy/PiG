@@ -7,6 +7,7 @@ package tui
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -408,5 +409,55 @@ func TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndDoesNotCaptureVi
 	}
 	if CapturesViewportInput(build([]string{"a"})) {
 		t.Error("the selector must not capture viewport input")
+	}
+}
+
+func selectorOptionRows(selector *ExtensionSelectorComponent) (rows []string, output string) {
+	output = widthx.StripAnsi(strings.Join(selector.Render(80), "\n"))
+	for line := range strings.SplitSeq(output, "\n") {
+		if strings.Contains(line, "option-") {
+			rows = append(rows, strings.TrimPrefix(strings.TrimSpace(line), "→ "))
+		}
+	}
+	return rows, output
+}
+
+// pi main 3b57ed7e2 test/extension-selector.test.ts "windows long option lists around the selection" (#6688; D257).
+func TestExtensionSelectorWindowsLongOptionListsAroundTheSelection(t *testing.T) {
+	options := make([]string, 15)
+	for i := range options {
+		options[i] = "option-" + strconv.Itoa(i+1)
+	}
+	selector := NewExtensionSelectorComponent("Choose", options, nil, nil)
+	check := func(first, last int, selected, indicator string) {
+		t.Helper()
+		rows, output := selectorOptionRows(selector)
+		if !slices.Equal(rows, options[first:last]) {
+			t.Fatalf("rows = %v, want %v", rows, options[first:last])
+		}
+		if !strings.Contains(output, "→ "+selected) || !strings.Contains(output, "  ("+indicator+")") {
+			t.Fatalf("selection %s / indicator %s missing:\n%s", selected, indicator, output)
+		}
+	}
+	check(0, 10, "option-1", "1/15")
+	for range 7 {
+		selector.HandleInput("\x1b[B")
+	}
+	check(2, 12, "option-8", "8/15")
+	for range 7 {
+		selector.HandleInput("\x1b[B")
+	}
+	check(5, 15, "option-15", "15/15")
+}
+
+func TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator(t *testing.T) {
+	short := []string{"option-1", "option-2", "option-3"}
+	rows, output := selectorOptionRows(NewExtensionSelectorComponent("Choose", short, nil, nil))
+	if !slices.Equal(rows, short) || !strings.Contains(output, "→ option-1") || strings.Contains(output, "(1/3)") {
+		t.Fatalf("short list rendered:\n%s", output)
+	}
+	_, output = selectorOptionRows(NewExtensionSelectorComponent("Choose", nil, nil, nil))
+	if !strings.Contains(output, "Choose") || !strings.Contains(output, "↑↓ navigate") || strings.Contains(output, "→") {
+		t.Fatalf("empty list rendered:\n%s", output)
 	}
 }

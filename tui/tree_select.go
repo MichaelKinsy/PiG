@@ -1096,13 +1096,21 @@ func (t *TreeSelectorComponent) renderHelp(width int) []string {
 	return lines
 }
 
-// renderSearchLine draws "Type to search:" in muted, mirroring tree-selector.ts:1169-1171; the active query renders in accent after it (SearchLine).
+// renderSearchLine draws "Type to search:" in muted, mirroring tree-selector.ts SearchLine; the active query renders in accent after it.
+// pig divergence (D248): Pi main 2cfab7c26 (#9157) draws the line with a trailing space when the query is empty and, while the selector is
+// focused and no label is being edited, a CURSOR_MARKER plus a reverse-video cell in the last column, as Resume Session's search does.
 func (t *TreeSelectorComponent) renderSearchLine(width int) []string {
-	searchLine := "  " + fg(ActiveTheme().Muted, "Type to search:")
-	if t.searchQuery != "" {
-		searchLine += " " + fg(ActiveTheme().Accent, t.searchQuery)
+	if width <= 0 {
+		return []string{""}
 	}
-	return []string{widthx.TruncateToWidth(searchLine, width, "...", false)}
+	searchLine := "  " + fg(ActiveTheme().Muted, "Type to search:") + " "
+	if t.searchQuery != "" {
+		searchLine += fg(ActiveTheme().Accent, t.searchQuery)
+	}
+	if !t.focused || t.labelInput != nil {
+		return []string{widthx.TruncateToWidth(searchLine, width, "...", false)}
+	}
+	return []string{widthx.TruncateToWidth(searchLine, max(0, width-1), "...", false) + widthx.CursorMarker + "\x1b[7m \x1b[27m"}
 }
 
 // renderLabelInput draws the label prompt, the shared Input and the configured key hints while a label is edited (LabelInput).

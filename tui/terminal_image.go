@@ -196,7 +196,10 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 	if os.Getenv("WT_SESSION") != "" {
 		return TerminalCapabilities{Images: "", TrueColor: true, Hyperlinks: true}
 	}
-	if termProgram == "alacritty" || termProgram == "vscode" || termProgram == "zed" {
+	// pig divergence (D259): Alacritty does not set TERM_PROGRAM. It sets TERM=alacritty when its terminfo entry is installed (otherwise
+	// xterm-256color) and ALACRITTY_WINDOW_ID on Unix and macOS (Pi main 2af8a42f5).
+	isAlacritty := termProgram == "alacritty" || strings.HasPrefix(term, "alacritty") || os.Getenv("ALACRITTY_WINDOW_ID") != ""
+	if isAlacritty || termProgram == "vscode" || termProgram == "zed" {
 		return TerminalCapabilities{Images: "", TrueColor: true, Hyperlinks: true}
 	}
 	if terminalEmulator == "jetbrains-jediterm" {

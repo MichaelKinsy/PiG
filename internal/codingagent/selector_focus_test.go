@@ -51,11 +51,18 @@ func TestEditorSlotTreeSelectorTakesAndReturnsFocus(t *testing.T) {
 	if m.tuiInst.GetFocusedComponent() != ts {
 		t.Errorf("focus = %T, want the tree selector", m.tuiInst.GetFocusedComponent())
 	}
+	// pi main 2cfab7c26 (#9157; D248): the focus the mode gives the selector shows the search cursor.
+	if !strings.Contains(strings.Join(ts.Render(80), "\n"), widthx.CursorMarker+"\x1b[7m \x1b[27m") {
+		t.Error("the focused /tree selector draws no search cursor")
+	}
 	input <- []byte("\x1b") // clears the search query
 	input <- []byte("\x1b")
 	<-done
 	if m.tuiInst.GetFocusedComponent() != m.editor {
 		t.Errorf("focus after close = %T, want the editor", m.tuiInst.GetFocusedComponent())
+	}
+	if strings.Contains(strings.Join(ts.Render(80), "\n"), widthx.CursorMarker) {
+		t.Error("the closed /tree selector still draws the search cursor")
 	}
 }
 

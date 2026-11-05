@@ -12,12 +12,12 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Pi: packages/coding-agent/src/core/agent-session.ts:1653 (Session.setScopedModels).
+// Pi: packages/coding-agent/src/core/agent-session.ts:1653 (Session.setScopedModels). pig divergence (D258): a missing current model selects the first entry forward and the last backward (Pi main 5732bac06); Pi 1.5.0 counted it as index 0.
 func TestSessionModelCycleBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name, direction, current, want string
 		scope                          []int
-	}{{"forward wrap", "forward", "faux-2", "faux-1", nil}, {"backward wrap", "backward", "faux-1", "faux-2", nil}, {"missing current follows first", "forward", "unknown", "faux-2", nil}, {"singleton", "forward", "faux-1", "", []int{0}}} {
+	}{{"forward wrap", "forward", "faux-2", "faux-1", nil}, {"backward wrap", "backward", "faux-1", "faux-2", nil}, {"missing current selects first", "forward", "unknown", "faux-1", nil}, {"missing current selects last backward", "backward", "unknown", "faux-2", nil}, {"singleton", "forward", "faux-1", "", []int{0}}} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newModelExtensionHarness(t, []bool{true, true}, "", true, extension.Extension{}, nil)
 			if tc.scope != nil {

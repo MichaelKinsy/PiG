@@ -3,6 +3,7 @@ package tui
 // Ports packages/coding-agent/src/modes/interactive/components/extension-selector.ts
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -144,9 +145,31 @@ func styledDialogTitle(title string) string {
 // updateList rebuilds the option rows with the current theme (extension-selector.ts updateList).
 func (e *ExtensionSelectorComponent) updateList() {
 	e.listContainer.Clear()
-	for i := range e.options {
+	start, end := e.visibleWindow()
+	for i := start; i < end; i++ {
 		e.listContainer.Add(NewPaddedText(e.rowText(i), 1, 0, nil))
 	}
+	if info := e.scrollInfo(start, end); info != "" {
+		e.listContainer.Add(NewPaddedText(info, 0, 0, nil))
+	}
+}
+
+// selectorMaxVisible is the most option rows the selector draws.
+const selectorMaxVisible = 10
+
+// visibleWindow is the option rows [start, end) drawn: a window of up to selectorMaxVisible centered on the cursor and clamped to the list.
+// pig divergence (D257): Pi 1.5.0 draws every option; Pi main 3b57ed7e2 (#11072) draws this window and a position indicator.
+func (e *ExtensionSelectorComponent) visibleWindow() (start, end int) {
+	start = max(0, min(e.cursor-selectorMaxVisible/2, len(e.options)-selectorMaxVisible))
+	return start, min(start+selectorMaxVisible, len(e.options))
+}
+
+// scrollInfo is the "(selection/total)" line under a windowed list, empty when every option is drawn.
+func (e *ExtensionSelectorComponent) scrollInfo(start, end int) string {
+	if start == 0 && end >= len(e.options) {
+		return ""
+	}
+	return ActiveTheme().Fg("muted", fmt.Sprintf("  (%d/%d)", e.cursor+1, len(e.options)))
 }
 
 // rowText is the themed text of option i: the arrow marks the selected row.
@@ -215,13 +238,17 @@ func (e *ExtensionSelectorComponent) rowsBesidePreview(width int, preview []stri
 	cells := previewCells(preview)
 	listMax := width - cells - previewGapCells - previewRightCells
 	listWidth := 0
-	for i := range e.options {
+	start, end := e.visibleWindow()
+	for i := range e.options { // the longest of every row, not of the window, so the preview column does not move as the window scrolls
 		listWidth = max(listWidth, 2+widthx.VisibleWidth(e.rowText(i)))
 	}
 	listWidth = min(listWidth, listMax)
 	var rows []string
-	for i := range e.options {
+	for i := start; i < end; i++ {
 		rows = append(rows, NewPaddedText(e.rowText(i), 1, 0, nil).Render(listWidth)...)
+	}
+	if info := e.scrollInfo(start, end); info != "" {
+		rows = append(rows, NewPaddedText(info, 0, 0, nil).Render(listWidth)...)
 	}
 	gap := strings.Repeat(" ", previewGapCells)
 	composed := make([]string, max(len(rows), len(preview)))

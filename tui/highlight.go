@@ -638,6 +638,10 @@ var extToLang = sync.OnceValue(func() map[string]string {
 		"java":       "java",
 		"kt":         "kotlin",
 		"swift":      "swift",
+		"dart":       "dart", // pig divergence (D260): Pi main c13f6acfb maps dart, groovy, gradle and nix
+		"groovy":     "groovy",
+		"gradle":     "groovy",
+		"nix":        "nix",
 		"c":          "c",
 		"h":          "c",
 		"cpp":        "cpp",

@@ -722,17 +722,23 @@ func (m *InteractiveMode) queueCompactionMessageForActiveTurn(msg compactionQueu
 	m.steerMessageWithImages(msg.text, msg.images)
 }
 
+// queuedUserMessage is the user message the mode queues on the Agent. A Session builds it so its images are marked for normalization
+// when the message is delivered.
+// pig divergence (D249): Pi main 4cf69332c resizes queued images; Pi 1.5.0 queues them unprocessed.
+func (m *InteractiveMode) queuedUserMessage(text string, images []ai.ImageContent) agent.AgentMessage {
+	if session, ok := m.opts.SessionHandle.(interface {
+		QueuedUserMessage(string, []ai.ImageContent) agent.AgentMessage
+	}); ok {
+		return session.QueuedUserMessage(text, images)
+	}
+	return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: promptContent(text, images), Timestamp: time.Now().UnixMilli()}}
+}
+
 // steerMessageWithImages queues a steering message, delivered after the
 // current tool batch and before the next model call (upstream _queueSteer). Like Pi's onSubmit (interactive-mode.ts:3378-3383) it shows the
 // message in the pending area only, with no status line.
 func (m *InteractiveMode) steerMessageWithImages(text string, images []ai.ImageContent) {
-	msg := agent.AgentMessage{
-		User: &agent.UserMessage{
-			Role:      agent.RoleUser,
-			Content:   promptContent(text, images),
-			Timestamp: time.Now().UnixMilli(),
-		},
-	}
+	msg := m.queuedUserMessage(text, images)
 	m.agent.Steer(msg)
 	m.updatePendingMessagesDisplay()
 }
@@ -741,13 +747,7 @@ func (m *InteractiveMode) steerMessageWithImages(text string, images []ai.ImageC
 // run has no more tool calls or steering messages (upstream _queueFollowUp). Like Pi's handleFollowUp (interactive-mode.ts:4493-4498) it
 // shows the message in the pending area only, with no status line.
 func (m *InteractiveMode) followUpMessageWithImages(text string, images []ai.ImageContent) {
-	msg := agent.AgentMessage{
-		User: &agent.UserMessage{
-			Role:      agent.RoleUser,
-			Content:   promptContent(text, images),
-			Timestamp: time.Now().UnixMilli(),
-		},
-	}
+	msg := m.queuedUserMessage(text, images)
 	m.agent.FollowUp(msg)
 	m.updatePendingMessagesDisplay()
 }

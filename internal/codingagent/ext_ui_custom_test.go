@@ -3,11 +3,16 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -320,4 +325,77 @@ func TestExtUIContextCustomOverlayOptionsFunctionAndOnHandle(t *testing.T) {
 	}
 	done("closed")
 	r.finish(t, out)
+}
+
+// pastedDraft is a bracketed paste of twelve lines: the editor collapses it into a marker whose content only the editor can expand.
+func pastedDraft(label string) string {
+	lines := make([]string, 12)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("%s %d", label, i+1)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func pasteInto(t *testing.T, editor *tui.Editor, text string) {
+	t.Helper()
+	editor.HandleInput("\x1b[200~" + text + "\x1b[201~")
+	if editor.Text() == text {
+		t.Fatal("the paste did not collapse into a marker; the transition under test would copy plain text")
+	}
+}
+
+// pi main 51313540a test/interactive-mode-paste.test.ts "around non-overlay custom UI" (#9809; D251).
+func TestExtUIContextCustomKeepsCollapsedPasteContent(t *testing.T) {
+	t.Run("after it closes", func(t *testing.T) {
+		r := newCustomRig(t)
+		draft := pastedDraft("draft")
+		pasteInto(t, r.m.editor, draft)
+		var done func(any)
+		out := r.start(t.Context(), extension.CustomFactory(func(_ extension.TUI, _ *tui.Theme, _ extension.KeybindingsManager, d func(any)) (extension.DisposableComponent, error) {
+			done = d
+			return &customProbe{label: "C"}, nil
+		}), nil)
+		r.pump(t, out, func() bool { return done != nil && r.m.editorContainer.Children()[0] != tui.Component(r.m.editor) })
+		done(nil)
+		r.finish(t, out)
+		if got := r.m.editor.GetExpandedText(); got != draft {
+			t.Fatalf("restored draft = %q, want %q", got, draft)
+		}
+	})
+	t.Run("after it fails to open", func(t *testing.T) {
+		r := newCustomRig(t)
+		draft := pastedDraft("draft")
+		pasteInto(t, r.m.editor, draft)
+		out := r.start(t.Context(), extension.CustomFactory(func(extension.TUI, *tui.Theme, extension.KeybindingsManager, func(any)) (extension.DisposableComponent, error) {
+			return nil, errors.New("factory failed")
+		}), nil)
+		r.finish(t, out)
+		if got := r.m.editor.GetExpandedText(); got != draft {
+			t.Fatalf("restored draft = %q, want %q", got, draft)
+		}
+	})
+}
+
+// pi main 51313540a "when queued messages are restored above it" (D251).
+func TestRestoreQueuedMessagesKeepsCollapsedPasteContent(t *testing.T) {
+	m := statusBorderMode(t, false)
+	draft := pastedDraft("draft")
+	pasteInto(t, m.editor, draft)
+	m.agent.FollowUp(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "queued follow-up"}}}})
+	m.restoreQueuedMessagesToEditor(false)
+	if got, want := m.editor.GetExpandedText(), "queued follow-up\n\n"+draft; got != want {
+		t.Fatalf("editor = %q, want %q", got, want)
+	}
+}
+
+// pi main 51313540a "between the default and a replacement editor" (D251).
+func TestSetRemoteEditorKeepsCollapsedPasteContent(t *testing.T) {
+	mode, _ := newCustomEditorDispatchMode(t)
+	draft := pastedDraft("into replacement")
+	pasteInto(t, mode.editor, draft)
+	custom := &fakeRemoteEditor{}
+	mode.setRemoteEditor(custom)
+	if !slices.Contains(custom.calls, "setText:"+draft) {
+		t.Fatalf("replacement editor calls = %q, want setText of the expanded draft", custom.calls)
+	}
 }

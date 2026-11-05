@@ -93,7 +93,7 @@ func TestStartupChangelogFollowsPi(t *testing.T) {
 	tui.SetCapabilityOverrides(tui.CapabilityOverrides{Hyperlinks: new(false)}) // links print their URL as text, whatever terminal runs the test
 	t.Cleanup(func() { tui.SetCapabilityOverrides(tui.CapabilityOverrides{}); tui.ResetCapabilitiesCache() })
 	entries := ParseChangelog("## [0.3.0]\nNewest [doc](docs/a.md)\n\n## [0.2.0]\nMiddle\n\n## [0.1.0]\nOldest")
-	newer := GetNewEntries(entries, "0.1.0")
+	newer, _ := GetNewEntries(entries, "0.1.0")
 	render := func(collapse bool, withChat bool) []string {
 		mode := &InteractiveMode{
 			chatContainer: tui.NewContainer(),
