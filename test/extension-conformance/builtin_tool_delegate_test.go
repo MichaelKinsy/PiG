@@ -103,7 +103,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "prepare", "tool": "write", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "content": "c"}},
 			{"kind": "prepare", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt"}},
 			{"kind": "prepare", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "true"}},
-			// find asks a custom glob for one result past its limit (Pi main 676af1d77, pig divergence D253); the pinned Pi asks for the limit itself
+			// find asks a custom glob for one result past its limit (Pi main 676af1d77, pig divergence (D253)); the pinned Pi asks for the limit itself
 			{"kind": "delegate", "tool": "find", "factoryCwd": factoryCwd, "params": tcase{"pattern": "*.txt", "limit": 2}, "ops": "globlimit"},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
@@ -510,7 +510,7 @@ func TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs(t *t
 	}
 }
 
-// expectedBuiltinReport is what a PiG SDK reports for a case, given what the pinned Pi (the Node reference) reported. pig divergence D253: Pi main 676af1d77's find
+// expectedBuiltinReport is what a PiG SDK reports for a case, given what the pinned Pi (the Node reference) reported. pig divergence (D253): Pi main 676af1d77's find
 // tool asks a custom glob for limit+1 results, so the glob of an "globlimit" case sees one more than the pinned Pi's limit; the tool's output is the same.
 func expectedBuiltinReport(c, reference map[string]any) map[string]any {
 	if c["ops"] != "globlimit" {

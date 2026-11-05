@@ -62,7 +62,7 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 		// 10 emoji are 10 code points but 20 UTF-16 units: a limit of 16 cuts after 8 of them, which a code-point count would not.
 		{"fn": "line", "content": strings.Repeat("😀", 10), "maxChars": 16},
 		{"fn": "line", "content": strings.Repeat("😀", 10), "maxChars": 8},
-		// A cut inside a surrogate pair: the pinned Pi (the Node reference) keeps the lone high surrogate, which the host reads as U+FFFD; every PiG SDK drops the pair (Pi main 9e870f6f0, pig divergence D252), which expectedFor applies to the reference.
+		// A cut inside a surrogate pair: the pinned Pi (the Node reference) keeps the lone high surrogate, which the host reads as U+FFFD; every PiG SDK drops the pair (Pi main 9e870f6f0, pig divergence (D252)), which expectedFor applies to the reference.
 		{"fn": "line", "content": strings.Repeat("😀", 10), "maxChars": 7},
 		{"fn": "line", "content": "日本語日本語", "maxChars": 3},
 		{"fn": "line", "content": "abc", "maxChars": 0},
