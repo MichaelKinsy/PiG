@@ -16,7 +16,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/handleryield"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
@@ -203,12 +202,6 @@ func (rt *Runtime) EmitQuitShutdownContext(ctx context.Context) {
 	if session == nil {
 		return
 	}
-	// pig divergence (D247): dispose awaits the interrupted run's settlement before session_shutdown (Pi main 7a53c310a, #9126).
-	// Pi awaits the abort on its event loop, which turns meanwhile: the host's hold on the Agent ends (handleryield) so the run can settle.
-	session.RequestAbort()
-	handleryield.Report(ctx)
-	//portlint:allow ctxbackground Pi's dispose awaits session.abort() with no signal and no timeout (agent-session-runtime.ts dispose)
-	_ = session.WaitForIdle(context.Background())
 	if runner := session.currentRunner(); runner != nil && runner.HasHandlers(icodingagent.EventSessionShutdown) {
 		_, _ = runner.Emit(ctx, extension.SessionShutdownEvent{Type: icodingagent.EventSessionShutdown, Reason: "quit"})
 	}
