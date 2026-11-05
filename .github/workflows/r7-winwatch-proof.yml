@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        n: [1, 2, 3, 4, 5, 6]
+        n: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -22,13 +22,7 @@ jobs:
         with:
           go-version-file: .go-version
           cache: false
-      - name: The whole package, as the native shard runs it
-        shell: bash
-        run: |
-          set -euo pipefail
-          go test -timeout 30m -count=1 ./chord/nextnode/plugins
-      - name: Watcher tests, 20 times, with files churning beside them
-        if: always()
+      - name: Watcher tests, 50 times, with files churning beside them
         shell: pwsh
         run: |
           $churn = Start-Job -ScriptBlock {
@@ -39,7 +33,7 @@ jobs:
               Remove-Item -Recurse -Force "$dir\*"
             }
           }
-          go test -timeout 30m -count=20 -run Watcher ./chord/nextnode/plugins
+          go test -timeout 30m -count=50 -run Watcher ./chord/nextnode/plugins
           $code = $LASTEXITCODE
           Stop-Job $churn
           if ($code -ne 0) { throw "watcher tests failed" }
