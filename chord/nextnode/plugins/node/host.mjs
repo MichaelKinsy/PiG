@@ -97,7 +97,7 @@ class FramedPort extends EventEmitter {
 		this.#writing++;
 		return this.#socket.write(payload, (error) => {
 			this.#writing--;
-			if (this.#ending && this.#writing === 0) this.#socket.end();
+			if (this.#ending && this.#writing === 0) this.#finish();
 			callback(error ?? null);
 		});
 	}
@@ -110,11 +110,19 @@ class FramedPort extends EventEmitter {
 		return this.#write(KIND_CONTROL, Buffer.from(JSON.stringify(message)), callback);
 	}
 
-	/** Ends the writing side once every frame written is out: an `end()` while a write is in flight loses it (Windows). */
+	/**
+	 * Ends the channel once every frame written is out: an `end()` while a write is in flight loses it (Windows). The socket is
+	 * destroyed when its end is written, not left to wait for the Go side's close: on Windows a pending read can miss the peer's
+	 * close on an AF_UNIX socket, and the process, kept alive by the socket, would be killed after the stop grace.
+	 */
 	disconnect() {
 		this.connected = false;
 		this.#ending = true;
-		if (this.#writing === 0) this.#socket.end();
+		if (this.#writing === 0) this.#finish();
+	}
+
+	#finish() {
+		this.#socket.end(() => this.#socket.destroy());
 	}
 }
 
