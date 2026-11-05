@@ -19,6 +19,22 @@ on:
     # labeled starts the run that the ci:full label asks for; ready_for_review starts the one a draft's owner asks for.
     types: [opened, synchronize, reopened, ready_for_review, labeled]
   merge_group:
+  # A long-lived integration branch gets GitHub CI on every push that touches platform-sensitive code; the nightly
+  # integration-ci workflow runs the whole of ci.yml and security.yml on it (it cannot be a schedule here: schedules run on main only).
+  push:
+    branches: ['release/**', 'integration/**', 'fix/follow-pi-**']
+    paths:
+      - 'internal/**/*path*/**'
+      - '**/*path*.go'
+      - '**/*terminal*/**'
+      - '**/*terminal*.go'
+      - '**/*process*/**'
+      - '**/*process*.go'
+      - '**/*fs*/**'
+      - '**/*_windows.go'
+      - '**/*_darwin.go'
+      - '**/*_unix.go'
+      - '.github/workflows/**'
   schedule:
     - cron: '41 6 * * 1'
   workflow_dispatch:
@@ -34,7 +50,7 @@ concurrency:
 # .upstream/pin (a release tag or a pinned commit). make compliance checks every other copy
 # of these pins.
 env:
-  NPM_VERSION: 12.1.0
+  NPM_VERSION: 12.2.1
   RUST_VERSION: 1.97.1
   # Wall-clock and speed-ratio gates only warn on shared runners (internal/testenv.TimingGate); count, size and allocation gates still block. make test-timing runs them blocking on quiet hardware before a release.
   PIG_PERF_TIMING_REPORT_ONLY: '1'
@@ -56,11 +72,24 @@ jobs:
       run-durable-contract: ${{ steps.plan.outputs.run-durable-contract }}
       run-android: ${{ steps.plan.outputs.run-android }}
       run-node-loader: ${{ steps.plan.outputs.run-node-loader }}
+      os-parallel: ${{ steps.branch.outputs.os-parallel }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+      # On release/* and integration branches (the pull request's base, or the pushed or dispatched ref) the compile gate and the
+      # OS shards do not wait for Bookkeeping or the compile gate, so one run shows every failure. main keeps the cheap-first order.
+      - name: Choose the job order for this branch
+        id: branch
+        env:
+          BRANCH: ${{ github.base_ref || github.ref_name }}
+        shell: bash
+        run: |
+          case "$BRANCH" in
+            release/*|integration/*|fix/follow-pi-*) echo "os-parallel=true" ;;
+            *) echo "os-parallel=false" ;;
+          esac | tee -a "$GITHUB_OUTPUT"
       - name: Classify the change
         id: classify
         env:
@@ -223,7 +252,7 @@ jobs:
     # The compile gate: every package builds, vets for each shipped platform, and needs no go fix. Windows, macOS and the Node
     # loader wait for it, so a change that cannot pass them does not spend their minutes; the Linux shards start at once.
     needs: [changes, bookkeeping]
-    if: needs.changes.outputs.product == 'true'
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -732,7 +761,7 @@ jobs:
   windows:
     name: Windows ${{ matrix.shard }}
     needs: [changes, preflight]
-    if: needs.changes.outputs.product == 'true'
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
@@ -975,7 +1004,7 @@ jobs:
   macos:
     name: macOS ${{ matrix.shard }}
     needs: [changes, preflight]
-    if: needs.changes.outputs.product == 'true'
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
     runs-on: macos-15
     timeout-minutes: 40
     env:

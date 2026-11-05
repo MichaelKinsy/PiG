@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: MIT
+name: Integration branch CI
+
+# Schedules run only on the default branch, so this workflow (on main) dispatches the full ci.yml and security.yml on each
+# long-lived integration branch every night. No long-lived branch goes without GitHub CI. The branches come from the
+# repository variable PIG_INTEGRATION_BRANCHES (space-separated; default fix/follow-pi-next); a branch that does not exist is skipped.
+on:
+  schedule:
+    - cron: '11 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Dispatch CI on integration branches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch ci.yml and security.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCHES: ${{ vars.PIG_INTEGRATION_BRANCHES || 'fix/follow-pi-next' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for branch in $BRANCHES; do
+            if ! gh api "repos/$REPO/branches/${branch//\//%2F}" --silent 2>/dev/null; then
+              echo "::notice::$branch does not exist; skipped"
+              continue
+            fi
+            for wf in ci.yml security.yml; do
+              gh workflow run "$wf" --repo "$REPO" --ref "$branch"
+              echo "dispatched $wf on $branch"
+            done
+          done
