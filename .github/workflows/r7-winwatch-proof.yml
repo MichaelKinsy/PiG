@@ -1,0 +1,29 @@
+name: r7 winwatch proof
+# A proof run of the plugins watcher tests on Windows, on these branches only. Not for merging.
+on:
+  push:
+    branches: [fix/r7-winwatch-proof, fix/r7-winwatch-red]
+permissions:
+  contents: read
+jobs:
+  windows:
+    name: Windows watcher x${{ matrix.n }}
+    runs-on: windows-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: false
+      - name: Watcher tests, 20 times
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -timeout 30m -count=20 -run Watcher ./chord/nextnode/plugins
