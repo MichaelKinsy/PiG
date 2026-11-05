@@ -2,6 +2,7 @@ import fs from "node:fs";
 import zlib from "node:zlib";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import * as piAi from "@earendil-works/pi-ai";
+import { Value } from "typebox/value";
 import { join as joinPath } from "node:path";
 import * as piTui from "@earendil-works/pi-tui";
 import * as piCodingAgent from "@earendil-works/pi-coding-agent";
@@ -49,12 +50,23 @@ export default function (pi) {
     const checked = (tag, check) => (value) => { log.push(`check:${tag}`); return check(value); };
     const worded = (tag, message) => (value) => { log.push(`error:${tag}`); return message(value); };
     const equals = (tag, want) => Type.Refine(Type.String(), checked(tag, (v) => v === want), worded(`${tag}m`, () => `not ${want}`));
-    pi.registerTool({ name: "refine-probe", description: "Arguments checked by refinements", parameters: Type.Refine(Type.Object({
+    const probe = Type.Refine(Type.Object({
       name: Type.Refine(Type.String(), checked("len", (v) => v.length >= 3), worded("lenmsg", () => "name is too short")),
       qty: Type.Optional(Type.Refine(Type.Integer(), checked("even", (v) => v % 2 === 0), worded("evenmsg", (v) => `qty must be even, got ${v}`))),
       pick: Type.Union([equals("u1", "a"), equals("u2", "b")]),
       boom: Type.Optional(Type.Refine(Type.String(), checked("boom", () => { throw new Error("kaboom"); }))),
-    }), checked("root", () => true), worded("rootmsg", () => "root refused")), execute: async () => ({ content: [{ type: "text", text: "ok" }] }) });
+    }), checked("root", () => true), worded("rootmsg", () => "root refused"));
+    pi.registerTool({ name: "refine-probe", description: "Arguments checked by refinements", parameters: probe, execute: async () => ({ content: [{ type: "text", text: "ok" }] }) });
+    // refine_value (TestConformance_RefinedValueRunsRefinements): TypeBox's own Value.Check and Value.Errors of the same schema, with the calls they made.
+    pi.registerCommand("refine_value", { description: "Run Value.Check or Value.Errors on the refine-probe schema", handler: async (args, ctx) => {
+      const { mode, value } = JSON.parse(args);
+      let report;
+      try {
+        const result = mode === "cycle" ? Value.Check(Type.Unsafe({ $ref: "#" }), 1) : mode === "check" ? Value.Check(probe, value) : [...Value.Errors(probe, value)].map((e) => ({ keyword: e.keyword, schemaPath: e.schemaPath, instancePath: e.instancePath, params: e.params, message: e.message }));
+        report = { result, calls: log.splice(0) };
+      } catch (error) { report = { thrown: String(error && error.message), calls: log.splice(0) }; }
+      ctx.ui.notify(`refine_value:${JSON.stringify(report)}:end`, "info");
+    } });
     pi.registerCommand("refine_log", { description: "Report and clear the refinement call log", handler: async (_args, ctx) => { const calls = log.splice(0); ctx.ui.notify(`refine_log:${JSON.stringify(calls)}:end`, "info"); } });
   }
   pi.registerCommand("schema-probe", { description: "Report schema rejection", handler: async (_args, ctx) => ctx.ui.notify(`schema-rejected:${schemaRejected}`, "info") });

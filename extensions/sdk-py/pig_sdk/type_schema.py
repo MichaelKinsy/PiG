@@ -39,9 +39,9 @@ class TSchema(dict):
 
 
 class Refinement(NamedTuple):
-    """One entry of a schema's hidden ``~refine`` list (TypeBox's ``{check, error}``): ``check(value)`` decides whether a value passes and ``error(value)`` words the failure (None is
-    TypeBox's "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
-    registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler."""
+    """One entry of a schema's hidden ``~refine`` list (TypeBox's ``{check, error}``): ``check(value)`` decides whether a value passes (its truthiness) and ``error(value)`` words the failure (None is
+    TypeBox's "Refine Error"). ``Value.check`` and ``Value.errors`` run them; a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25,
+    coding-agent/docs/extensions.md:176), so nothing in a tool's registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler."""
 
     check: Callable[[Any], Any]
     error: Optional[Callable[[Any], str]] = None
@@ -336,11 +336,12 @@ class _Type(_EngineMembers):
     def immutable(schema: Any) -> TSchema:
         return _update(schema, {"~immutable": True}, None)
 
-    # pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
+    # pig divergence (D226): a tool's arguments are not refined, as in Pi; Value.check / Value.errors (served by the host's type engine) run the stored checks, which Pi's own `Value` does too.
     @staticmethod
     def refine(*args: Any) -> TSchema:
         """``Type.Refine(type, check)`` or ``(type, check, error)``: a copy of the schema whose hidden ``~refine`` list has the refinement appended; the schema's JSON does not change.
-        The refinements are not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler. TypeBox matches the arguments by count, so any other count raises
+        The refinements run in ``Value.check`` and ``Value.errors`` (``pig_sdk.Value``), in the order TypeBox calls them. A tool's arguments are validated as plain JSON Schema, so they are not refined
+        (as in Pi): check such constraints in the handler, or run ``Value.check`` there. TypeBox matches the arguments by count, so any other count raises
         ``ValueError("Invalid Arguments")``, as Pi's does; a ``None`` error is the default "Refine Error"."""
         if len(args) not in (2, 3):
             raise ValueError("Invalid Arguments")

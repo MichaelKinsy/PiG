@@ -78,7 +78,7 @@
 ;;; refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the "probe" cases of validateToolArguments.json; every
 ;;; predicate and message function logs its call
 (def-fixture "types-refine-probe" (ext)
-  (let ((log '()))
+  (let ((log '()) (schema nil))
     (labels ((checked (tag check) (lambda (value) (push (format nil "check:~A" tag) log) (funcall check value)))
              (worded (tag message) (lambda (value) (push (format nil "error:~A" tag) log) (funcall message value)))
              (equals (tag want)
@@ -95,13 +95,30 @@
                               "boom" (pig:type-optional (pig:type-refine (pig:type-string) (checked "boom" (lambda (value) (declare (ignore value)) (error "kaboom")))))))
                     (checked "root" (lambda (value) (declare (ignore value)) t))
                     (worded "rootmsg" (lambda (value) (declare (ignore value)) "root refused")))))
-        (pig:tool ext "refine-probe" "Arguments checked by refinements" probe (lambda (ctx args) (declare (ignore ctx args)) "ok")))
+        (pig:tool ext "refine-probe" "Arguments checked by refinements" probe (lambda (ctx args) (declare (ignore ctx args)) "ok"))
+        (setf schema probe))
       (pig:command ext "refine_log" "Report and clear the refinement call log"
                    (lambda (ctx args)
                      (declare (ignore args))
                      (let ((calls (coerce (reverse log) 'simple-vector)))
                        (setf log '())
-                       (types-notify ctx (concatenate 'string "refine_log:" (pig:to-json calls) ":end"))))))))
+                       (types-notify ctx (concatenate 'string "refine_log:" (pig:to-json calls) ":end")))))
+      ;; refine_value (TestConformance_RefinedValueRunsRefinements): Value.check / Value.errors of the same schema; {"mode":"check"|"errors"|"cycle","value":<json>}
+      (pig:command ext "refine_value" "Run Value.Check or Value.Errors on the refine probe"
+                   (lambda (ctx args)
+                     (let* ((request (pig:from-json args))
+                            (value (pig:jget request "value"))
+                            (report (handler-case
+                                        (let* ((mode (pig:jget request "mode"))
+                                               (result (cond ((equal mode "errors") (coerce (pig:value-errors schema value) 'simple-vector))
+                                                             ;; cycle: a schema that refers to itself, which the host answers with TypeBox's RangeError
+                                                             ((equal mode "cycle") (if (pig:value-check (pig:type-unsafe (pig:obj "$ref" "#")) 1) t :false))
+                                                             (t (if (pig:value-check schema value) t :false)))))
+                                          (list "result" result))
+                                      (error (e) (list "thrown" (princ-to-string e)))))
+                            (calls (coerce (reverse log) 'simple-vector)))
+                       (setf log '())
+                       (types-notify ctx (concatenate 'string "refine_value:" (pig:to-json (apply #'pig:obj (append report (list "calls" calls)))) ":end"))))))))
 
 ;;; pi_ai_helpers_probe runs every call of the vector calls (test/parity/sdk-vectors, Pi's own answers at the pin, listed in one file by the
 ;;; test) through this SDK's pi-ai helpers and reports each answer as JSON (TestConformance_PiAiHelpersAgreeAcrossSDKs)

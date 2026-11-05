@@ -219,9 +219,10 @@ func buildMembers() map[string]member {
 	}
 }
 
-// Serve answers one engine request: `{"member": "...", "args": [<wire>, ...]}` with `{"value": <wire>}`, or
-// `{"error": {"name": "...", "message": "..."}}` for what TypeBox throws. A request that is not that is an error too.
-func Serve(request []byte) []byte {
+// Serve answers one engine request of the session's connection: `{"member": "...", "args": [<wire>, ...]}` with `{"value": <wire>}`, or
+// `{"error": {"name": "...", "message": "..."}}` for what TypeBox throws. A request that is not that is an error too. The members of `Value` keep walks parked in the session
+// (see value_check.go).
+func (s *Session) Serve(request []byte) []byte {
 	var req struct {
 		Member string          `json:"member"`
 		Args   json.RawMessage `json:"args"`
@@ -246,6 +247,9 @@ func Serve(request []byte) []byte {
 	args, ok := decoded.([]any)
 	if !ok {
 		return fail("TypeError", "bad engine request: args is not a list")
+	}
+	if req.Member == memberValueCheck || req.Member == memberValueErrors || req.Member == memberValueAnswer || req.Member == memberValueCancel {
+		return s.serveValue(req.Member, args, fail)
 	}
 	value, err := Call(req.Member, args)
 	if err != nil {

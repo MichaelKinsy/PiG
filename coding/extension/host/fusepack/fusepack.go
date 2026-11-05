@@ -125,7 +125,7 @@ func HostHelpers() *sdk.HostHelpers {
 			return subprocess.BuiltinToolExecute(ctx, args, managedToolsDir(), subprocess.BuiltinToolPeer{Callback: peer.Callback, Update: peer.Update, Exec: peer.Exec})
 		},
 		HighlightCode: subprocess.HighlightCodeLines,
-		TypeEngine:    engine.Serve,
+		TypeEngine:    engine.NewSession().Serve,
 		LoadTheme:     subprocess.LoadThemeJSON,
 		WithFileMutationQueue: func(filePath string, fn func() error) error {
 			_, err := tools.WithFileMutationQueue(filePath, func() (struct{}, error) { return struct{}{}, fn() })

@@ -63,7 +63,7 @@
    #:type-exclude #:type-extract #:type-extends #:type-function #:type-generic #:type-identifier #:type-index #:type-infer #:type-instantiate
    #:type-interface #:type-key-of #:type-mapped #:type-module #:type-non-nullable #:type-omit #:type-pick #:type-parameter #:type-partial
    #:type-required #:type-readonly-object #:type-readonly-type #:type-record-key #:type-record-pattern #:type-record-value #:type-rest
-   #:type-script #:type-template-literal #:type-this #:type-tuple
+   #:type-script #:type-template-literal #:type-this #:type-tuple #:value-check #:value-errors
    #:type-extends-true #:type-extends-union #:type-extends-false #:type-extends-true-p #:type-extends-union-p #:type-extends-false-p
    #:type-extends-true-like-p #:type-extends-match #:running-extension
    #:+default-max-agent-retry-delay-ms+ #:string-enum #:get-supported-thinking-levels #:clamp-thinking-level #:calculate-cost #:content-text
