@@ -132,7 +132,7 @@ func TestInstrumentHaltRejectsWhatItCannotRewrite(t *testing.T) {
 // The embedded module is instrumented with the real decoder: every function stays valid, and an instance of it stops
 // a script inside a loop that ignores the interrupt flag.
 func TestHaltStopsAGuestThatNeverReachesTheInterruptCheck(t *testing.T) {
-	eng, err := newEngine(t.Context(), QuickJSWasm(), "", 0)
+	eng, err := newEngine(t.Context(), QuickJSWasm(), "", 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}

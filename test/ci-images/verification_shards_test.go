@@ -872,3 +872,42 @@ func TestFastAndDefaultModesRunTheFaultGroupWithItsTag(t *testing.T) {
 		})
 	}
 }
+
+// TestOSParallelJobsKeepTheCheapFirstOrderOnMain guards the job order of CI-QUALITY-PLAN item 2. The jobs that wait for Bookkeeping
+// or the compile gate run when it failed only where changes.os-parallel (release and integration branches) says so, so a main
+// pull request keeps the fail-fast order. They use !cancelled(), never always(): GitHub keeps running a job whose condition is
+// still true when concurrency cancels the run, so always() would let a superseded run spend its Windows and macOS minutes.
+func TestOSParallelJobsKeepTheCheapFirstOrderOnMain(t *testing.T) {
+	jobs := verificationJobs(t)
+	gate := map[string]string{
+		"preflight":        "bookkeeping",
+		"linux":            "bookkeeping",
+		"node-runtime":     "bookkeeping",
+		"durable-cf-host":  "bookkeeping",
+		"durable-contract": "bookkeeping",
+		"android":          "bookkeeping",
+		"windows":          "preflight",
+		"macos":            "preflight",
+		"node-loader":      "preflight",
+	}
+	for name, need := range gate {
+		job, ok := jobs[name]
+		if !ok {
+			t.Errorf("ci.yml has no job %s", name)
+			continue
+		}
+		if strings.Contains(job.If, "always()") {
+			t.Errorf("%s: if %q uses always(), which keeps a superseded run's job running; use !cancelled()", name, job.If)
+		}
+		for _, want := range []string{
+			"!cancelled()",
+			"needs.changes.result == 'success'",
+			"needs." + need + ".result == 'success'",
+			"needs.changes.outputs.os-parallel == 'true'",
+		} {
+			if !strings.Contains(job.If, want) {
+				t.Errorf("%s: if %q lacks %q", name, job.If, want)
+			}
+		}
+	}
+}

@@ -116,6 +116,11 @@ func (s *oauthMcpServer) expireAccessTokens() {
 	s.mu.Unlock()
 }
 
+// issueAccessToken issues a valid access token without a sign-in, like one of a pi provider.
+func (s *oauthMcpServer) issueAccessToken() string {
+	return s.issueTokens()["access_token"].(string)
+}
+
 func (s *oauthMcpServer) issueTokens() map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()

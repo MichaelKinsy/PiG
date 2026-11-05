@@ -114,7 +114,8 @@ func TestFileToolsMatchPi(t *testing.T) {
 		default:
 			p.Tool, p.Args = "ls", map[string]any{"path": target}
 			if rng.Intn(3) == 0 {
-				p.Args["limit"] = float64(rng.Intn(6))
+				// pig divergence (D253): Pi 1.5.0 lists nothing for limit 0; TestLsLimitEdgeCases7121 covers it.
+				p.Args["limit"] = float64(1 + rng.Intn(6))
 			}
 			if rng.Intn(5) == 0 {
 				delete(p.Args, "path")

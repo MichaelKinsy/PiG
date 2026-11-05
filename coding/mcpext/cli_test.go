@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -402,5 +403,56 @@ func TestMcpCommandEndsASignInAtTimeoutWhileTheAuthorizationServerHangs(t *testi
 		}
 	case <-time.After(20 * time.Second):
 		t.Fatal("the sign-in ignored --timeout while the authorization server hung")
+	}
+}
+
+// Ports packages/coding-agent/test/mcp-command.test.ts "sends the token of the provider named by auth.provider" (Pi 4d72d05bc).
+func TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider(t *testing.T) {
+	server := startOAuthMcpServer(t)
+	agentDir := t.TempDir()
+	content := `{"mcpServers":{"radius":{"url":"` + server.URL + `","auth":{"provider":"radius"}}}}`
+	if err := os.WriteFile(filepath.Join(agentDir, "mcp.json"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	run := func(providerToken func(context.Context, string) string, args ...string) (int, string) {
+		var mu sync.Mutex
+		var output []string
+		add := func(line string) {
+			mu.Lock()
+			output = append(output, line)
+			mu.Unlock()
+		}
+		code := mcpext.RunMcpCommand(context.Background(), args, mcpext.McpCommandOptions{Cwd: agentDir, AgentDir: agentDir, AppName: "pi", ConfigDirName: ".pi", ProviderToken: providerToken, Log: add, Error: add})
+		mu.Lock()
+		defer mu.Unlock()
+		return code, strings.Join(output, "\n")
+	}
+	token := server.issueAccessToken()
+	var mu sync.Mutex
+	var requested []string
+	code, output := run(func(_ context.Context, provider string) string {
+		mu.Lock()
+		requested = append(requested, provider)
+		mu.Unlock()
+		return token
+	}, "list")
+	if code != 0 || !strings.Contains(output, "radius: connected, 1 tool") || !slices.Contains(requested, "radius") {
+		t.Fatalf("signed in list = %d %q (requested %v)", code, output, requested)
+	}
+
+	// Without the provider's credentials the hint names the provider's /login, not `pi mcp login`.
+	code, output = run(func(context.Context, string) string { return "" }, "list")
+	if code != 1 || !strings.Contains(output, "radius: needs sign-in (codemode, global)") || !strings.Contains(output, "  sign in with: /login radius in pi") {
+		t.Fatalf("signed out list = %d %q", code, output)
+	}
+	if code, output := run(nil, "list", "--json"); code != 1 || !strings.Contains(output, `"authProvider": "radius"`) {
+		t.Fatalf("list --json = %d %q", code, output)
+	}
+
+	for _, command := range []string{"login", "logout"} {
+		want := `MCP server "radius" uses the credentials of provider "radius". Run /` + command + ` radius in pi.`
+		if code, output := run(nil, command, "radius"); code != 1 || output != want {
+			t.Fatalf("%s radius = %d %q, want %q", command, code, output, want)
+		}
 	}
 }

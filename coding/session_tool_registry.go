@@ -584,12 +584,20 @@ func WithBeforeSessionStart(fn func(context.Context) error) ReloadOption {
 	return func(o *reloadOptions) { o.beforeSessionStart = fn }
 }
 
-// Reload is AgentSession.reload (agent-session.ts:3640-3685): the old extensions receive session_shutdown with reason reload and go stale;
+// Reload is AgentSession.reload (agent-session.ts:3640-3685): a session that is running or compacting rejects it first; otherwise the old extensions receive session_shutdown with reason reload and go stale;
 // the settings and the resource loader are read again; the loader's extensions build a new runner that keeps the previous flag values; the
 // tools a settings reload newly added to defaultTools activate; and, when the mode bound its UI or command actions, the new runner gets them
 // and session_start with reason reload, then the resources its resources_discover handlers contribute. A failure before the new runner exists
 // leaves the old one stale, as Pi does.
 func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
+	// pig divergence (D242): Pi c3b938e3e rejects a reload while the session is running or compacting, before session_shutdown or any
+	// runner invalidation, so a running extension tool keeps its context (Pi 1.5.0 reloads and the tool fails with a stale-context error).
+	if s.IsStreaming() {
+		return errors.New("Wait for the current response to finish before reloading.")
+	}
+	if s.IsCompacting() {
+		return errors.New("Wait for compaction to finish before reloading.")
+	}
 	var reload reloadOptions
 	for _, option := range options {
 		option(&reload)

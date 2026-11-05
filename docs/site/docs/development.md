@@ -18,7 +18,7 @@ The qualified verification toolchain is:
 - macOS 13 or later for native macOS builds;
 - Git;
 - Node.js 24.22.1;
-- npm 12.1.0;
+- npm 12.2.1;
 - Python 3.12;
 - Rust and Cargo 1.97.1;
 - tmux 3.7 on Unix.

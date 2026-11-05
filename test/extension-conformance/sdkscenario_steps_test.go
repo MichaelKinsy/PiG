@@ -75,6 +75,8 @@ func (r *scenarioRig) runStep(step sdkscenarios.Step, lines *[]string) {
 		r.runCommand(ctx, step, lines)
 	case "reload":
 		r.reload(step, lines)
+	case "reject-reload":
+		r.reloadRejection = step.Args
 	case "end-input":
 		r.endInput(ctx, step, lines)
 	case "abort-tool":

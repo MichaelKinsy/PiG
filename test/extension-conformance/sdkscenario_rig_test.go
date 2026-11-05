@@ -38,6 +38,8 @@ type scenarioRig struct {
 	footer footerData
 	// signal is the active run's cancellation the host reports as ctx.signal.
 	signal runSignalState
+	// reloadRejection, when set, is the error the ctx.reload() host action fails with (Session.Reload while the session runs or compacts).
+	reloadRejection string
 	// wire holds the results the extension sent the host, as written.
 	wire wireLog
 }

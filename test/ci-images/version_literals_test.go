@@ -39,7 +39,7 @@ type allowedVersionLiteral struct {
 
 var versionLiteralAllowlist = []allowedVersionLiteral{
 	// The sources of truth that live in scanned files.
-	{".github/workflows/ci.yml", "12.1.0", "source of truth for npm: the NPM_VERSION env; make compliance checks every copy against it"},
+	{".github/workflows/ci.yml", "12.2.1", "source of truth for npm: the NPM_VERSION env; make compliance checks every copy against it"},
 	{".github/workflows/ci.yml", "1.97.1", "source of truth for Rust: the RUST_VERSION env; make compliance checks every copy against it"},
 
 	// Checked copies. make compliance compares each with its source and fails on drift.
@@ -49,7 +49,9 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.5.0", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/metadata.env", "1.5.0", "IMAGE_TAG; make pin-sync writes it from .upstream/pin and make compliance checks it"},
-	{"automation/images/ci-parity/Dockerfile", "12.1.0", "the image's npm check; make compliance checks it against NPM_VERSION"},
+	{"automation/images/ci-parity/Dockerfile", "12.2.1", "the image's npm check; make compliance checks it against NPM_VERSION"},
+
+	{"automation/ci/pre-push-gate.sh", "0.9.0", "the shellcheck that ubuntu-24.04 apt installs for security.yml; the local gate only warns when its shellcheck differs"},
 
 	// Pins of tools that are not a Pi, Go, Node, Rust or npm release, kept beside the digest that pins the tool.
 	{".github/workflows/ci-images.yml", "0.114.0", "local tag of the digest-pinned grype image; the digest in seed-ci-image-bases.sh is the pin"},

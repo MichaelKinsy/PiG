@@ -199,7 +199,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	var convertErr error
 	var detachOutput []func()
 	var outputDetached bool
-	intCh := make(chan os.Signal, 1)
+	intCh := make(chan os.Signal, 2)
 	termSignals := []os.Signal{syscall.SIGTERM}
 	if runtime.GOOS != "windows" {
 		termSignals = append(termSignals, syscall.SIGHUP)
@@ -216,6 +216,12 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	// disposal therefore waits for that result (resultMu) before it disposes the Session.
 	var disposeOnce sync.Once
 	var disposed atomic.Bool
+	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. finalDisposing is set while the final disposal (the teardown's rt.Close) runs, and finalDisposed closes when it ends; a signal during it waits for that disposal, as Pi's disposeRuntime() returns the shared in-flight disposal (print-mode.ts), instead of starting a second one or cutting it off.
+	var finalDisposing atomic.Bool
+	finalDisposed := make(chan struct{})
+	// teardownDone closes when the teardown has ended. The signal handlers live until then, not until the run's ctx ends: a stdout or conversion error cancels ctx before the final disposal, and a signal during it must still be handled, a repeated one by exiting at once (D234).
+	teardownDone := make(chan struct{})
+	defer close(teardownDone)
 	var resultMu sync.Mutex
 	var releaseHoldMu sync.Mutex
 	releaseHold := func() {}
@@ -233,6 +239,12 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		fn()
 	}
 	disposeFromSignal := func() {
+		if finalDisposing.Load() {
+			// The termination prelude held the Session's agent events for this signal; a run a session_shutdown handler starts during the final disposal would block on that hold and stall the disposal this signal waits for.
+			release()
+			<-finalDisposed
+			return
+		}
 		disposeOnce.Do(func() {
 			convertMu.Lock()
 			detaches := detachOutput
@@ -259,9 +271,27 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	defer setTerminationShutdownHook(nil)
 	signal.Notify(intCh, termSignals...)
 	defer signal.Stop(intCh)
+	// exitOnSignal is the handler's end: process.exit(128+signum) once the disposal is done. Extension processes end with the process, as the RPC signal exit ends them.
+	exitOnSignal := func(sysSig syscall.Signal) {
+		if extensionHost, _ := rpcExtensionHost(rt.Session()); extensionHost != nil {
+			extensionHost.TerminateProcesses()
+		}
+		exitProcess(128 + int(sysSig))
+	}
 	go func() {
 		select {
 		case sig := <-intCh:
+			// pig divergence (D234): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1). The watcher starts before anything that can wait on that disposal.
+			go func() {
+				select {
+				case again := <-intCh:
+					if againSig, againOK := again.(syscall.Signal); againOK {
+						tools.KillTrackedDetachedChildren()
+						exitOnSignal(againSig)
+					}
+				case <-teardownDone:
+				}
+			}()
 			sysSig, ok := noteTerminationSignal(sig)
 			tools.KillTrackedDetachedChildren()
 			// A second signal while the disposal waits for a credential write exits at once: Pi's handler stays registered, finds the runtime already disposing, and exits without waiting (print-mode.ts:58-61).
@@ -278,15 +308,12 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 				}()
 			}
 			disposeFromSignal()
-			// Then process.exit(128+signum): the aborted run's remaining work (tool hooks, turn boundaries, extension errors) never runs. Extension processes end with the process, as the RPC signal exit ends them.
+			// Then process.exit(128+signum): the aborted run's remaining work (tool hooks, turn boundaries, extension errors) never runs.
 			if ok {
-				if extensionHost, _ := rpcExtensionHost(rt.Session()); extensionHost != nil {
-					extensionHost.TerminateProcesses()
-				}
-				exitProcess(128 + int(sysSig))
+				exitOnSignal(sysSig)
 			}
 			cancel()
-		case <-ctx.Done():
+		case <-teardownDone:
 		}
 	}()
 	defer func() {
@@ -473,8 +500,9 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	rt.SetReload(func(ctx context.Context, session *coding.Session) error {
 		previous := session.ExtensionRunner()
 		if err := session.Reload(ctx); err != nil {
-			// The old runner went stale after session_shutdown; its extension processes reject later calls with its message too.
-			if extensionHost := session.ExtensionHost(); extensionHost != nil && previous != nil && session.ExtensionRunner() == previous {
+			// A reload that failed after session_shutdown left the old runner stale; its extension processes reject later calls with its message too.
+			// pig divergence (D242): a reload refused while the session runs or compacts (Pi c3b938e3e) touched nothing, so the running tool's context stays live.
+			if extensionHost := session.ExtensionHost(); extensionHost != nil && previous != nil && previous.IsStale() && session.ExtensionRunner() == previous {
 				extensionHost.Invalidate(previous.StaleMessage())
 			}
 			return err
@@ -506,8 +534,10 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			disposeFromSignal()
 		}
 		// Ordered teardown: shutdown hooks run while the Session is still open,
-		// then closing it ends the Session's event executor.
+		// then closing it ends the Session's event executor. The signal handlers stay until it is done (D234).
+		finalDisposing.Store(true)
 		_ = rt.Close()
+		close(finalDisposed)
 		// Upstream's signal handler disposes the runtime and calls process.exit
 		// without flushRawStdout. The process owns any blocked stdout write on
 		// this path; waiting for it would make a full client pipe prevent exit.

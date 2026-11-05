@@ -18,7 +18,7 @@ import "context"
 // Ports packages/codemode/src/runtime/remote.ts (serveCodemodeRemote).
 func ServeRemote(ctx context.Context, request RemoteRequest, exchange RemoteExchange, options ServeOptions) {
 	serveRemote(ctx, request, exchange, options, func(budget int) vmLauncher {
-		return inlineLauncher(wasmEngineLoader(options.Wasm, options.CacheDir), PreludeSource, budget)
+		return inlineLauncher(wasmEngineLoader(options.Wasm, options.CacheDir, options.Interpreter), PreludeSource, budget)
 	})
 }
 

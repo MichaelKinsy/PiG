@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -94,6 +95,9 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if p.Limit != nil {
 		effectiveLimit = *p.Limit
 	}
+	// pig divergence (D253): Pi main 676af1d77 reads a limit below 1 as 1 (fd treats --max-results 0 as unlimited)
+	// and floors a fractional one.
+	effectiveLimit = math.Max(1, math.Floor(effectiveLimit))
 
 	if t.Operations != nil && t.Operations.Glob != nil {
 		return t.findWithOperations(ctx, p.Pattern, searchPath, effectiveLimit), nil
@@ -114,7 +118,8 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if !insideGitRepo(searchPath) {
 		args = append(args, "--no-require-git")
 	}
-	args = append(args, "--max-results", jsNumber(effectiveLimit))
+	// pig divergence (D253): one result past the limit tells "exactly N matches" from "more than N".
+	args = append(args, "--max-results", jsNumber(effectiveLimit+1))
 	// fd --glob matches the basename unless --full-path is set; in
 	// --full-path mode it matches the absolute candidate path, so a
 	// path-containing pattern needs a leading "**/".
@@ -151,8 +156,15 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	// readline decodes the child's bytes as UTF-8 (one U+FFFD per ill-formed subpart) before it splits them.
 	lines := readlineLines(jsstring.FromUTF8([]byte(stdout.String())))
-	output := strings.Join(lines, "\n")
-	if waitErr != nil && output == "" {
+	var relativized []string
+	for _, raw := range lines {
+		line := jsstring.Trim(strings.TrimSuffix(raw, "\r"))
+		if line == "" {
+			continue
+		}
+		relativized = append(relativized, relativizeFindResultPath(line, searchPath))
+	}
+	if waitErr != nil && len(relativized) == 0 {
 		msg := jsstring.Trim(stderr.String())
 		if msg == "" {
 			code := -1
@@ -163,19 +175,14 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		}
 		return findError(msg), nil
 	}
-	if output == "" {
+	if len(relativized) == 0 {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No files found matching pattern"}}}, nil
 	}
-
-	var relativized []string
-	for _, raw := range lines {
-		line := jsstring.Trim(strings.TrimSuffix(raw, "\r"))
-		if line == "" {
-			continue
-		}
-		relativized = append(relativized, relativizeFindResultPath(line, searchPath))
+	resultLimitReached := float64(len(relativized)) > effectiveLimit
+	if resultLimitReached {
+		relativized = relativized[:int(effectiveLimit)]
 	}
-	return formatFindResults(relativized, effectiveLimit, false), nil
+	return formatFindResults(relativized, effectiveLimit, resultLimitReached, false), nil
 }
 
 func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath string, limit float64) agent.AgentToolResult {
@@ -193,7 +200,7 @@ func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath s
 	if !exists {
 		return findError("Path not found: " + searchPath)
 	}
-	results, err := ops.Glob(pattern, searchPath, FindGlobOptions{Ignore: []string{"**/node_modules/**", "**/.git/**"}, Limit: limit})
+	results, err := ops.Glob(pattern, searchPath, FindGlobOptions{Ignore: []string{"**/node_modules/**", "**/.git/**"}, Limit: limit + 1})
 	if ctx.Err() != nil {
 		return findError("Operation aborted")
 	}
@@ -203,15 +210,20 @@ func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath s
 	if len(results) == 0 {
 		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No files found matching pattern"}}}
 	}
+	limitReached := false
+	// pig divergence (D253): a custom glob receives limit+1; the extra result only reports that the limit was reached.
+	if float64(len(results)) > limit {
+		results = results[:int(limit)]
+		limitReached = true
+	}
 	relativized := make([]string, len(results))
 	for i, result := range results {
 		relativized[i] = relativizeFindResultPath(result, searchPath)
 	}
-	return formatFindResults(relativized, limit, true)
+	return formatFindResults(relativized, limit, limitReached, true)
 }
 
-func formatFindResults(relativized []string, effectiveLimit float64, custom bool) agent.AgentToolResult {
-	resultLimitReached := float64(len(relativized)) >= effectiveLimit
+func formatFindResults(relativized []string, effectiveLimit float64, resultLimitReached, custom bool) agent.AgentToolResult {
 	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
 	tr := TruncateHead(strings.Join(relativized, "\n"), truncationLimits(DefaultMaxBytes, 1<<53-1))
 	resultOutput := tr.Content

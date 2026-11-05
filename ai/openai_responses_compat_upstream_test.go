@@ -49,11 +49,11 @@ func TestOpenAIResponsesCompatHeadersUpstream(t *testing.T) {
 		headers                               map[string]string
 	}{
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:292
-		{name: "sets cache-affinity headers for official OpenAI Responses requests with a sessionId", session: "session-123", key: new("session-123"), headers: map[string]string{"session_id": "session-123", "x-client-request-id": "session-123"}},
+		{name: "sets cache-affinity headers for official OpenAI Responses requests with a sessionId", session: "session-123", key: new("session-123"), headers: map[string]string{"session-id": "session-123", "x-client-request-id": "session-123"}},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:299
-		{name: "clamps prompt_cache_key to OpenAI's 64-character limit", session: strings.Repeat("x", 67), key: new(strings.Repeat("x", 64)), headers: map[string]string{"session_id": strings.Repeat("x", 67), "x-client-request-id": strings.Repeat("x", 67)}},
+		{name: "clamps prompt_cache_key to OpenAI's 64-character limit", session: strings.Repeat("x", 67), key: new(strings.Repeat("x", 64)), headers: map[string]string{"session-id": strings.Repeat("x", 67), "x-client-request-id": strings.Repeat("x", 67)}},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:331
-		{name: "sets cache-affinity headers for proxy OpenAI Responses requests with a sessionId", provider: "opencode", url: "https://proxy.example.com/v1", session: "session-123", key: new("session-123"), headers: map[string]string{"session_id": "session-123", "x-client-request-id": "session-123"}},
+		{name: "sets cache-affinity headers for proxy OpenAI Responses requests with a sessionId", provider: "opencode", url: "https://proxy.example.com/v1", session: "session-123", key: new("session-123"), headers: map[string]string{"session-id": "session-123", "x-client-request-id": "session-123"}},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:343
 		{name: "uses OpenRouter session-affinity header when configured", provider: "proxy", url: "https://proxy.example.com/v1", format: SessionAffinityOpenRouter, session: "session-proxy", key: new("session-proxy"), headers: map[string]string{"x-session-id": "session-proxy"}},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:368
@@ -65,7 +65,7 @@ func TestOpenAIResponsesCompatHeadersUpstream(t *testing.T) {
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:437
 		{name: "can omit OpenAI session_id header while preserving other affinity data", provider: "opencode", url: "https://proxy.example.com/v1", format: SessionAffinityOpenAINoSession, session: "session-123", key: new("session-123"), headers: map[string]string{"x-client-request-id": "session-123"}},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:460
-		{name: "lets explicit headers override the default OpenAI cache-affinity headers", session: "session-123", key: new("session-123"), override: ProviderHeadersFromStrings(map[string]string{"session_id": "override-session", "x-client-request-id": "override-request"}), headers: map[string]string{"session_id": "override-session", "x-client-request-id": "override-request"}},
+		{name: "lets explicit headers override the default OpenAI cache-affinity headers", session: "session-123", key: new("session-123"), override: ProviderHeadersFromStrings(map[string]string{"session-id": "override-session", "x-client-request-id": "override-request"}), headers: map[string]string{"session-id": "override-session", "x-client-request-id": "override-request"}},
 		// .upstream/v0.87.1/packages/ai/test/openai-responses-compat.test.ts:473
 		{name: "omits OpenAI cache-affinity headers when cacheRetention is none", session: "session-123", retention: CacheRetentionNone},
 	} {
@@ -99,7 +99,7 @@ func TestOpenAIResponsesCompatHeadersUpstream(t *testing.T) {
 				data, _ := json.Marshal(*tc.key)
 				assertShapeJSON(t, payload["prompt_cache_key"], string(data))
 			}
-			for _, name := range []string{"session_id", "x-client-request-id", "x-session-id"} {
+			for _, name := range []string{"session-id", "session_id", "x-client-request-id", "x-session-id"} {
 				if got := headers.Get(name); got != tc.headers[name] {
 					t.Errorf("header %s=%q want=%q", name, got, tc.headers[name])
 				}

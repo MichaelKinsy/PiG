@@ -25,7 +25,9 @@ func TestTruncateLine(t *testing.T) {
 		{"empty", "", 5, "", false},
 		{"multibyte kept whole", "ééééé", 5, "ééééé", false},
 		{"multibyte cut by characters", "éééééé", 5, "ééééé... [truncated]", true},
-		{"surrogate pair counts two", "a😀b", 2, "a\ufffd... [truncated]", true},
+		{"surrogate pair counts two and is dropped whole", "a😀b", 2, "a... [truncated]", true},
+		{"emoji at the cut is dropped whole", strings.Repeat("a", 499) + "😀tail", 500, strings.Repeat("a", 499) + "... [truncated]", true},
+		{"emoji ending exactly at the limit is kept", strings.Repeat("a", 498) + "😀tail", 500, strings.Repeat("a", 498) + "😀... [truncated]", true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

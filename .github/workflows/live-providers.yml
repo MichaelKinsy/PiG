@@ -8,7 +8,7 @@ on:
       packages:
         description: Space-separated local Go package patterns
         required: false
-        default: './ai ./coding'
+        default: './ai ./ai/providers/bedrock ./coding'
         type: string
       run:
         description: Optional go test -run regular expression
@@ -70,7 +70,7 @@ jobs:
         shell: bash
         # Secrets are available only to test execution, not dependency installation.
         env:
-          PACKAGES: ${{ inputs.packages || './ai ./coding' }}
+          PACKAGES: ${{ inputs.packages || './ai ./ai/providers/bedrock ./coding' }}
           RUN_FILTER: ${{ inputs.run }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ANTHROPIC_OAUTH_TOKEN: ${{ secrets.ANTHROPIC_OAUTH_TOKEN }}

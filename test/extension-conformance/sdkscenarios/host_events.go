@@ -41,6 +41,18 @@ func hostEvents() []Scenario {
 			},
 		},
 		{
+			ID: "reload-rejected-while-running-reaches-the-caller-unchanged", Group: group,
+			Pi:     "agent-session.ts reload() (Pi c3b938e3e, #9222) throws `Wait for the current response to finish before reloading.` while the session is streaming, before any shutdown or invalidation; ctx.reload() rejects with that Error, so the command's await throws it and its own captured ctx stays live",
+			Covers: []string{"call reload", "request command"},
+			Spec:   Spec{Commands: []Command{{Name: "rl", Description: "Reload while busy", Op: CommandReloadStale}}},
+			Steps: []Step{
+				{Op: "settle"},
+				{Op: "reject-reload", Args: "Wait for the current response to finish before reloading."},
+				{Op: "command", Name: "rl", ErrorContains: "Wait for the current response to finish before reloading."},
+			},
+			Want: []string{`command rl error contains "Wait for the current response to finish before reloading."`},
+		},
+		{
 			ID: "reload-keeps-the-process-and-calls-each-event-handler-once", Group: group,
 			Pi:     "/reload re-invokes the factories inside the process that holds the module (additive-features.md, runtime cells) and replaces the handlers: session_shutdown (reason reload) reaches the old handlers and finishes, session_start (reason reload, previousSessionFile) reaches the new ones, and an event never reaches a handler twice (the counter continues because the process stays, and every event shows one line)",
 			Covers: []string{"request event"}, // the reload step is Host.Reload, which no wire request carries: the runtime sees the old generation's session_shutdown event and the new generation's registration

@@ -74,6 +74,9 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		tempFile       *os.File
 		tempWriter     *bufio.Writer
 		tempFileOpened bool
+		// discardedOutput is set once the rolling window dropped a chunk, so the
+		// result is truncated even if the retained tail fits the limits.
+		discardedOutput bool
 		// TextDecoder, like upstream's: a leading BOM is dropped.
 		decoder = utf8stream.Decoder{StripBOM: true}
 	)
@@ -116,6 +119,8 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		for outputBytes > maxOutputBytes && len(outputChunks) > 1 {
 			outputBytes -= jsLength(outputChunks[0])
 			outputChunks = outputChunks[1:]
+			// pig divergence (D244): Pi main 66c655677 reports discarded chunks as truncation.
+			discardedOutput = true
 		}
 		if opts.OnChunk != nil {
 			opts.OnChunk(chunk)
@@ -148,7 +153,7 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 			// The kept tail is a substring of the joined window; copy it so the result does not hold the whole window.
 			output = strings.Clone(tr.Content)
 		}
-		return BashResult{Output: output, ExitCode: exitCode, Cancelled: cancelled, Truncated: tr.Truncated, FullOutputPath: tempFilePath}
+		return BashResult{Output: output, ExitCode: exitCode, Cancelled: cancelled, Truncated: discardedOutput || tr.Truncated, FullOutputPath: tempFilePath}
 	}
 
 	result, err := operations.Exec(ctx, command, cwd, BashOperationsExecOptions{OnData: onData})

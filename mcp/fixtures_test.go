@@ -39,6 +39,9 @@ func TestMain(m *testing.M) {
 	case "term-server":
 		runShutdownFixture(false)
 		return
+	case "exiting-parent-server":
+		runExitingParentFixture()
+		return
 	case "cwd":
 		wd, err := os.Getwd()
 		if err != nil {
@@ -198,4 +201,17 @@ func sleepForever() {
 	for {
 		time.Sleep(time.Hour)
 	}
+}
+
+// runExitingParentFixture is exiting-parent-server.mjs: it starts a helper
+// that inherits stdout and stderr, reports it on stderr, then exits while the
+// helper keeps running.
+func runExitingParentFixture() {
+	helper := exec.Command(os.Args[0])
+	helper.Env = append(os.Environ(), fixtureEnv+"=sigterm-sleep")
+	helper.Stdout, helper.Stderr = os.Stdout, os.Stderr
+	if err := helper.Start(); err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stderr, "helper %d\n", helper.Process.Pid)
 }

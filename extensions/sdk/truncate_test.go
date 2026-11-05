@@ -41,8 +41,8 @@ func TestTruncateLineCountsUTF16Units(t *testing.T) {
 	}
 }
 
-// Values from Pi's truncate.ts (v1.1.0) run in Node. Pi never throws on a negative limit: Buffer.slice past the end is empty and String.prototype.slice
-// counts a negative end back from the end of the line.
+// Values from Pi's truncate.ts run in Node (TruncateLine from Pi main 9e870f6f0, pig divergence (D252)). Pi never throws on a negative limit: Buffer.slice
+// past the end is empty and sliceHead keeps nothing of the line for a negative count.
 func TestTruncationNegativeLimitsMatchPi(t *testing.T) {
 	r := TruncateTail("abc\ndef", TruncationOptions{MaxBytes: new(-1)})
 	if r.Content != "" || r.OutputLines != 1 || r.OutputBytes != 0 || !r.LastLinePartial || r.TruncatedBy != "bytes" {
@@ -52,7 +52,7 @@ func TestTruncationNegativeLimitsMatchPi(t *testing.T) {
 		line     string
 		maxChars int
 		want     string
-	}{{"abcdef", -2, "abcd"}, {"ab", -5, ""}, {"😀😀", -1, "😀\uFFFD"}} {
+	}{{"abcdef", -2, ""}, {"ab", -5, ""}, {"😀😀", -1, ""}, {"a😀b", 2, "a"}} {
 		if text, was := TruncateLine(c.line, c.maxChars); !was || text != c.want+"... [truncated]" {
 			t.Errorf("TruncateLine(%q, %d) = %q, %v; want %q", c.line, c.maxChars, text, was, c.want+"... [truncated]")
 		}

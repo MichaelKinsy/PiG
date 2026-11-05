@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"os"
 	"os/exec"
@@ -80,14 +81,14 @@ func findScenarios() []map[string]any {
 			scenario["path"] = pick(paths)
 		}
 		if rng.IntN(5) == 0 {
-			scenario["limit"] = []any{1, 2, 3, 10, 50, 100, 500, 1000, 5000, 2.5, 0}[rng.IntN(11)]
+			scenario["limit"] = []any{1, 2, 3, 10, 50, 100, 500, 1000, 5000, 7}[rng.IntN(10)]
 		}
 		scenarios = append(scenarios, scenario)
 	}
 	return scenarios
 }
 
-// The find tool (core/tools/find.ts, over fd) against pinned Pi on a real tree of 1600 files with a git repository, nested repositories, .gitignore files, hidden entries, node_modules, unicode and spaced names: 700 seeded requests with basename and path globs, brace and character classes, an absolute or missing search directory, a file as the search directory and limits from zero to 5000 (some at fractional values); the result text, error, result-limit and truncation metadata agree.
+// The find tool (core/tools/find.ts, over fd) against pinned Pi on a real tree of 1600 files with a git repository, nested repositories, .gitignore files, hidden entries, node_modules, unicode and spaced names: 700 seeded requests with basename and path globs, brace and character classes, an absolute or missing search directory, a file as the search directory and limits from 1 to 5000; the result text, error, result-limit and truncation metadata agree.
 func TestFindToolMatchesPi(t *testing.T) {
 	requireFD(t)
 	tree := buildFindTree(t)
@@ -156,6 +157,19 @@ func TestFindToolMatchesPi(t *testing.T) {
 		_ = json.Unmarshal(gotRaw, &normalized)
 		// fd walks in parallel, so the subset a result limit keeps is not specified (the same binary gives Pi and Pig different ones); a request that reaches its limit is compared by its notice, the number of results and the metadata, and every other request by its exact text.
 		want := expected[i]
+		// pig divergence (D253): Pi 1.5.0 reports the limit when exactly `limit` files match, Pi main 676af1d77 does not. Zero and fractional limits
+		// are left out of the scenarios (Pi 1.5.0 passes them to fd unchanged); TestFindLimitEdgeCases7121 covers them. A request where only the pinned Pi
+		// reports the limit must have exactly `limit` matches, which the same request with one more allowed proves.
+		if want.ResultLimitReached != nil && normalized.ResultLimitReached == nil {
+			wider := maps.Clone(scenario)
+			wider["limit"] = *want.ResultLimitReached + 1
+			widerRaw, _ := json.Marshal(wider)
+			widerResult, widerErr := tool.Execute(context.Background(), "call", widerRaw, nil)
+			if widerErr == nil && !widerResult.IsError && !strings.Contains(widerResult.Text(), "limit reached") && float64(strings.Count(widerResult.Text(), "\n")+1) == *want.ResultLimitReached {
+				head, _, _ := strings.Cut(want.Text, "\n\n[")
+				want.Text, want.ResultLimitReached = head, nil
+			}
+		}
 		if want.ResultLimitReached != nil && normalized.ResultLimitReached != nil {
 			keep := func(outcome findOutcome) findOutcome {
 				head, _, _ := strings.Cut(outcome.Text, "\n\n[")

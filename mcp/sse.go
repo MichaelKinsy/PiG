@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -59,8 +60,7 @@ func ConsumeSSEStream(r io.Reader, options ConsumeSSEOptions) error {
 		eventName, eventID = "", ""
 		dataLines, dataBytes = nil, 0
 	}
-	processLine := func(raw string) error {
-		line := strings.TrimSuffix(raw, "\r")
+	processLine := func(line string) error {
 		if line == "" {
 			dispatch()
 			return nil
@@ -100,7 +100,7 @@ func ConsumeSSEStream(r io.Reader, options ConsumeSSEOptions) error {
 		return nil
 	}
 
-	var lines lineSplitter
+	var lines sseLineSplitter
 	chunk := make([]byte, 32*1024)
 	for {
 		n, readErr := r.Read(chunk)
@@ -145,4 +145,64 @@ func isDigits(s string) bool {
 		}
 	}
 	return true
+}
+
+// sseLineSplitter frames SSE lines, which end with CRLF, LF or a lone CR (the SSE spec; Pi b64e6badd). It is separate from the stdio framing, whose
+// lines end at "\n" alone. A CR at the end of the buffered bytes ends its line at once, and skipLF drops the LF that may start the next write so a
+// CRLF split across reads still counts as one line ending.
+//
+// pig divergence (D261): Pi b64e6badd. Pi 1.5.0 splits SSE lines on "\n" only and strips one trailing "\r", so a lone-CR stream never delivers an event.
+type sseLineSplitter struct {
+	buf     []byte
+	start   int  // first pending byte
+	scanned int  // bytes before scanned hold no CR or LF
+	skipLF  bool // the last line ended with a CR that ended the buffer
+}
+
+func (s *sseLineSplitter) write(p []byte) {
+	if s.skipLF && len(p) > 0 {
+		if p[0] == '\n' {
+			p = p[1:]
+		}
+		s.skipLF = false
+	}
+	if s.start > 0 && s.start >= len(s.buf)-s.start {
+		n := copy(s.buf, s.buf[s.start:])
+		s.buf = s.buf[:n]
+		s.scanned -= s.start
+		s.start = 0
+	}
+	s.buf = append(s.buf, p...)
+}
+
+// next returns the next line without its terminator. The line aliases the buffer and is valid until the next write.
+func (s *sseLineSplitter) next() ([]byte, bool) {
+	i := bytes.IndexAny(s.buf[s.scanned:], "\r\n")
+	if i < 0 {
+		s.scanned = len(s.buf)
+		return nil, false
+	}
+	end := s.scanned + i
+	line := s.buf[s.start:end]
+	if s.buf[end] == '\r' {
+		if end+1 < len(s.buf) {
+			if s.buf[end+1] == '\n' {
+				end++
+			}
+		} else {
+			s.skipLF = true
+		}
+	}
+	s.start, s.scanned = end+1, end+1
+	return line, true
+}
+
+func (s *sseLineSplitter) pendingLen() int { return len(s.buf) - s.start }
+
+// pending returns the unterminated tail, or nil when there is none.
+func (s *sseLineSplitter) pending() []byte {
+	if s.start == len(s.buf) {
+		return nil
+	}
+	return s.buf[s.start:]
 }

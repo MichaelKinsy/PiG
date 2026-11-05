@@ -33,7 +33,7 @@ func chainCalls(t *testing.T, machine *vm) int {
 }
 
 func TestExecutePendingJobsPollsTheInterruptEveryFiftyJobs(t *testing.T) {
-	eng, err := newEngine(t.Context(), QuickJSWasm(), "", 0)
+	eng, err := newEngine(t.Context(), QuickJSWasm(), "", 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestExecutePendingJobsPollsTheInterruptEveryFiftyJobs(t *testing.T) {
 // A job fails only for an uncatchable error, which is QuickJS's own interrupt here; vm.ts reports it as a plain Error
 // that carries no detail of the job.
 func TestExecutePendingJobsReportsAJobThatFailsUncatchably(t *testing.T) {
-	eng, err := newEngine(t.Context(), QuickJSWasm(), "", 0)
+	eng, err := newEngine(t.Context(), QuickJSWasm(), "", 0, false)
 	if err != nil {
 		t.Fatal(err)
 	}

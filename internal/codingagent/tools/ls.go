@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -131,6 +132,8 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	if p.Limit != nil {
 		effectiveLimit = *p.Limit
 	}
+	// pig divergence (D253): Pi main 676af1d77 reads a limit below 1 as 1 and floors a fractional one.
+	effectiveLimit = math.Max(1, math.Floor(effectiveLimit))
 	ops := t.operations()
 	if exists, err := ops.Exists(dirPath); err != nil || !exists {
 		return lsError("Path not found: " + dirPath), nil

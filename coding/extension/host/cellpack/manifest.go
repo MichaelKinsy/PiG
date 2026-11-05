@@ -28,9 +28,9 @@ type Manifest struct {
 // CellEntry is one prebuilt cell: its composition and where its binary lives
 // relative to the extraction directory.
 type CellEntry struct {
-	Language string `json:"language"` // go | rust | python | node
+	Language string `json:"language"` // go | rust | python | lisp | node
 	Key      string `json:"key"`
-	Strategy string `json:"strategy,omitempty"` // isolated | packed-go | packed-rust | packed-python | packed-node
+	Strategy string `json:"strategy,omitempty"` // isolated | packed-go | packed-rust | packed-python | packed-lisp | packed-node
 	OS       string `json:"os"`
 	Arch     string `json:"arch"`
 	// Binary is the embedded file's path relative to the cells directory. For a

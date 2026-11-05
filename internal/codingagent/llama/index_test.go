@@ -304,7 +304,9 @@ func TestLlamaCommandOffersRetryWhenTheServerIsUnreachable(t *testing.T) {
 	if err := session.manage(ui); err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"Could not connect to the server."}; !reflect.DeepEqual(ui.retries, want) || len(*notices) != 0 {
+	// Pi ea0f49a36: the unreachable-server error names the server and the cause, and no longer reads as a "fetch failed" connection error, so the retry screen shows it.
+	host := strings.TrimPrefix(unreachableURL, "http://")
+	if want := []string{"Could not reach llama.cpp server at " + unreachableURL + ": dial tcp " + host + ": connect: connection refused"}; !reflect.DeepEqual(ui.retries, want) || len(*notices) != 0 {
 		t.Fatalf("retries = %v, notices = %+v", ui.retries, *notices)
 	}
 }

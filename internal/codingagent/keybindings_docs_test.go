@@ -150,7 +150,7 @@ func TestThePlatformTableCellsMatchTheRegistry(t *testing.T) {
 			if want == "" {
 				want = "none"
 			}
-			if got := strings.Trim(strings.TrimSpace(cells[i]), "`"); got != want {
+			if got := strings.ReplaceAll(strings.TrimSpace(cells[i]), "`", ""); got != want {
 				t.Errorf("%s on %s: page says %q, registry says %q", m[1], platform, got, want)
 			}
 		}

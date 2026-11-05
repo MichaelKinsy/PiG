@@ -403,23 +403,21 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	runner := func() *inproc.Runner { return rt.Session().ExtensionRunner() }
 	commandCatalog := func() headlessCommandCatalog { return host.admission.Load().catalog }
 
-	// Upstream shutdown() runs once, on stdin end, ctx.shutdown(), or a
-	// termination signal (rpc-mode.ts:728-744). It removes the signal
-	// handlers, stops writing Session events, and awaits runtimeHost.dispose():
-	// session_shutdown, then AgentSession.dispose, while the Session still runs.
-	// It then flushes stdout, unless the signal is SIGTERM, and exits without
-	// joining the remaining work: dialogs stdin can no longer answer stay
-	// pending, and their commands never respond.
+	// Upstream shutdown() runs once, on stdin end, ctx.shutdown(), or the first termination signal (rpc-mode.ts:728-744). It stops writing
+	// Session events and awaits runtimeHost.dispose(): session_shutdown, then AgentSession.dispose, while the Session still runs. It then
+	// flushes stdout, unless the signal is SIGTERM, and exits without joining the remaining work: dialogs stdin can no longer answer stay
+	// pending, and their commands never respond. pig divergence (D234): follows Pi main ace560c30. A trigger after shutdown started does
+	// nothing and the signal handlers stay until exit; a repeated signal exits at once (rpcShutdown).
 	// The extension host of any Session reaches the process controls of every host the process started.
 	terminateProcesses := func() {
 		if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil {
 			extensionHost.TerminateProcesses()
 		}
 	}
-	exitRPC := func(code int) {
+	// exitRPC ends the process. Upstream flushes stdout before process.exit unless the signal is SIGTERM, and a repeated signal never waits for it (process.exit at once, rpc-mode.ts signalCount > 1); the queued tail is that pending output.
+	exitRPC := func(code int, waitStdout bool) {
 		stdoutClosed.Store(true)
-		if code != 128+int(syscall.SIGTERM) {
-			// Upstream flushes stdout before process.exit unless the signal is SIGTERM; the queued tail is that pending output.
+		if waitStdout {
 			rawStdout.Wait(context.Background())
 		}
 		terminateProcesses()
@@ -430,12 +428,6 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		// Upstream process.exit does not wait for providers or suspended extension callbacks.
 		os.Exit(code)
 	}
-	forceSignal := func(sig os.Signal) {
-		terminateProcesses()
-		dieBySignal(sig)
-	}
-	var forced atomic.Pointer[forcedTermination]
-	defer func() { forced.Load().Stop() }()
 	var shutdown *rpcShutdown
 	shutdownInvoked := make(chan struct{})
 	// A termination signal holds the run from the moment it arrives, before anything is killed: Pi's handler kills
@@ -459,7 +451,6 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	//portlint:allow ctxmapping Pi's shutdown awaits runtimeHost.dispose() with no signal (rpc-mode.ts:726-744), and it runs after the mode's ctx ends, so it cannot derive from it
 	shutdownContext := handleryield.With(invocation.WithAcknowledgment(context.Background(), func() { close(shutdownInvoked) }), release)
 	shutdown = newRPCShutdown(
-		func() { forced.Store(watchForcedTermination(shutdown.forceDie)) },
 		func() {
 			// Upstream writes each Session event when it is published, so the
 			// events already published reach stdout before it unsubscribes.
@@ -514,9 +505,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}()
 			_ = sess().WaitForIdle(settleCtx)
 		},
-		exitRPC,
-		forceSignal,
+		func(code int) { exitRPC(code, code != 128+int(syscall.SIGTERM)) },
 	)
+	shutdown.abort = func(code int) { exitRPC(code, false) }
 	host.drain = shutdown.drained
 	// pig additive (D19): the host waits in-process for the commands Pi answers before it reads stdin's end, because their runtimes are other processes whose frames race the shutdown's own writes.
 	shutdown.settle = func() bool {
@@ -560,7 +551,16 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	)
 	defer shutdownGate.unbind()
 	host.afterSettled = shutdownGate.Check
-	setTerminationShutdownHook(func() { shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) })
+	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. Main's handler takes the first signal; the watcher takes the repeated ones.
+	repeated := watchRepeatedTermination(shutdown.repeatedSignal)
+	defer repeated.Stop()
+	setTerminationShutdownHook(func() {
+		if !shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) {
+			// A shutdown is already running and a single signal does not interrupt it. The prelude held the Session's agent events for this signal, and nothing else ends that hold: a run a session_shutdown handler starts would block on it while the dispose waits for the handler. Main cancels the root context, which owns the extension processes, once this hook returns, so it waits for the exit or for the mode's own end (a stdout write failure ends it during the dispose too).
+			release()
+			<-ctx.Done()
+		}
+	})
 	defer setTerminationShutdownHook(nil)
 
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
@@ -570,8 +570,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	rt.SetReload(func(ctx context.Context, session *coding.Session) error {
 		previous := session.ExtensionRunner()
 		if err := session.Reload(ctx); err != nil {
-			// The old runner went stale after session_shutdown; its extension processes reject later calls with its message too.
-			if extensionHost := session.ExtensionHost(); extensionHost != nil && previous != nil && session.ExtensionRunner() == previous {
+			// A reload that failed after session_shutdown left the old runner stale; its extension processes reject later calls with its message too.
+			// pig divergence (D242): a reload refused while the session runs or compacts (Pi c3b938e3e) touched nothing, so the running tool's context stays live.
+			if extensionHost := session.ExtensionHost(); extensionHost != nil && previous != nil && previous.IsStale() && session.ExtensionRunner() == previous {
 				extensionHost.Invalidate(previous.StaleMessage())
 			}
 			return err
@@ -892,8 +893,11 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		case <-shutdown.Started():
 		case <-ctx.Done():
 		}
-		if ctx.Err() == nil {
-			shutdown.inputEnd()
+		if ctx.Err() == nil && !shutdown.inputEnd() {
+			// pig divergence (D234): a shutdown that another trigger started goes on and ends the process; returning would end it under the dispose. A drained event loop (host.drain) still ends it.
+			<-ctx.Done()
+			inputDone <- nil
+			return
 		}
 		inputDone <- err
 	}()

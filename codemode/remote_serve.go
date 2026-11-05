@@ -19,6 +19,9 @@ type ServeOptions struct {
 	Wasm func() ([]byte, error)
 	// CacheDir holds wazero's on-disk compilation cache; see SandboxOptions.
 	CacheDir string
+	// pig additive (D263).
+	// Interpreter runs the module on wazero's interpreter instead of its compiler; see SandboxOptions.Interpreter.
+	Interpreter bool
 }
 
 // serveBudget is the interrupt budget of one request: what it asks for, capped at what the remote allows.

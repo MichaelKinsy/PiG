@@ -164,6 +164,17 @@ type SandboxOptions struct {
 	// CacheDir holds wazero's on-disk compilation cache, which makes a later process start in tens of milliseconds
 	// instead of hundreds. Empty compiles in memory; a directory that cannot be used is ignored.
 	CacheDir string
+	// pig additive (D263).
+	// Interpreter runs the QuickJS module on wazero's interpreter instead of its compiler, which is the default. The
+	// compiler writes machine code into memory and then runs it, which a process refuses when the host forbids
+	// executable memory it did not map with a signature: a macOS app signed with the Hardened Runtime is killed
+	// (SIGKILL) on the first execution unless it carries the com.apple.security.cs.allow-unsigned-executable-memory
+	// entitlement (com.apple.security.cs.allow-jit alone is not enough). The interpreter needs no entitlement and gives the
+	// same results except that unbounded recursion ends the execution with a sandbox error (wasm error: stack overflow)
+	// instead of a catchable RangeError. It runs scripts about 50 times slower, and even a script that does nothing costs
+	// over a second to start a VM. Prefer the entitlement when the host can carry it. The interpreter keeps no compiled code, so CacheDir
+	// is ignored.
+	Interpreter bool
 	// Wasm supplies the QuickJS wasm module. Nil means the embedded module (upstream: loadQuickJSWasm()).
 	Wasm func() ([]byte, error)
 	// AcquireWorker reserves capacity immediately before each worker VM is created, after the module is loaded. An error

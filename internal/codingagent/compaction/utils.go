@@ -108,7 +108,8 @@ func truncateForSummary(text string, maxChars int) string {
 	if length <= maxChars {
 		return text
 	}
-	return jsstring.Slice(text, 0, maxChars) + "\n\n[... " + itoa(length-maxChars) + " more characters truncated]"
+	// pig divergence (D252): Pi main 9e870f6f0 does not split a surrogate pair at the cut.
+	return jsstring.SliceHead(text, maxChars) + "\n\n[... " + itoa(length-maxChars) + " more characters truncated]"
 }
 
 // itoa converts a non-negative integer to its decimal string representation

@@ -3027,3 +3027,362 @@ Call-site markers: `mcp/streamable_http.go` (`Send`'s `application/json` case, `
 Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7188739: the 2 KB reply is accepted), `TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter`, `TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest` (`mcp/streamable_http_body_cap_pi_test.go`, Pi's three tests), `TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody` (`mcp/review_regression_test.go`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
+
+## D234 PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a repeated signal forces exit
+
+What: PiG takes Pi main commit ace560c30 ("let a started RPC or print shutdown finish; only a repeated signal forces exit", Pi #11752, fixing #11599) before the pin reaches a release that contains it.
+
+1. RPC mode. Once a shutdown has started, from stdin end, `ctx.shutdown()` or a signal, a later stdin end, shutdown request or single SIGTERM/SIGHUP does not interrupt it: the dispose finishes, then the process exits with the code of the trigger that started it (0 for stdin end or a request, 128 plus the signal number for a signal). A second signal exits at once with 128 plus its own number, without waiting for the dispose or flushing stdout. The signal handlers stay until exit; PiG no longer removes them and re-raises the signal. A repeated signal also ends the process while another exit waits for a stdout nobody reads, and a repeated SIGHUP does not wait for stdout either, as Pi's `process.exit` does not. The repeated-signal count starts when RPC mode registers its own handler: a signal that arrives during startup, which only the main handler takes, does not make the next one a repeated signal.
+2. Print mode. The signal handlers stay until the teardown, including the final disposal, has ended (also after a stdout or conversion error cancelled the run). A signal during the final disposal waits for that disposal and then exits 143 (SIGHUP 129); a repeated signal exits at once.
+
+Go signal limit: two termination signals the operating system delivers back to back may reach the process as one. The Go runtime drops a signal whose bit is still pending before its signal loop took the first (`runtime.sigsend`), and every `os/signal` channel then sees one delivery; Go cannot observe two such signals separately. PiG counts every delivery it gets: it neither counts one signal twice nor loses one that the runtime delivered. A supervisor that must force an exit with a second signal sends it after a short delay (the first signal is taken within milliseconds); two signals sent back to back from one process can be one signal to PiG and the dispose then finishes. Measured with 20 back-to-back `kill -TERM` pairs from a shell: a Go `signal.Notify` receiver counted 1 in 20 of 20 pairs on Linux (xd670, Go 1.27.2) and in 4 of 20 on macOS arm64 (Go 1.27.3), and a Node 24 receiver counted 1 in 9 of 20 pairs on the same Linux host. With 50 ms between the signals, Go counted 2 every time on both systems. Pi's Node handler therefore sees a repeated signal in more cases, depending on the host. A follow-up second signal always works, and SIGKILL always works.
+
+Why: Pi 1.5.0 removes its signal handlers when shutdown starts, so a signal that follows stdin end (a host that closes stdin and sends SIGTERM together, or systemd) kills the process in the middle of the dispose and cuts off cleanup such as a pending MCP token refresh; print mode removes its handlers before the final disposal. The owner asked for the fix to ship in 0.7.1.
+
+Pi bug: Pi 1.5.0 (`rpc-mode.ts` `shutdown`, the signal handlers; `print-mode.ts` `disposeRuntime`), fixed by Pi main ace560c30 ([#11599](https://github.com/earendil-works/pi/issues/11599), #11752).
+
+Scope: RPC mode and print mode, termination signals (SIGTERM, SIGHUP; SIGTERM on Windows). Interactive mode already lets a started shutdown finish. Extension processes: the dispose runs `session_shutdown` in the isolated and the packed extension runtimes before the process exits; a repeated signal ends the extension processes with the process.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M3).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing ace560c30. Then the call-site markers and this record go, and the Go signal limit stays as a note in the RPC documentation.
+
+Call-site markers: `coding/cli/rpc_shutdown.go` (`rpcShutdown`, `inputEnd`, `requested`, `signal`, `repeatedSignal`, `abort`, `repeatedTermination`), `coding/cli/rpc_mode.go` (`watchRepeatedTermination`, the stdin-end branch), `coding/cli/print_mode.go` (`finalDisposing`, `teardownDone`, the signal goroutine).
+
+Evidence: `TestRPCSingleSignalDuringInputEndShutdownLetsItFinish`, `TestRPCInputEndDuringSignalShutdownLetsItFinish`, `TestRPCRepeatedSignalDuringShutdownExitsAtOnce`, `TestRPCShutdownTriggers`, `TestRPCShutdownRepeatedSignalKeepsItsExitStatus`, `TestPrintModeSignalDuringFinalDisposalWaitsForIt`, `TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce`, `TestRPCSingleSignalDuringShutdownDoesNotBlockARunTheHandlerStarts`, `TestPrintModeSignalDuringFinalDisposalDoesNotBlockARunTheHandlerStarts`, `TestRPCRepeatedSignalExitsWhileStdoutIsStuck`, `TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes` (`coding/cli`; Pi's four tests ported, the rest cover PiG's wiring).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior, and Pi main's tests are ported.
+
+## D235 A session-graph client's two live runs with no "no run" read between them are one context
+
+What: in a Host whose run signal comes from a session-graph client (an ExtensionRunner an extension constructed), `ctx.signal` is the same object for two runs that follow each other with no read of "no run" in between. Pi's `agent.signal` is a new AbortSignal for every run (`agent.ts:345-347`, one `AbortController` per `activeRun`). The client's `getSignal` answers only none, live or aborted, so the binding (`graphSignal.read`, `coding/session_graph_extension_runner.go`) keeps one context from the first read that reports a run until a read reports none. A handler that holds `ctx.signal` of the first run and reads it in the second sees the second run's abort, where Pi's signal of the first run stays live.
+
+Why: the wire carries no run identity. A new context per read would renumber an aborted run on every sync (the busy loop fixed in 892827ff8c). A run that follows an aborted one is told apart, because the abort cancelled the context.
+
+Pi bug: none. The difference comes from the wire.
+
+Scope: back-to-back runs with no idle read between them; only a session-graph client's ExtensionRunner. A Host over a Session reads the agent's own context, one per run.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M4, record only; the wire fix is a later row).
+
+SCRUTINIZED:approved
+
+Remove when: the getSignal wire carries a run token in all SDKs and the binding makes a new context when the token changes (a later lane).
+
+Call-site markers: `graphSignal.read` (`coding/session_graph_extension_runner.go`), `actions.GetSignal` in `contextActions` (`coding/session_graph_extension_runner_bind.go`).
+
+Evidence: `TestGraphGetSignalIsOneObjectForARunAndItsAbort`. A two-live-runs test arrives with the run token.
+
+Pre-existing: yes (an earlier variant made a new context per read). Found by RevCtxAbort on 2026-11-04.
+
+## D238 The output limit leaves 15% of the estimated input unused
+
+What: PiG's `ClampMaxTokensToContext` ports Pi main 0a4fad548 (`fix(ai): leave room for OpenRouter's input overcount when clamping max tokens`, #11712, with its `clamp-max-tokens.test.ts`), which is not in Pi 1.5.0. The room left for output is the window minus the estimated input minus a margin of max(4096, 15% of the input). When that room is under 32768 tokens, the margin falls back to the fixed 4096 and the limit is capped at 32768 (or at the real room when that is smaller). Pi 1.5.0 keeps only the flat 4096 margin.
+
+Why: OpenRouter counts the input with its own tokenizer, up to 12% above the provider's count (#10497), and rejects input + max_tokens above the window with a 400 that PiG treated as a context overflow and compacted at about 20% of the window.
+
+Pi bug: 1.5.0 requests a near-full window of output tokens and the request is rejected.
+
+Scope: `ClampMaxTokensToContext`, applied to every provider request. A model with no context window is unchanged.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M8).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 0a4fad548. Then the call-site marker and this record go.
+
+Call-site markers: `ai/simple_options.go` (`ClampMaxTokensToContext`).
+
+Evidence: `TestClampMaxTokensToContextOpenRouterOvercountMargin` (`ai/clamp_max_tokens_test.go`, Pi's `clamp-max-tokens.test.ts`; red on 989927eff4: the flat margin returns 823665 tokens where 794638 is wanted for the #10497 case).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D240 Claude Sonnet 5 takes no temperature
+
+What: PiG's catalog family rule ports Pi main 4b9777737 (`fix(ai): mark Claude Sonnet 5 as not supporting temperature`, #7961), which is not in Pi 1.5.0. `temperatureUnsupported` lists `sonnet-5` and `sonnet.5` instead of `sonnet-5-5` and `sonnet-5.5`, so every Sonnet 5 model on an `anthropic-messages` provider (Anthropic, Cloudflare AI Gateway, GitHub Copilot, OpenCode, OpenRouter, Vercel AI Gateway) carries `compat.supportsTemperature: false` and the request omits `temperature`. The generated catalogs `ai/models_generated.go` and the test golden are regenerated for it. The published pi-ai 1.5.0 package that `make model-catalogs` and `go generate ./ai` read predates the commit, so `cmd/gen-models` applies the rule to the Sonnet 5 entries of the package's provider data while it reads them (`cmd/gen-models/d240_sonnet5_temperature.go`); `make generate` therefore reproduces the committed catalog.
+
+Why: Pi main's rule, ahead of the pin: Sonnet 5 rejects a `temperature` field the same way Sonnet 5.5 does.
+
+Pi bug: 1.5.0 sends `temperature` to Claude Sonnet 5 (fixed on Pi main by the commit above).
+
+Scope: the catalog family rule (`internal/modelgen/family_anthropic.go`), the generator step that applies it to the published data, and the seven `anthropic-messages` Sonnet 5 records in `ai/models_generated.go` (anthropic, cloudflare-ai-gateway, github-copilot, opencode, openrouter and vercel-ai-gateway `claude-sonnet-5`, and vercel-ai-gateway `claude-sonnet-5-batch`). The Node extension runtime's pinned `pi-dist` data (`coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/providers/data/*.json`, `make vendor-pi-dist` output from the pinned package) is unchanged: a Node extension reading `getModel("anthropic", "claude-sonnet-5").compat` still sees temperature as supported, and the host catalog does not. Bedrock Converse entries and the `:batch` OpenAI-completions entry are not affected (the rule applies to `anthropic-messages` only).
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M10).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 4b9777737. Then the call-site marker and this record go; the catalog regenerates from the pinned package.
+
+Call-site markers: `internal/modelgen/family_anthropic.go` (`temperatureUnsupported`), `cmd/gen-models/d240_sonnet5_temperature.go` (`applyD240SonnetFiveTemperature`), `ai/d240_sonnet5_allowance_test.go` and the node script of `ai/catalog_model_json_oracle_test.go` (the allowances).
+
+Evidence: `TestAnthropicTemperatureCompatibility/omits_zero_for_Claude_Sonnet_5` (red on 989927eff4: `temperature = 0, want omitted`), `TestApplyClaudeFamilyRules/sonnet_5_drops_the_temperature` (red: got `{"forceAdaptiveThinking":true}`), `TestCatalogGenerationMatchesPi` (golden regenerated with Pi's generator with 4b9777737 applied).
+
+Parity allowance: the generated catalog and `cmd/gen-models/testdata/catalog-generation/golden.sha256` follow Pi main for these records. `TestGeneratedCatalogsMatchPublishedPackage`, `TestCatalogModelJSONMatchesPiForEveryBuiltinModel` and `TestBuiltinCatalogsMatchPinnedProviderDataModules` accept exactly the seven records above with compat.supportsTemperature false added and nothing else (`d240SonnetFiveRecords`; the JSON test adds the member after forceAdaptiveThinking so the bytes are compared in Pi's member order). `TestCodegenByteIdentical` needs no allowance: it regenerates through the same generator and reproduces the committed bytes.
+
+## D241 Ctrl+V also pastes on Windows and WSL
+
+What: PiG ports Pi main 37b38e9f6 (`fix(coding-agent): keep ctrl+v as a paste key on Windows and WSL`, #11780, fixing #11765), which is not in Pi 1.5.0. The Windows and WSL default of `app.clipboard.pasteImage` is `alt+v` and `ctrl+v` (Pi 1.5.0: `alt+v` only). Other platforms keep `ctrl+v`. The keybindings documentation lists both keys.
+
+Why: Most Windows terminals handle Ctrl+V themselves and send a bracketed paste, but some pass Ctrl+V to the program as the raw `0x16` key. With only `alt+v` bound, nothing happened and no message was shown. In a terminal that handles Ctrl+V itself the program never receives the key, so the extra binding changes nothing there.
+
+Pi bug: 1.5.0 binds no key to `ctrl+v` on Windows and WSL (#11765).
+
+Scope: the Windows and WSL column of `app.clipboard.pasteImage` (`internal/codingagent/keybindings.go`) and its two keybindings tables.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M11).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 37b38e9f6. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/keybindings.go` (`appKeybindingRows`), `internal/codingagent/keybindings_inventory_test.go` (the expected Windows keys).
+
+Evidence: `TestKeybindingDefinitionsApplyPlatformDefaults` (red on 989927eff4: `linuxWsl app.clipboard.pasteImage defaults = [alt+v], want [alt+v ctrl+v]`, same for win32; it ports Pi's WSL test and the updated defaults assertion over every platform column), `TestPlatformDivergentControlKeys`.
+
+Parity allowance: `TestAppKeybindingDefinitionsMatchUpstreamInventory` expects the extra `ctrl+v` on the Windows and WSL columns. The oracle tests compare the host platform only, which is neither.
+
+## D242 Reload is rejected while the session is running or compacting
+
+What: PiG's `Session.Reload` ports Pi main c3b938e3e (`fix(coding-agent): reject reload while running or compacting`, #9222, fixing #9221), which is not in Pi 1.5.0. While a run is active it fails with `Wait for the current response to finish before reloading.`; while compaction or tree navigation is in flight it fails with `Wait for compaction to finish before reloading.`. The check runs before `session_shutdown` and before any runner invalidation, so the session, its extensions and any running tool are untouched. Pi 1.5.0 reloads anyway.
+
+Why: An extension command (`ctx.reload()` in print or RPC mode) or an SDK caller could reload during a running extension tool. Reload invalidated the tool's runner, the tool's next `ctx` use threw a stale-context error, and the failed tool result entered session history.
+
+Pi bug: 1.5.0 has the TUI's entry checks only in the TUI, not in the core reload method (#9221).
+
+Scope: `Session.Reload` (`coding/session_tool_registry.go`), reached by `ctx.reload()` in print and RPC mode and by direct `Session.Reload` callers. Interactive `/reload` already refuses while a run or compaction is active (`internal/codingagent/interactive_commands.go`) and PiG has no RPC `reload` command, so neither changes. The print and RPC reload closures (`coding/cli/print_mode.go`, `coding/cli/rpc_mode.go`) invalidate the extension host only when the previous runner is stale, so a refused reload (which touched nothing) leaves the running tool's context live. The error reaches every SDK's `ctx.reload()` caller with its message unchanged (Go, Python, Rust, Lisp, Node): scenario row `reload-rejected-while-running-reaches-the-caller-unchanged`, which checks the propagation only (its rig returns the error itself). It does not serialize reload with prompt preflight.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL M12).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains c3b938e3e. Then the call-site marker and this record go.
+
+Call-site markers: `coding/session_tool_registry.go` (`Reload`), `coding/cli/print_mode.go` and `coding/cli/rpc_mode.go` (the `SetReload` closures).
+
+Evidence: `TestSessionReloadRejectedWhileRunningOrCompacting` (`coding/session_reload_busy_test.go`; red on 989927eff4: `Reload error = <nil>, want "Wait for the current response to finish before reloading."`, same for compaction), `TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive` (`coding/cli/headless_reload_test.go`, Pi's "command" case over the real binary in print and RPC mode; red with the host invalidated on any reload error: `command pi threw:This extension ctx is stale ...` and `tool:ctx threw:...`), scenario `reload-rejected-while-running-reaches-the-caller-unchanged` in `TestSDKScenarios` for every SDK.
+
+Parity allowance: none needed; Pi 1.5.0 has no test of reload while running.
+
+## D243 A bash or PowerShell timeout after the shell already exited reports the shell's exit code
+
+What: PiG ports Pi main 06aa6563e (`fix(coding-agent): report the shell exit code when bash times out after the shell exited`, #11813, fixing #11613), which is not in Pi 1.5.0. The local shell backend returns a `*ShellTimeoutError` whose message stays `timeout:<seconds>` (the contract custom operations rely on) and whose `ShellExit` holds the shell's exit code and the seconds it ran when the shell had exited before the deadline. The shell tool then says `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` A shell still running at the deadline keeps the plain `Command timed out after N seconds`.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S1.). Pi 1.5.0 reports only the timeout when a background process that inherited the output pipes keeps the tool waiting after the shell exited, so the model reads a failed command as a slow one and retries with a longer timeout.
+
+Pi bug: `LocalShellOperations.Exec` in Pi 1.5.0 (`bash.ts` `createLocalShellOperations`), fixed by Pi main 06aa6563e ([#11613](https://github.com/earendil-works/pi/issues/11613)).
+
+Scope: The local shell operations behind the bash and PowerShell tools and the shell tool's timeout status. Custom operations that return `timeout:N` are unaffected. Windows is unchanged: only the message is fixed, as in Pi. SDK exception: the sentence appears only where the tool runs in the host's process. `CreateLocalBashOperations` and `CreateLocalPowerShellOperations` in the SDKs (and a fused extension's `LocalExec`) reach the host over `builtinTool.localExec`, whose reply carries only the error text `timeout:<seconds>`, so an extension that wraps them and rethrows loses the shell's exit code and its bash tool prints the plain timeout message; in Pi main the rethrown `ShellTimeoutError` keeps it. The Node SDK runs Pi 1.5.0's own code, which has no such error. Nothing in the wire is changed, so the SDKs behave as with a custom `BashOperations` that throws `timeout:N`.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 06aa6563e ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/bash_operations.go` (`Exec` timeout result), `internal/codingagent/tools/shell_tool.go` (timeout status).
+
+Evidence: `TestBashTimeoutAfterShellExit11613` (`internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go`, Pi's two cases; red on 989927eff4: the status lacks the exit-code sentence).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported (their timeouts are widened because shell start-up is slow on a loaded host).
+
+## D244 A user bash result whose earlier output was discarded is reported as truncated
+
+What: PiG ports Pi main 66c655677 (`fix(coding-agent): track discarded user bash output`, #10165, fixing #10164). `ExecuteBashWithOperations` keeps a rolling window of the output; when it drops a chunk it now records that, and `BashResult.Truncated` is true for a completed or cancelled run whose retained tail fits the limits but whose head was dropped. The model then receives the `[Output truncated. Full output: <path>]` notice for the complete log that PiG already wrote. Pi 1.5.0 reports `truncated: false` there.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S2.). Pi 1.5.0 hides the path of a complete log whose head was discarded.
+
+Pi bug: `executeBashWithOperations` in Pi 1.5.0 (`bash-executor.ts`), fixed by Pi main 66c655677 ([#10164](https://github.com/earendil-works/pi/issues/10164)).
+
+Scope: The user `!` command executor. Output limits and the message format are unchanged.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 66c655677 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 66c655677. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/bash_executor.go` (`appendText` window drop, `finish`).
+
+Evidence: `TestExecuteBashWithOperationsReportsDiscardedChunks10164` (`internal/codingagent/tools/bash_executor_truncation_test.go`, Pi's three cases except the model-facing text; red on 989927eff4: `truncated=false` for the completed and the cancelled run).
+
+Parity allowance: none needed if `TestExecuteBashWithOperationsMatchesPi` (the Pi 1.5.0 oracle) still passes; see the run recorded in the 0.7.1 tools-lane report.
+
+## D246 OpenAI Responses sends session-id, not session_id
+
+What: PiG's OpenAI Responses request ports Pi main c5d397835 (`fix(ai): send session-id instead of session_id on OpenAI Responses`, #11793, fixing #11639), which is not in Pi 1.5.0. With the default `openai` session-affinity format the Responses path sends the header `session-id` (Pi 1.5.0: `session_id`). `x-client-request-id`, `prompt_cache_key`, the `openai-nosession` and `openrouter` formats, and the Codex path (already `session-id`) are unchanged. The Completions path keeps `session_id` (and `x-session-affinity`), as in Pi.
+
+Why: Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.
+
+Pi bug: 1.5.0 sends `session_id` on Responses (#11639).
+
+Scope: `applyOpenAISessionAffinityHeaders` for the Responses callers (`ai/openai.go`, `ai/openai_responses.go`), including xAI and every other provider on the Responses API with the `openai` format. Not changed: the `sessionAffinityFormat` schema description in `internal/codingagent/configschema/compat_a.go` still says `session_id`; the rendered schemas stay byte-equal to the pinned Pi package until the pin reaches c5d397835.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S4).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.
+
+Call-site markers: `ai/openai.go` (`applyOpenAISessionAffinityHeaders`), `test/parity/testdata/openai-cache-affinity-pig/main.go` (the allowance).
+
+Evidence: `TestOpenAIResponsesCompatHeadersUpstream`, `TestOpenAIResponsesCacheAffinityE2EUpstream` and `TestXAIResponsesRequestUpstream` (Pi's three changed tests; red on 989927eff4: `header session-id="" want="session-123"`, `header session_id="session-123" want=""`); `TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat` keeps `session_id` on the Completions path.
+
+Parity allowance: three comparisons against the pinned Pi 1.5.0 follow the header rename on the Responses path and nothing else. `TestProviderIdentityHeadersMatchPi/openai-responses` and `TestProviderRequestHeadersMatchPi/openai-responses` rename Pi's `session_id` request header to `session-id` for `openai-responses` only (`d246PiResponsesSessionHeader`, `ai/response_oracle_support_test.go`). Parity scenario `providers-faux-streaming/15-openai-cache-affinity` has its pig probe read the Responses affinity header as `session-id` where Pi's probe reads `session_id`, and reports a Responses request that carries a `session_id` the model did not configure. A `session_id` header the model itself configures is no longer replaced by the affinity header on the Responses path (it is a different header now, as in Pi main), so it reaches the server next to `session-id`; the scenario's `override` case does not report it. The schema description stays at the pinned text (see Scope).
+
+## D252 Truncating text never splits a surrogate pair
+
+What: PiG ports Pi main 9e870f6f0 (`fix(coding-agent): do not split surrogate pairs when truncating text`, #11757, fixing #7121), which is not in Pi 1.5.0. Where Pi cuts text by UTF-16 units it now keeps a pair whole: a cut between the two halves of a pair returns one unit fewer (`sliceHead`, `sliceTail`; PiG `jsstring.SliceHead`, `SliceTail`, `HeadUnits`, `TailUnits`). The sites are grep match lines (`TruncateLine`, which the Go, Python, Rust and Lisp SDKs also export), the codemode output head and tail and its argument and error previews, compaction `truncateForSummary`, the MCP server summary and the stderr tail of a connection error. A negative `maxChars` of `TruncateLine` now keeps nothing of the line (Pi's `sliceHead` clamps to 0) instead of counting back from the end. Pi 1.5.0 keeps the lone high surrogate, which PiG held as WTF-8 and wrote as U+FFFD or `\\ud83d`.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S10.). The lone surrogate reaches the session file, RPC and JSON clients and custom providers.
+
+Pi bug: `truncateLine`, codemode `truncateOutput`, `truncateForSummary` and the MCP truncations in Pi 1.5.0, fixed by Pi main 9e870f6f0 ([#7121](https://github.com/earendil-works/pi/issues/7121)).
+
+Scope: The sites above only. TUI previews and line-based slicing are unchanged, as in Pi. The Node SDK runs Pi's own code, so it keeps Pi 1.5.0's behavior until the pin moves; the conformance suite adjusts the Node reference (`expectedFor`).
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 9e870f6f0 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 9e870f6f0. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/truncate.go` (`TruncateLine`), `tools/grep_head.go` (`truncatedLineBytes`), `internal/codingagent/compaction/utils.go`, `coding/extension/builtin/codemode/execute.go` (`truncateText`, `truncateOutput`), `coding/mcpext/extension.go`, `coding/mcpext/runtime.go`, `extensions/sdk/truncate.go`, `extensions/sdk-py/pig_sdk/truncate.py`, `extensions/sdk-rs/src/truncate.rs`, `extensions/sdk-lisp/src/truncate.lisp`.
+
+Evidence: `TestSliceHeadAndTailNeverSplitAPair`, `TestSliceHeadAndTailMatchSliceWithoutSurrogates` (`internal/jsstring`, Pi's `truncate-surrogates.test.ts`), `TestTruncateLine` (the emoji at the limit and the pair that ends at it), `TestTruncateForSummaryDropsASplitSurrogatePair`, `TestTruncateOutputKeepsSurrogatePairsWhole`, `TestTruncateDropsASplitSurrogatePair`, `TestStderrTailDropsASplitSurrogatePair`, the SDK truncation tests, and `TestConformance_TruncationHelpersAgreeAcrossSDKs`.
+
+Parity allowance: the pinned-Pi oracle script `text("é😀".repeat(30000))` of `TestExecuteOutputMatchesPi` became `éé😀` so no cut falls inside a pair, and `grep_test.go`'s surrogate case now pins Pi main's output.
+
+## D253 find and ls read a limit below 1 as 1, and find reports the limit only when more results exist
+
+What: PiG ports Pi main 676af1d77 (`fix(coding-agent): find and ls limit edge cases`, #11747, fixing #7121), which is not in Pi 1.5.0. Both tools use `max(1, floor(limit ?? default))`: `limit: 0` no longer lets fd return everything or ls print `(empty directory)`, and `1.5` no longer prints `1.5 results limit reached`. find asks fd for `limit + 1` results, shows the first `limit` and prints the limit notice only when the extra one exists, so exactly N matches give no notice. A custom `FindOperations.glob` receives `limit + 1` in every SDK that exposes it (the host passes the value on), and a glob that ignores the limit has its results cut to `limit` with the notice. Output made only of blank lines with exit code 0 now gives `No files found matching pattern`. Pi 1.5.0 reports the notice at `results >= limit` and passes `limit` to fd and to `glob`.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S11.). Pi 1.5.0 shows a false `limit reached` for exactly N matches and every match for `limit: 0`.
+
+Pi bug: `createFindToolDefinition` and `createLsToolDefinition` in Pi 1.5.0, fixed by Pi main 676af1d77 ([#7121](https://github.com/earendil-works/pi/issues/7121)).
+
+Scope: The find and ls tools and `FindOperations.glob` in the Go, Python, Rust and Lisp SDKs. The Node SDK runs Pi's own find tool, so its custom glob keeps receiving `limit` until the pin moves; the conformance case `globlimit` adjusts the Node reference (`expectedBuiltinReport`).
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 676af1d77 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 676af1d77. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/find.go` (`Execute`, `findWithOperations`), `internal/codingagent/tools/ls.go`.
+
+Evidence: `TestFindLimitEdgeCases7121`, `TestLsLimitEdgeCases7121` (`internal/codingagent/tools/find_ls_limit_test.go`, Pi's find and ls cases), and the `globlimit` case of `TestConformance_BuiltinToolDelegationAcrossSDKs`.
+
+Parity allowance: none needed; Pi 1.5.0 has no test of these limits.
+
+## D254 `pig config` loads the user's keybindings
+
+What: PiG's config selector ports Pi main b0c64f33c (`fix(coding-agent): load user keybindings in pi config`, #11788, fixing #11651), which is not in Pi 1.5.0. Before it builds the selector's UI, `pig config` installs the keybindings manager for the agent directory, so the remaps in `keybindings.json` (for example `"tui.select.down": ["down", "ctrl+n"]`) work in it as they do in `/settings` and the `--resume` picker. Pi 1.5.0 uses the default bindings there.
+
+Why: `selectConfig()` never installed the user's bindings, so a remap did nothing in the config selector.
+
+Pi bug: 1.5.0 ignores `keybindings.json` in `pi config` (#11651).
+
+Scope: `newConfigSelectorUI` (`coding/cli/config_command.go`).
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S13).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains b0c64f33c. Then the call-site marker and this record go.
+
+Call-site markers: `coding/cli/config_command.go` (`newConfigSelectorUI`).
+
+Evidence: `TestConfigSelectorUIUsesTheUsersKeybindings` (`coding/cli/config_theme_test.go`, ports Pi's `config-selector-keybindings.test.ts`; red on 989927eff4: `tui.select.down keys = [down], want ctrl+n among them`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D255 `pig mcp list` sends the provider's token
+
+What: PiG's `mcp` command ports Pi main 4d72d05bc (`fix(coding-agent): send provider tokens in pi mcp list`), which is not in Pi 1.5.0. For a server with `auth.provider` (Radius, for example) `pig mcp list` sends the provider's `/login` token, read from the agent directory's `auth.json` and refreshed when expired, so a signed-in provider's server is no longer reported as needing sign-in. A provider without credentials gives no token and the server's 401 reports the sign-in. For such a server the hint reads `sign in with: /login <provider> in pig`, `--json` carries `authProvider` after `transport`, and `pig mcp login` and `pig mcp logout` fail with `MCP server "<name>" uses the credentials of provider "<provider>". Run /login <provider> in pig.` (Pi 1.5.0: no token, the `pig mcp login` hint, and "does not use OAuth").
+
+Why: The shell command built its connections without a token, so a server that takes the provider's token always looked signed out.
+
+Pi bug: 1.5.0 reports a signed-in provider's MCP server as needing sign-in.
+
+Scope: `RunMcpCommand` (`coding/mcpext/cli.go`, new `McpCommandOptions.ProviderToken`) and its wiring (`coding/cli/mcp_command.go`, a model runtime created on the first request). Not affected: sessions (they already send the provider token), servers without `auth.provider`.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S14).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 4d72d05bc. Then the call-site markers and this record go.
+
+Call-site markers: `coding/mcpext/cli.go` (`McpCommandOptions.ProviderToken`, the login/logout refusal, the sign-in hint).
+
+Evidence: `TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider` (`coding/mcpext/cli_test.go`, Pi's `mcp-command.test.ts` case; red on 989927eff4: does not compile, `unknown field ProviderToken in struct literal of type mcpext.McpCommandOptions`), `TestMcpProviderTokenReaderReadsTheAgentDirectoryCredentials`.
+
+Parity allowance: none needed; Pi 1.5.0's `mcp-command.test.ts` has no `auth.provider` case.
+
+## D256 An unreachable llama.cpp server error names the server and the cause
+
+What: PiG's llama.cpp client ports Pi main ea0f49a36 (`fix(coding-agent): name the llama.cpp server and cause when it cannot be reached`, #11779, fixing #11745), which is not in Pi 1.5.0. When a request or the `/models/sse` watch fails at the network level, the error reads `Could not reach llama.cpp server at <url>: <cause>` and wraps the original error. An abort or a timeout is rethrown unchanged. Pi 1.5.0 shows `fetch failed`. The cause is the transport error's own text: Go's `dial tcp 127.0.0.1:<port>: connect: connection refused` where Node's is `connect ECONNREFUSED 127.0.0.1:<port>`.
+
+Consequences kept from Pi: `/login llama.cpp`, `/llama` and the model catalog refresh show the new text. The cause text is Go's, which can differ from Node's in what `isConnectionError` matches: Go's `i/o timeout` and `network is unreachable` contain `timeout` and `network`, where Node's `Connect Timeout Error` and `connect ENETUNREACH` do not, so those two causes may be classified differently from Pi. The text no longer contains `fetch failed`, so `isConnectionError` (index.ts) does not classify it, as in Pi: the `/llama` retry screen shows the detailed message instead of `Could not connect to the server.`, and a failed action over a refused connection notifies its error.
+
+Why: The refused connection, wrong port or `https://` against a plain-HTTP server all read `fetch failed`, which gave the user nothing to go on.
+
+Pi bug: 1.5.0 drops the cause of a failed fetch (#11745).
+
+Scope: `LlamaClient` requests and `Watch` (`internal/codingagent/llama/client.go`, `fetch.go`). Not affected: the Hugging Face client.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S15).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains ea0f49a36. Then the call-site marker and this record go.
+
+Call-site markers: `internal/codingagent/llama/fetch.go` (`unreachableError`), `internal/codingagent/llama/client.go` (the two `serverFailure` calls).
+
+Evidence: `TestClientRequestErrorsMirrorFetch` (`internal/codingagent/llama/client_test.go`, the connection-error block; red on 989927eff4: the error is `fetch failed`), `TestModelsProviderRefreshReportsNetworkErrorsAndAbortedCallers`, `TestLlamaCommandOffersRetryWhenTheServerIsUnreachable`.
+
+Parity allowance: Pi 1.5.0's tests expecting `fetch failed` and `Could not connect to the server.` for a refused connection follow Pi main here; the cause text is Go's.
+
+## D261 SSE lines end at CR, LF or CRLF
+
+What: PiG's SSE reader (`mcp.ConsumeSSEStream`) ports Pi main b64e6badd (`fix(mcp): recognize CR-only line endings in Streamable HTTP SSE`, #11775, fixing #11764), which is not in Pi 1.5.0. A line ends at CR, LF or CRLF, as the SSE specification says. A CR that ends the buffered bytes ends its line at once (the event is delivered while the stream is open), and the LF that may start the next read is skipped, so a CRLF split across reads is one line ending. Pi 1.5.0 splits on LF alone and strips one trailing CR, so a lone-CR stream never delivers an event and a call answered that way fails with "stream ended without a response". Size limits, dispatch and error cleanup are unchanged. The stdio framing (LF-terminated JSON lines, `lineSplitter`) is unchanged.
+
+Why: A server that frames its SSE with a lone CR was unusable.
+
+Pi bug: 1.5.0 parses a CR-framed stream as one `id` line at EOF (#11764).
+
+Scope: the SSE reader of the Streamable HTTP transport and the legacy SSE transport (`mcp/sse.go`, new `sseLineSplitter`). Not affected: stdio.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S20).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains b64e6badd. Then the call-site marker and this record go.
+
+Call-site markers: `mcp/sse.go` (`sseLineSplitter`).
+
+Evidence: `TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks` and `TestConsumeSSEStreamDispatchesCRTerminatedEventsWhileTheStreamStaysOpen` (`mcp/sse_cr_pi_test.go`, Pi's two tests; red on 989927eff4: `"\r" as one chunk: []mcp.SSEEvent(nil), want ...`, the second never dispatches), the existing stdio splitter tests unchanged.
+
+Parity allowance: none needed; Pi 1.5.0 has no CR-only test.
+
+## D262 The startup benchmark disposes the session runtime
+
+What: PiG's `PI_STARTUP_BENCHMARK=1` path ports Pi main efb45b51d (`fix(coding-agent): dispose session runtime after startup benchmark`, #11736, fixing #11693), which is not in Pi 1.5.0. After it initializes interactive mode and stops it, it disposes the session runtime (extensions receive `session_shutdown`), then prints the timings. Pi 1.5.0 never disposes the runtime on this path. PiG also disposes it when initialization or stop fails, before the error exit.
+
+Why: An extension that releases a timer or a socket in its `session_shutdown` handler kept the process alive after the timings printed. In PiG the deferred close of the runtime ran only on the success return, after the timings, and an error exit skipped it.
+
+Pi bug: 1.5.0 never emits `session_shutdown` in the benchmark (#11693).
+
+Scope: `runStartupBenchmark` (`coding/cli/main.go`).
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL S21).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains efb45b51d. Then the call-site marker and this record go.
+
+Call-site markers: `coding/cli/main.go` (`runStartupBenchmark`).
+
+Evidence: `TestStartupBenchmarkDisposesTheRuntimeAfterStoppingInteractiveMode` (`coding/cli/startup_benchmark_test.go`; red on 989927eff4: `runStartupBenchmark` takes no dispose step, so the test does not compile). Pi added no test: the path needs a TTY.
+
+Parity allowance: none needed.

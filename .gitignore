@@ -118,6 +118,7 @@ auth.json
 !.upstream/pin
 
 /pig
+/gen-models
 .gopi/
 
 # Runtime session traces written into testdata dirs during parity runs.
