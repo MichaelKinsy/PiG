@@ -58,6 +58,45 @@ func registerRefineProbe(ext *sdk.Extension) {
 	boom := typ.Optional(typ.Refine(typ.String(), refineCheck("boom", func(any) (bool, error) { return false, errors.New("kaboom") })))
 	root := typ.Refine(typ.Object(sdk.NewOrderedObject("name", name, "qty", qty, "pick", pick, "boom", boom)), refineCheck("root", func(any) (bool, error) { return true, nil }), refineText("rootmsg", func(any) string { return "root refused" }))
 	ext.Tool("refine-probe", "Arguments checked by refinements", root.Schema(), func(sdk.Context, map[string]any) (any, error) { return "ok", nil })
+	// refine_value (TestConformance_RefinedValueRunsRefinements): the SDK's Value.Check or Value.Errors of the same schema, with the calls they made.
+	ext.Command("refine_value", "Run Value.Check or Value.Errors on the refine-probe schema", func(ctx sdk.Context, args string) error {
+		var request struct {
+			Mode  string `json:"mode"`
+			Value any    `json:"value"`
+		}
+		if err := json.Unmarshal([]byte(args), &request); err != nil {
+			return err
+		}
+		var report *sdk.OrderedObject
+		var result any
+		var err error
+		if request.Mode == "check" {
+			result, err = sdk.Value.Check(root, request.Value)
+		} else {
+			var errs []sdk.ValueError
+			errs, err = sdk.Value.Errors(root, request.Value)
+			rows := make([]any, len(errs))
+			for i, e := range errs {
+				rows[i] = sdk.NewOrderedObject("keyword", e.Keyword, "schemaPath", e.SchemaPath, "instancePath", e.InstancePath, "params", e.Params, "message", e.Message)
+			}
+			result = rows
+		}
+		refineLogMu.Lock()
+		calls := append([]string{}, refineLog...)
+		refineLog = nil
+		refineLogMu.Unlock()
+		if err != nil {
+			report = sdk.NewOrderedObject("thrown", err.Error(), "calls", calls)
+		} else {
+			report = sdk.NewOrderedObject("result", result, "calls", calls)
+		}
+		wire, err := json.Marshal(report)
+		if err != nil {
+			return err
+		}
+		ctx.Notify("refine_value:"+string(wire)+":end", "info")
+		return nil
+	})
 	ext.Command("refine_log", "Report and clear the refinement call log", func(ctx sdk.Context, _ string) error {
 		refineLogMu.Lock()
 		calls := append([]string{}, refineLog...)

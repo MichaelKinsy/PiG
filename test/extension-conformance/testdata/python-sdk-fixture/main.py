@@ -634,6 +634,26 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("refine_log:" + json.dumps(calls) + ":end", "info")
 
     ext.command("refine_log", "Report and clear the refinement call log", refine_log_probe)
+
+    def refine_value_probe(ctx, args):
+        # refine_value (TestConformance_RefinedValueRunsRefinements): Value.check / Value.errors on the probe schema; the notice carries the result (or the message a refinement raised) and the log of the refinement calls made.
+        request = json.loads(args)
+        report: dict = {}
+        try:
+            if request["mode"] == "check":
+                report["result"] = pig_sdk.Value.check(probe, request["value"])
+            else:
+                report["result"] = [
+                    {"keyword": e.keyword, "schemaPath": e.schema_path, "instancePath": e.instance_path, "params": e.params, "message": e.message}
+                    for e in pig_sdk.Value.errors(probe, request["value"])
+                ]
+        except Exception as exc:  # noqa: BLE001 - a refinement's own exception is what the probe reports
+            report = {"thrown": str(exc)}
+        report["calls"] = list(refine_log)
+        refine_log.clear()
+        ctx.notify("refine_value:" + json.dumps(report, separators=(",", ":"), ensure_ascii=False) + ":end", "info")
+
+    ext.command("refine_value", "Run Value.check or Value.errors on the refinement probe schema", refine_value_probe)
     class ConformanceEditor(pig_sdk.EditorComponent):
         """Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render."""
 
