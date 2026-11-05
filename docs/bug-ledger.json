@@ -21298,6 +21298,26 @@
       ]
     },
     {
+      "id": "BF-7c936f9",
+      "title": "The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working…",
+      "symptom": "The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working directory followed by a drive-lettered path, which shared no queue with the host or another SDK, and `agent-session-runtime-import-from-jsonl` finds a session file given by its Windows path instead of looking for `/D:\\...\\D:\\...`.",
+      "rootCause": ".",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working directory followed by a drive-lettered path, which shared no queue with the host or another SDK, and `agent-session-runtime-import-from-jsonl` finds a session file given by its Windows path instead of looking for `/D:\\...\\D:\\...`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7c936f9107",
+          "date": "2026-11-04"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-7cca5ee",
       "title": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`…",
       "symptom": "A Node extension can default-import TypeBox (`import Type from \"typebox\"`, and likewise `typebox/value`, `typebox/compile` and `@sinclair/typebox*`), as it can in Pi.",

@@ -764,6 +764,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7bf1cbb](#bf-7bf1cbb) | `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and… | PiG's own defect | All platforms | Unreleased |
 | [BF-7c59949](#bf-7c59949) | fix(codingagent): session selector keeps Pi's out-of-range selected index | PiG's own defect | All platforms | Unreleased |
 | [BF-7c848e3](#bf-7c848e3) | A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-7c936f9](#bf-7c936f9) | The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working… | PiG's own defect | Windows | Unreleased |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
 | [BF-7d798ce](#bf-7d798ce) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
@@ -11895,6 +11896,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7c848e3186` (2026-10-30, #11537)
 - **Tests:** `ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification`, `durable/core/turn/classify_carried_test.go::TestZhipuUsageLimit1308IsNotRetryable`, `extensions/sdk/pi_ai_helpers_test.go::TestZhipuUsageLimit1308IsNotRetryable`
 - **Release note:** A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in `ai.IsRetryableAssistantError`, the durable turn classifier and the Go, Rust, Python and Lisp extension SDKs. Carried forward from Pi c719d5b0 (earendil-works/pi#11537), past the 1.4.0+b3a29f11 pin.
+
+### BF-7c936f9
+
+**The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working directory followed by a drive-lettered path, which shared no queue with the host or another SDK, and `agent-session-runtime-import-from-jsonl` finds a session file given by its Windows path instead of looking for `/D:\...\D:\...`.
+- **Root cause:** .
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `7c936f9107` (2026-11-04)
+- **Tests:** None recorded.
+- **Release note:** The Lisp SDK reads a Windows path as one: `with-file-mutation-queue` no longer sends the host the working directory followed by a drive-lettered path, which shared no queue with the host or another SDK, and `agent-session-runtime-import-from-jsonl` finds a session file given by its Windows path instead of looking for `/D:\...\D:\...`.
 
 ### BF-7cca5ee
 
