@@ -7,11 +7,11 @@
 # gitleaks checks over every commit of the pull request, so this script diffs against the merge base with BASE, not HEAD^.
 #
 # Usage: automation/ci/pre-push-gate.sh [base-ref]     (default: PIG_GATE_BASE, then origin/main)
-# A missing tool fails the gate; it never skips silently. Shellcheck's version is CI's (ubuntu-24.04 apt: SHELLCHECK_CI_VERSION).
+# A missing tool fails the gate; it never skips silently. Shellcheck must be CI's pinned version (automation/ci/install-shellcheck.sh).
 set -uo pipefail
 
 cd "$(git rev-parse --show-toplevel)" || exit 2
-SHELLCHECK_CI_VERSION=${SHELLCHECK_CI_VERSION:-0.9.0}
+SHELLCHECK_CI_VERSION=$(./automation/ci/install-shellcheck.sh --print-version)
 base_ref=${1:-${PIG_GATE_BASE:-origin/main}}
 base=$(git merge-base HEAD "$base_ref") || { echo "pre-push-gate: no merge base with $base_ref" >&2; exit 2; }
 head=$(git rev-parse HEAD)
@@ -31,10 +31,13 @@ need() { # tool install-hint
 }
 
 shellcheck_ci() {
-  need shellcheck "apt/brew install shellcheck" || return 1
+  need shellcheck "install ShellCheck $SHELLCHECK_CI_VERSION: brew install shellcheck, or automation/ci/install-shellcheck.sh on Linux" || return 1
   local have
   have=$(shellcheck --version | awk '/^version:/ {print $2}')
-  [ "$have" = "$SHELLCHECK_CI_VERSION" ] || echo "pre-push-gate: warning: shellcheck $have, CI runs $SHELLCHECK_CI_VERSION; findings may differ" >&2
+  if [ "$have" != "$SHELLCHECK_CI_VERSION" ]; then
+    echo "pre-push-gate: shellcheck $have, CI runs $SHELLCHECK_CI_VERSION; install that version so the findings match" >&2
+    return 1
+  fi
   # The tracked files, as CI's fresh checkout has them: untracked trees (an installed npm toolchain) hold scripts CI never sees.
   git ls-files -z 'automation/*.sh' 'docs/site/public/*.sh' | xargs -0 shellcheck
 }
