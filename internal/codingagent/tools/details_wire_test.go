@@ -113,7 +113,7 @@ func TestBuiltinToolResultDetailsWire(t *testing.T) {
 		{"read user limited", &ReadTool{CWD: cwd}, `{"path":"a.txt","limit":1}`, `{}`},
 		{"write", &WriteTool{CWD: cwd}, `{"path":"written.txt","content":"ok"}`, `{}`},
 		{"ls ordinary", &LsTool{CWD: cwd}, `{}`, `{}`},
-		{"ls fractional limit", &LsTool{CWD: cwd}, `{"limit":1.5}`, `{"details":{"entryLimitReached":1.5}}`},
+		{"ls fractional limit", &LsTool{CWD: cwd}, `{"limit":1.5}`, `{"details":{"entryLimitReached":1}}`},
 		{"ls limited", &LsTool{CWD: cwd}, `{"limit":1}`, `{"details":{"entryLimitReached":1}}`},
 		{"find ordinary", &FindTool{CWD: cwd}, `{"pattern":"a.txt"}`, `{}`},
 		{"find limited", &FindTool{CWD: cwd}, `{"pattern":"*.txt","limit":1}`, `{"details":{"resultLimitReached":1}}`},

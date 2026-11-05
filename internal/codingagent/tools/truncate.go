@@ -22,9 +22,9 @@ package tools
 
 import (
 	"strings"
-	"unicode/utf16"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -186,8 +186,7 @@ type TruncateLineResult struct {
 
 // TruncateLine mirrors upstream truncateLine: a line longer than maxChars
 // UTF-16 code units (JavaScript string length) is cut to maxChars units plus
-// "... [truncated]". A cut inside a surrogate pair leaves U+FFFD, as the
-// lone surrogate JavaScript would keep serializes to.
+// "... [truncated]". A cut inside a surrogate pair drops the whole pair.
 func TruncateLine(line string, maxChars int) TruncateLineResult {
 	if maxChars <= 0 {
 		maxChars = GrepMaxLineLengthUpstream
@@ -195,20 +194,8 @@ func TruncateLine(line string, maxChars int) TruncateLineResult {
 	if jsLength(line) <= maxChars {
 		return TruncateLineResult{Text: line}
 	}
-	var b strings.Builder
-	units := 0
-	for _, r := range line {
-		n := utf16.RuneLen(r)
-		if units+n > maxChars {
-			if units < maxChars {
-				b.WriteRune(utf8.RuneError)
-			}
-			break
-		}
-		b.WriteRune(r)
-		units += n
-	}
-	return TruncateLineResult{Text: b.String() + truncatedLineSuffix, WasTruncated: true}
+	// pig divergence (D252): Pi main 9e870f6f0 keeps a surrogate pair whole, so a cut inside one drops it.
+	return TruncateLineResult{Text: jsstring.SliceHead(line, maxChars) + truncatedLineSuffix, WasTruncated: true}
 }
 
 // truncatedLineSuffix ends a line TruncateLine shortened (truncate.ts truncateLine).

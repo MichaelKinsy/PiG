@@ -183,10 +183,15 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		})
 	}
 
+	startedAt := time.Now()
 	var (
 		killOnce sync.Once
 		timedOut bool
 		timeMu   sync.Mutex
+		// shellExitedAfter is set once the shell exited; a negative value means it is still running.
+		shellExitedAfter = time.Duration(-1)
+		// exitedBeforeDeadline is shellExitedAfter as it stood when the deadline hit.
+		exitedBeforeDeadline = time.Duration(-1)
 	)
 	kill := func() { killOnce.Do(func() { _ = killProcessGroup(cmd.Process) }) }
 	var timer <-chan time.Time
@@ -205,6 +210,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		case <-timer:
 			timeMu.Lock()
 			timedOut = true
+			exitedBeforeDeadline = shellExitedAfter
 			timeMu.Unlock()
 			kill()
 		case <-stopWatch:
@@ -218,6 +224,9 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}, testStdioHooks())
 
 	waitErr := cmd.Wait()
+	timeMu.Lock()
+	shellExitedAfter = time.Since(startedAt)
+	timeMu.Unlock()
 	input.Wait()
 	pipes.Wait(func() bool { return processGroupMayHoldOutput(cmd.Process) })
 	close(stopWatch)
@@ -228,17 +237,40 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}
 	timeMu.Lock()
 	didTimeOut := timedOut
+	exitedBefore := exitedBeforeDeadline
 	timeMu.Unlock()
-	if didTimeOut {
-		return BashOperationsResult{}, errors.New("timeout:" + jsNumber(*opts.Timeout))
-	}
 	var exitErr *exec.ExitError
-	if waitErr != nil && !errors.As(waitErr, &exitErr) {
+	if !didTimeOut && waitErr != nil && !errors.As(waitErr, &exitErr) {
 		return BashOperationsResult{}, waitErr
 	}
 	code := shellExitCode(cmd.ProcessState)
+	if didTimeOut {
+		// pig divergence (D243): Pi main 06aa6563e reports the shell's exit code when it exited before the deadline.
+		timeoutErr := &ShellTimeoutError{Timeout: jsNumber(*opts.Timeout)}
+		if exitedBefore >= 0 {
+			timeoutErr.ShellExit = &ShellExit{ExitCode: code, AfterSeconds: math.Round(float64(exitedBefore.Milliseconds())/100) / 10}
+		}
+		return BashOperationsResult{}, timeoutErr
+	}
 	return BashOperationsResult{ExitCode: &code}, nil
 }
+
+// ShellExit is the shell's own result when it exited before the timeout hit.
+type ShellExit struct {
+	ExitCode     int
+	AfterSeconds float64
+}
+
+// ShellTimeoutError is the local shell backend's timeout. Its message keeps
+// the `timeout:<seconds>` form custom operations return. ShellExit is set when
+// the shell exited before the deadline, so the tool was only still waiting
+// because background processes kept writing to the inherited pipes (Pi #11613).
+type ShellTimeoutError struct {
+	Timeout   string
+	ShellExit *ShellExit
+}
+
+func (e *ShellTimeoutError) Error() string { return "timeout:" + e.Timeout }
 
 // shellSpawnError preserves the spawn errno with Node's user-visible message.
 type shellSpawnError struct {

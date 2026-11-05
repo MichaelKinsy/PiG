@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -102,6 +103,8 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			{"kind": "prepare", "tool": "write", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt", "content": "c"}},
 			{"kind": "prepare", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "a.txt"}},
 			{"kind": "prepare", "tool": "bash", "factoryCwd": factoryCwd, "params": tcase{"command": "true"}},
+			// find asks a custom glob for one result past its limit (Pi main 676af1d77, pig divergence (D253)); the pinned Pi asks for the limit itself
+			{"kind": "delegate", "tool": "find", "factoryCwd": factoryCwd, "params": tcase{"pattern": "*.txt", "limit": 2}, "ops": "globlimit"},
 			// A truncated read's details, whose members Pi writes in an order a sorted map would lose
 			{"kind": "delegate", "tool": "read", "factoryCwd": factoryCwd, "params": tcase{"path": "big.txt"}},
 			// createCodingTools and createReadOnlyTools
@@ -267,6 +270,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{43, text, "OPS:<factory>/anything.txt"}, // the functions of the options, for a tool without a context
 		{44, text, "custom:echo hi"},
 		{46, text, "hook-env|"},
+		{58, text, "a.txt\nb.txt\n\n[2 results limit reached]"}, // find with a glob that honors the limit it is given
 		{28, definitionField("description"), `"Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first).`},
 		{28, definitionField("promptSnippet"), `"Read file contents"`},
 		{30, definitionField("renderShell"), `"self"`},
@@ -334,9 +338,13 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 			})
 			got := observe(t, h)
 			for i, report := range got {
-				if !reflect.DeepEqual(report, reference[i]) {
+				want := reference[i]
+				if !strings.HasPrefix(tc.name, "subprocess-node") {
+					want = expectedBuiltinReport(referenceCases[i], reference[i])
+				}
+				if !reflect.DeepEqual(report, want) {
 					a, _ := json.Marshal(report)
-					b, _ := json.Marshal(reference[i])
+					b, _ := json.Marshal(want)
 					t.Errorf("case %d %v:\n got  %s\n want %s (Pi's own code)", i, referenceCases[i], a, b)
 				}
 			}
@@ -500,4 +508,29 @@ func TestConformance_BuiltinEditOverrideNormalisesLegacyArgumentsAcrossSDKs(t *t
 			}
 		})
 	}
+}
+
+// expectedBuiltinReport is what a PiG SDK reports for a case, given what the pinned Pi (the Node reference) reported. pig divergence (D253): Pi main 676af1d77's find
+// tool asks a custom glob for limit+1 results, so the glob of an "globlimit" case sees one more than the pinned Pi's limit; the tool's output is the same.
+func expectedBuiltinReport(c, reference map[string]any) map[string]any {
+	if c["ops"] != "globlimit" {
+		return reference
+	}
+	calls, _ := reference["calls"].([]any)
+	adjusted := make([]any, len(calls))
+	for i, call := range calls {
+		adjusted[i] = call
+		if text, ok := call.(string); ok {
+			if head, limit, found := strings.Cut(text, ":limit="); found && strings.HasPrefix(head, "glob:") {
+				n, _ := strconv.Atoi(limit)
+				adjusted[i] = head + ":limit=" + strconv.Itoa(n+1)
+			}
+		}
+	}
+	want := map[string]any{}
+	for k, v := range reference {
+		want[k] = v
+	}
+	want["calls"] = adjusted
+	return want
 }

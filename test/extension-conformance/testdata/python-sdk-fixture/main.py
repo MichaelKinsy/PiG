@@ -881,6 +881,15 @@ def new_extension() -> pig_sdk.Extension:
             return pig_sdk.GrepToolOptions(operations=ops)
         if tool == "find":
             ops = None
+            if case.get("ops") == "globlimit":
+                def limit_exists(path):
+                    log.append("exists:" + path)
+                    return True
+
+                def limit_glob(pattern, cwd, options):
+                    log.append("glob:%s:limit=%d" % (pattern, options["limit"]))
+                    return ["a.txt", "b.txt", "c.txt"][: int(options["limit"])]
+                ops = pig_sdk.FindOperations(exists=limit_exists, glob=limit_glob)
             if custom:
                 def find_exists(path):
                     log.append("exists:" + path)

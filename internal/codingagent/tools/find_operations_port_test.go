@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -31,7 +32,7 @@ func TestFindCustomGlobRootPort(t *testing.T) {
 		tool := &FindTool{CWD: "/", FdPath: filepath.Join(t.TempDir(), "must-not-run"), Operations: &FindOperations{
 			Exists: func(string) (bool, error) { return true, nil },
 			Glob: func(pattern, cwd string, opts FindGlobOptions) ([]string, error) {
-				if pattern != "**" || cwd != mustResolvePath(t, "/", ".") || opts.Limit != 1000 || !slices.Equal(opts.Ignore, []string{"**/node_modules/**", "**/.git/**"}) {
+				if pattern != "**" || cwd != mustResolvePath(t, "/", ".") || opts.Limit != 1001 || !slices.Equal(opts.Ignore, []string{"**/node_modules/**", "**/.git/**"}) {
 					t.Fatalf("glob args = %q, %q, %+v", pattern, cwd, opts)
 				}
 				return []string{"/home/user/project/", "/home/user/project/file.txt"}, nil
@@ -46,20 +47,20 @@ func TestFindCustomGlobRootPort(t *testing.T) {
 }
 
 func TestFindOperationsPreserveNumericLimitDetails(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/src/core/tools/find.ts:143-172 stores the requested number, including zero and fractions.
+	// pig divergence (D253): Pi main 676af1d77 reads zero and fractional limits as max(1, floor(limit)), asks glob for one more and details store that number.
 	for _, limit := range []float64{0, 1.5} {
 		t.Run(jsNumber(limit), func(t *testing.T) {
 			tool := &FindTool{CWD: t.TempDir(), Operations: &FindOperations{Exists: func(string) (bool, error) { return true, nil }, Glob: func(_ string, _ string, opts FindGlobOptions) ([]string, error) {
-				if opts.Limit != limit {
+				if opts.Limit != 2 {
 					t.Fatal(opts.Limit)
 				}
 				return []string{"a", "b"}, nil
 			}}}
 			result := runFileTool(t, tool, t.Context(), map[string]any{"pattern": "*", "limit": limit})
-			if result.IsError || result.Text() != "a\nb\n\n["+jsNumber(limit)+" results limit reached]" {
+			if result.IsError || result.Text() != "a\n\n[1 results limit reached]" {
 				t.Fatal(result)
 			}
-			want := `{"resultLimitReached":` + jsNumber(limit) + `}`
+			want := `{"resultLimitReached":1}`
 			data, err := json.Marshal(extension.ToolResultDetailsFor(result.Details))
 			if err != nil || string(data) != want {
 				t.Fatalf("details = %s, %v; want %s", data, err, want)
@@ -70,17 +71,19 @@ func TestFindOperationsPreserveNumericLimitDetails(t *testing.T) {
 }
 
 func TestFindZeroLimitDetailsThroughFD(t *testing.T) {
-	// .upstream/v0.87.1/packages/coding-agent/src/core/tools/find.ts:290-309 keeps a reached zero limit present in details.
+	// pig divergence (D253): Pi main 676af1d77 reads a zero limit as 1, so two matches give one result and the notice with limit 1.
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "a.txt"), nil, 0o600); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"a.txt", "b.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	result := runFind(t, dir, map[string]any{"pattern": "*.txt", "limit": 0})
-	if result.IsError || result.Text() != "a.txt\n\n[0 results limit reached. Use limit=0 for more, or refine pattern]" {
+	if lines := strings.Split(result.Text(), "\n\n"); result.IsError || len(lines) != 2 || len(strings.Split(lines[0], "\n")) != 1 || lines[1] != "[1 results limit reached. Use limit=2 for more, or refine pattern]" {
 		t.Fatal(result)
 	}
 	data, err := json.Marshal(extension.ToolResultDetailsFor(result.Details))
-	if err != nil || string(data) != `{"resultLimitReached":0}` {
+	if err != nil || string(data) != `{"resultLimitReached":1}` {
 		t.Fatalf("details = %s, %v", data, err)
 	}
 	printFindOperations(t, "fd-zero", result)
