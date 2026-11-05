@@ -3027,3 +3027,91 @@ Call-site markers: `mcp/streamable_http.go` (`Send`'s `application/json` case, `
 Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7188739: the 2 KB reply is accepted), `TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter`, `TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest` (`mcp/streamable_http_body_cap_pi_test.go`, Pi's three tests), `TestStreamableHTTPTransportKeepsTheFirstMaxErrorBodyBytesOfAnErrorBody` (`mcp/review_regression_test.go`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
+
+## D243 A bash or PowerShell timeout after the shell already exited reports the shell's exit code
+
+What: PiG ports Pi main 06aa6563e (`fix(coding-agent): report the shell exit code when bash times out after the shell exited`, #11813, fixing #11613), which is not in Pi 1.5.0. The local shell backend returns a `*ShellTimeoutError` whose message stays `timeout:<seconds>` (the contract custom operations rely on) and whose `ShellExit` holds the shell's exit code and the seconds it ran when the shell had exited before the deadline. The shell tool then says `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` A shell still running at the deadline keeps the plain `Command timed out after N seconds`.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S1.). Pi 1.5.0 reports only the timeout when a background process that inherited the output pipes keeps the tool waiting after the shell exited, so the model reads a failed command as a slow one and retries with a longer timeout.
+
+Pi bug: `LocalShellOperations.Exec` in Pi 1.5.0 (`bash.ts` `createLocalShellOperations`), fixed by Pi main 06aa6563e ([#11613](https://github.com/earendil-works/pi/issues/11613)).
+
+Scope: The local shell operations behind the bash and PowerShell tools and the shell tool's timeout status. Custom operations that return `timeout:N` are unaffected. Windows is unchanged: only the message is fixed, as in Pi. SDK exception: the sentence appears only where the tool runs in the host's process. `CreateLocalBashOperations` and `CreateLocalPowerShellOperations` in the SDKs (and a fused extension's `LocalExec`) reach the host over `builtinTool.localExec`, whose reply carries only the error text `timeout:<seconds>`, so an extension that wraps them and rethrows loses the shell's exit code and its bash tool prints the plain timeout message; in Pi main the rethrown `ShellTimeoutError` keeps it. The Node SDK runs Pi 1.5.0's own code, which has no such error. Nothing in the wire is changed, so the SDKs behave as with a custom `BashOperations` that throws `timeout:N`.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 06aa6563e ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/bash_operations.go` (`Exec` timeout result), `internal/codingagent/tools/shell_tool.go` (timeout status).
+
+Evidence: `TestBashTimeoutAfterShellExit11613` (`internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go`, Pi's two cases; red on 989927eff4: the status lacks the exit-code sentence).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported (their timeouts are widened because shell start-up is slow on a loaded host).
+
+## D244 A user bash result whose earlier output was discarded is reported as truncated
+
+What: PiG ports Pi main 66c655677 (`fix(coding-agent): track discarded user bash output`, #10165, fixing #10164). `ExecuteBashWithOperations` keeps a rolling window of the output; when it drops a chunk it now records that, and `BashResult.Truncated` is true for a completed or cancelled run whose retained tail fits the limits but whose head was dropped. The model then receives the `[Output truncated. Full output: <path>]` notice for the complete log that PiG already wrote. Pi 1.5.0 reports `truncated: false` there.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S2.). Pi 1.5.0 hides the path of a complete log whose head was discarded.
+
+Pi bug: `executeBashWithOperations` in Pi 1.5.0 (`bash-executor.ts`), fixed by Pi main 66c655677 ([#10164](https://github.com/earendil-works/pi/issues/10164)).
+
+Scope: The user `!` command executor. Output limits and the message format are unchanged.
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 66c655677 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 66c655677. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/bash_executor.go` (`appendText` window drop, `finish`).
+
+Evidence: `TestExecuteBashWithOperationsReportsDiscardedChunks10164` (`internal/codingagent/tools/bash_executor_truncation_test.go`, Pi's three cases except the model-facing text; red on 989927eff4: `truncated=false` for the completed and the cancelled run).
+
+Parity allowance: none needed if `TestExecuteBashWithOperationsMatchesPi` (the Pi 1.5.0 oracle) still passes; see the run recorded in the 0.7.1 tools-lane report.
+
+## D252 Truncating text never splits a surrogate pair
+
+What: PiG ports Pi main 9e870f6f0 (`fix(coding-agent): do not split surrogate pairs when truncating text`, #11757, fixing #7121), which is not in Pi 1.5.0. Where Pi cuts text by UTF-16 units it now keeps a pair whole: a cut between the two halves of a pair returns one unit fewer (`sliceHead`, `sliceTail`; PiG `jsstring.SliceHead`, `SliceTail`, `HeadUnits`, `TailUnits`). The sites are grep match lines (`TruncateLine`, which the Go, Python, Rust and Lisp SDKs also export), the codemode output head and tail and its argument and error previews, compaction `truncateForSummary`, the MCP server summary and the stderr tail of a connection error. A negative `maxChars` of `TruncateLine` now keeps nothing of the line (Pi's `sliceHead` clamps to 0) instead of counting back from the end. Pi 1.5.0 keeps the lone high surrogate, which PiG held as WTF-8 and wrote as U+FFFD or `\\ud83d`.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S10.). The lone surrogate reaches the session file, RPC and JSON clients and custom providers.
+
+Pi bug: `truncateLine`, codemode `truncateOutput`, `truncateForSummary` and the MCP truncations in Pi 1.5.0, fixed by Pi main 9e870f6f0 ([#7121](https://github.com/earendil-works/pi/issues/7121)).
+
+Scope: The sites above only. TUI previews and line-based slicing are unchanged, as in Pi. The Node SDK runs Pi's own code, so it keeps Pi 1.5.0's behavior until the pin moves; the conformance suite adjusts the Node reference (`expectedFor`).
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 9e870f6f0 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 9e870f6f0. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/truncate.go` (`TruncateLine`), `tools/grep_head.go` (`truncatedLineBytes`), `internal/codingagent/compaction/utils.go`, `coding/extension/builtin/codemode/execute.go` (`truncateText`, `truncateOutput`), `coding/mcpext/extension.go`, `coding/mcpext/runtime.go`, `extensions/sdk/truncate.go`, `extensions/sdk-py/pig_sdk/truncate.py`, `extensions/sdk-rs/src/truncate.rs`, `extensions/sdk-lisp/src/truncate.lisp`.
+
+Evidence: `TestSliceHeadAndTailNeverSplitAPair`, `TestSliceHeadAndTailMatchSliceWithoutSurrogates` (`internal/jsstring`, Pi's `truncate-surrogates.test.ts`), `TestTruncateLine` (the emoji at the limit and the pair that ends at it), `TestTruncateForSummaryDropsASplitSurrogatePair`, `TestTruncateOutputKeepsSurrogatePairsWhole`, `TestTruncateDropsASplitSurrogatePair`, `TestStderrTailDropsASplitSurrogatePair`, the SDK truncation tests, and `TestConformance_TruncationHelpersAgreeAcrossSDKs`.
+
+Parity allowance: the pinned-Pi oracle script `text("é😀".repeat(30000))` of `TestExecuteOutputMatchesPi` became `éé😀` so no cut falls inside a pair, and `grep_test.go`'s surrogate case now pins Pi main's output.
+
+## D253 find and ls read a limit below 1 as 1, and find reports the limit only when more results exist
+
+What: PiG ports Pi main 676af1d77 (`fix(coding-agent): find and ls limit edge cases`, #11747, fixing #7121), which is not in Pi 1.5.0. Both tools use `max(1, floor(limit ?? default))`: `limit: 0` no longer lets fd return everything or ls print `(empty directory)`, and `1.5` no longer prints `1.5 results limit reached`. find asks fd for `limit + 1` results, shows the first `limit` and prints the limit notice only when the extra one exists, so exactly N matches give no notice. A custom `FindOperations.glob` receives `limit + 1` in every SDK that exposes it (the host passes the value on), and a glob that ignores the limit has its results cut to `limit` with the notice. Output made only of blank lines with exit code 0 now gives `No files found matching pattern`. Pi 1.5.0 reports the notice at `results >= limit` and passes `limit` to fd and to `glob`.
+
+Why: The owner approved shipping the fix in 0.7.1 ahead of the pin (scope proposal `handoffs/0.7.1/SCOPE-PROPOSAL.md`, row S11.). Pi 1.5.0 shows a false `limit reached` for exactly N matches and every match for `limit: 0`.
+
+Pi bug: `createFindToolDefinition` and `createLsToolDefinition` in Pi 1.5.0, fixed by Pi main 676af1d77 ([#7121](https://github.com/earendil-works/pi/issues/7121)).
+
+Scope: The find and ls tools and `FindOperations.glob` in the Go, Python, Rust and Lisp SDKs. The Node SDK runs Pi's own find tool, so its custom glob keeps receiving `limit` until the pin moves; the conformance case `globlimit` adjusts the Node reference (`expectedBuiltinReport`).
+
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (port of Pi main 676af1d77 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 676af1d77. Then the call-site markers and this record go.
+
+Call-site markers: `internal/codingagent/tools/find.go` (`Execute`, `findWithOperations`), `internal/codingagent/tools/ls.go`.
+
+Evidence: `TestFindLimitEdgeCases7121`, `TestLsLimitEdgeCases7121` (`internal/codingagent/tools/find_ls_limit_test.go`, Pi's find and ls cases), and the `globlimit` case of `TestConformance_BuiltinToolDelegationAcrossSDKs`.
+
+Parity allowance: none needed; Pi 1.5.0 has no test of these limits.
