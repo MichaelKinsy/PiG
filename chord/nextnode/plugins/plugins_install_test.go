@@ -113,3 +113,57 @@ func TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunnin
 		t.Fatalf("the command ran: %v", statErr)
 	}
 }
+
+// Not Pi's: Pi's install waits for the `close` of the command, the end of its output, so a process the command started that
+// inherited the pipes holds the install for as long as it lives. Here the fake npm starts a sleeping Node that inherits them
+// and exits with code 0 (then with code 1): the install ends with the command, within the stop grace of its exit, with the
+// result of its exit code and the output it wrote.
+func TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes(t *testing.T) {
+	for _, code := range []int{0, 1} {
+		t.Run(fmt.Sprintf("exit%d", code), func(t *testing.T) {
+			tools := tempRoot(t)
+			root := tempRoot(t)
+			writePlugin(t, root, "deps", "@test/deps", map[string]string{}, nil)
+			discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
+			if err != nil {
+				t.Fatal(err)
+			}
+			script := filepath.Join(tools, "fake-npm.mjs")
+			writeFiles(t, tools, map[string]string{"fake-npm.mjs": strings.Join([]string{
+				`import { spawn } from "node:child_process";`,
+				`import { writeFileSync } from "node:fs";`,
+				`import { join } from "node:path";`,
+				`const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: ["ignore", "inherit", "inherit"], detached: true });`,
+				`child.unref();`,
+				`writeFileSync(join(import.meta.dirname, "held.pid"), String(child.pid));`,
+				`console.error("npm output");`,
+				fmt.Sprintf("process.exit(%d);", code),
+			}, "\n") + "\n"})
+			t.Cleanup(func() {
+				if raw, err := os.ReadFile(filepath.Join(tools, "held.pid")); err == nil {
+					var pid int
+					if _, err := fmt.Sscan(string(raw), &pid); err == nil {
+						if process, err := os.FindProcess(pid); err == nil {
+							_ = process.Kill()
+						}
+					}
+				}
+			})
+			done := make(chan error, 1)
+			go func() {
+				done <- InstallDependencies(discovery.Plugins[0], background, InstallOptions{NpmCommand: []string{pcNode(t), script}})
+			}()
+			select {
+			case err := <-done:
+				if code == 0 && err != nil {
+					t.Fatalf("install = %v, want nil: the command exited with code 0", err)
+				}
+				if code != 0 && (err == nil || !strings.Contains(err.Error(), "(exit 1): npm output")) {
+					t.Fatalf("install = %v, want the failure of exit 1 with the command's output", err)
+				}
+			case <-time.After(25 * time.Second):
+				t.Fatal("the install waited for what holds the command's pipes")
+			}
+		})
+	}
+}
