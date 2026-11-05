@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "dependencies": {
     "brace-expansion": "5.0.12",
+    "glob": "14.0.3",
     "http-cache-semantics": "4.3.0",
     "ip-address": "10.7.5",
     "minimatch": "11.0.3",
@@ -14,6 +15,7 @@
   },
   "overrides": {
     "brace-expansion": "5.0.12",
+    "glob": "14.0.3",
     "http-cache-semantics": "4.3.0",
     "ip-address": "10.7.5",
     "minimatch": "11.0.3",

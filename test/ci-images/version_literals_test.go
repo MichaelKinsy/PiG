@@ -51,7 +51,7 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/images/ci-parity/metadata.env", "1.5.0", "IMAGE_TAG; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/Dockerfile", "12.2.1", "the image's npm check; make compliance checks it against NPM_VERSION"},
 
-	{"automation/ci/pre-push-gate.sh", "0.9.0", "the shellcheck that ubuntu-24.04 apt installs for security.yml; the local gate only warns when its shellcheck differs"},
+	{"automation/ci/install-shellcheck.sh", "0.11.0", "the pinned ShellCheck release, kept beside the sha256 of its tarballs; pre-push-gate.sh reads it with --print-version"},
 
 	// Pins of tools that are not a Pi, Go, Node, Rust or npm release, kept beside the digest that pins the tool.
 	{".github/workflows/ci-images.yml", "0.114.0", "local tag of the digest-pinned grype image; the digest in seed-ci-image-bases.sh is the pin"},
