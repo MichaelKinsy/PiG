@@ -69,10 +69,11 @@ RUN npm ci --prefix /opt/pig/npm --omit=dev --ignore-scripts --no-audit --no-fun
     /opt/pig/npm/node_modules/npm/node_modules/brace-expansion \
     /opt/pig/npm/node_modules/npm/node_modules/http-cache-semantics \
     /opt/pig/npm/node_modules/npm/node_modules/ip-address \
+    /opt/pig/npm/node_modules/npm/node_modules/minimatch \
     /opt/pig/npm/node_modules/npm/node_modules/postcss-selector-parser \
     /opt/pig/npm/node_modules/npm/node_modules/tar \
     /opt/pig/npm/node_modules/npm/node_modules/undici \
-  && test "$(node /opt/pig/npm/node_modules/npm/bin/npm-cli.js --version)" = "12.1.0"
+  && test "$(node /opt/pig/npm/node_modules/npm/bin/npm-cli.js --version)" = "12.2.1"
 
 FROM toolchain-base
 ARG GO_VERSION
