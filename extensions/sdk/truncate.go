@@ -208,8 +208,8 @@ func TruncateTail(content string, options TruncationOptions) TruncationResult {
 }
 
 // TruncateLine cuts a line longer than maxChars UTF-16 code units (a JavaScript string's length) to that many units plus "... [truncated]" and reports
-// whether it cut. Pass GrepMaxLineLength for Pi's default. A cut inside a surrogate pair leaves U+FFFD where JavaScript keeps a lone surrogate. A negative
-// maxChars counts back from the end of the line, as String.prototype.slice does.
+// whether it cut. Pass GrepMaxLineLength for Pi's default. A cut inside a surrogate pair drops the whole pair, as Pi main's sliceHead does (9e870f6f0;
+// pig divergence D252), and a negative maxChars keeps nothing of the line.
 func TruncateLine(line string, maxChars int) (text string, wasTruncated bool) {
 	units := 0
 	for _, r := range line {
@@ -218,18 +218,12 @@ func TruncateLine(line string, maxChars int) (text string, wasTruncated bool) {
 	if units <= maxChars {
 		return line, false
 	}
-	end := maxChars
-	if end < 0 {
-		end = max(units+maxChars, 0)
-	}
+	end := max(maxChars, 0)
 	var b strings.Builder
 	used := 0
 	for _, r := range line {
 		n := utf16.RuneLen(r)
 		if used+n > end {
-			if used < end {
-				b.WriteRune(utf8.RuneError)
-			}
 			break
 		}
 		b.WriteRune(r)

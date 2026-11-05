@@ -142,10 +142,16 @@ def _truncate_to_bytes_from_end(text: str, max_bytes: int) -> str:
 
 def truncate_line(line: str, max_chars: int = GREP_MAX_LINE_LENGTH) -> tuple:
     """Cut a line longer than ``max_chars`` UTF-16 code units (a JavaScript string's length) to that many units plus ``... [truncated]``.
-    Returns ``(text, was_truncated)``. A cut inside a surrogate pair keeps the lone surrogate, as JavaScript does, and a negative ``max_chars``
-    counts back from the end of the line, as String.prototype.slice and Python slicing both do."""
+    Returns ``(text, was_truncated)``. A cut inside a surrogate pair drops the whole pair, as Pi main's sliceHead does (9e870f6f0; pig divergence
+    D252), and a negative ``max_chars`` keeps nothing of the line."""
     units = line.encode("utf-16-le", "surrogatepass")
     if len(units) // 2 <= max_chars:
         return line, False
-    cut = units[: max_chars * 2].decode("utf-16-le", "surrogatepass")
+    end = max(max_chars, 0)
+    if 0 < end < len(units) // 2:
+        before = int.from_bytes(units[end * 2 - 2 : end * 2], "little")
+        after = int.from_bytes(units[end * 2 : end * 2 + 2], "little")
+        if 0xD800 <= before <= 0xDBFF and 0xDC00 <= after <= 0xDFFF:
+            end -= 1
+    cut = units[: end * 2].decode("utf-16-le", "surrogatepass")
     return cut + "... [truncated]", True

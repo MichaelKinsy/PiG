@@ -276,7 +276,8 @@ func truncateText(text string, maxChars int) string {
 	if jsstring.Length(text) <= maxChars {
 		return text
 	}
-	return jsstring.Slice(text, 0, maxChars-3) + "..."
+	// pig divergence (D252): Pi main 9e870f6f0 does not split a surrogate pair at the cut.
+	return jsstring.SliceHead(text, maxChars-3) + "..."
 }
 
 func previewArgs(args json.RawMessage) string {
@@ -600,11 +601,9 @@ func truncateOutput(items []ai.ToolResultMessageContent, maxTokens int64) ([]ai.
 	headChars := budget / 2
 	tailChars := budget - headChars
 	removed := len(units) - headChars - tailChars
-	head := decodeUnits(units[:headChars])
-	tail := ""
-	if tailChars > 0 {
-		tail = decodeUnits(units[len(units)-tailChars:])
-	}
+	// pig divergence (D252): Pi main 9e870f6f0 does not split a surrogate pair at either cut.
+	head := decodeUnits(jsstring.HeadUnits(units, headChars))
+	tail := decodeUnits(jsstring.TailUnits(units, tailChars))
 	text := fmt.Sprintf("Warning: truncated output (original token count: %d)\nTotal output lines: %d\n\n%s…%d tokens truncated…%s",
 		ceilDiv(len(units), charsPerToken), strings.Count(combined, "\n")+1, head, ceilDiv(removed, charsPerToken), tail)
 	path, err := spillOutput(combined)

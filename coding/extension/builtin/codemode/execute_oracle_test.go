@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"unicode/utf16"
 
@@ -30,7 +31,7 @@ func TestExecuteOutputMatchesPi(t *testing.T) {
 		`text("a\n"); text("b")`, `text(""); text("x")`, `text("   "); text("y")`, `text("a"); text(""); text("")`,
 		`image("data:image/png;base64,` + png + `"); text("t")`, `text("t"); image("data:image/png;base64,` + png + `"); text("u")`,
 		`image({ type: "image", data: "` + png + `", mimeType: "image/png" }); image({ type: "image", data: "` + png + `", mimeType: "image/png" })`,
-		`text("x".repeat(50000))`, `text("x".repeat(200000))`, `text("line\n".repeat(30000))`, `text("é😀".repeat(30000))`, `for (let i = 0; i < 3000; i++) console.log("log line " + i)`,
+		`text("x".repeat(50000))`, `text("x".repeat(200000))`, `text("line\n".repeat(30000))`, `text("éé😀".repeat(30000))`, `for (let i = 0; i < 3000; i++) console.log("log line " + i)`,
 		`text("a".repeat(30000)); text("b".repeat(30000)); text("c".repeat(30000))`, `console.log("x".repeat(100000)); return "y".repeat(100000)`,
 		`return "x".repeat(41000)`, `return "x".repeat(40000)`, `return "x".repeat(39999)`, `text("😀".repeat(20001))`, `text("\ud800".repeat(40001))`,
 		`image("data:image/png;base64,` + png + `"); text("x".repeat(200000))`, `text("x".repeat(200000)); throw new Error("late")`,
@@ -143,7 +144,7 @@ emit(JSON.parse(child.stdout));
 	}
 }
 
-// execute.ts truncateText is `text.slice(0, maxChars - 3) + "..."`: a cut inside a surrogate pair leaves the high half.
+// execute.ts truncateText is `sliceHead(text, maxChars - 3) + "..."` (Pi main 9e870f6f0, D252): a cut inside a surrogate pair drops the pair.
 func TestTruncateTextCutsAtCodeUnits(t *testing.T) {
 	text := "aaaaa😀bbbb"
 	for _, tc := range []struct {
@@ -153,12 +154,24 @@ func TestTruncateTextCutsAtCodeUnits(t *testing.T) {
 		{20, text},
 		{11, text},
 		{10, "aaaaa😀..."},
-		{9, "aaaaa" + jsstring.FromUTF16([]uint16{0xd83d}) + "..."},
+		{9, "aaaaa..."},
 		{8, "aaaaa..."},
 		{3, "..."},
 	} {
 		if got := truncateText(text, tc.max); got != tc.want {
 			t.Errorf("truncateText(%q, %d) = %q, want %q", text, tc.max, got, tc.want)
+		}
+	}
+}
+
+// Pi main 9e870f6f0 (D252): truncateOutput's head and tail never end in half of a surrogate pair.
+func TestTruncateOutputKeepsSurrogatePairsWhole(t *testing.T) {
+	for _, pad := range []string{"", "x"} {
+		items := []ai.ToolResultMessageContent{ai.TextContent{Text: pad + strings.Repeat("😀", 30000)}}
+		out, _ := truncateOutput(items, 1000)
+		text := out[0].(ai.TextContent).Text
+		if strings.Contains(text, "\xed") || !strings.Contains(text, "tokens truncated") {
+			t.Fatalf("pad %q: output holds a lone surrogate or is not truncated: %.80q", pad, text)
 		}
 	}
 }

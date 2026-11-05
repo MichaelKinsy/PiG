@@ -112,9 +112,9 @@
   (multiple-value-bind (text was) (pig:truncate-line "short")
     (check-equal "short" text) (check (not was)))
   (let ((emoji (make-string 10 :initial-element (code-char #x1F600))))
-    ;; 10 emoji are 20 UTF-16 units: a limit of 16 keeps 8 of them, a limit of 7 cuts a pair and keeps the high surrogate
+    ;; 10 emoji are 20 UTF-16 units: a limit of 16 keeps 8 of them, a limit of 7 would cut a pair, so the whole pair is dropped (Pi main 9e870f6f0, pig divergence D252)
     (check-equal (concatenate 'string (subseq emoji 0 8) "... [truncated]") (pig:truncate-line emoji 16))
-    (check-equal (concatenate 'string (subseq emoji 0 3) (string (code-char #xD83D)) "... [truncated]") (pig:truncate-line emoji 7))))
+    (check-equal (concatenate 'string (subseq emoji 0 3) "... [truncated]") (pig:truncate-line emoji 7))))
 
 (deftest truncate-surrogates-and-negative-limits-match-pi
   ;; Pi: truncateTail("ab\ud800cd", {maxBytes: 6}) keeps "b\ufffdcd" (6 bytes): Buffer.from turns the lone surrogate into one U+FFFD
@@ -129,7 +129,7 @@
     (check-equal (list "" 1 0 t "bytes")
                  (list (pig:truncation-result-content r) (pig:truncation-result-output-lines r) (pig:truncation-result-output-bytes r)
                        (pig:truncation-result-last-line-partial r) (pig:truncation-result-truncated-by r))))
-  (check-equal "abcd... [truncated]" (pig:truncate-line "abcdef" -2))
+  (check-equal "... [truncated]" (pig:truncate-line "abcdef" -2))
   (check-equal "... [truncated]" (pig:truncate-line "ab" -5)))
 
 (deftest truncate-to-visual-lines-matches-pi

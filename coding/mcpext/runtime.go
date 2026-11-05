@@ -40,9 +40,10 @@ const (
 // upstream: packages/coding-agent/src/extensions/mcp/runtime.ts:CONNECT_RETRY_DELAYS_MS
 var connectRetryDelays = []time.Duration{250 * time.Millisecond, 1_000 * time.Millisecond}
 
+// pig divergence (D252): Pi main 9e870f6f0 does not split a surrogate pair at the cut.
 // stderrTailOf is `stderr.trim().slice(-STDERR_TAIL_CHARS)`: the last stderrTailChars UTF-16 units of the trimmed text.
 func stderrTailOf(stderr string) string {
-	return jsstring.Slice(strings.TrimFunc(stderr, isJSWhitespace), -stderrTailChars)
+	return jsstring.SliceTail(strings.TrimFunc(stderr, isJSWhitespace), stderrTailChars)
 }
 
 // ServerState is the state of one [Connection]. `disconnected` means the

@@ -114,13 +114,7 @@ func TestTruncateMatchesPi(t *testing.T) {
 			got, want = r, new(TruncationResult)
 		case "line":
 			r := TruncateLine(c.Content, c.N)
-			got, want = struct {
-				Text         string `json:"text"`
-				WasTruncated bool   `json:"wasTruncated"`
-			}{r.Text, r.WasTruncated}, new(struct {
-				Text         string `json:"text"`
-				WasTruncated bool   `json:"wasTruncated"`
-			})
+			got, want = lineOutcome{r.Text, r.WasTruncated}, new(lineOutcome)
 		case "middle":
 			r := TruncateMiddle(c.Content, c.N)
 			got, want = struct {
@@ -149,6 +143,12 @@ func TestTruncateMatchesPi(t *testing.T) {
 		if err := json.Unmarshal(expected[i], want); err != nil {
 			t.Fatal(err)
 		}
+		if line, ok := want.(*lineOutcome); ok && !strings.Contains(c.Content, "\uFFFD") {
+			// pig divergence (D252): the pinned Pi keeps the high surrogate of a pair its cut splits, which decodes as U+FFFD; Pi main 9e870f6f0 and PiG drop the pair.
+			if head, ok := strings.CutSuffix(line.Text, "\uFFFD"+truncatedLineSuffix); ok {
+				line.Text = head + truncatedLineSuffix
+			}
+		}
 		if !reflect.DeepEqual(got, reflect.ValueOf(want).Elem().Interface()) {
 			fail("%s(%q, lines=%v bytes=%v n=%d):\n  PiG %+v\n  Pi  %+v", c.Fn, c.Content, optInt(c.MaxLines), optInt(c.MaxBytes), c.N, got, want)
 		}
@@ -163,4 +163,9 @@ func optInt(p *int) any {
 		return nil
 	}
 	return *p
+}
+
+type lineOutcome struct {
+	Text         string `json:"text"`
+	WasTruncated bool   `json:"wasTruncated"`
 }

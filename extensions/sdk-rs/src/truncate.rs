@@ -238,7 +238,7 @@ fn truncate_str_to_bytes_from_end(s: &str, max_bytes: usize) -> &str {
 
 /// Cut a line longer than `max_chars` UTF-16 code units (a JavaScript string's length) to that many units plus
 /// `... [truncated]`. Returns the text and whether it was cut. Pass [`GREP_MAX_LINE_LENGTH`] for Pi's default. A cut
-/// inside a surrogate pair leaves U+FFFD where JavaScript keeps a lone surrogate.
+/// inside a surrogate pair drops the whole pair, as Pi main's `sliceHead` does (9e870f6f0; pig divergence D252).
 pub fn truncate_line(line: &str, max_chars: usize) -> (String, bool) {
     if line.chars().map(char::len_utf16).sum::<usize>() <= max_chars {
         return (line.to_string(), false);
@@ -248,9 +248,6 @@ pub fn truncate_line(line: &str, max_chars: usize) -> (String, bool) {
     for c in line.chars() {
         let n = c.len_utf16();
         if used + n > max_chars {
-            if used < max_chars {
-                out.push('\u{FFFD}');
-            }
             break;
         }
         out.push(c);
@@ -343,5 +340,10 @@ mod tests {
             ("😀😀😀... [truncated]".to_string(), true)
         );
         assert_eq!(truncate_line("😀😀😀", 6), ("😀😀😀".to_string(), false));
+        // Pi main 9e870f6f0 (pig divergence D252): a cut inside a surrogate pair drops the pair.
+        assert_eq!(
+            truncate_line("a😀b", 2),
+            ("a... [truncated]".to_string(), true)
+        );
     }
 }
