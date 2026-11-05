@@ -1,7 +1,0 @@
-### Fixed
-
-- The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count. A listener blocked on a plain lock the caller holds is the one gap. <!-- fix: 8b1f8a9960 -->
-- Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver). <!-- fix: 93d0f2f0cb -->
-- A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it. <!-- fix: 08099eb763 -->
-- A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`. <!-- fix: 8b1f8a9960 -->
-- Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again. <!-- fix: 8b1f8a9960 -->

@@ -1,3 +1,0 @@
-### Added
-
-- The `schema` package can coerce loosely typed input towards a schema, as Pi's `compile(schema, { coerce: true })` does. `schema.CompileCoercing` returns a validator that also has `Coerce` and `Parse`: optional `null`s are dropped, TypeBox 1.3.27's `Value.Convert` rules apply by JSON Schema keyword (numeric strings, `"true"`, a single value to a one-item array, `const`/`enum` members, the first union branch the value converts to), then Ajv-style primitive coercion by `type`. `Coerce` copies only the paths it changes, returns its input itself when nothing changes, never modifies it, and allocates nothing for a value that needs no change; `Parse` coerces, then checks. Nothing in PiG uses it yet.
