@@ -1492,7 +1492,7 @@ func (e *Editor) refreshAutocomplete() {
 			e.Invalidate()
 		}
 		// Complete a deferred filesystem answer if the local provider has one.
-		e.kickFileAutocomplete(nil, fileTask, filePrefix)
+		e.kickFileAutocomplete(nil, fileTask, filePrefix, force)
 		return
 	}
 	requestID, text, cursor := e.autocompleteRequestID, e.Text(), e.cursor
@@ -1523,11 +1523,15 @@ func (e *Editor) refreshAutocomplete() {
 	} else {
 		apply()
 	}
-	e.kickFileAutocomplete(res, fileTask, filePrefix)
+	e.kickFileAutocomplete(res, fileTask, filePrefix, force)
 }
 
-// kickFileAutocomplete completes a deferred local filesystem query without running the search on the input loop.
-func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string) {
+// kickFileAutocomplete completes a deferred local filesystem query without running the search on the input loop. It is the request of an editor with no task owner
+// (SetAutocompleteTaskOwner): the answer of the local provider is applied at the key and only the search is deferred. A search under an @ token waits out Pi's 20 ms
+// debounce, and where the editor has an owner loop (SetAsyncApply) starts against the text and cursor the editor holds then (editor.ts startAutocompleteRequest takes them when the
+// request starts, not when it was made): a key typed meanwhile that triggers nothing leaves it alone, and the provider is asked again about the newer text. An editor with no loop
+// (the extension view editor) keeps the text the key left: a worker reading the editor would race with its caller.
+func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string, force bool) {
 	if fileTask == nil {
 		return
 	}
@@ -1539,15 +1543,56 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 	}
 	ctx, cancel := context.WithCancel(lifetime)
 	e.asyncCancel = cancel
+	waits := strings.HasPrefix(filePrefix, "@")
+	// The editor's state is read where the owner loop runs: a search starts there only when the host gave the editor a loop. With none, the search keeps the text and cursor the key left, and the worker reads no editor state.
+	schedule := e.scheduleAsyncApply
+	startsOnLoop := waits && schedule != nil
+	started := new(atomic.Bool)
+	started.Store(!startsOnLoop)
+	e.asyncStarted = started
 	lines, cursor, request := slices.Clone(e.lines), e.cursor, e.autocompleteRequestID
+	provider := e.autocomplete
 	work := func() {
 		defer cancel()
-		if strings.HasPrefix(filePrefix, "@") {
+		if waits {
 			timer := time.NewTimer(attachmentAutocompleteDebounce)
 			defer timer.Stop()
 			select {
 			case <-timer.C:
 			case <-ctx.Done():
+				return
+			}
+		}
+		if startsOnLoop {
+			// The request starts: it takes the editor's text and cursor, and asks the provider about them.
+			files, ok := provider.(AsyncFileSearcher)
+			if !ok {
+				return
+			}
+			taken := false
+			done := make(chan struct{})
+			schedule(func() {
+				defer close(done)
+				if ctx.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.autocomplete != provider || e.IsBashMode() {
+					return
+				}
+				started.Store(true)
+				lines, cursor = slices.Clone(e.lines), e.cursor
+				view, row, col := e.autocompleteView()
+				var run func(context.Context) []AutocompleteItem
+				if filePrefix, run, ok = files.FileSearchTask(view, row, col); !ok {
+					return
+				}
+				fileTask = run
+				baseRes = provider.GetSuggestions(context.Background(), view, row, col, AutocompleteSuggestionOptions{Force: force})
+				taken = true
+			})
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return
+			}
+			if !taken || ctx.Err() != nil {
 				return
 			}
 		}
@@ -1575,17 +1620,13 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 			}
 			e.Invalidate()
 		}
-		if e.scheduleAsyncApply != nil {
-			e.scheduleAsyncApply(apply)
+		if schedule != nil {
+			schedule(apply)
 		} else {
 			apply()
 		}
 	}
-	if e.startAutocompleteTask != nil {
-		e.startAutocompleteTask(work)
-	} else {
-		go work()
-	}
+	go work()
 }
 
 // renderCursorAt highlights the marker-aware grapheme at a UTF-16 offset. At end of line it appends a highlighted space.

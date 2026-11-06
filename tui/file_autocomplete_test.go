@@ -748,7 +748,13 @@ func TestEditor_AsyncFileSearchDoesNotBlock(t *testing.T) {
 	rendered := make(chan struct{}, 4)
 	e := NewEditor()
 	e.SetAutocomplete(prov)
-	e.SetAsyncApply(func(apply func()) { apply(); rendered <- struct{}{} })
+	// A search that waited out its debounce first takes the editor's text on the loop (one apply that publishes nothing); only the answer counts as a render.
+	e.SetAsyncApply(func(apply func()) {
+		apply()
+		if len(e.autocompleteItems) > 0 {
+			rendered <- struct{}{}
+		}
+	})
 
 	e.HandleInput("@")
 	e.HandleInput("k")
@@ -831,7 +837,13 @@ func TestEditor_AsyncFileSearch_RealSubprocessDoesNotBlock(t *testing.T) {
 	e := NewEditor()
 	e.SetAutocomplete(prov)
 	rendered := make(chan struct{}, 8)
-	e.SetAsyncApply(func(apply func()) { apply(); rendered <- struct{}{} })
+	// A search that waited out its debounce first takes the editor's text on the loop (one apply that publishes nothing); only the answer counts as a render.
+	e.SetAsyncApply(func(apply func()) {
+		apply()
+		if len(e.autocompleteItems) > 0 {
+			rendered <- struct{}{}
+		}
+	})
 
 	// No stub can exit before release, so a HandleInput that waits for fd never returns.
 	typed := make(chan struct{})
