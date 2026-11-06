@@ -32,8 +32,8 @@ var deepDeltaShapes = []struct {
 	depth int
 }{{"arrays", 200}, {"arrays", 3000}, {"objects", 3000}, {"arrays", 4000}, {"objects", 4000}, {"arrays", 9000}, {"objects", 9000}, {"arrays", 1}}
 
-// nodeHandlerFails is where the Node SDK's handler fails: it hands the handler the object as Pi does (no copy), and the probe's JSON.stringify of it runs out of V8 stack
-// on the pinned Node between 4400 and 9000 levels, as it does in Pi (D268).
+// nodeHandlerFails is where the Node SDK's handler fails: the runtime copies the payload for the handler (iteratively, so the copy never runs out of stack), and the
+// handler's own JSON.stringify of it runs out of V8 stack on the pinned Node between 4400 and 9000 levels, as it does in Pi, which hands its handler the object itself (D268).
 func nodeHandlerFails(depth int) bool { return depth >= 9000 }
 
 // carriesDeepValue reports whether the event holds the nested value (the first update of a stream holds none yet): its JSON is at least two bytes a level long.
