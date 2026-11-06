@@ -5780,6 +5780,26 @@
       ]
     },
     {
+      "id": "BF-2a0b22d",
+      "title": "LaTeX math that holds a lone UTF-16 surrogate (`$x\\ud83d$`, a script, fraction, root, accent, `\\text{}`…",
+      "symptom": "LaTeX math that holds a lone UTF-16 surrogate (`$x\\ud83d$`, a script, fraction, root, accent, `\\text{}`, matrix or cases, inline or display) keeps the unit as one character of its own instead of rendering three replacement characters.",
+      "rootCause": "The parser, the script, fraction, accent, \\not and \\mathbb helpers and the output now decode and encode through jsstring.CodePoints and the WTF-8 spelling of a lone surrogate, so a unit that Pi holds in a LaTeX expression is no longer read as three U+FFFD. The rendered text is canonicalised so halves that become adjacent join as they do in JavaScript.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "LaTeX math that holds a lone UTF-16 surrogate (`$x\\ud83d$`, a script, fraction, root, accent, `\\text{}`, matrix or cases, inline or display) keeps the unit as one character of its own instead of rendering three replacement characters.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2a0b22db2e",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2a0fb96",
       "title": "`/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:`…",
       "symptom": "`/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:` lines came out in a different order on every call (Go map iteration).",
@@ -45499,6 +45519,46 @@
       ]
     },
     {
+      "id": "BF-f0eace4",
+      "title": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`…",
+      "symptom": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`, `x^{\\ud83d{}\\ude00}`, `\\not{...}`, `\\frac{x}{...}`) as the one character they spell, so the script, fraction, accent and `\\not` layout matches Pi instead of treating them as two.",
+      "rootCause": "Pi builds an argument by concatenation and counts it with Array.from, which joins a high half and a low half; arrayFromLen counts the same way at the script, fraction, layout, \\not and accent checks. Pi reads an unbraced argument as source[position], one UTF-16 unit, so an astral character is split: the high half is the argument and the low half is the next character of the source.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "LaTeX math renders two surrogate halves that end up side by side in one argument (`\\vec{\\ud83d{}\\ude00}`, `x^{\\ud83d{}\\ude00}`, `\\not{...}`, `\\frac{x}{...}`) as the one character they spell, so the script, fraction, accent and `\\not` layout matches Pi instead of treating them as two.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0eace4daf",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-f0eace4-2",
+      "title": "LaTeX math reads an unbraced astral argument (`\\vec😀`, `\\frac😀x`, `\\sqrt😀`, `\\not😀`, `x^😀` in…",
+      "symptom": "LaTeX math reads an unbraced astral argument (`\\vec😀`, `\\frac😀x`, `\\sqrt😀`, `\\not😀`, `x^😀` in display mode) as Pi does, one UTF-16 unit: the high half is the argument and the low half is the next character.",
+      "rootCause": "Pi builds an argument by concatenation and counts it with Array.from, which joins a high half and a low half; arrayFromLen counts the same way at the script, fraction, layout, \\not and accent checks. Pi reads an unbraced argument as source[position], one UTF-16 unit, so an astral character is split: the high half is the argument and the low half is the next character of the source.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "LaTeX math reads an unbraced astral argument (`\\vec😀`, `\\frac😀x`, `\\sqrt😀`, `\\not😀`, `x^😀` in display mode) as Pi does, one UTF-16 unit: the high half is the argument and the low half is the next character.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0eace4daf",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f12896b",
       "title": "Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer…",
       "symptom": "Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer only requests the first frame, which paints while startup waits for the terminal's colors.",
@@ -46570,6 +46630,26 @@
       "tests": [
         "chord/nextnode/plugins/plugins_node_store_test.go::TestStoreAFailedStoreReachesOnErrorOnceAndClosesTheHost"
       ]
+    },
+    {
+      "id": "BF-f40cd6b",
+      "title": "LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named…",
+      "symptom": "LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named operator (`\\sqrt{\\ud835{}\\udc9c}`, `\\frac{x}{\\ud835{}\\udfce}`, `\\ud835{}\\udc9c\\sin x`) as the one astral letter or digit they spell, so the parentheses and the spacing match Pi.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named operator (`\\sqrt{\\ud835{}\\udc9c}`, `\\frac{x}{\\ud835{}\\udfce}`, `\\ud835{}\\udc9c\\sin x`) as the one astral letter or digit they spell, so the parentheses and the spacing match Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f40cd6b547",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-f43fb00",

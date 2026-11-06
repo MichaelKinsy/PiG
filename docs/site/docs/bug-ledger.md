@@ -213,6 +213,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-28b8425](#bf-28b8425) | Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
 | [BF-2a055a7](#bf-2a055a7) | An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2a0b22d](#bf-2a0b22d) | LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a0fb96](#bf-2a0fb96) | `/cost` lists its tools in a stable order: `formatCostSummary` ranged over `snap.ToolTotals`, so the `Tools:`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2a919a4](#bf-2a919a4) | An indented continuation line of a list item loses up to four spaces, a lazy line after a quoted list item… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ab79ce](#bf-2ab79ce) | An extension provider whose `streamSimple` hands its request to pi-ai's compat `streamSimple` (or `stream`)… | PiG's own defect | All platforms | 0.5.0 |
@@ -1577,6 +1578,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f08ffe9](#bf-f08ffe9) | A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f0a9d01](#bf-f0a9d01) | An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f0eace4](#bf-f0eace4) | LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`… | PiG's own defect | All platforms | Unreleased |
+| [BF-f0eace4-2](#bf-f0eace4-2) | LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in… | PiG's own defect | All platforms | Unreleased |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f1a59f9](#bf-f1a59f9) | An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string… | PiG's own defect | All platforms | 0.5.0 |
@@ -1608,6 +1611,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f34b545](#bf-f34b545) | Durable: resolving harness settings no longer shares the default retry policy's max agent delay between… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f3b4045](#bf-f3b4045) | `.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f3ea39b](#bf-f3ea39b) | fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out | PiG's own defect | All platforms | Unreleased |
+| [BF-f40cd6b](#bf-f40cd6b) | LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named… | PiG's own defect | All platforms | Unreleased |
 | [BF-f43fb00](#bf-f43fb00) | A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-f474c30](#bf-f474c30) | fix(evals): drop an unused import from the prompt-template eval | PiG's own defect | All platforms | Unreleased |
 | [BF-f4a8f71](#bf-f4a8f71) | A program that embeds PiG and never reads session events no longer hangs | PiG's own defect | All platforms | 0.7.0 |
@@ -4393,6 +4397,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `1848633092` (2026-10-13), `2a055a7a3a` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/host_calls_test.go::TestReadLoopWidgetPushOrdersAgainstQueuedSlotCalls`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `coding/extension/host/subprocess/view_terminal_parity_test.go::TestViewsLeaveTheTerminalBytesUnchanged`, `coding/extension/host/subprocess/widget_key_namespace_test.go::TestTwoExtensionsSettingOneWidgetKeyShareIt`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult` and 7 more in docs/bug-ledger.json
 - **Release note:** An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component holds the terminal now shows at once and takes focus, as in Pi. Closing the dialog gives focus back to a custom overlay, which receives the next key. A custom component in the editor slot that the dialog replaced stays off screen, and focus goes to the editor. Before, a subprocess extension's dialog waited until the custom component closed. A dialog from an in-process extension opened at once, but the custom component kept focus, and a subprocess custom component kept reading the keys meant for the dialog.
+
+### BF-2a0b22d
+
+**LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`, matrix or cases, inline or display) keeps the unit as one character of its own instead of rendering three replacement characters.
+- **Root cause:** The parser, the script, fraction, accent, \not and \mathbb helpers and the output now decode and encode through jsstring.CodePoints and the WTF-8 spelling of a lone surrogate, so a unit that Pi holds in a LaTeX expression is no longer read as three U+FFFD. The rendered text is canonicalised so halves that become adjacent join as they do in JavaScript.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2a0b22db2e` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** LaTeX math that holds a lone UTF-16 surrogate (`$x\ud83d$`, a script, fraction, root, accent, `\text{}`, matrix or cases, inline or display) keeps the unit as one character of its own instead of rendering three replacement characters.
 
 ### BF-2a0fb96
 
@@ -23327,6 +23345,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/interactive_exit_record_linux_test.go::TestInteractiveExitBySignalLeavesALine`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreen`, `internal/codingagent/interactive_interrupt_init_pty_test.go::TestInitTakesSIGINTBeforeBuildingTheScreenChild`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownIsIgnoredWhileSuspended`, `internal/codingagent/interactive_interrupt_signal_test.go::TestInterruptShutdownLeavesTheOwnerLoopRunning`
 - **Release note:** An interactive session ended by SIGINT now always exits 130 and leaves its `exit.log` line. The handler was installed only after the first screen was drawn, so a SIGINT in that window killed the session by the default action with no line, and once installed it also asked the session to unwind, which let the process exit 0 before the handler's own exit 130. The handler now goes in first, as Pi registers its signal handlers first in `init()`, and it ends the process without unwinding the session.
 
+### BF-f0eace4
+
+**LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`, `x^{\ud83d{}\ude00}`, `\not{...}`, `\frac{x}{...}`) as the one character they spell, so the script, fraction, accent and `\not` layout matches Pi instead of treating them as two.
+- **Root cause:** Pi builds an argument by concatenation and counts it with Array.from, which joins a high half and a low half; arrayFromLen counts the same way at the script, fraction, layout, \not and accent checks. Pi reads an unbraced argument as source[position], one UTF-16 unit, so an astral character is split: the high half is the argument and the low half is the next character of the source.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0eace4daf` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** LaTeX math renders two surrogate halves that end up side by side in one argument (`\vec{\ud83d{}\ude00}`, `x^{\ud83d{}\ude00}`, `\not{...}`, `\frac{x}{...}`) as the one character they spell, so the script, fraction, accent and `\not` layout matches Pi instead of treating them as two.
+
+### BF-f0eace4-2
+
+**LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in display mode) as Pi does, one UTF-16 unit: the high half is the argument and the low half is the next character.
+- **Root cause:** Pi builds an argument by concatenation and counts it with Array.from, which joins a high half and a low half; arrayFromLen counts the same way at the script, fraction, layout, \not and accent checks. Pi reads an unbraced argument as source[position], one UTF-16 unit, so an astral character is split: the high half is the argument and the low half is the next character of the source.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0eace4daf` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** LaTeX math reads an unbraced astral argument (`\vec😀`, `\frac😀x`, `\sqrt😀`, `\not😀`, `x^😀` in display mode) as Pi does, one UTF-16 unit: the high half is the argument and the low half is the next character.
+
 ### BF-f12896b
 
 **Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer…**
@@ -23762,6 +23808,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `f3ea39b0ec` (2026-11-01)
 - **Tests:** `chord/nextnode/plugins/plugins_node_store_test.go::TestStoreAFailedStoreReachesOnErrorOnceAndClosesTheHost`
+
+### BF-f40cd6b
+
+**LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named…**
+
+- **Source:** PiG's own defect
+- **Symptom:** LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named operator (`\sqrt{\ud835{}\udc9c}`, `\frac{x}{\ud835{}\udfce}`, `\ud835{}\udc9c\sin x`) as the one astral letter or digit they spell, so the parentheses and the spacing match Pi.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f40cd6b547` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named operator (`\sqrt{\ud835{}\udc9c}`, `\frac{x}{\ud835{}\udfce}`, `\ud835{}\udc9c\sin x`) as the one astral letter or digit they spell, so the parentheses and the spacing match Pi.
 
 ### BF-f43fb00
 
