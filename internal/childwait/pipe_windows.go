@@ -37,6 +37,12 @@ func overlapped(handle windows.Handle) bool {
 	return info.mode&synchronousIO == 0
 }
 
+// isPipe reports whether the handle is a pipe, the only kind PeekNamedPipe answers for. A handle that cannot be asked is not taken for one.
+func isPipe(handle windows.Handle) bool {
+	kind, err := windows.GetFileType(handle)
+	return err == nil && kind == windows.FILE_TYPE_PIPE
+}
+
 // peekHandle asks how many bytes wait in the read end of a pipe without taking any. ended reports that every write end is closed
 // (ERROR_BROKEN_PIPE).
 func peekHandle(handle windows.Handle) (avail uint32, ended bool, err error) {
@@ -102,6 +108,11 @@ func waitReadable(handle windows.Handle, timeoutMS int) (readable, closed bool) 
 	avail, ended, err := peekHandle(handle)
 	switch {
 	case err != nil:
+		if !isPipe(handle) {
+			// PeekNamedPipe answers only for pipes. A file or a console has no pipe to ask, so the reader goes straight to its read, as it does where no
+			// poll answers at all (pipe_other.go).
+			return true, false
+		}
 		return false, true
 	case avail > 0 || ended:
 		return true, false
