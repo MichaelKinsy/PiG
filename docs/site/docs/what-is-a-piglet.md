@@ -7,9 +7,9 @@ A Piglet is not a fork of PiG and it is not code. It is a YAML file. PiG stays o
 ## The idea in one picture
 
 ```text
-                 ┌────────────────────────────┐
+                 ┌─────────────────────────────┐
   Piglet file ──▶│ pig --piglet ./reviewer.yaml│──▶ the agent runs
-  (YAML)         └────────────────────────────┘
+  (YAML)         └─────────────────────────────┘
                               │
                               │ pig piglet build
                               ▼
@@ -35,13 +35,13 @@ The [Piglets](/docs/latest/piglets) page lists every field.
 
 ## A small example
 
-This Piglet starts an agent that can only read files:
+This Piglet limits an agent to reading files:
 
 ```yaml
 name: reader
 description: "Read-only code reader"
 
-tools: [read, grep, find, ls]
+tools: [read]
 
 discovery:
   extensions: []
@@ -54,7 +54,7 @@ Run it:
 pig --piglet ./reader.yaml
 ```
 
-The agent has no `bash`, `write` or `edit` tool, and no extension or skill from the user's own setup can add one. The restriction is in the file, so it is the same for every person who runs it.
+The agent has no `bash`, `write` or `edit` tool, and the Piglet loads no extension or skill from the user's own setup. The `tools` list is a ceiling: it removes every built-in tool outside the list and it turns none on. The active set still starts from PiG's default tools, your `defaultTools` setting or the `--tools` option. [Tool scope](/docs/latest/piglets#tool-scope) explains the rules.
 
 ## Piglet, Package, extension: how they differ
 
@@ -71,7 +71,7 @@ A Package never turns on a Piglet. A Piglet chooses Packages.
 ## Why use one
 
 - One agent per file. A team can keep a reviewer, a triage agent and a support agent as three small files in a repository.
-- Fixed limits. The tool list and the discovery rules travel with the agent.
+- Fixed ceilings. The tool ceiling and the discovery rules travel with the agent. Command-line options and platform policy can narrow them. They do not widen them.
 - One file to hand over. A Piglet Binary runs on another computer of the same operating system and architecture with no PiG installed. It still needs a model and credentials there. A TypeScript or JavaScript extension inside it needs Node 22.13 or newer on the `PATH`.
 
 ## Where to go next

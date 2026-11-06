@@ -1,6 +1,6 @@
 # The upstream Pi pin
 
-PiG targets one Pi build. `.upstream/pin` names it, and every other statement of the pin is read from it or derived from it. The pin is a Pi release tag (now `v1.2.0`) or a pinned commit of Pi's main branch, which is reported as the package version followed by `+` and the first eight characters of the commit (`Pi <package_version>+<commit[:8]>`).
+PiG targets one Pi build. `.upstream/pin` names it, and every other statement of the pin is read from it or derived from it. The pin is a Pi release tag (now `v1.5.0`) or a pinned commit of Pi's main branch, which is reported as the package version followed by `+` and the first eight characters of the commit (`Pi <package_version>+<commit[:8]>`).
 
 ## The pin file
 
