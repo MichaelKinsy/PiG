@@ -2,8 +2,6 @@ package collate
 
 import (
 	"bytes"
-	"compress/flate"
-	"io"
 	"math/rand/v2"
 	"os"
 	"os/exec"
@@ -114,7 +112,6 @@ func seq(from, to int) []int {
 
 // contractionStrings lists every string a contraction of the table matches, by walking each contraction trie from the code points that start one.
 func contractionStrings() []string {
-	loadTables()
 	var out []string
 	for r := rune(0); r <= utf8.MaxRune; r++ {
 		start := encode(r)
@@ -244,23 +241,11 @@ func TestTablesMatchXText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	compressed, err := os.ReadFile("tables.bin")
-	if err != nil {
-		t.Fatal(err)
-	}
 	want, err := tablegen.Generate(source, "golang.org/x/text@"+version+"/collate/tables.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(have, want.Source) {
+	if !bytes.Equal(have, want) {
 		t.Fatalf("tables.go differs from the tables tablegen derives from golang.org/x/text@%s: run `go generate ./third_party/collate`", version)
-	}
-	// The compressed bytes depend on the compress/flate of the Go release, so the test compares what they inflate to.
-	raw, err := io.ReadAll(flate.NewReader(bytes.NewReader(compressed)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(raw, want.Raw) {
-		t.Fatalf("tables.bin differs from the tables tablegen derives from golang.org/x/text@%s: run `go generate ./third_party/collate`", version)
 	}
 }

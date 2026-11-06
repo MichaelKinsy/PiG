@@ -7,7 +7,7 @@ type Collator struct {
 	iter [2]iter
 }
 
-// New returns a Collator for the root locale. It is cheap: the tables load when the first comparison or key needs them (see loadTables).
+// New returns a Collator for the root locale.
 func New() *Collator {
 	c := &Collator{}
 	c.iter[0].Elems = c.iter[0].wa[:0]
@@ -18,7 +18,6 @@ func New() *Collator {
 // CompareString returns an integer comparing the two strings. The result is 0 if a and b have the same weights at the primary, secondary and
 // tertiary levels, -1 if a sorts before b and +1 if a sorts after b.
 func (c *Collator) CompareString(a, b string) int {
-	loadTables()
 	ia, ib := &c.iter[0], &c.iter[1]
 	ia.setInputString(a)
 	ib.setInputString(b)
@@ -52,7 +51,6 @@ func compareLevel(f func(i *iter) int, a, b *iter) int {
 // AppendKey appends the collation key of s to dst and returns the extended slice. Keys compare with bytes.Compare as the strings compare with
 // CompareString, except that CompareString does not tell apart strings whose keys are equal.
 func (c *Collator) AppendKey(dst []byte, s string) []byte {
-	loadTables()
 	i := &c.iter[0]
 	i.setInputString(s)
 	for i.next() {
