@@ -25,6 +25,8 @@ const transforms = {
 };
 const results = JSON.parse(input).map((probe) => {
   const log = { transform: [], bg: 0, highlight: [] };
+  // initTheme reads the color depth the capabilities report, so they are set first: a probe must not depend on the one before it, or the split of a corpus into several node processes changes the first probe of each.
+  setCapabilities({ images: null, trueColor: true, hyperlinks: probe.links });
   let theme;
   if (probe.theme === "tagged") {
     theme = { ...taggedTheme };
@@ -39,7 +41,6 @@ const results = JSON.parse(input).map((probe) => {
     initTheme(probe.theme);
     theme = getMarkdownTheme();
   }
-  setCapabilities({ images: null, trueColor: true, hyperlinks: probe.links });
   let style;
   if (probe.style) {
     style = { bold: probe.style.bold, italic: probe.style.italic, strikethrough: probe.style.strikethrough, underline: probe.style.underline };

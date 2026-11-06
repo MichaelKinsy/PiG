@@ -1,15 +1,11 @@
 package tui
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 type editorStatusProbe struct {
@@ -29,22 +25,7 @@ type editorStatusProbe struct {
 // spinner alone when it does not, and the plain border when the status is empty or the width is too small.
 func TestEditorStatusBorderMatchesPi(t *testing.T) {
 	probes := editorStatusProbes()
-	input, err := json.Marshal(probes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/editor_status_border.mjs", pigversion.UpstreamPackageVersion)
-	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
-	}
-	var expected [][]string
-	if err := json.Unmarshal(output, &expected); err != nil {
-		t.Fatal(err)
-	}
+	expected := piOracleProbes[editorStatusProbe, []string](t, "editor_status_border.mjs", probes)
 	previousCaps, previousTheme := GetCapabilities(), ActiveTheme()
 	t.Cleanup(func() {
 		SetCapabilities(previousCaps)
