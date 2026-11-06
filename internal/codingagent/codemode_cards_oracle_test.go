@@ -149,6 +149,14 @@ func codemodeCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 // renderCodemodeCards drives one card per probe through the interactive mode's tool events and returns its rows.
 func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 	t.Helper()
+	out := make([][]string, len(probes))
+	driveCodemodeCards(t, probes, func(i int, f toolComponentFixture) { out[i] = f.card.Render(probes[i].Width) })
+	return out
+}
+
+// driveCodemodeCards hands observe each probe's card after its start and result events, with the probe's expansion applied.
+func driveCodemodeCards(t *testing.T, probes []toolCardProbe, observe func(i int, f toolComponentFixture)) {
+	t.Helper()
 	previousCaps := tui.GetCapabilities()
 	t.Cleanup(func() { tui.SetCapabilities(previousCaps) })
 	tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true})
@@ -160,7 +168,6 @@ func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 	t.Cleanup(func() { toolTimerNow = previousNow })
 	toolTimerNow = func() time.Time { return time.UnixMilli(cardClock.Load()) }
 	definition := extension.ToolDefinition{Name: "codemode", RenderCall: CodemodeRenderers.RenderCall, RenderResult: CodemodeRenderers.RenderResult}
-	out := make([][]string, len(probes))
 	for i, probe := range probes {
 		installCardBindings(t, probe)
 		raw, _ := json.Marshal(probe.Args)
@@ -180,7 +187,6 @@ func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 			f.mode.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: f.id, ToolName: f.name, IsError: r.IsError, Result: agent.AgentToolResult{Content: content, Details: details, IsError: r.IsError}})
 		}
 		f.card.SetExpanded(probe.Expanded)
-		out[i] = f.card.Render(probe.Width)
+		observe(i, f)
 	}
-	return out
 }

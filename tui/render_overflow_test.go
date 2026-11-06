@@ -8,7 +8,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -334,5 +336,57 @@ func TestReviewOverflowAfterEmptyFrameDoesNotTerminate(t *testing.T) {
 			}
 			requireNoCrashLog(t, dir)
 		})
+	}
+}
+
+// Upstream measures a row as a UTF-16 string, where an unpaired surrogate is nonprinting, and the terminal write encodes it as U+FFFD.
+// A row that fills the terminal and ends in one therefore does not overflow, and the bytes written carry the replacement character.
+func TestOverflowMeasuresRowsBeforeUnpairedSurrogatesAreEncoded(t *testing.T) {
+	high := jsstring.FromUTF16([]uint16{0xd83d})
+	row := strings.Repeat("a", 20) + high
+	for _, tc := range []struct {
+		name   string
+		before []string
+		after  []string
+	}{
+		{name: "differential", before: []string{"fits"}, after: []string{"fits", row}},
+		{name: "full", before: nil, after: []string{"fits", row}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			lines := tc.before
+			ui, dir := newOverflowTUI(t, &out, 20, 10, &lines)
+			if lines != nil {
+				ui.Render()
+			}
+			out.Reset()
+			lines = tc.after
+			if value := renderRecover(ui); value != nil {
+				t.Fatalf("render terminated: %v", value)
+			}
+			if !strings.Contains(out.String(), strings.Repeat("a", 20)+"\ufffd"+widthx.SegmentReset) || !utf8.ValidString(out.String()) {
+				t.Fatalf("terminal bytes = %q, want the row with U+FFFD and valid UTF-8", out.String())
+			}
+			requireNoCrashLog(t, dir)
+		})
+	}
+}
+
+// The crash log is a UTF-8 file write in Pi, so an unpaired surrogate in a rendered row is U+FFFD there.
+func TestOverflowCrashLogEncodesUnpairedSurrogates(t *testing.T) {
+	var out bytes.Buffer
+	lines := []string{"fits"}
+	ui, dir := newOverflowTUI(t, &out, 20, 10, &lines)
+	ui.Render()
+	lines = []string{"fits", overflowRow + jsstring.FromUTF16([]uint16{0xd83d})}
+	if _, ok := renderRecover(ui).(*RenderOverflowError); !ok {
+		t.Fatal("render did not terminate with the overflow error")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "pi-tui-crash.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !utf8.Valid(data) || !strings.Contains(string(data), overflowRow+"\ufffd") {
+		t.Fatalf("crash log = %q, want valid UTF-8 with U+FFFD", data)
 	}
 }

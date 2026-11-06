@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/wordsegmenter"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -539,7 +540,7 @@ func (t *TuiAltScreen) copyTextToClipboard(text string) bool {
 			return false
 		}
 	} else {
-		WriteToTerminal(t.out, fmt.Sprintf("\x1b]52;c;%s\x07", base64.StdEncoding.EncodeToString([]byte(text))))
+		WriteToTerminal(t.out, fmt.Sprintf("\x1b]52;c;%s\x07", base64.StdEncoding.EncodeToString([]byte(jsstring.StreamText(text)))))
 	}
 	t.flash("Copied!", altScreenFlashDefaultDurationMS)
 	return true

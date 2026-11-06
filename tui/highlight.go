@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -60,10 +59,10 @@ func Highlight(code string, options HighlightOptions) (string, error) {
 	// pig additive (D92): a Piglet that strips syntax-highlight highlights as highlight.js does with no language registered.
 	if highlightStripped() {
 		out, err := highlightPlain(code, options)
-		return terminalText(out), err
+		return jsstring.Canonical(out), err
 	}
 	out, err := highlightWith(highlightRegistry(), code, options)
-	return terminalText(out), err
+	return jsstring.Canonical(out), err
 }
 
 func highlightWith(registry highlightEngine, code string, options HighlightOptions) (string, error) {
@@ -234,20 +233,13 @@ func isSpanOpenTagStart(html string, index int) bool {
 }
 
 // RenderHighlightedHtml renders highlight.js HTML as text: each run of text takes the formatter of its innermost mapped scope, or the theme's default, and HTML character references are decoded.
+// The text keeps JavaScript's UTF-16 units: highlight.js can split a surrogate pair between two scopes, and the lone halves stay lone (measured as nothing, as Pi measures them) until the terminal write encodes them. Halves that end up side by side take the ordinary spelling of the pair.
 func RenderHighlightedHtml(html string, theme HighlightTheme) string {
 	out, err := renderHighlightedHTML(html, theme)
 	if err != nil {
 		panic(err)
 	}
-	return terminalText(out)
-}
-
-// terminalText is a JavaScript string as Node writes it to a terminal: UTF-8, each lone surrogate replaced by U+FFFD. Highlighting keeps JavaScript's UTF-16 code units (WTF-8) until this boundary, because highlight.js can split a surrogate pair between two scopes.
-func terminalText(text string) string {
-	if utf8.ValidString(text) {
-		return text
-	}
-	return string(jsstring.ToUTF8(text))
+	return jsstring.Canonical(out)
 }
 
 func renderHighlightedHTML(html string, theme HighlightTheme) (output string, err error) {
@@ -601,7 +593,7 @@ func highlightCodeUncached(registry highlightEngine, code, lang string, t *Theme
 		// theme.ts highlightCode: `catch { return code.split("\n").map((line) => theme.fg("mdCodeBlock", line)); }`.
 		return codeBlockLines(code, t)
 	}
-	return strings.Split(terminalText(highlighted), "\n")
+	return strings.Split(jsstring.Canonical(highlighted), "\n")
 }
 
 func codeBlockLines(code string, t *Theme) []string {

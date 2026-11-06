@@ -25,6 +25,8 @@ package tui
 
 import (
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // exitRestoreRegistry is what Pi's registered 'exit' handlers are: the terminals whose raw mode is on (started and not
@@ -142,7 +144,7 @@ func (t *ProcessTerminal) RestoreOnExit(before, after string) {
 	if t.outMu.TryLock() {
 		defer t.outMu.Unlock()
 	}
-	t.write(sequence) // The terminal may already be gone.
+	t.write(jsstring.StreamText(sequence)) // The terminal may already be gone.
 	t.exitRestored.Store(true)
 }
 

@@ -1524,6 +1524,17 @@ pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(
                 None => Err(err),
             }
         }
+        // A value cut out of a frame (a request's arguments, a host call's result) may spell an unpaired surrogate as an escape, which
+        // `decode_frame` let through inside the raw value. Rust text cannot hold the unit, so a refused value is decoded again with each
+        // one written as U+FFFD, as `decode_frame` does for the frame; one that decodes the first time keeps its typed UTF-16 fields.
+        Err(err) if err.is_data() || err.is_syntax() => {
+            match replace_unpaired_surrogate_escapes(text.as_bytes())
+                .and_then(|repaired| String::from_utf8(repaired).ok())
+            {
+                Some(repaired) => from_json_str(&repaired),
+                None => Err(err),
+            }
+        }
         result => result,
     }
 }

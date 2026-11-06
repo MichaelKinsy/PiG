@@ -1,15 +1,19 @@
 package extensionconformance
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -482,4 +486,54 @@ func TestRawKeyHintAcrossSDKs(t *testing.T) {
 func printModeRig(t *testing.T, r *modelTypesRig) {
 	t.Helper()
 	r.host.SetMode("print")
+}
+
+// highlight.js works on UTF-16 units and can leave a lone surrogate in a highlighted line: Ruby's `?` character literal takes one unit, so `?😀` splits the
+// pair between two scopes. Pi's highlightCode returns the unit; the host writes it into its highlight.code reply as the escape JSON.stringify writes, and each SDK decodes
+// the reply with its own string type. The Node runtime runs Pi's own function; the Go, Python and Lisp SDKs hold the unit as Pi does (a Go string as WTF-8). A Rust
+// String cannot hold a lone surrogate, which is a mechanic of the language, so the Rust SDK reads each unit as U+FFFD, as it does for every frame; it must still return the
+// highlighted lines (a refused reply would silently drop every syntax color). A change in any of these decodings, or a SDK that loses the highlighting, fails the row.
+func TestHighlightCodeKeepsALoneSurrogateAcrossSDKs(t *testing.T) {
+	var dark json.RawMessage
+	for _, c := range loadTuiVectors(t, "highlightCode") {
+		var want struct{ Palette json.RawMessage }
+		_ = json.Unmarshal(c.Result, &want)
+		if name, _ := c.Args[2].(string); name == "dark" {
+			if mode, _ := c.Args[3].(string); mode == "truecolor" {
+				dark = want.Palette
+			}
+		}
+	}
+	codes := []string{"?😀", "$😀 + 1\nputs ?😀"}
+	eachTuiPlacementAfter(t, nil, printModeRig, func(t *testing.T, r *modelTypesRig) {
+		r.installPiTheme(t, dark)
+		for _, code := range codes {
+			piLines := tui.HighlightCode(code, "ruby")
+			if !strings.Contains(strings.Join(piLines, "\n"), "\x1b[") || jsstring.StreamText(strings.Join(piLines, "\n")) == strings.Join(piLines, "\n") {
+				t.Fatalf("%q: the host's lines %q hold no color or no lone surrogate: the row does not reach the case", code, piLines)
+			}
+			want := piLines
+			if strings.Contains(t.Name(), "/rust-") {
+				want = make([]string, len(piLines))
+				for i, line := range piLines {
+					want[i] = jsstring.StreamText(line)
+				}
+			}
+			args, _ := json.Marshal(map[string]any{"op": "highlight", "code": code, "lang": "ruby", "samples": []any{}})
+			ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
+			result, err := r.ext.Tools["tui_theme_probe"].Definition.Execute(ctx, "call-hl", args, nil)
+			cancel()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var report struct{ Lines []string }
+			if err := jsstring.UnmarshalKeepingSurrogates([]byte(result.Text()), &report); err != nil {
+				t.Fatalf("%q: %v", result.Text(), err)
+			}
+			if !slices.Equal(report.Lines, want) {
+				t.Errorf("highlightCode(%q, ruby) = %q\nwant %q (Pi's lines %q)", code, report.Lines, want, piLines)
+			}
+		}
+		r.resetTheme(t)
+	})
 }
