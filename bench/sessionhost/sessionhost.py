@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
-"""Memory of N concurrent RPC sessions: one `pig --mode rpc --listen` process (arm `listen`) against N `pig --mode rpc` processes (arm `rpc`).
+"""Memory and startup of N concurrent RPC sessions: one `pig --mode rpc --listen` process (arm `listen`, every session with its own extension processes),
+the same with `--listen-share-extensions` (arm `listen-shared`), and N `pig --mode rpc` processes (arm `rpc`).
 
 Both arms drive N sessions through the same scripted model (scripted_model.py), TURNS prompts each (the five prompts of jcode's
 scripts/bench_headless_memory.py), and sample the memory of the whole process tree after every turn. With --extensions the agent directory
@@ -77,6 +78,19 @@ def run_turn(chan, prompt):
                 return f"assistant stopped: {rec['message'].get('errorMessage') or rec['message']['stopReason']}"
             if rec.get("type") == "agent_end":
                 return None
+    except (TimeoutError, EOFError, OSError, ValueError) as e:
+        return f"{type(e).__name__}: {e}"
+
+
+def ready(chan):
+    """Sends get_state and waits for its response; returns an error string or None."""
+    deadline = time.time() + TURN_TIMEOUT
+    try:
+        chan.send({"id": "ready", "type": "get_state"})
+        while True:
+            rec = chan.readline(deadline)
+            if rec.get("type") == "response" and rec.get("id") == "ready":
+                return None if rec.get("success") else f"get_state refused: {rec.get('error')}"
     except (TimeoutError, EOFError, OSError, ValueError) as e:
         return f"{type(e).__name__}: {e}"
 
@@ -177,17 +191,21 @@ def run_arm(arm, n, args, root, workspace, port):
     base = [str(Path(args.pig).resolve()), "--mode", "rpc", "--model", "fake/fake-model", "--no-session"]
     env = env_for(root)
     procs, chans, sock_path = [], [], None
+    started = time.time()
+    server_ready = None
     served0 = requests_served(port)
     fixtures0 = requests_with_fixtures(port)
     try:
-        if arm == "listen":
+        if arm.startswith("listen"):
             sock_path = tempfile.mkdtemp(prefix="sh-") + "/pig.sock"
-            procs.append(subprocess.Popen(base + ["--listen", sock_path], cwd=workspace, env=env, stdin=subprocess.DEVNULL,
+            share = ["--listen-share-extensions"] if arm == "listen-shared" else []
+            procs.append(subprocess.Popen(base + ["--listen", sock_path, *share], cwd=workspace, env=env, stdin=subprocess.DEVNULL,
                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
             for _ in range(600):
                 if os.path.exists(sock_path):
                     break
-                time.sleep(0.05)
+                time.sleep(0.01)
+            server_ready = time.time() - started
             for _ in range(n):
                 s = socket.socket(socket.AF_UNIX)
                 s.connect(sock_path)
@@ -200,6 +218,14 @@ def run_arm(arm, n, args, root, workspace, port):
                 chans.append(Chan(p.stdout.fileno(), p.stdin.write, p.stdin.close))
         roots = [p.pid for p in procs]
         points, errors = [], []
+        # Startup latency: until every session answers its first command. For `listen` the server's start (the socket exists) is
+        # reported apart; each session's build follows, one at a time.
+        first_state = time.time()
+        with ThreadPoolExecutor(max_workers=max(1, n)) as pool:
+            for e in pool.map(lambda c: ready(c), chans):
+                if e:
+                    errors.append(f"startup: {e}")
+        all_ready = time.time() - (first_state if arm.startswith("listen") else started)
         time.sleep(1)
         points.append({"turn": 0, **sample(roots)})
         for i, prompt in enumerate(TURNS[:args.turns], 1):
@@ -216,7 +242,8 @@ def run_arm(arm, n, args, root, workspace, port):
             with_fixtures = requests_with_fixtures(port) - fixtures0
             if with_fixtures != served:
                 errors.append(f"model requests carrying both fixture tools {with_fixtures}, want {served} (a session did not load both extensions)")
-        return {"arm": arm, "sessions": n, "points": points, "model_requests": served, "errors": errors}
+        return {"arm": arm, "sessions": n, "points": points, "model_requests": served, "errors": errors,
+                "server_ready_s": server_ready, "sessions_ready_s": all_ready}
     finally:
         for c in chans:
             try:
@@ -224,7 +251,7 @@ def run_arm(arm, n, args, root, workspace, port):
             except OSError:
                 pass
         for p in procs:
-            if arm == "listen":
+            if arm.startswith("listen"):
                 p.send_signal(signal.SIGTERM)
             try:
                 p.wait(timeout=60)
@@ -250,7 +277,7 @@ def main():
     ap.add_argument("--sessions", type=int, nargs="+", default=[1, 10, 50, 100])
     ap.add_argument("--turns", type=int, default=5, choices=range(1, 6))
     ap.add_argument("--extensions", action="store_true")
-    ap.add_argument("--arms", nargs="+", default=["listen", "rpc"], choices=["listen", "rpc"])
+    ap.add_argument("--arms", nargs="+", default=["listen", "listen-shared", "rpc"], choices=["listen", "listen-shared", "rpc"])
     ap.add_argument("--json-out", required=True)
     args = ap.parse_args()
     runs = []
@@ -270,8 +297,11 @@ def main():
                     r = run_arm(arm, n, args, root, workspace, port)
                     runs.append(r)
                     last = r["points"][-1]
-                    print(f"{arm:6} N={n:<4} private={last['private'] / 1e6:8.1f} MB rss={last['rss'] / 1e6:8.1f} MB "
-                          f"processes={last['processes']} ext={last['extension_processes']} errors={len(r['errors'])}", flush=True)
+                    ready_s = r["sessions_ready_s"]
+                    print(f"{arm:13} N={n:<4} private={last['private'] / 1e6:8.1f} MB rss={last['rss'] / 1e6:8.1f} MB "
+                          f"processes={last['processes']} ext={last['extension_processes']} "
+                          f"server_ready={(r['server_ready_s'] or 0) * 1000:6.0f} ms sessions_ready={ready_s:6.2f} s ({ready_s / n * 1000:6.0f} ms each) "
+                          f"errors={len(r['errors'])}", flush=True)
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
     out = {"platform": sys.platform, "private_kind": "phys_footprint" if DARWIN else "pss", "extensions": args.extensions, "turns": args.turns,
