@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -64,8 +65,10 @@ type Editor struct {
 	autocompleteTaskDone   <-chan struct{}
 	autocompleteChanged    func(AutocompleteProvider)
 	asyncCancel            context.CancelFunc
-	asyncSeq               uint64
-	scheduleAsyncApply     func(func())
+	// asyncStarted is set once the request asyncCancel cancels has started: it waited out its debounce timer and the request before it, and holds the text it asks about. A request that has not started reads the editor's text when it does. nil for a request of the local file search, which starts at once.
+	asyncStarted       *atomic.Bool
+	asyncSeq           uint64
+	scheduleAsyncApply func(func())
 	// pendingAutocompleteApply publishes the latest local suggestion result the host has scheduled but not yet run.
 	pendingAutocompleteApply func()
 	pendingApplySeq          uint64
@@ -1424,23 +1427,25 @@ func (e *Editor) naturalAutocompleteContext() bool {
 // refreshAutocomplete re-queries an open popup or an eligible natural trigger context after a mutation.
 func (e *Editor) refreshAutocomplete() {
 	e.autocompleteMousePressedIndex = nil
-	e.autocompleteRequestID++
 	if e.asyncAutocomplete != nil {
 		if natural, _ := e.naturalAsyncAutocomplete(); !natural {
-			e.AutocompleteCancel()
+			e.supersedeStartedAutocomplete()
 			return
 		}
+		e.autocompleteRequestID++
 		e.requestAsyncAutocomplete(e.autocompleteForced, false)
 		return
 	}
+	if !e.AutocompleteOpen() && !e.naturalAutocompleteContext() {
+		e.supersedeStartedAutocomplete()
+		return
+	}
+	e.autocompleteRequestID++
 	// Always cancel any in-flight async query so its late delivery
 	// can't overwrite items belonging to a newer buffer state.
 	if e.asyncCancel != nil {
 		e.asyncCancel()
 		e.asyncCancel = nil
-	}
-	if !e.AutocompleteOpen() && !e.naturalAutocompleteContext() {
-		return
 	}
 	if e.autocomplete == nil {
 		return
@@ -1970,22 +1975,29 @@ func (e *Editor) HandleInput(data string) {
 // refreshAutocompleteAfterTyping is the end of editor.ts insertCharacter, which runs after char was inserted. An open popup is updated whatever was typed.
 // A closed one opens only for "/" at the start of the message, for a trigger character where a trigger token ends at the cursor, and for a letter, digit,
 // ".", "-", "_" or CJK character in a slash command (its arguments included) or a trigger token; a space, "é" or "/" typed after "/cmd" opens none.
-// A character that opens nothing still supersedes a request in flight, whose answer Pi drops as stale once the text moved on: it is cancelled rather than run to its end.
 func (e *Editor) refreshAutocompleteAfterTyping(char string) {
 	if e.AutocompleteOpen() || e.typedCharacterOpensAutocomplete(char) {
 		e.refreshAutocomplete()
 		return
 	}
 	e.autocompleteMousePressedIndex = nil
+	e.supersedeStartedAutocomplete()
+}
+
+// supersedeStartedAutocomplete is what a key that makes no request does to the request in flight. editor.ts touches none: a request that has not started (queued behind an
+// earlier one, waiting out its 20 ms debounce, or made earlier in the terminal read) starts against the text current then, and the answer of one that started is dropped as
+// stale once the text moved on. The started one is cancelled here instead of run to its end; its answer is dropped either way.
+func (e *Editor) supersedeStartedAutocomplete() {
+	if e.asyncCancel == nil || e.asyncStarted != nil && !e.asyncStarted.Load() {
+		return
+	}
 	e.autocompleteRequestID++
 	if e.asyncAutocomplete != nil {
 		e.AutocompleteCancel()
 		return
 	}
-	if e.asyncCancel != nil {
-		e.asyncCancel()
-		e.asyncCancel = nil
-	}
+	e.asyncCancel()
+	e.asyncCancel = nil
 }
 
 // typedCharacterOpensAutocomplete is the closed-popup branch of editor.ts insertCharacter: the first of its three conditions that char meets decides.
