@@ -138,7 +138,7 @@ const shareExtensions = "--listen-share-extensions"
 // listenExtensionServer starts a server whose agent directory holds the Go and the Node counter fixtures, and returns it with the file the fixtures' session_shutdown handlers append to. extra are further server arguments, such as shareExtensions.
 func listenExtensionServer(t *testing.T, extra ...string) (*listenServer, string) {
 	t.Helper()
-	return listenExtensionServerBinary(t, buildPigBinaryForSignalTest(t), extra...)
+	return listenExtensionServerBinary(t, listenTestBinary(t), extra...)
 }
 
 // listenExtensionServerBinary is listenExtensionServer over the pig executable at binary.

@@ -10,19 +10,6 @@ import (
 	"testing"
 )
 
-// concurrentListenBinary is the pig the concurrency tests start: under -race a build with the race detector, because the races of concurrent session builds are in the server process, where the test binary's detector does not look. A race it finds prints to the server's stderr (requireNoServerRace).
-func concurrentListenBinary(t *testing.T) string {
-	t.Helper()
-	if !raceBuild {
-		return buildPigBinaryForSignalTest(t)
-	}
-	out, err := raceTestBinary.get(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-
 func requireNoServerRace(t *testing.T, server *listenServer) {
 	t.Helper()
 	if strings.Contains(server.stderr(), "DATA RACE") {
@@ -39,7 +26,7 @@ func TestListenDefaultBuildsSessionsConcurrently(t *testing.T) {
 	}
 	result := filepath.Join(dir, "barrier.log")
 	path := filepath.Join(dir, "pig.sock")
-	server := startListenServerBinary(t, concurrentListenBinary(t), append(listenEnv(t, dir), "LISTEN_BARRIER_COUNT="+filepath.Join(dir, "count"), "LISTEN_BARRIER_RESULT="+result),
+	server := startListenServerBinary(t, listenTestBinary(t), append(listenEnv(t, dir), "LISTEN_BARRIER_COUNT="+filepath.Join(dir, "count"), "LISTEN_BARRIER_RESULT="+result),
 		"--mode", "rpc", "--listen", path, "--model", "test-faux/echo", "--no-session", "-e", fixture)
 	server.path = path
 	requestResponse(server.dial(), "ready", "get_state")
@@ -67,7 +54,7 @@ func goLinks(t *testing.T, sessions int) int {
 	}
 	path := filepath.Join(dir, "pig.sock")
 	env := append(listenEnv(t, dir), "GOFLAGS=-toolexec="+script, "LINK_LOG="+log, "PIG_TEST_FAUX_SCENARIO=parity-basic")
-	server := startListenServerBinary(t, concurrentListenBinary(t), env, "--mode", "rpc", "--listen", path, "--model", "test-faux/faux-1", "--no-session")
+	server := startListenServerBinary(t, listenTestBinary(t), env, "--mode", "rpc", "--listen", path, "--model", "test-faux/faux-1", "--no-session")
 	server.path = path
 	requestResponse(server.dial(), "ready", "get_state")
 	installListenGoExtension(t, filepath.Join(dir, "agent", "extensions"))
@@ -102,7 +89,7 @@ func TestListenConcurrentSessionsBuildAnExtensionOnce(t *testing.T) {
 // Many sessions start, run a tool and replace their session at the same time in the default server, which builds them concurrently: the server process reports no data race (D232). Under -race the server is built with the race detector (concurrentListenBinary); without it the test still proves the sessions all work.
 func TestListenConcurrentSessionBuildsReportNoDataRace(t *testing.T) {
 	const sessions = 10
-	server, _ := listenExtensionServerBinary(t, concurrentListenBinary(t))
+	server, _ := listenExtensionServerBinary(t, listenTestBinary(t))
 	conns := make([]*rpcProcess, sessions)
 	for i := range conns {
 		conns[i] = server.dial()

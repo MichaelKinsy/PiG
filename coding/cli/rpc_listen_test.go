@@ -70,7 +70,20 @@ func listenEnv(t *testing.T, dir string) []string {
 // startListenServer starts the server on dir/pig.sock unless args already carry --listen.
 func startListenServer(t *testing.T, env []string, args ...string) *listenServer {
 	t.Helper()
-	return startListenServerBinary(t, buildPigBinaryForSignalTest(t), env, args...)
+	return startListenServerBinary(t, listenTestBinary(t), env, args...)
+}
+
+// listenTestBinary is the pig every --listen test starts: under -race a build with the race detector, because the races of a server that runs sessions side by side are in the server process, where the test binary's detector does not look. A race it finds prints to the server's stderr (requireNoServerRace) and ends the process with exit code 66.
+func listenTestBinary(t *testing.T) string {
+	t.Helper()
+	if !raceBuild {
+		return buildPigBinaryForSignalTest(t)
+	}
+	out, err := raceTestBinary.get(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 // startListenServerBinary starts the server from the pig executable at binary.
@@ -702,4 +715,51 @@ func readJSONLRecords(conn net.Conn, fn func(rpcRecord)) error {
 		fn(record)
 		return true
 	})
+}
+
+// The server's exit removes the socket path only while it still names the socket the server created (D232).
+func TestRemoveOwnSocketLeavesAPathItDidNotCreate(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "s.sock")
+	if err := os.WriteFile(path, []byte("ours"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	created, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Another server (or a user) takes the path while this server's socket still exists elsewhere: the server holds the original's inode open, so a new file cannot reuse its number.
+	moved := filepath.Join(dir, "moved.sock")
+	if err := os.Rename(path, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("theirs"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removeOwnSocket(path, created)
+	if data, err := os.ReadFile(path); err != nil || string(data) != "theirs" {
+		t.Fatalf("a path the server did not create was removed or changed: %q, %v", data, err)
+	}
+	// The path still names the server's own socket: it is removed.
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(moved, path); err != nil {
+		t.Fatal(err)
+	}
+	removeOwnSocket(path, created)
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the server's own path is still there: %v", err)
+	}
+}
+
+func TestNetErrorCauseNamesTheCauseNotThePrivateBindPath(t *testing.T) {
+	cause := errors.New("too many open files")
+	err := &net.OpError{Op: "accept", Net: "unix", Addr: &net.UnixAddr{Name: "/run/.lab12/s", Net: "unix"}, Err: cause}
+	if got := netErrorCause(err); !errors.Is(got, cause) {
+		t.Fatalf("netErrorCause = %v, want the cause %v", got, cause)
+	}
+	if got := netErrorCause(cause); !errors.Is(got, cause) {
+		t.Fatalf("netErrorCause of a plain error = %v", got)
+	}
 }

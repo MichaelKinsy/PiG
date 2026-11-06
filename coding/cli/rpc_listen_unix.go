@@ -44,6 +44,10 @@ func listenPrivateUnixSocket(path string) (net.Listener, error) {
 		}
 		return nil, err
 	}
+	// The bind name is removed with its directory; the server removes path itself at exit (removeOwnSocket), so the listener must not unlink either name when it closes.
+	if unix, ok := listener.(*net.UnixListener); ok {
+		unix.SetUnlinkOnClose(false)
+	}
 	return listener, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -26,6 +27,56 @@ func flushConnectionTail(tail *stdoutQueue) {
 	ctx, cancel := context.WithTimeout(context.Background(), connectionFlushTimeout)
 	defer cancel()
 	tail.Wait(ctx)
+}
+
+// listenHeapSettleDelay is how long the server must go without finishing a session build before it returns the heap of the burst to the operating system. pig additive (D232): no upstream counterpart; it is longer than one build (about 0.2 s with two extensions) and short against the two minutes Go's forced collection would wait.
+const listenHeapSettleDelay = 3 * time.Second
+
+// heapSettler returns memory to the operating system once a burst of session builds is over: sessions that start together allocate their builds' garbage side by side, so the heap goal of that moment is several times the live heap (1.8 GB for 421 MB live at 100 sessions with two extensions), and Go's scavenger keeps the pages until a collection runs, which an idle server does only after two minutes. Every finished build touches the settler; free runs once, delay after the last touch. pig additive (D232).
+type heapSettler struct {
+	delay time.Duration
+	free  func()
+
+	mu      sync.Mutex
+	timer   *time.Timer
+	stopped bool
+}
+
+func newHeapSettler(delay time.Duration, free func()) *heapSettler {
+	return &heapSettler{delay: delay, free: free}
+}
+
+// touch restarts the quiet period.
+func (h *heapSettler) touch() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.stopped {
+		return
+	}
+	if h.timer == nil {
+		h.timer = time.AfterFunc(h.delay, h.fire)
+		return
+	}
+	h.timer.Reset(h.delay)
+}
+
+func (h *heapSettler) fire() {
+	h.mu.Lock()
+	stopped := h.stopped
+	h.mu.Unlock()
+	if !stopped {
+		h.free()
+	}
+}
+
+// stop ends the settler: a pending free does not run.
+func (h *heapSettler) stop() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.stopped = true
+	if h.timer != nil {
+		h.timer.Stop()
+	}
 }
 
 // listenTerminationSignals are the signals that end a --listen server: the ones rpc mode handles, and Ctrl+C, which would otherwise leave the socket file behind. pig additive (D232).
@@ -188,6 +239,24 @@ func (h *listenHosts) terminate() {
 	}
 }
 
+// netErrorCause is the cause inside a *net.OpError, whose address is the private bind path of listenPrivateUnixSocket, a directory that no longer exists once the socket is linked into place. pig additive (D232).
+func netErrorCause(err error) error {
+	if opErr, ok := errors.AsType[*net.OpError](err); ok && opErr.Err != nil {
+		return opErr.Err
+	}
+	return err
+}
+
+// removeOwnSocket removes path when it still names the socket the server created (created, from the Lstat after the bind), and leaves a path another server or a user put there meanwhile alone: the server's exit does not remove a path it did not create. With no record of the socket it removes the path. pig additive (D232).
+func removeOwnSocket(path string, created os.FileInfo) {
+	if created != nil {
+		if now, err := os.Lstat(path); err != nil || !os.SameFile(created, now) { //perf:ok cold: one stat per server exit
+			return
+		}
+	}
+	_ = os.Remove(path)
+}
+
 // runRPCListen serves one RPC session per connection accepted on the Unix socket at flags.Listen until a termination signal, and returns the process exit code. pig additive (D232).
 func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
 	path := flags.Listen
@@ -197,14 +266,12 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	}
 	listener, err := listenPrivateUnixSocket(path)
 	if err != nil {
-		var opErr *net.OpError
-		if errors.As(err, &opErr) && opErr.Err != nil {
-			err = opErr.Err
-		}
-		fmt.Fprintf(os.Stderr, "pig --listen: listen %s: %v\n", path, err)
+		fmt.Fprintf(os.Stderr, "pig --listen: listen %s: %v\n", path, netErrorCause(err))
 		return 1
 	}
-	defer func() { _ = os.Remove(path) }()
+	// The socket this server created: it removes the path at exit only while the path still names it (pig additive (D232)).
+	created, _ := os.Lstat(path) //perf:ok cold: one stat per server start
+	defer removeOwnSocket(path, created)
 
 	builder := resources.Builder
 	ctx, stop := context.WithCancel(ctx)
@@ -225,6 +292,9 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	}
 	// The startup build's Host stays tracked until the first connection's session ends, or until exit if none connects.
 	hosts.add(resources.Build)
+	settle := newHeapSettler(listenHeapSettleDelay, debug.FreeOSMemory)
+	defer settle.stop()
+	settle.touch()
 
 	// Both hooks fan out to every live session at once, and the shutdown one stops accepting first.
 	setTerminationPrelude(func() { controls.each(false, func(c rpcSessionControls) { c.prelude() }) })
@@ -254,13 +324,13 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	conns.Go(func() {
 		for {
 			conn, err := acceptWithBackoff(ctx, listener, func(err error, delay time.Duration) {
-				fmt.Fprintf(os.Stderr, "pig --listen: accept: %v; retrying in %v\n", err, delay)
+				fmt.Fprintf(os.Stderr, "pig --listen: accept %s: %v; retrying in %v\n", path, netErrorCause(err), delay)
 			})
 			if err != nil {
 				if ctx.Err() == nil && !errors.Is(err, net.ErrClosed) {
 					acceptFailed = err
 					// pig additive (D232): a failed accept ends the server, and its sessions shut down first.
-					fmt.Fprintf(os.Stderr, "pig --listen: accept: %v\n", err)
+					fmt.Fprintf(os.Stderr, "pig --listen: accept %s: %v\n", path, netErrorCause(err))
 					controls.each(true, func(c rpcSessionControls) { c.shutdown(syscall.SIGTERM) })
 					stop()
 				}
@@ -289,6 +359,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 				if buildMu != nil {
 					buildMu.Unlock()
 				}
+				settle.touch()
 				if buildErr != nil {
 					fmt.Fprintf(os.Stderr, "pig --listen: build: %v\n", buildErr)
 					return

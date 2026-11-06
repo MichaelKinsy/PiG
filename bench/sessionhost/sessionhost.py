@@ -235,6 +235,10 @@ def run_arm(arm, n, args, root, workspace, port):
                         errors.append(f"turn {i}: {e}")
             time.sleep(0.5)
             points.append({"turn": i, **sample(roots)})
+        if args.settle:
+            # A V8 heap shrinks and Go returns memory only once a process has been idle for a while: a process that started seconds ago holds more than it will hold.
+            time.sleep(args.settle)
+            points.append({"turn": "settled", **sample(roots)})
         served = requests_served(port) - served0
         if served != 2 * args.turns * n:
             errors.append(f"model requests {served}, want {2 * args.turns * n} (2 per turn per session)")
@@ -277,6 +281,7 @@ def main():
     ap.add_argument("--sessions", type=int, nargs="+", default=[1, 10, 50, 100])
     ap.add_argument("--turns", type=int, default=5, choices=range(1, 6))
     ap.add_argument("--extensions", action="store_true")
+    ap.add_argument("--settle", type=int, default=0, help="seconds to idle after the last turn before the final sample")
     ap.add_argument("--arms", nargs="+", default=["listen", "listen-shared", "rpc"], choices=["listen", "listen-shared", "rpc"])
     ap.add_argument("--json-out", required=True)
     args = ap.parse_args()
@@ -289,7 +294,7 @@ def main():
             root = scratch / "root"
             setup_home(root, port, args.extensions, workspace)
             if args.extensions:  # warm the Go extension's build cache so no arm pays for it
-                warm = run_arm("rpc", 1, argparse.Namespace(pig=args.pig, turns=1, extensions=True), root, workspace, port)
+                warm = run_arm("rpc", 1, argparse.Namespace(pig=args.pig, turns=1, extensions=True, settle=0), root, workspace, port)
                 if warm["errors"]:
                     sys.exit("warm-up failed, the measured arms would pay for the build: " + "; ".join(warm["errors"]))
             for n in args.sessions:
