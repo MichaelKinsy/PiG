@@ -129971,6 +129971,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.fillContentHashes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.fillContentHashes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cellConfigs []ExtConfig, fill func(*ExtConfig))"
+      },
+      "shapeHash": "sha256:22c8f5f45192afaa74509e70e4470ea4043ada8bef401ea4514c887ec3543027"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.finishRetirements",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.finishRetirements",
@@ -143477,6 +143488,17 @@
         "type": "func(cfg *ExtConfig)"
       },
       "shapeHash": "sha256:471421cd121af1eda24c305ed153c46f0a55f2cfbc3c9f8070ca8ee69e86ca81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#fillTogether",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "fillTogether",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(configs []ExtConfig, include func(*ExtConfig) bool, fill func(*ExtConfig))"
+      },
+      "shapeHash": "sha256:24ace15464ce1fd1bfb8b3506cb0117d7e64bf5bd94b5eadf04156a4ea36675f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#finalSetOrigin",
@@ -185238,7 +185260,7 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/rpcclient#startSettleDelay",
       "package": "github.com/MichaelKinsy/PiG/coding/rpcclient",
       "name": "startSettleDelay",
-      "kind": "constant",
+      "kind": "variable",
       "exported": false,
       "shape": {
         "type": "time.Duration"

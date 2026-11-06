@@ -334,6 +334,7 @@ func (c *RpcClient) collectStderr(proc *agentProcess, stderr io.ReadCloser) {
 // one trailing CR is stripped, and a final unterminated record is delivered
 // at end of stream.
 func (c *RpcClient) readStdout(proc *agentProcess, stdout io.ReadCloser) {
+	//portlint:allow doubleclose only readStdout closes stdoutDone, once, when it returns; one goroutine reads each process's stdout
 	defer close(proc.stdoutDone)
 	defer func() { _ = stdout.Close() }()
 	_ = ReadJSONLLines(stdout, func(line []byte) bool {

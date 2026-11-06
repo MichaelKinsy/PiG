@@ -207,6 +207,7 @@ func (p *Pipes) awaitTurn(index int, file *os.File) (claimed, ok bool) {
 			p.inflight[index].Store(true)
 			return true, true
 		}
+		//portlint:allow golifetime the loop ends through p.released, which Wait closes, and when the pipe closes or polling is unsupported
 		select {
 		case <-p.wake[index]:
 		case <-p.released:
