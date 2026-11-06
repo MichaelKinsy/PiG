@@ -47,7 +47,7 @@ func validCopiedPath(relative string) error {
 }
 
 func marshalPigletCopies(copies pigletCopies) ([]byte, error) {
-	data, err := json.MarshalIndent(copies, "", "  ")
+	data, err := json.MarshalIndent(copies, "", "  ") //portlint:allow jsonescape the record is PiG's own file, written and read back by PiG's Go json, which decodes \u003c and < alike; Pi has no such file
 	if err != nil {
 		return nil, err
 	}
