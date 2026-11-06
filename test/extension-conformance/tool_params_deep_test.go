@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
 // Tool arguments nested deeply, read by every SDK through ToolParams and ToolInput. Pi has no fixed limit: its own runtime (the Node SDK) returns the object while V8 has
@@ -28,7 +30,7 @@ func TestToolParamsNestingAcrossSDKs(t *testing.T) {
 		}
 		return report, ""
 	}
-	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+	eachDeepPlacement(t, func(t *testing.T, r *modelTypesRig) {
 		node := strings.Contains(t.Name(), "/node-")
 		// 9998 is the deepest the host sends: its marshal validates the arguments alone against 10000 levels, and they add two around the array.
 		for _, depth := range []int{200, 1000, 4000, 5000, 9000, 9998} {
@@ -64,4 +66,36 @@ func deepValue(text *string) string {
 		return "<none>"
 	}
 	return *text
+}
+
+// eachDeepPlacement is eachModelTypesPlacement plus the Lisp SDK in a shared runtime cell beside a peer: the other SDKs' packed placements are in modelTypesSDKs.
+func eachDeepPlacement(t *testing.T, body func(t *testing.T, r *modelTypesRig)) {
+	t.Helper()
+	eachModelTypesPlacement(t, body)
+	if testing.Short() {
+		return
+	}
+	t.Run("lisp-packed", func(t *testing.T) {
+		requireSBCL(t)
+		r := newModelTypesRig(t)
+		peers, err := packedUIConfigs["lisp"]()
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg := lispSurfaceFixtureConfig(t)
+		cfg.Isolation, cfg.ContentHash = "shared-ok", "packed-modeltypes-lisp"
+		loaded, failures := r.host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg, peers[1]})
+		applyQueuedRegistrations(r.host)
+		if len(failures) != 0 || len(loaded) != 2 {
+			t.Fatalf("load: %v", failures)
+		}
+		for _, ext := range loaded {
+			if ext.Name == lispFixtureName {
+				r.finish(ext)
+				body(t, r)
+				return
+			}
+		}
+		t.Fatalf("%s not loaded: %v", lispFixtureName, loaded)
+	})
 }

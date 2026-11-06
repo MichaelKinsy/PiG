@@ -19,10 +19,14 @@ import (
 
 // frameCheck holds the frames a Host wrote that are not json.Marshal of their own envelope.
 type frameCheck struct {
-	mu       sync.Mutex
-	frames   int
-	events   map[string]int
-	failures []string
+	mu     sync.Mutex
+	frames int
+	events map[string]int
+	// deltas and deepDeltas count the event requests that carry the operations of an event stream (no payload of their own), and those whose operations nest past
+	// serde_json's 128 levels, by event.
+	deltas     map[string]int
+	deepDeltas map[string]int
+	failures   []string
 }
 
 // checkOutboundFrames fails t when a frame the host writes to an extension, in any load mode, is not the bytes json.Marshal writes for the envelope it carries: every member in the encoder's order, every raw member compact and escaped as the encoder escapes it (<, >, &, U+2028, U+2029). Each realization of an extension then receives the bytes it received before the host shared or spliced encodings.
@@ -58,6 +62,15 @@ func (c *frameCheck) observe(extName string, frame []byte) {
 			c.events = map[string]int{}
 		}
 		c.events[env.Request.Event]++
+		if stream := env.Request.Stream; stream != nil && len(stream.Ops) > 0 && len(env.Request.Args) == 0 {
+			if c.deltas == nil {
+				c.deltas, c.deepDeltas = map[string]int{}, map[string]int{}
+			}
+			c.deltas[env.Request.Event]++
+			if bytes.Contains(stream.Ops, bytes.Repeat([]byte("["), 150)) || bytes.Contains(stream.Ops, bytes.Repeat([]byte(`{"a":`), 150)) {
+				c.deepDeltas[env.Request.Event]++
+			}
+		}
 	}
 	if failure != "" && len(c.failures) < 5 {
 		c.failures = append(c.failures, failure)
@@ -69,6 +82,13 @@ func (c *frameCheck) eventFrames() map[string]int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return maps.Clone(c.events)
+}
+
+// deepDeltaFrames returns how many delta frames of each event the host wrote whose operations nest past serde_json's 128 levels.
+func (c *frameCheck) deepDeltaFrames() map[string]int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return maps.Clone(c.deepDeltas)
 }
 
 func clip(b []byte) string {

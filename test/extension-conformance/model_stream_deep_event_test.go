@@ -34,14 +34,14 @@ func deepModelStream(provider, model string, depth int) (*ai.AssistantMessageEve
 	return stream, nil
 }
 
-// A model_stream_event whose partial message holds tool-call arguments nested thousands of levels deep (up to what the host's own marshal sends) reaches every SDK: the
+// A model_stream_event whose partial message holds tool-call arguments nested thousands of levels deep (up to what the host's own marshal sends) reaches every SDK in every placement (isolated and in a shared runtime cell): the
 // stream completes and the same extension answers the next stream. A notification the host cannot send because it nests past the SDKs' readers is covered by the SDK suites
 // (Rust surrogate_tests.rs, Python tests/test_deep_frames.py, Lisp json-tests.lisp, Go extensions/sdk).
 func TestModelStreamEventWithDeepToolArgumentsReachesEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping model stream conformance in short mode (builds subprocess fixtures)")
 	}
-	for _, tc := range sdkHarnessCases() {
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
 			t.Cleanup(func() {
