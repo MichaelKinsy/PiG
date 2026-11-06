@@ -48,6 +48,22 @@ func TestRenderLatexLoneSurrogatesMatchPi(t *testing.T) {
 			"\\sqrt{"+j+"}", "\\mathbb{"+j+"}", "\\text{"+j+"}", j+"\\frac{x}{y}",
 		)
 	}
+	// Pi tests the argument with /u regexes, which see joined halves as one astral letter or digit: the simple-fraction and simple-root tests and the
+	// spacing around a named operator.
+	letter := func(sep string) string {
+		return jsstring.FromUTF16([]uint16{0xd835}) + sep + jsstring.FromUTF16([]uint16{0xdc9c})
+	}
+	digits := func(sep string) string {
+		return jsstring.FromUTF16([]uint16{0xd835}) + sep + jsstring.FromUTF16([]uint16{0xdfce}) + jsstring.FromUTF16([]uint16{0xd835}) + sep + jsstring.FromUTF16([]uint16{0xdfcf})
+	}
+	for _, sep := range []string{"{}", "\\relax "} {
+		a, d := letter(sep), digits(sep)
+		sources = append(sources,
+			"\\sqrt{"+a+"}", "\\sqrt{x"+a+"}", "\\sqrt[3]{"+a+"}", "\\sqrt{"+d+"}", "\\sqrt{"+a+"x}",
+			"\\frac{"+a+"}{x}", "\\frac{"+a+"x}{y}", "\\frac{x}{"+d+"}", "\\frac{"+d+"}{2}", "\\frac{"+a+"}{"+d+"}", "\\frac{"+a+" }{ "+d+"}", "\\frac{"+a+"+x}{y}",
+			a+"\\sin x", a+"\\operatorname{f}x", "\\operatorname{f}"+a, "\\sin"+a, "x\\sin "+a, "\\operatorname{f}"+d, d+"\\lim_{x} f", "\\frac{"+a+"\\sin x}{y}", "\\sqrt{"+a+"\\sin x}",
+		)
+	}
 	// An unbraced single-token argument is one UTF-16 unit in Pi: an astral character is split, its high half is the argument and its low half is the next
 	// character of the source.
 	for _, c := range []string{"😀", "𝒜", "\U00010000"} {
