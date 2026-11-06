@@ -269,7 +269,7 @@ func TestSetupKeyHandlersDequeueReportsTheRestoredCount(t *testing.T) {
 			r.m.compactionQueue = append(r.m.compactionQueue, compactionQueuedMessage{text: q.text, mode: q.mode})
 		}
 		r.m.editor.SetText(c.editor)
-		r.press(t, "\x1b[1;3A")
+		r.press(t, HostDequeueInputs()[0])
 		if w := r.snapshot(); w.Editor != c.wantEditor || w.Status != c.wantStatus || len(r.m.compactionQueue) != 0 {
 			t.Errorf("%+v: editor %q, status %q, queue %d; want %q, %q, 0", c.queued, w.Editor, w.Status, len(r.m.compactionQueue), c.wantEditor, c.wantStatus)
 		}
@@ -282,7 +282,7 @@ func TestSetupKeyHandlersFollowUpBranches(t *testing.T) {
 		r := newKeyRig(t, nil)
 		r.m.isCompacting = true
 		r.m.editor.SetText("  ")
-		r.press(t, "\x1b[13;3u")
+		r.press(t, hostKittyFollowUpInput())
 		if w := r.snapshot(); w.Editor != "  " || w.QueuedFollowUps != 0 || w.Status != "" {
 			t.Errorf("blank follow-up: editor %q, queued %d, status %q", w.Editor, w.QueuedFollowUps, w.Status)
 		}
@@ -291,7 +291,7 @@ func TestSetupKeyHandlersFollowUpBranches(t *testing.T) {
 		r := newKeyRig(t, nil)
 		r.m.isCompacting = true
 		r.m.editor.SetText(" later ")
-		r.press(t, "\x1b[13;3u")
+		r.press(t, hostKittyFollowUpInput())
 		if len(r.m.compactionQueue) != 1 || r.m.compactionQueue[0].text != "later" || r.m.compactionQueue[0].mode != compactionQueueFollowUp {
 			t.Fatalf("queue = %+v, want one follow-up %q", r.m.compactionQueue, "later")
 		}
@@ -305,7 +305,7 @@ func TestSetupKeyHandlersFollowUpBranches(t *testing.T) {
 		var submitted []string
 		r.m.editor.OnSubmit = func(text string) { submitted = append(submitted, text) }
 		r.m.editor.SetText(" go ")
-		r.press(t, "\x1b[13;3u")
+		r.press(t, hostKittyFollowUpInput())
 		if !reflect.DeepEqual(submitted, []string{"go"}) || r.m.editor.Text() != "" {
 			t.Errorf("submitted %q, editor %q; want [go] and an empty editor", submitted, r.m.editor.Text())
 		}

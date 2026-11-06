@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
@@ -284,24 +285,11 @@ func CanonicalizePath(path string) string {
 	if path == "" {
 		return path
 	}
-	absolute, err := nodepath.Resolve(path)
-	if err != nil {
-		return path
-	}
-	canonical, err := evalCanonicalPath(absolute)
+	canonical, err := noderealpath.Sync(path)
 	if err != nil {
 		return path
 	}
 	return canonical
-}
-
-// RealPathSync is Node's fs.realpathSync of path: the absolute path with every symlink and drive junction followed, failing where Node throws. Like CanonicalizePath it keeps the case and 8.3 short names of components that are not links on Windows (filepath.EvalSymlinks would expand them to the stored long form), so a caller that hands the path to another program passes the spelling Pi passes.
-func RealPathSync(path string) (string, error) {
-	absolute, err := nodepath.Resolve(path)
-	if err != nil {
-		return "", err
-	}
-	return evalCanonicalPath(absolute)
 }
 
 // IsLocalPath reports whether value is a local path rather than a package source, a built-in extension or a remote URL. Bare names, relative paths, and file URLs are local.

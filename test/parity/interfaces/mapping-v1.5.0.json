@@ -77764,9 +77764,9 @@
         "public-api:ai/api_streams.go#StreamOpenAIResponses"
       ],
       "evidence": [
+        "test:ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
         "test:ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi",
-        "test:ai/openai_responses_call_id_oracle_test.go#TestOpenAIResponsesToolCallIDPartsMatchPi",
-        "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi"
+        "test:ai/openai_responses_call_id_oracle_test.go#TestOpenAIResponsesToolCallIDPartsMatchPi"
       ]
     },
     {
@@ -77786,9 +77786,9 @@
         "public-api:ai/api_streams.go#StreamOpenAIResponses"
       ],
       "evidence": [
+        "test:ai/openai_responses_tool_notices_oracle_test.go#TestOpenAIResponsesToolChangeNoticesMatchPi",
         "test:ai/identity_oracle_test.go#TestProviderIdentityHeadersMatchPi",
-        "test:ai/openai_responses_call_id_oracle_test.go#TestOpenAIResponsesToolCallIDPartsMatchPi",
-        "test:ai/provider_abort_oracle_test.go#TestProviderAbortMatchesPi"
+        "test:ai/openai_responses_call_id_oracle_test.go#TestOpenAIResponsesToolCallIDPartsMatchPi"
       ]
     },
     {
@@ -135891,8 +135891,8 @@
       ],
       "evidence": [
         "test:codemode/deterministic_test.go#TestAVMThatIsToldTheSameResultNumberTwiceCrashes",
-        "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer",
-        "test:codemode/remote_serve_test.go#TestARequestWithoutToolAndGlobalListsStartsTheVMWithEmptyLists"
+        "test:codemode/interpreter_serve_test.go#TestServeOptionsInterpreterReachesTheRuntime",
+        "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -137478,7 +137478,7 @@
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestNewSandboxDurableObjectHasPisDefaults",
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectsLimitsCapEveryRequest",
-        "test:codemode/remote_test.go#TestCloseWaitsForTheRemoteToReturn"
+        "test:codemode/interpreter_serve_test.go#TestServeOptionsInterpreterReachesTheRuntime"
       ]
     },
     {
@@ -139844,8 +139844,8 @@
       ],
       "evidence": [
         "test:codemode/deterministic_test.go#TestAVMThatIsToldTheSameResultNumberTwiceCrashes",
-        "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer",
-        "test:codemode/remote_serve_test.go#TestARequestWithoutToolAndGlobalListsStartsTheVMWithEmptyLists"
+        "test:codemode/interpreter_serve_test.go#TestServeOptionsInterpreterReachesTheRuntime",
+        "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -141208,7 +141208,7 @@
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestNewSandboxDurableObjectHasPisDefaults",
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectsLimitsCapEveryRequest",
-        "test:codemode/remote_test.go#TestCloseWaitsForTheRemoteToReturn"
+        "test:codemode/interpreter_serve_test.go#TestServeOptionsInterpreterReachesTheRuntime"
       ]
     },
     {
@@ -143702,8 +143702,8 @@
       ],
       "evidence": [
         "test:codemode/deterministic_test.go#TestAVMThatIsToldTheSameResultNumberTwiceCrashes",
-        "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer",
-        "test:codemode/remote_serve_test.go#TestARequestWithoutToolAndGlobalListsStartsTheVMWithEmptyLists"
+        "test:codemode/interpreter_serve_test.go#TestServeOptionsInterpreterReachesTheRuntime",
+        "test:codemode/remote_serve_test.go#TestARejectedExchangeEndsTheServer"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -145002,7 +145002,7 @@
       "evidence": [
         "test:codemode/cloudflare/cloudflare_test.go#TestNewSandboxDurableObjectHasPisDefaults",
         "test:codemode/cloudflare/cloudflare_test.go#TestTheObjectsLimitsCapEveryRequest",
-        "test:codemode/remote_test.go#TestCloseWaitsForTheRemoteToReturn"
+        "test:codemode/interpreter_serve_test.go#TestServeOptionsInterpreterReachesTheRuntime"
       ]
     },
     {
@@ -147293,6 +147293,7 @@
       ],
       "evidence": [
         "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
+        "test:coding/session_queue_images_test.go#TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery",
         "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
       ]
     },
@@ -147314,6 +147315,7 @@
       ],
       "evidence": [
         "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
+        "test:coding/session_queue_images_test.go#TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery",
         "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
       ]
     },
@@ -154071,8 +154073,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -154093,8 +154095,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -160684,7 +160686,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/package_model_catalogs.go#refreshModelCatalogs"
+        "call:coding/cli/mcp_command.go#newMcpProviderTokenReader"
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
@@ -160729,7 +160731,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/package_model_catalogs.go#refreshModelCatalogs"
+        "call:coding/cli/mcp_command.go#newMcpProviderTokenReader"
       ],
       "evidence": [
         "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
@@ -160879,7 +160881,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/model_runtime_create.go#CreateModelRuntime"
+        "call:coding/cli/mcp_command.go#newMcpProviderTokenReader"
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
@@ -160901,7 +160903,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/package_model_catalogs.go#refreshModelCatalogs"
+        "call:coding/cli/mcp_command.go#newMcpProviderTokenReader"
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
@@ -161869,8 +161871,8 @@
       ],
       "evidence": [
         "test:tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior",
-        "test:internal/codingagent/remote_editor_delegated_test.go#TestDelegatedEditorBaseIsTheHostsStockEditor",
-        "test:tui/editor_paste_marker_test.go#TestEditor_PasteMarker_ClearedOnEditorClear"
+        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomKeepsCollapsedPasteContent",
+        "test:internal/codingagent/ext_ui_custom_test.go#TestRestoreQueuedMessagesKeepsCollapsedPasteContent"
       ]
     },
     {
@@ -161891,8 +161893,8 @@
       ],
       "evidence": [
         "test:tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior",
-        "test:internal/codingagent/remote_editor_delegated_test.go#TestDelegatedEditorBaseIsTheHostsStockEditor",
-        "test:tui/editor_paste_marker_test.go#TestEditor_PasteMarker_ClearedOnEditorClear"
+        "test:internal/codingagent/ext_ui_custom_test.go#TestExtUIContextCustomKeepsCollapsedPasteContent",
+        "test:internal/codingagent/ext_ui_custom_test.go#TestRestoreQueuedMessagesKeepsCollapsedPasteContent"
       ]
     },
     {
@@ -161913,8 +161915,8 @@
       ],
       "evidence": [
         "test:tui/editor_word_segments_upstream_test.go#TestUpstreamEditorStateAccessors",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupAtTheMovedCursorLikePi",
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupWithANonASCIIPrefixAtTheMovedCursorLikePi"
       ]
     },
     {
@@ -161935,8 +161937,8 @@
       ],
       "evidence": [
         "test:tui/editor_word_segments_upstream_test.go#TestUpstreamEditorStateAccessors",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupAtTheMovedCursorLikePi",
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupWithANonASCIIPrefixAtTheMovedCursorLikePi"
       ]
     },
     {
@@ -162187,8 +162189,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -162209,8 +162211,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -165369,8 +165371,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -165391,8 +165393,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -172868,9 +172870,9 @@
         "call:internal/codingagent/extension_editor.go#NewExtensionEditorComponent"
       ],
       "evidence": [
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorComponentChildrenFollowUpstream",
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorComponentForwardsFocusToItsEditor",
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorComponentNeverExceedsRenderWidth"
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow"
       ]
     },
     {
@@ -173020,9 +173022,9 @@
         "call:internal/codingagent/extension_editor.go#ExtensionEditorComponent.HandleInput"
       ],
       "evidence": [
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorComponentChildrenFollowUpstream",
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalEditRepaintsThroughAParentContainer"
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff"
       ],
       "behaviorContracts": [
         "coding-agent/extension-editor/cancel-before-external-editor",
@@ -173046,9 +173048,9 @@
         "call:internal/codingagent/extension_editor.go#ExtensionEditorComponent.HandleInput"
       ],
       "evidence": [
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorComponentChildrenFollowUpstream",
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
-        "test:internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalEditRepaintsThroughAParentContainer"
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow",
+        "test:internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff"
       ],
       "behaviorContracts": [
         "coding-agent/extension-editor/cancel-before-external-editor"
@@ -173114,8 +173116,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -173136,8 +173138,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -173893,8 +173895,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -173915,8 +173917,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -175759,9 +175761,9 @@
         "call:coding/extension/host/inproc/runner.go#Runner.AddErrorListener"
       ],
       "evidence": [
+        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK",
         "test:test/extension-conformance/message_update_delta_test.go#TestConformance_MessageUpdateDeltas",
-        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas",
-        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
+        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas"
       ]
     },
     {
@@ -175781,9 +175783,9 @@
         "call:coding/extension/host/inproc/runner.go#Runner.AddErrorListener"
       ],
       "evidence": [
+        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK",
         "test:test/extension-conformance/message_update_delta_test.go#TestConformance_MessageUpdateDeltas",
-        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas",
-        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
+        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas"
       ]
     },
     {
@@ -177479,8 +177481,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -177501,8 +177503,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -180582,8 +180584,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -180604,8 +180606,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -181568,8 +181570,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestLanguageFromPath",
-        "test:internal/codingagent/tool_builtin_renderers_write_equivalence_test.go#TestWriteRenderCallMatchesTheEagerRendererAtEveryPrefix"
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
+        "test:tui/highlight_test.go#TestLanguageFromPath"
       ]
     },
     {
@@ -181590,8 +181592,8 @@
       ],
       "evidence": [
         "test:tui/language_from_path_oracle_test.go#TestLanguageFromPathMatchesPi",
-        "test:tui/highlight_test.go#TestLanguageFromPath",
-        "test:internal/codingagent/tool_builtin_renderers_write_equivalence_test.go#TestWriteRenderCallMatchesTheEagerRendererAtEveryPrefix"
+        "test:tui/highlight_test.go#TestHighlightCodeHighlightsDartNixAndGroovy",
+        "test:tui/highlight_test.go#TestLanguageFromPath"
       ]
     },
     {
@@ -182903,9 +182905,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdateChild",
         "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182926,9 +182928,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdateChild",
         "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182993,7 +182995,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Run"
       ],
       "evidence": [
-        "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed"
+        "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -183014,7 +183018,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Run"
       ],
       "evidence": [
-        "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed"
+        "test:internal/codingagent/crash_log_test.go#TestRunRecordsACrashAndReportsErrInteractiveCrashed",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -183209,9 +183215,9 @@
         "call:internal/codingagent/interactive_lifecycle.go#InteractiveMode.Stop"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdateChild",
         "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild"
       ]
     },
     {
@@ -183231,9 +183237,9 @@
         "call:internal/codingagent/interactive_lifecycle.go#InteractiveMode.Stop"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdateChild",
         "test:internal/codingagent/interactive_init_full_test.go#TestInitBuildsTheInteractiveModeChild",
-        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild",
-        "test:internal/codingagent/interactive_init_state_pty_test.go#TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild"
+        "test:internal/codingagent/interactive_init_pty_test.go#TestInitFailingAfterTheTuiStartsChild"
       ]
     },
     {
@@ -183294,17 +183300,17 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive.go#InteractiveMode.run"
+        "call:internal/codingagent/interactive.go#InteractiveMode.startInitialMessages"
       ],
       "evidence": [
-        "reach:internal/codingagent/interactive.go#InteractiveMode.run"
+        "reach:internal/codingagent/interactive.go#InteractiveMode.startInitialMessages"
       ]
     },
     {
       "id": "pkg:coding-agent/.#InteractiveModeOptions::property:initialMessage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4c0c0ce978276c0c94ffe6f6fdabd6f282d2ac0f0ca54c2dbb3fa0e78be98844",
-      "rationale": "Derived by the interface gap detector: InteractiveModeOptions::property:initialMessage is Go internal/codingagent/interactive.go#InteractiveModeOptions.InitialMessage (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: InteractiveModeOptions::property:initialMessage is Go internal/codingagent/interactive.go#InteractiveModeOptions.InitialMessage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/interactive.go#InteractiveModeOptions.InitialMessage"
       ],
@@ -183314,17 +183320,19 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive.go#InteractiveMode.run"
+        "call:internal/codingagent/interactive.go#InteractiveMode.startInitialMessages"
       ],
       "evidence": [
-        "reach:internal/codingagent/interactive.go#InteractiveMode.run"
+        "test:internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithAPlainMessageChild",
+        "test:internal/codingagent/startup_window_keys_pty_test.go#TestRunStartupQuitWithASlashCommandChild"
       ]
     },
     {
       "id": "pkg:coding-agent/.#InteractiveModeOptions::property:initialMessages",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a7d188f57a8b13b7cce77ada7aba3653b843905f7765a4597e446932225e3360",
-      "rationale": "Derived by the interface gap detector: InteractiveModeOptions::property:initialMessages is Go internal/codingagent/interactive.go#InteractiveModeOptions.InitialMessages (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: InteractiveModeOptions::property:initialMessages is Go internal/codingagent/interactive.go#InteractiveModeOptions.InitialMessages (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "internal/codingagent/interactive.go#InteractiveModeOptions.InitialMessages"
       ],
@@ -183334,10 +183342,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive.go#InteractiveMode.run"
+        "call:internal/codingagent/interactive.go#InteractiveMode.startInitialMessages"
       ],
       "evidence": [
-        "reach:internal/codingagent/interactive.go#InteractiveMode.run"
+        "test:internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder"
       ]
     },
     {
@@ -185460,8 +185468,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -185482,8 +185490,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -185593,7 +185601,7 @@
       "evidence": [
         "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput",
         "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesAuthInstructionsWithPromptUpstream",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
+        "test:tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions"
       ]
     },
     {
@@ -185615,7 +185623,7 @@
       "evidence": [
         "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogCopiesTheAuthURLInsteadOfTypingIntoTheCodeInput",
         "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesAuthInstructionsWithPromptUpstream",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
+        "test:tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions"
       ]
     },
     {
@@ -185636,8 +185644,8 @@
       ],
       "evidence": [
         "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesSetupDetailsUpstream",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails",
-        "test:tui/login_dialog_gaps_test.go#TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+        "test:tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
       ]
     },
     {
@@ -185658,8 +185666,8 @@
       ],
       "evidence": [
         "test:tui/login_dialog_oauth_prompt_upstream_test.go#TestLoginDialogPreservesSetupDetailsUpstream",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails",
-        "test:tui/login_dialog_gaps_test.go#TestLoginDialogComponentShowsAuthDeviceCodeDetailsAndInfo"
+        "test:tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
       ]
     },
     {
@@ -185680,8 +185688,8 @@
       ],
       "evidence": [
         "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogIgnoresTheCopyKeyWithoutAnAuthURL",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginCancelsWithoutOpeningABrowserOrChangingTheClipboard",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
+        "test:tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginCancelsWithoutOpeningABrowserOrChangingTheClipboard"
       ]
     },
     {
@@ -185702,8 +185710,8 @@
       ],
       "evidence": [
         "test:tui/auth_url_copy_upstream_test.go#TestAuthURLCopyLoginDialogIgnoresTheCopyKeyWithoutAnAuthURL",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginCancelsWithoutOpeningABrowserOrChangingTheClipboard",
-        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginClearsBothActionTypesWhenShowingDetails"
+        "test:tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "test:tui/login_dialog_device_code_test.go#TestDeviceCodeLoginCancelsWithoutOpeningABrowserOrChangingTheClipboard"
       ]
     },
     {
@@ -187754,9 +187762,9 @@
         "call:coding/cli/rpc_mode.go#serveRPCMode"
       ],
       "evidence": [
+        "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
         "test:coding/model_registration_snapshot_test.go#TestSessionCycleModelSeesExtensionProviderRegistration",
-        "test:coding/session_model_extension_order_test.go#TestBeginModelCycleOnMainDefersNotificationsToTheCompletion",
-        "test:coding/session_model_extension_order_test.go#TestBeginModelCycleSplitsMutationFromNotification"
+        "test:coding/session_model_extension_order_test.go#TestBeginModelCycleOnMainDefersNotificationsToTheCompletion"
       ]
     },
     {
@@ -187798,9 +187806,9 @@
         "call:internal/codingagent/interactive_models.go#InteractiveMode.cycleModel"
       ],
       "evidence": [
+        "test:coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
         "test:coding/model_registration_snapshot_test.go#TestSessionCycleModelSeesExtensionProviderRegistration",
-        "test:coding/session_model_extension_order_test.go#TestBeginModelCycleOnMainDefersNotificationsToTheCompletion",
-        "test:coding/session_model_extension_order_test.go#TestBeginModelCycleSplitsMutationFromNotification"
+        "test:coding/session_model_extension_order_test.go#TestBeginModelCycleOnMainDefersNotificationsToTheCompletion"
       ]
     },
     {
@@ -192212,8 +192220,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -192234,8 +192242,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -192736,8 +192744,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -192758,8 +192766,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -196107,8 +196115,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/ext_ui_factories_test.go#TestExtUIContextHeaderAndFooterFactoriesBuildAndDisposeComponents",
-        "test:internal/codingagent/ext_factory_ui_test.go#TestCompiledInFactoryReachesEveryUIFactoryMemberThroughTheLoaderAndTheInteractiveMode",
-        "test:internal/codingagent/header_frame_window_test.go#TestExtensionHeaderAndFooterRendersReachTheNextFrame"
+        "test:internal/codingagent/ext_ui_footer_contract_test.go#TestSetExtensionFooterFollowsUpstreamOrder",
+        "test:internal/codingagent/ext_factory_ui_test.go#TestCompiledInFactoryReachesEveryUIFactoryMemberThroughTheLoaderAndTheInteractiveMode"
       ]
     },
     {
@@ -205412,8 +205420,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -205434,8 +205442,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -209832,7 +209840,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream",
-        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
+        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings",
+        "test:internal/codingagent/startup_changelog_init_pty_test.go#TestInitRecordsTheChangelogVersionsBeforeAnythingStartsChild"
       ]
     },
     {
@@ -209853,7 +209862,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream",
-        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
+        "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings",
+        "test:internal/codingagent/startup_changelog_init_pty_test.go#TestInitRecordsTheChangelogVersionsBeforeAnythingStartsChild"
       ]
     },
     {
@@ -212507,6 +212517,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetDoubleEscapeAction"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersEscapeAndClearBranches",
         "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack",
         "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
       ]
@@ -212528,6 +212539,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetDoubleEscapeAction"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersEscapeAndClearBranches",
         "test:internal/codingagent/settings_accessors_roundtrip_test.go#TestSettingsManagerSettersPersistTheirKeyAndTheGetterReadsItBack",
         "test:internal/codingagent/settings_test.go#TestSettingsManager_Setters"
       ]
@@ -212767,6 +212779,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream",
         "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
       ]
     },
@@ -212787,6 +212800,7 @@
         "call:internal/codingagent/settings.go#SettingsManager.SetExtensionChangelogVersion"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream",
         "test:internal/codingagent/source_info_changelog_test.go#TestExtensionChangelogVersionsRoundTripThroughSettings"
       ]
     },
@@ -214822,8 +214836,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -214844,8 +214858,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -215232,8 +215246,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -215254,8 +215268,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -216674,7 +216688,7 @@
       "evidence": [
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:tui/editor_border_color_test.go#TestEditorBorderRowsAreTheThemesBorderColorFunction"
+        "test:internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersBashModeFollowsTheEditorText"
       ]
     },
     {
@@ -216696,7 +216710,7 @@
       "evidence": [
         "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
         "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi",
-        "test:tui/editor_border_color_test.go#TestEditorBorderRowsAreTheThemesBorderColorFunction"
+        "test:internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersBashModeFollowsTheEditorText"
       ]
     },
     {
@@ -217481,8 +217495,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -217503,8 +217517,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -218343,8 +218357,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -218365,8 +218379,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -219175,9 +219189,9 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
+        "test:internal/codingagent/codemode_main_screen_oracle_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
-        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream",
-        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveStatusCoalescingUpstream"
+        "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream"
       ]
     },
     {
@@ -219495,9 +219509,9 @@
         "call:tui/tool_execution.go#ToolExecutionComponent.Render"
       ],
       "evidence": [
+        "test:internal/codingagent/codemode_main_screen_oracle_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
-        "test:internal/codingagent/mcp_cards_oracle_test.go#TestMcpToolCardsMatchPi",
-        "test:internal/codingagent/output_pad_edit_upstream_test.go#TestOutputPadSelfRenderedEditResult"
+        "test:internal/codingagent/mcp_cards_oracle_test.go#TestMcpToolCardsMatchPi"
       ]
     },
     {
@@ -219517,9 +219531,9 @@
         "call:tui/tool_execution.go#ToolExecutionComponent.Render"
       ],
       "evidence": [
+        "test:internal/codingagent/codemode_main_screen_oracle_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
-        "test:internal/codingagent/mcp_cards_oracle_test.go#TestMcpToolCardsMatchPi",
-        "test:internal/codingagent/output_pad_edit_upstream_test.go#TestOutputPadSelfRenderedEditResult"
+        "test:internal/codingagent/mcp_cards_oracle_test.go#TestMcpToolCardsMatchPi"
       ]
     },
     {
@@ -220244,7 +220258,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
       ]
     },
     {
@@ -221357,7 +221371,7 @@
       "id": "pkg:coding-agent/.#TreeSelectorComponent::property:capturesViewportInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3a1b6313f891850ad454fc384fa9a96a9a9685ecef480e1105f96c35db525ac2",
-      "rationale": "Derived by the interface gap detector: TreeSelectorComponent::property:capturesViewportInput is Go tui/tree_select.go#TreeList.CapturesViewportInput (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: TreeSelectorComponent::property:capturesViewportInput is Go tui/tree_select.go#TreeList.CapturesViewportInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/tree_select.go#TreeList.CapturesViewportInput"
       ],
@@ -221370,7 +221384,7 @@
         "call:tui/tree_select.go#TreeList.CapturesViewportInput"
       ],
       "evidence": [
-        "reach:tui/tree_select.go#TreeList.CapturesViewportInput"
+        "test:internal/codingagent/tree_selector_label_contract_test.go#TestTreeSelectorCapturesViewportInputExceptWhileLabelling"
       ]
     },
     {
@@ -221664,7 +221678,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/tree_selector_oracle_test.go#TestTreeSelectorInputMatchesPi",
-        "test:tui/tree_input_contract_test.go#TestTreeInputBindingPriority"
+        "test:tui/tree_input_contract_test.go#TestTreeInputBindingPriority",
+        "test:internal/codingagent/tree_selector_contract_test.go#TestTreeListHandleInputContractsMatchPi"
       ]
     },
     {
@@ -222049,12 +222064,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tool_builtin_renderers.go#readRenderResult"
+        "call:internal/codingagent/tool_builtin_renderers.go#typedTruncationView"
       ],
       "evidence": [
         "test:internal/codingagent/tools/harness_truncate_upstream_test.go#TestHarnessTruncate",
         "test:internal/codingagent/tools/output_accumulator_oracle_test.go#TestOutputAccumulatorMatchesPi",
-        "test:internal/codingagent/tool_render_test.go#TestReadRendererTruncationWarnings"
+        "test:internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails"
       ]
     },
     {
@@ -222115,7 +222130,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/tool_builtin_renderers.go#readRenderResult"
+        "call:internal/codingagent/tool_builtin_renderers.go#typedTruncationView"
       ],
       "evidence": [
         "test:internal/codingagent/tools/find_tool_oracle_test.go#TestFindToolMatchesPi",
@@ -223600,8 +223615,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -223622,8 +223637,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -270696,6 +270711,7 @@
         "call:mcp/oauth/callback.go#OAuthCallbackServer.handle"
       ],
       "evidence": [
+        "test:coding/mcpext/oauth_callback_render_page_contract_test.go#TestMCPCallbackRenderPageMatchesPi",
         "test:mcp/oauth/behavior_test.go#TestOAuthCallbackServerRenderedPagesAreHTMLAndNotCached",
         "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage"
       ]
@@ -280569,7 +280585,7 @@
       "evidence": [
         "test:tui/editor_remote_test.go#TestEditorRemoteSuggestionsUseTheEditorsProviders",
         "test:tui/async_autocomplete_race_test.go#TestAsyncAutocomplete_NoRaceWithInput",
-        "test:tui/editor_async_provider_test.go#TestAsyncAutocompleteNaturalTriggers"
+        "test:tui/editor_async_provider_test.go#TestAsyncAutocompleteClosedPopupQueriesOnlyForTheCharactersPiTriggersOn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -280592,7 +280608,7 @@
       "evidence": [
         "test:tui/editor_remote_test.go#TestEditorRemoteSuggestionsUseTheEditorsProviders",
         "test:tui/async_autocomplete_race_test.go#TestAsyncAutocomplete_NoRaceWithInput",
-        "test:tui/editor_async_provider_test.go#TestAsyncAutocompleteNaturalTriggers"
+        "test:tui/editor_async_provider_test.go#TestAsyncAutocompleteClosedPopupQueriesOnlyForTheCharactersPiTriggersOn"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -280630,11 +280646,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:tui/editor_async_provider.go#Editor.naturalAsyncAutocomplete"
+        "call:tui/editor.go#Editor.typedCharacterOpensAutocomplete"
       ],
       "evidence": [
         "test:tui/editor_async_provider_test.go#TestAsyncAutocompleteNaturalTriggers",
-        "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderAfterAnAutocompleteResultApplies"
+        "test:tui/editor_owned_tui_test.go#TestEditorOwnedTUIRequestsRenderAfterAnAutocompleteResultApplies",
+        "test:tui/editor_typed_race_oracle_test.go#TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi"
       ]
     },
     {
@@ -281466,6 +281483,7 @@
         "call:tui/text.go#Text.SetCustomBgFn"
       ],
       "evidence": [
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender",
         "test:tui/loader_start_stop_test.go#TestLoaderInheritsTextMembers"
       ]
@@ -281487,6 +281505,7 @@
         "call:tui/text.go#Text.SetCustomBgFn"
       ],
       "evidence": [
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender",
         "test:tui/loader_start_stop_test.go#TestLoaderInheritsTextMembers"
       ]
@@ -281637,8 +281656,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain",
-        "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
+        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
       ]
     },
     {
@@ -281659,8 +281678,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain",
-        "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
+        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
       ]
     },
     {
@@ -282666,8 +282685,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -282688,8 +282707,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -282881,8 +282900,9 @@
         "call:tui/markdown.go#Markdown.renderDocument"
       ],
       "evidence": [
-        "test:tui/markdown_port_regressions_test.go#TestMarkdownBackgroundCallbackOrder",
-        "test:tui/markdown_wrap_boundary_test.go#TestMarkdownStyledWordsAtTheWrapBoundaryPiCase"
+        "test:tui/markdown_memo_work_contract_test.go#TestMarkdownKeepsNoResumePointForAnImpureTheme",
+        "test:tui/markdown_memo_work_contract_test.go#TestMarkdownNegativePaddingYRendersAsNone",
+        "test:tui/markdown_port_regressions_test.go#TestMarkdownBackgroundCallbackOrder"
       ]
     },
     {
@@ -282902,9 +282922,9 @@
         "call:tui/markdown.go#Markdown.applyDefaultStyle"
       ],
       "evidence": [
+        "test:tui/markdown_memo_work_contract_test.go#TestMarkdownDefaultStyleWithoutColorKeepsInlineRenderings",
         "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownFollowsTheDefaultStyle",
-        "test:tui/markdown_spans_test.go#TestStackedInlineRenderingEqualsLevelByLevel",
-        "test:tui/markdown_spans_test.go#TestStackedInlineRenderingHandlesTokenBoundaries"
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi"
       ]
     },
     {
@@ -282926,7 +282946,7 @@
       "evidence": [
         "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
         "test:tui/markdown_blockquote_style_test.go#TestMarkdownEmphasisAndSetextMatchUpstreamBytes",
-        "test:tui/markdown_spans_test.go#TestMarkdownStyledContextsMatchPiBytes"
+        "test:tui/markdown_memo_work_contract_test.go#TestMarkdownSetDefaultColorRepaints"
       ]
     },
     {
@@ -282968,7 +282988,9 @@
         "call:tui/markdown.go#Markdown.applyDefaultStyle"
       ],
       "evidence": [
-        "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownFollowsTheDefaultStyle"
+        "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownFollowsTheDefaultStyle",
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi"
       ]
     },
     {
@@ -282989,8 +283011,8 @@
       ],
       "evidence": [
         "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownFollowsTheDefaultStyle",
-        "test:tui/markdown_spans_test.go#TestStackedInlineRenderingEqualsLevelByLevel",
-        "test:tui/markdown_spans_test.go#TestStackedInlineRenderingHandlesTokenBoundaries"
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi"
       ]
     },
     {
@@ -283455,8 +283477,8 @@
       ],
       "evidence": [
         "test:tui/editor_word_segments_upstream_test.go#TestUpstreamEditorStateAccessors",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupAtTheMovedCursorLikePi",
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupWithANonASCIIPrefixAtTheMovedCursorLikePi"
       ]
     },
     {
@@ -283477,8 +283499,8 @@
       ],
       "evidence": [
         "test:tui/editor_word_segments_upstream_test.go#TestUpstreamEditorStateAccessors",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingProbesParity",
-        "test:tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi"
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupAtTheMovedCursorLikePi",
+        "test:tui/editor_awaited_accept_oracle_test.go#TestEditorAcceptsAnAwaitedPopupWithANonASCIIPrefixAtTheMovedCursorLikePi"
       ]
     },
     {
@@ -283729,8 +283751,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -283751,8 +283773,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -285800,8 +285822,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -285822,8 +285844,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -286901,8 +286923,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -286923,8 +286945,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -287546,7 +287568,7 @@
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts"
       ]
     },
     {
@@ -287566,9 +287588,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenHalfPageAndLineActions",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenHalfPageCustomBindings"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
     {
@@ -287588,9 +287610,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenHalfPageAndLineActions",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenHalfPageCustomBindings"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
     {
@@ -287610,9 +287632,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenHalfPageAndLineActions",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenLineCustomBindings"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportNavigationDefersToCapturingFocusAndOverlays"
       ]
     },
     {
@@ -287632,9 +287654,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenHalfPageAndLineActions",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenLineCustomBindings"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
     {
@@ -287654,8 +287676,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform"
       ]
     },
     {
@@ -287675,6 +287698,8 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
@@ -287695,7 +287720,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeyComesFirst"
       ]
     },
     {
@@ -287715,8 +287742,9 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
+        "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform"
       ]
     },
     {
@@ -287737,8 +287765,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor",
-        "test:tui/keybindings_test.go#TestTUIDefaultKeybindingsIgnoreThePlatform",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportNavigationDefersToCapturingFocusAndOverlays",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeyComesFirst"
       ]
     },
     {
@@ -287759,8 +287787,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenSearchTakesKeysFromEditor",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchActionsDriveDirectly"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeyComesFirst",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox"
       ]
     },
     {
@@ -287780,8 +287808,9 @@
         "call:tui/alt_screen_search.go#AltScreenSearchComponent.Render"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchActionsDriveDirectly"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchNavigationKeysAreMatchedInOrder",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
     {
@@ -287801,8 +287830,9 @@
         "call:tui/alt_screen_search.go#AltScreenSearchComponent.Render"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchActionsDriveDirectly"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchNavigationKeysAreMatchedInOrder",
+        "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
     {
@@ -287822,6 +287852,7 @@
         "call:tui/tui_alt_screen_input.go#TuiAltScreen.performViewportAction"
       ],
       "evidence": [
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
         "test:tui/keybindings_test.go#TestTUIKeybindingsUpstream"
       ]
     },
@@ -288449,8 +288480,8 @@
       ],
       "evidence": [
         "test:tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
-        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_DefaultMatches"
+        "test:coding/cli/config_theme_test.go#TestConfigSelectorUIUsesTheUsersKeybindings",
+        "test:tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette"
       ]
     },
     {
@@ -288470,7 +288501,9 @@
         "call:tui/config_selector.go#ConfigSelectorComponent.HandleInput"
       ],
       "evidence": [
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_DefaultMatches"
+        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_DefaultMatches",
+        "test:tui/select_submenu_contract_test.go#TestSelectSubmenuPageKeysFollowTheKeybindingManager",
+        "test:tui/settings_list_contract_test.go#TestSettingsListPageKeysRankBetweenDownAndConfirm"
       ]
     },
     {
@@ -288490,6 +288523,8 @@
         "call:tui/config_selector.go#ConfigSelectorComponent.HandleInput"
       ],
       "evidence": [
+        "test:tui/select_submenu_contract_test.go#TestSelectSubmenuPageKeysFollowTheKeybindingManager",
+        "test:tui/settings_list_contract_test.go#TestSettingsListPageKeysRankBetweenDownAndConfirm",
         "test:tui/tree_input_contract_test.go#TestTreeInputBindingPriority"
       ]
     },
@@ -288511,8 +288546,8 @@
       ],
       "evidence": [
         "test:tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
-        "test:tui/keybindings_set_user_test.go#TestTUIKeybindingsManagerSetUserBindingsReplacesOverridesAndRebuilds",
-        "test:tui/keybindings_test.go#TestTUIKeybindingsManager_DefaultMatches"
+        "test:coding/cli/config_theme_test.go#TestConfigSelectorUIUsesTheUsersKeybindings",
+        "test:tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi"
       ]
     },
     {
@@ -289076,6 +289111,7 @@
         "call:tui/text.go#Text.SetCustomBgFn"
       ],
       "evidence": [
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender",
         "test:tui/loader_start_stop_test.go#TestLoaderInheritsTextMembers"
       ]
@@ -289097,6 +289133,7 @@
         "call:tui/text.go#Text.SetCustomBgFn"
       ],
       "evidence": [
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender",
         "test:tui/loader_start_stop_test.go#TestLoaderInheritsTextMembers"
       ]
@@ -289243,8 +289280,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain",
-        "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
+        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
       ]
     },
     {
@@ -289265,8 +289302,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain",
-        "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
+        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
       ]
     },
     {
@@ -289486,7 +289523,7 @@
       "evidence": [
         "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
         "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
-        "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownRendersOnlyChangedInlineText"
+        "test:tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender"
       ]
     },
     {
@@ -289508,7 +289545,7 @@
       "evidence": [
         "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
         "test:tui/component_members_test.go#TestMarkdownInvalidateForcesTheTransformAndParserToRunAgain",
-        "test:tui/markdown_streaming_reuse_test.go#TestStreamedMarkdownRendersOnlyChangedInlineText"
+        "test:tui/markdown_core_contract_test.go#TestMarkdownRandomOperationsEqualAFreshRender"
       ]
     },
     {
@@ -289574,7 +289611,7 @@
       "evidence": [
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
         "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi"
+        "test:tui/markdown_html_comments_upstream_test.go#TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender"
       ]
     },
     {
@@ -289596,7 +289633,7 @@
       "evidence": [
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
         "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi"
+        "test:tui/markdown_html_comments_upstream_test.go#TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender"
       ]
     },
     {
@@ -289681,7 +289718,8 @@
       ],
       "evidence": [
         "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown",
-        "test:tui/markdown_resume_soup_test.go#TestResumedMarkdownSoupEqualsAFreshRender"
+        "test:tui/markdown_resume_soup_test.go#TestResumedMarkdownSoupEqualsAFreshRender",
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi"
       ]
     },
     {
@@ -289701,7 +289739,9 @@
         "call:tui/markdown_options.go#NewMarkdownWithOptions"
       ],
       "evidence": [
-        "test:tui/markdown_upstream_test.go#TestUpstreamMarkdown"
+        "test:tui/markdown_core_contract_test.go#TestMarkdownRenderCacheKey",
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
+        "test:tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi"
       ]
     },
     {
@@ -290497,7 +290537,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:tui/input_components_gaps_test.go#TestMouseRegionDelegatesRenderAndInvalidate"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportWheelOverlaysShadowTheLayout"
       ]
     },
     {
@@ -290519,7 +290559,7 @@
       "evidence": [
         "test:tui/tool_execution_mouse_upstream_test.go#TestToolMouseDelegatesNestedHandlersBeforeExpansion",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:tui/input_components_gaps_test.go#TestMouseRegionDelegatesRenderAndInvalidate"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportWheelOverlaysShadowTheLayout"
       ]
     },
     {
@@ -292548,7 +292588,8 @@
         "call:tui/terminal.go#ProcessTerminal.ModifyOtherKeysActive"
       ],
       "evidence": [
-        "test:tui/raw_mode_test.go#TestProcessTerminalModifyOtherKeysActiveFollowsNegotiation"
+        "test:tui/raw_mode_test.go#TestProcessTerminalModifyOtherKeysActiveFollowsNegotiation",
+        "test:tui/terminal_negotiation_contract_test.go#TestKeyboardProtocolNegotiationConsumesOnlyWholeReplies"
       ]
     },
     {
@@ -292608,6 +292649,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
     },
@@ -292628,6 +292670,7 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
         "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
       ]
     },
@@ -293164,8 +293207,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex",
-        "test:internal/latex/latex_test.go#TestRenderLatexMatchesUpstream"
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
+        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
       ]
     },
     {
@@ -293186,8 +293229,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex",
-        "test:internal/latex/latex_test.go#TestRenderLatexMatchesUpstream"
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
+        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
       ]
     },
     {
@@ -293208,8 +293251,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex",
-        "test:internal/latex/latex_test.go#TestRenderLatexMatchesUpstream"
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
+        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
       ]
     },
     {
@@ -293230,8 +293273,8 @@
       ],
       "evidence": [
         "test:internal/latex/live_oracle_test.go#TestRenderLatexMatchesPiLive",
-        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex",
-        "test:internal/latex/latex_test.go#TestRenderLatexMatchesUpstream"
+        "test:internal/latex/surrogate_oracle_test.go#TestRenderLatexLoneSurrogatesMatchPi",
+        "test:internal/latex/upstream_test.go#TestUpstreamRenderLatex"
       ]
     },
     {
@@ -293860,8 +293903,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -293882,8 +293925,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -295078,8 +295121,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -295100,8 +295143,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -296325,8 +296368,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -296347,8 +296390,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -296930,8 +296973,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -296952,8 +296995,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -299437,6 +299480,7 @@
         "call:tui/text.go#Text.SetCustomBgFn"
       ],
       "evidence": [
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender",
         "test:tui/loader_start_stop_test.go#TestLoaderInheritsTextMembers"
       ]
@@ -299458,6 +299502,7 @@
         "call:tui/text.go#Text.SetCustomBgFn"
       ],
       "evidence": [
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/component_members_test.go#TestTextSetCustomBgFnAndInvalidateRerender",
         "test:tui/loader_start_stop_test.go#TestLoaderInheritsTextMembers"
       ]
@@ -299480,6 +299525,7 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestTextSetPaddingXMatchesPi",
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
       ]
     },
@@ -299501,6 +299547,7 @@
       ],
       "evidence": [
         "test:tui/output_pad_upstream_test.go#TestTextSetPaddingXMatchesPi",
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
         "test:tui/output_pad_test.go#TestSetPaddingXDropsRenderCache"
       ]
     },
@@ -299522,8 +299569,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain",
-        "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
+        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
       ]
     },
     {
@@ -299544,8 +299591,8 @@
       ],
       "evidence": [
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain",
-        "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar"
+        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
+        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
       ]
     },
     {
@@ -299927,7 +299974,7 @@
       "evidence": [
         "test:tui/truncated_text_upstream_test.go#TestUpstreamTruncatedText",
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/pending_display_test.go#TestPendingDisplayLinesUseTheDimForeground"
+        "test:internal/codingagent/interactive_handle_event_compaction_test.go#TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast"
       ]
     },
     {
@@ -299948,8 +299995,8 @@
       ],
       "evidence": [
         "test:tui/truncated_text_upstream_test.go#TestUpstreamTruncatedText",
-        "test:internal/codingagent/pending_display_test.go#TestPendingDisplayLinesUseTheDimForeground",
-        "test:tui/component_width_sweep_test.go#TestComponentRowsMatchUpstream"
+        "test:internal/codingagent/interactive_handle_event_compaction_test.go#TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast",
+        "test:internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCompactionRebuildsTheTranscript"
       ]
     },
     {
@@ -299970,8 +300017,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -299992,8 +300039,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -301354,8 +301401,8 @@
       ],
       "evidence": [
         "test:tui/tui_input_pipeline_test.go#TestInputListenersCanBeRemovedByTheirHandleOrByIdentity",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputShowsKeyReleasesToTheInputListeners"
+        "test:tui/tui_input_contract_test.go#TestHandleTerminalInputCellSizeReplyFollowsTheInputListeners",
+        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
       ]
     },
     {
@@ -301376,8 +301423,8 @@
       ],
       "evidence": [
         "test:tui/tui_input_pipeline_test.go#TestInputListenersCanBeRemovedByTheirHandleOrByIdentity",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputShowsKeyReleasesToTheInputListeners"
+        "test:tui/tui_input_contract_test.go#TestHandleTerminalInputCellSizeReplyFollowsTheInputListeners",
+        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
       ]
     },
     {
@@ -301988,8 +302035,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -302010,8 +302057,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -302031,9 +302078,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.IsFollowingOutput"
       ],
       "evidence": [
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysStopAtTheEnds",
         "test:tui/tui_alt_frame_test.go#TestAltScreenFrameReadsAndMovesTheViewportAtOnce",
-        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenPromptJumpsWithKittyAndCtrlArrows"
+        "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow"
       ]
     },
     {
@@ -302311,9 +302358,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
       ]
     },
     {
@@ -302333,9 +302380,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
       ]
     },
     {
@@ -302964,8 +303011,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain"
       ]
     },
     {
@@ -302986,8 +303033,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain"
       ]
     },
     {
@@ -303029,9 +303076,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ViewportTop"
       ],
       "evidence": [
-        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameReadsAndMovesTheViewportAtOnce",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText"
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportConsumesFocusAndMouseReportsOnly",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeyBoundToTwoActionsRunsTheEarlierOne",
+        "test:tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts"
       ]
     },
     {
@@ -303249,7 +303296,7 @@
       "evidence": [
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsSearchStylesFollowChalkLevel",
         "test:internal/codingagent/fullscreen_search_test.go#TestFullscreenTuiOptionsStyleIndicatorAndMatches",
-        "test:tui/tui_alt_screen_v087_test.go#TestAltScreenSearchButtonsNavigateAndHover"
+        "test:tui/alt_screen_focus_out_contract_test.go#TestAltScreenFocusOutClearsTheSearchButtonHover"
       ]
     },
     {
@@ -303336,7 +303383,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
+        "test:tui/tui_input_contract_test.go#TestHandleTerminalInputCellSizeReplyFollowsTheInputListeners"
       ]
     },
     {
@@ -303446,8 +303493,8 @@
       ],
       "evidence": [
         "test:tui/tui_input_pipeline_test.go#TestInputListenersCanBeRemovedByTheirHandleOrByIdentity",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputShowsKeyReleasesToTheInputListeners"
+        "test:tui/tui_input_contract_test.go#TestHandleTerminalInputCellSizeReplyFollowsTheInputListeners",
+        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
       ]
     },
     {
@@ -303468,8 +303515,8 @@
       ],
       "evidence": [
         "test:tui/tui_input_pipeline_test.go#TestInputListenersCanBeRemovedByTheirHandleOrByIdentity",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputShowsKeyReleasesToTheInputListeners"
+        "test:tui/tui_input_contract_test.go#TestHandleTerminalInputCellSizeReplyFollowsTheInputListeners",
+        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
       ]
     },
     {
@@ -303598,7 +303645,8 @@
       ],
       "evidence": [
         "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/tui_mode_debug_test.go#TestTUIModeAndFullRedraws"
+        "test:tui/tui_mode_debug_test.go#TestTUIModeAndFullRedraws",
+        "test:tui/tui_render_now_contract_test.go#TestRenderNowForceResetsTheRenderState"
       ]
     },
     {
@@ -303903,8 +303951,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -303925,8 +303973,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -304204,9 +304252,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
       ]
     },
     {
@@ -304226,9 +304274,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
       ]
     },
     {
@@ -305194,9 +305242,9 @@
         "call:tui/mouse.go#DispatchMouseEvent"
       ],
       "evidence": [
+        "test:tui/alt_screen_focus_out_contract_test.go#TestAltScreenFocusOutReleasesTheComponentCapture",
         "test:tui/tui_alt_screen_v087_test.go#TestAltScreenFocusesAndCapturesMouseAwareComponents",
-        "test:tui/editor_mouse_oracle_test.go#TestEditorMouseMatchesPi",
-        "test:tui/mouse_oracle_test.go#TestMouseHandlersMatchPi"
+        "test:tui/editor_mouse_oracle_test.go#TestEditorMouseMatchesPi"
       ]
     },
     {
@@ -306071,9 +306119,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
       ]
     },
     {
@@ -306093,9 +306141,9 @@
         "call:tui/tui.go#tuiBase.RenderNow"
       ],
       "evidence": [
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
         "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll",
-        "test:tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle"
+        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
       ]
     },
     {
@@ -306456,8 +306504,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain"
       ]
     },
     {
@@ -306478,8 +306526,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
+        "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain"
       ]
     },
     {
@@ -306814,8 +306862,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {
@@ -306836,8 +306884,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes",
-        "test:tui/container_cache_test.go#TestContainerCachesCleanChildAndRerendersOnDirty"
+        "test:internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
+        "test:internal/codingagent/interactive_whole_markdown_test.go#TestWholeMarkdownBlocksRenderBytes"
       ]
     },
     {

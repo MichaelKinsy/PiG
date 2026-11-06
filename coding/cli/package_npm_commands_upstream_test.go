@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -20,7 +21,7 @@ import (
 // filepath.EvalSymlinks would return the long form npm is never given.
 func realPathSync(t *testing.T, path string) string {
 	t.Helper()
-	resolved, err := codingagent.RealPathSync(path)
+	resolved, err := noderealpath.Sync(path)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -251,7 +251,7 @@ var keyHandlerCases = []keyHandlerCase{
 		},
 		want: func(w *keyWorld) { w.Editor = "pasted text" }},
 	{action: "app.model.cycleForward", letter: 'd', key: "\x10", want: func(w *keyWorld) { w.CycleDirections = []string{"forward"}; w.Status = "Switched to other" }},
-	{action: "app.model.cycleBackward", letter: 'e', key: "\x1b[112;6u", want: func(w *keyWorld) { w.CycleDirections = []string{"backward"}; w.Status = "Switched to other" }},
+	{action: "app.model.cycleBackward", letter: 'e', key: hostCycleBackwardInput(), want: func(w *keyWorld) { w.CycleDirections = []string{"backward"}; w.Status = "Switched to other" }},
 	{action: "app.model.select", letter: 'p', key: "\x0c", want: func(w *keyWorld) { w.ModelSelector = true }},
 	{action: "app.tools.expand", letter: 'f', key: "\x0f", want: func(w *keyWorld) { w.ToolsExpanded = true; w.Status = "Tool output: expanded" }},
 	{action: "app.thinking.toggle", letter: 'g', key: "\x14", want: func(w *keyWorld) { w.HideThinking = true; w.HideSetting = true; w.Status = "Thinking blocks: hidden" }},
@@ -269,16 +269,20 @@ var keyHandlerCases = []keyHandlerCase{
 		w.Copied = []string{"last assistant text"}
 		w.Status = "Copied last agent message to clipboard"
 	}},
-	{action: "app.message.followUp", letter: 'j', key: "\x1b\r",
+	{action: "app.message.followUp", letter: 'j', key: hostFollowUpInput(),
 		setup: func(t *testing.T, r *keyRig) { r.m.isCompacting = true; r.m.editor.SetText("later") },
 		want: func(w *keyWorld) {
 			w.Editor = ""
 			w.QueuedFollowUps = 1
 			w.Status = "Queued message for after compaction"
 		},
-		// Alt+Enter without an app action is the legacy Shift+Enter: the editor inserts a line break.
-		oldKey: func(w *keyWorld) { w.Editor = "later\n" }},
-	{action: "app.message.dequeue", letter: 'k', key: "\x1b[1;3A",
+		// Alt+Enter without an app action is the legacy Shift+Enter: the editor inserts a line break. Ctrl+Q, the key with Windows keybindings, does nothing.
+		oldKey: func(w *keyWorld) {
+			if hostFollowUpInput() == "\x1b\r" {
+				w.Editor = "later\n"
+			}
+		}},
+	{action: "app.message.dequeue", letter: 'k', key: HostDequeueInputs()[0],
 		setup: func(t *testing.T, r *keyRig) {
 			r.m.compactionQueue = []compactionQueuedMessage{{text: "queued", mode: compactionQueueSteer}}
 		},

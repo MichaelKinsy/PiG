@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 )
 
 // Pi 1.2.0 auth-storage.ts:81-95,117-155, settings-manager.ts:195-215 and trust-manager.ts:137-164.
@@ -88,9 +89,9 @@ func AcquireAuthSync(path string) (*Lock, error) {
 	return acquireSyncWithRetry(path, func(err error) bool { return retryableLockErrorCode(err) != "" }, realpathLockTarget)
 }
 
-// realpathLockTarget is proper-lockfile's default realpath option (lib/lockfile.js resolveCanonicalPath): the lock guards fs.realpath(file), and each attempt resolves it again. The file must exist; a missing file or a link loop fails the attempt with the Node fs error (ENOENT: no such file or directory, lstat 'path'), which no retry loop retries.
+// realpathLockTarget is proper-lockfile's default realpath option (lib/lockfile.js resolveCanonicalPath): the lock guards fs.realpath(file), and each attempt resolves it again. fs.realpath is Node's JS walk, not realpath.native: on Windows it keeps the case and the 8.3 short names (RUNNER~1) of the components that are not links, so the lock error names the path as the caller spelled it, as Pi's does. The file must exist; a missing file or a link loop fails the attempt with the Node fs error (ENOENT: no such file or directory, lstat 'path'), which no retry loop retries.
 func realpathLockTarget(path string) (string, error) {
-	resolved, err := filepath.EvalSymlinks(path)
+	resolved, err := noderealpath.Sync(path)
 	if err != nil {
 		return "", nodeerrno.FromPathError(err)
 	}

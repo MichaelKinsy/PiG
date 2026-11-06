@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 )
 
 // pig divergence (D39): SelfUpdateTier selects one owner before mutation.
@@ -223,7 +224,7 @@ func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner, entrypoints ...
 	// evaluated against the binary pig would actually replace. Mirrors
 	// upstream realpathSync in isManagedByGlobalPackageManager. Node's realpathSync, not filepath.EvalSymlinks: on Windows the first keeps the spelling of
 	// a component that is not a link (case, 8.3 short names such as RUNNER~1), the second rewrites it to the stored long name.
-	if resolved, err := evalCanonicalPath(exe); err == nil {
+	if resolved, err := noderealpath.Eval(exe); err == nil {
 		exe = resolved
 	}
 
@@ -259,7 +260,7 @@ func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner, entrypoints ...
 
 	verified := make([]string, 0, len(entrypoints))
 	for _, entrypoint := range entrypoints {
-		resolved, err := evalCanonicalPath(entrypoint)
+		resolved, err := noderealpath.Eval(entrypoint)
 		if err == nil && ownershipPath(goos, resolved) == ownershipPath(goos, exe) {
 			verified = append(verified, entrypoint)
 		}

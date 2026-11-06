@@ -182,6 +182,14 @@ func (pipe *handlePipe) overlappedIO(p []byte, operation func(windows.Handle, []
 	var n uint32
 	err = operation(pipe.handle, p, &n, &overlapped)
 	if errors.Is(err, windows.ERROR_IO_PENDING) {
+		// Close sets closed before it cancels. If it did so before this I/O was issued its cancel missed the I/O, so cancel it here; if after, its
+		// cancel finds the I/O. Either way the wait below ends.
+		pipe.mu.Lock()
+		closed := pipe.closed
+		pipe.mu.Unlock()
+		if closed {
+			_ = windows.CancelIoEx(pipe.handle, &overlapped)
+		}
 		err = windows.GetOverlappedResult(pipe.handle, &overlapped, &n, true)
 	}
 	switch {
@@ -205,8 +213,28 @@ func currentThread() (windows.Handle, error) {
 	return thread, nil
 }
 
-func cancelSynchronousIO(thread windows.Handle) {
-	_, _, _ = procCancelSynchronousIo.Call(uintptr(thread))
+// cancelResult is what CancelSynchronousIo found.
+type cancelResult int
+
+const (
+	// cancelled: a synchronous I/O was pending on the thread and has been told to end, so the operation will return.
+	cancelled cancelResult = iota
+	// notPending is ERROR_NOT_FOUND: the thread is not inside an I/O call (yet, or any more), so the cancel found nothing to end.
+	notPending
+	// cancelFailed: the cancel did not work for another reason; the I/O, if any, is still pending.
+	cancelFailed
+)
+
+// cancelSynchronousIO is CancelSynchronousIo on thread.
+func cancelSynchronousIO(thread windows.Handle) cancelResult {
+	r, _, errno := procCancelSynchronousIo.Call(uintptr(thread))
+	switch {
+	case r != 0:
+		return cancelled
+	case errors.Is(errno, windows.ERROR_NOT_FOUND):
+		return notPending
+	}
+	return cancelFailed
 }
 
 var zeroByte [1]byte
@@ -248,10 +276,8 @@ func (pipe *handlePipe) readSynchronous(p []byte) (int, error) {
 			if closed {
 				return 0, net.ErrClosed
 			}
-			if err == nil {
-				// Woken with nothing to read: do not spin.
-				time.Sleep(time.Millisecond)
-			}
+			// err == nil: woken with nothing to read (a zero-length message). The zero-byte ReadFile at the top of the loop blocks until
+			// the pipe holds data or ends, as libuv's read thread does, so this loop does not spin.
 		case readEnded(err):
 			return 0, io.EOF
 		default:
@@ -295,15 +321,33 @@ func (pipe *handlePipe) writeSynchronous(p []byte) (int, error) {
 	pipe.writeMu.Lock()
 	defer pipe.writeMu.Unlock()
 	pipe.mu.Lock()
+	if pipe.closed {
+		pipe.mu.Unlock()
+		return 0, net.ErrClosed
+	}
 	pipe.writing, pipe.writer = true, thread
 	for pipe.reader != 0 {
-		// The wait may not have reached its ReadFile yet, so cancel again until it has left.
-		cancelSynchronousIO(pipe.reader)
 		gone := pipe.readerGone
+		result := cancelSynchronousIO(pipe.reader)
 		pipe.mu.Unlock()
-		select {
-		case <-gone:
-		case <-time.After(time.Millisecond):
+		switch result {
+		case cancelled:
+			// The wait was inside its ReadFile and has been told to end: its leaving is the event.
+			<-gone
+		case notPending:
+			// The reader is registered but has not entered its ReadFile yet (or is past it, reading what is there): that takes microseconds, so
+			// yield instead of sleeping and cancel again.
+			select {
+			case <-gone:
+			default:
+				runtime.Gosched()
+			}
+		default:
+			// The cancel failed for another reason: do not spin on it.
+			select {
+			case <-gone:
+			case <-time.After(time.Millisecond):
+			}
 		}
 		pipe.mu.Lock()
 	}
@@ -340,19 +384,38 @@ func (pipe *handlePipe) Close() error {
 	pipe.closed = true
 	pipe.wake.Broadcast()
 	for pipe.inflight > 0 {
+		// retry: a registered thread that has not entered its I/O call yet. Every operation that registers after closed is set either sees closed
+		// first (and returns) or is registered here, so a cancel that found nothing pending only has to wait for the thread to get into its call.
+		// failed: the cancel did not work for another reason, which is retried on a timer so that it does not spin.
+		retry, failed := false, false
 		if pipe.synchronous {
-			if pipe.reader != 0 {
-				cancelSynchronousIO(pipe.reader)
-			}
-			if pipe.writer != 0 {
-				cancelSynchronousIO(pipe.writer)
+			for _, thread := range []windows.Handle{pipe.reader, pipe.writer} {
+				if thread == 0 {
+					continue
+				}
+				switch cancelSynchronousIO(thread) {
+				case notPending:
+					retry = true
+				case cancelFailed:
+					failed = true
+				}
 			}
 		} else {
+			// An operation that issues its I/O after this cancel sees closed and cancels itself (overlappedIO).
 			_ = windows.CancelIoEx(pipe.handle, nil)
 		}
-		pipe.mu.Unlock()
-		time.Sleep(time.Millisecond)
-		pipe.mu.Lock()
+		if retry || failed {
+			pipe.mu.Unlock()
+			if failed {
+				time.Sleep(time.Millisecond)
+			} else {
+				runtime.Gosched()
+			}
+			pipe.mu.Lock()
+			continue
+		}
+		// Each operation's end, and the reader's leaving its wait, broadcast.
+		pipe.wake.Wait()
 	}
 	pipe.mu.Unlock()
 	return windows.CloseHandle(pipe.handle)

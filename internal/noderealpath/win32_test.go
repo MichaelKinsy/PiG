@@ -1,4 +1,4 @@
-package codingagent
+package noderealpath
 
 // pi: packages/coding-agent/src/utils/paths.ts
 
@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// These tests run on every host. The Windows canonical-path walk in canonical_path_win32.go is checked against Node's own fs.realpathSync walk and path.win32.resolve (testdata/realpath-win32-oracle.mjs) over a fake Windows filesystem, and against results derived by hand from the same functions.
+// These tests run on every host. The Windows canonical-path walk in win32.go is checked against Node's own fs.realpathSync walk and path.win32.resolve (testdata/realpath-win32-oracle.mjs) over a fake Windows filesystem, and against results derived by hand from the same functions.
 
 type win32FakeEntry struct {
 	T        string `json:"t"`

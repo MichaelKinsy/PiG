@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -71,20 +70,14 @@ func TestFindOperationsPreserveNumericLimitDetails(t *testing.T) {
 }
 
 func TestFindZeroLimitDetailsThroughFD(t *testing.T) {
-	// pig divergence (D253): Pi main 676af1d77 reads a zero limit as 1, so two matches give one result and the notice with limit 1.
+	// pig divergence (D253): Pi main 676af1d77 reads a zero limit as 1 and reports the limit only when more results exist, so the one match of the probe gives no notice and no details (Pi 1.5.0: `[0 results limit reached. Use limit=0 for more, or refine pattern]`, details 0; test/parity/testdata/find-operations-pi.mjs). Two or more matches with limit 0 are TestFindLimitEdgeCases7121.
 	dir := t.TempDir()
-	for _, name := range []string{"a.txt", "b.txt"} {
-		if err := os.WriteFile(filepath.Join(dir, name), nil, 0o600); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), nil, 0o600); err != nil {
+		t.Fatal(err)
 	}
 	result := runFind(t, dir, map[string]any{"pattern": "*.txt", "limit": 0})
-	if lines := strings.Split(result.Text(), "\n\n"); result.IsError || len(lines) != 2 || len(strings.Split(lines[0], "\n")) != 1 || lines[1] != "[1 results limit reached. Use limit=2 for more, or refine pattern]" {
-		t.Fatal(result)
-	}
-	data, err := json.Marshal(extension.ToolResultDetailsFor(result.Details))
-	if err != nil || string(data) != `{"resultLimitReached":1}` {
-		t.Fatalf("details = %s, %v", data, err)
+	if result.IsError || result.Text() != "a.txt" || result.Details != nil {
+		t.Fatalf("result = %q, details %v", result.Text(), result.Details)
 	}
 	printFindOperations(t, "fd-zero", result)
 }

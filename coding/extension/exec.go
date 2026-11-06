@@ -147,11 +147,11 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 
 	// The child writes straight into OS pipes, so Wait returns when the child
 	// exits even if a descendant still holds a write end.
-	stdoutRead, stdoutWrite, pipeErr := os.Pipe()
+	stdoutRead, stdoutWrite, pipeErr := childwait.NewPipe()
 	if pipeErr != nil {
 		return ExecResult{Code: 1}, nil
 	}
-	stderrRead, stderrWrite, pipeErr := os.Pipe()
+	stderrRead, stderrWrite, pipeErr := childwait.NewPipe()
 	if pipeErr != nil {
 		_ = stdoutRead.Close()
 		_ = stdoutWrite.Close()

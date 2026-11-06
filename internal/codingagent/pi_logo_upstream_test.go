@@ -675,20 +675,24 @@ var expandedHints = []string{
 }
 
 func init() {
-	// Pi's Windows defaults differ: ctrl+z is unbound, cycle-back is alt+p, follow-up is ctrl+q, dequeue is alt+q, paste is alt+v.
+	// Pi's Windows defaults differ: ctrl+z is unbound on native Windows only (WSL keeps it), cycle-back is alt+p, follow-up is ctrl+q, dequeue is alt+q, paste is alt+v
+	// (alt+v and ctrl+v with D241). They apply wherever Windows keybindings do, native Windows and WSL, which tui.HostKeybindingPlatform decides.
 	if runtime.GOOS == "darwin" {
 		for i, hint := range expandedHints {
 			expandedHints[i] = strings.NewReplacer("alt+enter", "option+enter", "alt+up", "option+up").Replace(hint)
 		}
 		return
 	}
-	if runtime.GOOS != "windows" {
+	platform := tui.HostKeybindingPlatform()
+	if !platform.UsesWindowsKeybindings() {
 		return
 	}
 	for i, hint := range expandedHints {
 		switch hint {
 		case "ctrl+z to suspend":
-			expandedHints[i] = " to suspend"
+			if platform == tui.KeybindingPlatformWin32 {
+				expandedHints[i] = " to suspend"
+			}
 		case "ctrl+p/shift+ctrl+p to cycle models":
 			expandedHints[i] = "ctrl+p/alt+p to cycle models"
 		case "alt+enter to queue follow-up":

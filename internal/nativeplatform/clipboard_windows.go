@@ -130,7 +130,16 @@ func lockWindowsClipboard(ctx context.Context, write bool) (func(), error) {
 		if result, _, _ := openClipboard.Call(owner); result != 0 {
 			return func() { _, _, _ = closeClipboard.Call(); unlock() }, nil
 		}
-		time.Sleep(5 * time.Millisecond)
+		// Windows has no wait object for "the clipboard is free": OpenClipboard fails while another process holds it, so the retry is the
+		// protocol. The pause is a timer that a cancelled ctx ends at once, not a sleep.
+		pause := time.NewTimer(5 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			pause.Stop()
+			unlock()
+			return nil, ctx.Err()
+		case <-pause.C:
+		}
 	}
 	unlock()
 	return nil, errors.New("Could not open clipboard")

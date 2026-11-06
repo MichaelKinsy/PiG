@@ -35,6 +35,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
@@ -856,7 +857,7 @@ func canonicalDir(p string) string {
 	if err != nil {
 		abs = p
 	}
-	if resolved, err := evalCanonicalPath(abs); err == nil {
+	if resolved, err := noderealpath.Eval(abs); err == nil {
 		return resolved
 	}
 	return filepath.Clean(abs)
