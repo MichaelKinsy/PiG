@@ -27,3 +27,4 @@ f3fd868442 see ab1d07097c
 ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour
 # f26dfe2355 corrects f06ba8fd15, which hid the symptom of the same bug (its trailer names f06ba8fd15 back): the entry is the correction's.
 f06ba8fd15 see f26dfe2355
+b18fc1ee00 Follow-up to unreleased work: comment-only D238 and D257 markers on two existing constants, no product behaviour
