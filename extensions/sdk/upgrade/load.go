@@ -86,6 +86,7 @@ func listPackages(ctx context.Context, opts LoadOptions) (listed []listedPackage
 	}
 	args := append([]string{"list", "-e", "-deps", "-export", "-json=ImportPath,Dir,GoFiles,CgoFiles,Export,ImportMap,Standard,Module,Error"}, opts.Flags...)
 	args = append(args, patterns...)
+	//nolint:gosec // G204: the CLI runs as the extension author on their own machine; the program is LoadOptions.Command ("go" by default) and the arguments are fixed go list flags plus the Flags and Patterns that same caller passes, so no untrusted input reaches the command.
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = opts.Dir
 	if opts.Env != nil {
