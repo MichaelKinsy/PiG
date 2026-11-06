@@ -13,6 +13,8 @@ package typebox
 import (
 	"math"
 	"slices"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
@@ -270,10 +272,7 @@ func (h *fnv64) value(value any) {
 			bits >>= 8
 		}
 	case string:
-		h.op(markerString)
-		for _, b := range jsstring.ToUTF8(typed) {
-			h.op(b)
-		}
+		h.text(typed)
 	case []any:
 		h.op(markerArray)
 		for _, item := range typed {
@@ -287,12 +286,46 @@ func (h *fnv64) value(value any) {
 				names = append(names, name)
 			}
 		}
-		slices.SortFunc(names, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
+		slices.SortFunc(names, compareUTF16)
 		for _, name := range names {
-			h.value(name)
+			h.text(name)
 			h.value(typed[name])
 		}
 	}
+}
+
+// text is the hash of a string: its marker and its UTF-8 bytes.
+func (h *fnv64) text(text string) {
+	h.op(markerString)
+	if utf8.ValidString(text) {
+		// The UTF-8 text of a string with no lone surrogate is the text itself.
+		for index := range len(text) {
+			h.op(text[index])
+		}
+		return
+	}
+	for _, b := range jsstring.ToUTF8(text) {
+		h.op(b)
+	}
+}
+
+// compareUTF16 orders two strings as Array.prototype.sort does by default: by UTF-16 code units. UTF-8 bytes sort in code point order, which is the UTF-16 order unless a character is U+D000 or above
+// (a lead byte of 0xED or more: surrogate halves, U+E000 to U+FFFF and the astral planes, whose units start at 0xD800); only a pair with such a character converts the strings.
+func compareUTF16(a, b string) int {
+	if hasLeadAbove(a) || hasLeadAbove(b) {
+		return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
+	}
+	return strings.Compare(a, b)
+}
+
+// hasLeadAbove reports whether text has a byte of 0xED or more, which only a character of U+D000 or above starts with.
+func hasLeadAbove(text string) bool {
+	for index := range len(text) {
+		if text[index] >= 0xED {
+			return true
+		}
+	}
+	return false
 }
 
 // The grapheme length of a string, as build/guard/string.mjs counts it: a code point, the combining marks and variation selectors
