@@ -512,6 +512,7 @@ const parallelReadMinLines = 256
 
 // parallelReadMinBytes is the record bytes each goroutine of a parallel read decodes at least: a read decodes about 30 MB a second on one
 // goroutine, so a million bytes is tens of milliseconds, past the cost of starting one.
+// pig additive (D112): the split is a Go CPU choice, as for parallelReadMinLines; the result is in append order.
 const parallelReadMinBytes = 1 << 20
 
 // allEntriesLocked returns every entry in append order, decoded. The caller holds s.mu.
