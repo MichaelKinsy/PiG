@@ -5,9 +5,9 @@ package subprocess
 import (
 	"bytes"
 	"crypto/sha256"
-	"embed"
 	"encoding/json"
 	"io/fs"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -16,22 +16,48 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess/internal/noderuntimepeers"
 )
 
-// This source embed exists only in the test binary. New, removed and changed files must all invalidate the archive and its generated digest.
-//
-//go:embed runtime-node/*.mjs runtime-node/harness all:runtime-node/shims
-var nodeRuntimeSource embed.FS
+// The runtime source tree is data only: runtime-node/go.mod keeps it out of the root module zip, so no go:embed may name it. The test reads it from the checkout, and the go test cache hashes every file and directory the test opens, so new, removed and changed files still invalidate the archive and its generated digest.
+var nodeRuntimeSource = os.DirFS(".")
+
+// nodeRuntimeSourceSelected reports whether the archive packs path, as the go:embed patterns runtime-node/*.mjs, runtime-node/harness and all:runtime-node/shims did: the .mjs files of the root, the harness without names that begin with "." or "_", and all of shims.
+func nodeRuntimeSourceSelected(path string, entry fs.DirEntry) (bool, error) {
+	relative := strings.TrimPrefix(path, "runtime-node")
+	relative = strings.TrimPrefix(relative, "/")
+	pack := func(keep bool) (bool, error) {
+		if !keep && entry.IsDir() {
+			return false, fs.SkipDir
+		}
+		return keep && !entry.IsDir(), nil
+	}
+	switch top, _, nested := strings.Cut(relative, "/"); {
+	case relative == "":
+		return false, nil
+	case top == "shims":
+		return pack(true)
+	case top == "harness":
+		return pack(!strings.HasPrefix(entry.Name(), ".") && !strings.HasPrefix(entry.Name(), "_"))
+	case !nested && entry.IsDir():
+		return false, fs.SkipDir
+	default:
+		return !nested && strings.HasSuffix(entry.Name(), ".mjs"), nil
+	}
+}
 
 func TestNodeRuntimeArchiveMatchesSources(t *testing.T) {
 	digest := sha256.New()
 	files := map[string]bool{}
 	err := fs.WalkDir(nodeRuntimeSource, "runtime-node", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
+		if err != nil {
+			return err
+		}
+		selected, err := nodeRuntimeSourceSelected(path, entry)
+		if err != nil || !selected {
 			return err
 		}
 		if noderuntimepack.UnreadAtRuntime(strings.TrimPrefix(path, "runtime-node/")) {
 			return nil
 		}
-		want, err := nodeRuntimeSource.ReadFile(path)
+		want, err := fs.ReadFile(nodeRuntimeSource, path)
 		if err != nil {
 			return err
 		}
@@ -53,7 +79,7 @@ func TestNodeRuntimeArchiveMatchesSources(t *testing.T) {
 	// The host peer packages under harness/node_modules are generated from the sources, after them, as noderuntimegen writes them.
 	sources := map[string][]byte{}
 	for name := range files {
-		data, err := nodeRuntimeSource.ReadFile(name)
+		data, err := fs.ReadFile(nodeRuntimeSource, name)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -62,7 +88,7 @@ func TestNodeRuntimeArchiveMatchesSources(t *testing.T) {
 	var harness struct {
 		Version string `json:"version"`
 	}
-	manifest, err := nodeRuntimeSource.ReadFile("runtime-node/harness/package.json")
+	manifest, err := fs.ReadFile(nodeRuntimeSource, "runtime-node/harness/package.json")
 	if err != nil {
 		t.Fatal(err)
 	}

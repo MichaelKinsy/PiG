@@ -3,8 +3,8 @@ package toolsearch
 // pi: packages/durable/src/tool-search/tool-search.ts
 
 import (
-	_ "embed"
 	"encoding/json"
+	"os"
 	"reflect"
 	"testing"
 
@@ -12,8 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-//go:embed testdata/tool_search_goldens.json
-var toolSearchGoldens []byte
+// The goldens are read from testdata, a data-only module that go:embed cannot reach.
 
 func deferredTools(t *testing.T, raw []json.RawMessage) []*durable.ToolRegistration {
 	t.Helper()
@@ -60,7 +59,11 @@ func TestToolSearchMatchesPiTheLatestCarriedRanking(t *testing.T) {
 			Control map[string]any `json:"control"`
 		} `json:"result"`
 	}
-	if err := json.Unmarshal(toolSearchGoldens, &cases); err != nil {
+	golden, err := os.ReadFile("testdata/tool_search_goldens.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(golden, &cases); err != nil {
 		t.Fatal(err)
 	}
 	tool := CreateTool()

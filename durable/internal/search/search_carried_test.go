@@ -3,8 +3,8 @@ package search
 // pi: packages/durable/src/search.ts
 
 import (
-	_ "embed"
 	"encoding/json"
+	"os"
 	"slices"
 	"testing"
 	"unicode"
@@ -14,8 +14,15 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/searchtext"
 )
 
-//go:embed testdata/ranker_goldens.json
-var rankerGoldens []byte
+// goldens reads a golden file of testdata, a data-only module that go:embed cannot reach.
+func goldens(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := os.ReadFile("testdata/" + name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
 
 // The goldens are Pi's own ranking at 79006f06, the newest carried commit of search.ts (testdata/gen_ranker_goldens.mjs), over random documents with namespace texts, names that share words with the queries,
 // names with U+0130, the Kelvin sign and a character outside the BMP, words of other scripts and limits: the names and their order must match exactly. The pinned Pi's oracle (search_pi_oracle_test.go) cannot supply
@@ -31,7 +38,7 @@ func TestRankDocumentsMatchesPiTheLatestCarriedRanker(t *testing.T) {
 		Limit  int      `json:"limit"`
 		Ranked []string `json:"ranked"`
 	}
-	if err := json.Unmarshal(rankerGoldens, &probes); err != nil {
+	if err := json.Unmarshal(goldens(t, "ranker_goldens.json"), &probes); err != nil {
 		t.Fatal(err)
 	}
 	ranked, ordered := 0, 0
@@ -63,9 +70,6 @@ func TestRankDocumentsMatchesPiTheLatestCarriedRanker(t *testing.T) {
 		t.Fatalf("%d matches over %d probes, %d with an order to check: the goldens do not exercise the ranker", ranked, len(probes), ordered)
 	}
 }
-
-//go:embed testdata/tokenize_goldens.json
-var tokenizeGoldens []byte
 
 // stripsDictionaries reports whether this process has no ICU word dictionaries (a pig_strip_word_dictionaries build, D92), where a dictionary script's run is one word.
 func stripsDictionaries() bool { return pigstrip.Has(pigstrip.ListFeatures, pigstrip.WordDictionaries) }
@@ -117,7 +121,7 @@ func TestTokenizeMatchesPiOnEveryScriptClass(t *testing.T) {
 		Text   string   `json:"text"`
 		Tokens []string `json:"tokens"`
 	}
-	if err := jsstring.UnmarshalKeepingSurrogates(tokenizeGoldens, &probes); err != nil {
+	if err := jsstring.UnmarshalKeepingSurrogates(goldens(t, "tokenize_goldens.json"), &probes); err != nil {
 		t.Fatal(err)
 	}
 	stripped := stripsDictionaries()

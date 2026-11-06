@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -32,13 +31,19 @@ const (
 	sessionGraphProjectSettings = `{"defaultModel":"sonnet","skills":["./s"],"compaction":{"reserveTokens":99}}`
 )
 
-//go:embed testdata/session_graph_python.py
-var sessionGraphPython string
+// testdataString returns a file of testdata, a data-only module that go:embed cannot reach.
+func testdataString(name string) string {
+	data, err := os.ReadFile("testdata/" + name)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
+}
+
+var sessionGraphPython = testdataString("session_graph_python.py")
 
 // sessionGraphSessionManagerWant is the report of Pi's own SessionManager (the Node row) for the script, with the run's directory tree as "<root>" and generated ids as "<uuid>".
-//
-//go:embed testdata/session-graph-session-manager.json
-var sessionGraphSessionManagerWant string
+var sessionGraphSessionManagerWant = testdataString("session-graph-session-manager.json")
 
 type sessionGraphRig struct {
 	t    testing.TB
@@ -424,9 +429,7 @@ func TestSessionGraphSettingsManagerAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphSettingsManagerWant is the report of Pi's own SettingsManager (the Node row).
-//
-//go:embed testdata/session-graph-settings-manager.json
-var sessionGraphSettingsManagerWant string
+var sessionGraphSettingsManagerWant = testdataString("session-graph-settings-manager.json")
 
 // trust-manager.ts ProjectTrustStore (get, getEntry, set, setMany, the store's file and its errors) and hasTrustRequiringProjectResources for every SDK.
 func TestSessionGraphProjectTrustStoreAcrossSDKs(t *testing.T) {
@@ -443,9 +446,7 @@ func TestSessionGraphProjectTrustStoreAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphProjectTrustStoreWant is the report of Pi's own ProjectTrustStore (the Node row).
-//
-//go:embed testdata/session-graph-project-trust-store.json
-var sessionGraphProjectTrustStoreWant string
+var sessionGraphProjectTrustStoreWant = testdataString("session-graph-project-trust-store.json")
 
 // resource-loader.ts DefaultResourceLoader (options, results, overrides as callbacks, extendResources, settings handle, resolveProjectTrust) for every SDK. The options extensionFactories and extensionsOverride are not in the row: the native SDKs refuse them (gap SdkSessionGraph).
 func TestSessionGraphDefaultResourceLoaderAcrossSDKs(t *testing.T) {
@@ -462,9 +463,7 @@ func TestSessionGraphDefaultResourceLoaderAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphDefaultResourceLoaderWant is the report of Pi's own DefaultResourceLoader (the Node row).
-//
-//go:embed testdata/session-graph-default-resource-loader.json
-var sessionGraphDefaultResourceLoaderWant string
+var sessionGraphDefaultResourceLoaderWant = testdataString("session-graph-default-resource-loader.json")
 
 // package-manager.ts DefaultPackageManager (settings sources, listing, resolve with a missing-source callback, install and remove of a local package with progress events, temporary sources, updates) for every SDK.
 func TestSessionGraphDefaultPackageManagerAcrossSDKs(t *testing.T) {
@@ -493,9 +492,7 @@ func sessionGraphDefaultPackageManagerWantFor(sdkName string) string {
 }
 
 // sessionGraphDefaultPackageManagerWant is the report of Pi's own DefaultPackageManager (the Node row).
-//
-//go:embed testdata/session-graph-default-package-manager.json
-var sessionGraphDefaultPackageManagerWant string
+var sessionGraphDefaultPackageManagerWant = testdataString("session-graph-default-package-manager.json")
 
 // sessionGraphModelServer is an OpenAI-compatible chat completions endpoint that answers every request with the stream "hello".
 func sessionGraphModelServer(t testing.TB) string {
@@ -530,9 +527,7 @@ func TestSessionGraphModelRuntimeAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphModelRuntimeWant is the report of Pi's own ModelRuntime (the Node row), with the run's model server as "<server>".
-//
-//go:embed testdata/session-graph-model-runtime.json
-var sessionGraphModelRuntimeWant string
+var sessionGraphModelRuntimeWant = testdataString("session-graph-model-runtime.json")
 
 // model-registry.ts ModelRegistry over a ModelRuntime (`new ModelRegistry(runtime)`: catalog, auth and request auth, provider registration by name and by Provider object, the Provider object members, virtual models, refresh, streams, classify and generateImages) for every SDK. The expectation is the report of Pi's own ModelRegistry (the Node row), except `builtin`: Pi's getProvider and getProviders answer a builtin provider's
 // Provider object, and the Go, Python and Rust SDKs fail with the D78 error (docs/parity/divergences/D78.md), which their cells must report.
@@ -564,9 +559,7 @@ func TestSessionGraphModelRegistryAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphModelRegistryWant is the report of Pi's own ModelRegistry (the Node row), with the run's model server as "<server>".
-//
-//go:embed testdata/session-graph-model-registry.json
-var sessionGraphModelRegistryWant string
+var sessionGraphModelRegistryWant = testdataString("session-graph-model-registry.json")
 
 // childHandlesProbe is the extension the child session of the child_handles script loads (additionalExtensionPaths of its resource loader): it registers one tool, which the session must have among its active tools.
 const childHandlesProbe = `export default function (pi) {
@@ -589,9 +582,7 @@ func TestSessionGraphChildHandlesAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphChildHandlesWant is the report of Pi's own createAgentSession (the Node row).
-//
-//go:embed testdata/session-graph-child-handles.json
-var sessionGraphChildHandlesWant string
+var sessionGraphChildHandlesWant = testdataString("session-graph-child-handles.json")
 
 // servicesProbe is the extension the services script loads (additionalExtensionPaths of the services' resource loader): it registers two flags and a provider while it loads, which createAgentSessionServices applies to the model runtime, and records in the session log what its session_start event and the flags carried (ctx.sessionManager.appendCustomEntry writes the log and emits no entry_appended event; pi.appendEntry also emits it, which a child session does not forward yet).
 const servicesProbe = `export default function (pi) {
@@ -630,9 +621,7 @@ func TestSessionGraphAgentSessionServicesAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphServicesWant is the report of Pi's own createAgentSessionServices and createAgentSessionFromServices (the Node row).
-//
-//go:embed testdata/session-graph-services.json
-var sessionGraphServicesWant string
+var sessionGraphServicesWant = testdataString("session-graph-services.json")
 
 // pi-ai's createProvider (models.ts:1077) for every SDK, against the report of Pi's own createProvider run (the Node row): the provider's metadata and model lists, dispatch on model.api (and the stream error of a model whose api has no
 // implementation), the two forms of `api`, the required-implementation error, deferred fetch and cancel, image and classifier operations, and the model refresh (stored restore, offline, aborted, refused and fetched publications).
@@ -650,9 +639,7 @@ func TestSessionGraphCreateProviderAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphCreateProviderWant is the report of Pi's own createProvider (the Node row).
-//
-//go:embed testdata/session-graph-create-provider.json
-var sessionGraphCreateProviderWant string
+var sessionGraphCreateProviderWant = testdataString("session-graph-create-provider.json")
 
 // extensionRefsProbe is the extension the extension_refs script loads next to the compiled-in extensions: when a session starts it records, in the session log, which of the codemode, tool_search and MCP tools and commands the session has, whether they are active, whether
 // the codemode description declares the `models` namespace, and the parameter schemas.
@@ -684,9 +671,7 @@ func TestSessionGraphExtensionFactoriesAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphExtensionFactoriesWant is the report of Pi's own extension factories (the Node row).
-//
-//go:embed testdata/session-graph-extension-factories.json
-var sessionGraphExtensionFactoriesWant string
+var sessionGraphExtensionFactoriesWant = testdataString("session-graph-extension-factories.json")
 
 // sessionGraphToolModelServer is a model that calls the tool toolName with arguments on its first request and answers with text once a tool result is in the conversation.
 func sessionGraphToolModelServer(t testing.TB, toolName, arguments string) string {
@@ -746,6 +731,4 @@ func TestSessionGraphMcpOptionsAcrossSDKs(t *testing.T) {
 }
 
 // sessionGraphMcpOptionsWant is the report of Pi's own createMcpExtension (the Node row).
-//
-//go:embed testdata/session-graph-mcp-options.json
-var sessionGraphMcpOptionsWant string
+var sessionGraphMcpOptionsWant = testdataString("session-graph-mcp-options.json")
