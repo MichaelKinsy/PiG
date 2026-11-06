@@ -36,14 +36,15 @@ func TestToolParamsNestingAcrossSDKs(t *testing.T) {
 		// 9998 is the deepest the host sends: its marshal validates the arguments alone against 10000 levels, and they add two around the array.
 		for _, depth := range []int{200, 1000, 4000, 5000, 9000, 9998} {
 			report, failure := call(r, depth)
-			if node && depth >= 5000 {
+			switch {
+			case node && depth >= 5000:
 				// What Pi's own runtime gives on the pinned Node (D268).
 				if !strings.Contains(failure, "Maximum call stack size exceeded") {
 					t.Errorf("nesting %d: the Node SDK = %q (keys %v), want V8's RangeError", depth, failure, report.Keys)
 				}
-			} else if failure != "" {
+			case failure != "":
 				t.Errorf("nesting %d: the call failed: %s", depth, failure)
-			} else {
+			default:
 				meta := `{"d":` + deep(depth) + `}`
 				if report.Input == nil || *report.Input != `{"zeta":1,"meta":`+meta+`}` {
 					t.Errorf("nesting %d: input = %.80q…, want Pi's text", depth, deepValue(report.Input))

@@ -123,12 +123,26 @@
 ;;; ---------------------------------------------------------------- event stream replicas
 
 (defun clone-stream-value (value)
-  (cond ((hash-table-p value)
-         (let ((copy (make-hash-table :test 'equal)))
-           (maphash (lambda (k v) (setf (gethash k copy) (clone-stream-value v))) value)
-           copy))
-        ((and (vectorp value) (not (stringp value))) (map 'simple-vector #'clone-stream-value value))
-        (t value)))
+  "A copy of the containers of VALUE (strings and scalars are shared). It walks with a stack of its own, so a payload nested thousands of levels deep does not depend on the thread's control stack."
+  (flet ((shell (v)
+           (cond ((hash-table-p v) (make-hash-table :test 'equal))
+                 ((and (vectorp v) (not (stringp v))) (make-array (length v)))
+                 (t v))))
+    (declare (inline shell))
+    (let* ((root (shell value)) (stack (if (eq root value) '() (list (cons value root)))))
+      (loop while stack
+            do (destructuring-bind (source . target) (pop stack)
+                 (if (hash-table-p source)
+                     (maphash (lambda (k v)
+                                (let ((child (shell v)))
+                                  (setf (gethash k target) child)
+                                  (unless (eq child v) (push (cons v child) stack))))
+                              source)
+                     (dotimes (i (length source))
+                       (let* ((v (aref source i)) (child (shell v)))
+                         (setf (svref target i) child)
+                         (unless (eq child v) (push (cons v child) stack)))))))
+      root)))
 
 (defun stream-member (parent key)
   (cond ((and (hash-table-p parent) (stringp key))

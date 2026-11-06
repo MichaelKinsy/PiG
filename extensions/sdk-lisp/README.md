@@ -55,7 +55,7 @@ The feature files plug into the connection loop through `src/hooks.lisp` (`def-r
 
 ## Stack
 
-The image is built with `--control-stack-size 64MB` (`lispControlStackSize` in `coding/extension/host/runtimecell/lisp_packed.go`), saved with the image and kept by every thread it starts, so the JSON reader takes the 10000 levels of nesting the host's own marshal allows. The stack is reserved per thread as `MAP_NORESERVE` address space and is not resident; it matters only under `ulimit -v` or `vm.overcommit_memory=2`, where each thread commits it.
+The JSON reader and writer (`json.lisp`) keep the containers they are inside on a stack of their own, so the nesting they take (10016 levels, `*max-json-depth*`, the 10000 levels of the host's own marshal and the envelope) does not depend on a thread's control stack. The image is built with SBCL's default control stack: a larger one is committed in full by every thread on Windows.
 
 ## Tests
 
