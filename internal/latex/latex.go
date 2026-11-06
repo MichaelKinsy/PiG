@@ -153,9 +153,11 @@ func formatScript(value, kind string) string {
 	return prefix + "(" + value + ")"
 }
 
+// The simple-argument tests of formatFraction and formatRoot and the named-operator spacing are /u regexes in Pi, which see two adjacent halves as the one astral
+// letter or digit they spell; RE2 reads the non-canonical six bytes as U+FFFD, so the text is joined before it is matched.
 func formatFraction(numerator, denominator string) string {
-	numerator = trimJS(numerator)
-	denominator = trimJS(denominator)
+	numerator = jsstring.Canonical(trimJS(numerator))
+	denominator = jsstring.Canonical(trimJS(denominator))
 	num := numerator
 	if !reSimpleLetterNumber.MatchString(numerator) {
 		num = "(" + numerator + ")"
@@ -168,7 +170,7 @@ func formatFraction(numerator, denominator string) string {
 }
 
 func formatRoot(value, symbol string) string {
-	value = trimJS(value)
+	value = jsstring.Canonical(trimJS(value))
 	if reSimpleLetterNumber.MatchString(value) {
 		return symbol + value
 	}
@@ -176,7 +178,7 @@ func formatRoot(value, symbol string) string {
 }
 
 func normalizeOutput(value string) string {
-	value = reNamedOperatorLeft.ReplaceAllString(value, "${1} ")
+	value = reNamedOperatorLeft.ReplaceAllString(jsstring.Canonical(value), "${1} ")
 	value = strings.ReplaceAll(value, namedOperatorStart, "")
 	value = reNamedOperatorRight.ReplaceAllString(value, " ${1}")
 	value = strings.ReplaceAll(value, namedOperatorEnd, "")
