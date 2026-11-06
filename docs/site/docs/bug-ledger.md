@@ -1284,6 +1284,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c4fae28](#bf-c4fae28) | Provider request bodies write a lone UTF-16 surrogate as its escape, as `JSON.stringify` does, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4fef6c](#bf-c4fef6c) | Streaming long code blocks no longer grows memory with every frame: the syntax-highlight cache keeps one copy… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c51c77e](#bf-c51c77e) | An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c551a63](#bf-c551a63) | Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-c58ceed](#bf-c58ceed) | `chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c5b14a5](#bf-c5b14a5) | The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c5ce588](#bf-c5ce588) | Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex… | PiG's own defect | All platforms | 0.5.0 |
@@ -19270,6 +19271,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/upstream_tool_schema_test.go::TestRegisterToolWithoutANameFailsLikePisLoader`
 - **Release note:** An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text (the missing parameter schema, or the TypeError of reading `parameters`), not a PiG-only message.
 
+### BF-c551a63
+
+**Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D268)
+- **Symptom:** Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any SDK or on any supported Python (3.11 and later).
+- **Root cause:** - Go: the extension ended on arguments nested 9998 to 10000 levels, because its reader validated the whole frame against 10000. json.UnmarshalFrame takes 64 levels more (Unmarshal keeps the standard limit, and so the host's marshal), and a frame past that is answered, not fatal: a request with the RangeError, a host call result as an error, a notification dropped with a stderr line. - Rust: the bound is 10016 levels; requests run on 64 MB threads (dropping and writing a deep Value recurses); a notification past the bound is marked, dropped with a diagnostic and does not end the connection. - Lisp: the bound is 10016 levels; a deep notification is dropped with a diagnostic, and the three…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi parses and returns tool arguments without a stack-bound depth limit, or the owner decides the SDKs should stop at Pi's observed depth. Then the call-site markers and this record go.
+- **Fix commits:** `c551a6348d` (2026-11-05), `c1da695c1d` (2026-11-06), `e2ea65cfa3` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_deep_frames.py`, `extensions/sdk/json/decode_pool_test.go::TestUnmarshalFrameTakesAnEnvelopeAroundArgumentsNestedTenThousandLevels`, `extensions/sdk/protocol_deep_frame_test.go::TestFrameHeadReadsTypeAndIDWithoutDecodingWhatNests`, `extensions/sdk/protocol_deep_frame_test.go::TestReadLoopAnswersARequestNestedPastTheReaderAndGoesOn`, `test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK`, `test/extension-conformance/model_stream_deep_event_test.go::TestModelStreamEventWithDeepToolArgumentsReachesEverySDK`, `test/extension-conformance/tool_params_deep_test.go::TestToolParamsNestingAcrossSDKs`
+- **Release note:** Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any SDK or on any supported Python (3.11 and later). The host sends arguments nested up to 10000 levels, and Pi's own runtime fails the call with `Maximum call stack size exceeded` only where V8 runs out of stack for `JSON.stringify` (about 4400 levels on Node 24; it moves with the Node version). The Python SDK failed the call from about 1000 levels (`maximum recursion depth exceeded`), and from about 990 on Python 3.11; the Lisp SDK ended its extension from 4000 levels; the Rust SDK ended its extension past 4096 levels and its `Context::tool_params` returned `None` from 128; the Go SDK ended its extension from about 9995 levels. Each now returns the object for every frame the host can send, a request nested past what an SDK reads fails with that error while the extension answers the next call, and a notification nested past it (a `model_stream_event` with deep tool arguments reads fine) is dropped with a line on stderr. The Rust SDK also ended its connection on a `message_update` (a tool call in the partial message) or `tool_execution_update` whose delta carried a value nested past 128 levels; both are read now. The Lisp image is built with a 64 MiB control stack per thread (address space, not resident). The difference from Pi's depth-dependent limit is recorded as D268.
+
 ### BF-c58ceed
 
 **`chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says…**
@@ -25280,6 +25297,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D265 | PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments | [BF-348a3a8](#bf-348a3a8) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
+| D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
 
 ## Fix-titled commits that are not bugs in a release
 

@@ -36007,6 +36007,44 @@
       ]
     },
     {
+      "id": "BF-c551a63",
+      "title": "Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any…",
+      "symptom": "Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any SDK or on any supported Python (3.11 and later).",
+      "rootCause": "- Go: the extension ended on arguments nested 9998 to 10000 levels, because its reader validated the whole frame against 10000. json.UnmarshalFrame takes 64 levels more (Unmarshal keeps the standard limit, and so the host's marshal), and a frame past that is answered, not fatal: a request with the RangeError, a host call result as an error, a notification dropped with a stderr line. - Rust: the bound is 10016 levels; requests run on 64 MB threads (dropping and writing a deep Value recurses); a notification past the bound is marked, dropped with a diagnostic and does not end the connection. - Lisp: the bound is 10016 levels; a deep notification is dropped with a diagnostic, and the three…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D268",
+      "removeWhen": "Pi parses and returns tool arguments without a stack-bound depth limit, or the owner decides the SDKs should stop at Pi's observed depth. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any SDK or on any supported Python (3.11 and later). The host sends arguments nested up to 10000 levels, and Pi's own runtime fails the call with `Maximum call stack size exceeded` only where V8 runs out of stack for `JSON.stringify` (about 4400 levels on Node 24; it moves with the Node version). The Python SDK failed the call from about 1000 levels (`maximum recursion depth exceeded`), and from about 990 on Python 3.11; the Lisp SDK ended its extension from 4000 levels; the Rust SDK ended its extension past 4096 levels and its `Context::tool_params` returned `None` from 128; the Go SDK ended its extension from about 9995 levels. Each now returns the object for every frame the host can send, a request nested past what an SDK reads fails with that error while the extension answers the next call, and a notification nested past it (a `model_stream_event` with deep tool arguments reads fine) is dropped with a line on stderr. The Rust SDK also ended its connection on a `message_update` (a tool call in the partial message) or `tool_execution_update` whose delta carried a value nested past 128 levels; both are read now. The Lisp image is built with a 64 MiB control stack per thread (address space, not resident). The difference from Pi's depth-dependent limit is recorded as D268.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c551a6348d",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "c1da695c1d",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "e2ea65cfa3",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_deep_frames.py",
+        "extensions/sdk/json/decode_pool_test.go::TestUnmarshalFrameTakesAnEnvelopeAroundArgumentsNestedTenThousandLevels",
+        "extensions/sdk/protocol_deep_frame_test.go::TestFrameHeadReadsTypeAndIDWithoutDecodingWhatNests",
+        "extensions/sdk/protocol_deep_frame_test.go::TestReadLoopAnswersARequestNestedPastTheReaderAndGoesOn",
+        "test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK",
+        "test/extension-conformance/model_stream_deep_event_test.go::TestModelStreamEventWithDeepToolArgumentsReachesEverySDK",
+        "test/extension-conformance/tool_params_deep_test.go::TestToolParamsNestingAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-c58ceed",
       "title": "`chord/host.Forbidden(\"\")` keeps the empty message, as Pi's `forbidden(\"\")` does; `Forbidden()` still says…",
       "symptom": "`chord/host.Forbidden(\"\")` keeps the empty message, as Pi's `forbidden(\"\")` does; `Forbidden()` still says \"forbidden\".",
@@ -50224,6 +50262,11 @@
       "id": "D267",
       "title": "The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes",
       "entry": "BF-D267"
+    },
+    {
+      "id": "D268",
+      "title": "The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by…",
+      "entry": "BF-c551a63"
     }
   ],
   "exemptCommits": {
