@@ -1,3 +1,0 @@
-### Fixed
-
-- A key bound to two editor actions now performs the action Pi performs. The editor checked copy, undo, the autocomplete selection keys, deletion, kill ring, history, movement, newline, submit and paging in an order of its own, so a shared key such as one bound to both undo and cursor left, or to selection cancel and up, did the wrong one. A newline typed while a forced file popup is open closes it, Tab with no completion available ends there instead of acting as another key, and accepting a popup applies it as shown instead of asking the provider again at the new cursor. <!-- fix: 6f91ff5417 -->
