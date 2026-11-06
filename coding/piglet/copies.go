@@ -263,7 +263,7 @@ func pigletRegistrationName(pigletsDir, target string) (string, bool) {
 	for _, suffix := range []string{".files.json", ".origin.json"} {
 		if name, ok := strings.CutSuffix(base, suffix); ok && name != "" {
 			for _, ext := range []string{".yaml", ".yml"} {
-				if _, err := os.Stat(filepath.Join(pigletsDir, name+ext)); err == nil {
+				if _, err := os.Stat(filepath.Join(pigletsDir, name+ext)); err == nil { //perf:ok cold: once per origin record on a piglet add
 					return name, true
 				}
 			}
@@ -291,6 +291,6 @@ func reclaimOrphanedPigletCopies(pigletsDir, yamlPath string, stdout io.Writer) 
 }
 
 func fileExists(path string) bool {
-	_, err := os.Lstat(path)
+	_, err := os.Lstat(path) //perf:ok cold: a piglet add or remove
 	return err == nil
 }
