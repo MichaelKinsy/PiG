@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os/exec"
 	"reflect"
 	"slices"
@@ -76,6 +77,24 @@ func TestAppKeybindingsManagerMatchesPi(t *testing.T) {
 			probes = append(probes, keybindingsProbe{Kitty: kitty, Bindings: b})
 		}
 	}
+	// pig divergence (D241): where Windows defaults apply (win32 and WSL), Pig's default for app.clipboard.pasteImage is alt+v and ctrl+v, Pi 1.5.0's
+	// alt+v only. Pi bound to those two keys by the user behaves exactly as Pi's later default does, so a probe that does not bind the action is paired
+	// with one that does, and only that action's matches and keys are read from the pair. Nothing else is excused.
+	d241Pair := map[int]int{}
+	if tui.HostKeybindingPlatform().UsesWindowsKeybindings() {
+		for index, probe := range slices.Clone(probes) {
+			if _, bound := probe.Bindings["app.clipboard.pasteImage"]; bound {
+				continue
+			}
+			paired := maps.Clone(probe.Bindings)
+			if paired == nil {
+				paired = map[string][]string{}
+			}
+			paired["app.clipboard.pasteImage"] = []string{"alt+v", "ctrl+v"}
+			d241Pair[index] = len(probes)
+			probes = append(probes, keybindingsProbe{Kitty: probe.Kitty, Bindings: paired})
+		}
+	}
 	input, err := json.Marshal(map[string]any{"probes": probes, "candidates": candidates})
 	if err != nil {
 		t.Fatal(err)
@@ -137,6 +156,11 @@ func TestAppKeybindingsManagerMatchesPi(t *testing.T) {
 			return tui.GetTUIKeybindings().GetKeys(action)
 		}
 		want := expected.Results[index]
+		if pair, ok := d241Pair[index]; ok {
+			const paste = "app.clipboard.pasteImage"
+			want.Matches, want.Keys = maps.Clone(want.Matches), maps.Clone(want.Keys)
+			want.Matches[paste], want.Keys[paste] = expected.Results[pair].Matches[paste], expected.Results[pair].Keys[paste]
+		}
 		for _, action := range expected.Actions {
 			var got []int
 			for i, data := range candidates {
