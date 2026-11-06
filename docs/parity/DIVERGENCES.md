@@ -2538,9 +2538,9 @@ Amendment 2026-11-02 (owner decision of the same day): the approval above (2026-
 
 Remove when: an SDK serves `Value.Decode`/`Value.Encode` (or a host call runs a codec) so a stored callback pair has a consumer.
 
-Call-site markers: `extensions/sdk/type_schema.go` (`Type`), `extensions/sdk-py/pig_sdk/type_schema.py` (module doc), `extensions/sdk-rs/src/type_schema.rs` (module doc).
+Call-site markers: `extensions/sdk/type_schema.go` (`Type`), `extensions/sdk-py/pig_sdk/type_schema.py` (module doc), `extensions/sdk-rs/src/type_schema.rs` (module doc), `extensions/sdk-lisp/src/type-schema.lisp` (file header).
 
-Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`) and `test_type_omits_the_codec_family` (`extensions/sdk-py/tests/test_pi_ai_type_vectors.py`) require that the six members do not exist; the Rust members are absent by construction (`type_schema.rs` doctest `compile_fail`). The Node row of `TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs` (`test/extension-conformance/type_schema_registration_test.go`) runs TypeBox's own `Type`.
+Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`), `test_type_omits_the_codec_family` (`extensions/sdk-py/tests/test_pi_ai_type_vectors.py`) and `type-omits-the-codec-family` (`extensions/sdk-lisp/tests/type-tests.lisp`) require that the six members do not exist; the Rust members are absent by construction (`type_schema.rs` doctest `compile_fail`). The Node row of `TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs` (`test/extension-conformance/type_schema_registration_test.go`) runs TypeBox's own `Type`.
 
 ## D199 PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only what OpenRouter's /models returns
 
