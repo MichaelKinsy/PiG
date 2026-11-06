@@ -9,6 +9,8 @@ use crate::protocol::RequestMsg;
 struct Replica {
     seq: u64,
     root: Value,
+    /// The payload nests past serde_json's limit (it came from a keyframe or a delta that needed the deep decode): a delta rebuilt from it runs on the deep stack too.
+    deep: bool,
 }
 
 /// The payloads of the event streams one connection received, by event name and key (a `tool_execution_update` has one for each tool call); only its read loop touches it.
@@ -25,10 +27,12 @@ impl EventReplicas {
         };
         let name = req.event.clone().unwrap_or_default();
         let id = (name.clone(), stream.key.clone());
+        let mut deep = req.deep_args;
         let produced = match req.args.take() {
             Some(keyframe) => Ok(keyframe),
             None => match self.replicas.get_mut(&id) {
                 Some(replica) if replica.seq == stream.base => {
+                    deep |= replica.deep;
                     let mut root = std::mem::take(&mut replica.root);
                     let ops = stream.ops.clone().unwrap_or(Value::Null);
                     apply_ops(&mut root, &ops).map(|()| root)
@@ -42,11 +46,13 @@ impl EventReplicas {
         match produced {
             Ok(root) => {
                 req.args = Some(root.clone());
+                req.deep_args = deep;
                 self.replicas.insert(
                     id,
                     Replica {
                         seq: stream.seq,
                         root,
+                        deep,
                     },
                 );
             }
@@ -398,5 +404,41 @@ mod tests {
                 delivered["message"]["content"][0]["text"] = json!("edited");
             }
         }
+    }
+
+    // A delta carries only the operations, so a deep payload held in the replica does not make the delta's own frame deep: the replica remembers it, and the delta's
+    // handler runs on the deep stack as the keyframe's did (what a handler does with a deep payload does not fit in the default one).
+    #[test]
+    fn a_delta_rebuilt_from_a_deep_payload_runs_on_the_deep_stack() {
+        let mut replicas = EventReplicas::default();
+        let mut keyframe = request(1, 0, Some(json!({"text": "ab"})), None);
+        keyframe.deep_args = true;
+        replicas.apply(&mut keyframe);
+        assert!(keyframe.deep_args);
+        let ops = json!([{"op": "append", "path": ["text"], "value": "cd"}]);
+        let mut delta = request(2, 1, None, Some(ops.clone()));
+        replicas.apply(&mut delta);
+        assert_eq!(delta.args, Some(json!({"text": "abcd"})));
+        assert!(delta.deep_args);
+        assert_eq!(crate::extension::request_stack_size(&delta), 64 << 20);
+        // A delta whose own operations were deep makes the payload deep for the deltas after it.
+        let mut replicas = EventReplicas::default();
+        let mut shallow = request(1, 0, Some(json!({"text": "ab"})), None);
+        replicas.apply(&mut shallow);
+        assert!(!shallow.deep_args);
+        let mut deepening = request(2, 1, None, Some(ops.clone()));
+        deepening.deep_args = true;
+        replicas.apply(&mut deepening);
+        assert!(deepening.deep_args);
+        let mut after = request(3, 2, None, Some(ops));
+        replicas.apply(&mut after);
+        assert!(after.deep_args);
+        // A payload that was never deep stays on the default stack.
+        let mut replicas = EventReplicas::default();
+        let mut plain = request(1, 0, Some(json!({"text": "ab"})), None);
+        replicas.apply(&mut plain);
+        let mut next = request(2, 1, None, Some(json!([])));
+        replicas.apply(&mut next);
+        assert!(!next.deep_args);
     }
 }

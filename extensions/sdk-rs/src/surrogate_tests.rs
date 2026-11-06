@@ -262,3 +262,42 @@ fn only_a_request_with_deep_arguments_runs_on_the_deep_stack() {
     // Past the bound the request is answered with the RangeError without running its handler.
     assert_eq!(size_of(MAX_NESTING_DEPTH + 10), 8 << 20);
 }
+
+fn nested_delta(depth: usize) -> String {
+    let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+    format!(
+        r#"{{"type":"request","id":"t","request":{{"method":"event","event":"message_update","stream":{{"seq":2,"base":1,"ops":[{{"op":"set","path":["content",1],"value":{{"zeta":1,"meta":{{"d":{deep}}}}}}}]}}}}}}"#
+    )
+}
+
+// The host puts a whole new subtree into a delta's `set` operation (a tool call of a partial message, with its arguments), so the operations nest as the arguments do. They are
+// read like them: past serde_json's 128 levels up to the bound, and a value past the bound is answered with the RangeError instead of ending the connection.
+#[test]
+fn a_delta_whose_operations_nest_past_serde_jsons_limit_still_decodes() {
+    on_deep_stack(delta_operations_nested_past_serde_jsons_limit_still_decode).unwrap();
+}
+
+fn delta_operations_nested_past_serde_jsons_limit_still_decode() {
+    for depth in [10, 100, 130, 200, 9000, MAX_NESTING_DEPTH - 10] {
+        let envelope = decode_frame(nested_delta(depth).as_bytes())
+            .unwrap_or_else(|err| panic!("depth {depth}: {err}"));
+        let req = envelope.request.unwrap();
+        assert!(req.args_error.is_none(), "depth {depth}");
+        assert_eq!(req.deep_args, depth >= 120, "depth {depth}");
+        let ops = req.stream.as_ref().unwrap().ops.as_ref().unwrap();
+        let mut level = &ops[0]["value"]["meta"]["d"];
+        for _ in 0..depth {
+            level = &level[0];
+        }
+        assert_eq!(level, 1, "depth {depth}");
+        assert_eq!(
+            crate::extension::request_stack_size(&req),
+            if depth >= 120 { 64 << 20 } else { 8 << 20 },
+            "depth {depth}"
+        );
+    }
+    let envelope = decode_frame(nested_delta(MAX_NESTING_DEPTH + 10).as_bytes()).unwrap();
+    let req = envelope.request.unwrap();
+    assert_eq!(req.args_error.as_deref(), Some(TOO_DEEP_MESSAGE));
+    assert!(req.stream.unwrap().ops.is_none());
+}

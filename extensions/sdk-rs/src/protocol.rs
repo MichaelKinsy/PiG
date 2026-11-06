@@ -410,7 +410,23 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     child_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    stream: Option<EventStream>,
+    stream: Option<RawEventStream>,
+}
+
+/// [`EventStream`] with `ops` as the JSON text the host wrote: a `set` operation carries a whole new subtree (a tool call's arguments), which nests as deep as the host's
+/// marshal allows, and decoding it inside the frame would stop at serde_json's 128 levels and end the connection. `TryFrom<RawRequestMsg>` decodes it with `decode_json_str`.
+#[derive(Serialize, Deserialize)]
+struct RawEventStream {
+    #[serde(default)]
+    seq: u64,
+    #[serde(default)]
+    base: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ops: Option<Box<serde_json::value::RawValue>>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    key: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    evict: Vec<String>,
 }
 
 /// The message of the error a value nested past `MAX_NESTING_DEPTH` is answered with: V8's `RangeError`, as Pi's JavaScript parser or stringify throws it.
@@ -454,6 +470,36 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
                 Err(err) => return Err(err),
             }
         };
+        let stream = match raw.stream {
+            Some(RawEventStream {
+                seq,
+                base,
+                ops,
+                key,
+                evict,
+            }) => {
+                let ops = match ops
+                    .as_ref()
+                    .map(|ops| decode_json_str(ops.get(), &mut deep_args))
+                    .transpose()
+                {
+                    Ok(ops) => ops,
+                    Err(err) if is_too_deep(&err) => {
+                        args_error = Some(TOO_DEEP_MESSAGE.to_string());
+                        None
+                    }
+                    Err(err) => return Err(err),
+                };
+                Some(EventStream {
+                    seq,
+                    base,
+                    ops,
+                    key,
+                    evict,
+                })
+            }
+            None => None,
+        };
         let args_raw = if raw.method == "tool_call" {
             raw.args.as_ref().map(|a| a.get().to_string())
         } else {
@@ -469,7 +515,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
             args,
             child_session: raw.child_session,
             terminal_input,
-            stream: raw.stream,
+            stream,
             stream_error: None,
             tool_call_index: raw.tool_call_index,
             args_raw,
@@ -499,7 +545,15 @@ impl From<RequestMsg> for RawRequestMsg {
             tool_call_index: req.tool_call_index,
             args,
             child_session: req.child_session,
-            stream: req.stream,
+            stream: req.stream.map(|stream| RawEventStream {
+                seq: stream.seq,
+                base: stream.base,
+                ops: stream
+                    .ops
+                    .map(|ops| serde_json::value::to_raw_value(&ops).expect("Value is JSON")),
+                key: stream.key,
+                evict: stream.evict,
+            }),
         }
     }
 }
