@@ -268,12 +268,12 @@ func TestMainScreenFixtureIsCurrent(t *testing.T) {
 	}
 }
 
-// piOracleCommand runs a Pi oracle script with its own temporary directory. Pi writes pi-tui-crash.log to os.tmpdir() when a
+// piOracleCommand runs a Pi oracle script with one argument (the Pi dist path or the pinned version) and its own temporary directory. Pi writes pi-tui-crash.log to os.tmpdir() when a
 // replayed scenario overflows, so the shared one would keep it (CI test-fast assert-clean-tmp). Node reads TMPDIR, and TEMP or TMP on Windows.
-func piOracleCommand(t *testing.T, script, dist string) *exec.Cmd {
+func piOracleCommand(t *testing.T, script, arg string) *exec.Cmd {
 	t.Helper()
 	tmp := t.TempDir()
-	cmd := exec.CommandContext(t.Context(), "node", script, dist)
+	cmd := exec.CommandContext(t.Context(), "node", script, arg)
 	cmd.Env = append(os.Environ(), "TMPDIR="+tmp, "TEMP="+tmp, "TMP="+tmp)
 	return cmd
 }

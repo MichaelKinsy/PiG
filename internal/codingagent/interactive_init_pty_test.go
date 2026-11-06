@@ -72,7 +72,9 @@ func runInitPTYChildRaw(t *testing.T, child, envKey string) (captured []byte, re
 	}
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^"+child+"$", "-test.count=1", "-test.v")
 	report = t.TempDir() + "/report"
-	cmd.Env = append(os.Environ(), envKey+"="+report, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
+	// A child that ends through os.Exit never runs its own t.TempDir cleanup (the SIGINT child exits 130), so it gets a temporary directory under this test's, which the test removes.
+	scratch := t.TempDir()
+	cmd.Env = append(os.Environ(), envKey+"="+report, "TERM=xterm-256color", "PIG_HOME="+t.TempDir(), "TMPDIR="+scratch)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {

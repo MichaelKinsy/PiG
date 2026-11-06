@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -106,7 +105,7 @@ func TestSurrogateRowsMatchPiScreens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/surrogate_screens.mjs", pigversion.UpstreamPackageVersion)
+	cmd := piOracleCommand(t, "testdata/surrogate_screens.mjs", pigversion.UpstreamPackageVersion)
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

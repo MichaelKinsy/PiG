@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -163,7 +162,7 @@ func compareAwaitedAcceptProbesWithPi(t *testing.T, script string, probes []awai
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/"+script, pigversion.UpstreamPackageVersion)
+	cmd := tui.PiOracleCommand(t, "testdata/"+script, pigversion.UpstreamPackageVersion)
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
