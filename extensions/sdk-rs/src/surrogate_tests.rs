@@ -117,6 +117,11 @@ fn nested_request(depth: usize, text: &str) -> String {
 // serde_json refuses nesting past 128 levels; every other runtime takes far more, and a refused frame ended the connection.
 #[test]
 fn a_tool_request_nested_past_serde_jsons_limit_still_decodes() {
+    // The deep values drop on a stack made for them, as a request's thread does (a test thread has 2 MiB).
+    on_deep_stack(|| tool_request_nested_past_serde_jsons_limit_still_decodes()).unwrap();
+}
+
+fn tool_request_nested_past_serde_jsons_limit_still_decodes() {
     for depth in [10, 120, 130, 1000, MAX_NESTING_DEPTH - 10] {
         let envelope = decode_frame(nested_request(depth, "ok").as_bytes())
             .unwrap_or_else(|err| panic!("depth {depth}: {err}"));
@@ -132,6 +137,10 @@ fn a_tool_request_nested_past_serde_jsons_limit_still_decodes() {
 
 #[test]
 fn nesting_past_the_bound_is_refused_and_brackets_in_strings_do_not_count() {
+    on_deep_stack(|| nesting_past_the_bound_is_refused()).unwrap();
+}
+
+fn nesting_past_the_bound_is_refused() {
     // Past the bound the frame still decodes (a refused frame ended the connection): the request is answered with Pi's RangeError.
     let envelope = decode_frame(nested_request(MAX_NESTING_DEPTH + 10, "ok").as_bytes()).unwrap();
     let request = envelope.request.unwrap();
@@ -188,4 +197,36 @@ fn session_file_with_an_unpaired_surrogate_keeps_every_entry() {
         .collect();
     assert_eq!(ids, ["a", "b", "c"]);
     assert_eq!(entries[1]["message"]["content"], "x\u{fffd}y");
+}
+
+fn nested_notify(method: &str, depth: usize) -> String {
+    let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+    let args = if method == "ui.custom.input" {
+        format!(r#"{{"key":"k","data":"x","state":{deep}}}"#)
+    } else if method == "state_update" {
+        format!(r#"{{"state":{{"footerData":{deep}}}}}"#)
+    } else {
+        format!(r#"{{"event":{deep}}}"#)
+    };
+    format!(r#"{{"type":"notify","notify":{{"method":"{method}","args":{args}}}}}"#)
+}
+
+// A notification nests as a request does (model_stream_event carries the parsed tool-call arguments of a partial message): up to the bound it decodes, past it the
+// notification is marked, not refused, so the connection keeps serving and the loop drops it with a diagnostic.
+#[test]
+fn a_notification_nested_up_to_the_bound_decodes_and_past_it_is_marked() {
+    on_deep_stack(|| notification_nested_up_to_the_bound_decodes()).unwrap();
+}
+
+fn notification_nested_up_to_the_bound_decodes() {
+    for method in ["model_stream_event", "ui.custom.input", "state_update"] {
+        let envelope = decode_frame(nested_notify(method, 9990).as_bytes()).unwrap();
+        let notify = envelope.notify.unwrap();
+        assert!(notify.args_error.is_none(), "{method}");
+        assert!(notify.args.is_some() || notify.custom_input.is_some() || method == "state_update", "{method}");
+        let envelope = decode_frame(nested_notify(method, MAX_NESTING_DEPTH + 10).as_bytes()).unwrap();
+        let notify = envelope.notify.unwrap();
+        assert_eq!(notify.args_error.as_deref(), Some(TOO_DEEP_MESSAGE), "{method}");
+        assert!(notify.args.is_none() && notify.custom_input.is_none(), "{method}");
+    }
 }

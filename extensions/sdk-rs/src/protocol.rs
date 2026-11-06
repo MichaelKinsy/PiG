@@ -517,6 +517,9 @@ pub struct NotifyMsg {
     pub args: Option<Value>,
     #[serde(skip)]
     pub custom_input: Option<CustomInputArgs>,
+    /// Why the arguments were not decoded: they nest deeper than `MAX_NESTING_DEPTH` (a frame the host cannot send). The notification is dropped with a diagnostic, and the connection keeps serving.
+    #[serde(skip)]
+    pub args_error: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -553,6 +556,14 @@ struct RawNotifyMsg {
 impl TryFrom<RawNotifyMsg> for NotifyMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawNotifyMsg) -> Result<Self, Self::Error> {
+        let too_deep = |method: String| {
+            Ok(NotifyMsg {
+                method,
+                args: None,
+                custom_input: None,
+                args_error: Some(TOO_DEEP_MESSAGE.to_string()),
+            })
+        };
         if matches!(
             raw.method.as_str(),
             "ui.custom.input"
@@ -561,18 +572,24 @@ impl TryFrom<RawNotifyMsg> for NotifyMsg {
                 | "ui.editor.insertText"
                 | "ui.editor.addToHistory"
         ) {
-            let custom_input = raw
+            let custom_input = match raw
                 .args
                 .as_ref()
                 .map(|args| from_json_str(args.get()))
-                .transpose()?;
+                .transpose()
+            {
+                Ok(decoded) => decoded,
+                Err(err) if is_too_deep(&err) => return too_deep(raw.method),
+                Err(err) => return Err(err),
+            };
             return Ok(Self {
                 method: raw.method,
                 args: None,
                 custom_input,
+                args_error: None,
             });
         }
-        let args = raw
+        let args = match raw
             .args
             .map(|args| {
                 if raw.method == "state_update" {
@@ -587,11 +604,17 @@ impl TryFrom<RawNotifyMsg> for NotifyMsg {
                     from_json_str(args.get())
                 }
             })
-            .transpose()?;
+            .transpose()
+        {
+            Ok(decoded) => decoded,
+            Err(err) if is_too_deep(&err) => return too_deep(raw.method),
+            Err(err) => return Err(err),
+        };
         Ok(Self {
             method: raw.method,
             args,
             custom_input: None,
+            args_error: None,
         })
     }
 }
@@ -1369,6 +1392,7 @@ impl Connection {
             msg_type: "notify".to_string(),
             notify: Some(NotifyMsg {
                 custom_input: None,
+                args_error: None,
                 method: method.to_string(),
                 args,
             }),
@@ -1483,11 +1507,14 @@ fn is_zero_usize(value: &usize) -> bool {
     *value == 0
 }
 
-/// The deepest JSON nesting `from_json_str` accepts. serde_json refuses past 128 levels, and Pi's JavaScript parser, Go, and Python take
-/// far more; a refused frame ends the connection. A bound stays so a hostile frame cannot overflow the stack of the recursive decoder.
-const MAX_NESTING_DEPTH: usize = 4096;
+/// The deepest JSON nesting `from_json_str` accepts. serde_json refuses past 128 levels, and a refused frame would end the connection. The host's own JSON
+/// marshal refuses a value nested past 10000 levels, so no frame the host sends nests deeper than that (its envelope adds a few levels); the bound has headroom
+/// over it, and a value beyond is answered with Pi's RangeError (a request) or dropped (a notification). A bound stays so a hostile frame cannot overflow the
+/// stack of the recursive decoder.
+// pig divergence (D268): Pi fails a call at a V8-stack-dependent depth (about 4400 levels); the SDK reads every frame the host can send.
+const MAX_NESTING_DEPTH: usize = 10_016;
 
-/// Stack of the thread that decodes a value nested past serde_json's limit: a debug build uses about 2 KiB of it per level.
+/// Stack of the thread that decodes a value nested past serde_json's limit: a debug build uses about 2 KiB of it per level, so `MAX_NESTING_DEPTH` levels take about 20 MiB of it.
 const DEEP_DECODE_STACK: usize = 64 * 1024 * 1024;
 
 /// Runs a recursive decode on a thread with `DEEP_DECODE_STACK` bytes of stack, so the caller's own stack does not bound the depth.

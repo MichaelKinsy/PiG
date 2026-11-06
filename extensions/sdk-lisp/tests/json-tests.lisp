@@ -94,13 +94,14 @@
   (dolist (bad '("" "{" "[1,]" "{\"a\"}" "01" "1." "-" "tru" "\"\\x\"" "[1] 2" "{\"a\":1,}" "\"a" "nul"))
     (check-error pig:json-error (dec bad))))
 
-;; A value nested past the reader's bound (4096 levels) is Pi's RangeError, not the end of the connection (wire.lisp read-frame): the request it came in is answered with
-;; that error and the connection goes on. A frame up to the bound reads.
+;; A value nested past the reader's bound (10016 levels) is Pi's RangeError, not the end of the connection (wire.lisp read-frame): the request it came in is answered with
+;; that error and the connection goes on. A frame up to the bound (past the 10000 levels of the host's own marshal) reads.
 (defun nested (depth)
   (concatenate 'string (make-string depth :initial-element #\[) "1" (make-string depth :initial-element #\])))
 
 (deftest nesting-up-to-the-bound-reads-and-past-it-is-refused
   (check (vectorp (dec (nested 4000))))
+  (check (vectorp (dec (nested 9996))))
   (check (vectorp (dec (nested pig::*max-json-depth*))))
   (check-error pig:json-error (dec (nested (1+ pig::*max-json-depth*)))))
 

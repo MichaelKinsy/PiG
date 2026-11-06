@@ -27,7 +27,7 @@ import (
 const lispImageFormat = "pig-lisp-image-2"
 
 // lispControlStackSize is the control stack of the generated image's main thread and of every thread it starts (the image saves the runtime options it was built with): a request whose
-// arguments nest 4096 levels deep (the bound of the SDK's JSON reader) decodes and is served on it, where SBCL's 2 MB default is exhausted well before.
+// arguments nest 10000 levels deep (the bound of the host's own JSON marshal; the SDK's JSON reader takes 10016) decodes and is served on it, where SBCL's 2 MB default is exhausted well before.
 const lispControlStackSize = "64MB"
 
 // LispExtension describes one factory-style Lisp extension that can be built into a generated runner image. The factory is the one

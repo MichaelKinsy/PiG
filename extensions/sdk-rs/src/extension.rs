@@ -788,6 +788,11 @@ impl Context {
     }
 }
 
+/// Stack of a request's thread. The arguments of a tool call can nest as deep as the host's own JSON marshal allows (10000 levels), and dropping, ordering or writing
+/// such a `Value` recurses once per level: a debug build uses about 2 KiB of stack per level, far past the 2 MiB a thread gets by default. The stack is address space, reserved
+/// and not resident until used.
+const REQUEST_THREAD_STACK: usize = 64 * 1024 * 1024;
+
 /// Extension is the main builder for a pig subprocess extension.
 pub struct Extension {
     name: String,
@@ -1978,6 +1983,7 @@ impl Extension {
                         let failed_threads = threads.clone();
                         if let Err(err) = thread::Builder::new()
                             .name(format!("pig-request-{id}"))
+                            .stack_size(REQUEST_THREAD_STACK)
                             .spawn(move || {
                                 if req.method != "events.dispatch" {
                                     loaded_gate.wait();
@@ -2073,6 +2079,14 @@ impl Extension {
                 }
                 "notify" => {
                     if let Some(notify) = env.notify {
+                        if notify.args_error.is_some() {
+                            // A notification nested past what the reader takes cannot be decoded: it is dropped, with a diagnostic, and the connection goes on.
+                            eprintln!(
+                                "pig_sdk: dropped the {} notification: it nests deeper than the reader takes",
+                                notify.method
+                            );
+                            continue;
+                        }
                         match notify.method.as_str() {
                             "events.release" => ext.bus.release(notify.args.as_ref()),
                             "tool_render_release" => {
@@ -4718,6 +4732,7 @@ mod tests {
             msg_type: "notify".to_string(),
             notify: Some(crate::protocol::NotifyMsg {
                 custom_input: None,
+                args_error: None,
                 method: method.to_string(),
                 args: Some(args),
             }),

@@ -126,6 +126,7 @@ impl Host {
             msg_type: "notify".into(),
             notify: Some(NotifyMsg {
                 custom_input: None,
+                args_error: None,
                 method: "width_change".into(),
                 args: Some(json!({"width": width})),
             }),

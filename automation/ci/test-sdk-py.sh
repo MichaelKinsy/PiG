@@ -9,12 +9,14 @@ set -euo pipefail
 # venv behind. pytest runs as `python -m pytest` from the SDK root, which puts pig_sdk on sys.path without installing it.
 # uv builds the venv when it is on PATH, because a system Python (Debian's, for one) can lack ensurepip and pip;
 # otherwise the interpreter's own venv and pip do. Both install with --require-hashes and wheels only.
+# PIG_SDK_PY_PYTHON names the interpreter to run under (python3 by default): `make test-sdk-py-311` runs the suite under
+# the oldest Python the SDK supports (requires-python >=3.11), whose JSON reader and recursion limits differ from 3.12's.
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 sdk="$root/extensions/sdk-py"
 lock="$sdk/requirements-dev.txt"
 cache="${PIG_CACHE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}/pig-sdk-py"
 
-python=$(python3 -c 'import sys; print(sys.executable)')
+python=$("${PIG_SDK_PY_PYTHON:-python3}" -c 'import sys; print(sys.executable)')
 key=$("$python" -c '
 import hashlib, sys
 digest = hashlib.sha256(open(sys.argv[1], "rb").read())

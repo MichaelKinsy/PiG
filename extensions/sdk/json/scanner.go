@@ -82,6 +82,9 @@ type scanner struct {
 	// total bytes consumed, updated by decoder.Decode (and deliberately
 	// not set to zero by scan.reset)
 	bytes int64
+
+	// Local change: the nesting limit of this scan; zero is maxNestingDepth (UnmarshalFrame sets frameNestingDepth). scan.reset leaves it.
+	maxDepth int
 }
 
 var scannerPool = sync.Pool{
@@ -145,6 +148,11 @@ const (
 // This is permitted by https://tools.ietf.org/html/rfc7159#section-9
 const maxNestingDepth = 10000
 
+// frameNestingDepth is the limit of UnmarshalFrame. Local change: the host validates a request's arguments alone, as a value, against maxNestingDepth, and wraps them in an
+// envelope (and a result or an event in its own members) that adds a few levels, so a frame the host can send nests a few levels past maxNestingDepth; the SDK's
+// reader, which validates the whole frame, must take it.
+const frameNestingDepth = maxNestingDepth + 64
+
 // reset prepares the scanner for use.
 // It must be called before calling s.step.
 func (s *scanner) reset() {
@@ -177,7 +185,11 @@ func (s *scanner) eof() int {
 // an error state is returned if maxNestingDepth was exceeded, otherwise successState is returned.
 func (s *scanner) pushParseState(c byte, newParseState int, successState int) int {
 	s.parseState = append(s.parseState, newParseState)
-	if len(s.parseState) <= maxNestingDepth {
+	limit := s.maxDepth
+	if limit == 0 {
+		limit = maxNestingDepth
+	}
+	if len(s.parseState) <= limit {
 		return successState
 	}
 	return s.error(c, "exceeded max depth")
