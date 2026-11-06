@@ -246417,17 +246417,6 @@
       "shapeHash": "sha256:e9719e3df5680b0852fdf5f900826e7dc87b9173dbdf3f894ffcb9165b9cab45"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.askEditor",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.askEditor",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, title string, prefill string) (string, bool)"
-      },
-      "shapeHash": "sha256:53d02dd2b64c259938cfee994b2259d782219fe7e313a45551005bd86ab093ac"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.askEditorCommit",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.askEditorCommit",
@@ -246437,17 +246426,6 @@
         "type": "func(ctx context.Context, title string, prefill string, commit func(choice string)) (string, bool)"
       },
       "shapeHash": "sha256:a0b3c6c283ca2755c8551e50a343f68d1f179f336e6bed31b9b1f411512b1485"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.askSelector",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.askSelector",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, title string, options []string) (string, bool)"
-      },
-      "shapeHash": "sha256:68961cd5beec30ee82135820422e3be708e9c46742bc61acc7f6dcbb9a04f501"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.askSelectorCommit",
