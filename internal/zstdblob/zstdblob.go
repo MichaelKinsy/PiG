@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-// Package zstdblob stores the data that pig embeds as one zstd frame and expands it on first use. A frame decodes about four times faster than the gzip stream it replaces and into half the allocations (an exactly sized result and no doubling buffer), and compresses these files 5 to 15 percent smaller: the klauspost decoder is already in the binary for the Node runtime pack.
+// Package zstdblob stores data that pig embeds as one zstd frame and expands it on first use. It suits large outputs (about a megabyte and up): the klauspost decoder is already in the binary for the Node runtime pack, a frame decodes about four times faster than the gzip stream it replaces, and the decode allocates an exactly sized result plus a fixed 125 to 200 KB of decoder buffers, where gzip's io.ReadAll doubles its buffer as it grows. For an embedded file of a few hundred KB the fixed buffers outweigh that gain, so such files stay gzip.
 //
-// Encode is for the generators (automation/gen/zstdfile, automation/gen/embed-bundle.go); the linker drops it from a binary that never calls it.
+// Encode is for the generators (automation/gen/zstdfile and the bundle generators); the linker drops it from a binary that never calls it.
 package zstdblob
 
 import (
+	"bytes"
+
 	"github.com/klauspost/compress/zstd"
 )
 
@@ -30,6 +32,14 @@ func frameSize(frame []byte) (int, bool) {
 		return 0, false
 	}
 	return int(header.FrameContentSize), true
+}
+
+// Reuse returns existing when it already decodes to raw, and Encode(raw) otherwise. A generator uses it so a library upgrade that changes the encoder's output does not rewrite committed frames; the drift tests compare decoded bytes.
+func Reuse(existing, raw []byte) []byte {
+	if decoded, err := Decode(existing); err == nil && bytes.Equal(decoded, raw) {
+		return existing
+	}
+	return Encode(raw)
 }
 
 // Encode returns raw as one frame at the best compression level, with its content size recorded. The output depends only on raw and on the encoder's version; generators keep an existing frame that decodes to raw so a library upgrade does not rewrite committed files.

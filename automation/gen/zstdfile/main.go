@@ -5,7 +5,9 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/MichaelKinsy/PiG/internal/zstdblob"
@@ -20,13 +22,14 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	if frame, err := os.ReadFile(os.Args[2]); err == nil {
-		if decoded, err := zstdblob.Decode(frame); err == nil && bytes.Equal(decoded, raw) {
-			return
-		}
-	}
-	if err := os.WriteFile(os.Args[2], zstdblob.Encode(raw), 0o644); err != nil {
+	existing, err := os.ReadFile(os.Args[2])
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		fail(err)
+	}
+	if frame := zstdblob.Reuse(existing, raw); !bytes.Equal(frame, existing) {
+		if err := os.WriteFile(os.Args[2], frame, 0o644); err != nil {
+			fail(err)
+		}
 	}
 }
 
