@@ -325,6 +325,9 @@ func (u *ExtUIContext) runDialog(
 				return
 			}
 			pending = false
+			if commit := u.m.dialogCommit; commit != nil && !cancelled {
+				commit(value)
+			}
 			u.m.finishExtensionDialog(dialog)
 			resultCh <- extensionDialogResult{value: value, cancelled: cancelled}
 		}

@@ -482,6 +482,18 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		ShowExtensionSelector: func(title string, options []string) (string, bool) { return m.askSelector(ctx, title, options) },
 		ShowExtensionConfirm:  func(title, message string) bool { return m.askConfirm(ctx, title, message) },
 		ShowExtensionEditor:   func(title, prefill string) (string, bool) { return m.askEditor(ctx, title, prefill) },
+		HoldFramesOnChoice: func(holdFor func(choice string) bool) {
+			if holdFor == nil {
+				m.dialogCommit = nil
+				m.releaseFrames()
+				return
+			}
+			m.dialogCommit = func(choice string) {
+				if holdFor(choice) {
+					m.holdFrames()
+				}
+			}
+		},
 		// Pi's /bug does not use the dialog stack: bug-report.ts builds its own ExtensionSelectorComponent and
 		// ExtensionEditorComponent, puts them in the editor slot with focus and puts the editor back when each closes
 		// (showOverlay, restoreEditor). It reports no blocked status, as it never touches the program status.

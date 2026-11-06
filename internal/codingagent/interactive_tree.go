@@ -38,14 +38,24 @@ func (m *InteractiveMode) copySelectedTreeMessage(text *string) {
 }
 
 // navigateTree awaits the Session off the input loop while the owner continues
-// dispatching editor input, events, and renders. Its cancellation belongs to the
+// dispatching editor input and events. Its cancellation belongs to the
 // navigation, not the agent turn, including while a retry replaces the status.
+//
+// The frames of the selection's close stay held until the navigation returns, so the first frame after the selection is the fork point.
+// Pi's navigateTree does its work on its one event loop between the selector's requestRender and the transcript swap
+// (interactive-mode.ts:5617-5635), and the frame the close requested runs after `chatContainer.clear(); renderInitialMessages()`. Here the
+// work runs on a worker while the owner loop keeps serving frames, and a frame in that window shows the old transcript with the selector
+// gone for as long as the navigation takes. A summary shows its status at once, so its hold ends where the status is painted. A dialog an
+// extension opens during the navigation ends the hold too: its frames must reach the screen, as they do in Pi, whose loop is free while an
+// extension awaits.
 func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, summarize bool, customInstructions string) (NavigateTreeResult, error) {
 	handle := m.opts.SessionHandle
 	if handle == nil {
 		return NavigateTreeResult{Cancelled: true}, nil
 	}
 	if m.runStreaming() {
+		// Aborting the run can take a while, and its events and tool output must keep painting.
+		m.releaseFrames()
 		m.restoreQueuedMessagesToEditor(false)
 		if err := m.settleActiveRun(); err != nil {
 			return NavigateTreeResult{}, err
@@ -67,7 +77,10 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 	}
 	m.isCompacting = true
 	defer func() { m.isCompacting = false }()
-	if summarize {
+	if !summarize {
+		m.holdFrames()
+	} else {
+		m.releaseFrames()
 		m.branchSummaryCancel = cancel
 		m.appendToChat(tui.NewSpacer(1))
 		m.showBranchSummaryStatusIndicator()
@@ -78,6 +91,8 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 			m.tuiInst.RequestRender()
 		}()
 	}
+
+	defer m.releaseFrames()
 
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
@@ -128,7 +143,9 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 			if m.requestExit.Load() {
 				cancel()
 			}
-			m.tuiInst.Render()
+			if !m.frameHold {
+				m.tuiInst.Render()
+			}
 		case event, ok := <-m.eventCh:
 			if !ok {
 				m.eventCh = nil
@@ -137,6 +154,9 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 			m.handleAgentEvent(event)
 		case apply := <-m.uiTaskCh:
 			apply()
+			if len(m.extensionDialogs) > 0 {
+				m.releaseFrames()
+			}
 		case <-m.renderWakeCh:
 			m.runScheduledRender()
 		case <-m.extensionErrorWakeCh:

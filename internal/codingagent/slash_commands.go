@@ -244,6 +244,11 @@ type SlashContext struct {
 	ShowTrustSelector func(TrustSelectorOptions) (TrustSelection, bool)
 	// ShowExtensionEditor returns the text and true, or ("", false) when the editor is dismissed (Esc).
 	ShowExtensionEditor func(title, prefill string) (string, bool)
+	// HoldFramesOnChoice arms the owner loop to hold its frames when the next dialog resolves with a choice for which holdFor returns true,
+	// before the dialog closes and the paint that follows its key; the navigation that follows releases them when it returns. A later call
+	// replaces holdFor, and nil ends the arrangement and releases any hold. A tree navigation uses it so the first frame after its prompt is
+	// the fork point.
+	HoldFramesOnChoice func(holdFor func(choice string) bool)
 	// ShowBugReportSelector and ShowBugReportEditor are the /bug prompts. Upstream's bug-report.ts builds its own
 	// ExtensionSelectorComponent (with a description under the title) and ExtensionEditorComponent in the editor slot, outside
 	// the dialog stack, and reports no blocked status. Each returns the choice or text and true, or ("", false) on Esc.
