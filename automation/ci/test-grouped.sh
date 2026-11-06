@@ -27,7 +27,7 @@ SHARDED_SPEC=(
   ./codemode:2
   ./durable/codemode:2
   ./coding/extension/host/subprocess:3
-  ./test/extension-conformance:12
+  ./test/extension-conformance:24
   ./tui/internal/hljs:2
   ./tui:6
 )
