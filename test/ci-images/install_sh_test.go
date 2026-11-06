@@ -171,7 +171,12 @@ type installResult struct {
 // `curl ... | sh` would, never the test process's own.
 func (f installFixture) run(t *testing.T, extraEnv ...string) installResult {
 	t.Helper()
-	cmd := exec.Command(testenv.Sh(t), filepath.Join(repoRoot(t), "docs", "site", "public", "install.sh"))
+	return f.runScript(t, filepath.Join(repoRoot(t), "docs", "site", "public", "install.sh"), extraEnv...)
+}
+
+func (f installFixture) runScript(t *testing.T, script string, extraEnv ...string) installResult {
+	t.Helper()
+	cmd := exec.Command(testenv.Sh(t), script)
 	cmd.Env = append([]string{
 		"PATH=" + filepath.Join(f.root, "fakebin") + ":/usr/bin:/bin:/usr/sbin:/sbin",
 		"HOME=" + f.home,
@@ -477,4 +482,60 @@ func TestInstallShKeepsNonAndroidPlatformNames(t *testing.T) {
 			}
 		})
 	}
+}
+
+const remoteHint = `  ssh you@your-computer pig
+Install PiG on that computer with:
+  curl -fsSL https://pi-in-go.dev/install.sh | sh
+`
+
+const iosMessage = `pig-install: error: PiG can't run on iPhone or iPad. iOS lets terminal apps run only code built into the app, so neither a PiG binary nor a WebAssembly build can reach a model provider.
+To use PiG from this device, run it on a computer you can reach and connect to it:
+` + remoteHint
+
+const ishMessage = `pig-install: error: PiG doesn't support iSH: iSH emulates 32-bit x86 Linux, and PiG doesn't run reliably there.
+To use PiG from this device, run it on a computer you can reach and connect to it:
+` + remoteHint
+
+// a-Shell on an iPhone or iPad reports uname -s Darwin and a device identifier as uname -m. The installer prints the remote-use hint and exits 1, as it does for every unsupported platform, before it fetches anything.
+func TestInstallShExplainsThatPiGDoesNotRunOnIOS(t *testing.T) {
+	for _, tc := range []struct{ unameS, unameM string }{
+		{"Darwin", "iPhone18,3"},
+		{"Darwin", "iPad14,1"},
+		{"Linux", "iPhone12,1"},
+	} {
+		t.Run(tc.unameM, func(t *testing.T) {
+			f := newInstallFixture(t)
+			got := f.runOn(t, tc.unameS, tc.unameM, "")
+			if got.status != 1 || got.stderr != iosMessage || got.stdout != "" {
+				t.Fatalf("status %d, want 1\nstdout:\n%s\nstderr:\n%s\nwant stderr:\n%s", got.status, got.stdout, got.stderr, iosMessage)
+			}
+			if _, err := os.Stat(filepath.Join(f.root, "fixtures", ".requests")); !os.IsNotExist(err) {
+				t.Fatalf("install.sh fetched something: %v", err)
+			}
+			f.assertNothingInstalled(t)
+		})
+	}
+}
+
+// iSH is 32-bit x86 Linux emulation that exposes /proc/ish. The test points the script at a stand-in for that file, because the test cannot create /proc/ish.
+func TestInstallShExplainsThatPiGDoesNotSupportISH(t *testing.T) {
+	f := newInstallFixture(t)
+	marker := filepath.Join(f.root, "proc-ish")
+	writeFile(t, marker, nil, 0o644)
+	script, err := os.ReadFile(filepath.Join(repoRoot(t), "docs", "site", "public", "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(script), "/proc/ish") {
+		t.Fatal("install.sh does not check /proc/ish")
+	}
+	patched := filepath.Join(f.root, "install-ish.sh")
+	writeFile(t, patched, []byte(strings.ReplaceAll(string(script), "/proc/ish", marker)), 0o644)
+	writeFile(t, filepath.Join(f.root, "fakebin", "uname"), []byte(fakeUname), 0o755)
+	got := f.runScript(t, patched, "PIG_INSTALL_DIR=", "FAKE_UNAME_S=Linux", "FAKE_UNAME_M=i686")
+	if got.status != 1 || got.stderr != ishMessage || got.stdout != "" {
+		t.Fatalf("status %d, want 1\nstdout:\n%s\nstderr:\n%s\nwant stderr:\n%s", got.status, got.stdout, got.stderr, ishMessage)
+	}
+	f.assertNothingInstalled(t)
 }
