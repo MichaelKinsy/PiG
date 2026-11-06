@@ -42,7 +42,7 @@ def launch(pig, slot, exts, home, binary=False, hold=None):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--pig"); ap.add_argument("--slot", required=True)
-    ap.add_argument("--piglet-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "piglets", "aot")); ap.add_argument("exts", nargs="*")
+    ap.add_argument("--piglet-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "piglets", "pig-bolt")); ap.add_argument("exts", nargs="*")
     ap.add_argument("--binary", help="a Piglet Binary that carries the TypeScript extensions and the bolt-runtime extension"); ap.add_argument("--home", help="PIG_HOME root for --binary; keep it for the measurement")
     a = ap.parse_args(); slot = os.path.abspath(a.slot)
     if a.binary:
