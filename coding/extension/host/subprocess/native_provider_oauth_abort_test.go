@@ -49,7 +49,7 @@ export default pi=>{
 	return services, started
 }
 
-// The abort arrives while the extension's OAuth refresh is in flight. The proxy's snapshot settles the refresh that ai.ResolveProviderAuth started on its own goroutine, so the rotated token reaches auth.json although the caller returned at once, and an exit waits for it (Settled) for at most the 15 s refresh timeout (Pi: oauth.refresh runs under modify with AbortSignal.timeout(15 s), resolve.ts:119-155).
+// The abort arrives while the extension's OAuth refresh is in flight. The refresh that ai.ResolveProviderAuth started runs its Modify on the registry's RuntimeCredentials, which tracks it, so the rotated token reaches auth.json although the caller returned at once, and an exit waits for it (Settled) for at most the 15 s refresh timeout (Pi: oauth.refresh runs under modify with AbortSignal.timeout(15 s), resolve.ts:119-155).
 func TestNativeProviderAuthSavesAnExtensionsRefreshAbortedMidRequest(t *testing.T) {
 	services, started := nativeOAuthAbortFixture(t)
 	callCtx, cancelCall := context.WithCancel(t.Context())

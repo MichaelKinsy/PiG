@@ -305,15 +305,17 @@ func TestRuntimeCloseDoesNotWaitForARuntimeKeyResolverWithAStoredOAuthCredential
 	}
 }
 
-// abortingStore cancels the caller as the store's modify begins: the abort that arrives between the read of the stored credential and the transaction.
+// abortingStore cancels the caller once the store's lock is held, just before the transaction's callback: the abort that arrives between the read of the stored credential and the transaction.
 type abortingStore struct {
 	ai.CredentialStore
 	cancel context.CancelCauseFunc
 }
 
 func (s abortingStore) Modify(ctx context.Context, id string, fn func(*ai.Credential) (*ai.Credential, error)) (*ai.Credential, error) {
-	s.cancel(errors.New("abort"))
-	return s.CredentialStore.Modify(ctx, id, fn)
+	return s.CredentialStore.Modify(ctx, id, func(current *ai.Credential) (*ai.Credential, error) {
+		s.cancel(errors.New("abort"))
+		return fn(current)
+	})
 }
 
 // A refresh that the abort beat never starts: the in-transaction check (Pi's signal.throwIfAborted() at the top of the modify callback, resolve.ts:136) finds the abort, no token request is made and the credential is untouched.

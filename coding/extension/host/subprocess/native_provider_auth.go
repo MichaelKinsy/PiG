@@ -92,7 +92,6 @@ func (p *nativeProviderProxy) auth(ctx context.Context) ai.ProviderAuth {
 type nativeCredentialSnapshot struct {
 	value      *ai.Credential
 	providerID string
-	changed    bool
 }
 
 func (s *nativeCredentialSnapshot) Read(ctx context.Context, _ string) (*ai.Credential, error) {
@@ -111,7 +110,6 @@ func (s *nativeCredentialSnapshot) Modify(_ context.Context, _ string, fn func(*
 	}
 	if value != nil {
 		s.value = value
-		s.changed = true
 	}
 	return s.value, nil
 }
@@ -122,7 +120,6 @@ func (s *nativeCredentialSnapshot) Delete(ctx context.Context, providerID string
 	}
 	if providerID == s.providerID && s.value != nil {
 		s.value = nil
-		s.changed = true
 	}
 	return nil
 }
