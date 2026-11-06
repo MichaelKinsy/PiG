@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // A single signal during a stdin-end shutdown is ignored (D234). When a failing stdout then ends the mode before the shutdown does, the process exits with the signal's status, 143, and exit.log still names the signal (D102).
@@ -57,7 +58,7 @@ func TestRPCIgnoredSignalThenStdoutFailureLeavesAnExitLogLine(t *testing.T) {
 		if !status.Exited() || status.ExitStatus() != 143 {
 			t.Fatalf("wait = %v, want exit 143", err)
 		}
-	case <-time.After(15 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("the process did not end after the stdout failure")
 	}
 	data, err := os.ReadFile(codingagent.ExitLogPath(agentDir))
