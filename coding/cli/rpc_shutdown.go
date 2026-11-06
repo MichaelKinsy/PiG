@@ -46,8 +46,9 @@ type rpcShutdown struct {
 	// abort ends the process for a repeated signal: it does not wait for stdout. It is nil in tests that need no separate path, and the repeated signal then uses exit.
 	abort func(code int)
 
-	// disposing is set by the caller that runs the dispose.
+	// disposing is set by the caller that runs the dispose; disposed closes when that dispose has ended.
 	disposing atomic.Bool
+	disposed  chan struct{}
 
 	// exiting is set when an exit starts; a later exit does nothing, except the repeated signal's.
 	exiting atomic.Bool
@@ -60,7 +61,7 @@ type rpcShutdown struct {
 func newRPCShutdown(detach, dispose, flush func(), exit func(code int)) *rpcShutdown {
 	return &rpcShutdown{
 		detach: detach, dispose: dispose, flush: flush, exit: exit,
-		startedCh: make(chan struct{}),
+		startedCh: make(chan struct{}), disposed: make(chan struct{}),
 	}
 }
 
@@ -136,7 +137,7 @@ func (s *rpcShutdown) repeatedSignal(sig syscall.Signal) {
 // finish disposes the runtime when nobody has, for a mode exit that had no trigger, or whose trigger claimed the shutdown and did not get to run it: a termination signal can claim it when it is recorded and find no hook to run it, because the mode is still starting or already tearing down (D234). It does not exit, and does not wait for a dispose that is running.
 func (s *rpcShutdown) finish() {
 	s.claim()
-	s.runDispose()
+	s.startDispose()
 }
 
 // begin starts shutdown and disposes the runtime when no trigger has started
@@ -161,13 +162,22 @@ func (s *rpcShutdown) claim() bool {
 	return true
 }
 
-// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed. It runs once; a second caller returns at once.
+// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed. It runs once. A trigger that loses the race to another caller, the mode's finish, waits for that dispose to end before it returns, because its exit would otherwise end the process under the running session_shutdown handlers (D234).
 func (s *rpcShutdown) runDispose() {
-	if !s.disposing.CompareAndSwap(false, true) {
-		return
+	if !s.startDispose() {
+		<-s.disposed
 	}
+}
+
+// startDispose runs the dispose unless another caller has, and reports whether it ran it. It does not wait for a dispose that is running.
+func (s *rpcShutdown) startDispose() bool {
+	if !s.disposing.CompareAndSwap(false, true) {
+		return false
+	}
+	defer close(s.disposed)
 	s.detach()
 	s.dispose()
+	return true
 }
 
 // terminationSignals are the signals rpc-mode.ts handles.

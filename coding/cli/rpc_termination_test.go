@@ -115,3 +115,45 @@ func TestRPCIgnoredSignalIsNotRecordedByTheModeWhenAnExitOwnsTheEnd(t *testing.T
 		t.Fatalf("records = %v, want none from the hook", records)
 	}
 }
+
+// The mode can return at the instant the first signal is recorded: finish then runs the dispose the signal claimed, and the signal's own run loses that race. Its exit must wait for the dispose that is running, or the process ends with the signal's status under the session_shutdown handlers (D234). finish itself does not wait for a dispose that is running.
+func TestRPCSignalWaitsForTheDisposeFinishStarted(t *testing.T) {
+	h := newTerminationHarness()
+	disposeStarted := make(chan struct{})
+	releaseDispose := make(chan struct{})
+	h.s = newRPCShutdown(func() { h.step("detach") }, func() {
+		h.step("dispose:start")
+		close(disposeStarted)
+		<-releaseDispose
+		h.step("dispose:end")
+	}, func() {}, func(int) { h.step("exit") })
+	h.term.shutdown = h.s
+	if !h.term.record(syscall.SIGTERM) {
+		t.Fatal("the first signal did not claim the shutdown")
+	}
+	finished := make(chan struct{})
+	go func() { h.s.finish(); close(finished) }()
+	<-disposeStarted
+	// The hook runs now: the signal's run finds the dispose started by finish.
+	hooked := make(chan struct{})
+	go func() { h.term.hook(); close(hooked) }()
+	select {
+	case <-hooked:
+		t.Fatal("the signal exited while the dispose that finish started was still running")
+	case <-time.After(150 * time.Millisecond):
+	}
+	if steps, _ := h.snapshot(); slices.Contains(steps, "exit") {
+		t.Fatalf("steps = %v, want no exit before the dispose ends", steps)
+	}
+	close(releaseDispose)
+	for _, done := range []chan struct{}{finished, hooked} {
+		select {
+		case <-done:
+		case <-time.After(testbudget.Wait(t)):
+			t.Fatal("a caller did not return after the dispose ended")
+		}
+	}
+	if steps, _ := h.snapshot(); !slices.Equal(steps, []string{"detach", "dispose:start", "dispose:end", "exit"}) {
+		t.Fatalf("steps = %v, want the exit after the dispose ended", steps)
+	}
+}
