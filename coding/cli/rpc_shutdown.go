@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"runtime"
@@ -8,6 +9,7 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
@@ -43,6 +45,9 @@ type rpcShutdown struct {
 
 	// abort ends the process for a repeated signal: it does not wait for stdout. It is nil in tests that need no separate path, and the repeated signal then uses exit.
 	abort func(code int)
+
+	// disposing is set by the caller that runs the dispose.
+	disposing atomic.Bool
 
 	// exiting is set when an exit starts; a later exit does nothing, except the repeated signal's.
 	exiting atomic.Bool
@@ -128,10 +133,10 @@ func (s *rpcShutdown) repeatedSignal(sig syscall.Signal) {
 	exit(128 + int(sig))
 }
 
-// finish disposes the runtime when no trigger did, for a mode exit that had
-// none. It does not exit.
+// finish disposes the runtime when nobody has, for a mode exit that had no trigger, or whose trigger claimed the shutdown and did not get to run it: a termination signal can claim it when it is recorded and find no hook to run it, because the mode is still starting or already tearing down (D234). It does not exit, and does not wait for a dispose that is running.
 func (s *rpcShutdown) finish() {
-	s.begin()
+	s.claim()
+	s.runDispose()
 }
 
 // begin starts shutdown and disposes the runtime when no trigger has started
@@ -156,8 +161,11 @@ func (s *rpcShutdown) claim() bool {
 	return true
 }
 
-// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed.
+// runDispose is the shutdown a trigger that claimed it runs: the events already published reach stdout, then the runtime is disposed. It runs once; a second caller returns at once.
 func (s *rpcShutdown) runDispose() {
+	if !s.disposing.CompareAndSwap(false, true) {
+		return
+	}
 	s.detach()
 	s.dispose()
 }
@@ -215,7 +223,7 @@ func (w *repeatedTermination) Stop() {
 	})
 }
 
-// pig divergence (D234): rpcExit ends the process once. Several exits can be in flight: a shutdown's own (after its dispose) and a repeated signal's. Each stops writing stdout first; the one that reaches the commit first owns the end and runs the cleanup, the exit.log line and the process exit, once. A later normal exit never returns, because the owner ends the process; a later repeated signal returns and leaves the end to the owner, which is past its stdout wait and about to exit (D234: Pi's process.exit runs once, synchronously).
+// pig divergence (D234): rpcExit ends the process once. Several exits can be in flight: a shutdown's own (after its dispose) and a repeated signal's. Each stops writing stdout first; the one that reaches the commit first owns the end and runs the cleanup, the exit.log line and the process exit, once. A later normal exit never returns, because the owner ends the process; a later repeated signal returns and leaves the end to the owner, which is past its stdout wait and about to exit (Pi's process.exit runs once, synchronously). The mode's own end can own the end too (endedByMode): then the process ends with the mode's return, and a normal exit returns without running anything.
 type rpcExit struct {
 	// closeStdout stops later records from being written.
 	closeStdout func()
@@ -228,12 +236,46 @@ type rpcExit struct {
 	// end flushes the exit.log line and ends the process; it does not return in the process.
 	end func(code int)
 
-	committed atomic.Bool
-	ended     chan struct{}
+	mu    sync.Mutex
+	state rpcExitState
+	ended chan struct{}
 }
+
+type rpcExitState int
+
+const (
+	rpcExitOpen      rpcExitState = iota
+	rpcExitCommitted              // an exit owns the end
+	rpcExitModeEnded              // the mode's return ends the process
+)
 
 func newRPCExit(closeStdout, waitStdout, cleanup func(), record func(code int, forced bool), end func(code int)) *rpcExit {
 	return &rpcExit{closeStdout: closeStdout, waitStdout: waitStdout, cleanup: cleanup, record: record, end: end, ended: make(chan struct{})}
+}
+
+// endedByMode makes the mode's own end, a return with the exit status of the signal that was recorded, the end of the process, and reports whether it did. It reports false when an exit already owns the end: that exit records itself.
+func (e *rpcExit) endedByMode() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.state != rpcExitOpen {
+		return false
+	}
+	e.state = rpcExitModeEnded
+	return true
+}
+
+// commit takes the end for a run and reports whether it owns it. A repeated signal takes it from the mode's end, whose return it forces; every other exit leaves it there.
+func (e *rpcExit) commit(forced bool) (owner bool, wait bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	switch {
+	case e.state == rpcExitOpen, e.state == rpcExitModeEnded && forced:
+		e.state = rpcExitCommitted
+		return true, false
+	case e.state == rpcExitCommitted:
+		return false, !forced
+	}
+	return false, false
 }
 
 // run ends the process with code. flushStdout waits for the stdout tail first, and forced is the exit of a repeated signal, which never waits for stdout.
@@ -242,8 +284,9 @@ func (e *rpcExit) run(code int, flushStdout, forced bool) {
 	if flushStdout {
 		e.waitStdout()
 	}
-	if !e.committed.CompareAndSwap(false, true) {
-		if !forced {
+	owner, wait := e.commit(forced)
+	if !owner {
+		if wait {
 			<-e.ended
 		}
 		return
@@ -252,4 +295,54 @@ func (e *rpcExit) run(code int, flushStdout, forced bool) {
 	e.record(code, forced)
 	e.end(code)
 	close(e.ended)
+}
+
+// rpcTermination is the termination signal's part of RPC mode: the exit.log decision at the first signal, and the hook that runs the shutdown it started.
+type rpcTermination struct {
+	shutdown *rpcShutdown
+	exit     *rpcExit
+	// release ends the hold on the Session's agent events that the signal's prelude took.
+	release func()
+	// done is closed when the mode ends.
+	done <-chan struct{}
+	// received is the signal number main recorded.
+	received func() syscall.Signal
+	// recordEnding writes an exit.log line for the ending that ends the process (D102).
+	recordEnding func(reason string)
+
+	decided, claimed atomic.Bool
+	ignored          atomic.Int32
+}
+
+// record is the first signal's decision whether it starts the shutdown (setTerminationRecord): claiming it here makes the exit.log line and the shutdown agree.
+func (t *rpcTermination) record(sig os.Signal) bool {
+	t.decided.Store(true)
+	if t.shutdown.claim() {
+		t.claimed.Store(true)
+		return true
+	}
+	if number, ok := sig.(syscall.Signal); ok {
+		t.ignored.Store(int32(number))
+	}
+	return false
+}
+
+// hook runs the shutdown the first signal started, as the handler rpc-mode.ts registers does. It is registered before record: a signal between the two registrations finds no decision and claims the shutdown here, and one that claimed it at record time and finds no hook is run by finish.
+func (t *rpcTermination) hook() {
+	sig := t.received()
+	started := t.claimed.Load()
+	if !t.decided.Load() {
+		started = t.shutdown.claim()
+	}
+	if started {
+		t.shutdown.runSignal(sig)
+		return
+	}
+	// A shutdown is already running and a single signal does not interrupt it. The prelude held the Session's agent events for this signal, and nothing else ends that hold: a run a session_shutdown handler starts would block on it while the dispose waits for the handler. Main cancels the root context, which owns the extension processes, once this hook returns, so it waits for the exit or for the mode's own end (a stdout write failure ends it during the dispose too).
+	t.release()
+	<-t.done
+	// The mode ended while that shutdown ran, and no exit owns the end: the process ends with the mode's return, 128+signum. The ignored signal is the cause on record (D102).
+	if number := syscall.Signal(t.ignored.Load()); number != 0 && t.exit.endedByMode() {
+		t.recordEnding(fmt.Sprintf("received %s during shutdown, which the mode's end cut off (exit %d)", codingagent.SignalName(number), 128+int(number)))
+	}
 }
