@@ -795,9 +795,9 @@ func (t *ProcessTerminal) write(data string) {
 }
 
 // WriteToTerminal writes data to out and hands a failed write to the handler OnTerminalWriteError installed, as a failed process.stdout.write
-// reaches the "error" listener in Pi. Every write to the user's terminal that is not a ProcessTerminal's own goes through it.
+// reaches the "error" listener in Pi. A lone UTF-16 surrogate in data becomes U+FFFD here, as in Node's UTF-8 encoding of the string; rows are measured before it. Every write to the user's terminal that is not a ProcessTerminal's own goes through it.
 func WriteToTerminal(out io.Writer, data string) {
-	if _, err := io.WriteString(out, data); err != nil {
+	if _, err := io.WriteString(out, jsstring.StreamText(data)); err != nil {
 		if handler := terminalWriteErrorHandler.Load(); handler != nil {
 			(*handler)(err)
 		}

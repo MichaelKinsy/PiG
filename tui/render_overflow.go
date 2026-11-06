@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -68,7 +69,7 @@ func (t *TuiMainScreen) crashOnDifferentialOverflow(newLines []string, index, wi
 	if err := os.MkdirAll(filepath.Dir(crashLogPath), 0o777); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile(crashLogPath, []byte(strings.Join(data, "\n")), 0o666); err != nil {
+	if err := os.WriteFile(crashLogPath, []byte(jsstring.StreamText(strings.Join(data, "\n"))), 0o666); err != nil {
 		panic(err)
 	}
 
