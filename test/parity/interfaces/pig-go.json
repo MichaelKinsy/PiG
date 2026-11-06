@@ -91966,6 +91966,50 @@
       "shapeHash": "sha256:0fa67fc47ecf5c1986d13d333bf3ea4172d354321078a56a46d24e506de42391"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#heapSettler",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "heapSettler",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "heapSettler"
+      },
+      "shapeHash": "sha256:0d95841cf4e42b6b96f70f09db7a297be3dfd1018d893b5655bd18f19e142fed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#heapSettler.fire",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "heapSettler.fire",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#heapSettler.stop",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "heapSettler.stop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#heapSettler.touch",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "heapSettler.touch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#helpEnvProviderStripped",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "helpEnvProviderStripped",
@@ -92580,6 +92624,138 @@
         "type": "func(stop bool) []rpcSessionControls"
       },
       "shapeHash": "sha256:e6a099ff58d4a4185fb9c62c6f5c5850b917b4e75df9e6b7e796ae3a394c4e40"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHeapSettleDelay.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenHeapSettleDelay.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenHosts",
@@ -93363,6 +93539,17 @@
       "shapeHash": "sha256:cd521bc1c0bfee452da2a90300d2bdfff0252229b427b4daadd60658457e1881"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#netErrorCause",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "netErrorCause",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) error"
+      },
+      "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newBackupDir",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "newBackupDir",
@@ -93438,6 +93625,17 @@
         "type": "func(configRoot string) *extensionUpgrader"
       },
       "shapeHash": "sha256:290ee1b1a7d060c99153dd5d28ed487242a26bdf3175c4464e35e54f459ce0ed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newHeapSettler",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "newHeapSettler",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(delay time.Duration, free func()) *heapSettler"
+      },
+      "shapeHash": "sha256:3009730a1ce6d7483599324219587c4c7d97b92d99fec74e59cc189b481d8b8d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newLazyStartupModelRuntime",
@@ -95418,6 +95616,17 @@
         "type": "func(key any, value any) (previous any, loaded bool)"
       },
       "shapeHash": "sha256:ded09ab918cbba6deb906e9cb411feb510c97f4cddbe8668976aeb59e0a462d1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#removeOwnSocket",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "removeOwnSocket",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, created os.FileInfo)"
+      },
+      "shapeHash": "sha256:06385b45d9048bf89d030e94108bc7e0a3b0a22e2c748154d04b3e47ee744895"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#renderStatus",
@@ -130453,6 +130662,17 @@
         "type": "func(me *managedExt) github.com/MichaelKinsy/PiG/coding/extension.SourceInfo"
       },
       "shapeHash": "sha256:596ad1669762afff527366e84cc1746c6fb6bfaedd741e5ced055e1fb45635c8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.factoryLauncherEnv",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.factoryLauncherEnv",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []string"
+      },
+      "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.fanOutStatePush",

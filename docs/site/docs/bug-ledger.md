@@ -127,6 +127,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
+| [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
@@ -827,6 +828,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7f9ca19](#bf-7f9ca19) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
 | [BF-7fc4ef4](#bf-7fc4ef4) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
+| [BF-7febcec](#bf-7febcec) | Quitting while an OAuth token refresh is in flight no longer loses the new token | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-8001cc5](#bf-8001cc5) | `SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8001cc5-2](#bf-8001cc5-2) | `SettingsManager.getCompactionSettings` (+ `getCompactionReserveTokens`, `getCompactionKeepRecentTokens`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8019120](#bf-8019120) | `pig config` in the default theme no longer draws the space after a dim checkbox, or the name of a… | PiG's own defect | All platforms | Unreleased |
@@ -1163,6 +1165,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad6d659](#bf-ad6d659) | The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ada7018](#bf-ada7018) | `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack | PiG's own defect | All platforms | Unreleased |
 | [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -3204,6 +3207,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `16f8d392cc` (2026-10-20)
 - **Tests:** None recorded.
+
+### BF-1724c9e
+
+**Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D236)
+- **Symptom:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`.
+- **Root cause:** Pi main's rule, ahead of the pin. An agent directory whose `auth.json` is a symlink to a shared file locked a different directory than the real file, so two processes entered the credential section together and refreshed one single-use OAuth refresh token twice (`invalid_grant`).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pin reaches a Pi release containing 081a6e87f. Then the two call-site markers and this record go.
+- **Fix commits:** `1724c9e834` (2026-11-05), `79461e0ddf` (2026-11-05), `800dd85f35` (2026-11-06), `a018d069d8` (2026-11-06)
+- **Tests:** `ai/auth_dangling_link_test.go::TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile`, `ai/auth_dangling_link_test.go::TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile`, `internal/pilock/symlink_alias_test.go::TestAuthLockOfASymlinkedFileInAnotherDirectoryIsTheRealFilesLock`, `internal/pilock/symlink_alias_test.go::TestAuthLocksShareOneLockAcrossSymlinkedPaths`, `internal/pilock/symlink_alias_test.go::TestSettingsLockStaysOnTheGivenPath`
+- **Release note:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236).
 
 ### BF-173060b
 
@@ -12898,6 +12917,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7fc4ef463d` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-7febcec
+
+**Quitting while an OAuth token refresh is in flight no longer loses the new token**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D237)
+- **Symptom:** Quitting while an OAuth token refresh is in flight no longer loses the new token.
+- **Root cause:** Pi main's rule, ahead of the pin. If the process exits after the token request went out but before the new token is written, the provider has spent the old single-use refresh token and auth.json keeps only that one; the next request fails with `invalid_grant`.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pin reaches a Pi release containing b2cb62923. Then the call-site markers and this record go.
+- **Fix commits:** `22b37bfeb9` (2026-11-05), `353168f26b` (2026-11-05), `79461e0ddf` (2026-11-05), `7febcec6be` (2026-11-05), `800dd85f35` (2026-11-06), `a018d069d8` (2026-11-06), `d104187663` (2026-11-06), `e64124fffb` (2026-11-06)
+- **Tests:** `ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledIgnoresLaterModificationsAndHonoursCancellation`, `ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails`, `ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledWaitsUntilPendingModificationsAreWritten`, `coding/cli/interactive_oauth_refresh_exit_test.go::TestInteractiveExitWaitsForAnExtensionOAuthRefreshToBeSaved`, `coding/cli/print_mode_credential_writes_test.go::TestPrintModeWaitsForAStartedOAuthRefreshToBeSavedBeforeReturning`, `coding/cli/rpc_oauth_refresh_exit_test.go::TestPrintModeExitWaitsForAnExtensionOAuthRefreshToBeSaved`, `coding/cli/rpc_oauth_refresh_exit_test.go::TestRPCExitWaitsForAStartedOAuthRefreshToBeSaved`, `coding/extension/host/subprocess/native_provider_oauth_abort_test.go::TestNativeProviderAuthSavesAnExtensionsRefreshAbortedMidRequest` and 17 more in docs/bug-ledger.json
+- **Release note:** Quitting while an OAuth token refresh is in flight no longer loses the new token. If pig exited after the token request went out but before the new token was written, `auth.json` kept the refresh token the provider had already spent and the next request failed with `invalid_grant`; an RPC client that stopped pig right after startup, while the background catalog refresh refreshed an expired login, hit this. Interactive, print, JSON and RPC mode now wait for a refresh that has started to be saved before the process exits, with no timeout beyond the 15 s refresh and the 30 s auth lock wait; a second signal exits at once in RPC and print mode. The wait comes before pig stops its extensions, and a refresh that has started (a subprocess extension provider's, in the catalog refresh or at request time, or the Radius gateway's) is no longer cut or discarded when its caller is cancelled, as Pi main does (D237).
+
 ### BF-8001cc5
 
 **`SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths…**
@@ -17596,6 +17631,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ad9ed64513` (2026-10-13)
 - **Tests:** `internal/codingagent/session_append_allocs_norace_test.go::TestAppendingATurnDoesNotParseItsRecordsForAccounting`, `internal/codingagent/session_append_typed_details_test.go::TestAppendToolResultWithTypedDetailsDoesNotDecodeItsRecord`, `internal/codingagent/session_held_entry_test.go::FuzzHeldMessageEntryMatchesTheRecordDecode`, `internal/codingagent/session_held_entry_test.go::TestHeldMessageEntryMatchesTheRecordDecode`, `internal/codingagent/session_line_capacity_test.go::TestMessageEntryRecordKeepsNoSpareCapacity`, `test/perfgate/process_test.go::TestRPCTurnProcessGate`
 - **Release note:** A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines, tabs or quotes. A truncated 1 MiB read used to keep 1.6 MB of unused space for the life of the session and now keeps about 160 KB; a 1 MiB source-code message kept 226 KB and now keeps 88 KB.
+
+### BF-ada7018
+
+**`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack**
+
+- **Source:** PiG's own defect
+- **Symptom:** `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.
+- **Root cause:** Every build creates its Host on the server's registry, a connection's shutdown no longer holds its retirements, a stale Host still serves events.off and xref.hello, a migrated bus listener is tracked, and a lone shared Node member restarts into the shared cell.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ada701819c` (2026-11-01)
+- **Tests:** None recorded.
+- **Release note:** `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.
 
 ### BF-ae1ee6d
 
@@ -25253,6 +25302,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
 | D234 | PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a… | [BF-5b8189f](#bf-5b8189f) |
 | D235 | A session-graph client's two live runs with no "no run" read between them are one context | [BF-D235](#bf-d235) |
+| D236 | The auth lock follows the symlinks of auth.json to the real file | [BF-1724c9e](#bf-1724c9e) |
+| D237 | Exit waits for a started OAuth refresh to be saved | [BF-7febcec](#bf-7febcec) |
 | D238 | The output limit leaves 15% of the estimated input unused | [BF-D238](#bf-d238) |
 | D240 | Claude Sonnet 5 takes no temperature | [BF-D240](#bf-d240) |
 | D241 | Ctrl+V also pastes on Windows and WSL | [BF-D241](#bf-d241) |
@@ -25285,7 +25336,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 1
-- Follow-up to unreleased work: 2
+- Follow-up to unreleased work: 17
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1
