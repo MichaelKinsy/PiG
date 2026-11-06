@@ -1,4 +1,4 @@
-package codingagent
+package noderealpath
 
 import (
 	"strings"

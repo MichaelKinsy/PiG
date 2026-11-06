@@ -3676,7 +3676,7 @@ count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/codingagent/canonical_path_win32.go"
+file = "internal/noderealpath/win32.go"
 func = "nodeRealpathWin32"
 pattern = "loop-format"
 detail = "string+="
@@ -3684,7 +3684,7 @@ count = 2
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
-file = "internal/codingagent/canonical_path_win32.go"
+file = "internal/noderealpath/win32.go"
 func = "win32NormalizeString"
 pattern = "loop-format"
 detail = "string+="

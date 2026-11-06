@@ -1,6 +1,6 @@
 //go:build windows
 
-package codingagent
+package noderealpath
 
 import (
 	"os"
@@ -11,9 +11,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 )
 
-// evalCanonicalPath is Node's fs.realpathSync (not realpathSync.native): it follows links, keeps volume mount points in the path, resolves a rooted link target such as \dir on the device of the path that reached the link, and leaves every non-link component as the caller spelled it, so a case variant or an 8.3 short name survives. winsymlink=0 makes Go follow both drive junctions and volume mounts, but libuv treats only drive-target mount-point reparse records as symbolic links. filepath.EvalSymlinks differs on all three counts: it follows a rooted target on the process drive and returns the case and long names the filesystem stores.
+// Eval is the link walk of Node's fs.realpathSync (not realpathSync.native) over an absolute path: it follows links, keeps volume mount points in the path, resolves a rooted link target such as \dir on the device of the path that reached the link, and leaves every non-link component as the caller spelled it, so a case variant or an 8.3 short name survives. winsymlink=0 makes Go follow both drive junctions and volume mounts, but libuv treats only drive-target mount-point reparse records as symbolic links. filepath.EvalSymlinks differs on all three counts: it follows a rooted target on the process drive and returns the case and long names the filesystem stores.
 // Ports packages/coding-agent/src/utils/paths.ts:canonicalizePath.
-func evalCanonicalPath(path string) (string, error) {
+func Eval(path string) (string, error) {
 	return nodeRealpathWin32(path, osRealpathFS, win32Process{
 		cwd: func() string {
 			cwd, _ := os.Getwd()

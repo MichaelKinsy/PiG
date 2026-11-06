@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -200,9 +201,9 @@ func TestSessionCwdMatches_ResolvesSymlinks(t *testing.T) {
 	real := t.TempDir()
 	// Pi's canonicalizePath: Node's realpathSync, which on Windows keeps the 8.3 short names of the components it is given where filepath.EvalSymlinks would
 	// return the long names, so the canonical form must come from the same walk sessionCwdMatches uses.
-	canonical, err := evalCanonicalPath(real)
+	canonical, err := noderealpath.Eval(real)
 	if err != nil {
-		t.Fatalf("evalCanonicalPath: %v", err)
+		t.Fatalf("noderealpath.Eval: %v", err)
 	}
 	if !sessionCwdMatches(canonical, real) {
 		t.Errorf("sessionCwdMatches(%q, %q) = false, want true (same real dir)", canonical, real)
