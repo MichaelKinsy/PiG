@@ -6,10 +6,10 @@
 #
 # D253 (Pi main 676af1d77, #11747, not in Pi 1.5.0) reads a limit below 1 as 1, floors a fraction, cuts a custom glob's results to the limit and prints the
 # limit notice only when more results than the limit exist. Pi 1.5.0 echoes the limit verbatim and shows every result. The three FIND_OPS lines below are the
-# whole difference: each rule matches one complete PiG line, exactly as D253 makes PiG print it, and replaces it with the complete line Pi 1.5.0 prints. Pi's
-# own output is never edited: a changed PiG line leaves its rule unmatched and fails the comparison, and so does a changed Pi line, so a rule cannot outlive
-# the divergence. The root line is compared unchanged. Pi's echoed limits stay asserted by pi_contains.
-# normalize-rationale: D253 changes only the three FIND_OPS lines named by the rules (limit-0, limit-1.5, fd-zero); each rule matches PiG's complete line and writes Pi 1.5.0's complete line, so Pi's text, details and every other line stay compared byte for byte and a drifted PiG or Pi line fails.
+# whole difference: each rule matches one complete PiG line, exactly as D253 makes PiG print it, and replaces it with the complete line Pi 1.5.0 prints. The rules
+# alone would pass if the divergence vanished or if Pi started to print PiG's line, so raw pins carry the proof: pig_contains requires the three complete PiG lines
+# and pi_contains the three complete Pi 1.5.0 lines in every run's unreplaced output. The root line is compared unchanged.
+# normalize-rationale: D253 changes only the three FIND_OPS lines named by the rules (limit-0, limit-1.5, fd-zero); each rule matches PiG's complete line and writes Pi 1.5.0's complete line, so the text, details and every other line stay compared byte for byte, and the raw pig_contains and pi_contains pins of the same complete lines fail when either side drifts.
 name = "21-find-operations-and-limits"
 description = "Custom find operations relativize roots; the zero and fractional result limits differ from Pi 1.5.0 only as D253 states"
 covers = ["packages/coding-agent/src/core/tools/find.ts"]
@@ -32,7 +32,8 @@ timeout_seconds = 60
 exit_code = 0
 output_equal = true
 both_contain = ['FIND_OPS root ["home/user/project/\nhome/user/project/file.txt",null]']
-pi_contains = ['"resultLimitReached":0', '"resultLimitReached":1.5']
+pig_contains = ['FIND_OPS limit-0 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]', 'FIND_OPS limit-1.5 ["a\n\n[1 results limit reached]",{"resultLimitReached":1}]', 'FIND_OPS fd-zero ["a.txt",null]']
+pi_contains = ['FIND_OPS limit-0 ["a\nb\n\n[0 results limit reached]",{"resultLimitReached":0}]', 'FIND_OPS limit-1.5 ["a\nb\n\n[1.5 results limit reached]",{"resultLimitReached":1.5}]', 'FIND_OPS fd-zero ["a.txt\n\n[0 results limit reached. Use limit=0 for more, or refine pattern]",{"resultLimitReached":0}]']
 runs = 3
 
 [[assert.normalize_replace]]
