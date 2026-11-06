@@ -3329,6 +3329,8 @@ Why: Pi 1.5.0 queues the images unprocessed, so a 1200x9000 PNG reaches the mode
 
 Pi bug: Pi 1.5.0 (`agent-session.ts` `_queueSteer`, `_queueFollowUp`), fixed by Pi main 4cf69332c ([#11738](https://github.com/earendil-works/pi/issues/11738)).
 
+Observable effect: A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.
+
 Scope: queued user messages with images only. Idle prompts are unchanged.
 
 Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S7).
@@ -3352,6 +3354,8 @@ What: PiG ports Pi main a63c4ec5c (`fix(coding-agent): clear delivered image-onl
 Why: Pi 1.5.0 guarded the match with a truthy text, so an image-only message stayed in the pending display and count after delivery.
 
 Pi bug: Pi 1.5.0 (`agent-session.ts` `_handleAgentEvent`, user `message_start`), fixed by Pi main a63c4ec5c ([#8581](https://github.com/earendil-works/pi/issues/8581)).
+
+Observable effect: After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.
 
 Scope: `Session.consumeQueuedMessage`. A non-queued user message with empty text can remove a queued empty entry, as in Pi main.
 
@@ -3543,7 +3547,7 @@ Call-site markers: `coding/session_model_cycle.go` (`nextCycleIndex`).
 
 Evidence: `TestSessionModelExtensionCyclesUpstream` ("cycles to the only scoped model and to the first scoped model from outside the scope", Pi's test), `TestSessionCycleModelSeesExtensionProviderRegistration` (cycle after the active model's provider is unregistered).
 
-Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared, and so does a forward cycle whose first two entries are the same model with the same thinking level (1.5.0's second entry is main's first). Measured: 137 of 600 scenarios stop, and 3629 of 4520 ops (80.3%) are still compared with Pi. The test logs those numbers on every run.
+Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared, and so does a forward cycle whose first two entries are the same model with the same thinking level (1.5.0's second entry is main's first). Measured: 137 of 600 scenarios stop, and 3629 of 4520 ops are still compared with Pi. The test logs those numbers on every run.
 
 ## D259 Alacritty is detected for OSC 8 hyperlinks without TERM_PROGRAM
 
@@ -3667,6 +3671,8 @@ What: `getTextOutput` (`packages/coding-agent/src/core/tools/render-utils.ts`) d
 Why: PiG's output names the image with a type a reader can recognise instead of an empty bracket pair, and keeping absent and empty alike avoids a presence flag on a core public type (`ai.ImageContent`) for one fallback label. Only an extension or MCP server that sends `mimeType: ""` can reach it.
 
 Pi bug: Pi 1.5.0's `??` fallback and its own truthiness guard disagree about `""`; not reported upstream.
+
+Observable effect: Pi's tool card names an image block whose `mimeType` is the empty string `[Image: []]`, an empty bracket pair, where PiG names it `[Image: [image/unknown]]`.
 
 Scope: `tools.GetTextOutput` and `codemodeTextOutput`; image blocks with an empty `mimeType` only. Blocks with a type, or with none, render as in Pi.
 

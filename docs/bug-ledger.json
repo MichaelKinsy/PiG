@@ -30146,7 +30146,7 @@
     {
       "id": "BF-D249",
       "title": "Images in queued steering and follow-up messages are resized when the message is delivered",
-      "symptom": "",
+      "symptom": "A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.",
       "rootCause": "",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
@@ -30183,10 +30183,10 @@
     {
       "id": "BF-D250",
       "title": "A delivered image-only queued message leaves the pending queue",
-      "symptom": "",
+      "symptom": "After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.",
       "rootCause": "",
       "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "Wrong display",
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D250",
@@ -30350,7 +30350,7 @@
     {
       "id": "BF-D266",
       "title": "An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…",
-      "symptom": "",
+      "symptom": "Pi's tool card names an image block whose `mimeType` is the empty string `[Image: []]`, an empty bracket pair, where PiG names it `[Image: [image/unknown]]`.",
       "rootCause": "PiG's output names the image with a type a reader can recognise instead of an empty bracket pair, and keeping absent and empty alike avoids a presence flag on a core public type (`ai.ImageContent`) for one fallback label. Only an extension or MCP server that sends `mimeType: \"\"` can reach it.",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
