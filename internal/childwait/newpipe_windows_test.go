@@ -6,9 +6,22 @@ import (
 	"os"
 	"testing"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
+
+var procGetHandleInformation = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetHandleInformation")
+
+// inheritable is GetHandleInformation(handle) & HANDLE_FLAG_INHERIT, which x/sys does not wrap.
+func inheritable(t *testing.T, handle windows.Handle) bool {
+	t.Helper()
+	var flags uint32
+	if ok, _, err := procGetHandleInformation.Call(uintptr(handle), uintptr(unsafe.Pointer(&flags))); ok == 0 { //nolint:gosec // G103: GetHandleInformation fills the flags variable, and x/sys has no wrapper for it.
+		t.Fatalf("GetHandleInformation: %v", err)
+	}
+	return flags&windows.HANDLE_FLAG_INHERIT != 0
+}
 
 // The read end must be one Go parks on the completion port (only then does closing it end a pending read, and only then is a deadline accepted), and the
 // write end the synchronous handle a child expects.
@@ -36,12 +49,16 @@ func TestNewPipeReadEndIsOverlappedAndWriteEndIsNot(t *testing.T) {
 	if overlapped(handleOf(w)) {
 		t.Fatal("write end is overlapped: a child writing without an OVERLAPPED would misbehave")
 	}
-	var flags uint32
-	if err := windows.GetHandleInformation(handleOf(w), &flags); err != nil || flags&windows.HANDLE_FLAG_INHERIT == 0 {
-		t.Fatalf("write end is not inheritable (%v, flags %d)", err, flags)
+	if !inheritable(t, handleOf(w)) {
+		t.Fatal("write end is not inheritable")
 	}
-	if err := windows.GetHandleInformation(handleOf(r), &flags); err != nil || flags&windows.HANDLE_FLAG_INHERIT != 0 {
-		t.Fatalf("read end is inheritable (%v, flags %d)", err, flags)
+	if inheritable(t, handleOf(r)) {
+		t.Fatal("read end is inheritable")
+	}
+	// A child asks its stdout about itself (Node shutting it down, MSYS choosing a chunk size): that needs FILE_READ_ATTRIBUTES on the write end.
+	var flags, outSize, inSize, instances uint32
+	if err := windows.GetNamedPipeInfo(handleOf(w), &flags, &outSize, &inSize, &instances); err != nil {
+		t.Fatalf("the write end cannot be asked about its pipe: %v", err)
 	}
 }
 

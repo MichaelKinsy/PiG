@@ -96,24 +96,36 @@ func TestPollReadableWakesOnDataAndOnEnd(t *testing.T) {
 	}
 }
 
-// Closing the file ends a wait for it, as Wait does when it releases a held pipe.
+// Closing the file ends a wait for it, as Wait does when it releases a held pipe: Close itself, which waits for the wait to leave the handle, is timed.
+// The wait is as long as awaitTurn's, so the test measures what Wait's release costs, not the wait's own timeout.
 func TestPollReadableReturnsWhenTheFileIsClosed(t *testing.T) {
+	const turn = 10 // awaitTurn's timeout in milliseconds
 	r, _ := newPipePair(t)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		// Asked again as awaitTurn does, until the file says it is gone.
 		for {
-			if _, closed := pollReadable(r, 10_000); closed {
+			if _, closed := pollReadable(r, turn); closed {
 				return
 			}
 		}
 	}()
 	time.Sleep(50 * time.Millisecond)
-	_ = r.Close()
+	start := time.Now()
+	closed := make(chan struct{})
+	go func() { _ = r.Close(); close(closed) }()
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not return while a wait for the file was pending")
+	}
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("pollReadable did not return after the file was closed")
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("closing a file with a pending wait took %v", elapsed)
 	}
 }
