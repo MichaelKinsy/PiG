@@ -15,6 +15,8 @@ pig --version
 
 When `~/.local/bin` is not on `PATH`, the script prints the `export PATH=...` line to run. [Install troubleshooting](/docs/latest/install-troubleshooting) lists the script's options, for example `PIG_VERSION` to install a given release.
 
+PiG doesn't run on iPhone, iPad, or iSH. Use `ssh` to connect to a computer that has PiG installed, then run `pig` there.
+
 ## Requirements
 
 You need these tools only to build PiG from source. Build the `pig` executable with Go 1.27.3. Go 1.27 release binaries for macOS require macOS 13 or later.

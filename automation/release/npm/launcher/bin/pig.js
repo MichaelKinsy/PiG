@@ -8,6 +8,7 @@
 // signals.
 "use strict";
 
+const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 
@@ -32,6 +33,28 @@ const OTHER_METHODS =
   "  go install github.com/MichaelKinsy/PiG/cmd/pig@latest\n" +
   "  https://github.com/MichaelKinsy/PiG/releases";
 
+const REMOTE_HINT =
+  "To use PiG from this device, connect to a computer that has PiG installed, then run pig there:\n" +
+  "  ssh you@your-computer\n" +
+  "  pig\n" +
+  "Install PiG on that computer with:\n" +
+  "  curl -fsSL https://pi-in-go.dev/install.sh | sh";
+
+// unsupportedDevice returns the message for an iPhone, an iPad (a-Shell's Node reports platform "ios") or iSH
+// (Linux on emulated 32-bit x86, which exposes /proc/ish), and null elsewhere.
+function unsupportedDevice(platform, exists) {
+  if (platform === "ios") {
+    return (
+      "PiG can't run on iPhone or iPad: iOS lets terminal apps run only code built into the app.\n" +
+      REMOTE_HINT
+    );
+  }
+  if (platform === "linux" && exists("/proc/ish")) {
+    return "PiG has no build for iSH, which emulates 32-bit x86 Linux.\n" + REMOTE_HINT;
+  }
+  return null;
+}
+
 function platformPackage(platform, arch) {
   return PLATFORM_PACKAGES[`${platform} ${arch}`] || null;
 }
@@ -42,7 +65,9 @@ function binaryName(platform) {
 
 // resolveBinary returns the absolute path of the native pig binary, or throws
 // an Error whose message tells the user what to do.
-function resolveBinary(platform, arch, resolve) {
+function resolveBinary(platform, arch, resolve, exists) {
+  const device = unsupportedDevice(platform, exists || fs.existsSync);
+  if (device) throw new Error(device);
   const pkg = platformPackage(platform, arch);
   if (!pkg) {
     throw new Error(

@@ -55,3 +55,64 @@ test("missing optional platform package explains --no-optional", () => {
     (err) => /@pi-in-go\/pig-linux-x64 is not installed/.test(err.message) && /--no-optional/.test(err.message),
   );
 });
+
+const REMOTE_HINT =
+  "  ssh you@your-computer\n" +
+  "  pig\n" +
+  "Install PiG on that computer with:\n" +
+  "  curl -fsSL https://pi-in-go.dev/install.sh | sh";
+
+const IOS_MESSAGE =
+  "PiG can't run on iPhone or iPad: iOS lets terminal apps run only code built into the app.\n" +
+  "To use PiG from this device, connect to a computer that has PiG installed, then run pig there:\n" +
+  REMOTE_HINT;
+
+const ISH_MESSAGE =
+  "PiG has no build for iSH, which emulates 32-bit x86 Linux.\n" +
+  "To use PiG from this device, connect to a computer that has PiG installed, then run pig there:\n" +
+  REMOTE_HINT;
+
+test("ios explains that PiG does not run on iPhone or iPad", () => {
+  assert.throws(
+    () => launcher.resolveBinary("ios", "arm64", () => assert.fail("must not resolve"), () => assert.fail("must not probe")),
+    (err) => err.message === IOS_MESSAGE,
+  );
+});
+
+test("iSH explains that PiG does not support it", () => {
+  const probed = [];
+  assert.throws(
+    () =>
+      launcher.resolveBinary("linux", "ia32", () => assert.fail("must not resolve"), (p) => {
+        probed.push(p);
+        return true;
+      }),
+    (err) => err.message === ISH_MESSAGE,
+  );
+  assert.deepStrictEqual(probed, ["/proc/ish"]);
+});
+
+test("linux without /proc/ish is not iSH", () => {
+  const root = path.join(path.sep, "prefix", "node_modules", "@pi-in-go", "pig-linux-x64");
+  assert.strictEqual(
+    launcher.resolveBinary("linux", "x64", () => path.join(root, "package.json"), () => false),
+    path.join(root, "pig"),
+  );
+});
+
+test("the launcher exits 1 with the iOS message on stderr", () => {
+  const { spawnSync } = require("child_process");
+  const fs = require("fs");
+  const os = require("os");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pig-ios-"));
+  try {
+    const preload = path.join(dir, "ios.js");
+    fs.writeFileSync(preload, 'Object.defineProperty(process, "platform", { value: "ios" });\n');
+    const out = spawnSync(process.execPath, ["-r", preload, path.join(__dirname, "launcher", "bin", "pig.js")], { encoding: "utf8" });
+    assert.strictEqual(out.status, 1);
+    assert.strictEqual(out.stderr, `pig (npm launcher): ${IOS_MESSAGE}\n`);
+    assert.strictEqual(out.stdout, "");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
