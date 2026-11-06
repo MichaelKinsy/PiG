@@ -141,6 +141,8 @@ func TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter(t *testing.T
 // agent_settled ends the session when an extension asked for shutdown during the run; ctx.shutdown() ends an idle session at once.
 func TestHandleEventAgentSettledChecksTheShutdownRequest(t *testing.T) {
 	newMode := func(t *testing.T) (*InteractiveMode, func()) {
+		// The process-wide ending record takes one line for the whole process; this test needs its own.
+		freshEnding(t)
 		m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), Model: &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}})
 		m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
 		m.statusLine = NewFooterComponent(nil, "", nil)
