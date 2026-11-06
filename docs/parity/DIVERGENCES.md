@@ -2993,7 +2993,7 @@ Pi bug: none; this is an addition to Pi's behaviour for a state Pi hides.
 
 Scope: the `pig config` selector (global and project scope) for Packages with declared members that are absent. Packages whose members all exist render exactly as Pi's.
 
-Owner decision: 2026-11-03, owner approved keeping the missing-member rows (`handoffs/next/owner/2026-11-03-decisions.md` item 3).
+Owner decision: 2026-11-03, the owner approved keeping the missing-member rows.
 
 SCRUTINIZED:approved
 
@@ -3003,7 +3003,7 @@ Call-site markers: `tui/config_selector.go` (the `Health` suffix in `configResou
 
 Evidence: `TestConfigSelectorDisablesEnabledMissingPackageMember` (`coding/cli/config_selector_command_test.go`: the selector shows the enabled missing extension and Space writes `-extensions/missing-extension`), the `ConfigSelector` case of `TestSelectorDialogListComponentsNeverExceedRenderWidth` (`tui/component_width_table_test.go`: a `missing` row at every width).
 
-Parity allowance: Pi has no row for this state, so no Pi-paired scenario can show it. Every other row of the list is compared with Pi byte for byte by `TestConfigSelectorContractMatchesPi` (`tui/config_selector_contract_test.go`, no probe holds a missing member) and scenarios `selectors/02-config-resources-list` and `selectors/18-config-project-toggle`.
+Parity allowance: Pi has no row for this state, so no Pi-paired scenario can show it. Every other row of the list is compared with Pi byte for byte, escapes included, by `TestConfigSelectorContractMatchesPi` (`tui/config_selector_contract_test.go`, no probe holds a missing member; the dark, light and faint-dim system themes) and by scenario `selectors/18-config-project-toggle` (`escaped_output_equal`; only the D2 configuration-directory names, the allocated snapshot path and PiG's built-in `pig-login` row are normalized). Scenario `selectors/02-config-resources-list` compares the global list with the escapes stripped.
 
 ## D231 PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`
 
@@ -3632,6 +3632,55 @@ Call-site markers: `coding/cli/main.go` (`runStartupBenchmark`).
 Evidence: `TestStartupBenchmarkDisposesTheRuntimeAfterStoppingInteractiveMode` (`coding/cli/startup_benchmark_test.go`; red on 989927eff4: `runStartupBenchmark` takes no dispose step, so the test does not compile). Pi added no test: the path needs a TTY.
 
 Parity allowance: none needed.
+
+## D265 PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments
+
+What: PiG's Markdown component takes Pi main commit 54280c4ff ("fix(tui): hide HTML comments in Markdown rendering", Pi #11755, fixing #11710) before the pin reaches a release that contains it. marked lexes `<!-- ... -->` as `html` tokens and Pi 1.5.0 renders their raw text, so a comment shows in every Markdown surface (Extension Updates, What's New, `/changelog`, messages). With the commit:
+
+- After lexing, next to `trimPartialClosingFences`, block `html` tokens that hold only comments are removed, also inside list items and blockquotes. A removed comment between two blank lines, or at the start or end of the text, also drops one blank line, so no extra gap remains.
+- Block HTML with other content renders as text with its comments stripped (`<!-- x --> text` renders `text`).
+- An inline comment renders nothing; when the text before it ended with a space or tab (or there is none), the next text token loses its leading spaces and tabs (`See <!-- c --> the docs.` renders `See the docs.`).
+- An unclosed comment runs to the end of its HTML block (CommonMark), so a streamed comment stays hidden. Other HTML still renders as text (`with <tag> markers`).
+
+Why: The owner pulled the fix into 0.7.1. Pi 1.5.0 prints the comment text; release notes and changelogs carry `<!-- ... -->` markers, so the raw markers show on screen.
+
+Pi bug: Pi 1.5.0 (`packages/tui/src/components/markdown.ts`: the `html` cases of `renderToken` and `renderInlineTokens` push `token.raw`), fixed by Pi main 54280c4ff ([#11710](https://github.com/earendil-works/pi/issues/11710)).
+
+Scope: `tui.Markdown` rendering, so every surface PiG draws with it, including the kit `Markdown` node of the Go, Python, Rust and Lisp SDKs. Only a text that holds `<!--` renders differently; every other document is compared with Pi byte for byte. The Node SDK runs Pi's own code, so a Node extension that builds `Markdown` from `@earendil-works/pi-tui` itself keeps Pi 1.5.0's behavior and shows its comments until the pin moves.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL row S12; port of Pi main 54280c4ff ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 54280c4ff. Then the call-site markers, `tui/markdown_html_comments.go`'s divergence note, `testdata/pi_markdown_overlay.mjs` and this record go; the overlay's anchors stop matching when the pin's `markdown.js` already holds the change.
+
+Call-site markers: `tui/markdown_blocks.go` (`renderBlocks`, the `html` case of `renderToken`), `tui/markdown_marked.go` (`renderInlineTokensSequential`), `tui/markdown_spans.go` (`writeInlineTokens`), `tui/markdown_html_comments.go`.
+
+Evidence: `TestUpstreamMarkdownHTMLComments` (`tui/markdown_html_comments_upstream_test.go`, Pi's five tests, red on e4fd4114a0), `TestMarkdownHTMLCommentsMatchPiMain` (about 200 documents at several widths and paddings against Pi's `markdown.ts` with 54280c4ff applied to the pinned dist by `tui/testdata/pi_markdown_overlay.mjs`), `TestMarkdownHTMLCommentsStreamLikeAFreshRender` (every prefix of those documents, streamed through one component, against a fresh component and Pi), and the other Markdown oracle tests of `tui`, whose drivers (`markdown_render.mjs`, `markdown_contract.mjs`, `markdown_style_state_contract.mjs` and the marked golden generator) load the same overlay.
+
+Parity allowance: `TestMarkdownHTMLCommentsDifferFromPinnedPi` (`tui/markdown_html_comments_upstream_test.go`) runs the pinned Pi unchanged (`PIG_PI_MARKDOWN=pinned`) and states both sides: Pi 1.5.0 renders the comment, PiG hides it. It fails when either side changes.
+
+## D266 An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the empty string
+
+What: `getTextOutput` (`packages/coding-agent/src/core/tools/render-utils.ts`) draws a fallback line for each image block the terminal does not show, naming it `img.mimeType ?? "image/unknown"`. A block with no `mimeType` prints `[Image: [image/unknown]]` in Pi and PiG alike. A block whose `mimeType` is the empty string prints `[Image: []]` in Pi and `[Image: [image/unknown]]` in PiG. `ai.ImageContent.MimeType` is a plain string, so PiG treats an empty type as an absent one. The same call in Pi guards the image dimensions with a truthiness test (`img.data && img.mimeType`), which already treats `""` as no type. The difference shows in every card that draws `getTextOutput`: the bash, read, write, grep, find, ls, MCP and codemode result cards.
+
+Why: PiG's output names the image with a type a reader can recognise instead of an empty bracket pair, and keeping absent and empty alike avoids a presence flag on a core public type (`ai.ImageContent`) for one fallback label. Only an extension or MCP server that sends `mimeType: ""` can reach it.
+
+Pi bug: Pi 1.5.0's `??` fallback and its own truthiness guard disagree about `""`; not reported upstream.
+
+Scope: `tools.GetTextOutput` and `codemodeTextOutput`; image blocks with an empty `mimeType` only. Blocks with a type, or with none, render as in Pi.
+
+Owner decision: 2026-11-06, owner approved keeping PiG's output and recording this as a numbered divergence (D266).
+
+SCRUTINIZED:approved
+
+Remove when: Pi treats an empty `mimeType` like an absent one in `getTextOutput`.
+
+Call-site markers: `internal/codingagent/tools/render_text_output.go` (`GetTextOutput`), `internal/codingagent/tool_codemode_renderer.go` (`codemodeTextOutput`).
+
+Evidence: `TestEmptyMimeTypeImageDiffersFromPi` (`internal/codingagent/empty_mimetype_image_divergence_test.go`), `TestCodemodeTextOutputNamesAnImageWithoutMimeType`, `TestGetTextOutput...` cases in `internal/codingagent/render_utils_pi_test.go`.
+
+Parity allowance: `TestEmptyMimeTypeImageDiffersFromPi` runs the pinned Pi for a codemode card and a bash card with an empty `mimeType` and states both sides (`[Image: []]` in Pi, `[Image: [image/unknown]]` in PiG), with a control of a real type compared byte for byte. It fails when either side changes.
 
 ## D267 The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes
 
