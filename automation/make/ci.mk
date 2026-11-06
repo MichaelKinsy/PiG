@@ -124,13 +124,12 @@ test-subprocess: test-prereqs interface-deps parity-deps durable-interop-deps
 test-conformance: test-prereqs interface-deps parity-deps durable-interop-deps
 	@./automation/ci/test-grouped.sh conformance
 
-# CI runs the conformance shards in two jobs; the two ranges together are test-conformance. The shards run one after another and took about 55
-# minutes together on a 4-CPU runner, past the 60 minutes of one job with its setup; the Lisp rows (an SBCL image built for each fixture, about 15 s) are most of what the suite gained.
+# CI runs the conformance shards in two jobs of six; the two ranges together are test-conformance. The shards run one after another, each as its own go test process under go test's 10-minute package limit (automation/ci/test-shard-weights.txt packs them); on a 4-CPU hosted runner the twelve take about 43 minutes of test time together, 22 a job. The Lisp rows (an SBCL image built for each fixture, about 15 s) are most of what the suite gained.
 test-conformance-1: test-prereqs interface-deps parity-deps durable-interop-deps
-	@./automation/ci/test-grouped.sh conformance 1 4
+	@./automation/ci/test-grouped.sh conformance 1 6
 
 test-conformance-2: test-prereqs interface-deps parity-deps durable-interop-deps
-	@./automation/ci/test-grouped.sh conformance 5 8
+	@./automation/ci/test-grouped.sh conformance 7 12
 
 # A golden or snapshot file declares where its expected values come from (test/testdata-provenance.toml).
 test-provenance: ## Fail on a golden or snapshot file without declared Pi provenance
