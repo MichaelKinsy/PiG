@@ -128,7 +128,8 @@ func Plain(value any) any {
 	}
 }
 
-// Clone is Value.Clone: a deep copy of a JSON value; objects keep their kind (map or ordered object).
+// Clone is Value.Clone: a deep copy of a JSON value; objects keep their kind (map or ordered object). As system/memory/clone.mjs does for a prototype-pollution
+// defence, the copy of an object leaves out the members named "__proto__", "constructor" and "prototype".
 func Clone(value any) any {
 	switch typed := value.(type) {
 	case *chordjson.Object:
@@ -137,13 +138,17 @@ func Clone(value any) any {
 		}
 		out := chordjson.NewObject(typed.Len())
 		for key, item := range typed.All() {
-			out.Set(key, Clone(item))
+			if !isUnsafeKey(key) {
+				out.Set(key, Clone(item))
+			}
 		}
 		return out
 	case map[string]any:
 		out := make(map[string]any, len(typed))
 		for key, item := range typed {
-			out[key] = Clone(item)
+			if !isUnsafeKey(key) {
+				out[key] = Clone(item)
+			}
 		}
 		return out
 	case []any:
@@ -155,6 +160,11 @@ func Clone(value any) any {
 	default:
 		return value
 	}
+}
+
+// isUnsafeKey is Guard.IsUnsafePropertyKey.
+func isUnsafeKey(key string) bool {
+	return key == "__proto__" || key == "constructor" || key == "prototype"
 }
 
 // object is a mutable view of a JSON object value of either Go kind.
