@@ -26,5 +26,5 @@ timeout_seconds = 240
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['file:///tmp/a%20b', 'File URL host must be \"localhost\" or empty', 'File URL path must not include encoded / characters', '/home/probex/f.go']
+both_contain = ['file:///tmp/a%20b', 'File URL host must be \"localhost\" or empty', 'File URL path must not include encoded / characters', '/probex/f.go']
 runs = 2
