@@ -25,6 +25,9 @@ type Result struct {
 	// or unreadable artifact fails loudly instead of comparing empty to empty.
 	ArtifactErr error
 
+	// FrameWatch is what the steps' frame_watch saw.
+	FrameWatch FrameWatchResult
+
 	// ChangelogSource is the binary's independent document input for complete release-header assertions.
 	ChangelogSource string
 }

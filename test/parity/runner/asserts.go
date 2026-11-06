@@ -339,6 +339,21 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 		}
 	}
 
+	// pig_no_stale_frames: every pig run's frame_watch took enough samples and none was a forbidden frame.
+	if a.PigNoStaleFrames {
+		for run, r := range o.Pig.Runs {
+			watch := r.FrameWatch
+			switch {
+			case !watch.Watched:
+				o.Failures = append(o.Failures, fmt.Sprintf("pig run %d: pig_no_stale_frames needs a tmux step with frame_watch", run+1))
+			case watch.Samples < watch.MinSamples:
+				o.Failures = append(o.Failures, fmt.Sprintf("pig run %d: frame watch took %d samples, fewer than the %d it needs to have observed the step", run+1, watch.Samples, watch.MinSamples))
+			case watch.StaleCount > 0:
+				o.Failures = append(o.Failures, fmt.Sprintf("pig run %d: %d of %d sampled panes were a forbidden frame; first: %q", run+1, watch.StaleCount, watch.Samples, trunc(strings.Join(strings.Fields(watch.Stale[0]), " "), 400)))
+			}
+		}
+	}
+
 	// runtime_ratio_max: the performance gate.
 	// pig.median <= ratio * pi.median, when both have at least one run.
 	// Suppressed under parallel mode (CPU contention skews the

@@ -224,6 +224,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 
 	readyOK := true
 	var operationErr error
+	var frames FrameWatchResult
 	if ready != "" {
 		timeout := time.Duration(cfg.ReadyTimeoutSeconds) * time.Second
 		readyOK = waitForPaneOrCapture(ctx, session, ready, cfg.CaptureStart, timeout)
@@ -259,37 +260,11 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	// keys+settle fields; canonical staged scenarios use [[tmux.steps]].
 	if operationErr == nil && len(cfg.Steps) > 0 {
 		for _, step := range cfg.Steps {
-			timeout := time.Duration(step.WaitTimeoutSeconds) * time.Second
-			if timeout <= 0 {
-				timeout = 5 * time.Second
-			}
-			baseline := capturePaneHistory(ctx, session, transcriptPath)
-			if err := sendTmuxKeys(ctx, session, step.Keys); err != nil {
+			watched, err := runTmuxStep(ctx, session, transcriptPath, bin.Label, step)
+			frames = frames.merge(watched)
+			if err != nil {
 				operationErr = err
 				break
-			}
-			if len(step.WaitContains) > 0 {
-				if !waitForPaneAllSince(ctx, session, transcriptPath, step.WaitContains, baseline, true, timeout) {
-					operationErr = fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
-					break
-				}
-			}
-			visible := step.visibleContains(bin.Label)
-			if len(visible) > 0 || len(step.WaitNotContains) > 0 {
-				if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
-					operationErr = fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
-					break
-				}
-			}
-			if step.WaitStableMilliseconds > 0 {
-				window := time.Duration(step.WaitStableMilliseconds) * time.Millisecond
-				if !waitForPaneQuiescent(ctx, func() string { return capturePaneVisible(ctx, session) }, window, tmuxQuiescencePoll, timeout) {
-					operationErr = fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)
-					break
-				}
-			}
-			if step.SettleSeconds > 0 {
-				time.Sleep(time.Duration(step.SettleSeconds) * time.Second)
 			}
 		}
 	} else if operationErr == nil {
@@ -346,6 +321,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		RuntimeMs:       elapsed,
 		ReadyOK:         readyOK,
 		Err:             operationErr,
+		FrameWatch:      frames,
 	}
 	if result.Err == nil && readyOK && cfg.CaptureStart != "" && !strings.Contains(pane, cfg.CaptureStart) {
 		result.Err = fmt.Errorf("capture_start %q absent after scenario steps", cfg.CaptureStart)
@@ -360,6 +336,44 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		flushCoverageOnCleanExit(ctx, session, exitStatusPath)
 	}
 	return result
+}
+
+// runTmuxStep sends one step's keys and waits for the state it names. When the step carries a frame_watch, the pane is sampled from before the
+// keys until the step ends, and what the watch saw is returned whether or not the step succeeded.
+func runTmuxStep(ctx context.Context, session, transcriptPath, label string, step TmuxStep) (watched FrameWatchResult, err error) {
+	timeout := time.Duration(step.WaitTimeoutSeconds) * time.Second
+	if timeout <= 0 {
+		timeout = 5 * time.Second
+	}
+	if step.FrameWatch != nil {
+		watch := startFrameWatch(ctx, session, *step.FrameWatch)
+		defer func() { watched = watch.finish() }()
+	}
+	baseline := capturePaneHistory(ctx, session, transcriptPath)
+	if err := sendTmuxKeys(ctx, session, step.Keys); err != nil {
+		return watched, err
+	}
+	if len(step.WaitContains) > 0 {
+		if !waitForPaneAllSince(ctx, session, transcriptPath, step.WaitContains, baseline, true, timeout) {
+			return watched, fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
+		}
+	}
+	visible := step.visibleContains(label)
+	if len(visible) > 0 || len(step.WaitNotContains) > 0 {
+		if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
+			return watched, fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
+		}
+	}
+	if step.WaitStableMilliseconds > 0 {
+		window := time.Duration(step.WaitStableMilliseconds) * time.Millisecond
+		if !waitForPaneQuiescent(ctx, func() string { return capturePaneVisible(ctx, session) }, window, tmuxQuiescencePoll, timeout) {
+			return watched, fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)
+		}
+	}
+	if step.SettleSeconds > 0 {
+		time.Sleep(time.Duration(step.SettleSeconds) * time.Second)
+	}
+	return watched, nil
 }
 
 // flushCoverageOnCleanExit drives an interactive, coverage-instrumented pig to a
