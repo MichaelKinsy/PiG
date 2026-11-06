@@ -130,6 +130,7 @@ func (s *nativeCredentialSnapshot) Delete(ctx context.Context, providerID string
 func (p *nativeProviderProxy) checkAuth(ctx context.Context, credential *ai.Credential) (*ai.AuthCheck, error) {
 	return ai.CheckProviderAuth(ctx, p.declaration.ID, p.auth(ctx), &nativeCredentialSnapshot{value: credential, providerID: p.declaration.ID}, ai.DefaultProviderAuthContext())
 }
+
 // resolveAuth is Pi's resolveProviderAuth over the registry's credential store (auth/resolve.ts:46-117): the provider's callbacks (apiKey resolve and check, toAuth) get ctx, a runtime key is resolved before the stored credential is read, a still-valid credential takes no lock, and only an expiring OAuth credential's re-check and refresh run under the store's modify, with the fifteen-second refresh timeout and without ctx (refreshStoredOAuthCredential). A caller whose ctx ended returns at once; a refresh that has started finishes and is saved, and the store tracks it for the exit to wait for.
 func (p *nativeProviderProxy) resolveAuth(ctx context.Context, credentials ai.CredentialStore, overrides ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
 	return ai.ResolveProviderAuth(ctx, p.declaration.ID, p.auth(ctx), credentials, ai.DefaultProviderAuthContext(), overrides)

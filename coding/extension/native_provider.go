@@ -28,9 +28,9 @@ type NativeProvider struct {
 	GetModels func(context.Context) ([]*ai.Model, error)
 	// GetAllModels lists the models of every type and FilterAllModels filters them by credential; nil when the provider object has no such member.
 	// upstream: pi-ai Provider.getAllModels, Provider.filterAllModels
-	GetAllModels             func(context.Context) ([]ai.AnyModel, error)
-	FilterAllModels          func(context.Context, []ai.AnyModel, *ai.Credential) ([]ai.AnyModel, error)
-	FilterModels             func(context.Context, []*ai.Model, *ai.Credential) ([]*ai.Model, error)
+	GetAllModels    func(context.Context) ([]ai.AnyModel, error)
+	FilterAllModels func(context.Context, []ai.AnyModel, *ai.Credential) ([]ai.AnyModel, error)
+	FilterModels    func(context.Context, []*ai.Model, *ai.Credential) ([]*ai.Model, error)
 	// ResolveAuth is Pi's resolveProviderAuth for this provider over the registry's credential store (auth/resolve.ts:46-117): a runtime key first, then the stored credential; only an expiring OAuth credential's refresh goes through the store's modify, and the provider's resolvers and toAuth run outside it.
 	// upstream: packages/ai/src/auth/resolve.ts:resolveProviderAuth
 	ResolveAuth              func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error)

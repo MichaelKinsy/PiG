@@ -215,7 +215,9 @@ func TestRuntimeCloseDoesNotWaitForAnAPIKeyResolverOfANativeProvider(t *testing.
 			return &ai.AuthResult{}, nil
 		}}}
 	})
-	go func() { _, _ = f.services.Registry().NativeProviderAuth(t.Context(), "native-key", ai.AuthResolutionOverrides{}) }()
+	go func() {
+		_, _ = f.services.Registry().NativeProviderAuth(t.Context(), "native-key", ai.AuthResolutionOverrides{})
+	}()
 	<-started
 	f.closesWithin(t, "an API-key resolver")
 }
@@ -250,7 +252,9 @@ func TestRuntimeCloseDoesNotWaitForTheResolutionOfAValidOAuthCredential(t *testi
 	valid := ai.Credential{Type: ai.CredentialOAuth, Access: "access", Refresh: "refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}
 	f = newAuthExitFixture(t, "native-valid", &valid, func(context.Context) ai.ProviderAuth {
 		return ai.ProviderAuth{OAuth: &ai.OAuthAuth{Name: "Native",
-			Refresh: func(context.Context, ai.Credential) (ai.Credential, error) { return ai.Credential{}, errors.New("no refresh is due") },
+			Refresh: func(context.Context, ai.Credential) (ai.Credential, error) {
+				return ai.Credential{}, errors.New("no refresh is due")
+			},
 			ToAuth: func(ai.Credential) (ai.ModelAuth, error) {
 				close(started)
 				<-f.release
