@@ -145,7 +145,7 @@ removed copied-file record: ~/.pig/piglets/reviewer.files.json
 kept ~/.pig/piglets/prompt.md: Piglet security-reviewer also uses it
 ```
 
-Two Piglets can share a copied prompt only while the source files have the same content. A second Piglet whose prompt has the same relative path and different content fails with the name of the Piglet that owns the file. If the YAML was deleted by hand but `<name>.files.json` remains, `pig piglet add` of the same name deletes the files that record owns, under the same rules, before it adds.
+Two Piglets can share a copied prompt only while the source files have the same content. A second Piglet whose prompt has the same relative path and different content fails with the name of the Piglet that owns the file. If the YAML was deleted by hand but `<name>.files.json` remains, `pig piglet add` of the same name deletes the files that record owns, under the same rules, before it adds. `pig piglet remove` cannot act on a Piglet whose YAML is gone, so a leftover `<name>.origin.json` of an npm or Git Piglet makes `add` fail before it changes anything and name that file; delete it yourself and add again.
 
 PiG 0.7.0 and earlier did not record copied files. A prompt copied by those versions stays after `remove --source`, and `add` refuses to replace it with `no registered Piglet copied it`. Delete that file yourself after you check that no other Piglet uses it, or give the new Piglet a different relative prompt path. If the Piglet is still registered and its source is unchanged, `pig piglet add` of that source again records the copy, and `remove --source` then deletes it. `pig piglet update` never refreshes a registered source Piglet; it updates a signed Binary.
 

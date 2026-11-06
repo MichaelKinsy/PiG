@@ -247,16 +247,26 @@ func explainPigletDestinationConflict(pigletsDir, target string) string {
 	return "no registered Piglet copied it, so PiG will not delete it; if it is a leftover, delete that file yourself and add again, or give this Piglet a different prompt path"
 }
 
-// pigletRegistrationName returns the Piglet a file directly in pigletsDir belongs to as its registered YAML, origin
-// record, or copied-file record.
+// pigletRegistrationName returns the Piglet a file directly in pigletsDir belongs to as its registered YAML, or as an
+// origin or copied-file record while that YAML exists. A record whose YAML is gone belongs to no registered Piglet, so
+// `piglet remove` has nothing to remove for it.
 func pigletRegistrationName(pigletsDir, target string) (string, bool) {
 	if filepath.Dir(target) != pigletsDir {
 		return "", false
 	}
 	base := filepath.Base(target)
-	for _, suffix := range []string{".files.json", ".origin.json", ".yaml", ".yml"} {
+	for _, suffix := range []string{".yaml", ".yml"} {
 		if name, ok := strings.CutSuffix(base, suffix); ok && name != "" {
 			return name, true
+		}
+	}
+	for _, suffix := range []string{".files.json", ".origin.json"} {
+		if name, ok := strings.CutSuffix(base, suffix); ok && name != "" {
+			for _, ext := range []string{".yaml", ".yml"} {
+				if _, err := os.Stat(filepath.Join(pigletsDir, name+ext)); err == nil {
+					return name, true
+				}
+			}
 		}
 	}
 	return "", false
@@ -278,4 +288,9 @@ func reclaimOrphanedPigletCopies(pigletsDir, yamlPath string, stdout io.Writer) 
 	}
 	reportPigletRemovals(pigletsDir, plan.removals, plan.kept, stdout)
 	return nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Lstat(path)
+	return err == nil
 }

@@ -505,13 +505,23 @@ func TestAddOfRegisteredNameNamesTheRemoveCommandWhicheverFileConflictsFirst(t *
 }
 
 func TestPigletRegistrationNameCoversEveryRegistrationFile(t *testing.T) {
-	dir := filepath.Join("home", "piglets")
-	for file, want := range map[string]string{"a.yaml": "a", "a.yml": "a", "a.files.json": "a", "a.origin.json": "a", "x.y.files.json": "x.y"} {
+	dir := t.TempDir()
+	for _, file := range []string{"a.yaml", "b.yml", "x.y.yaml"} {
+		writeFile(t, filepath.Join(dir, file), "name: n\n")
+	}
+	for file, want := range map[string]string{
+		"a.yaml": "a", "b.yml": "b", "gone.yaml": "gone", // the YAML itself, present or not
+		"a.files.json": "a", "a.origin.json": "a", "b.files.json": "b", "b.origin.json": "b", "x.y.files.json": "x.y", // records of a registered Piglet
+	} {
 		if got, ok := pigletRegistrationName(dir, filepath.Join(dir, file)); !ok || got != want {
 			t.Errorf("%s: name=%q ok=%v, want %q", file, got, ok, want)
 		}
 	}
-	for _, target := range []string{filepath.Join(dir, "prompt.md"), filepath.Join(dir, "prompts", "a.yaml"), filepath.Join(dir, ".yaml")} {
+	// A record whose YAML is gone belongs to no registered Piglet: remove has nothing to remove for it.
+	for _, target := range []string{
+		filepath.Join(dir, "gone.origin.json"), filepath.Join(dir, "gone.files.json"),
+		filepath.Join(dir, "prompt.md"), filepath.Join(dir, "prompts", "a.yaml"), filepath.Join(dir, ".yaml"), filepath.Join(dir, ".origin.json"),
+	} {
 		if name, ok := pigletRegistrationName(dir, target); ok {
 			t.Errorf("%s named Piglet %q", target, name)
 		}

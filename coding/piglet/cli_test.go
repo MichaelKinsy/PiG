@@ -467,6 +467,41 @@ func TestRunCommandAddRemoteSourcesWritesOriginAndListsIt(t *testing.T) {
 			if code != 1 || !strings.Contains(stderr.String(), "already installed") || !strings.Contains(stderr.String(), "pig piglet remove "+tc.pigletName+" --source") {
 				t.Fatalf("duplicate code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 			}
+
+			// The YAML is deleted by hand: the origin record is all that is left, and `piglet remove` finds no Piglet to act on.
+			if err := os.Remove(installed); err != nil {
+				t.Fatal(err)
+			}
+			stdout.Reset()
+			stderr.Reset()
+			if code := RunCommand([]string{"piglet", "remove", tc.pigletName, "--source"}, &stdout, &stderr); code != 1 || !strings.Contains(stderr.String(), "no managed Piglet") {
+				t.Fatalf("remove of the orphan code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+			stdout.Reset()
+			stderr.Reset()
+			code = RunCommand([]string{"piglet", "add", tc.source, "--no-input"}, &stdout, &stderr)
+			originPath := originPathForPiglet(installed)
+			if code != 1 || strings.Contains(stderr.String(), "pig piglet remove") || strings.Contains(stderr.String(), "already") || !strings.Contains(stderr.String(), "origin record of a Piglet whose source is gone") || !strings.Contains(stderr.String(), originPath) {
+				t.Fatalf("orphan origin code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+			if _, err := os.Stat(originPath); err != nil {
+				t.Fatalf("add deleted the leftover origin record: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(home, "piglets", "prompts", "system.md")); err != nil {
+				t.Fatalf("a refused add deleted the old prompt: %v", err)
+			}
+			// Deleting the file the error names is the fix.
+			if err := os.Remove(originPath); err != nil {
+				t.Fatal(err)
+			}
+			stdout.Reset()
+			stderr.Reset()
+			if code := RunCommand([]string{"piglet", "add", tc.source, "--no-input"}, &stdout, &stderr); code != 0 {
+				t.Fatalf("add after deleting the origin record code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+			}
+			if origin, err := readPigletOrigin(installed); err != nil || origin == nil || origin.Source != tc.source {
+				t.Fatalf("origin after re-add = %#v, %v", origin, err)
+			}
 		})
 	}
 }
