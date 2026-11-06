@@ -182,6 +182,7 @@ const (
 	contextSafetyRatio = 0.15
 	// The ratio margin is kept only while it leaves at least this much output. Otherwise only the fixed margin is kept and
 	// output is capped at this size, so an OpenRouter overcount still fits for a while before compaction.
+	// pig divergence (D238): the 32768 floor is Pi main 0a4fad548's, not in Pi 1.5.0.
 	minOutputWithRatioMargin = 32768
 	minMaxTokens             = 1
 )
