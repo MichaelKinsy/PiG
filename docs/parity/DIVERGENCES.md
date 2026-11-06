@@ -3079,6 +3079,61 @@ Evidence: `TestGraphGetSignalIsOneObjectForARunAndItsAbort`. A two-live-runs tes
 
 Pre-existing: yes (an earlier variant made a new context per read). Found by RevCtxAbort on 2026-11-04.
 
+## D236 The auth lock follows the symlinks of auth.json to the real file
+
+What: PiG's `FileAuthStorageBackend` locks (`internal/pilock` `Acquire` and `AcquireAuthSync`, which auth.json, models.json and mcp-auth.json go through) take the lock directory next to the resolved path of the file (`filepath.EvalSymlinks`, the `realpath` option proper-lockfile has by default), not next to the path as given. This ports Pi main 081a6e87f (`fix(coding-agent): share the auth.json lock across symlinked paths`, #11787, fixing #11655), which is not in Pi 1.5.0. Pi 1.5.0 passes `realpath: false`, so an alias of `auth.json` has its own lock.
+
+The path is resolved on every attempt, as lockfile.lock resolves it on each call. The file must exist: the callers create it before they lock, as Pi's `ensureFileExists` (`writeFileSync`) does, and a missing file or a link loop fails the attempt with the Node fs error (`ENOENT: no such file or directory, lstat 'path'`), which neither retry loop retries. Exclusive create reports "exists" for a symlink whose target is missing and never creates the target, which `writeFileSync` does; `AuthStorage` and `FileModelsStore` therefore create the target of a dangling link themselves (`createNewFollowingLinks`), as `mcp-auth.json`'s `os.WriteFile` already does.
+
+Why: Pi main's rule, ahead of the pin. An agent directory whose `auth.json` is a symlink to a shared file locked a different directory than the real file, so two processes entered the credential section together and refreshed one single-use OAuth refresh token twice (`invalid_grant`).
+
+Pi bug: 1.5.0 locks the path as given (#11655, fixed on Pi main by the commit above).
+
+Scope: the two auth lock loops (`Acquire`, `AcquireAuthSync`). Not affected, as in Pi 081a6e87f: `AcquireSync` (settings and trust), the MCP refresh lock (`AcquireWithOptions`), the package-manager lock.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (scope proposal M6, port of Pi main 081a6e87f ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing 081a6e87f. Then the two call-site markers and this record go.
+
+Call-site markers: `internal/pilock/lock.go` (`AcquireAuthSync`, `Acquire`), `ai/create_through_link.go`.
+
+Evidence: `TestAuthLocksShareOneLockAcrossSymlinkedPaths` (Pi's test: a lock held on the real file blocks `Acquire` until cancelled and gives `AcquireAuthSync` ELOCKED through an alias; red on 989927eff4: the alias enters), `TestAuthLockOfASymlinkedFileInAnotherDirectoryIsTheRealFilesLock` (red on 989927eff4: the lock is not beside the real file), `TestSettingsLockStaysOnTheGivenPath` (`internal/pilock/symlink_alias_test.go`), `TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile` and `TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile` (`ai/auth_dangling_link_test.go`; red without the link-following create: every access fails with `lstat …/shared/auth.json: no such file or directory`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's test is ported.
+
+## D237 Exit waits for a started OAuth refresh to be saved
+
+What: PiG ports Pi main b2cb62923 (`fix(coding-agent): wait for a started OAuth refresh to be saved before exit`, #11812, fixing #11692), which is not in Pi 1.5.0.
+
+1. `ai.RuntimeCredentials` tracks every `Modify` until it returns, written or failed (Pi's `pendingModifications`), and `Settled(ctx)` returns when the modifications started before the call have returned. A modification's own error stays with its caller. `ModelRegistry.SettleCredentialWrites` and `coding.ModelRuntime.SettleCredentialWrites` are Pi's `ModelRuntime.settleCredentialWrites`; `coding.Runtime.SettleCredentialWrites` reaches them from a Runtime.
+2. The process's `coding.Runtime.Close` (Pi's `AgentSessionRuntime.dispose`) waits for them right after it has closed the Session, as Pi's `dispose()` does after `session.dispose()`, and before PiG's own teardown: `retireResources("quit")` (the factory's `Dispose`: `Host.Shutdown` stops the extension processes, `Services.Close` cancels the model tasks) and the abort context would cut the in-flight refresh request that the wait is for. Every mode exits through it: interactive mode and the startup benchmark return to main's deferred `Close`; print and JSON mode call it in the finally of `runPrintMode`; after a SIGTERM or SIGHUP, interactive mode settles in main's termination hook right after `ShutdownFromSignal` and before main cancels the root context that owns the extension processes, print and JSON mode in `disposeFromSignal` before `exitProcess(128+signum)`; RPC mode waits in `rpcShutdown`'s dispose (stdin end, a signal or an extension's shutdown request) before it flushes and exits, and `Close` after that finds nothing pending. The low-level `Runtime` of a Session replacement (`Dispose` of a factory result) does not wait, as Pi's `teardownCurrent` does not.
+3. No timeout of its own, as in Pi: the OAuth refresh (15 s) and the auth.json lock wait (30 s) bound the wait. A repeated signal exits at once, after the D234 rules: RPC mode keeps its signal handlers registered and a repeated signal exits 128+signum through `repeatedSignal`; print and JSON mode's repeated-signal watcher (D234) exits the same way while the disposal waits. Interactive mode ignores a signal during shutdown, as Pi's `shutdown()` returns when `isShuttingDown`.
+
+PiG-only paths that Pi has no counterpart of, brought under the same rule (the caller's cancellation ends only the wait for the auth.json lock, and a request that has started is bounded by the 15 s refresh timeout alone, `refreshStoredOAuthCredential`'s rule):
+- the Radius OAuth refresh (`refreshRadiusOAuth`) goes through the registry's credential overlay (tracked) and `ai.ModifyCredentialDetached` with `ai.DetachedRefreshContext`;
+- a subprocess extension's native provider refreshes the credential in the catalog refresh through `ai.ModifyCredentialDetached` and `ai.RefreshOAuthDetached`;
+- the request-time auth of a subprocess extension's native provider (`NativeProviderAuth`) is Pi's `resolveProviderAuth` (`resolve.ts:46-117`) over the registry's credential store: the extension carrier's `ResolveAuth` takes the store, not a credential snapshot (`nativeCredentialSnapshot` stays only for the read-only auth check). The provider's callbacks (`apiKey.resolve`, `apiKey.check`, `oauth.toAuth`) get the caller's context, so the abort reaches them; a runtime key is resolved before the stored credential is read; a still-valid credential takes no lock; and only an expiring OAuth credential's re-check and refresh run under the store's modify (`refreshStoredOAuthCredential`, `resolve.ts:119-155`), tracked by `RuntimeCredentials`, with `toAuth` after it and outside it. The caller returns when its context ends (Pi's abortable race, `resolve.ts:33-44`); a refresh that has started finishes within the 15 s refresh timeout, is saved, and is what the exit waits for. The exit waits for nothing else here: an API-key resolver, a runtime key's resolver, a valid credential's resolution and `toAuth` are outside the tracked transaction, as in Pi. Before, the registry's transaction spanned the whole `ResolveAuth`, so the cancelled caller's lock context discarded the rotated token after the request, the late refresh wrote the credential snapshot concurrently with its reader, and a resolver or `toAuth` that never returned kept the exit waiting.
+
+The standalone GitHub Copilot token manager (`copilotTokenManager`) holds `*AuthStorage` directly and is not tracked. Its "refresh" re-fetches the short-lived Copilot token with the long-lived GitHub token and writes `Refresh: githubToken` back unchanged (`refreshCopilotAccessToken`; Pi `github-copilot.ts` returns `refresh: refreshToken`), so no single-use token is spent and an exit mid-refresh costs a re-fetch. On the ordinary stream path the registry resolves auth first (tracked) and the manager refreshes only when that returns nothing.
+
+Why: Pi main's rule, ahead of the pin. If the process exits after the token request went out but before the new token is written, the provider has spent the old single-use refresh token and auth.json keeps only that one; the next request fails with `invalid_grant`.
+
+Pi bug: 1.5.0 exits without waiting (#11692, fixed on Pi main by the commit above).
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (scope proposal M7, port of Pi main b2cb62923 ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pin reaches a Pi release containing b2cb62923. Then the call-site markers and this record go.
+
+Call-site markers: `ai/runtime_credentials.go` (`Modify`), `coding/runtime.go` (`Close`), `coding/cli/rpc_mode.go` (the shutdown dispose), `coding/cli/print_mode.go` (`disposeFromSignal`), `coding/cli/main.go` (the interactive termination hook), `internal/codingagent/radius_models.go`, `internal/codingagent/native_provider.go` (catalog refresh and `NativeProviderAuth`), `coding/extension/host/subprocess/native_provider_auth.go`.
+
+Evidence: `TestRuntimeCredentialsSettledWaitsUntilPendingModificationsAreWritten`, `TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails` (Pi's two `runtime-credentials.test.ts` tests; red on 989927eff4: `Settled` does not exist), `TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved` (Pi's 11692 regression test; red without the wait in `Close`: Close returns while the token request is in flight), `TestRuntimeCloseWaitsForTheCatalogRefreshOfAnExpiredCredentialAfterItsContextEnded`, `TestNativeProviderCatalogRefreshSavesTheRotatedTokenAfterItsContextEnded` (red without `ModifyCredentialDetached`: auth.json keeps `old-refresh`), `TestRuntimeCloseSettlesCredentialWritesBeforeItRetiresTheFactoryResources` (red when Close retires first), `TestNativeProviderAuthSavesTheRotatedTokenAfterTheCallerWasCancelled`, `TestNativeProviderAuthGivesTheCallersCancellationToTheResolver`, `TestNativeProviderAuthSavesARefreshedCredentialWhenToAuthFailsWithTheAbort`, `TestNativeProviderAuthNeverStartsARefreshTheAbortBeatInsideTheTransaction`, and the four exit-wait cases `TestRuntimeCloseDoesNotWaitForAnAPIKeyResolverOfANativeProvider`, `TestRuntimeCloseDoesNotWaitForToAuthAfterARefresh`, `TestRuntimeCloseDoesNotWaitForTheResolutionOfAValidOAuthCredential` and `TestRuntimeCloseDoesNotWaitForARuntimeKeyResolverWithAStoredOAuthCredential` (red when the whole resolution runs under a tracked transaction: `Close waits for … which Pi's exit does not wait for`), `TestNativeProviderHostLifecycle`, and with a real subprocess extension whose `auth.oauth.refresh` delays `TestNativeProviderAuthSavesAnExtensionsRefreshAbortedMidRequest` and `TestNativeProviderAuthStartsNoRefreshForACallerThatWasAlreadyCancelled`, `TestRadiusRefreshSurvivesCancellationOnceTheTokenRequestWasSentAndExitWaitsForIt`, `TestPrintModeWaitsForAStartedOAuthRefreshToBeSavedBeforeReturning` (text and JSON), and the real-process tests `TestInteractiveExitWaitsForAnExtensionOAuthRefreshToBeSaved` (`/quit` and SIGTERM on a pty), `TestRPCExitWaitsForAStartedOAuthRefreshToBeSaved` (stdin EOF and SIGTERM, Pi's manual check) and `TestPrintModeExitWaitsForAnExtensionOAuthRefreshToBeSaved` (text and JSON, extension OAuth provider, normal exit).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior, and Pi main's tests are ported.
+
 ## D238 The output limit leaves 15% of the estimated input unused
 
 What: PiG's `ClampMaxTokensToContext` ports Pi main 0a4fad548 (`fix(ai): leave room for OpenRouter's input overcount when clamping max tokens`, #11712, with its `clamp-max-tokens.test.ts`), which is not in Pi 1.5.0. The room left for output is the window minus the estimated input minus a margin of max(4096, 15% of the input). When that room is under 32768 tokens, the margin falls back to the fixed 4096 and the limit is capped at 32768 (or at the real room when that is smaller). Pi 1.5.0 keeps only the flat 4096 margin.
