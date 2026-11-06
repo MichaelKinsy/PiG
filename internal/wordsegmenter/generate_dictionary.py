@@ -23,10 +23,17 @@ for line in source.decode("utf-8-sig").splitlines():
 rows.sort()
 if len({word for word, _ in rows}) != len(rows):
     raise SystemExit("duplicate dictionary word")
-# One current unversioned shape, written by dictionary_format.py: the words in byte-lexical order, indexed by block, with
-# one length byte and one weight byte per word.
-encoded = dictionary_format.encode([word for word, _ in rows], [cost for _, cost in rows])
+# The embedded trie of dictionary_format.py: one UTF-16 unit per label. Every word is BMP text without U+FFFD, so a lookup
+# that reads the text as UTF-16 units misses no word and invents none (invalid UTF-8 and supplementary characters match nothing).
+entries = []
+for word, cost in rows:
+    text = word.decode("utf-8")
+    if any(ord(c) > 0xFFFF or c == "\ufffd" for c in text):
+        raise SystemExit("dictionary word outside the BMP or holding U+FFFD")
+    entries.append((tuple(ord(c) for c in text), cost))
+encoded = dictionary_format.encode_trie(entries, 2, True)
 root = pathlib.Path(__file__).resolve().parent
+dictionary_format.write_flat(root / "testdata" / "cjk_flat.bin.gz", [word for word, _ in rows], [cost for _, cost in rows])
 (root / "cjk_dictionary.bin").write_bytes(encoded)
 (root.parent.parent / "LICENSES" / "LicenseRef-ICU-CJK.txt").write_text("\n".join(license_lines).strip() + "\n", encoding="utf-8")
 print(f"{len(rows)} dictionary entries, {len(encoded)} bytes, source sha256:{SOURCE_HASH}")
