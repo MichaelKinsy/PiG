@@ -3,9 +3,6 @@
 package pigsdk
 
 import (
-	"slices"
-	"sync"
-
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	rssdk "github.com/MichaelKinsy/PiG/extensions/sdk-rs"
@@ -20,8 +17,5 @@ func rustBundle() (sdkBundle, bool) {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.ExtensionSDKRust) {
 		return sdkBundle{}, false
 	}
-	return sdkBundle{lang: "rust", files: rustBundleFiles(), fsys: rssdk.Source}, true
+	return sdkBundle{lang: "rust", stagedHash: rssdk.StagedHash(), unpack: func() ([]byte, error) { return decodeBundle(rssdk.Source) }}, true
 }
-
-// rustBundleFiles lists the embedded Rust SDK once per process: the embedded files never change, and staging and the staged directory's hash both read the list, which they never write; its capacity is clipped, so an append copies it.
-var rustBundleFiles = sync.OnceValue(func() []string { return slices.Clip(rssdk.BundledFiles()) })
