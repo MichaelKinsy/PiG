@@ -106,8 +106,9 @@ func TestLoadManifestOfTheStockManifestDoesNotDecode(t *testing.T) {
 	}
 }
 
-// Only the whitespace JSON allows may surround the stock manifest on the fast path: a form feed, a vertical tab, NEL or a no-break space around it is not
-// JSON whitespace, and the decoder rejects it as it always did.
+// Only the whitespace JSON allows may surround the stock manifest on the fast path: a form feed, a vertical tab, NEL or a no-break space before it is not
+// JSON whitespace, and the decoder rejects it as it always did. After it the decoder, which reads one value and ignores the rest, accepts it, and so does
+// the fallback.
 func TestStockManifestFastPathTakesOnlyJSONWhitespace(t *testing.T) {
 	for _, padding := range []string{"", " ", "\t", "\r\n", " \t\r\n "} {
 		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(padding + stockManifest + padding)}}); err != nil {
@@ -115,10 +116,11 @@ func TestStockManifestFastPathTakesOnlyJSONWhitespace(t *testing.T) {
 		}
 	}
 	for _, padding := range []string{"\f", "\v", "\u0085", "\u00a0"} {
-		for _, data := range []string{padding + stockManifest, stockManifest + padding} {
-			if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(data)}}); err == nil {
-				t.Errorf("manifest %q loaded; the decoder rejects it", data)
-			}
+		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(padding + stockManifest)}}); err == nil {
+			t.Errorf("manifest %q loaded; the decoder rejects it", padding+stockManifest)
+		}
+		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(stockManifest + padding)}}); err != nil {
+			t.Errorf("manifest %q: %v; the decoder accepts it", stockManifest+padding, err)
 		}
 	}
 }
