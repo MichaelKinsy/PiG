@@ -267,3 +267,50 @@ func TestModelNetworkEnabledHonorsOfflineVariables(t *testing.T) {
 		t.Fatal("PIG_OFFLINE=true must disable model network access")
 	}
 }
+
+// Pi refreshes Radius like every provider (Models.resolveRefreshCredential, then refreshStoredOAuthCredential): once the token request is on its way the caller's cancellation (the exit's) ends only the wait for the auth lock, so the rotated token is saved, and the registry's SettleCredentialWrites waits for that write (D237). Red without ModifyCredentialDetached and the detached request context: the cancelled request fails and auth.json keeps "old-refresh".
+func TestRadiusRefreshSurvivesCancellationOnceTheTokenRequestWasSentAndExitWaitsForIt(t *testing.T) {
+	requested, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(release) })
+	gateway := newRadiusTestGateway(t, func(writer http.ResponseWriter, request *http.Request, _ string) {
+		_ = request.ParseForm()
+		if request.URL.Path != "/v1/oauth/token" || request.PostForm.Get("refresh_token") != "old-refresh" {
+			http.Error(writer, "unexpected", http.StatusBadRequest)
+			return
+		}
+		close(requested)
+		<-release
+		writer.Header().Set("content-type", "application/json")
+		_, _ = writer.Write([]byte(`{"access_token":"new-access","refresh_token":"new-refresh","expires_in":3600,"scope":"gateway offline_access"}`))
+	})
+	registry, auth, _ := radiusTestRegistry(t, `{"providers":{"radius-dev":{"baseUrl":"`+gateway.server.URL+`","oauth":"radius"}}}`, map[string]ai.Credential{
+		"radius-dev": {Type: ai.CredentialOAuth, Access: "old-access", Refresh: "old-refresh", Expires: 1},
+	})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	refreshed := make(chan struct{})
+	go func() {
+		defer close(refreshed)
+		_, _ = registry.RadiusAPIKey(ctx, "radius-dev")
+	}()
+	<-requested
+	cancel()
+
+	settled := make(chan error, 1)
+	go func() { settled <- registry.SettleCredentialWrites(t.Context()) }()
+	select {
+	case err := <-settled:
+		t.Fatalf("SettleCredentialWrites returned %v while the token request was in flight", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	releaseOnce.Do(func() { close(release) })
+	if err := <-settled; err != nil {
+		t.Fatalf("SettleCredentialWrites = %v", err)
+	}
+	<-refreshed
+	stored, _, _ := auth.GetRaw("radius-dev")
+	if stored.Access != "new-access" || stored.Refresh != "new-refresh" {
+		t.Fatalf("stored credential = %+v, want the rotated token", stored)
+	}
+}

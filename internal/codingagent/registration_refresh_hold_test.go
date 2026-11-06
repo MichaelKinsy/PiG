@@ -16,8 +16,8 @@ func countingNativeProvider(checks *atomic.Int32) *extension.NativeProvider {
 			checks.Add(1)
 			return &ai.AuthCheck{Type: ai.CredentialAPIKey}, nil
 		},
-		ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-			return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
+		ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+			return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil
 		},
 		ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
 		Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {

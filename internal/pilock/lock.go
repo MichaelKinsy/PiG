@@ -79,12 +79,22 @@ type Lock struct {
 // AcquireSync is the settings and trust loop, settings-manager.ts acquireLockSyncWithRetry and trust-manager.ts acquireTrustLockSync: ten attempts 20 ms apart that retry only ELOCKED. It reclaims stale idle legacy sidecars.
 // Ports packages/coding-agent/src/core/settings-manager.ts
 func AcquireSync(path string) (*Lock, error) {
-	return acquireSyncWithRetry(path, func(err error) bool { return errors.Is(err, ErrLocked) })
+	return acquireSyncWithRetry(path, func(err error) bool { return errors.Is(err, ErrLocked) }, nil)
 }
 
 // AcquireAuthSync is FileAuthStorageBackend.acquireLockSyncWithRetry (auth-storage.ts:81-95), the synchronous auth loop: ten attempts 20 ms apart that retry ELOCKED and, on Windows, EPERM. It reclaims stale idle legacy sidecars.
 func AcquireAuthSync(path string) (*Lock, error) {
-	return acquireSyncWithRetry(path, func(err error) bool { return retryableLockErrorCode(err) != "" })
+	// pig divergence (D236): Pi 081a6e87f locks the resolved file, so every symlinked alias of the file shares one lock.
+	return acquireSyncWithRetry(path, func(err error) bool { return retryableLockErrorCode(err) != "" }, realpathLockTarget)
+}
+
+// realpathLockTarget is proper-lockfile's default realpath option (lib/lockfile.js resolveCanonicalPath): the lock guards fs.realpath(file), and each attempt resolves it again. The file must exist; a missing file or a link loop fails the attempt with the Node fs error (ENOENT: no such file or directory, lstat 'path'), which no retry loop retries.
+func realpathLockTarget(path string) (string, error) {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", nodeerrno.FromPathError(err)
+	}
+	return resolved, nil
 }
 
 // maxEPERMRetries is auth-storage.ts MAX_EPERM_RETRIES: acquireLockAsync's cap on EPERM retries, apart from the 30 s deadline that bounds waiting for another holder.
@@ -101,14 +111,27 @@ func retryableLockErrorCode(err error) string {
 	return ""
 }
 
-func acquireSyncWithRetry(path string, retryable func(error) bool) (*Lock, error) {
+// acquireSyncWithRetry runs the synchronous retry loop. A non-nil resolve maps the path to the file whose lock is taken on every attempt (lockSync's realpath); nil locks the path as given (realpath: false).
+func acquireSyncWithRetry(path string, retryable func(error) bool, resolve func(string) (string, error)) (*Lock, error) {
 	for attempt := 1; ; attempt++ {
-		lock, err := acquire(path, SyncStale)
+		lock, err := acquireResolved(path, resolve)
 		if err == nil || !retryable(err) || attempt == SyncAttempts {
 			return lock, err
 		}
 		syncSleep(SyncDelay)
 	}
+}
+
+// acquireResolved is one lockSync attempt.
+func acquireResolved(path string, resolve func(string) (string, error)) (*Lock, error) {
+	if resolve != nil {
+		resolved, err := resolve(path)
+		if err != nil {
+			return nil, err
+		}
+		path = resolved
+	}
+	return acquire(path, SyncStale)
 }
 
 // Acquire follows Pi's cancellable auth acquisition loop, FileAuthStorageBackend.acquireLockAsync (auth-storage.ts:117-155), reclaiming stale idle legacy sidecars. It retries ELOCKED until its 30 s deadline and, on Windows, EPERM at most maxEPERMRetries times; both share one backoff. The caller owns the returned lock until Release.
@@ -120,7 +143,8 @@ func Acquire(ctx context.Context, path string) (*Lock, error) {
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
 		}
-		lock, err := tryAcquire(ctx, path, asyncStale)
+		// pig divergence (D236): Pi 081a6e87f locks the resolved file, so every symlinked alias of the file shares one lock.
+		lock, err := tryAcquireResolved(ctx, path)
 		if err == nil {
 			return lockUnlessAborted(ctx, lock)
 		}
@@ -183,6 +207,15 @@ func AcquireWithOptions(ctx context.Context, path string, options AcquireOptions
 		case <-timer.C:
 		}
 	}
+}
+
+// tryAcquireResolved is one lockfile.lock attempt on the resolved file; a realpath failure is the attempt's error.
+func tryAcquireResolved(ctx context.Context, path string) (*Lock, error) {
+	resolved, err := realpathLockTarget(path)
+	if err != nil {
+		return nil, err
+	}
+	return tryAcquire(ctx, resolved, asyncStale)
 }
 
 // attemptErrors is the retry module 0.13.1's error record (lib/retry_operation.js retry and mainError), kept as counts per message: main is the error whose message is most frequent, and a message that reaches the current maximum count again replaces it.

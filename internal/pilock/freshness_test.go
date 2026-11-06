@@ -30,6 +30,7 @@ func TestLockMtimeThresholds(t *testing.T) {
 			} {
 				t.Run(kind+"/"+mode.name+"/"+age.name, func(t *testing.T) {
 					path := filepath.Join(t.TempDir(), "auth.json")
+					createLockTarget(t, path)
 					if kind == "file" {
 						if err := os.WriteFile(path+".lock", nil, 0o600); err != nil {
 							t.Fatal(err)
@@ -77,6 +78,7 @@ func TestLockMtimeThresholds(t *testing.T) {
 
 func TestFreshLegacySidecarRetriesAndCancellation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	if err := os.WriteFile(path+".lock", nil, 0o600); err != nil {
 		t.Fatal(err)
 	}

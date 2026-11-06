@@ -385,6 +385,15 @@ func (runtime *ModelRuntime) Close() {
 	}
 }
 
+// SettleCredentialWrites waits until the credential modifications already in progress finish, such as an OAuth refresh a background catalog refresh started, so a process that exits next does not lose the rotated token. It fails only with ctx's cancellation cause.
+// upstream: packages/coding-agent/src/core/model-runtime.ts:settleCredentialWrites (b2cb62923)
+func (runtime *ModelRuntime) SettleCredentialWrites(ctx context.Context) error {
+	if runtime == nil {
+		return nil
+	}
+	return runtime.services.Registry().SettleCredentialWrites(ctx)
+}
+
 // startBackground schedules maintenance under the same owner used by availability siblings.
 func (runtime *ModelRuntime) startBackground(work func(context.Context)) bool {
 	return runtime.services.Registry().StartModelTask(context.Background(), work)

@@ -43,6 +43,8 @@ type interactivePig struct {
 	log    string
 	// home is PIG_HOME and dir the startup working directory.
 	home, dir string
+	// cmd is the pig process, for a test that signals it.
+	cmd *exec.Cmd
 }
 
 func startInteractivePig(t *testing.T) *interactivePig {
@@ -52,11 +54,20 @@ func startInteractivePig(t *testing.T) *interactivePig {
 
 func startInteractivePigWith(t *testing.T, fixture string) *interactivePig {
 	t.Helper()
+	return startInteractivePigPrepared(t, fixture, nil)
+}
+
+// startInteractivePigPrepared is startInteractivePigWith with prepare run on the home (PIG_HOME) before the process starts, for a test that seeds the agent directory.
+func startInteractivePigPrepared(t *testing.T, fixture string, prepare func(home string)) *interactivePig {
+	t.Helper()
 	binary := buildPigBinaryForSignalTest(t)
 	// The home holds the Session cwds the resume picker prints; a t.TempDir name repeats the test name and, under a nested TMPDIR, pushes the Session name out of the 140-column picker.
 	p := &interactivePig{t: t, log: filepath.Join(t.TempDir(), "replace.log"), output: &ptyOutput{}, home: shortTempDir(t), dir: t.TempDir()}
 	home := p.home
 	seedFirstRunDone(t, filepath.Join(home, "agent"))
+	if prepare != nil {
+		prepare(home)
+	}
 	master, slave := openPTY(t, 40, 140)
 	p.master = master
 	t.Cleanup(func() { _ = master.Close() })
@@ -70,6 +81,7 @@ func startInteractivePigWith(t *testing.T, fixture string) *interactivePig {
 		t.Fatalf("start pig: %v", err)
 	}
 	_ = slave.Close()
+	p.cmd = cmd
 	p.exited = make(chan struct{})
 	go func() { _ = cmd.Wait(); close(p.exited) }()
 	t.Cleanup(func() {

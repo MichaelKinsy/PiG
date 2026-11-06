@@ -1128,6 +1128,12 @@ func (r *ModelRegistry) runtimeCredentialsLocked() *ai.RuntimeCredentials {
 	return credentials
 }
 
+// SettleCredentialWrites waits until the credential modifications already in progress finish, such as an OAuth refresh a background catalog refresh started. Call it before the process exits so a rotated token is not lost. It fails only with ctx's cancellation cause.
+// upstream: packages/coding-agent/src/core/model-runtime.ts:settleCredentialWrites (b2cb62923)
+func (r *ModelRegistry) SettleCredentialWrites(ctx context.Context) error {
+	return registryCredentials{r}.current().Settled(ctx)
+}
+
 // SetRuntimeAPIKey installs a non-persistent API key for providerID. It acts
 // as a stored api_key credential that is never written to auth.json. Mirrors
 // upstream ModelRuntime.setRuntimeApiKey over RuntimeCredentials.

@@ -4,6 +4,7 @@ package coding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -209,7 +210,17 @@ func (rt *Runtime) ModelFallbackMessage() string {
 // before the runner is invalidated.
 func (rt *Runtime) SetBeforeSessionInvalidate(fn func()) { rt.beforeSessionInvalidate = fn }
 
-// Close releases Runtime-level resources. Services supplied by the caller remain caller-owned and must be closed separately.
+// SettleCredentialWrites waits until the credential modifications of the current Services already in progress finish. An OAuth refresh may already have spent the single-use refresh token, so a process must not exit before the new one is saved. It fails only with ctx's cancellation cause.
+// upstream: packages/coding-agent/src/core/agent-session-runtime.ts:dispose (b2cb62923)
+func (rt *Runtime) SettleCredentialWrites(ctx context.Context) error {
+	services := rt.Services()
+	if services == nil {
+		return nil
+	}
+	return services.ModelRuntime().SettleCredentialWrites(ctx)
+}
+
+// Close releases Runtime-level resources. Services supplied by the caller remain caller-owned and must be closed separately. The Runtime a factory returned (the process's AgentSessionRuntime) then also waits for credential writes in progress, as Pi's dispose does: every mode exits through it, and the refresh it waits for is bounded by the OAuth refresh timeout and the auth lock wait, so it takes no timeout of its own.
 func (rt *Runtime) Close() error {
 	if current := rt.replacement.current.Load(); current != nil {
 		if !rt.replacement.closed.CompareAndSwap(false, true) {
@@ -223,11 +234,14 @@ func (rt *Runtime) Close() error {
 			runner.Invalidate("")
 		}
 		err := current.Session.Close()
+		// pig divergence (D237): Pi main b2cb62923 makes dispose wait for a started OAuth refresh to be saved, right after session.dispose and while the extensions are still running. PiG's own teardown below stops the extension processes and cancels the model tasks, which would cut an in-flight refresh request.
+		//portlint:allow ctxbackground Pi's dispose awaits settleCredentialWrites with no signal (agent-session-runtime.ts dispose); Close has no caller context
+		settleErr := rt.SettleCredentialWrites(context.Background())
 		current.retireResources("quit")
 		if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
 			rt.extCtx.AbortFunc()
 		}
-		return err
+		return errors.Join(err, settleErr)
 	}
 	if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
 		rt.extCtx.AbortFunc()

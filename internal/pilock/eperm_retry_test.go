@@ -40,6 +40,7 @@ func recordLockWaits(t *testing.T) *[]time.Duration {
 func writeAuthJSON(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}

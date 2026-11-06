@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -49,6 +50,10 @@ func TestWithSidecarLockHandsACompromiseOnlyCheck(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	path := filepath.Join(t.TempDir(), "models-store.json")
+	// FileModelsStore creates the file before it locks, and the lock follows the file's symlinks (D236).
+	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	err := withSidecarLock(ctx, path, func(check func() error) error {
 		cancel()
 		return check()

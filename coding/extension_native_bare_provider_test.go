@@ -25,8 +25,8 @@ func TestExtensionNativeProviderWithoutBaseURLComposesAndSettlesLikePi(t *testin
 		}
 		provider := &extension.NativeProvider{ID: id, Name: "Bare Ext", Models: []extension.ProviderModelConfig{{ID: "model", API: ai.APIOpenAICompletions}},
 			CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
-			ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-				return nil, nil, nil
+			ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+				return nil, nil
 			},
 			ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
 			Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {

@@ -76,6 +76,7 @@ func TestLegacySidecarUpgrade(t *testing.T) {
 
 func TestHeldLegacySidecarUsesNormalTimeout(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	legacyFixture(t, path)
 	before, err := os.Lstat(path + ".lock")
 	if err != nil {
@@ -100,7 +101,9 @@ func TestHeldLegacySidecarUsesNormalTimeout(t *testing.T) {
 
 func TestLegacySidecarCancellation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	legacyFixture(t, path)
+	createLockTarget(t, path)
 	ctx, cancel := context.WithTimeout(t.Context(), 25*time.Millisecond)
 	defer cancel()
 	lease, err := Acquire(ctx, path)
@@ -116,6 +119,7 @@ func TestLegacyUpgradePreservesOtherPaths(t *testing.T) {
 	for _, kind := range []string{"nonempty", "directory", "symlink-file", "symlink-directory", "dangling-symlink"} {
 		t.Run(kind, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "store.json")
+			createLockTarget(t, path)
 			target := filepath.Join(t.TempDir(), "target")
 			switch kind {
 			case "nonempty":
@@ -189,6 +193,7 @@ func TestAcquireOnNonEmptyFileFollowsProperLockfileUpstream(t *testing.T) {
 			}
 			t.Run(name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				if err := os.WriteFile(path+".lock", []byte("keep"), 0o600); err != nil {
 					t.Fatal(err)
 				}
@@ -259,6 +264,7 @@ func TestLegacyLockProcessHelper(t *testing.T) {
 
 func TestLegacySubprocessWriterUpgrade(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -396,6 +402,7 @@ func TestLegacyRemovalFreesLockNameBeforeClose(t *testing.T) {
 
 func TestLegacyWriterThenConcurrentDirectoryWriters(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	old := legacyFixture(t, path)
 	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
