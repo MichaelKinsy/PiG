@@ -38,7 +38,7 @@ Port to Go, not to another language. A Go extension on PiG's public SDK can be f
   pigeq source --from <PiG git repository> --rev <full commit> --out <directory>
   ```
 
-Run every `pig` and `pi` command of the port with a temporary `HOME`, `PIG_HOME`, `PIG_CODING_AGENT_DIR` and `PI_CODING_AGENT_DIR`, so that the port never touches your own `~/.pig`. The `pigeq env` command writes a script that sets this up. It exports `PIGEQ_PIG`, `PIGEQ_PI`, `PIG_SDK_DIR` and `PIG_SOURCE_ROOT`, which the later commands use:
+Run every `pig` and `pi` command of the port with a temporary `HOME`, `PIG_HOME`, `PIG_CODING_AGENT_DIR` and `PI_CODING_AGENT_DIR`, so that the port never touches your own `~/.pig`. The `pigeq env` command writes a script that sets this up. It exports `PIGEQ_PIG`, `PIGEQ_PI` and `PIG_SOURCE_ROOT`, which the later commands use:
 
 ```bash
 pigeq env --root <scratch> --pig <pig> --pi <pi> --source <directory> --module <extension directory> > <scratch>/env.sh
@@ -103,13 +103,13 @@ Compare the Go extension with the original running in PiG's Node subprocess on t
 
 ## Worked example: rpiv-todo
 
-[rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/61904e69e1a50e12585bdf15f0310e633a62ba36/packages/rpiv-todo) is an MIT-licensed Pi extension by juicesharp. It gives the model a `todo` tool, adds a `/todos` command, and draws a live overlay of tasks that survives reload and compaction. Its port is `components/todo` in [Pigpen](https://github.com/MichaelKinsy/pigpen/tree/a342843dcbb0c3b4fa3ba341fee57888b7f3c6fb/components/todo) at commit `a342843d`. The figures below come from the port's record, [`port/PORT.md`](https://github.com/MichaelKinsy/pigpen/blob/a342843dcbb0c3b4fa3ba341fee57888b7f3c6fb/components/todo/port/PORT.md). That record was written against PiG 0.4.0 and Pi 1.0.0.
+[rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/61904e69e1a50e12585bdf15f0310e633a62ba36/packages/rpiv-todo) is an MIT-licensed Pi extension by juicesharp. It gives the model a `todo` tool, adds a command that lists the tasks, and draws a live overlay of tasks that survives reload and compaction. Its port is `components/todo` in [Pigpen](https://github.com/MichaelKinsy/pigpen/tree/a342843dcbb0c3b4fa3ba341fee57888b7f3c6fb/components/todo) at commit `a342843d`. The figures below come from the port's record, [`port/PORT.md`](https://github.com/MichaelKinsy/pigpen/blob/a342843dcbb0c3b4fa3ba341fee57888b7f3c6fb/components/todo/port/PORT.md). That record was written against PiG 0.4.0 and the Pi release that PiG followed then.
 
 | Step | In this port |
 |---|---|
 | Pin | `provenance.json` names `@juicesharp/rpiv-todo` 2.11.0 at commit `61904e69e1a50e12585bdf15f0310e633a62ba36`, MIT. The original is vendored unchanged, with its license, in `port/oracle`. |
 | Gap check | `pigeq gaps --ts port/oracle` found three gaps. None blocks the port. All are `PARTIAL`: `tool.promptSnippet`, `tool.renderCall` and `tool.renderResult`. |
-| Contract table | `PORT.md` maps ten contracts, from the `todo` tool schema to the `/todos` command, the overlay and the session hooks. It records one approved exclusion: locales, which the port leaves in English. |
+| Contract table | `PORT.md` maps ten contracts, from the `todo` tool schema to the task-list command, the overlay and the session hooks. It records one approved exclusion: locales, which the port leaves in English. |
 | Original's tests | `port/upstream-tests.json` lists 231 cases. The port has 209 exact twins and 22 named skips, each with its reason. |
 | Scenarios and golden traces | `port/scenarios` and `port/golden` hold 16 scenarios, with traces recorded from the original under Pi. `pigeq check` passes all 16 against the golden traces. |
 | Mutations | `port/mutations.json` holds 105 mutations. All are killed. The first run left 6 alive and 5 that did not build. Each survivor got a test, and each invalid mutation was rewritten. |
