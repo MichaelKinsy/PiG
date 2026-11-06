@@ -42,3 +42,4 @@ a95098aa83 Follow-up to unreleased work: the --listen socket is bound in a priva
 1e9847163e Follow-up to unreleased work: the first generation of an isolated Node launcher carries its Host's group in the opt-in shared mode of --listen (D232)
 9d84543b6c Follow-up to unreleased work: --listen burst memory, accept messages and socket removal (D232)
 b18fc1ee00 Follow-up to unreleased work: comment-only D238 and D257 markers on two existing constants, no product behaviour
+c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node launcher gets its Host's group from connectExt only, and a user's PIG_EXT_GROUP never reaches it (D232), found in review before any release
