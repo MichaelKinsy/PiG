@@ -2033,7 +2033,7 @@ SCRUTINIZED:approved
 
 ## D232 Multi-session RPC server (--listen) and shared extension cells
 
-Summary: `pig --mode rpc --listen <path>` serves one Pi RPC session per connection on a Unix socket, in one process; every session has its own extension processes unless `--listen-share-extensions` shares them.
+Summary: `pig --mode rpc --listen <path>` serves one Pi RPC session per connection in one process, each with its own extension processes unless `--listen-share-extensions` shares them.
 
 Audience: runtime
 
@@ -2075,7 +2075,8 @@ Locked by: `TestParseArgsListen`, `TestParseArgsListenShareExtensions`, `TestPig
 
 Remove when: Pi gains a multi-session RPC mode.
 
-Approval: awaiting the owner's sign-off for 0.7.1. The PR's Discord approval of 2026-11-03 covered a server that shares extension processes; the owner's 2026-11-06 decision makes isolation the default and sharing an opt-in. The record carries no scrutiny line until the owner signs it (`handoffs/0.7.1/D232-draft.md`).
+Approval: approved by owner Michael Kinsy on 2026-11-06. The PR's Discord approval of 2026-11-03 covered a server that shares extension processes; the owner's 2026-11-06 decision makes isolation the default and sharing an opt-in.
+SCRUTINIZED:approved
 
 ## D263 A host that cannot run generated machine code can run Code Mode on wazero's interpreter
 
