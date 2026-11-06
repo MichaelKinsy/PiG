@@ -358804,6 +358804,17 @@
       "shapeHash": "sha256:373fc3fc507125455159d631f7bef7a363d6bcde3d0a5ac1d68e761a3f456da9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#encodesOwnWrites",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "encodesOwnWrites",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer) bool"
+      },
+      "shapeHash": "sha256:cdd8bc6b1194a0c9aef935d72069f43f66e58d09ab7a86d669cf185d5a0a0726"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#endsAtTokenBoundary",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "endsAtTokenBoundary",
@@ -371619,6 +371630,17 @@
       "shapeHash": "sha256:7e5d4d9635583b2e2df8023d2fa87e013923dce44400131934b7822224e7786c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#surrogateUnitsAt",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "surrogateUnitsAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value string) (size int, cost int)"
+      },
+      "shapeHash": "sha256:082f7f9966f83995755bfc9499622a53ed2ad5d47366b92f522758fd6156ff80"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#swapAlphaDigit",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "swapAlphaDigit",
@@ -372563,17 +372585,6 @@
         "type": "terminalSizeCache"
       },
       "shapeHash": "sha256:ef77a6d211eef9983d02ae478f7847849eadf87abdfd3a0eab910ff6e66c520c"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalText",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "terminalText",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(text string) string"
-      },
-      "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriteErrorHandler",
@@ -376600,6 +376611,28 @@
         "type": "func(buf *strings.Builder, moved movedRows)"
       },
       "shapeHash": "sha256:9e9565d26d0b007d9b4fe3b8204f484857db7ce4813a8f72a77652b868c5e1c6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#writeTerminalText",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "writeTerminalText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#wtf8SurrogateAt",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "wtf8SurrogateAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value string) bool"
+      },
+      "shapeHash": "sha256:a850009ecea9bdb6c51f1629d26dc56f16a1a4c544ed10743cfe89f53333f790"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#xterm256CubeLevels",
