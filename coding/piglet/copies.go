@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 )
@@ -29,9 +29,19 @@ func (c pigletCopies) validate() error {
 		return fmt.Errorf("Piglet copied-file record lists no files")
 	}
 	for relative, digest := range c.Files {
-		if clean, err := portableClosurePath(relative); err != nil || clean != relative || !validSHA256Digest(digest) {
+		if err := validCopiedPath(relative); err != nil || !validSHA256Digest(digest) {
 			return fmt.Errorf("invalid Piglet copied-file entry %q", relative)
 		}
+	}
+	return nil
+}
+
+// validCopiedPath accepts a clean slash-separated path that stays inside the Piglet directory on this platform. It
+// allows every name a local prompt file could have, including ones a Git or npm closure refuses, but never one that
+// this platform would read as a parent, a drive, or a different separator.
+func validCopiedPath(relative string) error {
+	if relative == "." || !fs.ValidPath(relative) || strings.ContainsRune(relative, 0) || !filepath.IsLocal(filepath.FromSlash(relative)) || filepath.ToSlash(filepath.FromSlash(relative)) != relative {
+		return fmt.Errorf("%q is not a path inside the Piglet directory that this system can create", relative)
 	}
 	return nil
 }
@@ -68,20 +78,39 @@ func readPigletCopies(path string) (*pigletCopies, error) {
 	return &copies, nil
 }
 
-// claimKey compares paths the way the strictest supported file system does, so a case-only difference never lets one
-// registration's file look unclaimed.
-func claimKey(path string) string {
-	path = filepath.Clean(path)
-	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
-		return strings.ToLower(path)
+// sameFilePath reports whether two paths name one file. It asks the file system when both exist, which settles case
+// folding, Unicode normalization and links on every platform, and otherwise compares the cleaned spellings.
+func sameFilePath(a, b string) bool {
+	if filepath.Clean(a) == filepath.Clean(b) {
+		return true
 	}
-	return path
+	infoA, errA := os.Stat(a)
+	infoB, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(infoA, infoB)
 }
 
-// otherRegistrationClaims maps each file a registered source Piglet other than exceptYAML owns (its copied-file record)
-// or references (a relative systemPrompt file, which covers registrations that predate the record) to the names of
-// those Piglets.
-func otherRegistrationClaims(pigletsDir, exceptYAML string) (map[string][]string, error) {
+type pigletFileClaim struct {
+	path string
+	name string
+}
+
+// pigletFileClaims lists the files other registered source Piglets own or reference.
+type pigletFileClaims []pigletFileClaim
+
+// owners returns the names of the Piglets that claim target.
+func (c pigletFileClaims) owners(target string) []string {
+	var names []string
+	for _, claim := range c {
+		if !slices.Contains(names, claim.name) && sameFilePath(claim.path, target) {
+			names = append(names, claim.name)
+		}
+	}
+	return names
+}
+
+// otherRegistrationClaims collects each file a registered source Piglet other than exceptYAML owns (its copied-file
+// record) or references (a relative systemPrompt file, which covers registrations that predate the record).
+func otherRegistrationClaims(pigletsDir, exceptYAML string) (pigletFileClaims, error) {
 	entries, err := os.ReadDir(pigletsDir)
 	if os.IsNotExist(err) {
 		return nil, nil
@@ -89,20 +118,14 @@ func otherRegistrationClaims(pigletsDir, exceptYAML string) (map[string][]string
 	if err != nil {
 		return nil, fmt.Errorf("read Piglet directory %s: %w", pigletsDir, err)
 	}
-	claims := map[string][]string{}
-	claim := func(target, name string) {
-		key := claimKey(target)
-		if !slices.Contains(claims[key], name) {
-			claims[key] = append(claims[key], name)
-		}
-	}
+	var claims pigletFileClaims
 	for _, entry := range entries {
 		ext := filepath.Ext(entry.Name())
 		if entry.IsDir() || (ext != ".yaml" && ext != ".yml") {
 			continue
 		}
 		path := filepath.Join(pigletsDir, entry.Name())
-		if claimKey(path) == claimKey(exceptYAML) {
+		if exceptYAML != "" && sameFilePath(path, exceptYAML) {
 			continue
 		}
 		other, err := Parse(path)
@@ -110,7 +133,7 @@ func otherRegistrationClaims(pigletsDir, exceptYAML string) (map[string][]string
 			return nil, fmt.Errorf("cannot tell whether %s shares copied files: %w", path, err)
 		}
 		if other.SystemPrompt != nil && other.SystemPrompt.File != "" && !filepath.IsAbs(other.SystemPrompt.File) {
-			claim(filepath.Join(pigletsDir, filepath.FromSlash(other.SystemPrompt.File)), other.Name)
+			claims = append(claims, pigletFileClaim{filepath.Join(pigletsDir, filepath.FromSlash(other.SystemPrompt.File)), other.Name})
 		}
 		copies, err := readPigletCopies(copiesPathForPiglet(path))
 		if err != nil {
@@ -118,7 +141,7 @@ func otherRegistrationClaims(pigletsDir, exceptYAML string) (map[string][]string
 		}
 		if copies != nil {
 			for relative := range copies.Files {
-				claim(filepath.Join(pigletsDir, filepath.FromSlash(relative)), other.Name)
+				claims = append(claims, pigletFileClaim{filepath.Join(pigletsDir, filepath.FromSlash(relative)), other.Name})
 			}
 		}
 	}
@@ -148,7 +171,10 @@ func planPigletCopiedFiles(yamlPath string) (pigletCopiedFilePlan, error) {
 	}
 	for _, relative := range slices.Sorted(maps.Keys(copies.Files)) {
 		target := filepath.Join(dir, filepath.FromSlash(relative))
-		if others := claims[claimKey(target)]; len(others) > 0 {
+		if sameFilePath(target, yamlPath) || sameFilePath(target, recordPath) || sameFilePath(target, originPathForPiglet(yamlPath)) {
+			continue
+		}
+		if others := claims.owners(target); len(others) > 0 {
 			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: Piglet %s also uses it", target, strings.Join(others, ", ")))
 			continue
 		}
@@ -209,17 +235,31 @@ func relativeTo(root, path string) string {
 
 // explainPigletDestinationConflict names the safe next step when add finds a different file at a destination.
 func explainPigletDestinationConflict(pigletsDir, target string) string {
-	if ext := filepath.Ext(target); filepath.Dir(target) == pigletsDir && (ext == ".yaml" || ext == ".yml") {
-		name := strings.TrimSuffix(filepath.Base(target), ext)
+	if name, ok := pigletRegistrationName(pigletsDir, target); ok {
 		return fmt.Sprintf("Piglet %q is already registered; run `pig piglet remove %s --source` before adding a replacement (this also deletes the files PiG copied for it)", name, name)
 	}
 	claims, err := otherRegistrationClaims(pigletsDir, "")
 	if err == nil {
-		if owners := claims[claimKey(target)]; len(owners) > 0 {
+		if owners := claims.owners(target); len(owners) > 0 {
 			return fmt.Sprintf("Piglet %s uses it; run `pig piglet remove %s --source` first, or give this Piglet a different prompt path", strings.Join(owners, ", "), owners[0])
 		}
 	}
 	return "no registered Piglet copied it, so PiG will not delete it; if it is a leftover, delete that file yourself and add again, or give this Piglet a different prompt path"
+}
+
+// pigletRegistrationName returns the Piglet a file directly in pigletsDir belongs to as its registered YAML, origin
+// record, or copied-file record.
+func pigletRegistrationName(pigletsDir, target string) (string, bool) {
+	if filepath.Dir(target) != pigletsDir {
+		return "", false
+	}
+	base := filepath.Base(target)
+	for _, suffix := range []string{".files.json", ".origin.json", ".yaml", ".yml"} {
+		if name, ok := strings.CutSuffix(base, suffix); ok && name != "" {
+			return name, true
+		}
+	}
+	return "", false
 }
 
 // reclaimOrphanedPigletCopies lets add replace the files an earlier registration of the same name copied when its YAML is

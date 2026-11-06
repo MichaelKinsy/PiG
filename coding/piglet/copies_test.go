@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // copiesRun runs one `pig piglet` command and returns its exit code and streams.
@@ -355,25 +357,32 @@ func TestPigletCopiesRejectsWhatTheRecordCannotSafelyName(t *testing.T) {
 	digest := digestPigletData([]byte("x"))
 	for name, files := range map[string]map[string]string{
 		"empty":              {},
-		"backslash":          {`prompts\system.md`: digest},
-		"drive":              {"C:/prompt.md": digest},
 		"parent":             {"../prompt.md": digest},
+		"nested parent":      {"prompts/../../prompt.md": digest},
 		"dot prefix":         {"./prompt.md": digest},
 		"absolute":           {"/etc/passwd": digest},
-		"home":               {"~/prompt.md": digest},
-		"git metadata":       {".git/config": digest},
 		"digest not sha256":  {"prompt.md": "md5:00"},
 		"uppercase digest":   {"prompt.md": "sha256:" + strings.ToUpper(strings.TrimPrefix(digest, "sha256:"))},
 		"missing digest":     {"prompt.md": ""},
 		"directory itself":   {".": digest},
 		"trailing separator": {"prompts/": digest},
+		"nul":                {"prompt\x00.md": digest},
 	} {
 		if err := (pigletCopies{Files: files}).validate(); err == nil {
 			t.Errorf("%s: record with %v validated", name, files)
 		}
 	}
-	if err := (pigletCopies{Files: map[string]string{"prompts/system.md": digest}}).validate(); err != nil {
-		t.Fatalf("portable record rejected: %v", err)
+	// A name this platform would read as a drive or another separator is refused where that is true.
+	windows := runtime.GOOS == "windows"
+	for _, key := range []string{`prompts\system.md`, "C:/prompt.md", `..\prompt.md`} {
+		if err := (pigletCopies{Files: map[string]string{key: digest}}).validate(); windows && err == nil {
+			t.Errorf("%q validated on Windows", key)
+		}
+	}
+	for _, key := range []string{"prompts/system.md", "~/prompt.md", ".git/config", "prompts/a b.md"} {
+		if err := (pigletCopies{Files: map[string]string{key: digest}}).validate(); err != nil {
+			t.Errorf("%q rejected: %v", key, err)
+		}
 	}
 }
 
@@ -417,12 +426,233 @@ func TestRemoveSourceFailsClosedOnACorruptCopiedFileRecord(t *testing.T) {
 	}
 }
 
-func TestClaimKeyFoldsCaseWhereTheFileSystemDoes(t *testing.T) {
-	folds := runtime.GOOS == "windows" || runtime.GOOS == "darwin"
-	if got := claimKey(filepath.Join("a", "Prompt.md")) == claimKey(filepath.Join("a", "prompt.MD")); got != folds {
-		t.Fatalf("case-only difference compares equal = %v on %s, want %v", got, runtime.GOOS, folds)
+func TestSameFilePathAsksTheFileSystem(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "Prompt.md"), "x")
+	writeFile(t, filepath.Join(dir, "\u00e9.md"), "x")
+	writeFile(t, filepath.Join(dir, "other.md"), "x")
+	// Whether these spellings name one file is the file system's answer (case folding, Unicode normalization).
+	for _, alias := range [][2]string{{"Prompt.md", "prompt.md"}, {"\u00e9.md", "e\u0301.md"}} {
+		_, err := os.Stat(filepath.Join(dir, alias[1]))
+		if got := sameFilePath(filepath.Join(dir, alias[0]), filepath.Join(dir, alias[1])); got != (err == nil) {
+			t.Errorf("sameFilePath(%q, %q) = %v, but the file system resolves the second spelling: %v", alias[0], alias[1], got, err == nil)
+		}
 	}
-	if claimKey(filepath.Join("a", "x", "..", "prompt.md")) != claimKey(filepath.Join("a", "prompt.md")) {
-		t.Fatal("claim keys do not clean paths")
+	if sameFilePath(filepath.Join(dir, "Prompt.md"), filepath.Join(dir, "other.md")) {
+		t.Fatal("different files compare equal")
+	}
+	if !sameFilePath(filepath.Join(dir, "x", "..", "Prompt.md"), filepath.Join(dir, "Prompt.md")) {
+		t.Fatal("unclean spelling of one path compares different")
+	}
+	if sameFilePath(filepath.Join(dir, "gone-a.md"), filepath.Join(dir, "gone-b.md")) {
+		t.Fatal("different missing paths compare equal")
+	}
+	// A second name for the same file is the same file on every file system that can link.
+	if err := os.Link(filepath.Join(dir, "other.md"), filepath.Join(dir, "linked.md")); err == nil {
+		if !sameFilePath(filepath.Join(dir, "other.md"), filepath.Join(dir, "linked.md")) {
+			t.Fatal("two names of one file compare different")
+		}
+		if sameFilePath(filepath.Join(dir, "Prompt.md"), filepath.Join(dir, "linked.md")) {
+			t.Fatal("a link to another file compares equal")
+		}
+	}
+}
+
+// Two Piglets whose prompt paths differ only in case or normalization share one file where the file system folds them.
+func TestRemoveSourceKeepsPromptAnotherPigletSpellsDifferently(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "prompt.md"), "shared\n")
+	if _, err := os.Stat(filepath.Join(work, "PROMPT.md")); err != nil {
+		t.Skip("the file system distinguishes case, so the two spellings are two files")
+	}
+	writeFile(t, filepath.Join(work, "alpha.yaml"), copiesYAML("alpha", "1.0.0", "prompt.md"))
+	writeFile(t, filepath.Join(work, "beta.yaml"), copiesYAML("beta", "1.0.0", "PROMPT.md"))
+	copiesRequireOK(t, "add", filepath.Join(work, "alpha.yaml"))
+	copiesRequireOK(t, "add", filepath.Join(work, "beta.yaml"))
+	stdout := copiesRequireOK(t, "remove", "alpha", "--source")
+	if !strings.Contains(stdout, "Piglet beta also uses it") {
+		t.Fatalf("output = %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(home, "piglets", "prompt.md")); err != nil {
+		t.Fatalf("the file beta uses was deleted: %v", err)
+	}
+}
+
+// The first conflict add finds can be the registered Piglet's own record, not the prompt (the record sorts before the
+// YAML, and before the prompt for the report's name); every one of them names the command that replaces it.
+func TestAddOfRegisteredNameNamesTheRemoveCommandWhicheverFileConflictsFirst(t *testing.T) {
+	for _, name := range []string{"file-prompt-repro", "zeta"} {
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("PIG_HOME", home)
+			work := t.TempDir()
+			writeFile(t, filepath.Join(work, "prompt.md"), "one\n")
+			writeFile(t, filepath.Join(work, "first.yaml"), copiesYAML(name, "1.0.0", "./prompt.md"))
+			copiesRequireOK(t, "add", filepath.Join(work, "first.yaml"))
+			writeFile(t, filepath.Join(work, "prompt.md"), "two\n")
+			writeFile(t, filepath.Join(work, "second.yaml"), copiesYAML(name, "1.0.1", "./prompt.md"))
+			code, _, stderr := copiesRun(t, "add", filepath.Join(work, "second.yaml"))
+			if code != 1 || !strings.Contains(stderr, "run `pig piglet remove "+name+" --source`") || strings.Contains(stderr, "no registered Piglet copied it") {
+				t.Fatalf("code=%d stderr=%s", code, stderr)
+			}
+			if got := copiesTree(t, filepath.Join(home, "piglets"))["prompt.md"]; got != "one\n" {
+				t.Fatalf("refused add changed the prompt: %q", got)
+			}
+		})
+	}
+}
+
+func TestPigletRegistrationNameCoversEveryRegistrationFile(t *testing.T) {
+	dir := filepath.Join("home", "piglets")
+	for file, want := range map[string]string{"a.yaml": "a", "a.yml": "a", "a.files.json": "a", "a.origin.json": "a", "x.y.files.json": "x.y"} {
+		if got, ok := pigletRegistrationName(dir, filepath.Join(dir, file)); !ok || got != want {
+			t.Errorf("%s: name=%q ok=%v, want %q", file, got, ok, want)
+		}
+	}
+	for _, target := range []string{filepath.Join(dir, "prompt.md"), filepath.Join(dir, "prompts", "a.yaml"), filepath.Join(dir, ".yaml")} {
+		if name, ok := pigletRegistrationName(dir, target); ok {
+			t.Errorf("%s named Piglet %q", target, name)
+		}
+	}
+}
+
+// A copied directory replaced by a link to somewhere else must not make remove delete what the link points at.
+func TestRemoveSourceNeverDeletesThroughASymlinkedDirectory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "prompts", "system.md"), "nested\n")
+	writeFile(t, filepath.Join(work, "linked.yaml"), copiesYAML("linked", "1.0.0", "prompts/system.md"))
+	copiesRequireOK(t, "add", filepath.Join(work, "linked.yaml"))
+	outside := t.TempDir()
+	writeFile(t, filepath.Join(outside, "system.md"), "nested\n")
+	if err := os.RemoveAll(filepath.Join(home, "piglets", "prompts")); err != nil {
+		t.Fatal(err)
+	}
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(home, "piglets", "prompts"))
+
+	stdout := copiesRequireOK(t, "remove", "linked", "--source")
+	if data, err := os.ReadFile(filepath.Join(outside, "system.md")); err != nil || string(data) != "nested\n" {
+		t.Fatalf("remove deleted a file outside the Piglet directory: data=%q err=%v", data, err)
+	}
+	if !strings.Contains(stdout, "it is no longer a regular file PiG copied") || strings.Contains(stdout, "removed copied file") {
+		t.Fatalf("output = %q", stdout)
+	}
+}
+
+// A prompt that names the registered YAML itself is not a separate copy: recording it would make remove delete the YAML twice.
+func TestAddDoesNotRecordAPromptThatIsTheRegisteredYAML(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "self.yaml"), copiesYAML("self", "1.0.0", "./self.yaml"))
+	copiesRequireOK(t, "add", filepath.Join(work, "self.yaml"))
+	if _, err := os.Stat(filepath.Join(home, "piglets", "self.files.json")); !os.IsNotExist(err) {
+		t.Fatalf("a copied-file record was written for the YAML itself: %v", err)
+	}
+	copiesRequireOK(t, "remove", "self", "--source")
+	if left := copiesTree(t, filepath.Join(home, "piglets")); len(left) != 0 {
+		t.Fatalf("files left: %v", left)
+	}
+}
+
+// A record that lists the registered YAML (written by hand or by an older build) must not fail removal.
+func TestRemoveSourceIgnoresARecordedEntryForTheRegistrationItself(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	writeFile(t, filepath.Join(home, "piglets", "self.yaml"), "name: self\n")
+	writeFile(t, filepath.Join(home, "piglets", "self.files.json"), `{"files":{"self.yaml":"`+digestPigletData([]byte("name: self\n"))+`"}}`)
+	copiesRequireOK(t, "remove", "self", "--source")
+	if left := copiesTree(t, filepath.Join(home, "piglets")); len(left) != 0 {
+		t.Fatalf("files left: %v", left)
+	}
+}
+
+// Only the other Piglet's record lists the file here (its YAML no longer names a prompt file), so the record check alone keeps it.
+func TestRemoveSourceKeepsFileAnotherPigletsRecordLists(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "prompt.md"), "shared\n")
+	writeFile(t, filepath.Join(work, "alpha.yaml"), copiesYAML("alpha", "1.0.0", "./prompt.md"))
+	copiesRequireOK(t, "add", filepath.Join(work, "alpha.yaml"))
+	writeFile(t, filepath.Join(home, "piglets", "beta.yaml"), "name: beta\nsystemPrompt:\n  text: inline now\n")
+	writeFile(t, filepath.Join(home, "piglets", "beta.files.json"), `{"files":{"prompt.md":"`+digestPigletData([]byte("shared\n"))+`"}}`)
+	stdout := copiesRequireOK(t, "remove", "alpha", "--source")
+	if !strings.Contains(stdout, "Piglet beta also uses it") {
+		t.Fatalf("output = %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(home, "piglets", "prompt.md")); err != nil {
+		t.Fatalf("a file beta's record lists was deleted: %v", err)
+	}
+}
+
+// A registration that predates the record owns nothing until its unchanged source is added again; that add records the copy.
+func TestAddOfUnchangedUnrecordedRegistrationRecordsTheCopy(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "prompt.md"), "one\n")
+	writeFile(t, filepath.Join(work, "old.yaml"), copiesYAML("old", "1.0.0", "./prompt.md"))
+	copiesRequireOK(t, "add", filepath.Join(work, "old.yaml"))
+	if err := os.Remove(filepath.Join(home, "piglets", "old.files.json")); err != nil {
+		t.Fatal(err)
+	}
+	// Registered without a record: remove --source leaves the prompt alone.
+	stdout := copiesRequireOK(t, "remove", "old", "--source")
+	if strings.Contains(stdout, "removed copied file") {
+		t.Fatalf("an unrecorded prompt was deleted: %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(home, "piglets", "prompt.md")); err != nil {
+		t.Fatalf("an unrecorded prompt was deleted: %v", err)
+	}
+
+	// Adding the unchanged source while still registered records the copy.
+	copiesRequireOK(t, "add", filepath.Join(work, "old.yaml"))
+	if _, err := os.Stat(filepath.Join(home, "piglets", "old.files.json")); err != nil {
+		t.Fatalf("add of the unchanged source wrote no record: %v", err)
+	}
+	copiesRequireOK(t, "remove", "old", "--source")
+	if left := copiesTree(t, filepath.Join(home, "piglets")); len(left) != 0 {
+		t.Fatalf("files left: %v", left)
+	}
+}
+
+// Version 0.7.0 accepted these prompt names, so add keeps accepting them wherever the platform can create the file.
+func TestAddKeepsAcceptingPromptNamesWithColonOrLeadingTilde(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot create a file named with a colon")
+	}
+	for _, name := range []string{"we:ird.md", "~tilde.md"} {
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("PIG_HOME", home)
+			work := t.TempDir()
+			writeFile(t, filepath.Join(work, name), "odd name\n")
+			writeFile(t, filepath.Join(work, "odd.yaml"), copiesYAML("odd", "1.0.0", "'"+name+"'"))
+			copiesRequireOK(t, "add", filepath.Join(work, "odd.yaml"))
+			if got := copiesTree(t, filepath.Join(home, "piglets"))[name]; got != "odd name\n" {
+				t.Fatalf("copied %q = %q", name, got)
+			}
+			copiesRequireOK(t, "remove", "odd", "--source")
+			if left := copiesTree(t, filepath.Join(home, "piglets")); len(left) != 0 {
+				t.Fatalf("files left: %v", left)
+			}
+		})
+	}
+}
+
+func TestAddRefusesPromptNameWindowsCannotCreateWithAClearError(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("only Windows reads these names as a drive or separator")
+	}
+	t.Setenv("PIG_HOME", t.TempDir())
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "x.yaml"), copiesYAML("x", "1.0.0", "'C:prompt.md'"))
+	code, _, stderr := copiesRun(t, "add", filepath.Join(work, "x.yaml"))
+	if code != 1 || strings.Contains(stderr, "added subdirectory") {
+		t.Fatalf("code=%d stderr=%s", code, stderr)
 	}
 }

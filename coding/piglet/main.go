@@ -1288,16 +1288,20 @@ func planPigletAdd(source resolvedPigletAddSource, pigletsDir string) (pigletAdd
 		if err != nil {
 			return pigletAddCandidate{}, fmt.Errorf("prompt file %d %q: %w", i, ref.File, err)
 		}
-		recorded, err := portableClosurePath(filepath.ToSlash(relative))
-		if err != nil {
-			return pigletAddCandidate{}, fmt.Errorf("prompt file %d %q: %w", i, ref.File, err)
+		recorded := filepath.ToSlash(relative)
+		if err := validCopiedPath(recorded); err != nil {
+			return pigletAddCandidate{}, fmt.Errorf("prompt file %d %q: cannot copy it into the Piglet directory: %w", i, ref.File, err)
 		}
 		target := filepath.Join(pigletsDir, relative)
-		if previous, exists := files[target]; exists && !bytes.Equal(previous, data) {
+		previous, registrationFile := files[target]
+		if registrationFile && !bytes.Equal(previous, data) {
 			return pigletAddCandidate{}, fmt.Errorf("prompt file %q conflicts with destination %s", ref.File, target)
 		}
 		files[target] = data
-		copies.Files[recorded] = digestPigletData(data)
+		// A prompt that names the registered YAML or origin record is not a separate copy, and remove deletes those itself.
+		if !registrationFile {
+			copies.Files[recorded] = digestPigletData(data)
+		}
 	}
 	if len(copies.Files) > 0 {
 		recordTarget := filepath.Join(pigletsDir, p.Name+".files.json")

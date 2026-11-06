@@ -123,7 +123,7 @@ A remote source writes `<name>.origin.json` next to the Piglet. The file records
 
 ### Replace or remove a registered source Piglet
 
-`pig piglet add` copies the Piglet YAML and the relative file its `systemPrompt.file` names into `~/.pig/piglets/`. It writes `<name>.files.json` next to the YAML. The record lists each copied prompt file by its path under `~/.pig/piglets/` and its SHA-256 digest. Add never overwrites a file, so an edited Piglet replaces the registered one in two commands:
+`pig piglet add` copies the Piglet YAML and the relative file its `systemPrompt.file` names, if it names one, into `~/.pig/piglets/`. When it copies a prompt file, it also writes `<name>.files.json` next to the YAML. The record lists each copied prompt file by its path under `~/.pig/piglets/` and its SHA-256 digest. Add never overwrites a file, so an edited Piglet replaces the registered one in two commands:
 
 ```bash
 pig piglet remove reviewer --source
@@ -147,7 +147,7 @@ kept ~/.pig/piglets/prompt.md: Piglet security-reviewer also uses it
 
 Two Piglets can share a copied prompt only while the source files have the same content. A second Piglet whose prompt has the same relative path and different content fails with the name of the Piglet that owns the file. If the YAML was deleted by hand but `<name>.files.json` remains, `pig piglet add` of the same name deletes the files that record owns, under the same rules, before it adds.
 
-PiG 0.7.0 and earlier did not record copied files. A prompt copied by those versions stays after `remove --source`, and `add` refuses to replace it with `no registered Piglet copied it`. Delete that file yourself after you check that no other Piglet uses it, or give the new Piglet a different relative prompt path. `pig piglet update` never refreshes a registered source Piglet; it updates a signed Binary.
+PiG 0.7.0 and earlier did not record copied files. A prompt copied by those versions stays after `remove --source`, and `add` refuses to replace it with `no registered Piglet copied it`. Delete that file yourself after you check that no other Piglet uses it, or give the new Piglet a different relative prompt path. If the Piglet is still registered and its source is unchanged, `pig piglet add` of that source again records the copy, and `remove --source` then deletes it. `pig piglet update` never refreshes a registered source Piglet; it updates a signed Binary.
 
 ## 6. Build
 
