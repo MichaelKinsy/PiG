@@ -62,7 +62,14 @@ func TestWalkDirectoryWithFdCancelKillsTheGroup(t *testing.T) {
 		t.Fatal("fd stub never started its child")
 	}
 	cancel()
-	<-done
+	// Without the group kill the stub's sleep keeps the output pipe open and
+	// the search returns only when it exits.
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+		t.Fatal("the search did not return after cancel")
+	}
 	for range 50 {
 		if syscall.Kill(pid, 0) != nil {
 			return
