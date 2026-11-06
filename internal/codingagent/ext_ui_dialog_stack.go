@@ -58,12 +58,7 @@ func awaitOwnerDialog[T any](m *InteractiveMode, ctx context.Context, commit fun
 	return value, err == nil
 }
 
-// askSelector is `await showExtensionSelector(title, options)`: the chosen option, or ok false when the selector was dismissed.
-func (m *InteractiveMode) askSelector(ctx context.Context, title string, options []string) (string, bool) {
-	return m.askSelectorCommit(ctx, title, options, nil)
-}
-
-// askSelectorCommit is askSelector with commit run as the selector resolves with a choice (ExtUIContext.commit).
+// askSelectorCommit is `await showExtensionSelector(title, options)`: the chosen option, or ok false when the selector was dismissed. commit runs as the selector resolves with a choice (ExtUIContext.commit).
 func (m *InteractiveMode) askSelectorCommit(ctx context.Context, title string, options []string, commit func(choice string)) (string, bool) {
 	return awaitOwnerDialog(m, ctx, commit, func(ctx context.Context, ui *ExtUIContext) (string, error) {
 		return ui.Select(ctx, title, options, extension.ExtensionUIDialogOptions{})
@@ -78,12 +73,7 @@ func (m *InteractiveMode) askConfirm(ctx context.Context, title, message string)
 	return ok && confirmed
 }
 
-// askEditor is `await showExtensionEditor(title, prefill)`: the text, or ok false when the editor was dismissed.
-func (m *InteractiveMode) askEditor(ctx context.Context, title, prefill string) (string, bool) {
-	return m.askEditorCommit(ctx, title, prefill, nil)
-}
-
-// askEditorCommit is askEditor with commit run as the editor resolves with text.
+// askEditorCommit is `await showExtensionEditor(title, prefill)`: the text, or ok false when the editor was dismissed. commit runs as the editor resolves with text.
 func (m *InteractiveMode) askEditorCommit(ctx context.Context, title, prefill string, commit func(choice string)) (string, bool) {
 	return awaitOwnerDialog(m, ctx, commit, func(ctx context.Context, ui *ExtUIContext) (string, error) {
 		return ui.Editor(ctx, title, prefill)
