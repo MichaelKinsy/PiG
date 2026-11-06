@@ -3608,3 +3608,25 @@ Call-site markers: `coding/cli/main.go` (`runStartupBenchmark`).
 Evidence: `TestStartupBenchmarkDisposesTheRuntimeAfterStoppingInteractiveMode` (`coding/cli/startup_benchmark_test.go`; red on 989927eff4: `runStartupBenchmark` takes no dispose step, so the test does not compile). Pi added no test: the path needs a TTY.
 
 Parity allowance: none needed.
+
+## D267 The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes
+
+What: `InstallDependencies` (`chord/nextnode/plugins`, the port of `installDependencies` in `packages/chord/src/next-node/plugins/install.ts`) waits for the install command to exit, and for the end of its stdout and stderr only for five seconds after that (the stop grace, `exec.Cmd.WaitDelay`). A process the command started that inherited its pipes (a daemon npm left behind) no longer holds the install: it returns with the command's result, the output written so far, and the pipes' Go ends closed (what the child writes later is dropped and its writes fail with a broken pipe). A command that exited with code 0 is installed even when the grace expired. Pi settles the install on the child's `close` event, which fires only when the command's stdio streams have closed, so with a process left holding them Pi's install waits for as long as that process lives.
+
+Why: A plugin install that hangs on a descendant the user cannot see blocks the plugin load behind it with no error and no way out but killing the app; the 0.7.1 fix of the Windows Node-host exit (commit 47ec6e80d8) found the same exposure in the Node host's own process wait and fixed it there (`NodeHost` waits for the process's exit, as Pi's workers do with `child.once("exit")`, `next-node/workers/process.ts:79`, so that path matches Pi and is no divergence). The install is the one place where PiG waits as Pi's `close` does, so it follows the exit instead.
+
+Pi bug: Pi's `installDependencies` hangs until a process that inherited npm's pipes ends (`child.on("close", resolve)`, `install.ts:42`). Not reported upstream.
+
+Scope: `InstallDependencies` only, in the case a process other than the command holds the command's stdout or stderr after the command exited. `WaitDelay` also counts from an abort: when the context ends, the command is sent SIGTERM as before, and a command that ignores it is now killed five seconds later and the install returns the abort's reason then (measured 6.0 s, against 30.1 s on 989927eff4, where `Run` waited for the command to end by itself). Pi rejects at once and sends SIGTERM and does not kill, so the abort path is closer to Pi, not further. Nothing differs when the command's streams close with it (every case Pi's tests cover): arguments, working directory, output text on failure, the abort path and the exit-code messages are Pi's.
+
+Owner decision: 2026-11-05, approved through the coordinator for 0.7.1.
+
+SCRUTINIZED:approved
+
+Remove when: Pi stops waiting on inherited pipes (its install settles on the command's `exit`, or bounds the wait for `close`). Then the call-site marker and this record go.
+
+Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`InstallDependencies`, the `WaitDelay` and the `ErrWaitDelay` case).
+
+Evidence: `TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes` (`chord/nextnode/plugins/plugins_install_test.go`; red on 989927eff4: the install did not return in 25 s for exit 0 and for exit 1).
+
+Parity allowance: none needed; Pi's install tests (`install.test.ts`, ported in `plugins_install_test.go`) pass unchanged, and none of them leaves a process holding the pipes.
