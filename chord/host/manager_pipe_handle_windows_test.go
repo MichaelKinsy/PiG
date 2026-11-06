@@ -20,7 +20,7 @@ var handlePipeSequence atomic.Int64
 // flag on the wrapped end (the one libuv creates by CreateFile in a child).
 func handlePipePair(t *testing.T, overlapped bool) (*handlePipe, windows.Handle) {
 	t.Helper()
-	name := `\\.\pipe\pig-handlepipe-test-` + strconv.Itoa(windows.GetCurrentProcessId()) + "-" + strconv.FormatInt(handlePipeSequence.Add(1), 10)
+	name := `\\.\pipe\pig-handlepipe-test-` + strconv.FormatUint(uint64(windows.GetCurrentProcessId()), 10) + "-" + strconv.FormatInt(handlePipeSequence.Add(1), 10)
 	namePtr, err := windows.UTF16PtrFromString(name)
 	if err != nil {
 		t.Fatal(err)
