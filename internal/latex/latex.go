@@ -88,6 +88,16 @@ func RenderLatex(source string, opts RenderLatexOptions) (string, bool) {
 
 // --- string helpers (faithful to the TS regex/format helpers) ---
 
+// arrayFromLen is Array.from(value).length: two adjacent surrogate halves are one character, however the argument came to hold them.
+func arrayFromLen(value string) int {
+	n := 0
+	for i := 0; i < len(value); n++ {
+		_, size := jsstring.DecodeRuneInString(value[i:])
+		i += size
+	}
+	return n
+}
+
 func replaceCharacters(value string, table map[string]string) (string, bool) {
 	var b strings.Builder
 	for i := 0; i < len(value); {
@@ -137,7 +147,7 @@ func formatScript(value, kind string) string {
 	if unicode, ok := formatUnicodeScript(value, kind); ok {
 		return unicode
 	}
-	if jsstring.CodePointCount(value) == 1 || (kind == "sub" && reASCIILetters.MatchString(value)) {
+	if arrayFromLen(value) == 1 || (kind == "sub" && reASCIILetters.MatchString(value)) {
 		return prefix + value
 	}
 	return prefix + "(" + value + ")"
@@ -151,7 +161,7 @@ func formatFraction(numerator, denominator string) string {
 		num = "(" + numerator + ")"
 	}
 	den := denominator
-	if !reSimpleNumber.MatchString(denominator) && jsstring.CodePointCount(denominator) != 1 {
+	if !reSimpleNumber.MatchString(denominator) && arrayFromLen(denominator) != 1 {
 		den = "(" + denominator + ")"
 	}
 	return num + "/" + den
@@ -506,7 +516,7 @@ func (p *parser) parseScripts(initialMarker rune) string {
 	needsLayout := p.scriptDepth > 0
 	for _, kind := range order {
 		value := scripts[kind]
-		if strings.Contains(value, "/") || (!strings.Contains(value, layoutMarkerStart) && jsstring.CodePointCount(value) > 1 && !reLayoutScript.MatchString(value)) {
+		if strings.Contains(value, "/") || (!strings.Contains(value, layoutMarkerStart) && arrayFromLen(value) > 1 && !reLayoutScript.MatchString(value)) {
 			canUseLayout = false
 		}
 		if _, ok := formatUnicodeScript(value, kind); !ok {
@@ -593,12 +603,12 @@ func (p *parser) parseCommand() string {
 		if negated, ok := latexNegatedSymbols()[value]; ok {
 			return " " + negated + " "
 		}
-		chars := jsstring.CodePoints(value)
-		if len(chars) == 0 {
+		if value == "" {
 			p.ok = false
 			return ""
 		}
-		return " " + withRune("", chars[0]) + "\u0338" + jsstring.FromCodePoints(chars[1:]) + " "
+		_, size := jsstring.DecodeRuneInString(value)
+		return " " + value[:size] + "\u0338" + value[size:] + " "
 	case latexLimitOperators()[command]:
 		return p.parseOperator(command, "bracket", true, true)
 	}
@@ -660,7 +670,7 @@ func (p *parser) parseCommand() string {
 	}
 	if accent, ok := latexAccents()[command]; ok {
 		value := p.parseRequiredArgument(true)
-		if jsstring.CodePointCount(value) == 1 {
+		if arrayFromLen(value) == 1 {
 			return value + accent
 		}
 		return command + "(" + value + ")"
@@ -829,7 +839,14 @@ func (p *parser) parseRequiredArgumentValue() string {
 	if p.src[p.pos] == '\\' {
 		return p.parseCommand()
 	}
-	value := withRune("", p.src[p.pos])
+	r := p.src[p.pos]
+	if r > 0xFFFF {
+		// Pi reads one UTF-16 unit: the high half is the argument and the low half stays in the source as the next character. The parser owns p.src.
+		r -= 0x10000
+		p.src[p.pos] = 0xDC00 + r&0x3FF
+		return withSurrogate("", 0xD800+r>>10)
+	}
+	value := withRune("", r)
 	p.pos++
 	return value
 }
