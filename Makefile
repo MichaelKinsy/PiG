@@ -340,7 +340,7 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 		coding/cli/testdata/login-preview \
 		coding/extension/host/subprocess/testdata/sdk-fixture \
 		examples/extensions/go-factory \
-		piglets/aot \
+		piglets/pig-bolt \
 		piglets/porter/extensions/pig-porter \
 		piglets/standard; do \
 		echo "testing Go module: $$module"; \
@@ -348,7 +348,7 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 	done
 
 test-aot-conformance: ## Run the extension conformance suite on the compiled aot host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 0.7.4 runtime executable)
-	@piglets/aot/conformance.sh
+	@piglets/pig-bolt/conformance.sh
 
 # The Rust SDK's own unit tests. `test` builds the Rust conformance fixtures,
 # which compiles the SDK library but not its test targets, so a test-only break
@@ -604,7 +604,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/angrypigs >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/bunruntime >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/standard/pig-standard.yaml >/dev/null
-	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/aot/pig-aot.yaml >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-bolt.yaml >/dev/null
 
 ##@ Gates
 

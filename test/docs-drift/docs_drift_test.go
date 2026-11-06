@@ -101,7 +101,7 @@ func TestDocumentedSlashCommandsExist(t *testing.T) {
 		"/pig-porter":  "the porter Piglet's command (piglets/porter)",
 		"/angry-pigs":  "the PiG Standard game extension (piglets/standard)",
 		"/bun-runtime": "the PiG Standard Bun runtime extension (piglets/standard/extensions/bunruntime)",
-		"/aot-runtime": "the pig-aot Piglet's compiled-extensions runtime extension (piglets/aot/extensions/aotruntime)",
+		"/bolt-runtime": "the pig-bolt Piglet's compiled-extensions runtime extension (piglets/pig-bolt/extensions/boltruntime)",
 		// The bug ledger entry for tui.showOverlay names the commands of Pi's overlay QA example extension.
 		"/overlay-focus":     "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",
 		"/overlay-passive":   "Pi's overlay QA example extension (coding-agent examples/extensions/overlay-qa-tests.ts)",

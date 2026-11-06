@@ -12,7 +12,7 @@ go build -o /tmp/pig ./cmd/pig
 mkdir -p /tmp/slot/bun && cp "$BUN_1_4_2" /tmp/slot/bun/bun   # stock Bun 1.4.2 and its runtime.json, as /bun-runtime install writes them
 python3 bench/bolt-aot/bench.py --out /tmp/bench --rounds 7 --arms node,bun,aot \
   --pig /tmp/pig --slot /tmp/slot --exts bench/bolt-aot/exts \
-  --build-cmd 'cd piglets/aot && GOWORK=off PIG_AOT_BUILD_SLOT=/tmp/slot go test ./extensions/aotruntime -run TestBuildSlotRequests -count=1'
+  --build-cmd 'cd piglets/pig-bolt && GOWORK=off PIG_AOT_BUILD_SLOT=/tmp/slot go test ./extensions/boltruntime -run TestBuildSlotRequests -count=1'
 python3 bench/bolt-aot/summarize.py /tmp/bench/runs.jsonl
 ```
 
@@ -30,7 +30,7 @@ It runs the Piglet's worker (installs the manifest, downloads and verifies the P
 
 ### One Piglet Binary with Go-fused and compiled TypeScript extensions
 
-A Piglet Binary can carry Go-fused members, TypeScript extensions (Node members whose sources the Binary embeds and extracts under its `PIG_HOME`) and the aot-runtime extension together. List the TypeScript extensions as directories (`dir/index.ts`; a single-file origin fails `pig piglet build` at the lock step, coding/pigletbuild/records.go `localGoReplacementDirs`), and give every fused member one name for its yaml entry, its `sdk.New` registration and its directory. Then:
+A Piglet Binary can carry Go-fused members, TypeScript extensions (Node members whose sources the Binary embeds and extracts under its `PIG_HOME`) and the bolt-runtime extension together. List the TypeScript extensions as directories (`dir/index.ts`; a single-file origin fails `pig piglet build` at the lock step, coding/pigletbuild/records.go `localGoReplacementDirs`), and give every fused member one name for its yaml entry, its `sdk.New` registration and its directory. Then:
 
 ```sh
 PIG_SOURCE_ROOT=<PiG checkout> pig piglet build combo.yaml --format binary --out ./pig-combo
