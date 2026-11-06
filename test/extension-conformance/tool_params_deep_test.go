@@ -117,10 +117,15 @@ func eachDeepPlacement(t *testing.T, body func(t *testing.T, r *modelTypesRig)) 
 		}
 		cfg := lispSurfaceFixtureConfig(t)
 		cfg.Isolation, cfg.ContentHash = "shared-ok", "packed-modeltypes-lisp"
-		loaded, failures := r.host.LoadAll(t.Context(), []subprocess.ExtConfig{cfg, peers[1]})
+		configs := []subprocess.ExtConfig{cfg, peers[1]}
+		r.host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
+		loaded, err := r.host.Reload(t.Context())
+		if err != nil {
+			t.Fatalf("load: %v (%+v)", err, r.host.LastReloadReport())
+		}
 		applyQueuedRegistrations(r.host)
-		if len(failures) != 0 || len(loaded) != 2 {
-			t.Fatalf("load: %v", failures)
+		if report := r.host.LastReloadReport(); report == nil || len(report.Cells) != 1 || report.Cells[0].Strategy != subprocess.CellStrategy("packed-lisp") || len(report.Cells[0].Extensions) != 2 || len(loaded) != 2 {
+			t.Fatalf("the two extensions do not share one packed lisp cell: %+v", report)
 		}
 		for _, ext := range loaded {
 			if ext.Name == lispFixtureName {
