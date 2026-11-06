@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Several exits can be in flight when a shutdown ends and a repeated signal arrives. The cleanup, the exit.log line and the process exit run once, in the exit that reaches the commit first, whichever it is (D234).
@@ -40,7 +42,7 @@ func TestRPCExitRunsItsStepsOnce(t *testing.T) {
 		go func() { wg.Wait(); close(returned) }()
 		select {
 		case <-returned:
-		case <-time.After(5 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			t.Fatal("an exit did not return after the owner ended the process")
 		}
 		if cleanups.Load() != 1 || records.Load() != 1 || ends.Load() != 1 || concurrent.Load() {
