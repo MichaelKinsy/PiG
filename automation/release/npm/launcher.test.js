@@ -57,18 +57,19 @@ test("missing optional platform package explains --no-optional", () => {
 });
 
 const REMOTE_HINT =
-  "  ssh you@your-computer pig\n" +
+  "  ssh you@your-computer\n" +
+  "  pig\n" +
   "Install PiG on that computer with:\n" +
   "  curl -fsSL https://pi-in-go.dev/install.sh | sh";
 
 const IOS_MESSAGE =
-  "PiG can't run on iPhone or iPad. iOS lets terminal apps run only code built into the app, so neither a PiG binary nor a WebAssembly build can reach a model provider.\n" +
-  "To use PiG from this device, run it on a computer you can reach and connect to it:\n" +
+  "PiG can't run on iPhone or iPad: iOS lets terminal apps run only code built into the app.\n" +
+  "To use PiG from this device, connect to a computer that has PiG installed, then run pig there:\n" +
   REMOTE_HINT;
 
 const ISH_MESSAGE =
-  "PiG doesn't support iSH: iSH emulates 32-bit x86 Linux, and PiG doesn't run reliably there.\n" +
-  "To use PiG from this device, run it on a computer you can reach and connect to it:\n" +
+  "PiG has no build for iSH, which emulates 32-bit x86 Linux.\n" +
+  "To use PiG from this device, connect to a computer that has PiG installed, then run pig there:\n" +
   REMOTE_HINT;
 
 test("ios explains that PiG does not run on iPhone or iPad", () => {

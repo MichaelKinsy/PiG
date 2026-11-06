@@ -34,8 +34,9 @@ const OTHER_METHODS =
   "  https://github.com/MichaelKinsy/PiG/releases";
 
 const REMOTE_HINT =
-  "To use PiG from this device, run it on a computer you can reach and connect to it:\n" +
-  "  ssh you@your-computer pig\n" +
+  "To use PiG from this device, connect to a computer that has PiG installed, then run pig there:\n" +
+  "  ssh you@your-computer\n" +
+  "  pig\n" +
   "Install PiG on that computer with:\n" +
   "  curl -fsSL https://pi-in-go.dev/install.sh | sh";
 
@@ -44,13 +45,12 @@ const REMOTE_HINT =
 function unsupportedDevice(platform, exists) {
   if (platform === "ios") {
     return (
-      "PiG can't run on iPhone or iPad. iOS lets terminal apps run only code built into the app, " +
-      "so neither a PiG binary nor a WebAssembly build can reach a model provider.\n" +
+      "PiG can't run on iPhone or iPad: iOS lets terminal apps run only code built into the app.\n" +
       REMOTE_HINT
     );
   }
   if (platform === "linux" && exists("/proc/ish")) {
-    return "PiG doesn't support iSH: iSH emulates 32-bit x86 Linux, and PiG doesn't run reliably there.\n" + REMOTE_HINT;
+    return "PiG has no build for iSH, which emulates 32-bit x86 Linux.\n" + REMOTE_HINT;
   }
   return null;
 }

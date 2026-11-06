@@ -137,8 +137,9 @@ say() {
 }
 
 remote_hint='
-To use PiG from this device, run it on a computer you can reach and connect to it:
-  ssh you@your-computer pig
+To use PiG from this device, connect to a computer that has PiG installed, then run pig there:
+  ssh you@your-computer
+  pig
 Install PiG on that computer with:
   curl -fsSL https://pi-in-go.dev/install.sh | sh'
 
@@ -191,11 +192,11 @@ is_android() {
 unsupported_device() {
   case "$(uname -m)" in
     iPhone* | iPad*)
-      fail "PiG can't run on iPhone or iPad. iOS lets terminal apps run only code built into the app, so neither a PiG binary nor a WebAssembly build can reach a model provider.$remote_hint"
+      fail "PiG can't run on iPhone or iPad: iOS lets terminal apps run only code built into the app.$remote_hint"
       ;;
   esac
   if [ -e /proc/ish ]; then
-    fail "PiG doesn't support iSH: iSH emulates 32-bit x86 Linux, and PiG doesn't run reliably there.$remote_hint"
+    fail "PiG has no build for iSH, which emulates 32-bit x86 Linux.$remote_hint"
   fi
 }
 

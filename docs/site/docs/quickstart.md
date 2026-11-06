@@ -15,7 +15,7 @@ pig --version
 
 When `~/.local/bin` is not on `PATH`, the script prints the `export PATH=...` line to run. [Install troubleshooting](/docs/latest/install-troubleshooting) lists the script's options, for example `PIG_VERSION` to install a given release.
 
-PiG doesn't run on iPhone, iPad, or iSH; run PiG on a computer you can reach and connect to it with `ssh you@your-computer pig`.
+PiG doesn't run on iPhone, iPad, or iSH. Use `ssh` to connect to a computer that has PiG installed, then run `pig` there.
 
 ## Requirements
 

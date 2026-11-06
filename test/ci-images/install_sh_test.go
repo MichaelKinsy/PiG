@@ -484,17 +484,18 @@ func TestInstallShKeepsNonAndroidPlatformNames(t *testing.T) {
 	}
 }
 
-const remoteHint = `  ssh you@your-computer pig
+const remoteHint = `  ssh you@your-computer
+  pig
 Install PiG on that computer with:
   curl -fsSL https://pi-in-go.dev/install.sh | sh
 `
 
-const iosMessage = `pig-install: error: PiG can't run on iPhone or iPad. iOS lets terminal apps run only code built into the app, so neither a PiG binary nor a WebAssembly build can reach a model provider.
-To use PiG from this device, run it on a computer you can reach and connect to it:
+const iosMessage = `pig-install: error: PiG can't run on iPhone or iPad: iOS lets terminal apps run only code built into the app.
+To use PiG from this device, connect to a computer that has PiG installed, then run pig there:
 ` + remoteHint
 
-const ishMessage = `pig-install: error: PiG doesn't support iSH: iSH emulates 32-bit x86 Linux, and PiG doesn't run reliably there.
-To use PiG from this device, run it on a computer you can reach and connect to it:
+const ishMessage = `pig-install: error: PiG has no build for iSH, which emulates 32-bit x86 Linux.
+To use PiG from this device, connect to a computer that has PiG installed, then run pig there:
 ` + remoteHint
 
 // a-Shell on an iPhone or iPad reports uname -s Darwin and a device identifier as uname -m. The installer prints the remote-use hint and exits 1, as it does for every unsupported platform, before it fetches anything.
