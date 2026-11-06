@@ -610,6 +610,7 @@ func (p *parser) parseCommand() string {
 			return ""
 		}
 		_, size := jsstring.DecodeRuneInString(value)
+		//portlint:allow utf16units size is the byte length of the first code point jsstring decoded, so both halves split on a code point boundary
 		return " " + value[:size] + "\u0338" + value[size:] + " "
 	case latexLimitOperators()[command]:
 		return p.parseOperator(command, "bracket", true, true)
@@ -685,6 +686,7 @@ func (p *parser) parseCommand() string {
 			if bb, ok := latexBlackboard()[string(r)]; ok {
 				b.WriteString(bb)
 			} else {
+				//portlint:allow utf16units size is the byte length of the code point jsstring decoded at i, so the slice is that one code point
 				b.WriteString(value[i : i+size])
 			}
 			i += size

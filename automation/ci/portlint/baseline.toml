@@ -492,7 +492,7 @@ snippet = "if float64(time.Now().UnixMilli()) < stored.ExpiresMillis() {"
 check = "clock"
 file = "internal/codingagent/radius_models.go"
 func = "ModelRegistry.refreshRadiusOAuth"
-snippet = "if current == nil || current.Type != ai.CredentialOAuth || float64(time.Now().UnixMilli()) < current.ExpiresMillis() {"
+snippet = "return float64(time.Now().UnixMilli()) >= current.ExpiresMillis()"
 
 [[hit]]
 check = "clock"
