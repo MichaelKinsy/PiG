@@ -142,6 +142,47 @@ func (p raceSlowNativeProvider) SuggestionTask(lines []string, row, col int, _ b
 	}, true
 }
 
+// raceLegacyProvider answers only @ tokens, and only through the deferred file search of an AsyncFileSearcher: the query is recorded when the search runs.
+type raceLegacyProvider struct {
+	queries *raceQueries
+	slow    int
+}
+
+func (raceLegacyProvider) GetSuggestions(context.Context, []string, int, int, tui.AutocompleteSuggestionOptions) *tui.AutocompleteSuggestions {
+	return nil
+}
+
+func (raceLegacyProvider) ApplyCompletion(lines []string, row, col int, _ tui.AutocompleteItem, _ string) ([]string, int, int) {
+	return lines, row, col
+}
+
+func (p raceLegacyProvider) FileSearchTask(lines []string, row, col int) (string, func(context.Context) []tui.AutocompleteItem, bool) {
+	before := lines[row][:col]
+	match := typedAutocompleteTokenRe.FindStringSubmatch(before)
+	if match == nil || match[1] != "@" {
+		return "", nil, false
+	}
+	return match[1] + match[2], func(ctx context.Context) []tui.AutocompleteItem {
+		p.queries.add(before)
+		if p.slow != raceImmediate {
+			if err := raceSleep(ctx, p.slow); err != nil {
+				return nil
+			}
+		}
+		return typedAutocompleteMatching(raceTokens, match[2])
+	}, true
+}
+
+// raceLegacyProbe reports whether the probe stays inside what the legacy path shares with Pi's Editor: it debounces and defers only @ tokens, and answers nothing else.
+func raceLegacyProbe(probe raceProbe) bool {
+	var keys []string
+	for _, op := range probe.Ops {
+		keys = append(keys, op.Keys...)
+	}
+	text := strings.Join(keys, "")
+	return strings.Contains(text, "@") && !strings.ContainsAny(text, "#$") && !strings.HasPrefix(text, "/") && !strings.Contains(text, "/load")
+}
+
 // raceEditor is a Pig editor on the extension provider chain ("async") or on the local provider ("native"), with the owner services of the interactive loop. It must run inside a synctest bubble, where time stands still until every goroutine waits on it.
 func raceEditor(t *testing.T, mode string, slow int, queries *raceQueries) (*tui.Editor, func()) {
 	t.Helper()
@@ -155,6 +196,10 @@ func raceEditor(t *testing.T, mode string, slow int, queries *raceQueries) (*tui
 	e.SetAsyncApply(func(apply func()) { applies <- apply })
 	report := func(err error) { applies <- func() { t.Errorf("autocomplete error: %v", err) } }
 	switch mode {
+	case "legacy":
+		// An editor with no task owner (a host that never calls SetAutocompleteTaskOwner): the local answer is applied at the key, a file search runs on its own goroutine. This editor has an owner loop (SetAsyncApply), where
+		// the search takes the editor's text and applies its answer; with no loop at all (the extension view editor) it does both on its own goroutine, which races with the caller's keys.
+		e.SetAutocomplete(raceLegacyProvider{queries, slow})
 	case "native":
 		e.SetAutocompleteTaskOwner(ctx, workers.Go, report)
 		if slow != raceImmediate {
@@ -321,7 +366,7 @@ func piRaceLogs(t *testing.T, probes []raceProbe) []raceLog {
 	return logs
 }
 
-// TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi types each probe through Pi's Editor and through Pig's, on the extension provider chain and on the local provider, with an immediate provider and a slow one, and requires the provider to be asked the same texts in the same order and the editor to end with the same rows.
+// TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi types each probe through Pi's Editor and through Pig's, on the extension provider chain, on the local provider with a task owner and on the local provider of an editor with no task owner (@ tokens only), with an immediate provider and a slow one, and requires the provider to be asked the same texts in the same order and the editor to end with the same rows.
 func TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi(t *testing.T) {
 	useAwaitedAcceptTerminal(t)
 	probes := raceProbes()
@@ -329,12 +374,28 @@ func TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi(t *tes
 	if len(expected) != len(probes) {
 		t.Fatalf("Pi returned %d logs for %d probes", len(expected), len(probes))
 	}
-	for _, mode := range []string{"async", "native"} {
+	for _, mode := range []string{"async", "native", "legacy"} {
 		t.Run(mode, func(t *testing.T) {
 			failures, popups, asked := 0, 0, 0
 			for i, probe := range probes {
+				if mode == "legacy" && !raceLegacyProbe(probe) {
+					continue
+				}
 				got := pigRaceLog(t, mode, probe)
 				want := expected[i]
+				if mode == "legacy" {
+					// The search of this path only runs where an @ token ends at the cursor; Pi asks its provider about every text and gets nothing for the others.
+					var asked []string
+					for _, query := range want.Queries {
+						if match := typedAutocompleteTokenRe.FindStringSubmatch(query); match != nil && match[1] == "@" {
+							asked = append(asked, query)
+						}
+					}
+					want.Queries = asked
+					if want.Queries == nil {
+						want.Queries = []string{}
+					}
+				}
 				if len(got.Queries) == 0 {
 					got.Queries = []string{}
 				}
