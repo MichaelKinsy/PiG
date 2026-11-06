@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -114,5 +115,21 @@ func TestContextEditEntryRefreshesTheFooterContextUsage(t *testing.T) {
 	m.handleEntryAppended(json.RawMessage(`{"type":"context_edit","id":"e1","parentId":"a1","timestamp":"2026-01-01T00:00:00Z","targetId":"a1","replacement":null}`))
 	if got := m.statusLine.contextTokens; got != 1400 {
 		t.Fatalf("footer context tokens after a context_edit entry = %d, want 1400", got)
+	}
+}
+
+// Pi's footer re-asks getContextUsage() on every render, so the prompt's tokens show as soon as the user's message is recorded, for the whole reply. PiG's footer
+// holds a stored estimate, which the user message_end must refresh although it renders nothing.
+func TestUserMessageEndRefreshesTheFooterContextUsage(t *testing.T) {
+	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
+	tokens := 120
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), Model: model, ContextUsage: func() (*int, int) { return &tokens, 8000 }})
+	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
+	m.statusLine = NewFooterComponent(model, "", nil)
+	m.refreshFooterContextUsage()
+	tokens = 1400
+	m.handleAgentEvent(agent.MessageEndEvent{Message: userMsg("hello")})
+	if got := m.statusLine.contextTokens; got != 1400 {
+		t.Fatalf("footer context tokens after a user message_end = %d, want 1400", got)
 	}
 }

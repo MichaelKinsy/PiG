@@ -1,0 +1,43 @@
+# Behavior family: startup
+# Surface: run() prompts the positional messages one after the other.
+#
+# Upstream evidence (Pi 1.5.0 interactive-mode.ts run(), 1254-1276): the initial message and each of initialMessages go through `await this.session.prompt(message)`,
+# and prompt() awaits an extension command's handler (agent-session.ts prompt -> _tryExecuteExtensionCommand). `pi "/hold" "/after"` therefore runs /after only
+# once /hold has finished: the handler of /hold waits for a barrier key and then reports that it is done, and /after reports whether it found /hold done.
+
+name = "22-startup-initial-extension-commands-run-in-order"
+description = "The positional messages that are extension commands run one after the other, each finishing before the next starts, as pi awaits each prompt()."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions", "/hold", "/after"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions", "/hold", "/after"]
+pig_extensions = ["testdata/startup-commands/hold-then-after.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-commands/hold-then-after.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "COMMAND HOLD"
+ready_pattern_pi = "COMMAND HOLD"
+ready_timeout_seconds = 30
+capture_start = "COMMAND HOLD"
+capture_end_regex = 'COMMAND AFTER:[^\n]*'
+
+[[tmux.steps]]
+keys = ["~"]
+wait_contains = ["COMMAND AFTER:"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["COMMAND HOLD DONE", "COMMAND AFTER: hold done"]
+both_not_contain = ["COMMAND AFTER: hold pending", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

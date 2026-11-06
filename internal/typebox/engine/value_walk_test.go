@@ -82,7 +82,7 @@ var depthShapes = []struct {
 
 func nestedObjectsSchema(levels int) string {
 	schema := `{"type":"number"}`
-	for i := 0; i < levels; i++ {
+	for range levels {
 		schema = `{"type":"object","required":["a"],"properties":{"a":` + schema + `}}`
 	}
 	return schema
@@ -211,7 +211,7 @@ func TestSessionCloseCancelsItsParkedWalks(t *testing.T) {
 	before := runtime.NumGoroutine()
 	session := NewSession()
 	var tokens []string
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		tokens = append(tokens, startWalk(t, session).Call.Token)
 	}
 	if session.Parked() != 500 {
@@ -237,7 +237,7 @@ func TestSessionsAreIndependent(t *testing.T) {
 	noisy, quiet := NewSession(), NewSession()
 	t.Cleanup(noisy.Close)
 	t.Cleanup(quiet.Close)
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		startWalk(t, noisy)
 	}
 	mine := startWalk(t, quiet)
@@ -254,7 +254,7 @@ func TestSessionsAreIndependent(t *testing.T) {
 // TestValueAnswerRacingCancelNeverHangs: a cancel (or a close) that lands while an answer is in flight must not leave the answer's host call waiting for an event the cancelled walk
 // never sends.
 func TestValueAnswerRacingCancelNeverHangs(t *testing.T) {
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		session := NewSession()
 		first := startWalk(t, session)
 		finished := make(chan struct{})

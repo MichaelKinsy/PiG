@@ -13,6 +13,6 @@ if (result.status !== 0) {
  process.stderr.write(result.stderr ?? '');
  throw new Error(`render highlighted html oracle exited ${result.status}`);
 }
-// Node writes a lone surrogate to a terminal as U+FFFD; Pig's renderer converts at that same boundary (terminalText), so compare the written form.
+// Node writes a lone surrogate to a terminal as U+FFFD; Pig's renderer keeps the unit and the Go printer (TestRenderHighlightedHtmlParity) encodes it at that same boundary, so compare the written form.
 // Go's JSON encoder spells U+2028 and U+2029 as escapes where JSON.stringify writes them raw; both are the same JSON text, so spell them as Go does.
 for (const probe of JSON.parse(result.stdout)) process.stdout.write(JSON.stringify(probe.out === undefined ? probe : { out: probe.out.toWellFormed() }).replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029') + '\n');

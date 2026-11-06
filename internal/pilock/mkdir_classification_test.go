@@ -40,6 +40,7 @@ func TestAcquireRetriesEEXISTUntilHolderReleases(t *testing.T) {
 	for _, a := range acquirers {
 		t.Run(a.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			held, err := AcquireSync(path)
 			if err != nil {
 				t.Fatal(err)
@@ -74,6 +75,7 @@ func TestAcquireRetriesOnlyWindowsEPERMAmongNonEEXISTMkdirErrors(t *testing.T) {
 		for _, a := range acquirers {
 			t.Run(name+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				held, err := AcquireSync(path)
 				if err != nil {
 					t.Fatal(err)
@@ -135,6 +137,7 @@ func TestAcquireRetriesEveryEEXISTMkdirError(t *testing.T) {
 		for _, a := range acquirers {
 			t.Run(name+"/"+a.name, func(t *testing.T) {
 				path := filepath.Join(t.TempDir(), "auth.json")
+				createLockTarget(t, path)
 				held, err := AcquireSync(path)
 				if err != nil {
 					t.Fatal(err)

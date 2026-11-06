@@ -25,8 +25,8 @@ func TestNativeProviderFilterAllModelsSeesTheProvidersOwnModels(t *testing.T) {
 		Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 			return nil, nil
 		},
-		ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-			return nil, nil, nil
+		ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+			return nil, nil
 		},
 		ResolveRefreshCredential: func(_ context.Context, current *ai.Credential) (*ai.Credential, *ai.Credential, error) {
 			return current, nil, nil

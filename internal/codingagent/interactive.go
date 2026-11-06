@@ -224,6 +224,12 @@ type InteractiveMode struct {
 	// turnSettled is closed when the active run settles; waitForIdle waits
 	// on it. Guarded by queueMu; nil while no run is active.
 	turnSettled chan struct{}
+	// promptCommand is closed when the extension command the prompt loop submitted returns: Pi's run() awaits `session.prompt(text)`, and prompt()
+	// awaits an extension command's handler, so the loop takes no further prompt until then. Guarded by queueMu; nil until the loop submits a command.
+	promptCommand <-chan struct{}
+	// startedCommand is closed when the extension command that startExtensionCommand started last returns; the caller that awaits the command takes it
+	// (takeStartedCommand). Guarded by queueMu.
+	startedCommand chan struct{}
 
 	// agent_settled handlers finish as one awaited dispatch before an action
 	// they start may begin another run. The mutex covers subprocess host-call
@@ -240,8 +246,12 @@ type InteractiveMode struct {
 	ownerOverflowActive atomic.Bool
 	// ownerForwarder joins the overflow forwarder alone, so a caller can wait for ownerOverflowActive to clear without waiting on the session's long-lived background tasks.
 	ownerForwarder sync.WaitGroup
-	requestExit    atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime   atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// shutdownRequested records an extension's ctx.shutdown() while a run streams; agent_settled then ends the session (interactive-mode.ts shutdownRequested).
+	shutdownRequested atomic.Bool
+	// entriesRenderedByBoundaryCompaction holds the ids of entries after a boundary compaction that its rebuild of the transcript already drew.
+	entriesRenderedByBoundaryCompaction map[string]struct{}
+	requestExit                         atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime                        atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -405,6 +415,10 @@ type InteractiveMode struct {
 	// Called on AutoRetryEndEvent or when a new retry starts.
 	retryCountdownStop func()
 
+	// retryEscapeHandler is set while Escape cancels the automatic-retry delay (interactive-mode.ts retryEscapeHandler): auto_retry_start sets it,
+	// agent_start and auto_retry_end restore the main handler.
+	retryEscapeHandler bool
+
 	// Slash-command registry. Owns 14 builtins + the dynamic
 	// extension-registered set. Constructed in Run().
 	slashRegistry *SlashRegistry
@@ -435,6 +449,9 @@ type InteractiveMode struct {
 	// headerBox is the header container every layout mount shares. startupHeaderPending is true from the first paint until startup has the terminal's colors, and keeps the container empty. Owner loop only.
 	headerBox            *tui.Container
 	startupHeaderPending bool
+	// changelogEntries and extensionChangelogUpdates are the startup notices init() prepares before the UI starts (interactive-mode.ts changelogMarkdown and extensionChangelogUpdates); the bind shows them.
+	changelogEntries          []ChangelogEntry
+	extensionChangelogUpdates []extensionChangelogUpdate
 	// spriteOwners names the extensions whose sprites the bound build registered in piglogin's catalogue (D2). Binding
 	// another build's bridge removes them first, since the outgoing bridge no longer reaches the UI when its host shuts
 	// down. Guarded by spriteOwnersMu.
@@ -1561,6 +1578,10 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 		m.backgroundCtx = nil
 		return nil
 	})
+	// Pi's init() prepares the changelog data right after registering the signal handlers, so a first start or an update records the version before the
+	// model scope notice, the UI and the extensions (interactive-mode.ts:976-981).
+	m.changelogEntries = m.getChangelogForDisplay()
+	m.extensionChangelogUpdates = m.getExtensionChangelogUpdates()
 	mark := m.startupMark()
 	m.initStartupTheme()
 	mark("theme-detected")
@@ -1638,8 +1659,6 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	editorPaddingX, autocompleteMaxVisible := m.opts.Settings.GetEditorPaddingX(), m.opts.Settings.GetAutocompleteMaxVisible()
 	m.editor = NewEditorWithOptions(CustomEditorOptions{UI: m.tuiInst, PaddingX: &editorPaddingX, AutocompleteMaxVisible: &autocompleteMaxVisible, EmbedWorkingStatus: true})
 	m.bindEditorSnapshot()
-	m.defaultCustomEditor()
-	m.bindEditorSnapshot()
 	m.onStop(func() error { m.clearStatusIndicator(""); return nil })
 	m.editorContainer = tui.NewContainer()
 	m.editorContainer.Add(m.editor)
@@ -1696,6 +1715,10 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// Pi sets up managed tools after the startup header and before extensions, still under handleStartupSubmit; setupEditorSubmitHandler follows (interactive-mode.ts:1017-1028).
 	m.ensureManagedTools(ctx, tools.NewToolsManager(m.opts.AgentDir))
 	m.endStartupSubmitWindow()
+	// A quit the startup keys requested ends init() here; run() then takes the exit before any startup work.
+	if m.requestExit.Load() {
+		return nil
+	}
 
 	// Build slash registry up front so any extension's RegisterCommand
 	// can mirror its registration into the registry as it loads.
@@ -1821,38 +1844,24 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	mark("post-emit-session-start")
 
-	// Loaded resources follow the built-in or extension-supplied header.
-	m.showLoadedResources(false, true)
-	// Quiet startup suppresses help and resource listings, not the initial editor and footer.
+	// rebindCurrentSession showed the loaded resources after the built-in or extension-supplied header. Quiet startup suppresses help and resource
+	// listings, not the initial editor and footer.
 	m.tuiInst.Render()
 	mark("first-render-done")
+	// Upstream's rebindCurrentSession shows the startup changelog notice after the loaded resources (showStartupNoticesIfNeeded, interactive-mode.ts
+	// bindCurrentSessionExtensions), before init() renders the initial messages.
+	m.showStartupChangelog(m.changelogEntries, m.extensionChangelogUpdates)
 
+	m.renderInitialMessages()
+	// upstream: interactive-mode.ts run() shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the
+	// crash notice once init() has rendered the initial messages.
 	m.showInitNotices()
 	m.showCrashNotice()
 	if m.frontendStartupWarning != "" {
 		m.showWarning(m.frontendStartupWarning)
 	}
-
-	m.renderInitialMessages()
 	m.tuiInst.Render()
 	m.loadRemainingHighlightLanguages()
-
-	// Show "what's new" on fresh sessions (no prior messages) when the
-	// binary version differs from the last recorded version, and send the
-	// install-telemetry ping on the same two occasions upstream does: a
-	// fresh install and an update with new changelog entries.
-	// Mirrors upstream getChangelogForDisplay + showStartupNoticesIfNeeded
-	// (interactive-mode.ts:816-843, 487-522, 1265-1307).
-	if m.opts.SettingsManager != nil && m.opts.ResumePath == "" {
-		var newEntries []ChangelogEntry
-		if m.opts.AppVersion != "" {
-			newEntries = startupChangelog(m.opts.SettingsManager, m.opts.AppVersion)
-		}
-		if extensionUpdates := m.getExtensionChangelogUpdates(); len(newEntries) > 0 || len(extensionUpdates) > 0 {
-			m.showStartupChangelog(newEntries, extensionUpdates)
-			m.tuiInst.Render()
-		}
-	}
 
 	return nil
 }
@@ -1868,9 +1877,30 @@ func startupChangelog(sm *SettingsManager, appVersion string) []ChangelogEntry {
 	return recordChangelogVersionAndMaybeReportInstall(sm, appVersion, allEntries)
 }
 
+// startInitialMessages is run()'s processing of the initial message and initialMessages once the TUI is up: the message is fed through the same handleSubmit
+// path the user's keystrokes hit, so transcript rendering, session writes and extension hooks all see it identically, and the positional messages follow it
+// one prompt at a time (cli/initial-message.ts; interactive-mode.ts run()).
+func (m *InteractiveMode) startInitialMessages(ctx context.Context) {
+	if strings.TrimSpace(m.opts.InitialMessage) != "" || len(m.opts.InitialImages) > 0 {
+		m.promptLoopSubmit(ctx, m.opts.InitialMessage, m.opts.InitialImages)
+	}
+	if len(m.opts.InitialMessages) > 0 {
+		done := make(chan struct{})
+		m.initialMessagesDone = done
+		m.backgroundTasks.Go(func() {
+			defer close(done)
+			m.submitInitialMessages(ctx, m.opts.InitialMessages)
+		})
+	}
+}
+
 // run is upstream's run() after init(): the startup checks, the background refreshes, the signal and resize handlers, the initial messages and
 // the input loop.
 func (m *InteractiveMode) run(ctx context.Context) error {
+	// A quit the startup keys requested ended Init before the session was bound. None of the startup work below may run on it, and the input loop takes the exit.
+	if m.requestExit.Load() {
+		return m.inputLoop(ctx, os.Stdin)
+	}
 	mark := m.startupMark()
 	// Check tmux keyboard setup asynchronously (mirrors upstream
 	// checkTmuxKeyboardSetup, interactive-mode.ts:667-675, 768-818).
@@ -1926,23 +1956,7 @@ func (m *InteractiveMode) run(ctx context.Context) error {
 	stopResize := m.installResizeHandler(ctx)
 	m.onStop(func() error { stopResize(); return nil })
 
-	// Auto-submit initial message (positional arg / piped
-	// stdin) once the TUI is up. Mirrors upstream's initial-message
-	// dispatch in coding-agent/cli/initial-message.ts: the message
-	// is fed through the same handleSubmit path the user's keystrokes
-	// hit, so transcript rendering / session writes / extension
-	// hooks all see it identically.
-	if strings.TrimSpace(m.opts.InitialMessage) != "" || len(m.opts.InitialImages) > 0 {
-		m.handleSubmitWithImages(ctx, m.opts.InitialMessage, m.opts.InitialImages)
-	}
-	if len(m.opts.InitialMessages) > 0 {
-		done := make(chan struct{})
-		m.initialMessagesDone = done
-		m.backgroundTasks.Go(func() {
-			defer close(done)
-			m.submitInitialMessages(ctx, m.opts.InitialMessages)
-		})
-	}
+	m.startInitialMessages(ctx)
 	mark("interactive-ready")
 	m.frontendInputReady()
 	return m.inputLoop(ctx, os.Stdin)

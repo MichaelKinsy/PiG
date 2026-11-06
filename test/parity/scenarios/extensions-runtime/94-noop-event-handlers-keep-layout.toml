@@ -1,0 +1,55 @@
+# Behavior family: extensions-runtime
+# Surface: the interactive layout of a run in a session whose extension registers handlers that return nothing for every agent, turn, message, tool and input event.
+#
+# Question probed: C2 observed that after a run with a turn_end handler Pi's frame has two more blank rows between the transcript and the editor border than PiG's.
+# Upstream evidence (Pi 1.5.0 oracle, parity harness, 2026-11-03, test-faux, full pane, no crop, 100x35 tmux): the rows are not an effect of the handler.
+# A pane taller than the content is filled: the blank rows between the reply and the editor border are filler that absorbs whatever the header above the
+# crop takes. Pi's startup header is 6 rows; with a truecolor terminal PiG draws its 7-row pig head (approved divergence D2), so its header is 2 rows taller
+# and its filler 2 rows shorter. The same 2-row difference appears with an empty extension and with an agent_end handler, and with turn_end handlers; with no
+# extension it is 1 row (Pi lists the faux provider as an extension, 3 rows, PiG lists none). In a 256-color terminal, where PiG draws the one-line mark in Pi's
+# logo slot (D2), every row from the first hint line on is identical in a 35-row pane, header included.
+# The comparison is made where the filler cannot hide a row: a 22-row pane is shorter than the content, the transcript scrolls to its end, and the rows
+# between the reply and the editor border are the transcript's own trailing spacers. The comparator is the exact crop from the prompt to the footer.
+# A handler that returns nothing must not add or remove a row there.
+name = "94-noop-event-handlers-keep-layout"
+description = "Handlers that return nothing for every agent, turn, message, tool and input event leave the rows between the reply and the editor border as Pi draws them"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi = ["PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/noop-event-handlers.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/noop-event-handlers.mjs",
+]
+
+[tmux]
+width = 100
+height = 22
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "What is 20+22?"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 20
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["What is 20+22?", "42"]
+both_not_contain = ["panic:", "goroutine ", "Extension error"]
+output_equal = true
+runs = 3

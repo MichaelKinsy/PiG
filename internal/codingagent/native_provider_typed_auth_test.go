@@ -25,8 +25,8 @@ func TestGetTypedProviderKeepsTheProviderObjectsAuth(t *testing.T) {
 				OAuth:  &ai.OAuthAuth{Name: "Typed account", LoginLabel: "Sign in with Typed", IsSubscription: true, Login: oauthLogin},
 			},
 			CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
-			ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-				return nil, nil, nil
+			ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+				return nil, nil
 			},
 			ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) {
 				return nil, nil, nil

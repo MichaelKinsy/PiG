@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 func liveOracleCorpus(t *testing.T) []string {
@@ -105,7 +106,7 @@ func liveOracleCorpus(t *testing.T) []string {
 // supported-or-undefined decision must be equal.
 func TestRenderLatexMatchesPiLive(t *testing.T) {
 	corpus := liveOracleCorpus(t)
-	input, err := json.Marshal(corpus)
+	input, err := jsstring.MarshalKeepingSurrogates(corpus)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,28 +118,22 @@ func TestRenderLatexMatchesPiLive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
 	}
-	var expected [][2]any
-	if err := json.Unmarshal(output, &expected); err != nil {
+	var expected [][2]*string
+	if err := jsstring.UnmarshalKeepingSurrogates(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	failures, supported, splitSurrogate := 0, 0, 0
+	failures, supported := 0, 0
 	for i, source := range corpus {
 		for mode, display := range []bool{false, true} {
 			got, ok := RenderLatex(source, RenderLatexOptions{Display: display})
-			var gotValue any
+			var gotValue *string
 			if ok {
-				gotValue = got
+				gotValue = &got
 				supported++
-			}
-			// Pi splits an astral character that is an unbraced script argument into two UTF-16 units, so its output holds a lone surrogate (U+FFFD once decoded)
-			// and the following row holds the other half; Go strings cannot hold one, and Pig keeps the character whole. Counted, not hidden.
-			if want, isText := expected[i][mode].(string); isText && strings.ContainsRune(want, '\uFFFD') && strings.ContainsFunc(source, func(r rune) bool { return r > 0xFFFF }) {
-				splitSurrogate++
-				continue
 			}
 			if !reflect.DeepEqual(gotValue, expected[i][mode]) {
 				if failures++; failures <= 8 {
-					t.Errorf("display=%t %q\n  Pig %#v\n  Pi  %#v", display, source, gotValue, expected[i][mode])
+					t.Errorf("display=%t %q\n  Pig %s\n  Pi  %s", display, source, quoteOptional(gotValue), quoteOptional(expected[i][mode]))
 				}
 			}
 		}
@@ -146,7 +141,7 @@ func TestRenderLatexMatchesPiLive(t *testing.T) {
 	if failures > 8 {
 		t.Errorf("%d of %d renders differ from Pi", failures, 2*len(corpus))
 	}
-	t.Logf("%d of %d renders supported; %d skipped for Pi's split surrogate pairs", supported, 2*len(corpus), splitSurrogate)
+	t.Logf("%d of %d renders supported", supported, 2*len(corpus))
 	if supported < len(corpus) {
 		t.Errorf("only %d of %d renders are supported expressions; the corpus no longer reaches the layout code", supported, 2*len(corpus))
 	}

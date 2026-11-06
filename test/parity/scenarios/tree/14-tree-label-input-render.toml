@@ -1,0 +1,42 @@
+# Upstream evidence: tree-selector.ts LabelInput.render (1295-1308), LabelInput.handleInput (1310-1320) and TreeSelectorComponent.handleInput (1418-1424).
+# Open /tree on the two-branch session, move to the "active" row, press Shift+L and type two characters. The tree rows are replaced by the label prompt,
+# the typed text and the save/cancel key hints, while the header and search line stay.
+name = "14-tree-label-input-render"
+description = "The label editor replaces the tree rows with the prompt, the typed text and the key hints."
+covers = ["packages/coding-agent/src/modes/interactive/components/tree-selector.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--session", "sessions/branch.jsonl"]
+pi_args = ["--session", "sessions/branch.jsonl"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/w3-branch"
+ready_pattern_pig = "active 12345"
+ready_pattern_pi = "active 12345"
+capture_start = "Type to search:"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_visible_contains = ["(3/5)"]
+
+[[tmux.steps]]
+keys = ["Up", "L"]
+wait_visible_contains = ["Label (empty to remove):"]
+
+[[tmux.steps]]
+keys = ["t", "a"]
+wait_visible_contains = ["> ta"]
+
+[assert]
+runs = 3
+both_contain = ["Label (empty to remove):", "enter save", "escape/ctrl+c cancel"]
+both_not_contain = ["(2/5)"]
+output_equal = true

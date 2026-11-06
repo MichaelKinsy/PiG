@@ -109,6 +109,14 @@ func TestOwnedAutocompleteWaitsForOwnerPublication(t *testing.T) {
 		e.HandleInput("@")
 		time.Sleep(20 * time.Millisecond)
 		synctest.Wait()
+		// The debounced request starts on the owner loop, where it takes the text it asks about; the provider's synchronous callbacks follow there.
+		select {
+		case start := <-tasks:
+			start()
+		default:
+			t.Fatal("owner start was not posted")
+		}
+		synctest.Wait()
 		select {
 		case prepare := <-tasks:
 			prepare()

@@ -9,7 +9,6 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf16"
-	"unicode/utf8"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -74,8 +73,11 @@ func markedGroup(match *regexp2.Match, group int) (text string, ok bool) {
 	if g == nil || len(g.Captures) == 0 {
 		return "", false
 	}
-	return g.String(), true
+	return jsstring.FromCodePoints(g.Runes()), true
 }
+
+// matchString is the text a match covers, with its lone surrogates spelled as WTF-8.
+func matchString(m *regexp2.Match) string { return jsstring.FromCodePoints(m.Runes()) }
 
 // markedJSWhitespace is the set JavaScript's \s matches (WhiteSpace and LineTerminator); regexp2's \s follows .NET instead.
 const markedJSWhitespace = `\t\n\v\f\r \u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF`
@@ -217,10 +219,13 @@ type markedInlineState struct {
 	// lexedBracket records that inline text with a "[" was lexed; relex that a definition arrived after it, so a reference may have been lexed before its definition.
 	lexedBracket, relex bool
 	// The buffers below are reused by the next lexMarkedInline call, so its caller renders the tokens before lexing again. runes is the code-point form of the source; frames holds, per inlineTokens nesting depth, the token list being built and the masked source; arena holds the finished token lists.
-	runes  []rune
-	frames []markedLexFrame
-	depth  int
-	arena  []markedToken
+	runes []rune
+	// block is the block lexer and blockSource the code points of the text it reads; both are reused by the next text.
+	block       markedBlockLexer
+	blockSource []rune
+	frames      []markedLexFrame
+	depth       int
+	arena       []markedToken
 }
 
 type markedLexFrame struct {
@@ -239,10 +244,11 @@ const maxPooledMarkedBytes = 64 << 10
 // last rendered document alive; a state whose buffers grew past maxPooledMarkedBytes is dropped, and the pool makes a fresh one.
 func (l *markedInlineState) release() {
 	tokenSize, runeSize := int(unsafe.Sizeof(markedToken{})), int(unsafe.Sizeof(rune(0)))
-	size := cap(l.runes)*runeSize + cap(l.arena)*tokenSize
+	size := (cap(l.runes)+cap(l.blockSource))*runeSize + cap(l.arena)*tokenSize + cap(l.block.queue)*int(unsafe.Sizeof((*markedInlineEntry)(nil)))
 	for _, frame := range l.frames {
 		size += cap(frame.tokens)*tokenSize + cap(frame.masked)*runeSize
 	}
+	size += len(l.block.slabs) * markedSlabSize * int(unsafe.Sizeof(markedBlock{}))
 	if size > maxPooledMarkedBytes {
 		return
 	}
@@ -252,6 +258,12 @@ func (l *markedInlineState) release() {
 	}
 	clear(l.links)
 	clear(l.defined)
+	clear(l.block.queue)
+	l.block.queue = l.block.queue[:0]
+	for _, slab := range l.block.slabs {
+		clear(slab)
+	}
+	clear(l.block.topTokens[:cap(l.block.topTokens)])
 	markedInlineStates.Put(l)
 }
 
@@ -330,17 +342,12 @@ func markedPunctuation(r rune) bool {
 
 // lexMarkedInline is Lexer.inlineTokens for one inline source with the document's lexer state. The tokens are valid until the next call with the same state.
 func lexMarkedInline(src string, state *markedInlineState) []markedToken {
-	if !utf8.ValidString(src) {
-		// Token text is sliced from src at the byte length of the code points the rules consume, so invalid bytes take the U+FFFD form the rules see.
-		src = string([]rune(src))
-	}
-	if n := utf8.RuneCountInString(src); cap(state.runes) < n {
+	// Token text is sliced from src at the byte length of the code points the rules consume, so a byte that is not UTF-8 takes the U+FFFD form the rules see; a lone surrogate keeps its unit.
+	src = jsstring.ReplaceInvalid(src)
+	if n := jsstring.CodePointCount(src); cap(state.runes) < n {
 		state.runes = make([]rune, 0, n)
 	}
-	state.runes = state.runes[:0]
-	for _, r := range src {
-		state.runes = append(state.runes, r)
-	}
+	state.runes = jsstring.AppendCodePoints(state.runes[:0], src)
 	if state.arena == nil {
 		// Start with room for one token per eight characters of the first source instead of growing from empty.
 		//portlint:allow numbers capacity hint for the token arena; Lexer.ts has no counterpart and the value is never observable
@@ -352,11 +359,11 @@ func lexMarkedInline(src string, state *markedInlineState) []markedToken {
 	return state.inlineTokens(state.runes, src)
 }
 
-// markedByteLen is the UTF-8 length of runes taken from a valid string.
+// markedByteLen is the WTF-8 length of runes taken from a string.
 func markedByteLen(runes []rune) int {
 	n := 0
 	for _, r := range runes {
-		n += utf8.RuneLen(r)
+		n += jsstring.CodePointLen(r)
 	}
 	return n
 }
@@ -410,7 +417,7 @@ func (l *markedInlineState) inlineTokens(src []rune, str string) []markedToken {
 		if tok, ok := l.nextInlineToken(src, str, maskedSrc, prevChar, reach.at(at)); ok {
 			length := len(tok.raw)
 			if !ascii {
-				length = utf8.RuneCountInString(tok.raw)
+				length = jsstring.CodePointCount(tok.raw)
 			}
 			if tok.kind == markedText {
 				// An unresolved reference keeps its first character as text without tracking prevChar.
@@ -679,7 +686,7 @@ func (l *markedInlineState) tag(src []rune) (markedToken, bool) {
 	if match == nil {
 		return markedToken{}, false
 	}
-	raw := match.String()
+	raw := matchString(match)
 	lower := strings.ToLower(raw)
 	if !l.inLink && strings.HasPrefix(lower, "<a ") {
 		l.inLink = true
@@ -702,7 +709,7 @@ func markedRawBlockTag(lower, open string) bool {
 	}
 	for _, name := range []string{"pre", "code", "kbd", "script"} {
 		if after, ok := strings.CutPrefix(rest, name); ok && after != "" {
-			r, _ := utf8.DecodeRuneInString(after)
+			r, _ := jsstring.DecodeCodePoint(after)
 			if r == '>' || jsstring.IsSpace(r) {
 				return true
 			}
@@ -736,7 +743,7 @@ func (l *markedInlineState) link(src []rune, str string, brackets markedBracketR
 			return markedToken{}, false
 		}
 	} else {
-		destinationRunes := []rune(destination)
+		destinationRunes := jsstring.CodePoints(destination)
 		lastParenIndex := markedFindClosingBracket(destinationRunes, '(', ')')
 		if lastParenIndex == -2 {
 			return markedToken{}, false
@@ -747,14 +754,14 @@ func (l *markedInlineState) link(src []rune, str string, brackets markedBracketR
 				start = 5
 			}
 			linkLen := start + len(labelRunes) + lastParenIndex
-			destination = string(destinationRunes[:lastParenIndex])
+			destination = jsstring.FromCodePoints(destinationRunes[:lastParenIndex])
 			raw = widthx.JSTrim(markedSlice(src, str, 0, linkLen))
 		}
 	}
 	href := widthx.JSTrim(destination)
 	if strings.HasPrefix(href, "<") {
-		_, first := utf8.DecodeRuneInString(href)
-		_, last := utf8.DecodeLastRuneInString(href)
+		_, first := jsstring.DecodeCodePoint(href)
+		_, last := jsstring.DecodeLastCodePoint(href)
 		href = href[first : len(href)-last]
 	}
 	if href != "" {
@@ -768,7 +775,7 @@ func (l *markedInlineState) outputLink(labelRunes []rune, label, raw, href strin
 	text := markedUnescapeBrackets(label)
 	textRunes := labelRunes
 	if text != label {
-		textRunes = []rune(text)
+		textRunes = jsstring.CodePoints(text)
 	}
 	isImage := strings.HasPrefix(raw, "!")
 	l.inLink = true
@@ -809,7 +816,7 @@ func markedUnescapePunctuation(s string) string {
 	var out strings.Builder
 	for i := 0; i < len(s); {
 		if s[i] == '\\' {
-			if r, size := utf8.DecodeRuneInString(s[i+1:]); size > 0 && (unicode.IsPunct(r) || unicode.IsSymbol(r)) {
+			if r, size := jsstring.DecodeCodePoint(s[i+1:]); size > 0 && (unicode.IsPunct(r) || unicode.IsSymbol(r)) {
 				//portlint:allow utf16units Tokenizer.ts unescape (/\\([\p{P}\p{S}])/gu): size is the byte size of the rune just decoded after the backslash, so the slice is that code point
 				out.WriteString(s[i+1 : i+1+size])
 				i += 1 + size
@@ -912,7 +919,7 @@ func (l *markedInlineState) maskReflinks(masked []rune) {
 	for _, s := range spans {
 		match := masked[s.start:s.end]
 		refStart := markedLastIndexRune(match, '[')
-		if _, ok := l.links[string(match[refStart+1:len(match)-1])]; !ok {
+		if _, ok := l.links[jsstring.FromCodePoints(match[refStart+1:len(match)-1])]; !ok {
 			continue
 		}
 		maskFrom := 1
@@ -962,7 +969,7 @@ func (l *markedInlineState) linkInText(text []rune) bool {
 		if match[0] == '!' {
 			continue
 		}
-		if _, ok := l.links[string(match[refStart+1:len(match)-1])]; !ok {
+		if _, ok := l.links[jsstring.FromCodePoints(match[refStart+1:len(match)-1])]; !ok {
 			continue
 		}
 		if refStart > 1 && l.linkInText(match[1:refStart-1]) {
@@ -1356,7 +1363,7 @@ func markedAutolink(src []rune) (markedToken, bool) {
 	if at, _ := markedGroup(match, 2); at == "@" {
 		href = "mailto:" + text
 	}
-	return markedToken{kind: markedLink, raw: match.String(), text: text, href: href, tokens: []markedToken{{kind: markedText, raw: text, text: text}}}, true
+	return markedToken{kind: markedLink, raw: matchString(match), text: text, href: href, tokens: []markedToken{{kind: markedText, raw: text, text: text}}}, true
 }
 
 // markedURL is markdown.ts MarkdownTokenizer.url: a bare URL stops at the first CJK punctuation character and is tokenized again
@@ -1371,7 +1378,7 @@ func markedURL(src []rune) (markedToken, bool) {
 	if punctuation < 0 {
 		return token, true
 	}
-	return markedBaseURL([]rune(token.raw[:punctuation]))
+	return markedBaseURL(jsstring.CodePoints(token.raw[:punctuation]))
 }
 
 // markedBaseURL ports Tokenizer.ts:953-988, the GFM extended autolink with its trailing-punctuation backpedal.
@@ -1390,7 +1397,7 @@ func markedBaseURL(src []rune) (markedToken, bool) {
 	if match == nil {
 		return markedToken{}, false
 	}
-	text := match.String()
+	text := matchString(match)
 	href := ""
 	if at, _ := markedGroup(match, 2); at == "@" {
 		href = "mailto:" + text
@@ -1398,8 +1405,8 @@ func markedBaseURL(src []rune) (markedToken, bool) {
 		for {
 			previous := text
 			text = ""
-			if m := markedInlineBackpedal.exec([]rune(previous)); m != nil {
-				text = m.String()
+			if m := markedInlineBackpedal.exec(jsstring.CodePoints(previous)); m != nil {
+				text = matchString(m)
 			}
 			if text == previous {
 				break
@@ -1440,7 +1447,11 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 			out.WriteString(style.applyText(segment))
 		}
 	}
-	for _, token := range tokens {
+	// pig divergence (D265): after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
+	dropLeadingSpace := false
+	for i, token := range tokens {
+		token = dropsLeadingSpace(token, dropLeadingSpace)
+		dropLeadingSpace = false
 		switch token.kind {
 		case markedLatex:
 			text := token.latex.raw
@@ -1457,7 +1468,11 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 		case markedText, markedImage:
 			applyText(token.text)
 		case markedHTML:
-			applyText(token.raw)
+			if comment, drop := skipsHTMLComment(tokens, i); comment {
+				dropLeadingSpace = drop
+			} else {
+				applyText(token.raw)
+			}
 		case markedStrong:
 			out.WriteString(theme().Bold(m.renderInlineTokensSequential(token.tokens, style)))
 			out.WriteString(style.stylePrefix)

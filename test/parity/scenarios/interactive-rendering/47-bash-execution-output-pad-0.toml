@@ -41,11 +41,7 @@ wait_timeout_seconds = 10
 [assert]
 both_reach_ready = true
 both_not_contain = ["unknown command", "panic:", "goroutine ", "(exit 0)"]
-# lint-known-gap: bg-paint SGR encoding differs between pig and upstream
-# (pig uses truecolor for bashMode #b5bd68; upstream goes through the
-# theme/Box delegation path). Visible content and box structure are
-# identical post-fix.
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 # runs=3 because bash-execution timing has natural jitter on completion.
 runs = 3

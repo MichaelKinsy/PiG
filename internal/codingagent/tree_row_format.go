@@ -272,7 +272,7 @@ func (f *treeRowFormatter) FormatTreeRow(e SessionEntry) string {
 		_ = json.Unmarshal(e.Raw(), &ent)
 		cmd := ent.Command
 		if jsstring.Length(cmd) > 50 {
-			cmd = jsstring.StreamText(jsstring.Slice(cmd, 0, 50)) + "…"
+			cmd = jsstring.Slice(cmd, 0, 50) + "…"
 		}
 		prefix := "!"
 		if ent.ExcludeFromContext != nil && *ent.ExcludeFromContext {

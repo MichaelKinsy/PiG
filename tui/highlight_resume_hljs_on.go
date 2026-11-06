@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/internal/hljs"
 )
 
@@ -56,8 +57,8 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([
 	if err != nil {
 		return nil, false
 	}
-	headText := base.partial + terminalText(head)
-	text := headText + terminalText(tail)
+	headText := base.partial + jsstring.Canonical(head)
+	text := headText + jsstring.Canonical(tail)
 	lines := make([]string, 0, len(base.lines)+strings.Count(text, "\n")+1)
 	lines = append(lines, base.lines...)
 	lines = append(lines, strings.Split(text, "\n")...)

@@ -187,10 +187,7 @@ func (p *CombinedProvider) ApplyCompletion(lines []string, cursorLine, cursorCol
 	if cursorCol > len(line) {
 		cursorCol = len(line)
 	}
-	if len(prefix) > cursorCol {
-		return lines, cursorLine, cursorCol
-	}
-	beforePrefix, afterCursor := line[:cursorCol-len(prefix)], line[cursorCol:]
+	beforePrefix, afterCursor := textBeforePrefix(line, cursorCol, prefix), line[cursorCol:]
 	isQuoted := strings.HasPrefix(prefix, `"`) || strings.HasPrefix(prefix, `@"`)
 	if isQuoted && strings.HasSuffix(item.Value, `"`) && strings.HasPrefix(afterCursor, `"`) {
 		afterCursor = afterCursor[1:]

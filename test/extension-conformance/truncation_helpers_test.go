@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"math/rand/v2"
 	"reflect"
 	"strings"
@@ -164,9 +165,7 @@ func TestConformance_TruncationHelpersAgreeAcrossSDKs(t *testing.T) {
 		}
 		if text, ok := want["text"].(string); ok && strings.HasSuffix(text, "\uFFFD... [truncated]") {
 			adjusted := map[string]any{}
-			for k, v := range want {
-				adjusted[k] = v
-			}
+			maps.Copy(adjusted, want)
 			adjusted["text"] = strings.TrimSuffix(text, "\uFFFD... [truncated]") + "... [truncated]"
 			return adjusted
 		}

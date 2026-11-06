@@ -389,27 +389,21 @@ func (r *ModelRegistry) resolveRefreshCredential(ctx context.Context, provider *
 
 func (r *ModelRegistry) refreshRadiusOAuth(ctx context.Context, provider *ai.RadiusProvider) (*ai.Credential, error) {
 	r.mu.RLock()
-	storage := r.credentialStore
+	hasStore := r.credentialStore != nil
 	r.mu.RUnlock()
-	if storage == nil {
+	if !hasStore {
 		return nil, nil
 	}
-	post, err := storage.Modify(ctx, provider.ID(), func(current *ai.Credential) (*ai.Credential, error) {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		if current == nil || current.Type != ai.CredentialOAuth || float64(time.Now().UnixMilli()) < current.ExpiresMillis() {
-			return nil, nil
-		}
+	// pig divergence (D237): Pi refreshes Radius like every provider (Models.resolveRefreshCredential, then refreshStoredOAuthCredential): through the registry's credential overlay, whose pending modifications process exit waits for, with the caller's cancellation ending only the wait for the lock and the request bounded by the fifteen-second timeout alone.
+	oauth := &ai.OAuthAuth{Name: provider.OAuth().Name(), Refresh: func(ctx context.Context, current ai.Credential) (ai.Credential, error) {
 		next, err := provider.OAuth().RefreshTokenContext(ctx, current.OAuthCredentials())
 		if err != nil {
-			return nil, err
+			return ai.Credential{}, err
 		}
-		updated, err := ai.CredentialFromOAuth(next)
-		if err != nil {
-			return nil, err
-		}
-		return &updated, nil
+		return ai.CredentialFromOAuth(next)
+	}}
+	post, err := ai.RefreshStoredOAuth(ctx, registryCredentials{r}, provider.ID(), oauth, func(current ai.Credential) bool {
+		return float64(time.Now().UnixMilli()) >= current.ExpiresMillis()
 	})
 	if err != nil {
 		return nil, err

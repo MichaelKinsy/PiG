@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
 	"github.com/MichaelKinsy/PiG/internal/yaml12"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -101,7 +102,8 @@ func (h *Host) handleHighlightCode(call *CallPayload) (*CallResultPayload, error
 	if err != nil {
 		return nil, err
 	}
-	data, err := json.Marshal(HighlightCodeResult{Lines: lines})
+	// A line may hold a lone surrogate (highlight.js can split a pair between two scopes); the extension's JSON.parse reads it back as one.
+	data, err := jsstring.MarshalKeepingSurrogates(HighlightCodeResult{Lines: lines})
 	if err != nil {
 		return nil, err
 	}

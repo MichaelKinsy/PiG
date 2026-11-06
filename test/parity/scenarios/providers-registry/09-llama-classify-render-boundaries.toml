@@ -1,0 +1,31 @@
+# Behavior family: providers-registry (llama.cpp classifier prompt boundaries)
+# Pi 1.5.0 probe: llama-cpp-classify.ts renderQuestion over 66 boundary requests the seeded corpus of scenario 07 does not reach: choice option counts 0 to 100 around the label table
+# (A-Z, a-z, 0-9: 62 labels, so 62 is the last labeled count and 63 throws), score level counts 0 to 12 around the ten digit labels, array-index detection at the edges of the index range
+# (4294967294 is an index, 4294967295 and 01 and -1 are not) for state, question and option keys, requests of one to four questions asked in turn, every Yes/No meaning shape (neither,
+# either, both, and the truthy strings "0" and " "), unknown ids, and states of empty containers, number spellings (-0, 1e21, 5e-324), control characters and nesting.
+# Each request's message, labels, keys and error are compared as one JSON line. The Go test TestLlamaCppRenderBoundariesMatchPi runs the same corpus against the vendored Pi module; this
+# scenario compares the two printed streams.
+name = "09-llama-classify-render-boundaries"
+description = "The llama.cpp classifier's prompt boundaries (label tables, key order, Yes/No meanings, state spellings) are Pi's."
+covers = ["packages/ai/src/api/llama-cpp-classify.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/llama-render-boundaries-pig.mjs"]
+pig_go_tests = ["./ai"]
+pi_args = ["node", "./test/parity/testdata/llama-render-boundaries-pi.mjs"]
+pi_go_tests = ["./ai"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['Question: ', 'Answer with one letter.', 'Answer Yes or No.', 'Answer with one level number.', 'A choice question needs 2 to 62 options, got 63', 'A score question needs 2 to 10 levels, got 11', 'Unknown question: b', 'Yes means: 0', '4294967294']
+runs = 2

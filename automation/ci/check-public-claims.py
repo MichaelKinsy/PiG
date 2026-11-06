@@ -96,6 +96,11 @@ ALLOWED: list[tuple[str, str, str]] = [
     ),
     (
         "docs/site/docs/bug-ledger.md",
+        "| The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens)",
+        "the 15% is the share of the estimated input that the output limit leaves unused (a token margin, D238); the row's class column says the fix was ported, which the check reads as a porting claim; it is not a porting or verification figure",
+    ),
+    (
+        "docs/site/docs/bug-ledger.md",
         "for the forbidden phrase 'same requests'",
         "the root cause of BF-8a25539 is the commit message of the change that removed that phrase from a changelog fragment; it quotes the phrase and makes no claim",
     ),

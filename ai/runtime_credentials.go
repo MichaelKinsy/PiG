@@ -19,6 +19,10 @@ type RuntimeCredentials struct {
 	// order keeps override insertion order, as a JavaScript Map iterates:
 	// replacing a key keeps its position, and removing it drops it.
 	order []string
+
+	// pending holds a channel per Modify that has not returned, as Pi's pendingModifications holds a promise per modify (b2cb62923).
+	pendingMu sync.Mutex
+	pending   map[chan struct{}]struct{}
 }
 
 // NewRuntimeCredentials overlays runtime API keys on store. A nil store holds
@@ -111,12 +115,46 @@ func (c *RuntimeCredentials) List(ctx context.Context) ([]CredentialInfo, error)
 }
 
 // Modify implements CredentialStore by delegating to the base store; the
-// runtime key is unaffected.
+// runtime key is unaffected. Until it returns, with a result or an error, the
+// modification counts as pending for [RuntimeCredentials.Settled].
 func (c *RuntimeCredentials) Modify(ctx context.Context, providerID string, fn func(current *Credential) (*Credential, error)) (*Credential, error) {
 	if c.store == nil {
 		return nil, errors.New("runtime credentials: no base credential store")
 	}
+	// pig divergence (D237): Pi main b2cb62923 tracks every modification so process exit can wait for an OAuth refresh to be saved.
+	done := make(chan struct{})
+	c.pendingMu.Lock()
+	if c.pending == nil {
+		c.pending = map[chan struct{}]struct{}{}
+	}
+	c.pending[done] = struct{}{}
+	c.pendingMu.Unlock()
+	defer func() {
+		c.pendingMu.Lock()
+		delete(c.pending, done)
+		c.pendingMu.Unlock()
+		close(done)
+	}()
 	return c.store.Modify(ctx, providerID, fn)
+}
+
+// Settled returns when every modification started before the call has returned, written or failed. An OAuth refresh may already have spent the single-use refresh token, so exiting before its result is written would leave only the spent token in auth.json. A modification that starts later is not waited for. It fails only with ctx's cancellation cause; a modification's own error is its caller's, as Pi's settled() swallows it.
+// upstream: packages/coding-agent/src/core/runtime-credentials.ts:settled (b2cb62923)
+func (c *RuntimeCredentials) Settled(ctx context.Context) error {
+	c.pendingMu.Lock()
+	waiting := make([]chan struct{}, 0, len(c.pending))
+	for done := range c.pending {
+		waiting = append(waiting, done)
+	}
+	c.pendingMu.Unlock()
+	for _, done := range waiting {
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
+	}
+	return nil
 }
 
 // Delete removes providerID's credential from the base store, then its

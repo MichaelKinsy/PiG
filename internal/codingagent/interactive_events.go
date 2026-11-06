@@ -5,6 +5,7 @@ package codingagent
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -87,7 +88,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 	m.programStatusReporter().HandleEvent(ev)
 	switch e := ev.(type) {
 	case agent.SessionInfoChangedEvent:
-		tui.SetTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
+		setTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
 		m.statusLine.SetName(e.Name)
 		m.tuiInst.RequestRender()
 
@@ -101,18 +102,20 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		clear(m.toolFileCalls)
 		clear(m.pendingArgs)
 		m.toolMu.Unlock()
-		if m.opts.Settings.GetShowTerminalProgress() {
-			setTerminalProgress(true)
-		}
-		// Show the working status in the opted-in editor border.
-		m.startWorkingLoader()
+		// Pi restores the main escape handler here; the terminal progress and the working status start at turn_start.
+		m.retryEscapeHandler = false
 
 	case agent.AgentEndEvent:
 		if m.opts.Settings.GetShowTerminalProgress() {
 			setTerminalProgress(false)
 		}
-		// Stop working loader. Mirrors upstream streaming_stopped.
-		m.stopWorkingLoader()
+		m.clearStatusIndicator("working")
+		// Pi removes a message still streaming when the run ends (interactive-mode.ts agent_end).
+		if m.evCurrentBlock != nil {
+			m.chatContainer.Remove(m.evCurrentBlock)
+			m.assistantBlocks = slices.DeleteFunc(m.assistantBlocks, func(block *tui.AssistantMessageComponent) bool { return block == m.evCurrentBlock })
+			m.evCurrentBlock = nil
+		}
 		// Finalize any tool still mid-execution when the turn ended (an
 		// aborted run emits no ToolExecutionEnd, so its component would stay
 		// ToolStateRunning and its live "Elapsed X.Xs" footer would keep
@@ -139,6 +142,20 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			m.clearStatusIndicator("")
 		}
 		m.tuiInst.RequestRender()
+
+	case agent.QueueUpdateEvent:
+		m.updatePendingMessagesDisplay()
+		m.tuiInst.RequestRender()
+
+	case agent.ThinkingLevelChangedEvent:
+		m.refreshThinkingLevel()
+		m.tuiInst.RequestRender()
+
+	case agent.BashExecutionUpdateEvent:
+		// The bash execution callback renders the command's output.
+
+	case agent.AgentSettledEvent:
+		m.checkShutdownRequested()
 
 	case agent.TurnEndEvent:
 		m.evTurnIndex = e.TurnIndex + 1
@@ -175,10 +192,12 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 
 	case agent.MessageUpdateEvent:
-		if m.evCurrentBlock != nil && e.Message.Assistant != nil {
-			updateAssistantMessageBlock(m.evCurrentBlock, e.Message.Assistant)
-			m.tuiInst.RequestRender()
+		// Pi's whole message_update handler runs only while a message streams.
+		if m.evCurrentBlock == nil || e.Message.Assistant == nil {
+			break
 		}
+		updateAssistantMessageBlock(m.evCurrentBlock, e.Message.Assistant)
+		m.tuiInst.RequestRender()
 		var toolIndex int
 		var toolID, toolName string
 		var endCall ai.ToolCall
@@ -256,35 +275,35 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.RequestRender()
 
 	case agent.MessageEndEvent:
+		// Pi ends message_end for a user message without rendering or touching the pending tools (interactive-mode.ts handleEvent).
+		if e.Message.User != nil {
+			// pig: the footer holds a stored context estimate (Pi's footer recomputes it on every render), so the user message_end refreshes it here: the prompt counts as soon as the message is recorded.
+			m.refreshFooterContextUsage()
+			break
+		}
 		defer m.refreshFooterContextUsage()
+		if e.Message.Assistant != nil && e.Message.Assistant.Usage != nil {
+			m.statusLine.SetTurnContextUsage(e.Message.Assistant.Usage)
+		}
+		// Pi finishes a message only while one streams; any other message_end just requests a frame.
+		if m.evCurrentBlock == nil || e.Message.Assistant == nil {
+			m.tuiInst.RequestRender()
+			break
+		}
 		finished := e.Message.Assistant
-		if finished != nil && finished.StopReason == ai.StopReasonAborted {
+		if finished.StopReason == ai.StopReasonAborted {
 			// upstream: interactive-mode.ts:3544 replaces an aborted message's errorMessage before rendering it.
 			aborted := *finished
 			aborted.ErrorMessage = m.abortedMessageText()
 			finished = &aborted
 		}
-		if m.evCurrentBlock != nil && finished != nil {
-			updateAssistantMessageBlock(m.evCurrentBlock, finished)
-		}
-		if e.Message.Assistant != nil {
-			if e.Message.Assistant.Usage != nil {
-				m.statusLine.SetTurnContextUsage(e.Message.Assistant.Usage)
-			}
-			if m.showCacheMissNotices() {
-				if notice := formatCacheMissNotice(m.currentSession().detectCacheMiss(e.Message.Assistant)); notice != "" {
-					m.addCacheMissNotice(notice)
-				}
-			}
-			m.maybeSuggestBugReport(e.Message.Assistant)
-		}
+		updateAssistantMessageBlock(m.evCurrentBlock, finished)
 		// Mirrors upstream message_end (interactive-mode.ts:2774-2793):
 		// On abort/error → push the error into every pending tool component
 		// (the assistant message block's own error is suppressed when
 		// hasToolCalls=true, so tools are the only visual feedback).
 		// On normal completion → mark args complete (triggers diff rendering).
-		isAbortOrError := e.Message.Assistant != nil &&
-			(e.Message.Assistant.StopReason == "aborted" || e.Message.Assistant.StopReason == "error")
+		isAbortOrError := e.Message.Assistant.StopReason == "aborted" || e.Message.Assistant.StopReason == "error"
 		m.toolMu.Lock()
 		if isAbortOrError {
 			errMsg := finished.ErrorMessage
@@ -313,17 +332,20 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// Clear pendingArgs for next message.
 		clear(m.pendingArgs)
 		m.toolMu.Unlock()
-		if e.Message.Assistant != nil {
-			if !isAbortOrError && m.evCurrentBlock != nil {
-				m.maybeShowThinkingDropNotice(e.Message.Assistant)
+		if isAbortOrError {
+			m.maybeSuggestBugReport(e.Message.Assistant)
+		} else {
+			m.maybeShowThinkingDropNotice(e.Message.Assistant)
+			if m.showCacheMissNotices() {
+				if notice := formatCacheMissNotice(m.currentSession().detectCacheMiss(e.Message.Assistant)); notice != "" {
+					m.addCacheMissNotice(notice)
+				}
 			}
-			m.previousThinkingDroppedCount = countDroppedThinkingBlocks(e.Message.Assistant)
 		}
-		if m.evCurrentBlock != nil {
-			m.evCurrentBlock.FinishStreaming() // its last delta arrived; keep no memos for the next one
-		}
+		m.previousThinkingDroppedCount = countDroppedThinkingBlocks(e.Message.Assistant)
+		m.evCurrentBlock.FinishStreaming() // its last delta arrived; keep no memos for the next one
 		m.evCurrentBlock = nil
-		m.tuiInst.CancelPendingRender()
+		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionStartEvent:
 		// A call another tool made through ctx.executeTool(), for example from a codemode script, is shown inside its
@@ -470,7 +492,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			} else {
 				m.showStatus("Auto-compaction cancelled")
 			}
-		case e.Summary != "":
+		case e.HasResult:
 			var entries []SessionEntry
 			if session := m.currentSession(); session != nil {
 				entries = session.BuildContextEntries()
@@ -491,11 +513,13 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// turn-starting handleSubmit stay single-threaded with editor state.
 		// Retry recovery steers into the imminent Continue turn; other endings
 		// start a new turn from the first queued prompt when idle.
-		m.flushCompactionQueue(m.runCtx, !e.WillRetry)
+		m.flushCompactionQueue(m.runCtx, e.WillRetry)
 		m.tuiInst.Render()
 
 	case agent.AutoRetryStartEvent:
 		m.showRetryStatusIndicator(e.Attempt, e.MaxAttempts, e.DelayMs)
+		// Escape cancels the retry delay until agent_start or auto_retry_end.
+		m.retryEscapeHandler = true
 		m.tuiInst.Render()
 
 	case agent.AutoRetryEndEvent:

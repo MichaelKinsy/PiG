@@ -24,8 +24,8 @@ func TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider(t *testin
 			CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) {
 				return &ai.AuthCheck{Type: ai.CredentialAPIKey}, nil
 			},
-			ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-				return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "resolved-key", BaseURL: "https://resolved.test/v1"}}, nil, nil
+			ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+				return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "resolved-key", BaseURL: "https://resolved.test/v1"}}, nil
 			},
 			ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
 			Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
@@ -115,8 +115,8 @@ func TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider(t *testin
 		t.Run("unconfigured provider", func(t *testing.T) {
 			called := false
 			runtime, model := register(t, func(p *extension.NativeProvider) {
-				p.ResolveAuth = func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-					return nil, nil, nil
+				p.ResolveAuth = func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+					return nil, nil
 				}
 				p.FetchDeferred = func(_ context.Context, request *ai.Model, _ ai.DeferredHandle, _ ai.DeferredFetchOptions) (*ai.AssistantMessageEventStream, error) {
 					called = true
@@ -158,8 +158,8 @@ func TestModelRuntimeDeferredOperationsOfAnExtensionRegisteredProvider(t *testin
 		}
 		called := false
 		runtime, model = register(t, func(p *extension.NativeProvider) {
-			p.ResolveAuth = func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-				return nil, nil, nil
+			p.ResolveAuth = func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+				return nil, nil
 			}
 			p.CancelDeferred = func(context.Context, *ai.Model, ai.DeferredHandle, ai.DeferredCancelOptions) error {
 				called = true

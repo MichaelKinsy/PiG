@@ -70,7 +70,7 @@ func TestTypeEngineSessionBelongsToItsConnection(t *testing.T) {
 	first, firstPeer := newConn()
 	second, secondPeer := newConn()
 	t.Cleanup(func() { _ = secondPeer.Close(); _ = second.Close("test done") })
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if _, err := h.handleTypeEngine(first, call); err != nil {
 			t.Fatal(err)
 		}
@@ -140,7 +140,7 @@ func TestAbandonedValueWalksEndWithTheirConnection(t *testing.T) {
 		}
 	}
 	before := runtime.NumGoroutine()
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		parked(gone)
 	}
 	token := parked(stays)

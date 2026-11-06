@@ -47,8 +47,8 @@ func TestNativeRefreshCredentialTransactionDoesNotReenterRegistry(t *testing.T) 
 				Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 					return nil, errors.New("unused stream")
 				},
-				ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-					return nil, nil, errors.New("unused auth")
+				ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+					return nil, errors.New("unused auth")
 				},
 				CheckAuth:     func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
 				RefreshModels: func(ai.RefreshModelsContext) error { return nil },

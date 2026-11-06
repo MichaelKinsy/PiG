@@ -913,17 +913,21 @@ func waitForAuthorizationResponse(ctx context.Context, callback *oauth.OAuthCall
 	}
 }
 
+// renderCallbackPage is extensions/mcp/oauth.ts listenForCallback's renderPage: the success page with the sign-in message for an ok callback, the error page with the
+// page's message and details for any other.
+func renderCallbackPage(page oauth.OAuthCallbackPage) string {
+	if page.OK {
+		return ai.OAuthSuccessHTML("Signed in to the MCP server. You may now close this page.")
+	}
+	return ai.OAuthErrorHTML(page.Message, page.Details)
+}
+
 // listenForCallback listens on port, or on a free port when it is taken and
 // not required.
 func listenForCallback(settings callbackSettings, extraPaths []string, port *int, required bool) (*oauth.OAuthCallbackServer, error) {
 	options := oauth.OAuthCallbackServerOptions{
 		Host: settings.host, RedirectHost: settings.redirectHost, Path: settings.path, ExtraPaths: extraPaths,
-		RenderPage: func(page oauth.OAuthCallbackPage) string {
-			if page.OK {
-				return ai.OAuthSuccessHTML("Signed in to the MCP server. You may now close this page.")
-			}
-			return ai.OAuthErrorHTML(page.Message, page.Details)
-		},
+		RenderPage: renderCallbackPage,
 	}
 	if port != nil {
 		options.Port = *port

@@ -264,6 +264,7 @@ func codemodeTextOutput(content []ai.ToolResultMessageContent, showImages bool) 
 	if len(images) > 0 && (tui.GetCapabilities().Images == "" || !showImages) {
 		indicators := make([]string, len(images))
 		for i, image := range images {
+			// pig divergence (D266): an empty mimeType is an absent one here, so it is named image/unknown; Pi names it "" (`img.mimeType ?? "image/unknown"`).
 			mimeType := image.MimeType
 			if mimeType == "" {
 				mimeType = "image/unknown"

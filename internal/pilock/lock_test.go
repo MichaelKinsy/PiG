@@ -25,6 +25,7 @@ func TestErrLockedCarriesProperLockfileMessageUpstream(t *testing.T) {
 	}{{"sync", linkAcquirers[0]}, {"async", linkAcquirers[1]}} {
 		t.Run(row.api, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "auth.json")
+			createLockTarget(t, path)
 			if err := os.Mkdir(path+".lock", 0o777); err != nil {
 				t.Fatal(err)
 			}
@@ -50,6 +51,7 @@ func TestErrLockedCarriesProperLockfileMessageUpstream(t *testing.T) {
 
 func TestLockStaleAndCompromisedOwnership(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	if err := os.Mkdir(path+".lock", 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +87,7 @@ func TestLockStaleAndCompromisedOwnership(t *testing.T) {
 
 func TestCancelledAcquisitionLeavesOwnerIntact(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	owner, err := AcquireSync(path)
 	if err != nil {
 		t.Fatal(err)
@@ -112,6 +115,7 @@ func TestCancelledAcquisitionLeavesOwnerIntact(t *testing.T) {
 
 func TestLockHeartbeatAndReleaseJoin(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	// A short injected stale interval exercises the identical heartbeat loop
 	// without changing the production protocol's 10/30-second thresholds.
 	const stale = 40 * time.Millisecond
@@ -329,6 +333,7 @@ func runPiAcquireThenAbort(t *testing.T, file string, whileHeld func(lock string
 // Pi's acquireLockAsync, finding the signal aborted once it holds the lock, releases the lock and throws the abort (auth-storage.ts:149-152): one error, and the lock directory is gone. PiG's Acquire returns the cancellation alone; it joined it with a second copy that Release added. AcquireWithOptions keeps the same contract.
 func TestAcquireAbortedAfterAcquisitionReturnsTheAbortUpstream(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "auth.json")
+	createLockTarget(t, path)
 	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -599,7 +604,9 @@ func TestAsyncAcquisitionsReuseTheProbedPrecision(t *testing.T) {
 		{"first sync", AcquireSync, 2},
 		{"second sync", AcquireSync, 3},
 	} {
-		lock, err := step.acquire(filepath.Join(root, fmt.Sprint(i)))
+		target := filepath.Join(root, fmt.Sprint(i))
+		createLockTarget(t, target)
+		lock, err := step.acquire(target)
 		if err != nil {
 			t.Fatalf("%s: %v", step.name, err)
 		}

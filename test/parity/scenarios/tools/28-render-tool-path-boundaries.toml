@@ -1,0 +1,30 @@
+# Behavior family: tools (tool call path rendering boundaries)
+# Pi 1.5.0 probe: renderToolPath over 816 boundary probes the corpus of scenario 26 leaves out: the home directory itself with and without a trailing separator, the root and a home that is
+# a parent of the working directory, a path that shares only a string prefix with the home directory or leaves it through "..", "~" forms the hyperlink's resolution expands, file: URLs that
+# resolve to a path and the ones that make fileURLToPath throw (a host, an encoded slash; Pi throws and PiG reports the same error), control characters, and an empty-path fallback
+# that is shortened and linked like a path. Each probe's rendering or thrown error is compared as one JSON line. The Go test TestRenderToolPathBoundariesMatchPi runs the same corpus
+# against the installed Pi; this scenario compares the two printed streams.
+name = "28-render-tool-path-boundaries"
+description = "Tool call headers shorten and link their path argument at the home-directory and file-URL boundaries as Pi does."
+covers = ["packages/coding-agent/src/core/tools/render-utils.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/render-tool-path-boundaries-pig.mjs"]
+pig_go_tests = ["./tui"]
+pi_args = ["node", "./test/parity/testdata/render-tool-path-boundaries-pi.mjs"]
+pi_go_tests = ["./tui"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['file:///tmp/a%20b', 'File URL host must be \"localhost\" or empty', 'File URL path must not include encoded / characters', '/probex/f.go']
+runs = 2

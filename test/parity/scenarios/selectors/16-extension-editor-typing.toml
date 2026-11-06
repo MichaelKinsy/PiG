@@ -1,0 +1,85 @@
+# Behavior family: selectors
+# Upstream evidence: Pi 1.5.0 extension-editor.ts:110-126 and the runner's Pi 1.5.0 run of these keys in tmux 100x35, compared byte for byte.
+# Surface: ExtensionEditorComponent.handleInput through the real TUI (extension-editor.ts:110-126)
+#
+# Same /tree -> "Summarize with custom prompt" flow as 10-extension-editor. Every key that is neither tui.select.cancel nor
+# app.editor.external reaches the Editor: "h", "i" type, Ctrl+J is the default tui.input.newLine and inserts a line break
+# (it must not submit: Enter is the submit key), and "x" types on the new line. The crop is the dialog with the typed text.
+# Both binaries run the same keys and the complete dialog rows, colours included, are compared.
+name = "16-extension-editor-typing"
+description = "Both binaries send typed keys and Ctrl+J to the extension editor, which shows the text on two lines without submitting."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-editor.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Custom summarization instructions"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+settle_seconds = 5
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_contains = ["Session Tree", "(3/3)"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Summarize branch?", "No summary", "Summarize with custom prompt"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["→ Summarize"]
+wait_timeout_seconds = 3
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["→ Summarize with custom prompt"]
+wait_timeout_seconds = 3
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+# The editor title is new; the cancel hint was already present on the preceding selector.
+wait_contains = ["Custom summarization instructions"]
+wait_visible_contains = ["escape/ctrl+c cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["h", "i", "C-j", "x"]
+wait_visible_contains = ["hi", "x"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = ["Custom summarization instructions", "hi", "escape/ctrl+c cancel"]
+output_equal = true
+runtime_ratio_max = 1.50
+runs = 3

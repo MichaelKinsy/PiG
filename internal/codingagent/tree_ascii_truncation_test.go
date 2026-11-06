@@ -6,7 +6,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // The /tree listing cuts a message at 60 characters. A byte cut inside a multi-byte character left invalid UTF-8 on screen.
@@ -38,19 +40,25 @@ func TestRenderTreeASCIICutInsideASurrogatePairWritesTheReplacementCharacter(t *
 	}
 }
 
-// A legacy PiG bash_execution entry labels its command cut at 50 UTF-16 units.
+// A legacy PiG bash_execution entry labels its command cut at 50 UTF-16 units. A cut between the two halves of a surrogate pair keeps the lone
+// surrogate in the label, as the tool-call label of Pi's tree selector does: the row is measured (and truncated to the width) with the unit
+// nonprinting, and the terminal write encodes it.
 func TestTreeRowCutsALegacyBashCommandAtCharacters(t *testing.T) {
 	for _, tc := range []struct{ command, want string }{
 		{strings.Repeat("界", 60), "[bash: !" + strings.Repeat("界", 50) + "…]"},
-		{"a" + strings.Repeat("😀", 30), "[bash: !a" + strings.Repeat("😀", 24) + "\uFFFD…]"},
+		{"a" + strings.Repeat("😀", 30), "[bash: !a" + strings.Repeat("😀", 24) + jsstring.FromUTF16([]uint16{0xd83d}) + "…]"},
 	} {
 		raw, err := json.Marshal(map[string]any{"type": "bash_execution", "id": "b1", "parentId": nil, "timestamp": "2026-05-11T00:00:00Z", "role": "bashExecution", "command": tc.command, "output": "", "exitCode": 0})
 		if err != nil {
 			t.Fatal(err)
 		}
 		got := newTreeRowFormatter(nil).FormatTreeRow(sessionentry.DecodeSessionEntry(raw))
-		if !utf8.ValidString(got) || !strings.Contains(got, tc.want) {
+		if !strings.Contains(got, tc.want) {
 			t.Fatalf("row = %q, want it to contain %q", got, tc.want)
+		}
+		// Pi measures the row as a UTF-16 string, where the lone surrogate is nonprinting: the width is the label's without it.
+		if want := widthx.VisibleWidth(strings.ReplaceAll(got, jsstring.FromUTF16([]uint16{0xd83d}), "")); widthx.VisibleWidth(got) != want {
+			t.Fatalf("row width = %d, want %d (the lone surrogate is nonprinting)", widthx.VisibleWidth(got), want)
 		}
 	}
 }

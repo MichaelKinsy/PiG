@@ -14,6 +14,7 @@ import (
 
 func TestDirectoryLockReleaseStaleAndRegularFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	lease, err := AcquireSync(path)
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +61,7 @@ func TestDirectoryLockReleaseStaleAndRegularFile(t *testing.T) {
 
 func TestHeartbeatCompromiseAndCallerCancellation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	// Exercise the timer state machine with a short private test interval.
 	lease, err := tryAcquire(t.Context(), path, 20*time.Millisecond)
 	if err != nil {
@@ -110,6 +112,7 @@ func TestConcurrentStoreWritesWithPiBackend(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "store.json")
+	createLockTarget(t, path)
 	if err := os.WriteFile(path, []byte("0"), 0o600); err != nil {
 		t.Fatal(err)
 	}

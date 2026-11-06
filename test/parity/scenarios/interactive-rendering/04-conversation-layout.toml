@@ -75,11 +75,7 @@ settle_seconds = 1
 both_reach_ready = true
 both_contain = ["$ expr 20 + 22", "helloworld", "sanitized"]
 both_not_contain = ["unknown command", "panic:", "goroutine "]
-# lint-known-gap: bg-paint SGR codes differ between pig and upstream rendering
-# paths. The visible text, structure, and spacing are identical. The
-# tool-execution footer duration is timing-dependent, so normalize the
-# numeric suffix rather than weakening the comparator.
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 runs = 3
 
