@@ -12722,6 +12722,17 @@
       "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#DetachedRefreshContext",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "DetachedRefreshContext",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) context.Context"
+      },
+      "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#DetectCompat",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "DetectCompat",
@@ -18299,6 +18310,17 @@
       "shapeHash": "sha256:ea91fb0a7069d28063063048a8f53c64b98feee626d230d9310837f6e0df42d0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ModifyCredentialDetached",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ModifyCredentialDetached",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, credentials CredentialStore, providerID string, fn func(current *Credential) (*Credential, error)) (*Credential, error)"
+      },
+      "shapeHash": "sha256:0fc18601603fb6b98abfd0a21b346ebb9593b8ed2d7df355f5ece66f9eab70fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#MoonshotAICNClassifierModels",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "MoonshotAICNClassifierModels",
@@ -21775,6 +21797,17 @@
       "shapeHash": "sha256:e63619717ef6b69acc6e4eca67e17d2f58dd54cca65a1c08291864355028e162"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshOAuthDetached",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshOAuthDetached",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, oauth *OAuthAuth, credential Credential) (Credential, error)"
+      },
+      "shapeHash": "sha256:45113b5cffad9aaa438aa5ff8b225928804d8828002b4e634a4460d76411b193"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshOpenAIChatGPTToken",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "RefreshOpenAIChatGPTToken",
@@ -21784,6 +21817,17 @@
         "type": "func(ctx context.Context, credentials OAuthCredentials) (OAuthCredentials, error)"
       },
       "shapeHash": "sha256:ab5c0f9c6e5c191db224d276990cf120c6c6385fa33f637d658703bcdace3fc5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RefreshStoredOAuth",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RefreshStoredOAuth",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, credentials CredentialStore, providerID string, oauth *OAuthAuth, needsRefresh func(Credential) bool) (*Credential, error)"
+      },
+      "shapeHash": "sha256:71615c9b904cc18bd603bc8c7636bbd97b2d76abd1a89e3c2102167112f90af7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#RegisterAPIProvider",
@@ -22521,6 +22565,17 @@
         "type": "func(providerID string, apiKey string)"
       },
       "shapeHash": "sha256:25db238f4fd156c94214a3a1f4f64cdfa9ca197ed8ee68953bcbd7982ea1bc34"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#RuntimeCredentials.Settled",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "RuntimeCredentials.Settled",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#SafeJsonStringify",
@@ -37516,6 +37571,17 @@
       "shapeHash": "sha256:0258ae4baf57b02516cc14b337b4adaa5f913fbd5b9082697bdd7b3ae6d8e380"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#createNewFollowingLinks",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "createNewFollowingLinks",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, create func(string) (*os.File, error)) (*os.File, error)"
+      },
+      "shapeHash": "sha256:df7472093d43fa37245da237dd6cbbe3bdb36455e80f7602fb549fff61924dc4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#credentialEnv",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "credentialEnv",
@@ -47012,6 +47078,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#maxKeptRequestScratch",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "maxKeptRequestScratch",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#maxLinkHops",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "maxLinkHops",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -70538,6 +70615,17 @@
       "shapeHash": "sha256:1f48ec1bed9e3f3b08ba4f7b5fa684abe726ec94421695e6d554cc7fb71aa9ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.SettleCredentialWrites",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.SettleCredentialWrites",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.StartModelTask",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.StartModelTask",
@@ -72342,6 +72430,17 @@
       "shapeHash": "sha256:1f48ec1bed9e3f3b08ba4f7b5fa684abe726ec94421695e6d554cc7fb71aa9ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.SettleCredentialWrites",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRuntime.SettleCredentialWrites",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Stream",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRuntime.Stream",
@@ -73891,6 +73990,17 @@
         "type": "func(reload func(context.Context, *Session) error)"
       },
       "shapeHash": "sha256:d9e3c0388cd98031026f72977c12589c0d883eb0f3a590fdcea545251712f18e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.SettleCredentialWrites",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Runtime.SettleCredentialWrites",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.SwitchSession",
@@ -146290,9 +146400,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, credential *github.com/MichaelKinsy/PiG/ai.Credential, overrides github.com/MichaelKinsy/PiG/ai.AuthResolutionOverrides) (*github.com/MichaelKinsy/PiG/ai.AuthResult, *github.com/MichaelKinsy/PiG/ai.Credential, error)"
+        "type": "func(ctx context.Context, credentials github.com/MichaelKinsy/PiG/ai.CredentialStore, overrides github.com/MichaelKinsy/PiG/ai.AuthResolutionOverrides) (*github.com/MichaelKinsy/PiG/ai.AuthResult, error)"
       },
-      "shapeHash": "sha256:dccd1335ee6ac148f9391ea81555c113048469f0a40fe9f3d6b1cbaf473675ee"
+      "shapeHash": "sha256:9fe10f2960ac869bfd223289c373cb3160ae1ca8bcbc16a17c664340d6aaba3b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeProviderProxy.stream",
@@ -254225,6 +254335,17 @@
         "type": "func(ctx context.Context, providerID string, apiKey string) error"
       },
       "shapeHash": "sha256:1f48ec1bed9e3f3b08ba4f7b5fa684abe726ec94421695e6d554cc7fb71aa9ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.SettleCredentialWrites",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.SettleCredentialWrites",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.StartModelTask",
