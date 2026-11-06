@@ -32,6 +32,8 @@ Port to Go, not to another language. A Go extension on PiG's public SDK can be f
   export PATH="$PWD/dist/bin:$PATH"
   ```
 
+  `npm run build:pigeq` and `npm run build:piglet` check `PIG_BIN` against the PiG version that Pigpen requires, which `scripts/pig-requirement.json` in the checkout names. Use a `pig` that meets it.
+
 - A Git checkout of the PiG source that your `pig` was built from. The binary build in step 8 compiles the extension against it. `pigeq source` makes one:
 
   ```bash
@@ -52,6 +54,8 @@ The `pig-extension-porter` Piglet selects the Skill and the equivalence tools. P
 ```bash
 pig piglet pull 'github:MichaelKinsy/pigpen/pig-extension-porter@0.1.1'
 ```
+
+The command prints a `binary:` line. Run the file on that line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. [Add a Piglet from Pigpen](/docs/latest/piglets#add-a-piglet-from-pigpen) explains the pull and the signature checks.
 
 The proof steps need `pigeq` and the Pigpen checkout in any case. To use the Skill text of Pigpen's main branch, which can be newer than a release, run the Piglet from the checkout:
 
@@ -107,7 +111,7 @@ Compare the Go extension with the original running in PiG's Node subprocess on t
 
 | Step | In this port |
 |---|---|
-| Pin | `provenance.json` names `@juicesharp/rpiv-todo` 2.11.0 at commit `61904e69e1a50e12585bdf15f0310e633a62ba36`, MIT. The original is vendored unchanged, with its license, in `port/oracle`. |
+| Pin | `CREDITS.md` and `PORT.md` name the original, `@juicesharp/rpiv-todo` 2.11.0. `provenance.json` names its repository, rpiv-mono, at commit `61904e69e1a50e12585bdf15f0310e633a62ba36`, MIT. The original is vendored unchanged, with its license, in `port/oracle`. |
 | Gap check | `pigeq gaps --ts port/oracle` found three gaps. None blocks the port. All are `PARTIAL`: `tool.promptSnippet`, `tool.renderCall` and `tool.renderResult`. |
 | Contract table | `PORT.md` maps ten contracts, from the `todo` tool schema to the task-list command, the overlay and the session hooks. It records one approved exclusion: locales, which the port leaves in English. |
 | Original's tests | `port/upstream-tests.json` lists 231 cases. The port has 209 exact twins and 22 named skips, each with its reason. |
@@ -117,7 +121,7 @@ Compare the Go extension with the original running in PiG's Node subprocess on t
 | Binary | `piglets/pig-popular` selects the Package. The build prints "Preparing fused Go members" and finishes. The Binary recorded its own traces, and they equal the Pi goldens in every event outside the model request, where only the tool list differs. |
 | Findings | `PORT.md` lists host and SDK differences found on the way, for example that PiG's RPC mode emits the rows of a widget that Pi's RPC mode drops. |
 
-The record is also honest about what the port does not do. The overlay is pre-rendered rows, and key order in a tool result follows Go's sorted maps. [Read `PORT.md`](https://github.com/MichaelKinsy/pigpen/blob/a342843dcbb0c3b4fa3ba341fee57888b7f3c6fb/components/todo/port/PORT.md) to see how each decision is recorded.
+The record also lists what the port does not do. The overlay is pre-rendered rows, and key order in a tool result follows Go's sorted maps. [Read `PORT.md`](https://github.com/MichaelKinsy/pigpen/blob/a342843dcbb0c3b4fa3ba341fee57888b7f3c6fb/components/todo/port/PORT.md) to see how each decision is recorded.
 
 ## Where to look next
 
