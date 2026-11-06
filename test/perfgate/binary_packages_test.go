@@ -75,7 +75,7 @@ func TestReleaseBinaryLinksOnlyAllowedPackages(t *testing.T) {
 						}
 						linkedHeavy[row.Package] = true
 						if !slices.Contains(binary.Allow, row.Package) {
-							t.Errorf("%s now links %s (%d bytes, over the %d bytes that make a package heavyweight) and %s does not list it. Something that was dead code is reachable now. %s Remove the call that reaches it; a package joins the list only with the owner's approval", name, row.Package, row.Bytes, policy.HeavyBytes, linkedPackagesPath, whyHint(binary.Build, goos, goarch, row.Package))
+							t.Errorf("%s now links %s (%d bytes, over the %d bytes that make a package heavyweight) and %s does not list it. Something that was dead code is reachable now. %s Remove the call that reaches it. A third-party package joins the list only with the owner's approval; a package of PiG itself joins it in the commit that makes it that large, with the size report in the commit message", name, row.Package, row.Bytes, policy.HeavyBytes, linkedPackagesPath, whyHint(binary.Build, goos, goarch, row.Package))
 						}
 					}
 				})
