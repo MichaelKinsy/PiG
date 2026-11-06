@@ -74,6 +74,7 @@ func surrogateUnitsAt(value string) (size, cost int) {
 	if !wtf8SurrogateAt(value) {
 		return 1, 1
 	}
+	//portlint:allow utf16units value starts with one three-byte WTF-8 surrogate: the second byte below 0xB0 makes it a high surrogate, and the surrogate after it (bytes 3..5) is low from 0xB0; these index the encoding, not JS offsets
 	if value[1] < 0xb0 && wtf8SurrogateAt(value[3:]) && value[4] >= 0xb0 {
 		return 6, 2
 	}
@@ -82,6 +83,7 @@ func surrogateUnitsAt(value string) (size, cost int) {
 
 // wtf8SurrogateAt reports whether value starts with the three bytes of a UTF-16 surrogate, U+D800 to U+DFFF.
 func wtf8SurrogateAt(value string) bool {
+	//portlint:allow utf16units this parses the WTF-8 encoding of one surrogate (ED, A0..BF, 80..BF), a three-byte sequence the writer counts as one UTF-16 unit, so the byte checks are the encoding, not JS offsets
 	return len(value) >= 3 && value[0] == 0xed && value[1]&0xe0 == 0xa0 && value[2]&0xc0 == 0x80
 }
 

@@ -37,7 +37,7 @@ func (r JSONPigOnlyRecordRule) validate() error {
 		return fmt.Errorf("json_pig_only_records %s requires before_type, the record type that follows the dropped record", r.Divergence)
 	}
 	if _, err := parseJSONRecords(r.Record); err != nil || strings.Contains(r.Record, "\n") {
-		return fmt.Errorf("json_pig_only_records %s record is not one JSON object: %v", r.Divergence, err)
+		return fmt.Errorf("json_pig_only_records %s record is not one JSON object: %w", r.Divergence, err)
 	}
 	return nil
 }

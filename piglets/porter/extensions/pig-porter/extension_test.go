@@ -1,6 +1,7 @@
 package pigporter
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -118,7 +119,7 @@ func TestToolUsesTheSameResponseAsTheDirectPorterAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(extensionJSON) != string(directJSON) {
+	if !bytes.Equal(extensionJSON, directJSON) {
 		t.Fatalf("extension JSON = %s, direct JSON = %s", extensionJSON, directJSON)
 	}
 
@@ -147,7 +148,7 @@ func TestToolUsesTheSameResponseAsTheDirectPorterAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(reportExtensionJSON) != string(reportDirectJSON) {
+	if !bytes.Equal(reportExtensionJSON, reportDirectJSON) {
 		t.Fatalf("report extension JSON = %s, direct JSON = %s", reportExtensionJSON, reportDirectJSON)
 	}
 	readinessRequest := porter.Request{Operation: porter.OperationMutationReadiness, Root: root, Database: "closure.db"}

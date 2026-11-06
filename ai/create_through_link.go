@@ -20,6 +20,7 @@ func createNewFollowingLinks(path string, create func(string) (*os.File, error))
 	}
 	target := path
 	for range maxLinkHops {
+		//perf:ok cold path: runs only when the exclusive create reported a dangling link; each hop is a link of the chain being resolved
 		info, statErr := os.Lstat(target)
 		if statErr != nil || info.Mode()&fs.ModeSymlink == 0 {
 			break

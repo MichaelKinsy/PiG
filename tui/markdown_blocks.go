@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -94,7 +95,7 @@ func trimPartialClosingFences(tokens []*markedBlock) {
 	if fence == 0 || markerLength < 3 || lastLine == "" || len(lastLine) >= markerLength || lastLine != strings.Repeat(string(fence), len(lastLine)) {
 		return
 	}
-	text := token.text[:max(0, len(token.text)-len(lastLine))]
+	text := jsstring.Slice(token.text, 0, -len(lastLine))
 	token.text = strings.TrimSuffix(text, "\n")
 }
 

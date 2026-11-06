@@ -183,6 +183,7 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 		})
 	}
 
+	//portlint:allow clock the shell's run time is wall time, not the update scheduler's throttle; shellUpdateTime is that scheduler's clock, which tests freeze and count to prove no scheduler ran
 	startedAt := time.Now()
 	var (
 		killOnce sync.Once

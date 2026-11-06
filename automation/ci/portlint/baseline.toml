@@ -431,14 +431,8 @@ snippet = "m.statusLastFrame = time.Now()"
 [[hit]]
 check = "clock"
 file = "internal/codingagent/interactive_transcript.go"
-func = "InteractiveMode.steerMessageWithImages"
-snippet = "Timestamp: time.Now().UnixMilli(),"
-
-[[hit]]
-check = "clock"
-file = "internal/codingagent/interactive_transcript.go"
-func = "InteractiveMode.followUpMessageWithImages"
-snippet = "Timestamp: time.Now().UnixMilli(),"
+func = "InteractiveMode.queuedUserMessage"
+snippet = "return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: promptContent(text, images), Timestamp: time.Now().UnixMilli()}}"
 
 [[hit]]
 check = "clock"
@@ -498,7 +492,7 @@ snippet = "if float64(time.Now().UnixMilli()) < stored.ExpiresMillis() {"
 check = "clock"
 file = "internal/codingagent/radius_models.go"
 func = "ModelRegistry.refreshRadiusOAuth"
-snippet = "if current == nil || current.Type != ai.CredentialOAuth || float64(time.Now().UnixMilli()) < current.ExpiresMillis() {"
+snippet = "return float64(time.Now().UnixMilli()) >= current.ExpiresMillis()"
 
 [[hit]]
 check = "clock"
@@ -725,7 +719,7 @@ snippet = "close(entry.released)"
 [[hit]]
 check = "doubleclose"
 file = "coding/cli/rpc_shutdown.go"
-func = "watchForcedTermination"
+func = "watchRepeatedTermination"
 snippet = "defer close(w.done)"
 
 [[hit]]
@@ -2173,12 +2167,6 @@ check = "golifetime"
 file = "tui/countdown_timer.go"
 func = "NewCountdownTimer"
 snippet = "go ct.run()"
-
-[[hit]]
-check = "golifetime"
-file = "tui/editor.go"
-func = "Editor.kickFileAutocomplete"
-snippet = "go work()"
 
 [[hit]]
 check = "golifetime"
@@ -5120,12 +5108,6 @@ snippet = "text = text[2:]"
 
 [[hit]]
 check = "utf16units"
-file = "tui/markdown.go"
-func = "parseMarkdownFenceOpen"
-snippet = "if len(line)-len(trimmed) > 3 || len(trimmed) < 3 || trimmed[0] != '`' && trimmed[0] != '~' {"
-
-[[hit]]
-check = "utf16units"
 file = "tui/system_theme.go"
 func = "hexOfRgb"
 snippet = "if len(digits) < 2 {"
@@ -5465,7 +5447,7 @@ snippet = "rawStdout.Wait(context.Background())"
 check = "ctxbackground"
 file = "coding/cli/rpc_mode.go"
 func = "serveRPCMode"
-snippet = "rawStdout.Wait(context.Background())"
+snippet = "func() { rawStdout.Wait(context.Background()) },"
 
 [[hit]]
 check = "ctxbackground"
@@ -6369,8 +6351,8 @@ snippet = "return m.extensionNavigateTreeContext(context.Background(), targetID,
 
 [[hit]]
 check = "ctxbackground"
-file = "internal/codingagent/interactive_input.go"
-func = "InteractiveMode.syncExtensionSlashCommands"
+file = "internal/codingagent/interactive_turn.go"
+func = "InteractiveMode.startExtensionCommand"
 snippet = "baseCtx = context.Background()"
 
 [[hit]]
@@ -7074,12 +7056,6 @@ check = "jsonclone"
 file = "internal/codingagent/settings.go"
 func = "settingsJSONMap"
 snippet = "if err := json.Unmarshal(encoded, &result); err != nil {"
-
-[[hit]]
-check = "jsonclone"
-file = "internal/codingagent/tool_builtin_renderers.go"
-func = "readTruncation"
-snippet = "if json.Unmarshal(encoded, &truncation) != nil {"
 
 [[hit]]
 check = "jsonclone"

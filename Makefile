@@ -278,6 +278,8 @@ LINT_BASE ?= main
 lint: ## Run golangci-lint over the repository (part of make check)
 	@echo "Running golangci-lint..."
 	go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity ./...
+	@echo "Running golangci-lint over the go.work modules the root pattern does not reach..."
+	for module in extensions/sdk piglets/porter/extensions/pig-porter; do (cd $$module && go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity --config $(CURDIR)/.golangci.yml ./...) || exit 1; done
 	@echo "Checking the Durable core import boundary (no encoding/json, reflect or template in the Wasm closure)..."
 	go test -count=1 ./durable/core/contracttest/boundary/
 

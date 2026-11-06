@@ -75,6 +75,7 @@ func markedLinkLabel(label string) string {
 			out.WriteByte(' ')
 			space = false
 		}
+		//portlint:allow utf16units size is the byte length of the code point DecodeCodePoint just decoded at i, so the copy writes that one code point with a lone surrogate's WTF-8 bytes intact
 		out.WriteString(label[i : i+size])
 		i += size
 	}
