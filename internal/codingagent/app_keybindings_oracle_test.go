@@ -217,3 +217,41 @@ type keybindingsProbe struct {
 	Kitty    bool                `json:"kitty"`
 	Bindings map[string][]string `json:"bindings,omitempty"`
 }
+
+// pasteImageAction is the action D241 changes.
+const pasteImageAction = "app.clipboard.pasteImage"
+
+// d241Applies reports whether Windows defaults, and so D241's extra ctrl+v on app.clipboard.pasteImage, apply to this host (win32, or Linux under WSL).
+func d241Applies() bool { return tui.HostKeybindingPlatform().UsesWindowsKeybindings() }
+
+// d241PasteKeys returns the keys Pig's default for app.clipboard.pasteImage has where d241Applies, given the keys Pi 1.5.0 reports for its default, which
+// must be alt+v alone: a Pi whose default already holds ctrl+v makes the allowance obsolete and fails here instead of passing silently.
+func d241PasteKeys(t *testing.T, piKeys []string) []string {
+	t.Helper()
+	if !slices.Equal(piKeys, []string{"alt+v"}) {
+		t.Fatalf("D241: Pi's default for %s on this host is %v, want [alt+v]; the allowance is obsolete", pasteImageAction, piKeys)
+	}
+	return []string{"alt+v", "ctrl+v"}
+}
+
+// d241PiProbes returns the custom-editor probes as Pi receives them. Where d241Applies, a probe that sends Ctrl+V (0x16) and does not bind the paste action
+// goes to Pi with that action bound to alt+v and ctrl+v, which is how Pi behaves with D241's default; Pig's side keeps the probe unchanged. Every other probe
+// and key compares unchanged.
+func d241PiProbes(probes []ceOracleProbe) []ceOracleProbe {
+	piProbes := slices.Clone(probes)
+	if !d241Applies() {
+		return piProbes
+	}
+	for i, probe := range probes {
+		if _, bound := probe.Bindings[pasteImageAction]; bound || !slices.ContainsFunc(probe.Ops, func(op ceOracleOp) bool { return op.Keys != nil && *op.Keys == "\x16" }) {
+			continue
+		}
+		bindings := maps.Clone(probe.Bindings)
+		if bindings == nil {
+			bindings = map[string][]string{}
+		}
+		bindings[pasteImageAction] = []string{"alt+v", "ctrl+v"}
+		piProbes[i].Bindings = bindings
+	}
+	return piProbes
+}

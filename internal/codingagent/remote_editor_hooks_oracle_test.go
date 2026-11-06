@@ -85,7 +85,9 @@ func ceHookCalls(h *remoteEditor, probe ceOracleProbe, key string) []string {
 // popup deciding whether escape reaches the app is TestCustomEditorMatchesPi's.)
 func TestDelegatedEditorHooksMatchPi(t *testing.T) {
 	probes := ceHookProbes()
-	input, err := json.Marshal(probes)
+	// pig divergence (D241): Ctrl+V reaches onPasteImage in Pig on Windows and WSL hosts and not in Pi 1.5.0; d241PiProbes gives Pi D241's keys for those probes.
+	piProbes := d241PiProbes(probes)
+	input, err := json.Marshal(piProbes)
 	if err != nil {
 		t.Fatal(err)
 	}
