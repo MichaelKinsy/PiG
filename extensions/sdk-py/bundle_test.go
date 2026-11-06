@@ -50,7 +50,7 @@ func TestEveryPackageSourceIsBundled(t *testing.T) {
 		t.Fatal(err)
 	}
 	// and nothing else: the list is the package's modules, the license and pyproject.toml
-	want := append(onDisk, "LICENSE", "pyproject.toml")
+	want := append(slices.Clone(onDisk), "LICENSE", "pyproject.toml")
 	slices.Sort(want)
 	if !slices.Equal(bundled, want) {
 		t.Errorf("BundledFiles = %v, sources = %v; run go generate in extensions/sdk-py", bundled, want)

@@ -51,8 +51,11 @@ func main() {
 	}
 	for _, pattern := range flag.Args() {
 		matches, err := filepath.Glob(pattern)
-		if err != nil || len(matches) == 0 {
-			fail(fmt.Errorf("pattern %q matches nothing (%v)", pattern, err))
+		if err != nil {
+			fail(err)
+		}
+		if len(matches) == 0 {
+			fail(fmt.Errorf("pattern %q matches nothing", pattern))
 		}
 		for _, match := range matches {
 			add(match)
