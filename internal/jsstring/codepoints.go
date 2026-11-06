@@ -115,3 +115,29 @@ func CodePointString(r rune) string {
 	}
 	return string(r)
 }
+
+// ReplaceInvalid is s with every byte that is neither part of valid UTF-8 nor one of the three bytes of a lone surrogate replaced by U+FFFD, a code point
+// of its own as for utf8's decoding; s itself when it has none.
+func ReplaceInvalid(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var out []byte
+	for i := 0; i < len(s); {
+		r, size := DecodeCodePoint(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			if out == nil {
+				out = make([]byte, 0, len(s)+8)
+				out = append(out, s[:i]...)
+			}
+			out = utf8.AppendRune(out, utf8.RuneError)
+		} else if out != nil {
+			out = append(out, s[i:i+size]...)
+		}
+		i += size
+	}
+	if out == nil {
+		return s
+	}
+	return string(out)
+}

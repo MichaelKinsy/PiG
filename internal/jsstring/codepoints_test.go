@@ -61,3 +61,15 @@ func TestCodePointStringAndAppend(t *testing.T) {
 		}
 	}
 }
+
+func TestReplaceInvalidKeepsLoneSurrogates(t *testing.T) {
+	high := FromUTF16([]uint16{0xd83d})
+	for _, tc := range []struct{ in, want string }{
+		{"", ""}, {"plain \u00e9", "plain \u00e9"}, {high, high}, {"a" + high + "b", "a" + high + "b"},
+		{"x\xe6\x97", "x\uFFFD\uFFFD"}, {high + "\xff" + high, high + "\uFFFD" + high}, {"\xe6\x97" + high, "\uFFFD\uFFFD" + high},
+	} {
+		if got := ReplaceInvalid(tc.in); got != tc.want {
+			t.Errorf("ReplaceInvalid(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

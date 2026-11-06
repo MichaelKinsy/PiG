@@ -342,6 +342,8 @@ func markedPunctuation(r rune) bool {
 
 // lexMarkedInline is Lexer.inlineTokens for one inline source with the document's lexer state. The tokens are valid until the next call with the same state.
 func lexMarkedInline(src string, state *markedInlineState) []markedToken {
+	// Token text is sliced from src at the byte length of the code points the rules consume, so a byte that is not UTF-8 takes the U+FFFD form the rules see; a lone surrogate keeps its unit.
+	src = jsstring.ReplaceInvalid(src)
 	if n := jsstring.CodePointCount(src); cap(state.runes) < n {
 		state.runes = make([]rune, 0, n)
 	}
