@@ -257,7 +257,7 @@ func buildStaging(parent, digest string) (staging string, written []string, err 
 	if err := os.Chmod(staging, 0o755); err != nil {
 		return fail(err)
 	}
-	for index, name := range pageNames {
+	for index, name := range &pageNames {
 		data := raw[:pageSizes[index]:pageSizes[index]]
 		raw = raw[pageSizes[index]:]
 		if err := writeNewFile(filepath.Join(staging, name), data, 0o644); err != nil {
