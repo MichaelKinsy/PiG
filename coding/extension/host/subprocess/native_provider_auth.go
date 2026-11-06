@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
-	"sync"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -89,43 +88,27 @@ func (p *nativeProviderProxy) auth(ctx context.Context) ai.ProviderAuth {
 	return result
 }
 
-// nativeCredentialSnapshot is the CredentialStore of one native provider's auth resolution: the credential the registry's transaction handed over. A refresh that ai.refreshStoredOAuthCredential started writes it from its own goroutine, which outlives a caller that gave up, so refreshing holds refresh for its whole run and settle waits for it.
+// nativeCredentialSnapshot is the read-only CredentialStore of one native provider's auth check: the credential the registry handed over.
 type nativeCredentialSnapshot struct {
+	value      *ai.Credential
 	providerID string
-
-	// mu guards value and changed.
-	mu      sync.Mutex
-	value   *ai.Credential
-	changed bool
-	// refresh is held by Modify from before the refresh callback to after the write: a refresh that has started finishes, and is in value, before settle returns.
-	refresh sync.Mutex
-}
-
-func (s *nativeCredentialSnapshot) current() *ai.Credential {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.value
+	changed    bool
 }
 
 func (s *nativeCredentialSnapshot) Read(ctx context.Context, _ string) (*ai.Credential, error) {
-	return s.current(), ctx.Err()
+	return s.value, ctx.Err()
 }
 func (s *nativeCredentialSnapshot) List(ctx context.Context) ([]ai.CredentialInfo, error) {
-	value := s.current()
-	if value == nil {
+	if s.value == nil {
 		return []ai.CredentialInfo{}, ctx.Err()
 	}
-	return []ai.CredentialInfo{{ProviderID: s.providerID, Type: value.Type}}, ctx.Err()
+	return []ai.CredentialInfo{{ProviderID: s.providerID, Type: s.value.Type}}, ctx.Err()
 }
 func (s *nativeCredentialSnapshot) Modify(_ context.Context, _ string, fn func(*ai.Credential) (*ai.Credential, error)) (*ai.Credential, error) {
-	s.refresh.Lock()
-	defer s.refresh.Unlock()
-	value, err := fn(s.current())
+	value, err := fn(s.value)
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if value != nil {
 		s.value = value
 		s.changed = true
@@ -133,21 +116,10 @@ func (s *nativeCredentialSnapshot) Modify(_ context.Context, _ string, fn func(*
 	return s.value, nil
 }
 
-// settle waits for a refresh that has started and returns the credential and whether a step changed it. A refresh that has not started when settle runs finds the cancelled caller's context in its callback and writes nothing.
-func (s *nativeCredentialSnapshot) settle() (*ai.Credential, bool) {
-	s.refresh.Lock()
-	defer s.refresh.Unlock()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.value, s.changed
-}
-
 func (s *nativeCredentialSnapshot) Delete(ctx context.Context, providerID string) error {
 	if err := ctx.Err(); err != nil {
 		return context.Cause(ctx)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if providerID == s.providerID && s.value != nil {
 		s.value = nil
 		s.changed = true
@@ -158,15 +130,9 @@ func (s *nativeCredentialSnapshot) Delete(ctx context.Context, providerID string
 func (p *nativeProviderProxy) checkAuth(ctx context.Context, credential *ai.Credential) (*ai.AuthCheck, error) {
 	return ai.CheckProviderAuth(ctx, p.declaration.ID, p.auth(ctx), &nativeCredentialSnapshot{value: credential, providerID: p.declaration.ID}, ai.DefaultProviderAuthContext())
 }
-func (p *nativeProviderProxy) resolveAuth(ctx context.Context, credential *ai.Credential, overrides ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-	store := &nativeCredentialSnapshot{value: credential, providerID: p.declaration.ID}
-	result, err := ai.ResolveProviderAuth(ctx, p.declaration.ID, p.auth(ctx), store, ai.DefaultProviderAuthContext(), overrides)
-	// pig divergence (D237): ResolveProviderAuth returns when ctx ends, but an OAuth refresh it started goes on without ctx (resolve.ts:refreshStoredOAuthCredential, AbortSignal.timeout(15 s)) and may already have spent the refresh token. Wait for it, and return the rotated credential even when a later step failed with the abort, so the registry's transaction saves it.
-	value, changed := store.settle()
-	if changed {
-		return result, value, err
-	}
-	return result, nil, err
+// resolveAuth is Pi's resolveProviderAuth over the registry's credential store (auth/resolve.ts:46-117): the provider's callbacks (apiKey resolve and check, toAuth) get ctx, a runtime key is resolved before the stored credential is read, a still-valid credential takes no lock, and only an expiring OAuth credential's re-check and refresh run under the store's modify, with the fifteen-second refresh timeout and without ctx (refreshStoredOAuthCredential). A caller whose ctx ended returns at once; a refresh that has started finishes and is saved, and the store tracks it for the exit to wait for.
+func (p *nativeProviderProxy) resolveAuth(ctx context.Context, credentials ai.CredentialStore, overrides ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+	return ai.ResolveProviderAuth(ctx, p.declaration.ID, p.auth(ctx), credentials, ai.DefaultProviderAuthContext(), overrides)
 }
 func (p *nativeProviderProxy) refreshCredential(ctx context.Context, credential *ai.Credential) (*ai.Credential, *ai.Credential, error) {
 	auth := p.auth(ctx)

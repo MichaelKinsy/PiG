@@ -21,8 +21,8 @@ func TestNativeProviderPublicationSurvivesLaterRefreshError(t *testing.T) {
 	original := extension.ProviderModelConfig{ID: "old", API: ai.APIOpenAICompletions, BaseURL: "https://native.invalid"}
 	p := &extension.NativeProvider{ID: "native", Name: "Native", Models: []extension.ProviderModelConfig{original}, CheckAuth: func(context.Context, *ai.Credential) (*ai.AuthCheck, error) {
 		return &ai.AuthCheck{Type: ai.CredentialAPIKey}, nil
-	}, ResolveAuth: func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
-		return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil, nil
+	}, ResolveAuth: func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
+		return &ai.AuthResult{Auth: ai.ModelAuth{APIKey: "key"}}, nil
 	}, Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		return nil, errors.New("unused")
 	}}

@@ -31,7 +31,9 @@ type NativeProvider struct {
 	GetAllModels             func(context.Context) ([]ai.AnyModel, error)
 	FilterAllModels          func(context.Context, []ai.AnyModel, *ai.Credential) ([]ai.AnyModel, error)
 	FilterModels             func(context.Context, []*ai.Model, *ai.Credential) ([]*ai.Model, error)
-	ResolveAuth              func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error)
+	// ResolveAuth is Pi's resolveProviderAuth for this provider over the registry's credential store (auth/resolve.ts:46-117): a runtime key first, then the stored credential; only an expiring OAuth credential's refresh goes through the store's modify, and the provider's resolvers and toAuth run outside it.
+	// upstream: packages/ai/src/auth/resolve.ts:resolveProviderAuth
+	ResolveAuth              func(context.Context, ai.CredentialStore, ai.AuthResolutionOverrides) (*ai.AuthResult, error)
 	ResolveRefreshCredential func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error)
 	RefreshModels            func(ai.RefreshModelsContext) error
 	Stream                   func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error)

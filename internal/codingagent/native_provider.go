@@ -80,10 +80,7 @@ func (r *ModelRegistry) NativeProvider(id string) *extension.NativeProvider {
 	return r.native[id].provider
 }
 
-// NativeProviderAuth resolves auth and commits a rotated credential atomically.
-// For a stored OAuth credential the credential-store lock spans the reverse
-// callback just as Pi's modify spans OAuth refresh; any other credential
-// resolves outside the lock. Missing credentials and callback failures never fall back.
+// NativeProviderAuth resolves the provider's auth as Pi's resolveProviderAuth does, over the registry's credentials: the provider's callbacks get ctx, a runtime key is resolved before the stored credential, and only an expiring OAuth credential's refresh goes through the credential store's modify. Missing credentials and callback failures never fall back.
 func (r *ModelRegistry) NativeProviderAuth(ctx context.Context, id string, overrides ai.AuthResolutionOverrides) (*ai.AuthResult, error) {
 	p := r.NativeProvider(id)
 	if p == nil {
@@ -95,36 +92,15 @@ func (r *ModelRegistry) NativeProviderAuth(ctx context.Context, id string, overr
 	if key, ok := r.RuntimeAPIKey(id); ok && overrides.APIKey == nil {
 		overrides.APIKey = &key
 	}
-	// pig divergence (D237): the transaction is Pi's refreshStoredOAuthCredential. The caller returns when ctx ends (Pi's abortable race, resolve.ts:33-44), but the transaction goes on to its end, bounded by the lock wait and the fifteen-second refresh timeout: a refresh that has started may already have spent the single-use token, so its result is saved whatever else fails, and the caller's exit waits for it (RuntimeCredentials.Settled). ctx ends only the wait for the lock. The provider's callbacks (apiKey resolve and check, toAuth) get ctx itself, as in Pi, so the abort reaches them and none holds the lock past it; only the OAuth refresh inside them is detached (the provider's resolveAuth).
-	// Only a stored OAuth credential takes the tracked transaction, as only the work under Pi's credentials.modify is something exit waits for. An API-key resolution (a stored key, a runtime key, or none) reads the credential and resolves outside it: a resolver that never returns, called with a context that exit does not cancel, must not keep Settled, and so the exit, waiting.
+	// pig divergence (D237): the caller returns when ctx ends (Pi's abortable race, resolve.ts:33-44) while a refresh that has started finishes and is saved, bounded by the lock wait and the fifteen-second refresh timeout, and the exit waits for it (RuntimeCredentials.Settled). The refresh is the only work under the store's modify, as in Pi, so the exit waits for nothing else here.
 	type outcome struct {
 		resolution *ai.AuthResult
 		err        error
 	}
 	done := make(chan outcome, 1)
 	go func() {
-		stored, err := credentials.Read(ctx, id)
-		if err != nil {
-			done <- outcome{nil, err}
-			return
-		}
-		if stored == nil || stored.Type != ai.CredentialOAuth {
-			resolved, _, err := p.ResolveAuth(ctx, stored, overrides)
-			done <- outcome{resolved, err}
-			return
-		}
-		var resolution *ai.AuthResult
-		var resolveErr error
-		_, err = ai.ModifyCredentialDetached(ctx, credentials, id, func(current *ai.Credential) (*ai.Credential, error) {
-			resolved, updated, err := p.ResolveAuth(ctx, current, overrides)
-			resolution, resolveErr = resolved, err
-			// A refreshed credential is saved even when a later step failed with the abort; without an update the failure ends the transaction unwritten.
-			return updated, nil
-		})
-		if err == nil {
-			err = resolveErr
-		}
-		done <- outcome{resolution, err}
+		resolved, err := p.ResolveAuth(ctx, credentials, overrides)
+		done <- outcome{resolved, err}
 	}()
 	select {
 	case result := <-done:

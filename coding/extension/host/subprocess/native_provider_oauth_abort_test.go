@@ -86,8 +86,8 @@ func TestNativeProviderAuthSavesAnExtensionsRefreshAbortedMidRequest(t *testing.
 	}
 }
 
-// A refresh that the abort beat never starts: no token request is made and the credential is untouched (Pi's signal.throwIfAborted() at the top of the modify callback).
-func TestNativeProviderAuthNeverStartsARefreshTheAbortBeat(t *testing.T) {
+// A caller cancelled before the call starts no refresh: no token request is made and the credential is untouched (resolveProviderAuth's signal.throwIfAborted(), resolve.ts:53). The abort that arrives between the read and the transaction is covered in-process by TestNativeProviderAuthNeverStartsARefreshTheAbortBeatInsideTheTransaction.
+func TestNativeProviderAuthStartsNoRefreshForACallerThatWasAlreadyCancelled(t *testing.T) {
 	services, started := nativeOAuthAbortFixture(t)
 	callCtx, cancelCall := context.WithCancel(t.Context())
 	cancelCall()
