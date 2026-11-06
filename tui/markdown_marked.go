@@ -1450,7 +1450,11 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 			out.WriteString(style.applyText(segment))
 		}
 	}
-	for _, token := range tokens {
+	// pig divergence (D265): after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
+	dropLeadingSpace := false
+	for i, token := range tokens {
+		token = dropsLeadingSpace(token, dropLeadingSpace)
+		dropLeadingSpace = false
 		switch token.kind {
 		case markedLatex:
 			text := token.latex.raw
@@ -1467,7 +1471,11 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 		case markedText, markedImage:
 			applyText(token.text)
 		case markedHTML:
-			applyText(token.raw)
+			if comment, drop := skipsHTMLComment(tokens, i); comment {
+				dropLeadingSpace = drop
+			} else {
+				applyText(token.raw)
+			}
 		case markedStrong:
 			out.WriteString(theme().Bold(m.renderInlineTokensSequential(token.tokens, style)))
 			out.WriteString(style.stylePrefix)

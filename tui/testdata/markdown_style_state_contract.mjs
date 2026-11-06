@@ -2,11 +2,13 @@
 // order) markdown.ts applied the default style and computed its prefix across render, setText and invalidate.
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { piMarkdown } from "./pi_markdown_overlay.mjs";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
 process.env.FORCE_COLOR = "3";
 const load = (p) => import(pathToFileURL(root + p));
-const { Markdown, setCapabilities } = await load("node_modules/@earendil-works/pi-tui/dist/index.js");
+const { Markdown: pinnedMarkdown, setCapabilities } = await load("node_modules/@earendil-works/pi-tui/dist/index.js");
+const Markdown = await piMarkdown(root, pinnedMarkdown);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
