@@ -202,6 +202,8 @@ func TestHandleEventBashExecutionUpdateChangesNothing(t *testing.T) {
 // A real run ends with agent_settled through the owner loop: ctx.shutdown() requested while the run streams ends the session only when the run's
 // settled event is handled.
 func TestHandleEventRunSettledEndsASessionAskedToShutDownDuringTheRun(t *testing.T) {
+	// The shutdown it reaches claims the process-wide ending record.
+	freshEnding(t)
 	m, ctx, _ := newLifecycleMode(t)
 	started := make(chan chan struct{}, 1)
 	m.runTurn(ctx, "", func(context.Context) ([]agent.AgentMessage, error) {

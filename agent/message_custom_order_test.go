@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -86,4 +87,52 @@ func TestAdoptMemberOrderWithoutARecordChangesNothing(t *testing.T) {
 	if got := customOrderJSON(t, m); got != want {
 		t.Fatalf("got %s want %s", got, want)
 	}
+}
+
+// replaceCustomInPlace is what the session does to the message a message_end replacement reaches: the members of the shared object become the
+// replacement's, in its order, in every copy that shares the record.
+func replaceCustomInPlace(target, replacement AgentMessage) {
+	clear(target.Custom)
+	for key, value := range replacement.Custom {
+		target.Custom[key] = value
+	}
+	target.AdoptMemberOrder(replacement)
+}
+
+// message_start carries its own envelope, so a message_end replacement of the message the transcript and message_end share must not reach it: the start
+// copy keeps its members and their order (Pi's replacement reaches the object message_end shares, and a listener of message_start holds a snapshot here).
+func TestStartEventMessageOfACustomMessageKeepsItsMembersAndOrderAcrossAReplacement(t *testing.T) {
+	original := decodeCustom(t, `{"role":"custom","customType":"c","content":"x","display":true,"timestamp":1}`).WithOrderRecord()
+	start := startEventMessage(original)
+	before := customOrderJSON(t, start)
+	replaceCustomInPlace(original, decodeCustom(t, `{"timestamp":2,"display":false,"customType":"c","role":"custom","content":"y"}`))
+	if got := customOrderJSON(t, start); got != before {
+		t.Errorf("the message_start copy after a replacement\n got %s\nwant %s", got, before)
+	}
+	want := `{"timestamp":2,"display":false,"customType":"c","role":"custom","content":"y"}`
+	if got := customOrderJSON(t, original); got != want {
+		t.Errorf("the replaced message\n got %s\nwant %s", got, want)
+	}
+}
+
+// A listener may read the message_start copy while the replacement of the message_end message is adopted; the two share no memory.
+func TestStartEventMessageOfACustomMessageIsRaceFreeWithAReplacement(t *testing.T) {
+	original := decodeCustom(t, `{"role":"custom","customType":"c","content":"x","display":true,"timestamp":1}`).WithOrderRecord()
+	start := startEventMessage(original)
+	replacement := decodeCustom(t, `{"timestamp":2,"display":false,"customType":"c","role":"custom","content":"y"}`)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for range 200 {
+			if _, err := json.Marshal(start); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	for range 200 {
+		original.AdoptMemberOrder(replacement)
+	}
+	wg.Wait()
 }
