@@ -49,6 +49,11 @@ func init() {
 		[]any{[]any{1.0}, []any{1.0}}, []any{nil, nil}, []any{true, 1.0}, []any{map[string]any{}, []any{}}, []any{"a", "a", "b"}, []any{}, []any{"é", "e\u0301"},
 		[]any{[]any{1.0, 2.0}, []any{1.0}, []any{2.0}}, []any{"𝒜", "\uff5e", "\uff5e"}, []any{map[string]any{"\U0001d49c": 1.0, "\uff5e": 2.0}, map[string]any{"\uff5e": 2.0, "\U0001d49c": 1.0}},
 		[]any{1.0, 2.0, 3.0, 1.0, 2.0})
+	// hash.mjs InstanceKeys leaves out the key "constructor", so these objects hash alike.
+	add(`Type.Array(Type.Any(), { uniqueItems: true })`,
+		[]any{map[string]any{}, map[string]any{"constructor": 2.0}, "é"}, []any{map[string]any{"constructor": 1.0}, map[string]any{"constructor": 2.0}},
+		[]any{map[string]any{"a": 1.0, "constructor": 5.0}, map[string]any{"a": 1.0}}, []any{map[string]any{"constructor": map[string]any{"constructor": 1.0}}, map[string]any{}},
+		[]any{map[string]any{"a": 1.0, "constructor": 5.0}, map[string]any{"a": 2.0}})
 	// Value.Clone (system/memory/clone.mjs) leaves out the prototype-pollution keys "__proto__", "constructor" and "prototype", and Clean and Default clone their input.
 	add(`Type.Any()`, map[string]any{"__proto__": 1.0, "constructor": 2.0, "prototype": 3.0, "a": 4.0}, []any{map[string]any{"constructor": map[string]any{"prototype": 1.0, "b": 2.0}}})
 	add(`Type.Array(Type.Any(), { uniqueItems: false })`, []any{1.0, 1.0})
