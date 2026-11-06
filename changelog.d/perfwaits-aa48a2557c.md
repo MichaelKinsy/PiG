@@ -1,0 +1,3 @@
+### Fixed
+
+- A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's output is delivered, and on Linux and macOS an idle command no longer wakes its output readers every 10 ms (Windows still wakes every 10 ms through its finite timeout): the output readers of the bash tool and of `pi.exec` children wait on the runtime's poller, and a `pi.exec` child's stderr reader waits for stdout's delivery on an event. Output order is unchanged (stdout before stderr). Process CPU while a slow consumer held stdout fell from 25-34 ms to 11-14 ms in a 0.5 s run, and from 14-19 ms to 0.5 ms for two idle pipes over 2 s. <!-- fix: aa48a2557c -->

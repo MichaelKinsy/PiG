@@ -3,6 +3,7 @@ package aotruntime
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -436,11 +437,13 @@ func trainRun(ctx context.Context, opts buildOptions, bytecodeHost, orderOut str
 		}()
 		select {
 		case conn := <-accepted:
-			buffer := make([]byte, 64<<10)
-			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-			_, _ = conn.Read(buffer)
-			// A short beat lets the registration finish before the host ends the run.
-			time.Sleep(200 * time.Millisecond)
+			// The extension has finished loading when its whole registration frame has arrived: the host closes the connection on that, with
+			// no wait for what the runtime might still do.
+			if kind, err := readRegistration(conn, time.Now().Add(5*time.Second)); err != nil {
+				_, _ = fmt.Fprintf(log, "train %v: no registration: %v\n", args, err)
+			} else if kind != "register" {
+				_, _ = fmt.Fprintf(log, "train %v: the extension sent a %q frame, not its registration\n", args, kind)
+			}
 			once.Do(func() { _ = conn.Close() })
 		case err := <-exited:
 			return fmt.Errorf("exited before it connected: %w: %s", err, lastLines(stderr.String(), 4))
@@ -458,6 +461,36 @@ func trainRun(ctx context.Context, opts buildOptions, bytecodeHost, orderOut str
 		_, _ = io.WriteString(log, "train stderr: "+lastLines(stderr.String(), 4)+"\n")
 	}
 	return nil
+}
+
+// maxRegistrationFrame bounds the registration frame a training run reads: the host's wire cap on a frame (subprocess.MaxFrameSize).
+const maxRegistrationFrame = 128 << 20
+
+// readRegistration reads the first frame an extension runtime sends on its connection, a 4-byte big-endian length and that many bytes of JSON, and
+// returns the frame's "type": "register" for the registration that declares the extension's tools, commands and handlers.
+func readRegistration(conn net.Conn, deadline time.Time) (kind string, err error) {
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		return "", err
+	}
+	var head [4]byte
+	if _, err := io.ReadFull(conn, head[:]); err != nil {
+		return "", err
+	}
+	size := binary.BigEndian.Uint32(head[:])
+	if size > maxRegistrationFrame {
+		return "", fmt.Errorf("a %d-byte frame exceeds the %d-byte cap", size, maxRegistrationFrame)
+	}
+	var body bytes.Buffer
+	if _, err := io.CopyN(&body, conn, int64(size)); err != nil {
+		return "", err
+	}
+	var envelope struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(body.Bytes(), &envelope); err != nil {
+		return "", err
+	}
+	return envelope.Type, nil
 }
 
 // checkImage verifies the executable maps its compiled image: a build whose image the executable cannot use silently runs from bytecode.

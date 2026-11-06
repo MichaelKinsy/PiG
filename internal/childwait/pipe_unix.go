@@ -34,9 +34,47 @@ func pollPending(file *os.File) bool {
 // pollSupported reports that the kernel answers poll(2) for a pipe.
 const pollSupported = true
 
-// pollReadable waits up to timeoutMS for the read end of a pipe to become readable (bytes, or the end of the stream). closed is true when the kernel says the
-// descriptor is gone, as it does once Wait closed it.
+// pollReadable waits for the read end of a pipe to become readable (bytes, or the end of the stream). closed is true when the kernel says the
+// descriptor is gone, as it does once Wait closed it. A pipe the runtime's poller watches is waited for without a clock: the wait ends when the pipe has
+// something to read or ends, or when it is closed, and timeoutMS does not apply. Any other descriptor is polled for up to timeoutMS.
 func pollReadable(file *os.File, timeoutMS int) (readable, closed bool) {
+	if readable, closed, ok := awaitReadable(file); ok {
+		return readable, closed
+	}
+	return pollReadableTimed(file, timeoutMS)
+}
+
+// awaitReadable waits for the runtime's poller to report the pipe readable. The callback asks the kernel first, so bytes that arrived before the wait
+// began are seen, and again at each wakeup, because the poller reports edges. ok is false where the runtime cannot wait on the descriptor, or the file is
+// closed: pollReadableTimed answers then.
+func awaitReadable(file *os.File) (readable, closed, ok bool) {
+	conn, err := file.SyscallConn()
+	if err != nil {
+		return false, false, false
+	}
+	fds := []unix.PollFd{{Events: unix.POLLIN}}
+	var pollErr error
+	err = conn.Read(func(fd uintptr) bool {
+		fds[0].Fd = int32(fd)
+		fds[0].Revents = 0
+		for {
+			if _, pollErr = unix.Poll(fds, 0); !errors.Is(pollErr, unix.EINTR) {
+				break
+			}
+		}
+		return pollErr != nil || fds[0].Revents != 0
+	})
+	if err != nil || pollErr != nil {
+		return false, false, false
+	}
+	if fds[0].Revents&unix.POLLNVAL != 0 {
+		return false, true, true
+	}
+	return fds[0].Revents&(unix.POLLIN|unix.POLLHUP|unix.POLLERR) != 0, false, true
+}
+
+// pollReadableTimed waits up to timeoutMS for the read end of a pipe to become readable.
+func pollReadableTimed(file *os.File, timeoutMS int) (readable, closed bool) {
 	conn, err := file.SyscallConn()
 	if err != nil {
 		return false, true

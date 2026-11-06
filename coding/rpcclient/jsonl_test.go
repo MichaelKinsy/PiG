@@ -31,7 +31,7 @@ func TestRpcClientReadStdoutDrainsAfterCallbacksStop(t *testing.T) {
 	// Upstream's detach removes listeners without closing or pausing stdout.
 	input := strings.NewReader("{\"type\":\"ready\"}\n{\"type\":\"tick\"}\n{\"type\":\"tick\"}\nunterminated")
 	client := NewRpcClient(RpcClientOptions{})
-	proc := &agentProcess{}
+	proc := &agentProcess{stdoutDone: make(chan struct{})}
 	var got []string
 	client.OnEvent(func(event JsonAgentSessionEvent) {
 		got = append(got, event.Type)
@@ -57,7 +57,7 @@ func TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords(t *tes
 	})
 	input := "not json\n\n{\"type\":\"custom\",\"n\":1}\r\nnull\n{\"type\":\"custom\",\"n\":2}"
 	stdout := io.NopCloser(iotest.OneByteReader(strings.NewReader(input)))
-	client.readStdout(&agentProcess{}, stdout)
+	client.readStdout(&agentProcess{stdoutDone: make(chan struct{})}, stdout)
 
 	want := []string{
 		`custom {"type":"custom","n":1}`,
