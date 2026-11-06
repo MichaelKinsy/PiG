@@ -37,8 +37,50 @@ func TestParseArgsListen(t *testing.T) {
 }
 
 func TestPigCommandsListsListen(t *testing.T) {
-	const line = "  --listen <path>                Serve one RPC session per connection on the Unix socket at path (with --mode rpc)"
+	const line = "  --listen <path>                Serve one RPC session per connection on the Unix socket at path (with --mode rpc);"
 	if !strings.Contains(pigCommands, line) {
 		t.Errorf("pigCommands lacks the --listen help line")
+	}
+}
+
+func TestParseArgsListenShareExtensions(t *testing.T) {
+	cases := []struct {
+		args       []string
+		share      bool
+		diagnostic string
+	}{
+		{[]string{"--mode", "rpc", "--listen", "/tmp/x.sock"}, false, ""},
+		{[]string{"--mode", "rpc", "--listen", "/tmp/x.sock", "--listen-share-extensions"}, true, ""},
+		{[]string{"--listen-share-extensions", "--mode", "rpc", "--listen", "/tmp/x.sock"}, true, ""},
+		{[]string{"--mode", "rpc", "--listen-share-extensions"}, true, "--listen-share-extensions requires --listen"},
+		{[]string{"--listen-share-extensions"}, true, "--listen-share-extensions requires --listen"},
+	}
+	for _, tc := range cases {
+		flags := parseArgs(tc.args)
+		if flags.ListenShareExtensions != tc.share {
+			t.Errorf("%v: ListenShareExtensions = %v, want %v", tc.args, flags.ListenShareExtensions, tc.share)
+		}
+		got := ""
+		for _, d := range flags.Diagnostics {
+			if d.Type == "error" {
+				got = d.Message
+			}
+		}
+		if got != tc.diagnostic {
+			t.Errorf("%v: diagnostic = %q, want %q", tc.args, got, tc.diagnostic)
+		}
+	}
+}
+
+// The help says what the opt-in does and warns where it is used (D232).
+func TestPigCommandsWarnsAboutListenShareExtensions(t *testing.T) {
+	for _, want := range []string{
+		"--listen-share-extensions      With --listen, let the sessions share extension processes. WARNING: module-level",
+		"and package-level extension state is then shared between sessions",
+		"every session has its own extension processes",
+	} {
+		if !strings.Contains(pigCommands, want) {
+			t.Errorf("pigCommands lacks %q", want)
+		}
 	}
 }

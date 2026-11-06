@@ -131,6 +131,8 @@ type Args struct {
 	NoStdin bool
 	// Listen is the Unix socket path --listen serves one RPC session per connection on; pig additive (D232).
 	Listen string
+	// ListenShareExtensions makes the --listen server's sessions share extension processes through one cell registry, so module-level extension state is shared between sessions; without it every session has its own extension processes. pig additive (D232).
+	ListenShareExtensions bool
 	// ProjectTrustOverride controls project-local resource loading for this run.
 	// nil uses saved/default trust; true is --approve; false is --no-approve.
 	ProjectTrustOverride *bool
@@ -366,6 +368,9 @@ func parseArgs(args []string) Args {
 				i++
 				flags.Listen = args[i]
 			}
+		case arg == "--listen-share-extensions":
+			// pig additive (D232): opt in to one extension process per cell for every session of the --listen server.
+			flags.ListenShareExtensions = true
 		case arg == "--approve" || arg == "-a":
 			flags.ProjectTrustOverride = new(true)
 		case arg == "--no-approve" || arg == "-na":
@@ -430,6 +435,9 @@ func parseArgs(args []string) Args {
 			flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen cannot be combined with --continue, --resume, --session, --session-id or --fork"})
 		}
 	}
+	if flags.ListenShareExtensions && flags.Listen == "" {
+		flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen-share-extensions requires --listen"})
+	}
 	return flags
 }
 
@@ -457,7 +465,10 @@ PiG Options:
   --piglet <name|path>           Run the named Piglet, or the Piglet file at path; a Piglet Binary
                                  merges it onto its own Piglet as an extends child unless built with build.closed
   --no-stdin                     Ignore piped stdin (for a stdin pipe that never closes)
-  --listen <path>                Serve one RPC session per connection on the Unix socket at path (with --mode rpc)
+  --listen <path>                Serve one RPC session per connection on the Unix socket at path (with --mode rpc);
+                                 every session has its own extension processes
+  --listen-share-extensions      With --listen, let the sessions share extension processes. WARNING: module-level
+                                 and package-level extension state is then shared between sessions
 
 PiG keeps its configuration in ~/.pig and never reads or writes ~/.pi.
 

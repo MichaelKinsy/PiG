@@ -1196,9 +1196,11 @@ func Main(args []string, options *MainOptions) {
 		},
 	}
 	if flags.Listen != "" {
-		// pig additive (D232): a --listen server's Hosts share cell processes through one registry and build one at a time.
-		builder.cellRegistry = subprocess.NewCellRegistry()
+		// pig additive (D232): a --listen server builds one session at a time. Its Hosts share cell processes through one registry only with --listen-share-extensions; otherwise every session's Host spawns its own, as a process per session would.
 		builder.buildMu = &sync.Mutex{}
+		if flags.ListenShareExtensions {
+			builder.cellRegistry = subprocess.NewCellRegistry()
+		}
 	}
 	startupExtensions := &startupExtensionSet{}
 	stopStartupExtensions = startupExtensions.close
