@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -103,7 +104,7 @@ func TestPigBinaryIsOutsidePIGHome(t *testing.T) {
 // runChild implements the scripted children. "exit-on-stdin" mirrors the
 // upstream child script that exits 43 on its first stdin data. "canned"
 // logs every command line and answers it. "emit" writes a fixed stdout script.
-// "not-reading" keeps stdin open without consuming pipe data. "exit-with-stderr" writes a line to stderr and exits 2.
+// "not-reading" keeps stdin open without consuming pipe data. "exit-with-stderr" writes an event record to stdout and a line to stderr, and exits 2.
 func runChild(mode string) int {
 	switch mode {
 	case "exit-on-stdin":
@@ -112,6 +113,8 @@ func runChild(mode string) int {
 		return 43
 	case "exit-with-stderr":
 		fmt.Fprint(os.Stderr, "child failed loudly\n")
+		// A record large enough that the parent is still reading it when the child's exit is observed.
+		fmt.Fprintf(os.Stdout, "{\"type\":\"custom\",\"pad\":%q}\n", strings.Repeat("x", 8<<20))
 		return 2
 	case "not-reading":
 		time.Sleep(time.Minute)
@@ -535,10 +538,15 @@ func TestRpcClientStartReturnsOnExitWithoutWaitingOutTheWindow(t *testing.T) {
 	t.Cleanup(func() { startSettleDelay = previous })
 	client := NewRpcClient(RpcClientOptions{CliPath: os.Args[0], Env: map[string]string{childModeEnv: "exit-with-stderr"}})
 	t.Cleanup(client.Stop)
+	var events atomic.Int32
+	client.OnEvent(func(JsonAgentSessionEvent) { events.Add(1) })
 	result := make(chan error, 1)
 	go func() { result <- client.Start() }()
 	select {
 	case err := <-result:
+		if got := events.Load(); got != 1 {
+			t.Fatalf("events delivered when Start returned = %d, want the child's stdout record", got)
+		}
 		if err == nil || !strings.HasPrefix(err.Error(), "Agent process exited (code=2 signal=null). Stderr: ") {
 			t.Fatalf("early exit error = %v", err)
 		}

@@ -331,9 +331,7 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	if clear {
 		ui.Clear()
 		ui.Render()
-		// Pi's clearStartupTui waits 25 ms after the clear (cli/startup-ui.ts:118-122), so that the render requestRender queues has drawn. Render
-		// draws before it returns here, so the wait only delays the return, but it is Pi's beat and it follows a confirmed prompt, which is
-		// human-paced: it stays.
+		// upstream: cli/startup-ui.ts:clearStartupTui waits 25 ms after the clear for the render requestRender queued; Render here draws before it returns.
 		time.Sleep(25 * time.Millisecond)
 	}
 	return true, nil

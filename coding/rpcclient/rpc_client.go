@@ -72,6 +72,7 @@ type agentProcess struct {
 	writingStopped bool
 	stopWriting    chan struct{}
 	exited         chan struct{}
+	stdoutDone     chan struct{}
 	stderrDone     chan struct{}
 	exitErr        error
 	stopReading    atomic.Bool
@@ -98,7 +99,7 @@ func NewRpcClient(options RpcClientOptions) *RpcClient {
 }
 
 // Start spawns the agent in RPC mode and reports an exit that happens within upstream's 100ms settle window. The
-// window ends when the child exits (once its stderr is collected) or when it elapses with the child running; the RPC
+// window ends when the child exits (once its stdout records are delivered and its stderr is collected) or when it elapses with the child running; the RPC
 // protocol has no ready record, so a running child cannot be told apart from a slow one earlier.
 func (c *RpcClient) Start() error {
 	c.mu.Lock()
@@ -126,10 +127,14 @@ func (c *RpcClient) Start() error {
 	defer settle.Stop()
 	select {
 	case <-proc.exited:
-		// Upstream reports the error after the window, with the child's stderr already collected: wait for the
-		// stderr reader to finish, within the window.
+		// Upstream reports the error after the window, by which time the child's stdout records have reached the
+		// listeners and its stderr is collected: wait for both readers, within the window.
 		select {
-		case <-proc.stderrDone:
+		case <-proc.stdoutDone:
+			select {
+			case <-proc.stderrDone:
+			case <-settle.C:
+			}
 		case <-settle.C:
 		}
 	case <-settle.C:
@@ -228,6 +233,7 @@ func newAgentProcess(cmd *exec.Cmd, stdin io.WriteCloser, stdout, stderr io.Read
 		writeWake:   make(chan struct{}, 1),
 		stopWriting: make(chan struct{}),
 		exited:      make(chan struct{}),
+		stdoutDone:  make(chan struct{}),
 		stderrDone:  make(chan struct{}),
 	}
 }
@@ -328,6 +334,7 @@ func (c *RpcClient) collectStderr(proc *agentProcess, stderr io.ReadCloser) {
 // one trailing CR is stripped, and a final unterminated record is delivered
 // at end of stream.
 func (c *RpcClient) readStdout(proc *agentProcess, stdout io.ReadCloser) {
+	defer close(proc.stdoutDone)
 	defer func() { _ = stdout.Close() }()
 	_ = ReadJSONLLines(stdout, func(line []byte) bool {
 		if proc.stopReading.Load() {

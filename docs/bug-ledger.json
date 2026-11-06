@@ -5994,6 +5994,28 @@
       ]
     },
     {
+      "id": "BF-2af9ecf",
+      "title": "`RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms…",
+      "symptom": "`RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms settle window: a child that fails at once (a bad flag, a missing file) is reported in about 5 ms, with the same error text and with its stderr already collected.",
+      "rootCause": "Start waited a flat 100 ms after spawn (Pi's rpc-client.ts:133) and then reported an exit that had happened in the window, so a child that failed at once (a bad flag, a missing file) cost the full 100 ms before the caller saw the error.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms settle window: a child that fails at once (a bad flag, a missing file) is reported in about 5 ms, with the same error text and with its stderr already collected. A child that is still running at the end of the window is returned as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2af9ecf583",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/rpcclient/rpc_client_test.go::TestRpcClientStartReturnsOnExitWithoutWaitingOutTheWindow"
+      ]
+    },
+    {
       "id": "BF-2b8731a",
       "title": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example…",
       "symptom": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example `inputLimits.images.resize.maxBytes: 0.5`) is now reported with both errors, `must be integer` and `must be \u003e= 1`, as Pi's TypeBox validation lists them.",
@@ -10648,6 +10670,31 @@
         "coding/mcpext/extension_test.go::TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem",
         "coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle",
         "mcp/client_cursor_test.go::TestToolsAndContentBlocksTrackWhetherTheServerSentATitle"
+      ]
+    },
+    {
+      "id": "BF-471d6fb",
+      "title": "`pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's…",
+      "symptom": "`pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's registration, and no longer closes the training connection in the middle of a registration frame that arrives in more than one piece.",
+      "rootCause": "Measured on xd670 with Pi-Bolt 0.7.4's bun running the runtime's cli.mjs as the training host (one registerCommand, and 3000 of them): trainRun 339 ms and 398 ms before, 150 ms and 197 ms after (6 runs each), host exit status 0 and empty stderr in every run. The compiled host could not be built here (Pi-Bolt's compiler segfaults in the bundle step in the CI container), so the order file a compiled training host writes was not compared.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's registration, and no longer closes the training connection in the middle of a registration frame that arrives in more than one piece.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "471d6fb3bd",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse",
+        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame",
+        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainHostHelper",
+        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration"
       ]
     },
     {
@@ -24477,6 +24524,28 @@
       "tests": []
     },
     {
+      "id": "BF-87faba8",
+      "title": "Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together…",
+      "symptom": "Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together instead of one after another, so each Go extension no longer waits for the previous one to re-read the SDK it replaces: 16 Go extensions hash in 45 ms instead of 170 ms.",
+      "rootCause": "LoadAll and Reload hashed each source-based extension's files one after another before they planned the cells. A Go extension also hashes the SDK it replaces, about 3 MB, once per extension, so N Go extensions cost N serial reads and hashes of the same tree.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together instead of one after another, so each Go extension no longer waits for the previous one to re-read the SDK it replaces: 16 Go extensions hash in 45 ms instead of 170 ms. Load and registration order are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "87faba8e7d",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/content_hash_together_test.go::TestFillContentHashesHashesTheExtensionsTogether"
+      ]
+    },
+    {
       "id": "BF-8894a13",
       "title": "A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a…",
       "symptom": "Each half became U+FFFD.",
@@ -32095,6 +32164,31 @@
       ],
       "tests": [
         "internal/codingagent/tools/edit_diff_test.go::TestEditPrepareArgumentsKeepsMemberOrder"
+      ]
+    },
+    {
+      "id": "BF-aa48a25",
+      "title": "A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's…",
+      "symptom": "A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's output is delivered, and on Linux and macOS an idle command no longer wakes its output readers every 10 ms (Windows still wakes every 10 ms through its finite timeout): the output readers of the bash tool and of `pi.exec` children wait on the runtime's poller, and a `pi.exec` child's stderr reader waits for stdout's delivery on an event.",
+      "rootCause": "the earlier pipe stops holding output only when its own reader delivers or stops, an event the reader never announced, so the later reader had to poll for it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows, macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's output is delivered, and on Linux and macOS an idle command no longer wakes its output readers every 10 ms (Windows still wakes every 10 ms through its finite timeout): the output readers of the bash tool and of `pi.exec` children wait on the runtime's poller, and a `pi.exec` child's stderr reader waits for stdout's delivery on an event. Output order is unchanged (stdout before stderr). Process CPU while a slow consumer held stdout fell from 25-34 ms to 11-14 ms in a 0.5 s run, and from 14-19 ms to 0.5 ms for two idle pipes over 2 s.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aa48a2557c",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/childwait/pipe_unix_test.go::TestAwaitTurnSleepsWhileAnEarlierReaderHoldsOutput",
+        "internal/childwait/pipe_unix_test.go::TestAwaitTurnStopsWhenWaitReleasesThePipes",
+        "internal/childwait/pipe_unix_test.go::TestPipesDeliverStdoutBeforeStderrUnderLoad",
+        "internal/childwait/pipe_unix_test.go::TestPollReadableWaitsForTheWriteOrTheClose"
       ]
     },
     {
