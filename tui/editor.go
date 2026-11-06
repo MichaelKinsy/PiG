@@ -65,10 +65,8 @@ type Editor struct {
 	autocompleteTaskDone   <-chan struct{}
 	autocompleteChanged    func(AutocompleteProvider)
 	asyncCancel            context.CancelFunc
-	// asyncStarted is set once the request asyncCancel cancels has started: it waited out its debounce timer and the request before it, and holds the text it asks about. A request that has not started reads the editor's text when it does. nil for a request of the local file search, which starts at once.
-	asyncStarted *atomic.Bool
 	// pendingFileAnswer is the answer of a file search of an editor with no owner loop, for the caller's goroutine to publish.
-	pendingFileAnswer  atomic.Pointer[func()]
+	pendingFileAnswer  atomic.Pointer[fileAnswer]
 	asyncSeq           uint64
 	scheduleAsyncApply func(func())
 	// pendingAutocompleteApply publishes the latest local suggestion result the host has scheduled but not yet run.
@@ -1432,7 +1430,6 @@ func (e *Editor) refreshAutocomplete() {
 	e.autocompleteMousePressedIndex = nil
 	if e.asyncAutocomplete != nil {
 		if natural, _ := e.naturalAsyncAutocomplete(); !natural {
-			e.supersedeStartedAutocomplete()
 			return
 		}
 		e.autocompleteRequestID++
@@ -1440,7 +1437,6 @@ func (e *Editor) refreshAutocomplete() {
 		return
 	}
 	if !e.AutocompleteOpen() && !e.naturalAutocompleteContext() {
-		e.supersedeStartedAutocomplete()
 		return
 	}
 	e.autocompleteRequestID++
@@ -1554,9 +1550,6 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 	schedule := e.scheduleAsyncApply
 	waits := strings.HasPrefix(filePrefix, "@")
 	startsOnLoop := waits && schedule != nil
-	started := new(atomic.Bool)
-	started.Store(!startsOnLoop)
-	e.asyncStarted = started
 	lines, cursor, request := slices.Clone(e.lines), e.cursor, e.autocompleteRequestID
 	provider := e.autocomplete
 	// publish applies a search's answer; it reads the editor, so it runs only where the editor may be read.
@@ -1604,7 +1597,6 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 				if ctx.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.autocomplete != provider || e.IsBashMode() {
 					return
 				}
-				started.Store(true)
 				lines, cursor = slices.Clone(e.lines), e.cursor
 				view, row, col := e.autocompleteView()
 				var run func(context.Context) []AutocompleteItem
@@ -1629,18 +1621,37 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 			return
 		}
 		if schedule == nil {
-			answer := func() { publish(items) }
-			e.pendingFileAnswer.Store(&answer)
+			e.offerFileAnswer(&fileAnswer{sequence: sequence, publish: func() { publish(items) }})
 			return
 		}
 		schedule(func() { publish(items) })
 	}()
 }
 
+// A fileAnswer is the answer of the file search made as search number sequence.
+type fileAnswer struct {
+	sequence uint64
+	publish  func()
+}
+
+// offerFileAnswer leaves a worker's answer in the mailbox unless it holds the answer of a later search: a worker that was cancelled after it passed its checks, and stalled, must
+// never replace the answer of the search that superseded it.
+func (e *Editor) offerFileAnswer(answer *fileAnswer) {
+	for {
+		held := e.pendingFileAnswer.Load()
+		if held != nil && held.sequence > answer.sequence {
+			return
+		}
+		if e.pendingFileAnswer.CompareAndSwap(held, answer) {
+			return
+		}
+	}
+}
+
 // applyPendingFileAnswer publishes the answer a search of an editor with no owner loop left in its mailbox. It runs on the caller's goroutine, at the start of a key and of a render.
 func (e *Editor) applyPendingFileAnswer() {
 	if answer := e.pendingFileAnswer.Swap(nil); answer != nil {
-		(*answer)()
+		answer.publish()
 	}
 }
 
@@ -2037,24 +2048,8 @@ func (e *Editor) refreshAutocompleteAfterTyping(char string) {
 		e.refreshAutocomplete()
 		return
 	}
+	// editor.ts touches no request here: one that has not started starts against the text current then, and one that started finishes and its answer is dropped as stale (its snapshot of the text no longer matches).
 	e.autocompleteMousePressedIndex = nil
-	e.supersedeStartedAutocomplete()
-}
-
-// supersedeStartedAutocomplete is what a key that makes no request does to the request in flight. editor.ts touches none: a request that has not started (queued behind an
-// earlier one, waiting out its 20 ms debounce, or made earlier in the terminal read) starts against the text current then, and the answer of one that started is dropped as
-// stale once the text moved on. The started one is cancelled here instead of run to its end; its answer is dropped either way.
-func (e *Editor) supersedeStartedAutocomplete() {
-	if e.asyncCancel == nil || e.asyncStarted != nil && !e.asyncStarted.Load() {
-		return
-	}
-	e.autocompleteRequestID++
-	if e.asyncAutocomplete != nil {
-		e.AutocompleteCancel()
-		return
-	}
-	e.asyncCancel()
-	e.asyncCancel = nil
 }
 
 // typedCharacterOpensAutocomplete is the closed-popup branch of editor.ts insertCharacter: the first of its three conditions that char meets decides.

@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -217,8 +216,6 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 		cancel()
 	}
 	e.asyncCancel = cancel
-	started := new(atomic.Bool)
-	e.asyncStarted = started
 	lines, cursor, request := slices.Clone(e.lines), e.cursor, e.autocompleteRequestID
 	queryLines, queryRow, queryCol := e.autocompleteView()
 	queryLines = slices.Clone(queryLines)
@@ -237,9 +234,6 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 	}
 	// A request behind an unfinished one, and a debounced one, start later than they were made, against the text current then.
 	waits := timer != nil || !closedSignal(previous)
-	if !waits {
-		started.Store(true)
-	}
 	// the extension provider chain's request holds the host's next read until the chain settles or announces that it awaits I/O. A
 	// request behind an unfinished one, and a debounced one, cannot settle in the checkpoint after the read: neither holds.
 	runCtx, endHold := ctx, func() {}
@@ -282,7 +276,6 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 						taken <- snapshot{}
 						return
 					}
-					started.Store(true)
 					view, row, col := e.autocompleteView()
 					taken <- snapshot{true, slices.Clone(e.lines), e.cursor, slices.Clone(view), row, col}
 				})
