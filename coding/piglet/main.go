@@ -1201,8 +1201,8 @@ func cmdAddHuman(args []string, allowInstallScripts bool, stdout, stderr io.Writ
 		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	destination := filepath.Join(pigletsDir, candidate.piglet.Name+".yaml")
 	if candidate.origin != nil {
-		destination := filepath.Join(pigletsDir, candidate.piglet.Name+".yaml")
 		if _, err := os.Stat(destination); err == nil {
 			_, _ = fmt.Fprintf(stderr, "error: Piglet %q source is already installed; run `pig piglet remove %s --source` before adding a replacement\n", candidate.piglet.Name, candidate.piglet.Name)
 			return 1
@@ -1211,11 +1211,21 @@ func cmdAddHuman(args []string, allowInstallScripts bool, stdout, stderr io.Writ
 			return 1
 		}
 	}
+	// An origin record whose YAML is gone belongs to no registered Piglet, and `piglet remove` has nothing to act on. A remote add would conflict with it (the record carries its add time), and a local add would succeed beside a record that no longer matches its YAML and breaks the inventory, so name the file before add reclaims or writes anything.
+	if _, err := os.Stat(destination); os.IsNotExist(err) {
+		if originPath := originPathForPiglet(destination); fileExists(originPath) {
+			_, _ = fmt.Fprintf(stderr, "error: %s is the origin record of a Piglet whose source is gone, so no registered Piglet owns it and PiG will not delete it; delete that file yourself and add again\n", originPath)
+			return 1
+		}
+	}
+	if err := reclaimOrphanedPigletCopies(pigletsDir, destination, stdout); err != nil {
+		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
 	if err := commitPigletAddFiles(candidate.files, candidate.modes); err != nil {
 		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	destination := filepath.Join(pigletsDir, candidate.piglet.Name+".yaml")
 	_, _ = fmt.Fprintf(stdout, "Added %s (%d extensions, %d skills) → %s\n",
 		candidate.piglet.Name, candidate.extensionCount, candidate.skillCount, destination)
 	return 0
@@ -1276,6 +1286,7 @@ func planPigletAdd(source resolvedPigletAddSource, pigletsDir string) (pigletAdd
 	if p.SystemPrompt != nil {
 		refs = append(refs, *p.SystemPrompt)
 	}
+	copies := pigletCopies{Files: map[string]string{}}
 	for i, ref := range refs {
 		if ref.File == "" {
 			continue
@@ -1284,11 +1295,31 @@ func planPigletAdd(source resolvedPigletAddSource, pigletsDir string) (pigletAdd
 		if err != nil {
 			return pigletAddCandidate{}, fmt.Errorf("prompt file %d %q: %w", i, ref.File, err)
 		}
+		recorded := filepath.ToSlash(relative)
+		if err := validCopiedPath(recorded); err != nil {
+			return pigletAddCandidate{}, fmt.Errorf("prompt file %d %q: cannot copy it into the Piglet directory: %w", i, ref.File, err)
+		}
 		target := filepath.Join(pigletsDir, relative)
-		if previous, exists := files[target]; exists && !bytes.Equal(previous, data) {
+		previous, registrationFile := files[target]
+		if registrationFile && !bytes.Equal(previous, data) {
 			return pigletAddCandidate{}, fmt.Errorf("prompt file %q conflicts with destination %s", ref.File, target)
 		}
 		files[target] = data
+		// A prompt that names the registered YAML or origin record is not a separate copy, and remove deletes those itself.
+		if !registrationFile {
+			copies.Files[recorded] = digestPigletData(data)
+		}
+	}
+	if len(copies.Files) > 0 {
+		recordTarget := filepath.Join(pigletsDir, p.Name+".files.json")
+		if _, exists := files[recordTarget]; exists {
+			return pigletAddCandidate{}, fmt.Errorf("prompt file conflicts with the copied-file record %s", recordTarget)
+		}
+		recordData, err := marshalPigletCopies(copies)
+		if err != nil {
+			return pigletAddCandidate{}, err
+		}
+		files[recordTarget] = recordData
 	}
 	return pigletAddCandidate{
 		piglet: p, origin: origin, extensionCount: len(resolvedExtensions), skillCount: len(resolvedSkills), files: files,
@@ -1386,7 +1417,7 @@ func commitPigletAddFiles(files map[string][]byte, modes map[string]os.FileMode)
 		}
 		if existing, err := os.ReadFile(target); err == nil {
 			if !bytes.Equal(existing, files[target]) {
-				return fmt.Errorf("destination %s already exists with different content; remove it explicitly before replacing", target)
+				return fmt.Errorf("destination %s already exists with different content: %s", target, explainPigletDestinationConflict(codingagent.PigletsDir(), target))
 			}
 			delete(files, target)
 		} else if !os.IsNotExist(err) {
@@ -1547,6 +1578,7 @@ func cmdRemoveHuman(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	removals := make([]pigletFacetRemoval, 0, 1+len(records)*2)
+	var keptCopies []string
 	if removeSource {
 		removals = append(removals, pigletFacetRemoval{path: sourceInfo.Path, label: "source"})
 		origin, err := readPigletOrigin(sourceInfo.Path)
@@ -1567,6 +1599,14 @@ func cmdRemoveHuman(args []string, stdout, stderr io.Writer) int {
 			_, _ = fmt.Fprintf(stderr, "error: inspect Piglet origin %s: %v\n", originPath, err)
 			return 1
 		}
+		// pig additive (D18): source removal also owns the files `piglet add` copied for this registration, unless another registration uses them or they changed since.
+		copied, err := planPigletCopiedFiles(sourceInfo.Path)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		removals = append(removals, copied.removals...)
+		keptCopies = copied.kept
 	}
 	if removeBinary {
 		artifacts := make(map[string]struct{}, len(records))
@@ -1597,9 +1637,7 @@ func cmdRemoveHuman(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	for _, removal := range removals {
-		_, _ = fmt.Fprintf(stdout, "removed %s: %s\n", removal.label, removal.path)
-	}
+	reportPigletRemovals(codingagent.PigletsDir(), removals, keptCopies, stdout)
 	if removeSource {
 		pruneEmptyRecordDirs(filepath.Join(codingagent.PigletsDir(), name+".source"))
 	}

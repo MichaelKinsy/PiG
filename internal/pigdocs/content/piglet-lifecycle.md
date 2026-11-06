@@ -21,7 +21,7 @@ author -> validate -> run -> inspect -> register -> build -> sign and verify -> 
 | 2. Validate | `pig piglet validate <name\|path>` | Nothing. | No record. |
 | 3. Run | `pig --piglet <name\|path>` | Nothing on disk, except the Session you create. | No record. |
 | 4. Inspect | `pig piglet show <name\|path>` | Nothing. | Lists the records that exist. |
-| 5. Register | `pig piglet add <path\|npm:ref\|git:ref>` | Copies the file into `~/.pig/piglets/`. A remote source also writes `<name>.origin.json`. | The origin file records the source, the resolved version and the digest. |
+| 5. Register | `pig piglet add <path\|npm:ref\|git:ref>`, `pig piglet remove <name> --source` | Add copies the file and its relative prompt file into `~/.pig/piglets/`. A remote source also writes `<name>.origin.json`. Remove deletes them again; see [Replace or remove a registered source Piglet](#replace-or-remove-a-registered-source-piglet). | The origin file records the source, the resolved version and the digest. `<name>.files.json` records each copied file and its digest. |
 | 6. Build | `pig piglet build <name> --format script\|binary --out <path>` | Writes the script or the Binary. | A Binary writes a record. A script writes none. |
 | 7. Sign and verify | `pig piglet keygen`, `build --sign-key`, `pig piglet verify` | Adds a signature to the Binary. | The signature covers the record. |
 | 8. Publish | `pig piglet publish <name\|path> --to github\|npm` | Creates a GitHub Release or an npm package. A dry run changes nothing. | Writes a publication receipt. |
@@ -122,6 +122,34 @@ pig piglet add git:https://github.com/acme/review.git@v2.0.0
 ```
 
 A remote source writes `<name>.origin.json` next to the Piglet. The file records the exact version or commit and the digest. See [Validate and register](piglets.md#commands).
+
+### Replace or remove a registered source Piglet
+
+`pig piglet add` copies the Piglet YAML and the relative file its `systemPrompt.file` names, if it names one, into `~/.pig/piglets/`. When it copies a prompt file, it also writes `<name>.files.json` next to the YAML. The record lists each copied prompt file by its path under `~/.pig/piglets/` and its SHA-256 digest. Add never overwrites a file, so an edited Piglet replaces the registered one in two commands:
+
+```bash
+pig piglet remove reviewer --source
+pig piglet add ./reviewer.yaml
+```
+
+`remove --source` deletes the registered YAML, its `<name>.origin.json` and `<name>.files.json` records, and each file the copied-file record lists. It keeps a recorded file, and says so, when:
+
+- another registered Piglet lists or references the file (two Piglets can share one prompt), or
+- its content no longer matches the recorded digest, which means you edited the copy.
+
+```text
+removed source: ~/.pig/piglets/reviewer.yaml
+removed copied file: ~/.pig/piglets/prompt.md
+removed copied-file record: ~/.pig/piglets/reviewer.files.json
+```
+
+```text
+kept ~/.pig/piglets/prompt.md: Piglet security-reviewer also uses it
+```
+
+Two Piglets can share a copied prompt only while the source files have the same content. A second Piglet whose prompt has the same relative path and different content fails with the name of the Piglet that owns the file. If the YAML was deleted by hand but `<name>.files.json` remains, `pig piglet add` of the same name deletes the files that record owns, under the same rules, before it adds. `pig piglet remove` cannot act on a Piglet whose YAML is gone, so a leftover `<name>.origin.json` makes any `add` of that name fail before it changes anything and name that file; delete it yourself and add again.
+
+PiG 0.7.0 and earlier did not record copied files. A prompt copied by those versions stays after `remove --source`, and `add` refuses to replace it with `no registered Piglet copied it`. Delete that file yourself after you check that no other Piglet uses it, or give the new Piglet a different relative prompt path. If the Piglet is still registered and its source is unchanged, `pig piglet add` of that source again records the copy, and `remove --source` then deletes it. `pig piglet update` never refreshes a registered source Piglet; it updates a signed Binary.
 
 ## 6. Build
 

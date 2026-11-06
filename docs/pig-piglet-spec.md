@@ -184,6 +184,8 @@ pig piglet add <path|npm:ref|git:ref>
 
 `piglet add` validates one Piglet and its portable closure, then copies them without replacement into `~/.pig/piglets/`. An npm or Git source is materialized without changing Package settings and retains an adjacent origin record with its exact version or commit. The original source, shell state, Sessions, and artifact inventory remain unchanged. Editing means editing the YAML source directly.
 
+For a local source or an npm or Git source that is not copied as a subdirectory closure, `piglet add` writes `<name>.files.json` next to the registered YAML when it copies a `systemPrompt.file`. It records each copied prompt file by its slash-separated path under `~/.pig/piglets/` and its SHA-256 digest, with no format version. `piglet remove <name> --source` deletes the YAML, the origin record, the copied-file record, and each recorded file that no other registered Piglet lists in its record or references as `systemPrompt.file` and whose content still matches its recorded digest; every other recorded file stays and is reported with the reason. A leftover copied-file record whose YAML is gone lets `piglet add` of the same name replace its digest-matching files under the same rules. A file with no record is never deleted or overwritten: `add` fails and names the next step. A registration made before the record existed gets one when `add` is run again on its unchanged source while it is still registered. Replacing a registered source Piglet is `piglet remove <name> --source` followed by `piglet add`.
+
 A product may register a contributed Piglet source resolver. Catalog refs work only while that product resolver is installed.
 
 ### npm and Git Piglet registration
