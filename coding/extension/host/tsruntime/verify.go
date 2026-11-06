@@ -2,8 +2,6 @@ package tsruntime
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -21,9 +19,14 @@ import (
 const probeTimeout = 10 * time.Second
 
 // Verifier checks slot executables against their manifests and the lock, once per executable state for the life of the process.
+// Across processes, an executable whose file identity is unchanged since a passing check is not hashed again (see digestcache.go).
 type Verifier struct {
 	lock  []LockEntry
 	probe func(ctx context.Context, executable string) (string, error)
+	// sum hashes an executable; settled reports whether a file's identity is old enough to be recorded. Tests replace them to count
+	// hashes and to fix the moment the settle window is measured at.
+	sum     func(io.Reader) (string, error)
+	settled func(fileIdentity) bool
 
 	mu   sync.Mutex
 	done map[verifyKey]verifyResult
@@ -45,7 +48,7 @@ type verifyResult struct {
 
 // NewVerifier returns a verifier over the given lock that starts each executable with --version.
 func NewVerifier(lock []LockEntry) *Verifier {
-	return &Verifier{lock: lock, probe: probeVersion, done: map[verifyKey]verifyResult{}}
+	return &Verifier{lock: lock, probe: probeVersion, sum: sumSHA256, settled: func(i fileIdentity) bool { return i.settledAt(time.Now()) }, done: map[verifyKey]verifyResult{}}
 }
 
 // Verify checks that executable has the manifest's digest, that a Bun executable is in the lock, and that the executable starts
@@ -76,12 +79,9 @@ func (v *Verifier) verify(ctx context.Context, m Manifest, executable, digest st
 	if m.Kind == KindBun && !locked(v.lock, "bun", m.Version, m.Platform, digest) {
 		return ReasonVerifyFailed, fmt.Errorf("bun %s for %s with digest %s is not in the runtime lock", m.Version, m.Platform, digest)
 	}
-	actual, err := fileDigest(executable)
-	if err != nil {
+	// pig additive (D19): an unchanged executable skips the hash; the digest comparison, the lock check above and the probe below still run.
+	if err := v.checkDigest(executable, digest); err != nil {
 		return ReasonVerifyFailed, err
-	}
-	if actual != digest {
-		return ReasonVerifyFailed, fmt.Errorf("digest %s, manifest says %s", actual, digest)
 	}
 	version, err := v.probe(ctx, executable)
 	if err != nil {
@@ -91,19 +91,6 @@ func (v *Verifier) verify(ctx context.Context, m Manifest, executable, digest st
 		return ReasonStartFailed, fmt.Errorf("--version printed %q, manifest says %q", version, m.Version)
 	}
 	return "", nil
-}
-
-func fileDigest(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	hash := sha256.New()
-	_, copyErr := io.Copy(hash, file)
-	if err := errors.Join(copyErr, file.Close()); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func probeVersion(ctx context.Context, executable string) (string, error) {
