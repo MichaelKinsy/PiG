@@ -228,7 +228,7 @@ Some actions use a different key on each platform, because the terminal or the o
 
 | Action | macOS | Linux | WSL | Windows |
 |---|---|---|---|---|
-| `app.clipboard.pasteImage` | `ctrl+v` | `ctrl+v` | `alt+v`, `ctrl+v` | `alt+v`, `ctrl+v` |
+| `app.clipboard.pasteImage` | `ctrl+v` | `ctrl+v` | `alt+v, ctrl+v` | `alt+v, ctrl+v` |
 | `app.suspend` | `ctrl+z` | `ctrl+z` | `ctrl+z` | none |
 | `app.message.dequeue` | `alt+up` | `alt+up` | `alt+q` | `alt+q` |
 | `app.message.followUp` | `alt+enter` | `alt+enter` | `ctrl+q` | `ctrl+q` |
