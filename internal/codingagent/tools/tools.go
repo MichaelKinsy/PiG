@@ -25,7 +25,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/truncate"
 )
 
@@ -38,15 +37,21 @@ const (
 type systemToolConfig struct {
 	BinaryName        string
 	SystemBinaryNames []string
+	// VersionPrefixes are the starts of "<bin> --version" stdout that identify
+	// the tool; a system binary that prints anything else is another program.
+	VersionPrefixes []string
 }
 
 var systemToolConfigs = map[string]systemToolConfig{
 	"fd": {
 		BinaryName:        "fd",
 		SystemBinaryNames: []string{"fd", "fdfind"},
+		// Debian installs sharkdp's fd as fdfind, which prints "fdfind 10.3.0".
+		VersionPrefixes: []string{"fd ", "fdfind "},
 	},
 	"rg": {
-		BinaryName: "rg",
+		BinaryName:      "rg",
+		VersionPrefixes: []string{"ripgrep "},
 	},
 }
 
@@ -65,9 +70,12 @@ func lookupSystemToolPath(tool string) string {
 //  1. agentBinDir (if non-empty): the auto-install location used by
 //     ToolsManager.downloadTool.
 //  2. systemBinaryNames (fd has "fdfind" fallback for Debian/Ubuntu) that
-//     upstream's commandExists can spawn: nodespawn.LookPath, which on
-//     Windows finds only a .com or .exe file, from the working directory
-//     first unless NoDefaultCurrentDirectoryInExePath is set.
+//     nodespawn.LookPath finds (on Windows only a .com or .exe file, from the
+//     working directory first unless NoDefaultCurrentDirectoryInExePath is
+//     set) and that identify themselves: "<bin> --version" must exit 0 with
+//     stdout starting with the tool's version prefix. Upstream's
+//     commandExists accepts any spawnable program, so Debian's FDclone passed
+//     as fd; PiG skips it and tries the next name.
 //
 // Returns "" if nothing is found. On Windows, returns the bare command
 // name, as upstream's getToolPath does.
@@ -86,15 +94,7 @@ func LookupToolPath(tool, agentBinDir string) string {
 			return local
 		}
 	}
-	for _, name := range systemBinaryNames(config) {
-		if path, err := nodespawn.LookPath(name, "", nil); err == nil {
-			if runtime.GOOS == "windows" {
-				return name
-			}
-			return path
-		}
-	}
-	return ""
+	return systemToolPath(tool, config)
 }
 
 // builtinToolNames mirrors upstream allToolNames (tools/index.ts): every

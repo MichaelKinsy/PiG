@@ -567,6 +567,8 @@ func (p *CombinedProvider) walkDirectoryWithFd(ctx context.Context, baseDir, que
 
 	//nolint:gosec // G204 (class b): program is the fd that PiG resolved; args are fixed flags plus the path query the user typed after @, which fd reads as a pattern, with no -- as in Pi's autocomplete.ts.
 	cmd := exec.CommandContext(ctx, p.fdPath, args...)
+	// Backstop: a program that is not the real fd cannot take over the terminal.
+	nodespawn.DetachFromTerminal(cmd)
 	// Upstream's spawn finds fd with libuv's search on Windows.
 	nodespawn.SetProgram(cmd)
 	out, err := cmd.Output()

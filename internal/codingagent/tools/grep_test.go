@@ -53,6 +53,10 @@ func TestGrepLiteralPatternStartingWithDash(t *testing.T) {
 	}
 	fakeRG := filepath.Join(fakeBin, "rg")
 	script := `#!/bin/sh
+	if [ "$1" = "--version" ]; then
+		echo "ripgrep 14.1.0"
+		exit 0
+	fi
 	pattern=""
 	search=""
 	seen_sep=0
