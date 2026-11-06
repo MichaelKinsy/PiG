@@ -98,12 +98,36 @@ func TestTrainHostHelper(t *testing.T) {
 // A training run closes the extension's connection when its registration has arrived whole. A host that closed on the first bytes it read would cut the
 // registration of a runtime that sends it in parts.
 func TestTrainRunEndsOnTheWholeRegistration(t *testing.T) {
-	// A short directory: the training socket's path must fit a Unix socket address.
 	dir, err := os.MkdirTemp("", "aot")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	trainRunEndsOnTheWholeRegistration(t, dir, dir)
+}
+
+// The work directory of a build is deep under the agent directory, so its path can exceed what a Unix socket address holds (108 bytes on Linux). The
+// training run's socket must not depend on it: before the socket moved to a short directory of its own, every training run of such a build failed to
+// listen ("bind: invalid argument"), was logged, and left the build's function order without any extension's startup.
+func TestTrainRunWorksUnderAWorkDirectoryTooLongForASocket(t *testing.T) {
+	dir, err := os.MkdirTemp("", "aot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	work := dir
+	for len(work) < 200 {
+		work = filepath.Join(work, "deep-work-directory")
+	}
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	trainRunEndsOnTheWholeRegistration(t, dir, work)
+}
+
+// trainRunEndsOnTheWholeRegistration runs the two-part-registration host from dir with workDir as the build's work directory.
+func trainRunEndsOnTheWholeRegistration(t *testing.T, dir, workDir string) {
+	t.Helper()
 	self, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +139,7 @@ func TestTrainRunEndsOnTheWholeRegistration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var log strings.Builder
-	if err := trainRun(context.Background(), buildOptions{WorkDir: dir}, host, filepath.Join(dir, "order"), []string{"cli", "ext.mjs"}, 30*time.Second, &log); err != nil {
+	if err := trainRun(context.Background(), buildOptions{WorkDir: workDir}, host, filepath.Join(dir, "order"), []string{"cli", "ext.mjs"}, 30*time.Second, &log); err != nil {
 		t.Fatalf("trainRun = %v\n%s", err, log.String())
 	}
 	got, err := os.ReadFile(result)

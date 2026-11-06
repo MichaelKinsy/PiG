@@ -83,15 +83,15 @@ func newE2E(t *testing.T) *e2e {
 	return e
 }
 
-// writeExtension writes the probe extension. version appears in /probe's answer, so a test can tell which source ran. nodeOnly makes the factory use an API that
-// Bun and the compiled host lack and Node has.
+// writeExtension writes the probe extension. version appears in /probe's answer, so a test can tell which source ran. nodeOnly makes the module call, while it evaluates, an API that
+// Bun and the compiled host lack and Node has. It is not in the factory: a factory that threw has run, so its error is final on every runtime (isStartFailure).
 func (e *e2e) writeExtension(version string, nodeOnly bool) string {
 	e.t.Helper()
 	source := `import v8 from "node:v8";
 const VERSION = ` + fmt.Sprintf("%q", version) + `;
-export default function (pi: any) {
-` + map[bool]string{true: `  new v8.Serializer(); // Node has it; Bun's stub throws "not yet implemented"
-`, false: ""}[nodeOnly] + `  pi.registerCommand("probe", { description: "probe", handler: async (_args: string, ctx: any) => {
+` + map[bool]string{true: `new v8.Serializer(); // Node has it; Bun's stub throws "not yet implemented" while the module evaluates
+`, false: ""}[nodeOnly] + `export default function (pi: any) {
+  pi.registerCommand("probe", { description: "probe", handler: async (_args: string, ctx: any) => {
     ctx.ui.notify("PROBE:" + JSON.stringify({ version: VERSION, pid: process.pid, execPath: process.execPath, bun: typeof (globalThis as any).Bun !== "undefined", nodeVersion: process.version, release: process.release?.name, argv0: process.argv[0], title: process.title }), "info");
   } });
   pi.registerCommand("doreload", { description: "reload", handler: async (_args: string, ctx: any) => { await ctx.reload(); } });

@@ -405,9 +405,14 @@ func trainRun(ctx context.Context, opts buildOptions, bytecodeHost, orderOut str
 	env := compilerEnv(opts, "BUN_BYTECODE_ORDER_OUT="+orderOut, "PIG_EXT_NAME=train", "PIG_EXT_CWD="+cwd, "PIG_TS_RUNTIME_TREE="+opts.Request.RuntimeTree)
 	var listener net.Listener
 	if args[0] == "cli" {
-		sock := filepath.Join(opts.WorkDir, "train.sock")
-		_ = os.Remove(sock)
-		var err error
+		// A Unix socket address holds about 104 bytes of path (sun_path: 108 on Linux, 104 on macOS) and a work directory under a deep agent
+		// directory is longer, so the socket lives in a short directory of its own, not in the work directory.
+		socketDir, err := os.MkdirTemp("", "pbt")
+		if err != nil {
+			return err
+		}
+		defer func() { _ = os.RemoveAll(socketDir) }()
+		sock := filepath.Join(socketDir, "s")
 		if listener, err = net.Listen("unix", sock); err != nil {
 			return err
 		}
