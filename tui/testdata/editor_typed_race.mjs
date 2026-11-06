@@ -1,5 +1,32 @@
 // Drive the installed pi-tui Editor with keys typed without letting them settle (one event-loop turn apart, with pauses where a probe has them) and a provider that records every query it receives, optionally slow; log the queries, the text and the rows once everything settled. Never a translated oracle.
 import { readFileSync, realpathSync } from "node:fs";
+// Time is a manual clock: Pi's editor arms its debounce with setTimeout, and the probe's providers wait with it too. A timer runs only when advance() passes it, in order of its time, with every promise job settled between
+// timers, so no probe depends on how fast the machine is. Real setImmediate is the checkpoint after a key (the end of the terminal read), where promise jobs run but no timer does.
+const realSetImmediate = globalThis.setImmediate;
+const timers = new Map();
+let clock = 0;
+let timerSeq = 0;
+globalThis.setTimeout = (callback, ms = 0, ...args) => {
+  const timer = { id: ++timerSeq, at: clock + Math.max(0, Number(ms) || 0), callback, args };
+  timers.set(timer.id, timer);
+  return timer;
+};
+globalThis.clearTimeout = (timer) => { if (timer) timers.delete(timer.id); };
+const settle = async () => { for (let i = 0; i < 3; i++) await new Promise((resolve) => realSetImmediate(resolve)); };
+const advance = async (ms) => {
+  const end = clock + ms;
+  for (;;) {
+    await settle();
+    let next;
+    for (const timer of timers.values()) if (timer.at <= end && (!next || timer.at < next.at || (timer.at === next.at && timer.id < next.id))) next = timer;
+    if (!next) break;
+    timers.delete(next.id);
+    clock = next.at;
+    next.callback(...next.args);
+  }
+  clock = end;
+  await settle();
+};
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";
 if (JSON.parse(readFileSync(root + "package.json", "utf8")).version !== process.argv[2]) throw new Error("Wrong Pi oracle version");
@@ -11,8 +38,6 @@ const { initTheme, getEditorTheme } = await load("dist/modes/interactive/theme/t
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
-const turn = () => new Promise((resolve) => setImmediate(resolve));
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const SLOW_MS = 40;
 // probe.slow: 0 answers at once, 1 answers after SLOW_MS and stops early when the request is aborted, 2 answers after SLOW_MS whatever happens to the request.
 const pause = (ms, signal) => new Promise((resolve) => {
@@ -42,16 +67,21 @@ const answer = (before) => {
 setCapabilities({ images: null, trueColor: true, hyperlinks: false });
 initTheme("dark");
 setKeybindings(new KeybindingsManager({}));
-// A probe whose timing the machine disturbed (a pause that ran long, keys that took longer than the debounce) is run again: the log is only comparable when the keys were as close as the probe says.
-const attempt = async (probe) => {
+const run = async (probe) => {
+  timers.clear();
   const queries = [];
+  // aborted[i] is whether the signal of the request that asked queries[i] was aborted when the provider finished.
+  const aborted = [];
   const provider = {
     triggerCharacters: ["$"],
     getSuggestions: async (lines, cursorLine, cursorCol, options) => {
-      queries.push(lines[cursorLine].slice(0, cursorCol));
+      const before = lines[cursorLine].slice(0, cursorCol);
+      const index = queries.push(before) - 1;
+      aborted[index] = false;
       if (probe.slow === 1) await pause(SLOW_MS, options.signal);
       else if (probe.slow === 2) await pause(SLOW_MS);
-      return answer(lines[cursorLine].slice(0, cursorCol));
+      aborted[index] = options.signal.aborted;
+      return answer(before);
     },
     applyCompletion: (lines, cursorLine, cursorCol) => ({ lines, cursorLine, cursorCol }),
   };
@@ -59,30 +89,16 @@ const attempt = async (probe) => {
   const editor = new Editor(tui, getEditorTheme(), { paddingX: 0, autocompleteMaxVisible: 5 });
   editor.focused = true;
   editor.setAutocompleteProvider(provider);
-  let disturbed = false;
   for (const op of probe.ops) {
-    const start = performance.now();
-    if (op.sleep) {
-      await sleep(op.sleep);
-      if (performance.now() - start > op.sleep + 6) disturbed = true;
-    } else {
+    if (op.sleep) await advance(op.sleep);
+    else {
       for (const keys of op.keys) editor.handleInput(keys);
-      await turn();
-      if (performance.now() - start > 6) disturbed = true;
+      await settle();
     }
   }
-  await sleep(200);
-  for (let i = 0; i < 4; i++) await turn();
-  return { disturbed, log: { queries, text: editor.getText(), cursor: editor.getCursor(), rows: editor.render(40) } };
+  await advance(200);
+  return { queries, aborted, text: editor.getText(), cursor: editor.getCursor(), rows: editor.render(40) };
 };
 const results = [];
-for (const probe of JSON.parse(input)) {
-  let result;
-  for (let tries = 0; tries < 100; tries++) {
-    result = await attempt(probe);
-    if (!result.disturbed) break;
-  }
-  if (result.disturbed) throw new Error("could not run a probe undisturbed: " + JSON.stringify(probe));
-  results.push(result.log);
-}
+for (const probe of JSON.parse(input)) results.push(await run(probe));
 process.stdout.write(JSON.stringify(results), () => process.exit(0));

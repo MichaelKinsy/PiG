@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -35,7 +34,9 @@ type raceProbe struct {
 
 type raceLog struct {
 	Queries []string `json:"queries"`
-	Text    string   `json:"text"`
+	// Aborted[i] is whether the signal of the request that asked Queries[i] was aborted when the provider finished.
+	Aborted []bool `json:"aborted"`
+	Text    string `json:"text"`
 	Cursor  struct{ Line, Col int }
 	Rows    []string `json:"rows"`
 }
@@ -71,22 +72,32 @@ func raceAnswer(before string) *tui.AutocompleteSuggestions {
 	return nil
 }
 
-// raceQueries records the text before the cursor of every query a provider receives.
+// raceQueries records the text before the cursor of every query a provider receives, and whether the request had been aborted when the provider finished.
 type raceQueries struct {
-	mu   sync.Mutex
-	list []string
+	mu      sync.Mutex
+	list    []string
+	aborted []bool
 }
 
-func (q *raceQueries) add(before string) {
+func (q *raceQueries) add(before string) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.list = append(q.list, before)
+	q.aborted = append(q.aborted, false)
+	return len(q.list) - 1
 }
 
-func (q *raceQueries) all() []string {
+// finish records the state of the request's context when the provider is done with it.
+func (q *raceQueries) finish(index int, ctx context.Context) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	return append([]string{}, q.list...)
+	q.aborted[index] = ctx.Err() != nil
+}
+
+func (q *raceQueries) all() ([]string, []bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return append([]string{}, q.list...), append([]bool{}, q.aborted...)
 }
 
 func raceSleep(ctx context.Context, slow int) error {
@@ -125,14 +136,16 @@ type raceSlowNativeProvider struct {
 
 func (p raceSlowNativeProvider) SuggestionTask(lines []string, row, col int, _ bool) (string, func(context.Context) ([]tui.AutocompleteItem, error), bool) {
 	before := lines[row][:col]
-	p.queries.add(before)
+	index := p.queries.add(before)
 	answer := raceAnswer(before)
 	prefix := ""
 	if answer != nil {
 		prefix = answer.Prefix
 	}
 	return prefix, func(ctx context.Context) ([]tui.AutocompleteItem, error) {
-		if err := raceSleep(ctx, p.slow); err != nil {
+		err := raceSleep(ctx, p.slow)
+		p.queries.finish(index, ctx)
+		if err != nil {
 			return nil, err
 		}
 		if answer == nil {
@@ -163,9 +176,11 @@ func (p raceLegacyProvider) FileSearchTask(lines []string, row, col int) (string
 		return "", nil, false
 	}
 	return match[1] + match[2], func(ctx context.Context) []tui.AutocompleteItem {
-		p.queries.add(before)
+		index := p.queries.add(before)
 		if p.slow != raceImmediate {
-			if err := raceSleep(ctx, p.slow); err != nil {
+			err := raceSleep(ctx, p.slow)
+			p.queries.finish(index, ctx)
+			if err != nil {
 				return nil
 			}
 		}
@@ -224,9 +239,11 @@ func raceEditor(t *testing.T, mode string, slow int, queries *raceQueries) (*tui
 			TriggerCharacters: []string{"$"},
 			GetSuggestions: func(ctx context.Context, lines []string, row, col int, _ bool) (*tui.AutocompleteSuggestions, error) {
 				before := lines[row][:col]
-				queries.add(before)
+				index := queries.add(before)
 				if slow != raceImmediate {
-					if err := raceSleep(ctx, slow); err != nil {
+					err := raceSleep(ctx, slow)
+					queries.finish(index, ctx)
+					if err != nil {
 						return nil, err
 					}
 				}
@@ -279,7 +296,8 @@ func pigRaceLog(t *testing.T, mode string, probe raceProbe) raceLog {
 			settle()
 		}
 		wait(200)
-		log.Queries, log.Text, log.Rows = queries.all(), e.Text(), e.Render(40)
+		log.Queries, log.Aborted = queries.all()
+		log.Text, log.Rows = e.Text(), e.Render(40)
 		cursor := e.GetCursor()
 		log.Cursor.Line, log.Cursor.Col = cursor.Line, cursor.Col
 	})
@@ -327,41 +345,24 @@ func raceProbes() []raceProbe {
 	return probes
 }
 
-// piRaceLogs runs the probes through Pi's Editor in a few node processes at once; each probe waits for its own timers.
+// piRaceLogs runs the probes through Pi's Editor in one node process. The script drives Pi's timers with a manual clock, so the run takes no wall time to speak of and does not depend on the machine's speed.
 func piRaceLogs(t *testing.T, probes []raceProbe) []raceLog {
 	t.Helper()
-	processes := max(1, min(8, runtime.NumCPU()))
-	size := (len(probes) + processes - 1) / processes
-	parts := make([][]raceLog, processes)
-	errs := make([]error, processes)
-	var wg sync.WaitGroup
-	for i := range processes {
-		chunk := probes[min(len(probes), i*size):min(len(probes), (i+1)*size)]
-		wg.Go(func() {
-			input, err := json.Marshal(chunk)
-			if err != nil {
-				errs[i] = err
-				return
-			}
-			cmd := exec.CommandContext(t.Context(), "node", "testdata/editor_typed_race.mjs", pigversion.UpstreamPackageVersion)
-			cmd.Stdin = bytes.NewReader(input)
-			var stderr bytes.Buffer
-			cmd.Stderr = &stderr
-			output, err := cmd.Output()
-			if err != nil {
-				errs[i] = fmt.Errorf("Pi oracle: %w\n%s", err, &stderr)
-				return
-			}
-			errs[i] = json.Unmarshal(output, &parts[i])
-		})
+	input, err := json.Marshal(probes)
+	if err != nil {
+		t.Fatal(err)
 	}
-	wg.Wait()
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/editor_typed_race.mjs", pigversion.UpstreamPackageVersion)
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
+	}
 	var logs []raceLog
-	for i := range processes {
-		if errs[i] != nil {
-			t.Fatal(errs[i])
-		}
-		logs = append(logs, parts[i]...)
+	if err := json.Unmarshal(output, &logs); err != nil {
+		t.Fatal(err)
 	}
 	return logs
 }
@@ -385,19 +386,16 @@ func TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi(t *tes
 				want := expected[i]
 				if mode == "legacy" {
 					// The search of this path only runs where an @ token ends at the cursor; Pi asks its provider about every text and gets nothing for the others.
-					var asked []string
-					for _, query := range want.Queries {
+					kept := raceLog{Queries: []string{}, Aborted: []bool{}}
+					for index, query := range want.Queries {
 						if match := typedAutocompleteTokenRe.FindStringSubmatch(query); match != nil && match[1] == "@" {
-							asked = append(asked, query)
+							kept.Queries, kept.Aborted = append(kept.Queries, query), append(kept.Aborted, want.Aborted[index])
 						}
 					}
-					want.Queries = asked
-					if want.Queries == nil {
-						want.Queries = []string{}
-					}
+					want.Queries, want.Aborted = kept.Queries, kept.Aborted
 				}
 				if len(got.Queries) == 0 {
-					got.Queries = []string{}
+					got.Queries, got.Aborted = []string{}, []bool{}
 				}
 				if len(want.Rows) > 3 {
 					popups++
@@ -415,8 +413,8 @@ func TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi(t *tes
 							ops = append(ops, strings.Join(op.Keys, "+"))
 						}
 					}
-					t.Errorf("probe %d slow=%d keys %s\n Pig queries %q text %q cursor %+v rows %d\n Pi  queries %q text %q cursor %+v rows %d", i, probe.Slow, strings.Join(ops, "|"),
-						got.Queries, got.Text, got.Cursor, len(got.Rows), want.Queries, want.Text, want.Cursor, len(want.Rows))
+					t.Errorf("probe %d slow=%d keys %s\n Pig queries %q aborted %v text %q cursor %+v rows %d\n Pi  queries %q aborted %v text %q cursor %+v rows %d", i, probe.Slow, strings.Join(ops, "|"),
+						got.Queries, got.Aborted, got.Text, got.Cursor, len(got.Rows), want.Queries, want.Aborted, want.Text, want.Cursor, len(want.Rows))
 					for row := range max(len(got.Rows), len(want.Rows)) {
 						var pig, pi string
 						if row < len(got.Rows) {

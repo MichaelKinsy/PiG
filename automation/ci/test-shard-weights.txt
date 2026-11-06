@@ -299,7 +299,7 @@ shards 8
 8 TestTuiStateAcrossSDKs
 
 # The tui package runs in six shards (SHARDED_SPEC). Its 2515 tests list 108,000 characters of names, so a -run pattern per shard stays under the 24000-character limit of
-# test-shard-pattern.sh only from five shards up. The 22 tests of 5 s or more are packed to an equal load, the hash-placed rest included, by the duration of each in one
+# test-shard-pattern.sh only from five shards up. The 21 tests of 5 s or more are packed to an equal load, the hash-placed rest included, by the duration of each in one
 # go test -json run of the whole package on a 192-core host (70 s a shard; the whole package took 427 s). The package was one process, 633 s before the Pi-oracle sweeps ran
 # their node processes in parallel, which is over the 10 minutes go test allows.
 package ./tui
@@ -316,7 +316,6 @@ shards 6
 3 TestMarkedBlockLexerEqualsMarkedOnGeneratedDocuments
 3 TestMarkedBlockLexerEqualsMarkedOnTokenizerSources
 3 TestWholeMessageRetention
-4 TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi
 4 TestMarkdownBlockSweepMatchesPi
 4 TestModelSelectorRefreshModelsMatchesPi
 4 TestStreamedMarkdownEqualsAFreshRender
