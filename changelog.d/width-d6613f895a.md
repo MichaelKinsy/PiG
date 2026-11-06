@@ -1,0 +1,3 @@
+### Fixed
+
+- A tool call whose arguments were cut inside a surrogate pair (the codemode card cuts a call's arguments at 77 UTF-16 units) no longer crashes the main screen with `Rendered line N exceeds terminal width`. PiG encoded the leftover lone surrogate as U+FFFD, one cell wide, before measuring the row, so a card row padded to exactly the terminal width measured one cell too wide. Pi measures the row first, where the lone surrogate is nonprinting, and encodes it when it writes to the terminal; PiG now does the same, and the crash log's rows are encoded the same way. <!-- fix: d6613f895ab8d290786b0bf9d13bc1640be6f1aa -->
