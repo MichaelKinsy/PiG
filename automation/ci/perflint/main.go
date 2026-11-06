@@ -6,7 +6,7 @@
 //	marshal-compare    bytes.Equal or == on Marshal results, or reflect.DeepEqual followed by a Marshal in one function
 //	compile-in-func    regexp.MustCompile/Compile or a template Parse inside a function body
 //	history-clone      slices.Clone or append([]T(nil), x...) of a message slice
-//	env-stat           os.Getenv, os.LookupEnv, os.Stat, os.Lstat (packages agent, ai, coding, extensions/sdk, internal/codingagent)
+//	env-stat           os.Getenv, os.LookupEnv, os.Stat, os.Lstat (packages agent, ai, coding, extensions/sdk, internal/codingagent, internal/noderealpath)
 //	loop-format        fmt.Sprintf or string += inside a loop (same packages)
 //	decode-own-encode  the JSON text of an encoder (Marshal*, MarshalJSON, *Stringify*) decoded again in the same function (Unmarshal*, Decode*, a json/jsontext NewDecoder); json.Marshal into json.Unmarshal stays json-roundtrip's
 //	nested-marshal     a MarshalJSON method that calls json.Marshal or another MarshalJSON on anything but its receiver: the outer encoder validates and compacts that output again

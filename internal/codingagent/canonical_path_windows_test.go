@@ -89,20 +89,6 @@ func TestCanonicalizePathPreservesVolumeMountPoints(t *testing.T) {
 	}
 }
 
-func TestVolumeGUIDPathClassification(t *testing.T) {
-	for path, want := range map[string]bool{
-		`\\?\Volume{1234}\`:           true,
-		`\\?\volume{1234}\child`:      true,
-		`C:\Volume{1234}`:             false,
-		`\\?\C:\ordinary`:             false,
-		`\\server\share\Volume{1234}`: false,
-	} {
-		if got := isVolumeGUIDPath(path); got != want {
-			t.Errorf("isVolumeGUIDPath(%q)=%v; want %v", path, got, want)
-		}
-	}
-}
-
 // Node's realpathSync resolves each link target with path.resolve(parent, target), so a rooted relative symbolic link such as \dir names a directory on the drive of the path that reached it. The volume-mount walk must not join it under the link's parent, and filepath.EvalSymlinks must not drop that drive, with or without a mount before the link.
 func TestCanonicalizePathResolvesRootedLinkTargetsBeyondVolumeMounts(t *testing.T) {
 	root := t.TempDir()

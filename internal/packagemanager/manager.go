@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/installresolver"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
@@ -399,7 +400,7 @@ func RealInstallRoot(root string) (string, error) {
 	if _, err := os.Stat(root); err != nil {
 		return root, nil
 	}
-	return codingagent.RealPathSync(root)
+	return noderealpath.Sync(root)
 }
 
 func NpmInstallArgs(manager, spec, installRoot, registry string, opts ...InstallOption) []string {

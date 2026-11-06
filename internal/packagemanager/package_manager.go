@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
@@ -317,7 +318,7 @@ func (m *PackageManager) uninstallManagedNPM(source string, local bool) error {
 		return nil
 	}
 	// npm writes broken nested package-lock.json paths when --prefix goes through a symlink (package-manager.ts uninstallNpm).
-	installRoot, err := codingagent.RealPathSync(root)
+	installRoot, err := noderealpath.Sync(root)
 	if err != nil {
 		return err
 	}

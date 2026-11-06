@@ -257571,17 +257571,6 @@
       "shapeHash": "sha256:d4b6738c102e9e0b0a378c9b6f7a8cdf03773547ab112c39f3b5439563266312"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RealPathSync",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "RealPathSync",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(path string) (string, error)"
-      },
-      "shapeHash": "sha256:f40d4f34dc5bbd0e74838ec92049f48e4ae39f2b85f7c153e0f98d59ea7e6036"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ReconcileSessionMarkers",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ReconcileSessionMarkers",
@@ -275622,17 +275611,6 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#evalCanonicalPath",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "evalCanonicalPath",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(path string) (string, error)"
-      },
-      "shapeHash": "sha256:f40d4f34dc5bbd0e74838ec92049f48e4ae39f2b85f7c153e0f98d59ea7e6036"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#eventBarrier",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "eventBarrier",
@@ -280163,28 +280141,6 @@
         "type": "func() bool"
       },
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isWin32DeviceRoot",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "isWin32DeviceRoot",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(c byte) bool"
-      },
-      "shapeHash": "sha256:ddee310485d8cb330136843bd197df952280076e599df8b9fa4911341282355d"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isWin32Separator",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "isWin32Separator",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(c byte) bool"
-      },
-      "shapeHash": "sha256:ddee310485d8cb330136843bd197df952280076e599df8b9fa4911341282355d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isWindowsDrivePath",
@@ -287315,50 +287271,6 @@
       "shapeHash": "sha256:3bee3d76ce5a09c6d62ff697b31b376750b516cb8194ec3615c17a8d74fa7db4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeEntryKind",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "nodeEntryKind",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "nodeEntryKind"
-      },
-      "shapeHash": "sha256:fc768c61f7cda2ef263a3b9f3da6766b6521da52a33fbe59a78c2566a8781b69"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeEntryLink",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "nodeEntryLink",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "nodeEntryKind"
-      },
-      "shapeHash": "sha256:fc768c61f7cda2ef263a3b9f3da6766b6521da52a33fbe59a78c2566a8781b69"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeEntryMount",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "nodeEntryMount",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "nodeEntryKind"
-      },
-      "shapeHash": "sha256:fc768c61f7cda2ef263a3b9f3da6766b6521da52a33fbe59a78c2566a8781b69"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeEntryPlain",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "nodeEntryPlain",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "nodeEntryKind"
-      },
-      "shapeHash": "sha256:fc768c61f7cda2ef263a3b9f3da6766b6521da52a33fbe59a78c2566a8781b69"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeExists",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "nodeExists",
@@ -287390,28 +287302,6 @@
         "type": "func(err error) string"
       },
       "shapeHash": "sha256:5cb2efaf89a81029b44072e975bb5b8abbc10aeabeaef15a63648dc9e30bcf2e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeRealpathFS",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "nodeRealpathFS",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "nodeRealpathFS"
-      },
-      "shapeHash": "sha256:e7812cae30122b644dae1b6b5439e24feea407840621f2117c0ba69f26f153f6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeRealpathWin32",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "nodeRealpathWin32",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(p string, fsys nodeRealpathFS, proc win32Process) (string, error)"
-      },
-      "shapeHash": "sha256:009d3630a8b8cf6f09048e961e43d2157ae793f124066bdcbcff2f6c911f3aeb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#nodeThemeFSError",
@@ -294705,17 +294595,6 @@
         "type": "func(ctx context.Context, inputPath string, cwdOverride string) (github.com/MichaelKinsy/PiG/coding/extension.CancelledResult, error)"
       },
       "shapeHash": "sha256:98a2838e322f57fa4bc3bc810c299f63d54de8dfd2e8819998c4c5c854407507"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#safePrefix",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "safePrefix",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(s string, n int) string"
-      },
-      "shapeHash": "sha256:541545c80e8d721be505a91e458345f6ae8c14abb90aff3b4e05c320895f5c62"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sameBase",
@@ -302317,61 +302196,6 @@
         "type": "func(lines []string) github.com/MichaelKinsy/PiG/tui.Component"
       },
       "shapeHash": "sha256:32c82946b8d538ad6264e8f1a94b09f76ba6b2c7261a4f4e3725eaa15d9aa9fe"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#win32NormalizeString",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "win32NormalizeString",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(path string, allowAboveRoot bool) string"
-      },
-      "shapeHash": "sha256:501a1bc886ca43d9b9bb1d9500deab0e7aa6d7dbaa985554bd15004d3226ba52"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#win32Process",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "win32Process",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "win32Process"
-      },
-      "shapeHash": "sha256:75d85daf51c748741666f856bc7ed75ba4a30866c3213e18abbc2f0ff12ddec2"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#win32Resolve",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "win32Resolve",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(proc win32Process, args ...string) string"
-      },
-      "shapeHash": "sha256:db9a29b55d839e9eaf453174866b3d7510e077765c0056f247e8deebb8c57081"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#win32SplitRoot",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "win32SplitRoot",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(path string) string"
-      },
-      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#win32SplitRootRe",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "win32SplitRootRe",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#windowsBuild",

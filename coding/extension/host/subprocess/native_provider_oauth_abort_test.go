@@ -4,6 +4,7 @@ package subprocess_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,15 +22,20 @@ func nativeOAuthAbortFixture(t *testing.T) (services *coding.AgentSessionService
 	dir := t.TempDir()
 	started = filepath.Join(dir, "refresh-started")
 	entry := filepath.Join(dir, "oauth-abort.mjs")
+	// A JSON string is a JavaScript string literal (JSON.stringify), so a Windows path's backslashes are escaped rather than read as escape sequences.
+	startedLiteral, err := json.Marshal(started)
+	if err != nil {
+		t.Fatal(err)
+	}
 	source := `import {writeFileSync} from "node:fs";
 export default pi=>{
- const auth={name:"Native OAuth",isSubscription:true,login:async()=>{throw new Error("unused")},refresh:async credential=>{writeFileSync(` + "`" + started + "`" + `,"started");await new Promise(r=>setTimeout(r,600));return {...credential,access:"new-access",refresh:"new-refresh",expires:Date.now()+3600000}},toAuth:async credential=>({apiKey:credential.access})};
+ const auth={name:"Native OAuth",isSubscription:true,login:async()=>{throw new Error("unused")},refresh:async credential=>{writeFileSync(` + string(startedLiteral) + `,"started");await new Promise(r=>setTimeout(r,600));return {...credential,access:"new-access",refresh:"new-refresh",expires:Date.now()+3600000}},toAuth:async credential=>({apiKey:credential.access})};
  pi.registerProvider({id:"native-oauth",name:"Native OAuth",auth:{oauth:auth},getModels:()=>[],stream(){throw new Error("unused")},streamSimple(){throw new Error("unused")}});
 };`
 	if err := os.WriteFile(entry, []byte(source), 0600); err != nil {
 		t.Fatal(err)
 	}
-	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
+	services, err = coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: filepath.Join(dir, "agent")})
 	if err != nil {
 		t.Fatal(err)
 	}
