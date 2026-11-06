@@ -306,30 +306,30 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `autocomplete` | 14 | 14 | 0 | 0 | 0 | 5 | not run |
 | `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
-| `compaction` | 15 | 15 | 0 | 0 | 0 | 10 | not run |
+| `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 143 | 142 | 0 | 1 | 0 | 63 | not run |
+| `extensions-runtime` | 148 | 147 | 0 | 1 | 0 | 63 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 14 | 14 | 0 | 0 | 0 | 11 | not run |
-| `interactive-rendering` | 73 | 72 | 1 | 0 | 0 | 37 | not run |
+| `fullscreen` | 18 | 18 | 0 | 0 | 0 | 12 | not run |
+| `interactive-rendering` | 78 | 77 | 1 | 0 | 0 | 37 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 28 | 28 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 32 | 32 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
-| `project-trust` | 26 | 26 | 0 | 0 | 0 | 19 | not run |
-| `providers-faux-streaming` | 66 | 65 | 0 | 1 | 0 | 49 | not run |
-| `providers-registry` | 9 | 6 | 0 | 3 | 0 | 27 | not run |
+| `project-trust` | 27 | 27 | 0 | 0 | 0 | 19 | not run |
+| `providers-faux-streaming` | 67 | 66 | 0 | 1 | 0 | 49 | not run |
+| `providers-registry` | 10 | 7 | 0 | 3 | 0 | 27 | not run |
 | `rpc` | 93 | 93 | 0 | 0 | 0 | 32 | not run |
-| `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
+| `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
 | `session` | 44 | 44 | 0 | 0 | 0 | 19 | not run |
 | `settings` | 16 | 16 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
-| `startup` | 19 | 18 | 1 | 0 | 0 | 10 | not run |
-| `tools` | 32 | 32 | 0 | 0 | 0 | 35 | not run |
+| `startup` | 27 | 26 | 1 | 0 | 0 | 10 | not run |
+| `tools` | 34 | 34 | 0 | 0 | 0 | 35 | not run |
 | `tree` | 11 | 10 | 1 | 0 | 0 | 9 | not run |
-| `tui-components` | 39 | 39 | 0 | 0 | 0 | 36 | not run |
+| `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 
 Full per-file detail: `test/parity/coverage.md`.
 

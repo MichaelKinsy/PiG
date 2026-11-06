@@ -164148,7 +164148,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "36 normalized-name Pig candidates are ambiguous."
+        "37 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -164170,6 +164170,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#tslibAsyncGenerator.run",
         "go:github.com/MichaelKinsy/PiG/coding#GraphExtensionRunner.run",
         "go:github.com/MichaelKinsy/PiG/coding#PreparedPromptRun.Run",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcExit.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension#eventBusSubscription.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#limiter.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#run",
@@ -308843,7 +308844,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "10 normalized-name Pig candidates are ambiguous."
+        "11 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -308857,6 +308858,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#Session",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#session",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderSessions.session",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#typeEngineTable.session",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSessionRuntime.Session",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/frontend#Session",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Session",
@@ -318542,7 +318544,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -318553,7 +318555,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#AfterToolCallFunc.hook",
-        "go:github.com/MichaelKinsy/PiG/agent#BeforeToolCallFunc.hook"
+        "go:github.com/MichaelKinsy/PiG/agent#BeforeToolCallFunc.hook",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcTermination.hook"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -364786,7 +364789,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "6 normalized-name Pig candidates are ambiguous."
+        "8 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -364799,6 +364802,8 @@
         "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.Check",
         "go:github.com/MichaelKinsy/PiG/coding/cli#rpcShutdownGate.check",
         "go:github.com/MichaelKinsy/PiG/coding/piglet/signature#Check",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#Value.Check",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#valueNamespace.Check",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Session.check",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#Schema.check",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#check"

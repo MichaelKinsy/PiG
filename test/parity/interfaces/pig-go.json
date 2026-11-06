@@ -365734,6 +365734,17 @@
       "shapeHash": "sha256:ee92252809187310b89a34fed7d88c41d01d68cc459140852d154eddf6c308e8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#matchString",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "matchString",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(m *github.com/dlclark/regexp2.Match) string"
+      },
+      "shapeHash": "sha256:f187536d500874330c05a14623df1c534eff22220ce9cac9f5ea7e92956dab14"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#matchesDeleteCharBackward",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "matchesDeleteCharBackward",
@@ -377491,6 +377502,17 @@
         "type": "func(line string, width int) []string"
       },
       "shapeHash": "sha256:b82b27c177ded372a09fafd25f38fc2f3b4fa244a3c54e53011bafebb83536e2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#writeCodePoints",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "writeCodePoints",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b *strings.Builder, runes []rune)"
+      },
+      "shapeHash": "sha256:327a32c89e0bd1df8641236b39a7b98175d20fa39deda814207d88d97b9a68b1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#writeColorSchemeNotifications",
