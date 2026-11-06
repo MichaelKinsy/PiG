@@ -5447,7 +5447,7 @@ snippet = "rawStdout.Wait(context.Background())"
 check = "ctxbackground"
 file = "coding/cli/rpc_mode.go"
 func = "serveRPCMode"
-snippet = "func() { rawStdout.Wait(context.Background()) },"
+snippet = "rawStdout.Wait(context.Background())"
 
 [[hit]]
 check = "ctxbackground"
