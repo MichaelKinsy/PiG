@@ -12,6 +12,9 @@ import (
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
+// moduleCalls is package-level state: one per Go process, so it counts calls across every session that shares the process.
+var moduleCalls atomic.Int64
+
 // Extension is the Go twin of listen-counter.mjs: every tool answers what the Node one answers. Tool names carry the extension name so both register in one session. pig additive (D232).
 func Extension() *sdk.Extension {
 	const name = "go"
@@ -33,6 +36,9 @@ func Extension() *sdk.Extension {
 	})
 	ext.Tool(name+"_counter", "this instance's call count", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
 		return text(fmt.Sprint(calls.Add(1))), nil
+	})
+	ext.Tool(name+"_module_counter", "the call count kept in package-level state", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) {
+		return text(fmt.Sprint(moduleCalls.Add(1))), nil
 	})
 	ext.Tool(name+"_ping", "emit on the event bus", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.Events().Emit("listen-counter", map[string]any{"from": name}); err != nil {
