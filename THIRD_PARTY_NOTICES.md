@@ -782,6 +782,15 @@ Distributed files: `third_party/semver/`, a package of the root module. The dire
 - Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
 - License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.
 
+## golang.org/x/text v0.43.0 (collation, PiG fork)
+
+Source: <https://github.com/golang/text/tree/v0.43.0>
+
+Distributed files: `third_party/collate/`, a package of the root module. It holds the algorithm of `collate` and `internal/colltab` of v0.43.0 for the root locale and the default options, and the root part of the tables of `collate/tables.go`, with the changes listed in `third_party/collate/FORK.md` (the tables of the other locales are not copied).
+
+- Copyright 2009 The Go Authors.
+- License: BSD-3-Clause, in `third_party/collate/LICENSE` and `LICENSES/BSD-3-Clause.txt`.
+
 ## evanw/esbuild v0.28.2 (plugin builds)
 
 Source: <https://github.com/evanw/esbuild/tree/v0.28.2>
