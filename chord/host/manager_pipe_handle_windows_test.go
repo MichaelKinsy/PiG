@@ -52,7 +52,8 @@ func forEachHandlePipeKind(t *testing.T, run func(t *testing.T, overlapped bool)
 	}
 }
 
-// Close must end a Read that waits for data, and must not return before that Read has: no sleep-retry stands between the two.
+// Close must return, and a Read that waits for data must end with net.ErrClosed, whether Close races the Read's entry into its I/O call or comes after it
+// has waited. Liveness only: it does not time Close, and the sleep-retry code it replaced passes it too.
 func TestHandlePipeCloseEndsPendingRead(t *testing.T) {
 	forEachHandlePipeKind(t, func(t *testing.T, overlapped bool) {
 		for i := 0; i < 200; i++ {
@@ -85,8 +86,8 @@ func TestHandlePipeCloseEndsPendingRead(t *testing.T) {
 	})
 }
 
-// A Write while a Read waits for data must go through (on a synchronous handle by cancelling the wait), and the Read must then still see what the
-// peer sends.
+// A Write while a Read waits for data must go through (on a synchronous handle by cancelling the wait), arrive intact, and the Read must then still see
+// what the peer sends.
 func TestHandlePipeWriteWhileReadWaits(t *testing.T) {
 	forEachHandlePipeKind(t, func(t *testing.T, overlapped bool) {
 		pipe, client := handlePipePair(t, overlapped)
@@ -144,7 +145,7 @@ func TestHandlePipeWriteWhileReadWaits(t *testing.T) {
 	})
 }
 
-// A Close racing Writes must end them all, whatever they were doing, and the peer's closing must read as EOF.
+// A Close racing a Write that is blocked on a full pipe must return, and the Write must end with an error. Liveness only, as above.
 func TestHandlePipeCloseEndsWrites(t *testing.T) {
 	forEachHandlePipeKind(t, func(t *testing.T, overlapped bool) {
 		for i := 0; i < 100; i++ {
