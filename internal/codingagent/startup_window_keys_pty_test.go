@@ -148,3 +148,56 @@ func TestInitEndsWhenAStartupKeyQuitsChild(t *testing.T) {
 		childFatalf(t, "%v", err)
 	}
 }
+
+// A quit the startup keys request ends the session before any startup work: run() takes the exit instead of submitting the initial message to the session Init never
+// bound (a slash command met the unset slash registry and crashed; a plain message started a prompt on the unbound session).
+func TestRunDoesNotSubmitTheInitialMessageAfterAStartupQuit(t *testing.T) {
+	t.Run("slash command", func(t *testing.T) {
+		runInitPTYChild(t, "TestRunStartupQuitWithASlashCommandChild", startupQuitSlashChildEnv)
+	})
+	t.Run("plain message", func(t *testing.T) {
+		runInitPTYChild(t, "TestRunStartupQuitWithAPlainMessageChild", startupQuitPlainChildEnv)
+	})
+}
+
+const (
+	startupQuitSlashChildEnv = "PIG_TEST_STARTUP_QUIT_SLASH_CHILD"
+	startupQuitPlainChildEnv = "PIG_TEST_STARTUP_QUIT_PLAIN_CHILD"
+)
+
+func TestRunStartupQuitWithASlashCommandChild(t *testing.T) {
+	runStartupQuitWithInitialMessageChild(t, startupQuitSlashChildEnv, "/hello")
+}
+
+func TestRunStartupQuitWithAPlainMessageChild(t *testing.T) {
+	runStartupQuitWithInitialMessageChild(t, startupQuitPlainChildEnv, "hello")
+}
+
+// runStartupQuitWithInitialMessageChild runs Run with an initial message and a Ctrl-D at the end of the colour wait. Without a SessionHandle any submission that
+// reaches the session fails, so a clean return shows the message never left the host.
+func runStartupQuitWithInitialMessageChild(t *testing.T, envKey, message string) {
+	report := os.Getenv(envKey)
+	if report == "" {
+		t.Skip("runs only as a pty child")
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			_ = os.WriteFile(report, []byte(childFailure), 0o600)
+		}
+	})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), NoThemes: true, InitialMessage: message})
+	m.opts.StartupMark = func(label string) {
+		if label == "terminal-colors-ready" {
+			m.handleStartupInput(inputChunk{data: []byte("\x04")}, false)
+		}
+	}
+	if err := m.Run(t.Context()); err != nil {
+		childFatalf(t, "Run with the initial message %q and a startup Ctrl-D = %v, want a clean exit", message, err)
+	}
+	if !m.requestExit.Load() {
+		childFatalf(t, "the startup Ctrl-D did not request the exit")
+	}
+	if m.slashRegistry != nil || m.preflight != nil || len(m.preflightQueue) != 0 || m.turnActive.Load() {
+		childFatalf(t, "the initial message %q reached the submission path after the quit", message)
+	}
+}
