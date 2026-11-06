@@ -155,4 +155,73 @@
         (error 'host-call-error :message (format nil "frame too large: ~D" size)))
       (let ((body (make-array size :element-type '(unsigned-byte 8))))
         (when (< (conn-read-exact conn body) size) (return-from read-frame :eof))
-        (decode-json body)))))
+        ;; A value nested past the bound (or past the control stack) is Pi's RangeError, not the end of the connection: the request it came in is answered with that
+        ;; error, and the connection keeps serving.
+        (handler-case (decode-json body)
+          (json-error (e)
+            (if (equal (json-error-message e) "nesting too deep") (too-deep-envelope body) (error e)))
+          (sb-kernel::control-stack-exhausted () (too-deep-envelope body)))))))
+
+(defun skip-json-value (r)
+  "Move R past the value it stands at without recursing: the brackets are counted and the strings read whole."
+  (let ((depth 0) (buf (jr-buf r)) (end (jr-end r)))
+    (loop
+      (when (>= (jr-pos r) end) (return))
+      (let ((b (aref buf (jr-pos r))))
+        (cond ((= b 34) (jr-string r))
+              ((or (= b 123) (= b 91)) (incf depth) (incf (jr-pos r)))
+              ((or (= b 125) (= b 93))
+               (when (zerop depth) (return))
+               (decf depth) (incf (jr-pos r))
+               (when (zerop depth) (return)))
+              ((and (zerop depth) (= b 44)) (return))
+              (t (incf (jr-pos r))))))))
+
+(defun frame-head (body)
+  "The \"type\" and \"id\" strings of the envelope in BODY, read without decoding the members that nest."
+  (let ((r (make-jreader :buf body :pos 0 :end (length body))) (type nil) (id nil))
+    (ignore-errors
+     (jr-skip-ws r)
+     (when (= (jr-peek r) 123)
+       (incf (jr-pos r))
+       (loop
+         (jr-skip-ws r)
+         (unless (= (jr-peek r) 34) (return))
+         (let ((key (jr-string r)))
+           (jr-skip-ws r)
+           (unless (= (jr-peek r) 58) (return))
+           (incf (jr-pos r))
+           (jr-skip-ws r)
+           (if (= (jr-peek r) 34)
+               (let ((value (jr-string r)))
+                 (cond ((equal key "type") (setf type value)) ((equal key "id") (setf id value))))
+               (skip-json-value r)))
+         (jr-skip-ws r)
+         (if (= (jr-peek r) 44) (incf (jr-pos r)) (return)))))
+    (values type id)))
+
+(defun too-deep-envelope (body)
+  "What the frame BODY, nested too deep to decode, stands for: a request that is answered with an error (:REFUSED), a host call's result that is an error, or nothing."
+  (multiple-value-bind (type id) (frame-head body)
+    (let ((message "Maximum call stack size exceeded"))
+      (cond ((not (stringp id)) (obj "type" "refused"))
+            ((equal type "request") (obj "type" "request" "id" id "refused" message))
+            ((equal type "call_result") (obj "type" "call_result" "id" id "call_result" (obj "error" (obj "message" message))))
+            (t (obj "type" "refused"))))))
+
+(defun refused-request-p (env)
+  "Whether ENV is a request READ-FRAME refused for its nesting."
+  (and (equal (jget env "type") "request") (jget env "refused")))
+
+(defun refuse-request (conn env)
+  "Answer a refused request with its error, without the bookkeeping of a request that started: a read loop that waits for something else answers one this way."
+  (let ((id (jget env "id" "")))
+    (sb-thread:with-mutex ((conn-write-lock conn))
+      (send-frame-locked conn (obj "type" "request_state" "request_state" (obj "request_id" id "state" "completed")))
+      (send-frame-locked conn (obj "type" "response" "id" id
+                                   "response" (obj "result" nil "error" (obj "message" (jget env "refused"))))))))
+
+(defun note-dropped-frame ()
+  "The diagnostic for a frame READ-FRAME could not decode and that nothing waits for (a notification): it is dropped, and the connection goes on."
+  (format *error-output* "pig-sdk: dropped a frame nested deeper than the reader takes~%")
+  (finish-output *error-output*))

@@ -127,6 +127,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
+| [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
@@ -325,6 +326,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-3ebb315](#bf-3ebb315) | Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ee123c](#bf-3ee123c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | 0.5.2 |
 | [BF-3f82770](#bf-3f82770) | A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3f82770-2](#bf-3f82770-2) | On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and… | PiG's own defect | Windows | 0.7.0 |
@@ -827,6 +829,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7f9ca19](#bf-7f9ca19) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
 | [BF-7fc4ef4](#bf-7fc4ef4) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
+| [BF-7febcec](#bf-7febcec) | Quitting while an OAuth token refresh is in flight no longer loses the new token | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-8001cc5](#bf-8001cc5) | `SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8001cc5-2](#bf-8001cc5-2) | `SettingsManager.getCompactionSettings` (+ `getCompactionReserveTokens`, `getCompactionKeepRecentTokens`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8019120](#bf-8019120) | `pig config` in the default theme no longer draws the space after a dim checkbox, or the name of a… | PiG's own defect | All platforms | Unreleased |
@@ -1284,6 +1287,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c4fae28](#bf-c4fae28) | Provider request bodies write a lone UTF-16 surrogate as its escape, as `JSON.stringify` does, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4fef6c](#bf-c4fef6c) | Streaming long code blocks no longer grows memory with every frame: the syntax-highlight cache keeps one copy… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c51c77e](#bf-c51c77e) | An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c551a63](#bf-c551a63) | Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-c58ceed](#bf-c58ceed) | `chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c5b14a5](#bf-c5b14a5) | The Durable core conformance gate no longer writes the reference checkout from a vitest run: its cache lives… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c5ce588](#bf-c5ce588) | Gemini 4 and later models send `thinkingLevel` instead of `thinkingBudget`, fixing Gemini 4 Argon on Vertex… | PiG's own defect | All platforms | 0.5.0 |
@@ -3204,6 +3208,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `16f8d392cc` (2026-10-20)
 - **Tests:** None recorded.
+
+### BF-1724c9e
+
+**Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D236)
+- **Symptom:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`.
+- **Root cause:** Pi main's rule, ahead of the pin. An agent directory whose `auth.json` is a symlink to a shared file locked a different directory than the real file, so two processes entered the credential section together and refreshed one single-use OAuth refresh token twice (`invalid_grant`).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pin reaches a Pi release containing 081a6e87f. Then the two call-site markers and this record go.
+- **Fix commits:** `1724c9e834` (2026-11-05), `79461e0ddf` (2026-11-05), `800dd85f35` (2026-11-06), `a018d069d8` (2026-11-06)
+- **Tests:** `ai/auth_dangling_link_test.go::TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile`, `ai/auth_dangling_link_test.go::TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile`, `internal/pilock/symlink_alias_test.go::TestAuthLockOfASymlinkedFileInAnotherDirectoryIsTheRealFilesLock`, `internal/pilock/symlink_alias_test.go::TestAuthLocksShareOneLockAcrossSymlinkedPaths`, `internal/pilock/symlink_alias_test.go::TestSettingsLockStaysOnTheGivenPath`
+- **Release note:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236).
 
 ### BF-173060b
 
@@ -5942,6 +5962,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3e88414c8c` (2026-10-22)
 - **Tests:** `internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets`, `internal/codingagent/export/upstream_test.go::TestExportHTMLRendering`, `internal/codingagent/export/upstream_test.go::TestExportHTMLSystemMessages`
+
+### BF-3ebb315
+
+**Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object.
+- **Root cause:** Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3ebb3155aa` (2026-11-06)
+- **Tests:** `test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK`
+- **Release note:** Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object. The payload is copied without recursion now, so a handler receives it up to where its own `JSON.stringify` runs out of V8 stack, as in Pi.
 
 ### BF-3ee123c
 
@@ -12898,6 +12932,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7fc4ef463d` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-7febcec
+
+**Quitting while an OAuth token refresh is in flight no longer loses the new token**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D237)
+- **Symptom:** Quitting while an OAuth token refresh is in flight no longer loses the new token.
+- **Root cause:** Pi main's rule, ahead of the pin. If the process exits after the token request went out but before the new token is written, the provider has spent the old single-use refresh token and auth.json keeps only that one; the next request fails with `invalid_grant`.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the pin reaches a Pi release containing b2cb62923. Then the call-site markers and this record go.
+- **Fix commits:** `22b37bfeb9` (2026-11-05), `353168f26b` (2026-11-05), `79461e0ddf` (2026-11-05), `7febcec6be` (2026-11-05), `800dd85f35` (2026-11-06), `a018d069d8` (2026-11-06), `d104187663` (2026-11-06), `e64124fffb` (2026-11-06)
+- **Tests:** `ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledIgnoresLaterModificationsAndHonoursCancellation`, `ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails`, `ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledWaitsUntilPendingModificationsAreWritten`, `coding/cli/interactive_oauth_refresh_exit_test.go::TestInteractiveExitWaitsForAnExtensionOAuthRefreshToBeSaved`, `coding/cli/print_mode_credential_writes_test.go::TestPrintModeWaitsForAStartedOAuthRefreshToBeSavedBeforeReturning`, `coding/cli/rpc_oauth_refresh_exit_test.go::TestPrintModeExitWaitsForAnExtensionOAuthRefreshToBeSaved`, `coding/cli/rpc_oauth_refresh_exit_test.go::TestRPCExitWaitsForAStartedOAuthRefreshToBeSaved`, `coding/extension/host/subprocess/native_provider_oauth_abort_test.go::TestNativeProviderAuthSavesAnExtensionsRefreshAbortedMidRequest` and 17 more in docs/bug-ledger.json
+- **Release note:** Quitting while an OAuth token refresh is in flight no longer loses the new token. If pig exited after the token request went out but before the new token was written, `auth.json` kept the refresh token the provider had already spent and the next request failed with `invalid_grant`; an RPC client that stopped pig right after startup, while the background catalog refresh refreshed an expired login, hit this. Interactive, print, JSON and RPC mode now wait for a refresh that has started to be saved before the process exits, with no timeout beyond the 15 s refresh and the 30 s auth lock wait; a second signal exits at once in RPC and print mode. The wait comes before pig stops its extensions, and a refresh that has started (a subprocess extension provider's, in the catalog refresh or at request time, or the Radius gateway's) is no longer cut or discarded when its caller is cancelled, as Pi main does (D237).
+
 ### BF-8001cc5
 
 **`SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths…**
@@ -19270,6 +19320,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/upstream_tool_schema_test.go::TestRegisterToolWithoutANameFailsLikePisLoader`
 - **Release note:** An extension that calls `registerTool({})` or `registerTool(null)` now fails to load with Pi's error text (the missing parameter schema, or the TypeError of reading `parameters`), not a PiG-only message.
 
+### BF-c551a63
+
+**Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D268)
+- **Symptom:** Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any SDK or on any supported Python (3.11 and later).
+- **Root cause:** - Go: the extension ended on arguments nested 9998 to 10000 levels, because its reader validated the whole frame against 10000. json.UnmarshalFrame takes 64 levels more (Unmarshal keeps the standard limit, and so the host's marshal), and a frame past that is answered, not fatal: a request with the RangeError, a host call result as an error, a notification dropped with a stderr line. - Rust: the bound is 10016 levels; requests run on 64 MB threads (dropping and writing a deep Value recurses); a notification past the bound is marked, dropped with a diagnostic and does not end the connection. - Lisp: the bound is 10016 levels; a deep notification is dropped with a diagnostic, and the three…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi parses and returns tool arguments without a stack-bound depth limit, or the owner decides the SDKs should stop at Pi's observed depth. Then the call-site markers and this record go.
+- **Fix commits:** `c551a6348d` (2026-11-05), `c1da695c1d` (2026-11-06), `e2ea65cfa3` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_deep_frames.py`, `extensions/sdk/json/decode_pool_test.go::TestUnmarshalFrameTakesAnEnvelopeAroundArgumentsNestedTenThousandLevels`, `extensions/sdk/protocol_deep_frame_test.go::TestFrameHeadReadsTypeAndIDWithoutDecodingWhatNests`, `extensions/sdk/protocol_deep_frame_test.go::TestReadLoopAnswersARequestNestedPastTheReaderAndGoesOn`, `test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK`, `test/extension-conformance/model_stream_deep_event_test.go::TestModelStreamEventWithDeepToolArgumentsReachesEverySDK`, `test/extension-conformance/tool_params_deep_test.go::TestToolParamsNestingAcrossSDKs`
+- **Release note:** Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension, in any SDK or on any supported Python (3.11 and later). The host sends arguments nested up to 10000 levels, and Pi's own runtime fails the call with `Maximum call stack size exceeded` only where V8 runs out of stack for `JSON.stringify` (about 4400 levels on Node 24; it moves with the Node version). The Python SDK failed the call from about 1000 levels (`maximum recursion depth exceeded`), and from about 990 on Python 3.11; the Lisp SDK ended its extension from 4000 levels; the Rust SDK ended its extension past 4096 levels and its `Context::tool_params` returned `None` from 128; the Go SDK ended its extension from about 9995 levels. Each now returns the object for every frame the host can send, a request nested past what an SDK reads fails with that error while the extension answers the next call, and a notification nested past it (a `model_stream_event` with deep tool arguments reads fine) is dropped with a line on stderr. The Rust SDK also ended its connection on a `message_update` (a tool call in the partial message) or `tool_execution_update` whose delta carried a value nested past 128 levels; both are read now. The Lisp image is built with a 64 MiB control stack per thread (address space, not resident). The difference from Pi's depth-dependent limit is recorded as D268.
+
 ### BF-c58ceed
 
 **`chord/host.Forbidden("")` keeps the empty message, as Pi's `forbidden("")` does; `Forbidden()` still says…**
@@ -25253,6 +25319,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
 | D234 | PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a… | [BF-5b8189f](#bf-5b8189f) |
 | D235 | A session-graph client's two live runs with no "no run" read between them are one context | [BF-D235](#bf-d235) |
+| D236 | The auth lock follows the symlinks of auth.json to the real file | [BF-1724c9e](#bf-1724c9e) |
+| D237 | Exit waits for a started OAuth refresh to be saved | [BF-7febcec](#bf-7febcec) |
 | D238 | The output limit leaves 15% of the estimated input unused | [BF-D238](#bf-d238) |
 | D240 | Claude Sonnet 5 takes no temperature | [BF-D240](#bf-d240) |
 | D241 | Ctrl+V also pastes on Windows and WSL | [BF-D241](#bf-d241) |
@@ -25280,6 +25348,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D265 | PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments | [BF-348a3a8](#bf-348a3a8) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
+| D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
 
 ## Fix-titled commits that are not bugs in a release
 

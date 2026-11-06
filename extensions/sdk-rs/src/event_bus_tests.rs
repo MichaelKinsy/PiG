@@ -124,6 +124,8 @@ impl Host {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                 }),

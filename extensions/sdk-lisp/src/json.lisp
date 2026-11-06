@@ -13,7 +13,10 @@
 (deftype octets () '(simple-array (unsigned-byte 8) (*)))
 
 (defconstant +max-safe-integer+ 9007199254740992)
-(defparameter *max-json-depth* 2000)
+#| pig divergence (D268): Pi fails a call at a V8-stack-dependent depth (about 4400 levels); the SDK reads every frame the host can send. |#
+(defparameter *max-json-depth* 10016
+  "The deepest nesting the reader takes. The host's own JSON marshal refuses a value nested past 10000 levels, so no frame the host sends nests deeper (its envelope
+adds a few levels); a value past the bound is answered with Pi's RangeError (see READ-FRAME). The 64 MB control stack of the image holds the recursion.")
 
 (defun json-fail (message &optional offset)
   (error 'json-error :message message :offset offset))

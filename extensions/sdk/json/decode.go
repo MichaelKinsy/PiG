@@ -116,6 +116,19 @@ func Unmarshal(data []byte, v any) error {
 	return d.unmarshal(v)
 }
 
+// UnmarshalFrame is [Unmarshal] for a frame of the host's wire protocol: it takes a document nested a few levels past the 10000 that [Unmarshal] takes, because the
+// host validates a request's arguments, nested up to 10000 levels, alone and wraps them in an envelope.
+func UnmarshalFrame(data []byte, v any) error {
+	d := decodeStatePool.Get().(*decodeState)
+	defer releaseDecodeState(d)
+	d.scan.maxDepth = frameNestingDepth
+	if err := checkValid(data, &d.scan); err != nil {
+		return err
+	}
+	d.init(data)
+	return d.unmarshal(v)
+}
+
 // UnmarshalTrusted is [Unmarshal] for data this process encoded itself, which is known to hold one valid JSON value: it skips the validity
 // pass Unmarshal makes before decoding. On data that is not valid JSON its result is unspecified (an error, or a partly decoded value;
 // trailing data is ignored). Tests validate the data first, as Unmarshal does.

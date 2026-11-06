@@ -119,20 +119,42 @@ def _ordered_keys(obj: Mapping[str, Any]) -> list:
 
 
 def _json_stringify(value: Any) -> str:
-    """JSON.stringify for a decoded JSON value."""
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, (int, float)):
-        return _js_number_string(value)
-    if isinstance(value, str):
-        return _json_string(value)
-    if isinstance(value, (list, tuple)):
-        return "[" + ",".join(_json_stringify(element) for element in value) + "]"
-    if isinstance(value, Mapping):
-        return "{" + ",".join(_json_string(key) + ":" + _json_stringify(value[key]) for key in _ordered_keys(value)) + "}"
-    return "null"
+    """JSON.stringify for a decoded JSON value.
+
+    It walks with a stack of its own, not the interpreter's: a value nested thousands of levels deep (Pi stringifies 4000) is written, and no depth ends in a RecursionError."""
+    out: list[str] = []
+    stack: list[tuple[bool, Any]] = [(True, value)]
+    while stack:
+        is_value, item = stack.pop()
+        if not is_value:
+            out.append(item)
+        elif item is None:
+            out.append("null")
+        elif isinstance(item, bool):
+            out.append("true" if item else "false")
+        elif isinstance(item, (int, float)):
+            out.append(_js_number_string(item))
+        elif isinstance(item, str):
+            out.append(_json_string(item))
+        elif isinstance(item, (list, tuple)):
+            out.append("[")
+            stack.append((False, "]"))
+            for index in range(len(item) - 1, -1, -1):
+                stack.append((True, item[index]))
+                if index:
+                    stack.append((False, ","))
+        elif isinstance(item, Mapping):
+            out.append("{")
+            stack.append((False, "}"))
+            keys = _ordered_keys(item)
+            for index in range(len(keys) - 1, -1, -1):
+                stack.append((True, item[keys[index]]))
+                stack.append((False, _json_string(keys[index]) + ":"))
+                if index:
+                    stack.append((False, ","))
+        else:
+            out.append("null")
+    return "".join(out)
 
 
 _ESCAPES = {'"': '\\"', "\\": "\\\\", "\b": "\\b", "\f": "\\f", "\n": "\\n", "\r": "\\r", "\t": "\\t"}

@@ -1,11 +1,28 @@
 // Event streams: the host sends the first payload of an event name whole and every later one as operations on the payload this connection last received (EventStream in the host's protocol.go). A runtime keeps one replica per event name and key (a tool_execution_update has one for each tool call), applies the operations as the frame arrives, in arrival order, and hands each handler its own copy.
 
 export function cloneStreamValue(value) {
-  if (Array.isArray(value)) return value.map(cloneStreamValue);
+  // Iterative: a payload nests as deep as the host sends (up to 10000 levels), past where a recursive copy runs out of V8 stack.
   if (value === null || typeof value !== "object") return value;
-  const copy = {};
-  for (const key of Object.keys(value)) Object.defineProperty(copy, key, { value: cloneStreamValue(value[key]), writable: true, enumerable: true, configurable: true });
-  return copy;
+  const make = (source) => (Array.isArray(source) ? [] : {});
+  const root = make(value);
+  const pending = [[value, root]];
+  while (pending.length > 0) {
+    const [source, copy] = pending.pop();
+    const keys = Array.isArray(source) ? undefined : Object.keys(source);
+    const count = keys === undefined ? source.length : keys.length;
+    for (let index = 0; index < count; index++) {
+      const key = keys === undefined ? index : keys[index];
+      const member = source[key];
+      let cloned = member;
+      if (member !== null && typeof member === "object") {
+        cloned = make(member);
+        pending.push([member, cloned]);
+      }
+      if (keys === undefined) copy.push(cloned);
+      else Object.defineProperty(copy, key, { value: cloned, writable: true, enumerable: true, configurable: true });
+    }
+  }
+  return root;
 }
 
 function setStreamMember(parent, key, value) {

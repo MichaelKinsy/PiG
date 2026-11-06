@@ -116,6 +116,8 @@ that no listener handles, as EventEmitter throws."
                    (when (hash-table-p err) (error 'host-call-error :message (frame-error-message err)))
                    (return)))
                 ((equal type "shutdown") (pushnew conn *helper-shutdown*))
+                ((refused-request-p env) (refuse-request conn env))
+                ((equal type "refused") (note-dropped-frame))
                 ((and (equal type "request") (equal (jget (or (jget env "request") (obj)) "method") "events.dispatch"))
                  (push env (extension-early-dispatches ext)))
                 (t (error "expected a ~A result, got ~A" method type))))))))

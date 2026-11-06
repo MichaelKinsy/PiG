@@ -357,6 +357,10 @@ pub struct RequestMsg {
     pub tool_call_index: Option<u32>,
     /// On `tool_call`: the JSON text of `args` as the host wrote it.
     pub args_raw: Option<String>,
+    /// Why the arguments were not decoded: they nest deeper than `MAX_NESTING_DEPTH`, which is Pi's `RangeError` (`Maximum call stack size exceeded`) and not a reason to end the connection. The request is answered with this error.
+    pub args_error: Option<String>,
+    /// The arguments nest past serde_json's limit and were decoded on the deep stack: the request runs on a stack made for them (`request_stack_size`).
+    pub deep_args: bool,
 }
 
 /// The delta of an event payload: a request with args is a keyframe the extension keeps, one without applies `ops` to the payload numbered `base`.
@@ -406,25 +410,95 @@ struct RawRequestMsg {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     child_session: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    stream: Option<EventStream>,
+    stream: Option<RawEventStream>,
+}
+
+/// [`EventStream`] with `ops` as the JSON text the host wrote: a `set` operation carries a whole new subtree (a tool call's arguments), which nests as deep as the host's
+/// marshal allows, and decoding it inside the frame would stop at serde_json's 128 levels and end the connection. `TryFrom<RawRequestMsg>` decodes it with `decode_json_str`.
+#[derive(Serialize, Deserialize)]
+struct RawEventStream {
+    #[serde(default)]
+    seq: u64,
+    #[serde(default)]
+    base: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ops: Option<Box<serde_json::value::RawValue>>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    key: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    evict: Vec<String>,
+}
+
+/// The message of the error a value nested past `MAX_NESTING_DEPTH` is answered with: V8's `RangeError`, as Pi's JavaScript parser or stringify throws it.
+pub(crate) const TOO_DEEP_MESSAGE: &str = "Maximum call stack size exceeded";
+
+/// Whether `err` is a value refused for its nesting (`from_json_str` leaves serde_json's recursion error for a value past the bound).
+fn is_too_deep(err: &serde_json::Error) -> bool {
+    err.to_string().starts_with("recursion limit exceeded")
 }
 
 impl TryFrom<RawRequestMsg> for RequestMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawRequestMsg) -> Result<Self, Self::Error> {
         let mut terminal_input = None;
+        let mut args_error = None;
+        let mut deep_args = false;
         let args = if raw.method == "terminal_input" {
-            terminal_input = raw
+            match raw
                 .args
                 .as_ref()
-                .map(|a| from_json_str(a.get()))
-                .transpose()?;
+                .map(|a| decode_json_str(a.get(), &mut deep_args))
+                .transpose()
+            {
+                Ok(decoded) => terminal_input = decoded,
+                Err(err) if is_too_deep(&err) => args_error = Some(TOO_DEEP_MESSAGE.to_string()),
+                Err(err) => return Err(err),
+            }
             None
         } else {
-            raw.args
+            match raw
+                .args
                 .as_ref()
-                .map(|a| from_json_str(a.get()))
-                .transpose()?
+                .map(|a| decode_json_str(a.get(), &mut deep_args))
+                .transpose()
+            {
+                Ok(decoded) => decoded,
+                Err(err) if is_too_deep(&err) => {
+                    args_error = Some(TOO_DEEP_MESSAGE.to_string());
+                    None
+                }
+                Err(err) => return Err(err),
+            }
+        };
+        let stream = match raw.stream {
+            Some(RawEventStream {
+                seq,
+                base,
+                ops,
+                key,
+                evict,
+            }) => {
+                let ops = match ops
+                    .as_ref()
+                    .map(|ops| decode_json_str(ops.get(), &mut deep_args))
+                    .transpose()
+                {
+                    Ok(ops) => ops,
+                    Err(err) if is_too_deep(&err) => {
+                        args_error = Some(TOO_DEEP_MESSAGE.to_string());
+                        None
+                    }
+                    Err(err) => return Err(err),
+                };
+                Some(EventStream {
+                    seq,
+                    base,
+                    ops,
+                    key,
+                    evict,
+                })
+            }
+            None => None,
         };
         let args_raw = if raw.method == "tool_call" {
             raw.args.as_ref().map(|a| a.get().to_string())
@@ -441,10 +515,12 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
             args,
             child_session: raw.child_session,
             terminal_input,
-            stream: raw.stream,
+            stream,
             stream_error: None,
             tool_call_index: raw.tool_call_index,
             args_raw,
+            args_error,
+            deep_args,
         })
     }
 }
@@ -469,7 +545,15 @@ impl From<RequestMsg> for RawRequestMsg {
             tool_call_index: req.tool_call_index,
             args,
             child_session: req.child_session,
-            stream: req.stream,
+            stream: req.stream.map(|stream| RawEventStream {
+                seq: stream.seq,
+                base: stream.base,
+                ops: stream
+                    .ops
+                    .map(|ops| serde_json::value::to_raw_value(&ops).expect("Value is JSON")),
+                key: stream.key,
+                evict: stream.evict,
+            }),
         }
     }
 }
@@ -491,6 +575,9 @@ pub struct NotifyMsg {
     pub args: Option<Value>,
     #[serde(skip)]
     pub custom_input: Option<CustomInputArgs>,
+    /// Why the arguments were not decoded: they nest deeper than `MAX_NESTING_DEPTH` (a frame the host cannot send). The notification is dropped with a diagnostic, and the connection keeps serving.
+    #[serde(skip)]
+    pub args_error: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -527,6 +614,14 @@ struct RawNotifyMsg {
 impl TryFrom<RawNotifyMsg> for NotifyMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawNotifyMsg) -> Result<Self, Self::Error> {
+        let too_deep = |method: String| {
+            Ok(NotifyMsg {
+                method,
+                args: None,
+                custom_input: None,
+                args_error: Some(TOO_DEEP_MESSAGE.to_string()),
+            })
+        };
         if matches!(
             raw.method.as_str(),
             "ui.custom.input"
@@ -535,18 +630,24 @@ impl TryFrom<RawNotifyMsg> for NotifyMsg {
                 | "ui.editor.insertText"
                 | "ui.editor.addToHistory"
         ) {
-            let custom_input = raw
+            let custom_input = match raw
                 .args
                 .as_ref()
                 .map(|args| from_json_str(args.get()))
-                .transpose()?;
+                .transpose()
+            {
+                Ok(decoded) => decoded,
+                Err(err) if is_too_deep(&err) => return too_deep(raw.method),
+                Err(err) => return Err(err),
+            };
             return Ok(Self {
                 method: raw.method,
                 args: None,
                 custom_input,
+                args_error: None,
             });
         }
-        let args = raw
+        let args = match raw
             .args
             .map(|args| {
                 if raw.method == "state_update" {
@@ -561,11 +662,17 @@ impl TryFrom<RawNotifyMsg> for NotifyMsg {
                     from_json_str(args.get())
                 }
             })
-            .transpose()?;
+            .transpose()
+        {
+            Ok(decoded) => decoded,
+            Err(err) if is_too_deep(&err) => return too_deep(raw.method),
+            Err(err) => return Err(err),
+        };
         Ok(Self {
             method: raw.method,
             args,
             custom_input: None,
+            args_error: None,
         })
     }
 }
@@ -1343,6 +1450,7 @@ impl Connection {
             msg_type: "notify".to_string(),
             notify: Some(NotifyMsg {
                 custom_input: None,
+                args_error: None,
                 method: method.to_string(),
                 args,
             }),
@@ -1457,11 +1565,14 @@ fn is_zero_usize(value: &usize) -> bool {
     *value == 0
 }
 
-/// The deepest JSON nesting `from_json_str` accepts. serde_json refuses past 128 levels, and Pi's JavaScript parser, Go, and Python take
-/// far more; a refused frame ends the connection. A bound stays so a hostile frame cannot overflow the stack of the recursive decoder.
-const MAX_NESTING_DEPTH: usize = 4096;
+/// The deepest JSON nesting `from_json_str` accepts. serde_json refuses past 128 levels, and a refused frame would end the connection. The host's own JSON
+/// marshal refuses a value nested past 10000 levels, so no frame the host sends nests deeper than that (its envelope adds a few levels); the bound has headroom
+/// over it, and a value beyond is answered with Pi's RangeError (a request) or dropped (a notification). A bound stays so a hostile frame cannot overflow the
+/// stack of the recursive decoder.
+// pig divergence (D268): Pi fails a call at a V8-stack-dependent depth (about 4400 levels); the SDK reads every frame the host can send.
+const MAX_NESTING_DEPTH: usize = 10_016;
 
-/// Stack of the thread that decodes a value nested past serde_json's limit: a debug build uses about 2 KiB of it per level.
+/// Stack of the thread that decodes a value nested past serde_json's limit: a debug build uses about 2 KiB of it per level, so `MAX_NESTING_DEPTH` levels take about 20 MiB of it.
 const DEEP_DECODE_STACK: usize = 64 * 1024 * 1024;
 
 /// Runs a recursive decode on a thread with `DEEP_DECODE_STACK` bytes of stack, so the caller's own stack does not bound the depth.
@@ -1501,11 +1612,21 @@ fn decode_frame(buf: &[u8]) -> io::Result<Envelope<Box<serde_json::value::RawVal
 pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(
     text: &str,
 ) -> serde_json::Result<T> {
+    decode_json_str(text, &mut false)
+}
+
+/// [`from_json_str`], that also sets `deep` when the value nests past serde_json's limit and was decoded on the deep stack: a value like that is dropped, ordered and written
+/// recursively once per level, so the request that carries it runs on a stack made for it (see `request_stack_size`), and a normal request keeps the default one.
+pub(crate) fn decode_json_str<T: serde::de::DeserializeOwned + Send>(
+    text: &str,
+    deep: &mut bool,
+) -> serde_json::Result<T> {
     let decoded = match serde_json::from_str(text) {
         Err(err)
             if err.to_string().starts_with("recursion limit exceeded")
                 && nesting_depth(text.as_bytes()) <= MAX_NESTING_DEPTH =>
         {
+            *deep = true;
             on_deep_stack(|| {
                 let mut de = serde_json::Deserializer::from_str(text);
                 de.disable_recursion_limit();
@@ -1520,7 +1641,7 @@ pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(
     match decoded {
         Err(err) if err.to_string().starts_with("number out of range") => {
             match replace_out_of_range_numbers(text) {
-                Some(repaired) => from_json_str(&repaired),
+                Some(repaired) => decode_json_str(&repaired, deep),
                 None => Err(err),
             }
         }
@@ -1531,7 +1652,7 @@ pub(crate) fn from_json_str<T: serde::de::DeserializeOwned + Send>(
             match replace_unpaired_surrogate_escapes(text.as_bytes())
                 .and_then(|repaired| String::from_utf8(repaired).ok())
             {
-                Some(repaired) => from_json_str(&repaired),
+                Some(repaired) => decode_json_str(&repaired, deep),
                 None => Err(err),
             }
         }

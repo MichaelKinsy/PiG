@@ -146,3 +146,26 @@ func TestReleaseDecodeStateClearsWhatItHeld(t *testing.T) {
 		}
 	}
 }
+
+// The host sends arguments nested to 10000 levels (its marshal validates them alone against the standard limit) inside an envelope that adds a few levels:
+// the SDK's reader (UnmarshalFrame) takes that whole frame, refuses one nested far beyond it, and Unmarshal keeps the standard limit.
+func TestUnmarshalFrameTakesAnEnvelopeAroundArgumentsNestedTenThousandLevels(t *testing.T) {
+	frame := func(depth int) string {
+		return `{"type":"request","request":{"args":` + strings.Repeat("[", depth) + "1" + strings.Repeat("]", depth) + `}}`
+	}
+	var env struct {
+		Type    string `json:"type"`
+		Request struct {
+			Args RawMessage `json:"args"`
+		} `json:"request"`
+	}
+	if err := UnmarshalFrame([]byte(frame(10000)), &env); err != nil || env.Type != "request" || len(env.Request.Args) != 2*10000+1 {
+		t.Fatalf("a frame around arguments nested 10000 levels: %v, %d bytes of arguments", err, len(env.Request.Args))
+	}
+	if err := UnmarshalFrame([]byte(frame(10100)), &env); err == nil {
+		t.Fatal("a frame nested far beyond the host's limit was read")
+	}
+	if err := Unmarshal([]byte(frame(10000)), &env); err == nil {
+		t.Fatal("Unmarshal took a document nested past the standard limit")
+	}
+}

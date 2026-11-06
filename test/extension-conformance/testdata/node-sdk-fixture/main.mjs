@@ -12,6 +12,22 @@ import {
   getMarkdownTheme, getSelectListTheme, getSettingsListTheme, renderDiff,
 } from "@earendil-works/pi-coding-agent";
 
+// stringifyEventPayload is JSON.stringify of an event payload, a Set written as its array. A replacer function makes JSON.stringify run out of V8 stack at a lower depth than
+// plain JSON.stringify (nested arrays fail from 2500 levels with one, from 4400 without), so the replacer is used only when the payload holds a Set (found without recursion).
+function stringifyEventPayload(event) {
+  const seen = new Set();
+  const pending = [event];
+  let hasSet = false;
+  while (pending.length > 0 && !hasSet) {
+    const value = pending.pop();
+    if (value instanceof Set) hasSet = true;
+    else if (value !== null && typeof value === "object" && !seen.has(value)) {
+      seen.add(value);
+      for (const member of Object.values(value)) pending.push(member);
+    }
+  }
+  return hasSet ? JSON.stringify(event, (_key, value) => (value instanceof Set ? [...value] : value)) : JSON.stringify(event);
+}
 export default function (pi) {
   pi.ownThinkingRuns(true);
   // factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
@@ -1000,7 +1016,7 @@ export default function (pi) {
   pi.registerCommand("event_probe_on", { description: "Subscribe to the event named by the argument", handler: async (args) => { const name = String(args).trim(); const off = pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_probe_on:${name}`, "info"); ctx.ui.notify(`event_probe_data:${name}:${JSON.stringify(event)}`, "info"); if (Array.isArray(event?.servers)) ctx.ui.notify(`event_probe_servers:${event.servers.map((server) => server.name).join(",")}`, "info"); ctx.ui.notify(`event_payload:${name}:${JSON.stringify(event, (_key, value) => (value instanceof Set ? [...value].sort() : value))}`, "info"); const queued = (eventProbeResults.get(name) ?? []).shift(); if (name === "before_provider_headers" && queued) { for (const key of Object.keys(event.headers)) delete event.headers[key]; Object.assign(event.headers, queued); return undefined; } return queued; }); eventProbeOn.set(name, [...(eventProbeOn.get(name) ?? []), off]); } });
   pi.registerCommand("event_probe_off", { description: "Unsubscribe the event_probe_on handlers of the event named by the argument", handler: async (args) => { const name = String(args).trim(); for (const off of eventProbeOn.get(name) ?? []) off(); eventProbeOn.delete(name); } });
   // A JavaScript Set (session_before_compact preparation.fileOps) has no JSON form; the other SDKs receive the host's array, so report the Set as its members.
-  pi.registerCommand("event_payload_probe", { description: "Subscribe and report the payload of the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_payload:${name}:${JSON.stringify(event, (_key, value) => (value instanceof Set ? [...value] : value))}`, "info"); }); } });
+  pi.registerCommand("event_payload_probe", { description: "Subscribe and report the payload of the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_payload:${name}:${stringifyEventPayload(event)}`, "info"); }); } });
   pi.registerCommand("tool_result_guards_probe", { description: "Report the tool_result guards that accept each tool_result event", handler: async () => { const guards = { bash: isBashToolResult, edit: isEditToolResult, find: isFindToolResult, grep: isGrepToolResult, ls: isLsToolResult, powershell: isPowerShellToolResult, read: isReadToolResult, write: isWriteToolResult }; pi.on("tool_result", async (event, ctx) => { ctx.ui.notify(`tool_result_guards:${Object.keys(guards).filter((name) => guards[name](event)).join(",")}:end`, "info"); }); } });
   pi.registerCommand("language_probe", { description: "Report the highlight language of a path", handler: async (args, ctx) => {
     const c = JSON.parse(args);

@@ -275,12 +275,24 @@ EventHandler: TypeAlias = Callable[["Context", dict[str, Any]], Any]
 
 
 def _clone_stream_value(value: Any) -> Any:
-    """Copies the containers of a decoded event payload; strings are immutable and shared."""
-    if isinstance(value, dict):
-        return {key: _clone_stream_value(member) for key, member in value.items()}
-    if isinstance(value, list):
-        return [_clone_stream_value(member) for member in value]
-    return value
+    """Copies the containers of a decoded event payload; strings are immutable and shared. It walks with a stack of its own: a payload nested past the interpreter's recursion limit is copied too."""
+    if not isinstance(value, (dict, list)):
+        return value
+    root: Any = {} if isinstance(value, dict) else []
+    stack = [(value, root)]
+    while stack:
+        source, target = stack.pop()
+        for key, member in source.items() if isinstance(source, dict) else enumerate(source):
+            if isinstance(member, (dict, list)):
+                child: Any = {} if isinstance(member, dict) else []
+                stack.append((member, child))
+            else:
+                child = member
+            if isinstance(target, dict):
+                target[key] = child
+            else:
+                target.append(child)
+    return root
 
 
 def _apply_stream_ops(root: Any, ops: Any) -> Any:
@@ -1293,9 +1305,17 @@ def _dispose_remote_component(component: RemoteComponent) -> None:
             pass
 
 
+def _json_text(value: Any) -> str:
+    """json.dumps of ``value``, written with a stack of its own when the value is nested past the interpreter's recursion limit."""
+    try:
+        return json.dumps(value)
+    except RecursionError:
+        return _dumps_deep(value)
+
+
 def _ensure_jsonable(value: Any, what: str) -> None:
     try:
-        json.dumps(value)
+        _json_text(value)
     except (TypeError, ValueError) as exc:
         if _holds_bigint(value):
             raise TypeError(BIGINT_STRINGIFY_ERROR) from exc  # a schema that holds a bigint: JSON.stringify's message
@@ -4169,12 +4189,252 @@ def _user_bash_event_result(value: Any) -> Any:
 
 
 def _js_ordered(value: Any) -> Any:
-    """``value`` with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order."""
-    if isinstance(value, dict):
-        return {key: _js_ordered(value[key]) for key in _ordered_keys(value)}
-    if isinstance(value, list):
-        return [_js_ordered(item) for item in value]
-    return value
+    """``value`` with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order.
+
+    It walks with a stack of its own, not the interpreter's: arguments nested thousands of levels deep (Pi takes 4000) are read, and no depth ends in a RecursionError."""
+    if not isinstance(value, (dict, list)):
+        return value
+    root = {} if isinstance(value, dict) else []
+    stack = [(value, root)]
+    while stack:
+        source, target = stack.pop()
+        if isinstance(source, dict):
+            for key in _ordered_keys(source):
+                item = source[key]
+                if isinstance(item, (dict, list)):
+                    child = {} if isinstance(item, dict) else []
+                    stack.append((item, child))
+                    target[key] = child
+                else:
+                    target[key] = item
+        else:
+            for item in source:
+                if isinstance(item, (dict, list)):
+                    child = {} if isinstance(item, dict) else []
+                    stack.append((item, child))
+                    target.append(child)
+                else:
+                    target.append(item)
+    return root
+
+
+TOO_DEEP_MESSAGE = "Maximum call stack size exceeded"
+
+
+def _frame_head(body: bytes | bytearray) -> tuple[str | None, str | None]:
+    """The ``type`` and ``id`` strings of the envelope in ``body``, read without decoding the members that nest: the brackets are counted and the strings read whole."""
+    from json.decoder import scanstring
+
+    text = bytes(body).decode("utf-8", "replace")
+    end, size, found = 0, len(text), {}
+    try:
+        while end < size and text[end] in " \t\r\n":
+            end += 1
+        if end >= size or text[end] != "{":
+            return None, None
+        end += 1
+        while True:
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end >= size or text[end] != '"':
+                break
+            key, end = scanstring(text, end + 1)
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end >= size or text[end] != ":":
+                break
+            end += 1
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end < size and text[end] == '"':
+                value, end = scanstring(text, end + 1)
+                found[key] = value
+            else:
+                depth = 0
+                while end < size:
+                    char = text[end]
+                    if char == '"':
+                        _, end = scanstring(text, end + 1)
+                        continue
+                    if char in "{[":
+                        depth += 1
+                    elif char in "}]":
+                        if depth == 0:
+                            break
+                        depth -= 1
+                    elif char == "," and depth == 0:
+                        break
+                    end += 1
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end < size and text[end] == ",":
+                end += 1
+            else:
+                break
+    except (ValueError, IndexError):
+        pass
+    return found.get("type"), found.get("id")
+
+
+def _diagnose(message: str) -> None:
+    """One diagnostic line on stderr; a closed stderr does not end the extension."""
+    try:
+        print(f"pig_sdk: {message}", file=sys.stderr, flush=True)
+    except (OSError, ValueError):
+        pass
+
+
+def _refusal(kind: str | None, frame_id: str | None) -> dict[str, Any]:
+    if not isinstance(frame_id, str):
+        return {"type": "refused"}
+    if kind == "request":
+        return {"type": "request", "id": frame_id, "refused": TOO_DEEP_MESSAGE}
+    if kind == "call_result":
+        return {"type": "call_result", "id": frame_id, "call_result": {"error": {"message": TOO_DEEP_MESSAGE}}}
+    return {"type": "refused"}
+
+
+def _too_deep_envelope(body: bytes | bytearray) -> dict[str, Any]:
+    """What a frame nested too deep to decode stands for: a request that is answered with an error, a host call's result that is an error, or nothing."""
+    return _refusal(*_frame_head(body))
+
+
+# The host's own marshal refuses a value nested past 10000 levels, so a frame it sends is at most that deep; the headroom covers the envelope around the arguments.
+MAX_FRAME_DEPTH = 10100
+_JSON_WHITESPACE = re.compile(r"[ \t\n\r]*")
+
+
+def _loads_deep(body: bytes | bytearray) -> Any:
+    """json.loads for a frame the interpreter's own reader cannot take: CPython 3.11's C reader is bound by sys.getrecursionlimit() (about 990 levels) and 3.12's stops near 9997.
+
+    It nests with a stack of its own, so the interpreter's stack and recursion limit do not matter, and it takes up to MAX_FRAME_DEPTH levels; a value nested deeper raises RecursionError. A malformed frame raises ValueError."""
+    from json.decoder import JSONDecodeError, JSONDecoder, scanstring
+
+    text = bytes(body).decode("utf-8", "surrogatepass")
+    scan = JSONDecoder().scan_once
+    skip = _JSON_WHITESPACE.match
+    stack: list[Any] = []
+    keys: list[str | None] = []
+    root: Any = None
+    mode = "value"
+    pos = skip(text, 0).end()
+    while True:
+        if mode == "value":
+            pos = skip(text, pos).end()
+            char = text[pos : pos + 1]
+            if char == "[" or char == "{":
+                container: Any = [] if char == "[" else {}
+                if not stack:
+                    root = container
+                elif isinstance(stack[-1], list):
+                    stack[-1].append(container)
+                else:
+                    stack[-1][keys[-1]] = container
+                pos = skip(text, pos + 1).end()
+                if text[pos : pos + 1] == ("]" if char == "[" else "}"):
+                    pos += 1
+                    mode = "after"
+                    continue
+                if len(stack) >= MAX_FRAME_DEPTH:
+                    raise RecursionError(TOO_DEEP_MESSAGE)
+                stack.append(container)
+                keys.append(None)
+                mode = "value" if char == "[" else "key"
+                continue
+            try:
+                value, pos = scan(text, pos)
+            except StopIteration:
+                raise JSONDecodeError("Expecting value", text, pos) from None
+            if not stack:
+                root = value
+            elif isinstance(stack[-1], list):
+                stack[-1].append(value)
+            else:
+                stack[-1][keys[-1]] = value
+            mode = "after"
+        elif mode == "key":
+            pos = skip(text, pos).end()
+            if text[pos : pos + 1] != '"':
+                raise JSONDecodeError("Expecting property name enclosed in double quotes", text, pos)
+            key, pos = scanstring(text, pos + 1)
+            pos = skip(text, pos).end()
+            if text[pos : pos + 1] != ":":
+                raise JSONDecodeError("Expecting ':' delimiter", text, pos)
+            pos += 1
+            keys[-1] = key
+            mode = "value"
+        else:
+            pos = skip(text, pos).end()
+            if not stack:
+                if pos != len(text):
+                    raise JSONDecodeError("Extra data", text, pos)
+                return root
+            is_list = isinstance(stack[-1], list)
+            char = text[pos : pos + 1]
+            if char == ",":
+                pos += 1
+                mode = "value" if is_list else "key"
+            elif char == ("]" if is_list else "}"):
+                stack.pop()
+                keys.pop()
+                pos += 1
+            else:
+                raise JSONDecodeError("Expecting ',' delimiter", text, pos)
+
+
+def _json_scalar(item: Any) -> str:
+    """The JSON of a null, boolean, number or string, a non-finite number as null."""
+    if isinstance(item, float) and not math.isfinite(item):
+        return "null"
+    return json.dumps(item)
+
+
+def _dumps_deep(value: Any) -> str:
+    """The compact JSON of ``value`` for a value json.dumps cannot write for its depth (its C writer is bound by the recursion limit): the same text, NaN and the infinities written as null as JSON.stringify writes them.
+
+    It nests with a stack of its own and takes up to MAX_FRAME_DEPTH levels; a value nested deeper (or one that holds itself) raises RecursionError. A value that is not JSON raises TypeError."""
+    out: list[str] = []
+    stack: list[Any] = [(value, 0)]
+    while stack:
+        item, depth = stack.pop()
+        if isinstance(item, str) and depth < 0:
+            out.append(item)
+            continue
+        if item is None:
+            out.append("null")
+        elif item is True:
+            out.append("true")
+        elif item is False:
+            out.append("false")
+        elif isinstance(item, (int, float, str)):
+            out.append(_json_scalar(item))
+        elif isinstance(item, (list, tuple, dict)):
+            if depth >= MAX_FRAME_DEPTH:
+                raise RecursionError(TOO_DEEP_MESSAGE)
+            if isinstance(item, dict):
+                out.append("{")
+                stack.append(("}", -1))
+                members = list(item.items())
+                for index in range(len(members) - 1, -1, -1):
+                    key, member = members[index]
+                    if key is None or isinstance(key, (bool, int, float)):
+                        key = "null" if key is None else _json_scalar(key)
+                    elif not isinstance(key, str):
+                        raise TypeError(f"keys must be str, int, float, bool or None, not {type(key).__name__}")
+                    stack.append((member, depth + 1))
+                    stack.append((json.dumps(key) + ":", -1))
+                    if index:
+                        stack.append((",", -1))
+            else:
+                out.append("[")
+                stack.append(("]", -1))
+                for index in range(len(item) - 1, -1, -1):
+                    stack.append((item[index], depth + 1))
+                    if index:
+                        stack.append((",", -1))
+        else:
+            raise TypeError(f"Object of type {type(item).__name__} is not JSON serializable")
+    return "".join(out)
 
 
 class Extension:
@@ -4552,6 +4812,10 @@ class Extension:
                 self._deliver_call_result(env)
                 if waiting is not None and waiting.is_set():
                     return None
+            elif kind == "refused":
+                continue  # nested past the reader and already reported on stderr by _read
+            elif kind == "request" and env.get("refused"):
+                self._respond(env.get("id", ""), None, {"message": env["refused"]})
             elif kind == "request" and (env.get("request") or {}).get("method") == "events.dispatch":
                 self._start_request(env)
             elif kind == "notify" and (env.get("notify") or {}).get("method") == "events.release":
@@ -5118,6 +5382,8 @@ class Extension:
                 continue
             if env.get("type") == "notify":
                 self._handle_notify(env)
+            elif env.get("type") == "request" and env.get("refused"):
+                self._respond(env.get("id", ""), None, {"message": env["refused"]})
             elif env.get("type") == "request":
                 self._apply_event_stream(env.get("request") or {})
                 self._start_request(env)
@@ -5811,7 +6077,7 @@ class Extension:
                 # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, member order included, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
                 if req.get("event") == "tool_call":
                     tool_input = data.get("input")
-                    before = json.dumps(tool_input)
+                    before = _json_text(tool_input)
                     result = None
                     error = None
                     try:
@@ -5821,7 +6087,7 @@ class Extension:
                     except Exception as exc:  # noqa: BLE001 - Preserve input edits before reporting the handler error.
                         error = {"message": str(exc)}
                     reply: dict[str, Any] = {"_pigToolCallResult": result}
-                    if json.dumps(tool_input) != before:
+                    if _json_text(tool_input) != before:
                         reply["_pigToolCallInput"] = tool_input
                     self._respond(req_id, reply, error)
                     return
@@ -6502,7 +6768,13 @@ class Extension:
         except ValueError:
             # Python writes NaN and Infinity as bare words, which is not JSON: the host refused the frame and the extension's connection ended.
             # JSON.stringify writes them as null, so each SDK sends null.
-            data = json.dumps(_non_finite_to_null(env), separators=(",", ":"), allow_nan=False).encode()
+            try:
+                data = json.dumps(_non_finite_to_null(env), separators=(",", ":"), allow_nan=False).encode()
+            except RecursionError:
+                data = _dumps_deep(env).encode()
+        except RecursionError:
+            # A value nested past the interpreter's limit (the host sends and takes up to 10000 levels).
+            data = _dumps_deep(env).encode()
         if len(data) > MAX_FRAME_SIZE:
             raise RuntimeError(f"frame too large: {len(data)} bytes exceeds {MAX_FRAME_SIZE}")
         # One write: a header and a body sent apart cost the host two reads and, on a stream socket, two segments.
@@ -6517,7 +6789,22 @@ class Extension:
         size = struct.unpack(">I", hdr)[0]
         if size > MAX_FRAME_SIZE:
             raise RuntimeError(f"frame too large: {size}")
-        return json.loads(self._read_exact(size))
+        body = self._read_exact(size)
+        try:
+            return json.loads(body)
+        except RecursionError:
+            pass
+        # pig divergence (D268): Pi fails a call at a V8-stack-dependent depth (about 4400 levels); the SDK reads every frame the host can send.
+        # The interpreter's reader stops at its recursion limit (about 990 levels on 3.11), and the host sends values nested up to 10000: the frame is read again with a stack of its own.
+        try:
+            return _loads_deep(body)
+        except RecursionError:
+            # A value nested past what the host can send is Pi's RangeError, not the end of the connection: the request it came in is answered with that error.
+            kind, frame_id = _frame_head(body)
+            envelope = _refusal(kind, frame_id)
+            if envelope["type"] == "refused":
+                _diagnose(f"dropped a {kind if isinstance(kind, str) else 'malformed'} frame nested deeper than the reader takes")
+            return envelope
 
     def _read_exact(self, n: int) -> bytes | bytearray:
         """Read exactly ``n`` bytes straight into one buffer: a large frame is not grown chunk by chunk and copied again. ``b""`` means the peer closed before the first byte."""

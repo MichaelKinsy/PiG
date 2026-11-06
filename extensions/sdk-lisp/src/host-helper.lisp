@@ -82,6 +82,8 @@ and the events.dispatch requests of OWNER's listeners; the wait is re-entrant, s
                      ((equal type "ping")
                       (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
                      ((equal type "shutdown") (pushnew conn *helper-shutdown*))
+                     ((refused-request-p env) (refuse-request conn env))
+                     ((equal type "refused") (note-dropped-frame))
                      ((equal type "request")
                       (send-frame conn (obj "type" "response" "id" (jget env "id")
                                             "response" (helper-answer-request (cdr (assoc path *helper-owners* :test #'string=)) env))))

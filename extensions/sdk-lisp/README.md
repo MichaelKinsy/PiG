@@ -53,6 +53,10 @@ it (the few that remain are the `gap:` cells shared with the other SDKs in `test
 The feature files plug into the connection loop through `src/hooks.lisp` (`def-register-contributor`, `def-ready-hook`, `def-state-hook`,
 `def-stop-hook`, `def-notify`, `def-request`, `extension-extra`), so `dispatch.lisp` knows no feature.
 
+## Stack
+
+The image is built with `--control-stack-size 64MB` (`lispControlStackSize` in `coding/extension/host/runtimecell/lisp_packed.go`), saved with the image and kept by every thread it starts, so the JSON reader takes the 10000 levels of nesting the host's own marshal allows. The stack is reserved per thread as `MAP_NORESERVE` address space and is not resident; it matters only under `ulimit -v` or `vm.overcommit_memory=2`, where each thread commits it.
+
 ## Tests
 
 `make test-sdk-lisp` runs `sbcl --script extensions/sdk-lisp/tests/run.lisp`: the JSON vectors (copied from the Rust and Python SDK tests), the vector tests generated from Pi (`test/parity/sdk-vectors`, `sdk-bulk`) and the SDK
