@@ -11,7 +11,7 @@ import (
 )
 
 // A lone UTF-16 surrogate in a math expression renders as pinned pi-tui renders it: a code point of its own, never U+FFFD (inline and display, in a
-// script, fraction, root, accent, \not, \mathbb, \text, a matrix, cases and aligned, and next to the other half of a pair that the text joins).
+// script, fraction, root, accent, \not, \mathbb, \text, a matrix, cases and aligned), next to the other half of a pair that the text joins, and as an unbraced astral argument that Pi reads one UTF-16 unit of.
 func TestRenderLatexLoneSurrogatesMatchPi(t *testing.T) {
 	high, low := jsstring.FromUTF16([]uint16{0xd83d}), jsstring.FromUTF16([]uint16{0xde00})
 	var sources []string
@@ -38,6 +38,26 @@ func TestRenderLatexLoneSurrogatesMatchPi(t *testing.T) {
 		"😀", "\\frac{😀}{x}", "\\sqrt{😀}", "x^{😀}", high+"{}"+low, high+"\\,"+low, "x^{"+high+"}{}"+low, low+"{}"+high, low+high,
 		"\\frac{"+high+"}{y}\\frac{"+low+"}{z}", "\\text{"+high+"}\\text{"+low+"}",
 	)
+	// Halves that become adjacent inside one argument are one character of it, as Array.from counts (J), at every site that counts: scripts, fractions,
+	// layout, \not, accents.
+	join := high + "{}" + low
+	for _, j := range []string{join, high + "\\," + low, high + "\\relax " + low} {
+		sources = append(sources,
+			"\\vec{"+j+"}", "\\hat{"+j+"}", "\\bar{"+j+"x}", "\\not{"+j+"}", "\\not{"+j+"x}", "\\frac{x}{"+j+"}", "\\frac{"+j+"}{y}", "\\frac{"+j+"}{"+j+"}",
+			"x^{"+j+"}", "x_{"+j+"}", "x^{"+j+"}_{"+j+"}", "x_{a"+j+"}", "\\overset{"+j+"}{x}", "\\underset{"+j+"}{x}", "\\sum_{"+j+"}^{n} x", "\\binom{"+j+"}{x}",
+			"\\sqrt{"+j+"}", "\\mathbb{"+j+"}", "\\text{"+j+"}", j+"\\frac{x}{y}",
+		)
+	}
+	// An unbraced single-token argument is one UTF-16 unit in Pi: an astral character is split, its high half is the argument and its low half is the next
+	// character of the source.
+	for _, c := range []string{"😀", "𝒜", "\U00010000"} {
+		sources = append(sources,
+			"\\vec"+c, "\\hat"+c+"x", "\\frac"+c+"x", "\\frac{1}"+c, "\\frac x"+c, "\\sqrt"+c, "\\sqrt["+c+"]{x}", "\\not"+c, "\\binom"+c+"x", "\\overset"+c+"x", "\\underset"+c+"x",
+			"\\mathbb"+c, "\\text"+c, "\\operatorname"+c, "x^"+c, "x_"+c, "a^"+c+"b", "x^"+c+"_"+c, "\\sum_"+c+"^n x", "\\int^"+c+" x", "\\boxed"+c, "\\left"+c+" x \\right"+c,
+			"\\begin{matrix} a"+c+" & b \\end{matrix}", "x^{"+c+"}", "\\frac{"+c+"}{"+c+"}",
+			"\\"+c, "\\"+c+"x", "\\\\"+c, "x"+c+"y", c+c,
+		)
+	}
 	input, err := jsstring.MarshalKeepingSurrogates(sources)
 	if err != nil {
 		t.Fatal(err)
