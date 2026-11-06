@@ -57,6 +57,7 @@
     "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/lazyregexp",
     "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
     "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
+    "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/driver",
     "github.com/MichaelKinsy/PiG/internal/codingagent",
     "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
     "github.com/MichaelKinsy/PiG/internal/codingagent/configschema",
@@ -87071,6 +87072,149 @@
       "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisDriver",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisDriver",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#analysisKillDelay.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "analysisKillDelay.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#apiKeyFlagSet",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "apiKeyFlagSet",
@@ -98608,6 +98752,17 @@
         "type": "func(args []string, stdout io.Writer, stderr io.Writer) int"
       },
       "shapeHash": "sha256:bab0e5ace95d5f2ceb0d72a95d8b031c60d0da9d88a05b835eaa5205ea4f1d16"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runAnalysisDriver",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "runAnalysisDriver",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, configRoot string, sdkRoot string, command string, env []string, options github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.LoadOptions) (*github.com/MichaelKinsy/PiG/extensions/sdk/upgrade.Result, error)"
+      },
+      "shapeHash": "sha256:629b661e4ac3f42914decb8bf7e34baeece492288933921b8c9fc617ebdb7517"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runAuthCheck",
@@ -233063,6 +233218,17 @@
       "shapeHash": "sha256:196210f290abe027accae5d464c5c41de703ffdbf010f2b3ba113921df361945"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Reply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
+      "name": "Reply",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Reply"
+      },
+      "shapeHash": "sha256:d33b967e8d65b7b7ae3e460d122305977f97831483b5020a5129ff754ec2b5da"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#Result",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "Result",
@@ -234711,6 +234877,28 @@
         "type": "func(source []byte) bool"
       },
       "shapeHash": "sha256:a829ffa78bc791629ac44ca20b5af76c82f5f49fda9683634f19f9927387ae18"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/driver#main",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/driver",
+      "name": "main",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/driver#run",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade/driver",
+      "name": "run",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(in io.Reader, out io.Writer) error"
+      },
+      "shapeHash": "sha256:5f5fec5eaa195052f15042d2fb968b8a812895922fe9d90ee849e902ce1e085e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#APP_TITLE",
