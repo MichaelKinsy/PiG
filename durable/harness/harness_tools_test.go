@@ -412,10 +412,12 @@ func TestToolRound(t *testing.T) {
 			t.Fatal("the deactivated tool ran")
 		}
 		tlExpectText(t, tlResultText(tlResults(run.entries)[0]), "<harness>\n[error] Tool echo is not available\n</harness>")
-		// The next preparation removes it.
-		systems := tlSystems(run.entries)
-		if got := systems[len(systems)-1].ToolsRemoved; !reflect.DeepEqual(got, []ai.ToolReference{{Name: "echo"}}) {
-			t.Fatalf("toolsRemoved %v, want [echo]", got)
+		// Fork rule: the next preparation does not record a transition to an empty tool set — the transcript keeps the
+		// loadout (2026-11-06 incident), and a later round that re-offers the tools plans no change.
+		for _, system := range tlSystems(run.entries) {
+			if system.ToolsRemoved != nil {
+				t.Fatalf("toolsRemoved %v, want none", system.ToolsRemoved)
+			}
 		}
 		mustClose(t, run.harness)
 	})
@@ -434,8 +436,11 @@ func TestToolRound(t *testing.T) {
 		}
 		entries := allEntries(t, first.root)
 		systems := tlSystems(entries)
-		if got := systems[len(systems)-1].ToolsRemoved; !reflect.DeepEqual(got, []ai.ToolReference{{Name: "echo"}}) {
-			t.Fatalf("toolsRemoved %v, want [echo]", got)
+		// Fork rule: the offer change is not recorded — no transition to an empty tool set ever lands in the transcript.
+		for _, system := range systems {
+			if system.ToolsRemoved != nil {
+				t.Fatalf("toolsRemoved %v, want none", system.ToolsRemoved)
+			}
 		}
 		if !tlResults(entries)[0].IsError {
 			t.Fatal("the unavailable call did not answer with an error")
@@ -451,6 +456,11 @@ func TestToolRound(t *testing.T) {
 		systems = tlSystems(entries)
 		if got := tlAddedNames(systems[len(systems)-1]); !reflect.DeepEqual(got, []string{"echo"}) {
 			t.Fatalf("toolsAdded %v, want [echo]", got)
+		}
+		for _, system := range systems {
+			if system.ToolsRemoved != nil {
+				t.Fatalf("toolsRemoved %v, want none", system.ToolsRemoved)
+			}
 		}
 		mustClose(t, first.harness)
 	})
