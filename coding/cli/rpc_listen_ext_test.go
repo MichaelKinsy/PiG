@@ -368,7 +368,7 @@ func TestListenCloseDuringASlowToolCallEndsOnlyThatSession(t *testing.T) {
 	finishListenSession(t, s, log, b)
 }
 
-// Closing a connection during a ctx.ui.confirm dialog: the dialog is pending when the input ends. The unwind resolves it as cancelled, but whether the extension's handler resumes before its generation ends is a race, as it is in Pi when its process exits first: it never resumes with true, nothing outlives the close, and the other session is unaffected (D205).
+// Closing a connection during a ctx.ui.confirm dialog: the dialog is pending when the input ends. The unwind resolves it as cancelled, but whether the extension's handler resumes before its generation ends is a race, as it is in Pi when its process exits first: it never resumes with true, nothing outlives the close, and the other session is unaffected (D232).
 func TestListenCloseDuringAConfirmDialogLeavesNothingBehind(t *testing.T) {
 	s, log := listenExtensionServer(t)
 	a, b := s.dial(), s.dial()

@@ -246,7 +246,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	defer rawStdout.Close()
 	defer func() {
 		// A normal exit flushes the tail; a termination signal exits without waiting on a blocked reader.
-		// pig additive (D205): a connection's tail is flushed on a server-wide signal too, bounded by flushConnectionTail.
+		// pig additive (D232): a connection's tail is flushed on a server-wide signal too, bounded by flushConnectionTail.
 		if !transport.processOwned {
 			flushConnectionTail(rawStdout)
 		} else if receivedTerminationSignal.Load() == 0 {
@@ -425,7 +425,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 	// exitRPC ends the process once (rpcExit). Upstream flushes stdout before process.exit unless the signal is SIGTERM, and a repeated signal never waits for it (process.exit at once, rpc-mode.ts signalCount > 1); the queued tail is that pending output.
 	// pig additive (D102): a single signal during a shutdown that another trigger started does not own the exit.log line; the exit that ends the process does, and it says so.
-	// pig additive (D205): a connection's exit closes the connection only; the process, its extensions and its exit.log line outlive it, and it flushes its pending records on every exit, SIGTERM included, but never waits on a peer that stopped reading.
+	// pig additive (D232): a connection's exit closes the connection only; the process, its extensions and its exit.log line outlive it, and it flushes its pending records on every exit, SIGTERM included, but never waits on a peer that stopped reading.
 	var termination *rpcTermination
 	exitRPC := newRPCExit(
 		func() { stdoutClosed.Store(true) },
@@ -501,7 +501,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			host.detached.Store(true)
 		},
 		func() {
-			// pig additive (D205): a connection's session retires its own extension Host through the normal release; only a process about to exit holds its retirements for TerminateProcesses.
+			// pig additive (D232): a connection's session retires its own extension Host through the normal release; only a process about to exit holds its retirements for TerminateProcesses.
 			if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil && transport.processOwned {
 				extensionHost.HoldRetirements()
 			}
@@ -545,7 +545,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}()
 			_ = sess().WaitForIdle(settleCtx)
 		},
-		// pig additive (D205): a connection flushes its records on every exit, SIGTERM included (exitRPC's wait is bounded for it).
+		// pig additive (D232): a connection flushes its records on every exit, SIGTERM included (exitRPC's wait is bounded for it).
 		func(code int) { exitRPC.run(code, !transport.processOwned || code != 128+int(syscall.SIGTERM), false) },
 	)
 	shutdown.abort = func(code int) { exitRPC.run(code, false, true) }
@@ -593,7 +593,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	defer shutdownGate.unbind()
 	host.afterSettled = shutdownGate.Check
 	// pig divergence (D234): follows Pi main ace560c30 ahead of the v1.5.0 pin. Main's handler takes the first signal; the watcher takes the repeated ones.
-	// pig additive (D205): the process-wide signal state belongs to the process transport; a connection's repeated signal is the server's (runRPCListen).
+	// pig additive (D232): the process-wide signal state belongs to the process transport; a connection's repeated signal is the server's (runRPCListen).
 	if transport.processOwned {
 		repeated := watchRepeatedTermination(shutdown.repeatedSignal)
 		defer repeated.Stop()
@@ -608,7 +608,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		setTerminationRecord(termination.record)
 		defer setTerminationRecord(nil)
 	} else if transport.register != nil {
-		// pig additive (D205): a connection hands its controls to the server's signal fan-out instead of the process hooks. As rpcTermination.hook does, a signal that finds the shutdown already started (D234) does not interrupt it: it releases the hold the prelude took on the Session's agent events and waits for the mode's end, so the server does not go on to cancel the context that owns the extension processes under a running dispose.
+		// pig additive (D232): a connection hands its controls to the server's signal fan-out instead of the process hooks. As rpcTermination.hook does, a signal that finds the shutdown already started (D234) does not interrupt it: it releases the hold the prelude took on the Session's agent events and waits for the mode's end, so the server does not go on to cancel the context that owns the extension processes under a running dispose.
 		defer transport.register(rpcSessionControls{prelude: prelude, shutdown: func(sig syscall.Signal) {
 			if shutdown.signal(sig) {
 				return

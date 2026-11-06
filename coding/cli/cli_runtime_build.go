@@ -83,7 +83,7 @@ type cliRuntimeBuilder struct {
 	stageSDKs          sync.Once
 	// extensionFactories are MainOptions.ExtensionFactories, the compiled-in extensions the program's main adds after the built-in ones (main.ts:575).
 	extensionFactories []extension.InlineExtension
-	// cellRegistry and buildMu are set only by a --listen server (pig additive (D205)): the registry its Hosts share cell processes through, and the mutex that serializes its builds.
+	// cellRegistry and buildMu are set only by a --listen server (pig additive (D232)): the registry its Hosts share cell processes through, and the mutex that serializes its builds.
 	cellRegistry *subprocess.CellRegistry
 	buildMu      *sync.Mutex
 }
@@ -259,7 +259,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if startupExtensions == nil {
 		startupExtensions = &startupExtensionSet{}
 	}
-	// pig additive (D205): every build of a --listen server creates its extension Host on the server's cell registry.
+	// pig additive (D232): every build of a --listen server creates its extension Host on the server's cell registry.
 	startupExtensions.cells = b.cellRegistry
 	build.SourceResolver = newStartupExtensionSourceResolver(nil)
 	resolver := build.SourceResolver

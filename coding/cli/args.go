@@ -129,7 +129,7 @@ type Args struct {
 	// NoStdin skips the startup read of piped stdin, so a stdin pipe whose writer never closes does not block startup.
 	// pig divergence (D150): Pi has no such flag.
 	NoStdin bool
-	// Listen is the Unix socket path --listen serves one RPC session per connection on; pig additive (D205).
+	// Listen is the Unix socket path --listen serves one RPC session per connection on; pig additive (D232).
 	Listen string
 	// ProjectTrustOverride controls project-local resource loading for this run.
 	// nil uses saved/default trust; true is --approve; false is --no-approve.
@@ -359,7 +359,7 @@ func parseArgs(args []string) Args {
 			// pig divergence (D150): Pi reads stdin until EOF with no opt-out (main.ts:80-97).
 			flags.NoStdin = true
 		case arg == "--listen":
-			// pig additive (D205): --listen path for the multi-session RPC server.
+			// pig additive (D232): --listen path for the multi-session RPC server.
 			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
 				flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen requires a socket path"})
 			} else {
@@ -422,7 +422,7 @@ func parseArgs(args []string) Args {
 		i++
 	}
 	if flags.Listen != "" {
-		// pig additive (D205): --listen is valid only for a fresh rpc session per connection.
+		// pig additive (D232): --listen is valid only for a fresh rpc session per connection.
 		if flags.Mode != "rpc" {
 			flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen requires --mode rpc"})
 		}
