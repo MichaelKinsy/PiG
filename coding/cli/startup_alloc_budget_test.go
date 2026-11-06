@@ -81,7 +81,9 @@ import (
 // allocations, 9,144 bytes of the Draft tables, the format map and the message printer, linked into every start since the type engine serves Value.Check; they are
 // built on first use, third_party/jsonschema/FORK.md 8) and the decode of the stock cell manifest through reflection (cellpack.loadManifest, 46 objects and 2.7 KB
 // with the JSON decoder it builds for the Manifest type; the stock manifest is read as the constant it is). Measured the same way: --version 713,496 bytes / 3,643 objects,
-// warm first prompt 2,477,376 / 17,371, with models.json 2,916,112-2,916,976 / 21,469-21,473. The Linux budgets are lowered to those plus under 2.5%; the darwin and Windows
+// warm first prompt 2,477,376 / 17,371, with models.json 2,916,112-2,916,976 / 21,469-21,473. A third cut applies to a models.json: modelsJSONProviderOrder, which startup asks for three times over the same bytes
+// (the available models, the provider auth checks, the native provider data), strips the comments of the file and tokenizes it each time (27 KB, about 145 allocations a call) and now answers
+// a read of the bytes it last parsed from memory: with models.json 2,838,624 / 21,155. The Linux budgets are lowered to those measurements plus under 2.5%; the darwin and Windows
 // budgets stay until their runners measure the line (the Windows runner's init and manifest costs are the same code).
 type startupAllocBudget struct{ versionBytes, versionObjects, promptBytes, promptObjects uint64 }
 
@@ -151,7 +153,7 @@ func startupModelsAllocBudgetFor(goos string) (bytes, objects uint64) {
 	if goos == "darwin" {
 		return 2_934_000, 21_850
 	}
-	return 2_940_000, 21_800
+	return 2_900_000, 21_600
 }
 
 func TestStartupAllocationBudgetWithModelsJSON(t *testing.T) {
