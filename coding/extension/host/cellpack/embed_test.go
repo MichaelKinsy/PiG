@@ -95,8 +95,7 @@ func TestStockManifestFastPathEqualsTheDecoder(t *testing.T) {
 	}
 }
 
-// Reading the stock manifest is two allocations (the file's bytes, the embedded copy's). Through the decoder it was about twenty, and the first decode of
-// the Manifest type allocated the 128 KB type-link table of reflect once in every process.
+// Reading the stock manifest is two allocations (the file's bytes, the embedded copy's); through the decoder it was nine.
 func TestLoadManifestOfTheStockManifestDoesNotDecode(t *testing.T) {
 	if got := testing.AllocsPerRun(20, func() {
 		if _, err := loadManifest(cells); err != nil {
@@ -104,6 +103,23 @@ func TestLoadManifestOfTheStockManifestDoesNotDecode(t *testing.T) {
 		}
 	}); got > 3 {
 		t.Errorf("loadManifest of the stock manifest allocates %v times, want at most 3", got)
+	}
+}
+
+// Only the whitespace JSON allows may surround the stock manifest on the fast path: a form feed, a vertical tab, NEL or a no-break space around it is not
+// JSON whitespace, and the decoder rejects it as it always did.
+func TestStockManifestFastPathTakesOnlyJSONWhitespace(t *testing.T) {
+	for _, padding := range []string{"", " ", "\t", "\r\n", " \t\r\n "} {
+		if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(padding + stockManifest + padding)}}); err != nil {
+			t.Errorf("%q around the stock manifest: %v", padding, err)
+		}
+	}
+	for _, padding := range []string{"\f", "\v", "\u0085", "\u00a0"} {
+		for _, data := range []string{padding + stockManifest, stockManifest + padding} {
+			if _, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(data)}}); err == nil {
+				t.Errorf("manifest %q loaded; the decoder rejects it", data)
+			}
+		}
 	}
 }
 

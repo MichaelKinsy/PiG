@@ -94,7 +94,7 @@ func startupAllocBudgetFor(goos string) startupAllocBudget {
 	if goos == "darwin" {
 		return startupAllocBudget{versionBytes: 760_000, versionObjects: 4_240, promptBytes: 2_970_000, promptObjects: 20_200}
 	}
-	return startupAllocBudget{versionBytes: 731_000, versionObjects: 3_730, promptBytes: 2_540_000, promptObjects: 17_700}
+	return startupAllocBudget{versionBytes: 731_000, versionObjects: 3_730, promptBytes: 2_539_000, promptObjects: 17_700}
 }
 
 func TestStartupAllocationBudget(t *testing.T) {
