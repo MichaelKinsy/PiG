@@ -9,7 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // Ports pi-tui's layout.ts: the fullscreen layout engine that lays a component

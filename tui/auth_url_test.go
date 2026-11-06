@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // packages/coding-agent/src/modes/interactive/components/auth-url.ts:12-39: the URL is an OSC 8 hyperlink to itself, the hint line carries

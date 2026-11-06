@@ -1,6 +1,6 @@
 package tui
 
-import "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx"
+import "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 
 // CursorMarker is pi-tui's CURSOR_MARKER: a zero-width APC sequence a focused component emits at its cursor position, which the
 // renderer finds, strips and turns into the hardware cursor. visibleWidth counts it as zero columns.

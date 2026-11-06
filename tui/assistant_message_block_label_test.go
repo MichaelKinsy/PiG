@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // assistant-message.ts setHiddenThinkingLabel: the label stands in for a hidden thinking run and the component re-renders with it; a visible run is unaffected.

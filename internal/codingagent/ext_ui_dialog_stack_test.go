@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi bdd9f039 (38847563, #11166, #9909) interactive-mode.ts pushExtensionDialog/removeExtensionDialog/showTopExtensionDialog:

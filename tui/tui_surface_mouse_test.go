@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // surfaceMouseSelectTheme and surfaceMouseSettingsTheme are the identity

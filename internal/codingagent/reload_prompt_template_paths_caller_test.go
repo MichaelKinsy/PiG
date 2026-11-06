@@ -9,8 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // promptConflicts returns the [Prompt conflicts] section of the harness's resource listing, without ANSI or trailing padding. The listing wraps

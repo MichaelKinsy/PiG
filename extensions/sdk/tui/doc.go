@@ -8,5 +8,6 @@
 // Result suffix (fuzzyMatch returns FuzzyMatchResult).
 //
 // The engines live in internal/ as generated copies of the application's own tui package (see tui/sdk_tui_copy_test.go in the main
-// module): the SDK module cannot import the application.
+// module): the SDK module cannot import the application. The width engine is the public package tui/widthx, which the application
+// imports too, so one copy of its Unicode tables serves both.
 package tui

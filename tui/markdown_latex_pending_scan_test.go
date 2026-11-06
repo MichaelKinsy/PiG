@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // The pending-math fallbacks of tokenizeBlockLatex read the rest of the document once per display-math opener, so they

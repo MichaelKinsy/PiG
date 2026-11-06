@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // String.prototype.trim (text.ts:57) treats U+FEFF as whitespace and U+0085 as an ordinary character, so a Text of only U+FEFF renders nothing and one of U+0085 renders a line.

@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // The move detection follows Pi-Bolt's TuiAltScreen.findMovedRows (packages/tui/src/tui-alt-screen.ts, MIT; see

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // StatusIndicator renders a loader either standalone or inside an editor border.

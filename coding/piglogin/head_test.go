@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // The head is one size for every sprite: the 16-by-14 pig, 16 cells by 7 lines, each cell a half block or a space.

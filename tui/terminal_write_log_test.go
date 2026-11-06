@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // PI_TUI_WRITE_LOG (terminal.ts writeLogPath and write): a file path receives every byte the terminal writes, appended; an

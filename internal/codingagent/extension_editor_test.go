@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // extensionEditorProbe is an ExtensionEditorComponent with the state its callbacks report (extension-editor.ts constructor onSubmit/onCancel).

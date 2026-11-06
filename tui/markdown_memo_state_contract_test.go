@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // The memos a Markdown keeps between renders (the inline renderings, the highlighted code, the wraps and the resume point) change how much a render computes and

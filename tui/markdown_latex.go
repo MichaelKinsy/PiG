@@ -8,8 +8,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/latex"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // LaTeX math rendering inside markdown. Faithful port of the latex tokenizer

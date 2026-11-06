@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // ImageTranscoder converts base64 image data to base64 PNG data, or reports

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // model-selector.ts:44-51, oauth-selector.ts and tree-selector.ts `get/set focused`: a selector is Focusable and propagates the

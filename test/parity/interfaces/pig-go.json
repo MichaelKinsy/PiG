@@ -55,7 +55,7 @@
     "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsnumber",
     "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
     "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/lazyregexp",
-    "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+    "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
     "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
     "github.com/MichaelKinsy/PiG/internal/codingagent",
     "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
@@ -231567,8 +231567,8 @@
       "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker",
       "kind": "type",
       "exported": true,
@@ -231578,8 +231578,8 @@
       "shapeHash": "sha256:69145f1b15ad4185eb7fc331d9cdb941d772b7abaa9712023a77ab4b4fe9ec60"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.ActiveBackgroundCode",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.ActiveBackgroundCode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.ActiveBackgroundCode",
       "kind": "function",
       "exported": true,
@@ -231589,8 +231589,8 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.ActiveCodes",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.ActiveCodes",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.ActiveCodes",
       "kind": "function",
       "exported": true,
@@ -231600,8 +231600,8 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.Clear",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.Clear",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.Clear",
       "kind": "function",
       "exported": true,
@@ -231611,8 +231611,8 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.HasActiveCodes",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.HasActiveCodes",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.HasActiveCodes",
       "kind": "function",
       "exported": true,
@@ -231622,8 +231622,8 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.LineEndReset",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.LineEndReset",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.LineEndReset",
       "kind": "function",
       "exported": true,
@@ -231633,8 +231633,8 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.Process",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.Process",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.Process",
       "kind": "function",
       "exported": true,
@@ -231644,8 +231644,8 @@
       "shapeHash": "sha256:9c53270a58e21aa6452b704476214c09c865731aeec3f024a9fabdee219f9407"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.UpdateFromText",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.UpdateFromText",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.UpdateFromText",
       "kind": "function",
       "exported": true,
@@ -231655,8 +231655,8 @@
       "shapeHash": "sha256:bba7c91b8816e78c892b503474bf0f05fa0555bd0808440abfed2f04b1fc4d71"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#AnsiCodeTracker.resetSGR",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#AnsiCodeTracker.resetSGR",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "AnsiCodeTracker.resetSGR",
       "kind": "function",
       "exported": false,
@@ -231666,8 +231666,8 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ApplyLineReset",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ApplyLineReset",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ApplyLineReset",
       "kind": "function",
       "exported": true,
@@ -231677,8 +231677,8 @@
       "shapeHash": "sha256:79fd4d488967c39f945f630c812cc4fe789f2d4d5ecba75a0cebe4e1aa13ab4c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ApplyLineResets",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ApplyLineResets",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ApplyLineResets",
       "kind": "function",
       "exported": true,
@@ -231688,8 +231688,8 @@
       "shapeHash": "sha256:2881a43f5ab7135c0fd1c04fd3076f54f3ed59dcdbe03e9e7ad143c38f9e89e9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#CursorMarker",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#CursorMarker",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "CursorMarker",
       "kind": "constant",
       "exported": true,
@@ -231699,8 +231699,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#CursorPosition",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#CursorPosition",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "CursorPosition",
       "kind": "type",
       "exported": true,
@@ -231710,8 +231710,8 @@
       "shapeHash": "sha256:a69fb273955a8f6d9ff23948c04b435a6ba14e5cf975163ec0dbf277d726b6c7"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#EastAsianWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#EastAsianWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "EastAsianWidth",
       "kind": "function",
       "exported": true,
@@ -231721,8 +231721,8 @@
       "shapeHash": "sha256:3d1dac13420b25c90f6ab140447ed02dc0212e94a51152db6f0dbace3b2c5850"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ExtractAnsi",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ExtractAnsi",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ExtractAnsi",
       "kind": "function",
       "exported": true,
@@ -231732,8 +231732,8 @@
       "shapeHash": "sha256:aef5a8ca8a7be8b8128af587f1329616371dc117ade7fdfa99aaed065eea42a1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ExtractAnsiCode",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ExtractAnsiCode",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ExtractAnsiCode",
       "kind": "function",
       "exported": true,
@@ -231743,8 +231743,8 @@
       "shapeHash": "sha256:740d7c33f6088f43e2886519707993cbf83017fcf9c34e83fbb1e13e3937e9f0"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ExtractCursorPosition",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ExtractCursorPosition",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ExtractCursorPosition",
       "kind": "function",
       "exported": true,
@@ -231754,8 +231754,8 @@
       "shapeHash": "sha256:a379ed3ae1919fc3e8455ffddc3677bf64d1ef05bb21ae428e43e89858b43a68"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ExtractSegments",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ExtractSegments",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ExtractSegments",
       "kind": "function",
       "exported": true,
@@ -231765,8 +231765,8 @@
       "shapeHash": "sha256:a7859100da5b898c3d6b66ba4b2f7fa390383bca09b32b4b19fde9b7cc36f28b"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#FakeCursorEnd",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#FakeCursorEnd",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "FakeCursorEnd",
       "kind": "constant",
       "exported": true,
@@ -231776,8 +231776,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#FakeCursorStart",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#FakeCursorStart",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "FakeCursorStart",
       "kind": "constant",
       "exported": true,
@@ -231787,8 +231787,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#FirstGrapheme",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#FirstGrapheme",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "FirstGrapheme",
       "kind": "function",
       "exported": true,
@@ -231798,8 +231798,8 @@
       "shapeHash": "sha256:60d8f85939ace7bd165a644275c08493e176bd091a1d0eb779f581e0f0ea26e2"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#FrameAt",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#FrameAt",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "FrameAt",
       "kind": "function",
       "exported": true,
@@ -231809,8 +231809,8 @@
       "shapeHash": "sha256:7317d2adf1985af878a109b974c27c1665261b58e40db1abf119857e01d91a16"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#GetActiveBackgroundAnsi",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#GetActiveBackgroundAnsi",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "GetActiveBackgroundAnsi",
       "kind": "function",
       "exported": true,
@@ -231820,8 +231820,8 @@
       "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#GetOsc8LinkAtColumn",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#GetOsc8LinkAtColumn",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "GetOsc8LinkAtColumn",
       "kind": "function",
       "exported": true,
@@ -231831,8 +231831,8 @@
       "shapeHash": "sha256:a1c754069419da288da22c6a51527914e95c66c844339d3b013b297c36810e7f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#GraphemeCellRange",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#GraphemeCellRange",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "GraphemeCellRange",
       "kind": "function",
       "exported": true,
@@ -231842,8 +231842,8 @@
       "shapeHash": "sha256:0c72f8355b51a667372dc8761c5d9a33b90273b4f9b5ecc67650079581d52c28"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#GraphemeWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#GraphemeWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "GraphemeWidth",
       "kind": "function",
       "exported": true,
@@ -231853,8 +231853,8 @@
       "shapeHash": "sha256:dfce505336f31448806d7c9fb36b55a8dab94a63173db2c5727c2d3e6b0bcc31"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#IsCJKBreak",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#IsCJKBreak",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "IsCJKBreak",
       "kind": "function",
       "exported": true,
@@ -231864,8 +231864,8 @@
       "shapeHash": "sha256:98781e9fdc5eed4cfdee2034a4af86e78b25f68eef417e8307f1ea07a2ec43d1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#IsImageLine",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#IsImageLine",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "IsImageLine",
       "kind": "function",
       "exported": true,
@@ -231875,8 +231875,8 @@
       "shapeHash": "sha256:4add4451cde5ca1b703833c1163306d08f2bfbb3d360bbf37460a110438ab273"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#IsJSSpace",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#IsJSSpace",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "IsJSSpace",
       "kind": "function",
       "exported": true,
@@ -231886,8 +231886,8 @@
       "shapeHash": "sha256:a8140eee5092d04db5071e81c5c858da9cb860a2155f473a9536405f78f7bb48"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#JSTrim",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#JSTrim",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "JSTrim",
       "kind": "function",
       "exported": true,
@@ -231897,8 +231897,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#JSTrimEnd",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#JSTrimEnd",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "JSTrimEnd",
       "kind": "function",
       "exported": true,
@@ -231908,8 +231908,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#JSTrimStart",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#JSTrimStart",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "JSTrimStart",
       "kind": "function",
       "exported": true,
@@ -231919,8 +231919,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#NormalizeTerminalOutput",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#NormalizeTerminalOutput",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "NormalizeTerminalOutput",
       "kind": "function",
       "exported": true,
@@ -231930,8 +231930,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#RenderFakeCursor",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#RenderFakeCursor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "RenderFakeCursor",
       "kind": "function",
       "exported": true,
@@ -231941,8 +231941,8 @@
       "shapeHash": "sha256:712aa1f912ed8b2a515afd3e016ad20e83192eda792ea2444cc3e25c00ffe2fd"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ReplaceControlCharacters",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ReplaceControlCharacters",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ReplaceControlCharacters",
       "kind": "function",
       "exported": true,
@@ -231952,8 +231952,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ResolveFakeCursorLine",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ResolveFakeCursorLine",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ResolveFakeCursorLine",
       "kind": "function",
       "exported": true,
@@ -231963,8 +231963,8 @@
       "shapeHash": "sha256:28935650f459bc264e9eb4dd5ee4b0bd8941ad44529e6093f81664fc359d59d5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ResolveFakeCursors",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ResolveFakeCursors",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ResolveFakeCursors",
       "kind": "function",
       "exported": true,
@@ -231974,8 +231974,8 @@
       "shapeHash": "sha256:b5d63378dda1a86cc4ce5f8b919de9ef0416f1778537ec68e3782c03027c17d8"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ResolveFakeCursorsInPlace",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ResolveFakeCursorsInPlace",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "ResolveFakeCursorsInPlace",
       "kind": "function",
       "exported": true,
@@ -231985,8 +231985,8 @@
       "shapeHash": "sha256:670a5cbf858ccd9a7ad5d49b57d642e8f20d1c82121aa9063ab0ad9357641c14"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#SegmentReset",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#SegmentReset",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "SegmentReset",
       "kind": "constant",
       "exported": true,
@@ -231996,8 +231996,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#SegmentsResult",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#SegmentsResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "SegmentsResult",
       "kind": "type",
       "exported": true,
@@ -232007,8 +232007,8 @@
       "shapeHash": "sha256:573ef4af555571c0f0dcefcc25cbfe991dfe34ac77f13cea9b201893eaf307c4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#SliceByColumn",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#SliceByColumn",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "SliceByColumn",
       "kind": "function",
       "exported": true,
@@ -232018,8 +232018,8 @@
       "shapeHash": "sha256:1b896439e7670a5fdc269706ae5ff52dd6bc0d3619536d0b8278e81333383ee9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#SliceResult",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#SliceResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "SliceResult",
       "kind": "type",
       "exported": true,
@@ -232029,8 +232029,8 @@
       "shapeHash": "sha256:36652a31aaee45106898c0573665bfe711d118182cc5aa51e25e3700ffc0ef33"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#SliceWithWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#SliceWithWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "SliceWithWidth",
       "kind": "function",
       "exported": true,
@@ -232040,8 +232040,8 @@
       "shapeHash": "sha256:253134c0273aecf2c1ec1c62f228bbe9a62d855c389d8d05c7db13f45f97fd03"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#StripAnsi",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#StripAnsi",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "StripAnsi",
       "kind": "function",
       "exported": true,
@@ -232051,8 +232051,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#StripTerminalSequences",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#StripTerminalSequences",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "StripTerminalSequences",
       "kind": "function",
       "exported": true,
@@ -232062,8 +232062,8 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#TruncateToWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#TruncateToWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "TruncateToWidth",
       "kind": "function",
       "exported": true,
@@ -232073,8 +232073,8 @@
       "shapeHash": "sha256:5db837e1b098aee6f666637825054ea4215fd2c8cc013b8c44276714ebc33dfe"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#VisibleWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#VisibleWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "VisibleWidth",
       "kind": "function",
       "exported": true,
@@ -232084,8 +232084,8 @@
       "shapeHash": "sha256:2d54f34d6d9edb2f01d7606099f6fec545b0463378cec9cc94244c330f4d6fbc"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#WrapTextWithAnsi",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#WrapTextWithAnsi",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "WrapTextWithAnsi",
       "kind": "function",
       "exported": true,
@@ -232095,8 +232095,8 @@
       "shapeHash": "sha256:ede7e636477da60839d27cfbe1663c40bbec8aacde72a7aaad87a8186f486f5a"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#activeOsc8Close",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#activeOsc8Close",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "activeOsc8Close",
       "kind": "function",
       "exported": false,
@@ -232106,8 +232106,8 @@
       "shapeHash": "sha256:186f218770f5dadf8c604a21c4db68a1982a8faad7df0d884a677344bd04707e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#asciiVisibleWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#asciiVisibleWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "asciiVisibleWidth",
       "kind": "function",
       "exported": false,
@@ -232117,8 +232117,8 @@
       "shapeHash": "sha256:8a1a6db8bd6a8a1c30f1886ba13f68a1328c78e95305f0e444754feb652227ef"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#bmpProps",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#bmpProps",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "bmpProps",
       "kind": "variable",
       "exported": false,
@@ -232128,8 +232128,8 @@
       "shapeHash": "sha256:48b81c8d269acdaba0213cbe21c238dc38964a2e0b9f1b442aa9f765d12c564b"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#boxDrawingAt",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#boxDrawingAt",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "boxDrawingAt",
       "kind": "function",
       "exported": false,
@@ -232139,8 +232139,8 @@
       "shapeHash": "sha256:f8abc8f1b7e719b7331a90f1bef07a27b6fb7adc4f3fc19d34c3c3e811158106"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#breakLongWord",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#breakLongWord",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "breakLongWord",
       "kind": "function",
       "exported": false,
@@ -232150,8 +232150,8 @@
       "shapeHash": "sha256:daa64c0cc8e8eaa8b7b80d92b8b8db888b82ff5d2b5926fb2b431d50ae5e7bb9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#containsThaiLaoAM",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#containsThaiLaoAM",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "containsThaiLaoAM",
       "kind": "function",
       "exported": false,
@@ -232161,8 +232161,8 @@
       "shapeHash": "sha256:98781e9fdc5eed4cfdee2034a4af86e78b25f68eef417e8307f1ea07a2ec43d1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#couldBeEmoji",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#couldBeEmoji",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "couldBeEmoji",
       "kind": "function",
       "exported": false,
@@ -232172,8 +232172,8 @@
       "shapeHash": "sha256:5f30c7fe1ebabdd0c2b32df4ba79d0751f9b3c00578de3ec60c4d42cdaffd1be"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#dropFocusedFakeCursor",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#dropFocusedFakeCursor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "dropFocusedFakeCursor",
       "kind": "function",
       "exported": false,
@@ -232183,8 +232183,8 @@
       "shapeHash": "sha256:79fd4d488967c39f945f630c812cc4fe789f2d4d5ecba75a0cebe4e1aa13ab4c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#extractAnsiCodes",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#extractAnsiCodes",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "extractAnsiCodes",
       "kind": "function",
       "exported": false,
@@ -232194,8 +232194,8 @@
       "shapeHash": "sha256:f3f10dd71d6c4cac9204d60c54b77ea93dba0e929bd65411d85da86a8ec2a96f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#fakeCursorMarkerPrefix",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#fakeCursorMarkerPrefix",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "fakeCursorMarkerPrefix",
       "kind": "constant",
       "exported": false,
@@ -232205,8 +232205,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#finalizeTruncatedResult",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#finalizeTruncatedResult",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "finalizeTruncatedResult",
       "kind": "function",
       "exported": false,
@@ -232216,8 +232216,8 @@
       "shapeHash": "sha256:6bde3547bbe25a39a3c184fb16a1ac3f1d54f294a77c1fd27a3ce69159b79077"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#firstSGRParams",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#firstSGRParams",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "firstSGRParams",
       "kind": "function",
       "exported": false,
@@ -232227,8 +232227,8 @@
       "shapeHash": "sha256:217a33bb542bc4d4b2e6e3e1bc0cccee7dd8d7d85415aeeecbdb329266ca7163"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#focusedFakeCursor",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#focusedFakeCursor",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "focusedFakeCursor",
       "kind": "constant",
       "exported": false,
@@ -232238,8 +232238,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#fragment",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#fragment",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "fragment",
       "kind": "type",
       "exported": false,
@@ -232249,8 +232249,8 @@
       "shapeHash": "sha256:52bf7d426a11b1560a6cab4aa8390c91cbaa216938b2e15200d519569a1a7165"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#fromFirstNonASCII",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#fromFirstNonASCII",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "fromFirstNonASCII",
       "kind": "function",
       "exported": false,
@@ -232260,8 +232260,8 @@
       "shapeHash": "sha256:2f01a494f1b1885cff74338f7d38e62788c27893a0da72abc6a3acd045c7cb2e"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbCR",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbCR",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbCR",
       "kind": "constant",
       "exported": false,
@@ -232271,8 +232271,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbControl",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbControl",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbControl",
       "kind": "constant",
       "exported": false,
@@ -232282,8 +232282,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbExtend",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbExtend",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbExtend",
       "kind": "constant",
       "exported": false,
@@ -232293,8 +232293,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbL",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbL",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbL",
       "kind": "constant",
       "exported": false,
@@ -232304,8 +232304,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbLF",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbLF",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbLF",
       "kind": "constant",
       "exported": false,
@@ -232315,8 +232315,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbLV",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbLV",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbLV",
       "kind": "constant",
       "exported": false,
@@ -232326,8 +232326,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbLVT",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbLVT",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbLVT",
       "kind": "constant",
       "exported": false,
@@ -232337,8 +232337,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbOther",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbOther",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbOther",
       "kind": "constant",
       "exported": false,
@@ -232348,8 +232348,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbPrepend",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbPrepend",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbPrepend",
       "kind": "constant",
       "exported": false,
@@ -232359,8 +232359,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbRI",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbRI",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbRI",
       "kind": "constant",
       "exported": false,
@@ -232370,8 +232370,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbSpacingMark",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbSpacingMark",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbSpacingMark",
       "kind": "constant",
       "exported": false,
@@ -232381,8 +232381,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbT",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbT",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbT",
       "kind": "constant",
       "exported": false,
@@ -232392,8 +232392,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbV",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbV",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbV",
       "kind": "constant",
       "exported": false,
@@ -232403,8 +232403,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gbZWJ",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gbZWJ",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gbZWJ",
       "kind": "constant",
       "exported": false,
@@ -232414,8 +232414,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#gcbOf",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#gcbOf",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "gcbOf",
       "kind": "function",
       "exported": false,
@@ -232425,8 +232425,8 @@
       "shapeHash": "sha256:1c3ede61962ed3e616a01117e370f2cf171151ff0813edbef4dd25abc6b642ea"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeIter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "graphemeIter",
       "kind": "type",
       "exported": false,
@@ -232436,8 +232436,8 @@
       "shapeHash": "sha256:78b7ee91af9f7dc92fbc93969e043e04ac9a5660d471ba4ca3ab36cb0b6eeb20"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Next",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeIter.Next",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "graphemeIter.Next",
       "kind": "function",
       "exported": true,
@@ -232447,8 +232447,8 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeIter.Str",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "graphemeIter.Str",
       "kind": "function",
       "exported": true,
@@ -232458,8 +232458,8 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Width",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeIter.Width",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "graphemeIter.Width",
       "kind": "function",
       "exported": true,
@@ -232469,8 +232469,8 @@
       "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeWidthFast",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeWidthFast",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "graphemeWidthFast",
       "kind": "function",
       "exported": false,
@@ -232480,8 +232480,8 @@
       "shapeHash": "sha256:dfce505336f31448806d7c9fb36b55a8dab94a63173db2c5727c2d3e6b0bcc31"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#iTerm2ImagePrefix",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#iTerm2ImagePrefix",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "iTerm2ImagePrefix",
       "kind": "constant",
       "exported": false,
@@ -232491,8 +232491,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#incbConsonant",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#incbConsonant",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "incbConsonant",
       "kind": "constant",
       "exported": false,
@@ -232502,8 +232502,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#incbExtend",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#incbExtend",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "incbExtend",
       "kind": "constant",
       "exported": false,
@@ -232513,8 +232513,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#incbLinker",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#incbLinker",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "incbLinker",
       "kind": "constant",
       "exported": false,
@@ -232524,8 +232524,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#incbNone",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#incbNone",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "incbNone",
       "kind": "constant",
       "exported": false,
@@ -232535,8 +232535,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#incbOf",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#incbOf",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "incbOf",
       "kind": "function",
       "exported": false,
@@ -232546,8 +232546,8 @@
       "shapeHash": "sha256:1c3ede61962ed3e616a01117e370f2cf171151ff0813edbef4dd25abc6b642ea"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#isCJKBreak",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#isCJKBreak",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "isCJKBreak",
       "kind": "function",
       "exported": false,
@@ -232557,8 +232557,8 @@
       "shapeHash": "sha256:af53f8923c7d6a011b71461855cfda8c08147860f0ebed73234585485cb7507d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#isPrintableASCII",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#isPrintableASCII",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "isPrintableASCII",
       "kind": "function",
       "exported": false,
@@ -232568,8 +232568,8 @@
       "shapeHash": "sha256:98781e9fdc5eed4cfdee2034a4af86e78b25f68eef417e8307f1ea07a2ec43d1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#isRGIEmoji",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#isRGIEmoji",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "isRGIEmoji",
       "kind": "function",
       "exported": false,
@@ -232579,8 +232579,8 @@
       "shapeHash": "sha256:5f30c7fe1ebabdd0c2b32df4ba79d0751f9b3c00578de3ec60c4d42cdaffd1be"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#isWhitespaceToken",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#isWhitespaceToken",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "isWhitespaceToken",
       "kind": "function",
       "exported": false,
@@ -232590,8 +232590,8 @@
       "shapeHash": "sha256:5adca53e0b38b99312fe7de2f6ce045a0e08387a1003cf9af14cae800f3307d9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#kittyImagePrefix",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#kittyImagePrefix",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "kittyImagePrefix",
       "kind": "constant",
       "exported": false,
@@ -232601,8 +232601,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#lookupProps",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#lookupProps",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "lookupProps",
       "kind": "function",
       "exported": false,
@@ -232612,8 +232612,8 @@
       "shapeHash": "sha256:abc2191af35609859ce32f50fc00dcb12e79a321b139fe6e3f16efe735a1e4c2"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#needsGraphemeWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#needsGraphemeWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "needsGraphemeWidth",
       "kind": "function",
       "exported": false,
@@ -232623,8 +232623,8 @@
       "shapeHash": "sha256:98781e9fdc5eed4cfdee2034a4af86e78b25f68eef417e8307f1ea07a2ec43d1"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#newGraphemeIter",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#newGraphemeIter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "newGraphemeIter",
       "kind": "function",
       "exported": false,
@@ -232634,8 +232634,8 @@
       "shapeHash": "sha256:9e109c4d103003d6e95a6eb936d593570e6364f53fc1411ff53a0174249fc344"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#normalizeGraphemeWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#normalizeGraphemeWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "normalizeGraphemeWidth",
       "kind": "function",
       "exported": false,
@@ -232645,8 +232645,8 @@
       "shapeHash": "sha256:be94f7a5d06f5c58650347a47b3d67cacb3b4f6acace605756ea4f62de7466dc"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#osc8HyperlinkPattern",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#osc8HyperlinkPattern",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "osc8HyperlinkPattern",
       "kind": "variable",
       "exported": false,
@@ -232656,8 +232656,8 @@
       "shapeHash": "sha256:7763314a126efb997b125d5f2287daf1521e6d3efdd6f54221642b6962e3ec50"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pCJK",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pCJK",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pCJK",
       "kind": "constant",
       "exported": false,
@@ -232667,8 +232667,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pExtPict",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pExtPict",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pExtPict",
       "kind": "constant",
       "exported": false,
@@ -232678,8 +232678,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pJSSpace",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pJSSpace",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pJSSpace",
       "kind": "constant",
       "exported": false,
@@ -232689,8 +232689,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pMark",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pMark",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pMark",
       "kind": "constant",
       "exported": false,
@@ -232700,8 +232700,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pNP",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pNP",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pNP",
       "kind": "constant",
       "exported": false,
@@ -232711,8 +232711,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pRGI1",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pRGI1",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pRGI1",
       "kind": "constant",
       "exported": false,
@@ -232722,8 +232722,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pTSM",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pTSM",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pTSM",
       "kind": "constant",
       "exported": false,
@@ -232733,8 +232733,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pW2",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pW2",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pW2",
       "kind": "constant",
       "exported": false,
@@ -232744,8 +232744,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#pZW",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#pZW",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "pZW",
       "kind": "constant",
       "exported": false,
@@ -232755,8 +232755,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#propRanges",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#propRanges",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "propRanges",
       "kind": "variable",
       "exported": false,
@@ -232766,8 +232766,8 @@
       "shapeHash": "sha256:e18d7e147e82e48309140b0499cdbfe41687317e4731b151f6aaa28fbec3dd95"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#props",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#props",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "props",
       "kind": "function",
       "exported": false,
@@ -232777,8 +232777,8 @@
       "shapeHash": "sha256:abc2191af35609859ce32f50fc00dcb12e79a321b139fe6e3f16efe735a1e4c2"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#replaceFakeCursorMarkers",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#replaceFakeCursorMarkers",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "replaceFakeCursorMarkers",
       "kind": "function",
       "exported": false,
@@ -232788,8 +232788,8 @@
       "shapeHash": "sha256:79fd4d488967c39f945f630c812cc4fe789f2d4d5ecba75a0cebe4e1aa13ab4c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#resolveFakeCursorLine",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#resolveFakeCursorLine",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "resolveFakeCursorLine",
       "kind": "function",
       "exported": false,
@@ -232799,19 +232799,19 @@
       "shapeHash": "sha256:28935650f459bc264e9eb4dd5ee4b0bd8941ad44529e6093f81664fc359d59d5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#rgiSequences",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#rgiSequences",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "rgiSequences",
-      "kind": "variable",
+      "kind": "constant",
       "exported": false,
       "shape": {
-        "type": "[2760]string"
+        "type": "untyped string"
       },
-      "shapeHash": "sha256:b4a3d8e633dd6310993272eefb6da8906e60497696f886d4289527ed3adf37de"
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#rgiSet",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#rgiSet",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "rgiSet",
       "kind": "variable",
       "exported": false,
@@ -232821,8 +232821,8 @@
       "shapeHash": "sha256:994c479e95f100279eccb653c095f87d5caf593dece87d69d3492ac09348d743"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#sgrParam",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#sgrParam",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "sgrParam",
       "kind": "function",
       "exported": false,
@@ -232832,8 +232832,8 @@
       "shapeHash": "sha256:85f692d7db35d6efffc1439e4bada71f1cacf5d55dc8f915e600ac6ed6a678fc"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#sgrStackParams",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#sgrStackParams",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "sgrStackParams",
       "kind": "constant",
       "exported": false,
@@ -232843,8 +232843,8 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#splitIntoTokensWithAnsi",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#splitIntoTokensWithAnsi",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "splitIntoTokensWithAnsi",
       "kind": "function",
       "exported": false,
@@ -232854,8 +232854,8 @@
       "shapeHash": "sha256:2849e1ad1fbe672a475bfdcf17ef8f2d9a87e5b611f41a7bc30936a69bfd144a"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#truncateFragmentToWidth",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#truncateFragmentToWidth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "truncateFragmentToWidth",
       "kind": "function",
       "exported": false,
@@ -232865,8 +232865,8 @@
       "shapeHash": "sha256:b7dc8f18fcb0a487d42de07af2a67e08a7a21c9cb28d031ead26579905a45250"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#unicodeTablesVersion",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#unicodeTablesVersion",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "unicodeTablesVersion",
       "kind": "constant",
       "exported": false,
@@ -232876,8 +232876,8 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#wrapSingleLine",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#wrapSingleLine",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx",
       "name": "wrapSingleLine",
       "kind": "function",
       "exported": false,
@@ -350879,9 +350879,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cursorPos github.com/MichaelKinsy/PiG/tui/widthx.CursorPosition, ok bool, totalLines int)"
+        "type": "func(cursorPos github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx.CursorPosition, ok bool, totalLines int)"
       },
-      "shapeHash": "sha256:e6a138c508118fc1dd817d50b16b04fc255c8c8e7b90abd3a790f3439fbb29a1"
+      "shapeHash": "sha256:7811e0e65cbf02ee23f80a75eaf8d1d7f6bade6d2fa7aa9bfb1b4cd27bf896fd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.postOverlayCommand",
@@ -359844,9 +359844,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(lines []string, height int) (github.com/MichaelKinsy/PiG/tui/widthx.CursorPosition, int, string, bool)"
+        "type": "func(lines []string, height int) (github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx.CursorPosition, int, string, bool)"
       },
-      "shapeHash": "sha256:13ec00fd1c1bba4b167e9b4091140692862da86b796ff8ea5bf81307804ad248"
+      "shapeHash": "sha256:3bd1660da05ea377d67970b5b4d68f3f2e846a20ecb9a9b640a04e77159d987b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#findLastDelimiter",
@@ -382963,12 +382963,12 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#rgiSequences",
       "package": "github.com/MichaelKinsy/PiG/tui/widthx",
       "name": "rgiSequences",
-      "kind": "variable",
+      "kind": "constant",
       "exported": false,
       "shape": {
-        "type": "[2760]string"
+        "type": "untyped string"
       },
-      "shapeHash": "sha256:b4a3d8e633dd6310993272eefb6da8906e60497696f886d4289527ed3adf37de"
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#rgiSet",

@@ -12,8 +12,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // AsyncAutocompleteProvider runs a complete provider chain off the editor loop. Provider columns are byte offsets; the native editor converts its UTF-16 positions at this boundary.

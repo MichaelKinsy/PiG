@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Upstream showSelector focuses the selector component (interactive-mode.ts setFocus), and OAuthSelectorComponent

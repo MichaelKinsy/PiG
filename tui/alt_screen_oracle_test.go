@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // oracleSlot is one top-level part: either the lines Pi returned or a real Image component, as the step's set chose.

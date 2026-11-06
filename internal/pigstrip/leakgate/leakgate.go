@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // CommandPhrases are the /hotkeys rows and startup hints of the key actions a command owns. A stripped command's keys

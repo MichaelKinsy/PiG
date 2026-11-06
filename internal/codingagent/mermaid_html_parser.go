@@ -14,7 +14,7 @@ import (
 	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
 	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // Marked's HTML rules use ASCII case-insensitive tag names, space-only attribute separators, and matching raw-text closing tags.

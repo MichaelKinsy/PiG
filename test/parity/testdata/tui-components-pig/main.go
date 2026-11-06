@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*m`)

@@ -19,8 +19,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // resumedModeWithOutputPad persists a session through build, reloads it (the resume path) and returns a mode whose outputPad is pad.

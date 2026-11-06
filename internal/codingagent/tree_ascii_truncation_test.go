@@ -6,9 +6,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // The /tree listing cuts a message at 60 characters. A byte cut inside a multi-byte character left invalid UTF-8 on screen.

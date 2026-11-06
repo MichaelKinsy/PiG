@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi 0.87.1 interactive-mode showExtensionCustom opens ctx.ui.custom(..., {overlay: true}) with tui.showOverlay, whose

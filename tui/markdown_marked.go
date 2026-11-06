@@ -15,7 +15,7 @@ import (
 
 	"github.com/dlclark/regexp2"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // markedRegexp is one marked rule compiled on first use from the JavaScript source marked 18.0.11 builds (Lexer.rules.inline.gfm / Lexer.rules.block.gfm). The source is kept verbatim so it can be compared with marked's; translateMarkedPattern supplies JavaScript's meaning for the constructs regexp2 reads differently.

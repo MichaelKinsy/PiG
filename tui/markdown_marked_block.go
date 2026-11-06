@@ -8,7 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // The block rule pieces as marked's edit() composes them (rules.ts:109-244). Literal tabs are the "\t" characters of marked's string-built sources.

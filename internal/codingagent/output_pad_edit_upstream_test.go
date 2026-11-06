@@ -8,8 +8,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Ports the "self-rendered edit result" row of .upstream/v1.1.0/packages/coding-agent/test/output-pad.test.ts:62-77: an edit

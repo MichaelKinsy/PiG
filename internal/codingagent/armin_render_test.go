@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func renderArminAt(a *ArminComponent, width int) []string { return (*ArminComponent).Render(a, width) }

@@ -175427,7 +175427,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.str",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#wireReader.str",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeIter.Str",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#graphemeIter.Str"
       ],
       "missingClosure": [
@@ -366964,7 +366964,7 @@
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockWire.str",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse.str",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#wireReader.str",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#graphemeIter.Str",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#graphemeIter.Str",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#graphemeIter.Str"
       ],
       "missingClosure": [
@@ -374550,7 +374550,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#CursorMarker",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#CursorMarker",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#CursorMarker",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#CursorMarker"
       ],
       "missingClosure": [
@@ -406841,7 +406841,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#GetOsc8LinkAtColumn",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#GetOsc8LinkAtColumn",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#GetOsc8LinkAtColumn",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#GetOsc8LinkAtColumn"
       ],
       "missingClosure": [
@@ -408123,7 +408123,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#RenderFakeCursor",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#RenderFakeCursor",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#RenderFakeCursor"
       ],
       "missingClosure": [
@@ -408294,7 +408294,7 @@
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#ReplaceControlCharacters",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#ReplaceControlCharacters",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#ReplaceControlCharacters"
       ],
       "missingClosure": [
@@ -408825,7 +408825,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#SliceByColumn",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#SliceByColumn",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#SliceByColumn",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#SliceByColumn"
       ],
       "missingClosure": [
@@ -408885,7 +408885,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#StripTerminalSequences",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#StripTerminalSequences",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#StripTerminalSequences",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#StripTerminalSequences"
       ],
       "missingClosure": [
@@ -409065,7 +409065,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#TruncateToWidth",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#TruncateToWidth",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#TruncateToWidth",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#TruncateToWidth"
       ],
       "missingClosure": [
@@ -409125,7 +409125,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#VisibleWidth",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#VisibleWidth",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#VisibleWidth",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#VisibleWidth"
       ],
       "missingClosure": [
@@ -409185,7 +409185,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#WrapTextWithAnsi",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#WrapTextWithAnsi",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx#WrapTextWithAnsi",
         "go:github.com/MichaelKinsy/PiG/tui#wrapTextWithAnsi",
         "go:github.com/MichaelKinsy/PiG/tui/widthx#WrapTextWithAnsi"
       ],

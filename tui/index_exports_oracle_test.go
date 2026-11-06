@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/latex"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // barrelGo maps every runtime export of Pi's packages/tui/src/index.ts to the Go declaration the interface ledger names for it. A map of

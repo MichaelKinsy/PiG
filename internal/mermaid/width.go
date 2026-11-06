@@ -4,7 +4,7 @@
 
 package mermaid
 
-import "github.com/MichaelKinsy/PiG/tui/widthx"
+import "github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 
 // Display width, measured in grapheme clusters, ported from grok-mermaid
 // width.ts. A cluster is the unit of both measuring and painting, so a box is

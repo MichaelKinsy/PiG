@@ -11,8 +11,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi 0.87.1 extension-input.ts:94-104 intercepts tui.select.confirm. The

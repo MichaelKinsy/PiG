@@ -11,8 +11,8 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // sentinel colors make the exact ANSI structure assertable without depending on

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/tui/widthx"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 )
 
 // Pi puts widgets above the editor unless the extension selects belowEditor.
