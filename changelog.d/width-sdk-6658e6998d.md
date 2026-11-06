@@ -1,0 +1,5 @@
+### Fixed
+
+- Extension SDKs: `highlightCode` in the Go, Python and Lisp SDKs now returns a lone UTF-16 surrogate that highlight.js leaves in a line (Ruby's `?😀` splits the pair between two scopes) as Pi does, where it came back as U+FFFD. The host sends the unit as a JSON escape, and the Go SDK now reads it with the SDK's codec instead of `encoding/json`. <!-- fix: 713bba5380f005357ca43fb4b9c8a23021b0614f -->
+- Rust SDK: `highlight_code` no longer loses every syntax color when the host's reply holds a lone surrogate (the reply was refused and the unstyled code came back); each unit is read as U+FFFD, as a Rust string cannot hold it. <!-- fix: 713bba5380f005357ca43fb4b9c8a23021b0614f -->
+- Rust SDK: `Context::tool_input` writes a lone surrogate of the arguments as the `\ud83d` escape `JSON.stringify` gives, as Pi does, and `Context::tool_params` returns the arguments (each unit as U+FFFD) where it returned `None`. <!-- fix: 713bba5380f005357ca43fb4b9c8a23021b0614f, 6658e6998d513751c494f68aa325bee7e0241287 -->
