@@ -791,13 +791,36 @@ func (t *ProcessTerminal) write(data string) {
 	if t.out == nil || t.exitRestored.Load() {
 		return
 	}
-	WriteToTerminal(t.out, data)
+	writeTerminalText(t.out, data)
 }
 
 // WriteToTerminal writes data to out and hands a failed write to the handler OnTerminalWriteError installed, as a failed process.stdout.write
-// reaches the "error" listener in Pi. A lone UTF-16 surrogate in data becomes U+FFFD here, as in Node's UTF-8 encoding of the string; rows are measured before it. Every write to the user's terminal that is not a ProcessTerminal's own goes through it.
+// reaches the "error" listener in Pi. A lone UTF-16 surrogate in data becomes U+FFFD here, as in Node's UTF-8 encoding of the string; rows are measured before it.
+// Every write to the user's terminal that is not a ProcessTerminal's own goes through it. A write through a ProcessTerminal is encoded once, by
+// ProcessTerminal.Write, so it is not scanned again here.
 func WriteToTerminal(out io.Writer, data string) {
-	if _, err := io.WriteString(out, jsstring.StreamText(data)); err != nil {
+	if !encodesOwnWrites(out) {
+		data = jsstring.StreamText(data)
+	}
+	writeTerminalText(out, data)
+}
+
+// encodesOwnWrites reports whether out is a renderer's writer over a ProcessTerminal, whose Write encodes what it sends (HideCursor and ShowCursor send constants).
+func encodesOwnWrites(out io.Writer) bool {
+	switch w := out.(type) {
+	case terminalWriter:
+		_, ok := w.terminal.(*ProcessTerminal)
+		return ok
+	case terminalCursorWriter:
+		_, ok := w.terminal.(*ProcessTerminal)
+		return ok
+	}
+	return false
+}
+
+// writeTerminalText writes data, already encoded, to out and hands a failed write to the OnTerminalWriteError handler.
+func writeTerminalText(out io.Writer, data string) {
+	if _, err := io.WriteString(out, data); err != nil {
 		if handler := terminalWriteErrorHandler.Load(); handler != nil {
 			(*handler)(err)
 		}

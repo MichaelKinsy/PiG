@@ -51,6 +51,8 @@ func renderPrefixWithinUTF16(value string, capacity int) (end, units int) {
 			size = n
 			if r > 0xffff {
 				cost = 2
+			} else if n == 1 {
+				size, cost = surrogateUnitsAt(value[end:])
 			}
 		}
 		if units+cost > capacity {
@@ -60,6 +62,25 @@ func renderPrefixWithinUTF16(value string, capacity int) (end, units int) {
 		units += cost
 	}
 	return end, units
+}
+
+// surrogateUnitsAt is the byte length and UTF-16 length of the UTF-16 surrogate that value starts with, which a PiG string carries as WTF-8
+// (ED A0..BF 80..BF, three bytes of invalid UTF-8): one unit, as Pi's buffer.length counts it, and two (six bytes) for a high surrogate
+// directly followed by a low one, which Pi never splits. Any other byte is one byte and one unit. A lone surrogate counted as three bytes of
+// invalid UTF-8 could be cut between them, and each part would be written as its own U+FFFD where Pi writes one.
+func surrogateUnitsAt(value string) (size, cost int) {
+	if !wtf8SurrogateAt(value) {
+		return 1, 1
+	}
+	if value[1] < 0xb0 && wtf8SurrogateAt(value[3:]) && value[4] >= 0xb0 {
+		return 6, 2
+	}
+	return 3, 1
+}
+
+// wtf8SurrogateAt reports whether value starts with the three bytes of a UTF-16 surrogate, U+D800 to U+DFFF.
+func wtf8SurrogateAt(value string) bool {
+	return len(value) >= 3 && value[0] == 0xed && value[1]&0xe0 == 0xa0 && value[2]&0xc0 == 0x80
 }
 
 func (w *boundedTerminalWriter) WriteString(value string) { w.append(value) }
