@@ -225,6 +225,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2ab79ce-2](#bf-2ab79ce-2) | A provider registered with its own `streamSimple` runs that callback only for its models whose `api` is the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ad6dd7](#bf-2ad6dd7) | fix(interactive): show extension package changelogs at startup | PiG's own defect | All platforms | Unreleased |
 | [BF-2ad7249](#bf-2ad7249) | fix(ledger): close the getJsonSchemaToolParameters and google convertTools rows | PiG's own defect | All platforms | Unreleased |
+| [BF-2af9ecf](#bf-2af9ecf) | `RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms… | PiG's own defect | All platforms | Unreleased |
 | [BF-2b8731a](#bf-2b8731a) | A `models.json` number that is not an integer and also below the minimum of an integer field (for example… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-2b97688](#bf-2b97688) | The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2bc49c1](#bf-2bc49c1) | Node extensions read live `ctx.isIdle()` state, so background callbacks detect when a run finishes or starts | PiG's own defect | All platforms | 0.7.0 |
@@ -388,6 +389,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4706781-7](#bf-4706781-7) | Compaction and branch summaries in a session created by `CreateAgentSession` now let the session's own stream… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4706781-8](#bf-4706781-8) | Setting the same active tools again in a different order, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-471c46e](#bf-471c46e) | An MCP tool or resource link with an explicit empty `title` keeps it, as Pi does, instead of falling back to… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-471d6fb](#bf-471d6fb) | `pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's… | PiG's own defect | All platforms | Unreleased |
 | [BF-4741f6a](#bf-4741f6a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-47590f3](#bf-47590f3) | fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL | PiG's own defect | Windows | Unreleased |
 | [BF-4789fa5](#bf-4789fa5) | `thinking_level_select` and `turn_start` handlers are covered through the production Session: a handler sees… | PiG's own defect | All platforms | 0.5.0 |
@@ -885,6 +887,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-87faba8](#bf-87faba8) | Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together… | PiG's own defect | All platforms | Unreleased |
 | [BF-8894a13](#bf-8894a13) | A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8894a13-2](#bf-8894a13-2) | The liveness conformance harness answers the host-parser helper calls a factory makes before the register… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8897a1b](#bf-8897a1b) | Interactive startup lists skill diagnostics under `[Skill warnings]` instead of `[Skill conflicts]`; most of… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1157,6 +1160,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
+| [BF-aa48a25](#bf-aa48a25) | A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's… | PiG's own defect | Windows, macOS, Linux | Unreleased |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab0ee71](#bf-ab0ee71) | Hiding an overlay whose preFocus is another overlay, such as a panel focused when the overlay was shown over… | PiG's own defect | All platforms | 0.5.0 |
@@ -4579,6 +4583,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2ad72495fe` (2026-10-10)
 - **Tests:** `ai/google_convert_tools_upstream_test.go::TestGoogleSharedConvertToolsUpstream`
 
+### BF-2af9ecf
+
+**`RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms settle window: a child that fails at once (a bad flag, a missing file) is reported in about 5 ms, with the same error text and with its stderr already collected.
+- **Root cause:** Start waited a flat 100 ms after spawn (Pi's rpc-client.ts:133) and then reported an exit that had happened in the window, so a child that failed at once (a bad flag, a missing file) cost the full 100 ms before the caller saw the error.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2af9ecf583` (2026-11-06)
+- **Tests:** `coding/rpcclient/rpc_client_test.go::TestRpcClientStartReturnsOnExitWithoutWaitingOutTheWindow`
+- **Release note:** `RpcClient.Start` in the Go SDK returns as soon as the agent process exits, instead of after the fixed 100 ms settle window: a child that fails at once (a bad flag, a missing file) is reported in about 5 ms, with the same error text and with its stderr already collected. A child that is still running at the end of the window is returned as before.
+
 ### BF-2b8731a
 
 **A `models.json` number that is not an integer and also below the minimum of an integer field (for example…**
@@ -6830,6 +6848,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `471c46e063` (2026-10-05)
 - **Tests:** `coding/mcpext/extension_test.go::TestAgentSessionMCPHidesToolsInTheOrderTheServerListedThem`, `coding/mcpext/tools_test.go::TestMCPToolsKeepAnExplicitEmptyTitle`, `mcp/client_cursor_test.go::TestToolsAndContentBlocksTrackWhetherTheServerSentATitle`
 - **Release note:** An MCP tool or resource link with an explicit empty `title` keeps it, as Pi does, instead of falling back to the annotation title or the name.
+
+### BF-471d6fb
+
+**`pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's registration, and no longer closes the training connection in the middle of a registration frame that arrives in more than one piece.
+- **Root cause:** Measured on xd670 with Pi-Bolt 0.7.4's bun running the runtime's cli.mjs as the training host (one registerCommand, and 3000 of them): trainRun 339 ms and 398 ms before, 150 ms and 197 ms after (6 runs each), host exit status 0 and empty stderr in every run. The compiled host could not be built here (Pi-Bolt's compiler segfaults in the bundle step in the CI container), so the order file a compiled training host writes was not compared.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `471d6fb3bd` (2026-11-06)
+- **Tests:** `piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse`, `piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame`, `piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainHostHelper`, `piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration`
+- **Release note:** `pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's registration, and no longer closes the training connection in the middle of a registration frame that arrives in more than one piece.
 
 ### BF-4741f6a
 
@@ -13723,6 +13755,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `87a6ac512c` (2026-10-25)
 - **Tests:** None recorded.
 
+### BF-87faba8
+
+**Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together instead of one after another, so each Go extension no longer waits for the previous one to re-read the SDK it replaces: 16 Go extensions hash in 45 ms instead of 170 ms.
+- **Root cause:** LoadAll and Reload hashed each source-based extension's files one after another before they planned the cells. A Go extension also hashes the SDK it replaces, about 3 MB, once per extension, so N Go extensions cost N serial reads and hashes of the same tree.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `87faba8e7d` (2026-11-06)
+- **Tests:** `coding/extension/host/subprocess/content_hash_together_test.go::TestFillContentHashesHashesTheExtensionsTogether`
+- **Release note:** Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together instead of one after another, so each Go extension no longer waits for the previous one to re-read the SDK it replaces: 16 Go extensions hash in 45 ms instead of 170 ms. Load and registration order are unchanged.
+
 ### BF-8894a13
 
 **A double-quoted YAML string in a skill, prompt template or `parseFrontmatter` header now reads a…**
@@ -17534,6 +17580,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `aa2003ca07` (2026-10-06)
 - **Tests:** `internal/codingagent/tools/edit_diff_test.go::TestEditPrepareArgumentsKeepsMemberOrder`
 - **Release note:** The edit tool's prepared arguments keep the members in the order the model sent them. Legacy `oldText`/`newText` arguments are folded into `edits` after the other members, and a JSON-string `edits` stays where it was, as in Pi. A `tool_call` handler used to see the members sorted, with `<`, `>` and `&` escaped.
+
+### BF-aa48a25
+
+**A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's output is delivered, and on Linux and macOS an idle command no longer wakes its output readers every 10 ms (Windows still wakes every 10 ms through its finite timeout): the output readers of the bash tool and of `pi.exec` children wait on the runtime's poller, and a `pi.exec` child's stderr reader waits for stdout's delivery on an event.
+- **Root cause:** the earlier pipe stops holding output only when its own reader delivers or stops, an event the reader never announced, so the later reader had to poll for it.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows, macOS, Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `aa48a2557c` (2026-11-06)
+- **Tests:** `internal/childwait/pipe_unix_test.go::TestAwaitTurnSleepsWhileAnEarlierReaderHoldsOutput`, `internal/childwait/pipe_unix_test.go::TestAwaitTurnStopsWhenWaitReleasesThePipes`, `internal/childwait/pipe_unix_test.go::TestPipesDeliverStdoutBeforeStderrUnderLoad`, `internal/childwait/pipe_unix_test.go::TestPollReadableWaitsForTheWriteOrTheClose`
+- **Release note:** A command that writes to both stdout and stderr no longer keeps a reader spinning while the other stream's output is delivered, and on Linux and macOS an idle command no longer wakes its output readers every 10 ms (Windows still wakes every 10 ms through its finite timeout): the output readers of the bash tool and of `pi.exec` children wait on the runtime's poller, and a `pi.exec` child's stderr reader waits for stdout's delivery on an event. Output order is unchanged (stdout before stderr). Process CPU while a slow consumer held stdout fell from 25-34 ms to 11-14 ms in a 0.5 s run, and from 14-19 ms to 0.5 ms for two idle pipes over 2 s.
 
 ### BF-aa69959
 

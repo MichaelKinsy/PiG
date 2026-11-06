@@ -66,6 +66,12 @@ type Pipes struct {
 	hooks    *Hooks
 	activity chan struct{}
 	done     chan struct{}
+	// released is closed once Wait has closed the pipes, so a reader that waits for an earlier reader's delivery sees its own pipe gone.
+	released    chan struct{}
+	releaseOnce sync.Once
+	// wake[i] holds a token when a reader before i delivered or stopped since the reader of files[i] last looked, so it asks again whether an earlier pipe still
+	// holds output. One token is enough, and a token left over costs one question.
+	wake []chan struct{}
 
 	mu sync.Mutex
 
@@ -85,20 +91,13 @@ type Pipes struct {
 // The chunk is lent for the call:
 // each pipe reads into one buffer of its own, so onData copies what it keeps.
 func Start(files []*os.File, onData func(index int, chunk []byte), hooks *Hooks) *Pipes {
-	p := &Pipes{
-		files:    files,
-		onData:   onData,
-		hooks:    hooks,
-		activity: make(chan struct{}, 1),
-		done:     make(chan struct{}),
-		stopped:  make([]atomic.Bool, len(files)),
-		inflight: make([]atomic.Bool, len(files)),
-	}
+	p := newPipes(files, onData, hooks)
 	var readers sync.WaitGroup
 	for index, file := range files {
 		readers.Go(func() {
 			p.read(index, file)
 			p.stopped[index].Store(true)
+			p.handOff(index)
 		})
 	}
 	go func() {
@@ -106,6 +105,36 @@ func Start(files []*os.File, onData func(index int, chunk []byte), hooks *Hooks)
 		close(p.done)
 	}()
 	return p
+}
+
+func newPipes(files []*os.File, onData func(index int, chunk []byte), hooks *Hooks) *Pipes {
+	p := &Pipes{
+		files:    files,
+		onData:   onData,
+		hooks:    hooks,
+		activity: make(chan struct{}, 1),
+		done:     make(chan struct{}),
+		released: make(chan struct{}),
+		stopped:  make([]atomic.Bool, len(files)),
+		inflight: make([]atomic.Bool, len(files)),
+		wake:     make([]chan struct{}, len(files)),
+	}
+	// The first pipe has no earlier pipe to wait for.
+	for index := 1; index < len(files); index++ {
+		p.wake[index] = make(chan struct{}, 1)
+	}
+	return p
+}
+
+// handOff tells the readers of the pipes after index that the reader of files[index] delivered what it took or stopped, so each asks again whether it must
+// still wait. It never blocks.
+func (p *Pipes) handOff(index int) {
+	for later := index + 1; later < len(p.wake); later++ {
+		select {
+		case p.wake[later] <- struct{}{}:
+		default:
+		}
+	}
 }
 
 //perf:hot
@@ -142,6 +171,7 @@ func (p *Pipes) read(index int, file *os.File) {
 		}
 		if claimed {
 			p.inflight[index].Store(false)
+			p.handOff(index)
 		}
 		if err != nil {
 			return
@@ -154,6 +184,10 @@ func (p *Pipes) read(index int, file *os.File) {
 // a child that writes stdout and then stderr is seen in that order, which a byte cap that spans both streams makes observable; reader goroutines that
 // each block in their own read would hand it to whichever the scheduler ran first. A pipe that holds nothing is not waited for. claimed is false where
 // poll(2) cannot answer; ok is false once the pipe is closed.
+//
+// A reader that must wait for an earlier pipe sleeps until an earlier reader delivers what it took or stops (handOff), or until Wait releases the pipes:
+// the earlier pipe holds output only until its own reader hands it on, so no clock is needed to notice that it no longer does. A hand-off after the
+// reader's question leaves a token that ends its sleep at once, so none is missed.
 func (p *Pipes) awaitTurn(index int, file *os.File) (claimed, ok bool) {
 	for {
 		readable, closed := pollReadable(file, 10)
@@ -169,20 +203,25 @@ func (p *Pipes) awaitTurn(index int, file *os.File) (claimed, ok bool) {
 		if !pollSupported {
 			return false, true
 		}
-		blocked := false
-		for earlier := range index {
-			if p.holdsOutput(earlier) {
-				blocked = true
-				break
-			}
+		if !p.blockedByEarlier(index) {
+			p.inflight[index].Store(true)
+			return true, true
 		}
-		if blocked {
-			time.Sleep(10 * time.Microsecond)
-			continue
+		select {
+		case <-p.wake[index]:
+		case <-p.released:
 		}
-		p.inflight[index].Store(true)
-		return true, true
 	}
+}
+
+// blockedByEarlier reports whether a pipe before index holds output that has not been delivered.
+func (p *Pipes) blockedByEarlier(index int) bool {
+	for earlier := range index {
+		if p.holdsOutput(earlier) {
+			return true
+		}
+	}
+	return false
 }
 
 // holdsOutput reports whether the pipe of the earlier reader holds output that has not been delivered: bytes still in the pipe, or bytes its reader has taken
@@ -255,6 +294,7 @@ func (p *Pipes) Wait(mayHoldOutput func() bool) bool {
 	for _, file := range p.files {
 		_ = file.Close()
 	}
+	p.releaseOnce.Do(func() { close(p.released) })
 	if p.hooks != nil && p.hooks.Released != nil {
 		p.hooks.Released()
 	}

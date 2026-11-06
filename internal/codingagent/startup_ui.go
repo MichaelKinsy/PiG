@@ -331,6 +331,7 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	if clear {
 		ui.Clear()
 		ui.Render()
+		// upstream: cli/startup-ui.ts:clearStartupTui waits 25 ms after the clear for the render requestRender queued; Render here draws before it returns.
 		time.Sleep(25 * time.Millisecond)
 	}
 	return true, nil

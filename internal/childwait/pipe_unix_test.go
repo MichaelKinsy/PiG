@@ -4,10 +4,12 @@ package childwait
 
 import (
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -180,7 +182,8 @@ func TestPipesWaitDeliversEveryPipeWhenOneEndedAndAHolderKeepsTheOther(t *testin
 // Node's loop hands a child's stdout to the byte cap before its stderr when the child wrote stdout first, so a reader of a later pipe waits until an earlier
 // pipe's bytes are delivered. That also holds when the earlier reader takes them while the later one is deciding whether to wait, which is a window of
 // microseconds that only host load widens. The test plays the earlier reader from AfterPeek, the point between the later reader's two questions: on the
-// first pass it claims its turn and empties its pipe, on the third it delivers. The later reader must not return before that delivery.
+// first pass it claims its turn, empties its pipe and hands the delivery to another goroutine, which delivers and hands the turn on as a
+// reader does, whether or not the later reader has gone to sleep yet. The later reader must not return before that delivery, and it must wake on the hand-off, which is the only thing that tells it to look again.
 func TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecides(t *testing.T) {
 	stdoutR, stdoutW := newPipe(t)
 	stderrR, stderrW := newPipe(t)
@@ -192,32 +195,164 @@ func TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecid
 		t.Fatal(err)
 	}
 	var (
-		passes    int
-		delivered bool
+		passes    atomic.Int32
+		delivered atomic.Bool
 	)
-	p := &Pipes{
-		files:    []*os.File{stdoutR, stderrR},
-		stopped:  make([]atomic.Bool, 2),
-		inflight: make([]atomic.Bool, 2),
-	}
+	p := newPipes([]*os.File{stdoutR, stderrR}, nil, nil)
 	p.hooks = &Hooks{AfterPeek: func(earlier int) {
-		passes++
-		switch passes {
-		case 1:
+		if passes.Add(1) == 1 {
 			p.inflight[earlier].Store(true)
 			if n, err := stdoutR.Read(make([]byte, 8)); err != nil || n != 2 {
 				t.Errorf("the earlier reader took %d bytes, %v; want the 2 the child wrote", n, err)
 			}
-		case 3:
-			delivered = true
-			p.inflight[earlier].Store(false)
+			go func() {
+				delivered.Store(true)
+				p.inflight[earlier].Store(false)
+				p.handOff(earlier)
+			}()
 		}
 	}}
 	claimed, ok := p.awaitTurn(1, stderrR)
 	if !claimed || !ok {
 		t.Fatalf("awaitTurn = (%v, %v), want the turn claimed", claimed, ok)
 	}
-	if !delivered {
+	if !delivered.Load() {
 		t.Fatal("the later reader claimed its turn before the earlier reader delivered the bytes it took")
+	}
+}
+
+// A reader that waits for an earlier reader sleeps until that reader delivers: it does not ask the kernel again and again meanwhile. Each question is a
+// pass through AfterPeek, so a reader that polled would pass thousands of times in the time this test waits.
+func TestAwaitTurnSleepsWhileAnEarlierReaderHoldsOutput(t *testing.T) {
+	stdoutR, _ := newPipe(t)
+	stderrR, stderrW := newPipe(t)
+	if _, err := stderrW.WriteString("cd"); err != nil {
+		t.Fatal(err)
+	}
+	var passes atomic.Int32
+	asked := make(chan struct{}, 8)
+	p := newPipes([]*os.File{stdoutR, stderrR}, nil, nil)
+	// The earlier reader has taken bytes and not delivered them yet.
+	p.inflight[0].Store(true)
+	p.hooks = &Hooks{AfterPeek: func(int) {
+		passes.Add(1)
+		asked <- struct{}{}
+	}}
+	type turn struct{ claimed, ok bool }
+	result := make(chan turn, 1)
+	go func() {
+		claimed, ok := p.awaitTurn(1, stderrR)
+		result <- turn{claimed, ok}
+	}()
+	<-asked
+	select {
+	case got := <-result:
+		t.Fatalf("awaitTurn returned %+v while the earlier reader held its bytes", got)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if got := passes.Load(); got != 1 {
+		t.Fatalf("the waiting reader asked %d times; want 1: it must sleep until the earlier reader delivers", got)
+	}
+	p.inflight[0].Store(false)
+	p.handOff(0)
+	if got := <-result; !got.claimed || !got.ok {
+		t.Fatalf("awaitTurn = %+v, want the turn claimed after the delivery", got)
+	}
+}
+
+// Wait closes the pipes and releases the readers: one that waits for an earlier reader sees its own pipe gone and stops.
+func TestAwaitTurnStopsWhenWaitReleasesThePipes(t *testing.T) {
+	stdoutR, _ := newPipe(t)
+	stderrR, stderrW := newPipe(t)
+	if _, err := stderrW.WriteString("cd"); err != nil {
+		t.Fatal(err)
+	}
+	asked := make(chan struct{}, 8)
+	p := newPipes([]*os.File{stdoutR, stderrR}, nil, &Hooks{AfterPeek: func(int) { asked <- struct{}{} }})
+	p.inflight[0].Store(true)
+	type turn struct{ claimed, ok bool }
+	result := make(chan turn, 1)
+	go func() {
+		claimed, ok := p.awaitTurn(1, stderrR)
+		result <- turn{claimed, ok}
+	}()
+	<-asked
+	_ = stderrR.Close()
+	close(p.released)
+	if got := <-result; got.claimed || got.ok {
+		t.Fatalf("awaitTurn = %+v, want the closed pipe reported", got)
+	}
+}
+
+// An idle pipe is waited for without a clock: a write wakes the reader, and so does closing the pipe.
+func TestPollReadableWaitsForTheWriteOrTheClose(t *testing.T) {
+	for _, step := range []string{"write", "close"} {
+		r, w := newPipe(t)
+		type answer struct{ readable, closed bool }
+		result := make(chan answer, 1)
+		go func() {
+			readable, closed := pollReadable(r, 3_600_000)
+			result <- answer{readable, closed}
+		}()
+		select {
+		case got := <-result:
+			t.Fatalf("%s: pollReadable returned %+v with nothing to read", step, got)
+		case <-time.After(50 * time.Millisecond):
+		}
+		want := answer{readable: true}
+		if step == "write" {
+			if _, err := w.WriteString("x"); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			_ = r.Close()
+			want = answer{closed: true}
+		}
+		if got := <-result; got != want {
+			t.Fatalf("%s: pollReadable = %+v, want %+v", step, got, want)
+		}
+	}
+}
+
+// A child that writes stdout and then stderr is seen in that order however the scheduler runs the readers: the later reader waits for the earlier one's
+// delivery, and the delivery is what wakes it. The test keeps two goroutines per P busy, writes a stdout chunk and then a stderr chunk 50 times, and checks that each
+// stdout chunk was delivered before the stderr chunk written after it.
+func TestPipesDeliverStdoutBeforeStderrUnderLoad(t *testing.T) {
+	stdoutR, stdoutW := newPipe(t)
+	stderrR, stderrW := newPipe(t)
+	stop := make(chan struct{})
+	var load sync.WaitGroup
+	for range 2 * runtime.GOMAXPROCS(0) {
+		load.Go(func() {
+			for n := 0; ; n++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				_ = n * n
+			}
+		})
+	}
+	defer func() { close(stop); load.Wait() }()
+	delivered := make(chan int, 2)
+	pipes := Start([]*os.File{stdoutR, stderrR}, func(index int, _ []byte) { delivered <- index }, nil)
+	const rounds = 50
+	for round := range rounds {
+		if _, err := stdoutW.WriteString("out\n"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := stderrW.WriteString("err\n"); err != nil {
+			t.Fatal(err)
+		}
+		first, second := <-delivered, <-delivered
+		if first != 0 || second != 1 {
+			t.Fatalf("round %d: delivered pipe %d then pipe %d, want stdout (0) before stderr (1)", round, first, second)
+		}
+	}
+	_ = stdoutW.Close()
+	_ = stderrW.Close()
+	if !pipes.Wait(func() bool { return false }) {
+		t.Fatal("Wait reports a pipe that did not end")
 	}
 }

@@ -1506,14 +1506,7 @@ func (h *Host) startPlannedCells(ctx context.Context, cellConfigs []ExtConfig) (
 	// can correctly invalidate packed-cell caches when source files change.
 	// Without this, cell keys depend only on static metadata (name, path,
 	// package) and stale binaries survive source edits.
-	for i := range cellConfigs {
-		if !cellConfigs[i].Enabled {
-			continue
-		}
-		h.markExtension(cellConfigs[i].Name, "discover-start")
-		fillContentHash(&cellConfigs[i])
-		h.markExtension(cellConfigs[i].Name, "discover-done")
-	}
+	h.fillContentHashes(cellConfigs, fillContentHash)
 	var errs []error
 	cells := h.planCells(cellConfigs)
 	h.planEventBus(ctx, cells)
@@ -1535,6 +1528,34 @@ func (h *Host) startPlannedCells(ctx context.Context, cellConfigs []ExtConfig) (
 		}
 	})
 	return loaded, errs
+}
+
+// fillContentHashes runs fill on each enabled config, marking its discovery. Each fill reads its own extension's sources and writes only its own config.
+func (h *Host) fillContentHashes(cellConfigs []ExtConfig, fill func(*ExtConfig)) {
+	fillTogether(cellConfigs, func(cfg *ExtConfig) bool { return cfg.Enabled }, func(cfg *ExtConfig) {
+		h.markExtension(cfg.Name, "discover-start")
+		fill(cfg)
+		h.markExtension(cfg.Name, "discover-done")
+	})
+}
+
+// fillTogether runs fill on every config that include accepts (every config when include is nil), a bounded number at a time, and returns when all
+// are done. The extensions are hashed together, as the cells are prepared together (stageCellsInOrder): a Go extension reads the SDK it replaces as
+// well, once per extension. The configs keep their order, and so do the plan and every registration after it.
+func fillTogether(configs []ExtConfig, include func(*ExtConfig) bool, fill func(*ExtConfig)) {
+	var running sync.WaitGroup
+	slots := make(chan struct{}, maxConcurrentCellPreparations())
+	for i := range configs {
+		if include != nil && !include(&configs[i]) {
+			continue
+		}
+		slots <- struct{}{}
+		running.Go(func() {
+			defer func() { <-slots }()
+			fill(&configs[i])
+		})
+	}
+	running.Wait()
 }
 
 // LoadErrors returns the formatted errors from the most recent LoadAll, for
@@ -2885,9 +2906,7 @@ func (h *Host) Reload(ctx context.Context) ([]extension.Extension, error) {
 	}
 
 	// Populate ContentHash for source-based extensions (see LoadAll).
-	for i := range cfgs {
-		fillContentHash(&cfgs[i])
-	}
+	fillTogether(cfgs, nil, fillContentHash)
 
 	loadOrder := append(slices.Clone(cfgs[:loaderConfigs]), embeddedLoadOrder(allEmbedded, cfgs[loaderConfigs:])...)
 	h.recordLoadOrder(loadOrder, true)
