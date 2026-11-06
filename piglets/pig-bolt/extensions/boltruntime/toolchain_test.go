@@ -21,11 +21,11 @@ import (
 // Pi-Bolt's real release signature verifies with the key pinned in the Piglet, the pinned key is the one the release repository publishes, and the
 // signed list holds every pinned archive digest (issue B10: the key is pinned, not fetched from the release it verifies).
 func TestPinnedReleaseKeyVerifiesTheRealSignedChecksums(t *testing.T) {
-	sums, err := os.ReadFile(filepath.Join("testdata", "pi-bolt-v0.7.4-SHA256SUMS"))
+	sums, err := os.ReadFile(filepath.Join("testdata", "pi-bolt-v1.1.2-SHA256SUMS"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	signature, err := os.ReadFile(filepath.Join("testdata", "pi-bolt-v0.7.4-SHA256SUMS.sig"))
+	signature, err := os.ReadFile(filepath.Join("testdata", "pi-bolt-v1.1.2-SHA256SUMS.sig"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,12 +37,12 @@ func TestPinnedReleaseKeyVerifiesTheRealSignedChecksums(t *testing.T) {
 			t.Errorf("%s: signed digest %q (%v), pinned %s", a.name, digest, err, a.sha256)
 		}
 	}
-	tampered := bytes.Replace(sums, []byte("43b5f41a07a8"), []byte("43b5f41a07a9"), 1)
+	tampered := bytes.Replace(sums, []byte("7ac58dc777bb"), []byte("7ac58dc777bc"), 1)
 	if bytes.Equal(tampered, sums) || ed25519.Verify(releaseKey, tampered, signature) {
 		t.Error("a changed checksum list verifies")
 	}
 
-	// The pinned raw key is the key of the PEM file the release repository publishes (sha256 ca62e435... at commit 6088a1fe).
+	// The pinned raw key is the key of the PEM file the release repository publishes (sha256 ca62e435... at commit 1098b1ce, the same file as at 6088a1fe, the 0.7.4 release).
 	pemData, err := os.ReadFile(filepath.Join("testdata", "pi-bolt-release.pub"))
 	if err != nil {
 		t.Fatal(err)
@@ -250,5 +250,32 @@ func TestVerifyToolchainChecksDigestAndRecord(t *testing.T) {
 	}
 	if _, err := verifyToolchain(context.Background(), t.TempDir(), "linux-x64", r.pinned); err == nil {
 		t.Fatal("verify of a missing toolchain succeeded")
+	}
+}
+
+// An install of the pinned release removes the compiler of a release the Piglet pinned before (a 106 MB executable that nothing would use), and leaves
+// another platform's toolchain and unrelated entries alone.
+func TestInstallRemovesTheCompilerOfAnEarlierRelease(t *testing.T) {
+	dir := t.TempDir()
+	parent := filepath.Join(dir, "toolchain")
+	old := filepath.Join(parent, "pi-bolt-0.7.4-linux-x64")
+	otherPlatform := filepath.Join(parent, "pi-bolt-0.7.4-darwin-arm64")
+	unrelated := filepath.Join(parent, "notes")
+	for _, d := range []string{old, otherPlatform, unrelated} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r := newRelease(t, "linux-x64", releaseOptions{})
+	if _, err := r.installer(dir, "linux-x64").install(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Errorf("the 0.7.4 compiler stayed after the %s install: %v", toolchainVersion, err)
+	}
+	for _, d := range []string{otherPlatform, unrelated, toolchainDir(dir, "linux-x64")} {
+		if _, err := os.Stat(d); err != nil {
+			t.Errorf("%s was removed: %v", d, err)
+		}
 	}
 }

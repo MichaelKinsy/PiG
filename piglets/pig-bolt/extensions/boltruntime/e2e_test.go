@@ -23,7 +23,7 @@ import (
 //
 //	PIG_AOT_E2E_PIG          the pig binary
 //	PIG_AOT_E2E_BUN          stock Bun 1.4.2 (its digest must be in PiG's runtime lock)
-//	PIG_AOT_E2E_RELEASE_DIR  a directory with the Pi-Bolt 0.7.4 release files (SHA256SUMS, SHA256SUMS.sig, the runtime archive); the compiler
+//	PIG_AOT_E2E_RELEASE_DIR  a directory with the Pi-Bolt 1.1.2 release files (SHA256SUMS, SHA256SUMS.sig, the runtime archive); the compiler
 //	                         is then "downloaded" from it, verified against the pins in this Piglet. Without it the test downloads from GitHub.
 type e2e struct {
 	t      *testing.T

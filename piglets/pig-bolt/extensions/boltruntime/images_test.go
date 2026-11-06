@@ -35,7 +35,7 @@ func TestEnsureManifestWritesTheInertManifestPiGReads(t *testing.T) {
 	want := `{
   "id": "aot",
   "kind": "executable",
-  "version": "0.7.4",
+  "version": "1.1.2",
   "platform": "linux-x64",
   "provider": "pig-bolt/bolt-runtime",
   "fallback": "bun"
@@ -172,5 +172,46 @@ func TestParseSizeAndBudget(t *testing.T) {
 	t.Setenv(envCacheMax, "300MB")
 	if got, _ := st.cacheBudget(); got != 300<<20 {
 		t.Errorf("environment budget %d", got)
+	}
+}
+
+// A manifest written for an earlier compiler release loses its images: the sets are requested again and built by the pinned compiler. A manifest of
+// this release keeps its images when only the provider name differs (the Piglet's rename from pig-aot).
+func TestEnsureManifestDropsImagesOfAnotherCompilerRelease(t *testing.T) {
+	st := newStore(t.TempDir(), "linux-x64")
+	inputs := []inputFile{{Path: "/ext/index.ts", Size: 10, MtimeNs: 20}}
+	if _, err := st.publish(key("a"), fakeBuilt(t, "one", inputs)); err != nil {
+		t.Fatal(err)
+	}
+	sets, err := st.images()
+	if err != nil || len(sets) != 1 {
+		t.Fatalf("images = %v, %v", sets, err)
+	}
+	dir := sets[0].Dir
+
+	rewrite := func(edit func(*manifest)) {
+		t.Helper()
+		if err := st.withManifest(func(m *manifest) (bool, error) { edit(m); return true, nil }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewrite(func(m *manifest) { m.Provider = "pig-aot/aot-runtime" })
+	if err := st.ensureManifest(); err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := st.readManifest(); m.Provider != providerName || len(m.Sets) != 1 {
+		t.Fatalf("after the provider rename the manifest is %+v, want the new provider and the image kept", m)
+	}
+
+	rewrite(func(m *manifest) { m.Version = "0.7.4" })
+	if err := st.ensureManifest(); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := st.readManifest()
+	if m.Version != toolchainVersion || len(m.Sets) != 0 {
+		t.Errorf("manifest = %+v, want version %s and no sets", m, toolchainVersion)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Errorf("the image of the earlier compiler stayed on disk: %v", err)
 	}
 }

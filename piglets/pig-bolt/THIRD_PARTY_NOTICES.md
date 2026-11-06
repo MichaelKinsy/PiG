@@ -6,9 +6,9 @@ SPDX-License-Identifier: MIT
 
 This Piglet distributes no third-party binary. It downloads the compiler below to the user's machine and compiles executables there that contain the same code.
 
-## Pi-Bolt ahead-of-time compiler 0.7.4
+## Pi-Bolt ahead-of-time compiler 1.1.2
 
-Source: <https://github.com/opensec-git/Pi-Bolt/tree/6088a1fe9395b10c666f6e25ba67c44b5d6453b8> (`sources.json` and `patches/` name the corresponding source of every component).
+Source: <https://github.com/opensec-git/Pi-Bolt/tree/1098b1ce19cf67daf8ab0995d7ef7e2a2bea8681> (`sources.json` and `patches/` name the corresponding source of every component).
 
 - Pi-Bolt: MIT.
 - Bun: MIT.

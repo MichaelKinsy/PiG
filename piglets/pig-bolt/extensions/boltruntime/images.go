@@ -126,14 +126,33 @@ func (s *store) readManifest() (manifest, error) {
 }
 
 // ensureManifest creates the manifest of an installed provider with no images. PiG records a build request for a set only once the manifest exists.
+// A manifest written for another compiler release keeps none of its images: they were built by a compiler this Piglet no longer pins, so their
+// sets are requested again and built by the pinned one. An image of the same release stays; renaming the provider alone changes no image.
 func (s *store) ensureManifest() error {
-	return s.withManifest(func(m *manifest) (bool, error) {
-		if m.ID == runtimeID && m.Kind == "executable" && m.Platform == s.platform && m.Provider == providerName && m.Fallback == fallbackRuntime {
+	var dropped []string
+	err := s.withManifest(func(m *manifest) (bool, error) {
+		stale := m.Version != "" && m.Version != toolchainVersion
+		if !stale && m.ID == runtimeID && m.Kind == "executable" && m.Platform == s.platform && m.Provider == providerName && m.Fallback == fallbackRuntime {
 			return false, nil
+		}
+		if stale {
+			for _, key := range sortedKeys(m.Sets) {
+				dropped = append(dropped, filepath.Join(s.dir, filepath.FromSlash(filepath.Dir(m.Sets[key].Executable))))
+			}
+			m.Sets = nil
 		}
 		m.ID, m.Kind, m.Version, m.Platform, m.Provider, m.Fallback = runtimeID, "executable", toolchainVersion, s.platform, providerName, fallbackRuntime
 		return true, nil
 	})
+	if err != nil {
+		return err
+	}
+	for _, dir := range dropped {
+		if !inUse(dir) {
+			_ = os.RemoveAll(dir)
+		}
+	}
+	return nil
 }
 
 // imageSet is one image the manifest holds, with what the store knows about it on disk.

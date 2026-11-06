@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-// Bounds on what an install reads: the signed checksum list, its signature, an archive and the extracted compiler. Pi-Bolt 0.7.4's largest runtime
+// Bounds on what an install reads: the signed checksum list, its signature, an archive and the extracted compiler. Pi-Bolt 1.1.2's largest runtime
 // archive is 44 MB and its largest compiler 106 MB.
 const (
 	maxChecksumsSize  = 64 << 10
@@ -151,7 +151,24 @@ func (in installer) install(ctx context.Context) (string, error) {
 	if err := replaceDir(unpacked, target); err != nil {
 		return "", err
 	}
+	removeOtherToolchains(in.providerDir, in.platform)
 	return filepath.Join(target, exe), nil
+}
+
+// removeOtherToolchains deletes the compilers of platform that this Piglet no longer pins (a release it pinned before), each over 100 MB. A directory
+// that is not an installed toolchain of that platform, or that a process is executing, stays; failures are not reported, the next install tries again.
+func removeOtherToolchains(providerDir, platform string) {
+	keep := filepath.Base(toolchainDir(providerDir, platform))
+	entries, err := os.ReadDir(filepath.Join(providerDir, "toolchain"))
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() && name != keep && strings.HasPrefix(name, "pi-bolt-") && strings.HasSuffix(name, "-"+platform) && !inUse(filepath.Join(providerDir, "toolchain", name)) {
+			_ = os.RemoveAll(filepath.Join(providerDir, "toolchain", name))
+		}
+	}
 }
 
 func (in installer) fetch(ctx context.Context, name string, limit int64) ([]byte, error) {
