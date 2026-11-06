@@ -1,5 +1,3 @@
-//go:build !windows
-
 package main
 
 import (
@@ -7,19 +5,29 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 )
 
+// fakeGoEnv, when set to "hang", makes this test binary act as a go command that waits in a long build, so the test needs no shell script and runs on every OS.
+const fakeGoEnv = "PIG_TEST_FAKE_GO"
+
+func init() {
+	if os.Getenv(fakeGoEnv) == "hang" {
+		time.Sleep(time.Minute)
+		os.Exit(3)
+	}
+}
+
 // The caller keeps standard input open while the analysis runs. Closing it cancels the analysis, so the go command the driver started stops with it.
 func TestRunStopsWhenStandardInputCloses(t *testing.T) {
-	command := filepath.Join(t.TempDir(), "go")
-	if err := os.WriteFile(command, []byte("#!/bin/sh\nexec sleep 60\n"), 0o700); err != nil {
+	command, err := os.Executable()
+	if err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv(fakeGoEnv, "hang")
 	request, err := json.Marshal(upgrade.LoadOptions{Dir: t.TempDir(), Command: command})
 	if err != nil {
 		t.Fatal(err)
