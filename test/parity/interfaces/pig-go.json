@@ -123030,6 +123030,17 @@
       "shapeHash": "sha256:d01a35cc5457ade2080385ec5442e5dd8a8fa17d7d032b260fcefce81f0eadce"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispControlStackSize",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "lispControlStackSize",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#lispExtensionVerifiers",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "lispExtensionVerifiers",
@@ -210018,6 +210029,17 @@
       "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#errTooDeep",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "errTooDeep",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#errWithSessionUnsupported",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "errWithSessionUnsupported",
@@ -210764,6 +210786,17 @@
         "type": "func(goos string, keys []string, capitalize bool) string"
       },
       "shapeHash": "sha256:55d1b127477b8c0ac1a63c768fc46aa7f98c1a1f7c59b1c0e55feb74cb247096"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#frameHead",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "frameHead",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(frame []byte) (kind string, id string)"
+      },
+      "shapeHash": "sha256:b86d36255c1ea062a554cd36bf0fbad6f508739e0ecc54c7bb2d79650e484d16"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#framePartsReader",
@@ -220534,6 +220567,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#UnmarshalFrame",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "UnmarshalFrame",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte, v any) error"
+      },
+      "shapeHash": "sha256:85a6c975963f2cdbbf717ba16cfa4cd5b675b2c6139c2924bce3bcaa9b6b1df9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#UnmarshalTrusted",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "UnmarshalTrusted",
@@ -221731,6 +221775,17 @@
         "type": "func(r rune) rune"
       },
       "shapeHash": "sha256:fbbf689e8f674a3f2456f5006c7823805354410df4d78ba471f366e4be577b3e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#frameNestingDepth",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "frameNestingDepth",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#freeScanner",
