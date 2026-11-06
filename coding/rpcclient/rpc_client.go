@@ -27,15 +27,18 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
-// Upstream's fixed waits: the start settle delay, the per-request response
+// Upstream's fixed waits: the start settle window, the per-request response
 // timeout, the SIGTERM grace period in stop, and the default wait/collect
 // timeout.
 const (
-	startSettleDelay = 100 * time.Millisecond
-	requestTimeout   = 30 * time.Second
-	stopGracePeriod  = time.Second
-	DefaultTimeout   = 60 * time.Second
+	requestTimeout  = 30 * time.Second
+	stopGracePeriod = time.Second
+	DefaultTimeout  = 60 * time.Second
 )
+
+// startSettleDelay is upstream's 100 ms window after spawn (rpc-client.ts:133): a child that has exited by its end fails
+// Start. It is a variable so a test can prove that Start ends on the child's exit, not on the window.
+var startSettleDelay = 100 * time.Millisecond
 
 type pendingRequest struct {
 	process *agentProcess
@@ -69,6 +72,7 @@ type agentProcess struct {
 	writingStopped bool
 	stopWriting    chan struct{}
 	exited         chan struct{}
+	stderrDone     chan struct{}
 	exitErr        error
 	stopReading    atomic.Bool
 }
@@ -93,8 +97,9 @@ func NewRpcClient(options RpcClientOptions) *RpcClient {
 	return &RpcClient{options: options, pendingRequests: make(map[string]pendingRequest)}
 }
 
-// Start spawns the agent in RPC mode, waits upstream's 100ms settle delay,
-// and reports an exit that happened during it.
+// Start spawns the agent in RPC mode and reports an exit that happens within upstream's 100ms settle window. The
+// window ends when the child exits (once its stderr is collected) or when it elapses with the child running; the RPC
+// protocol has no ready record, so a running child cannot be told apart from a slow one earlier.
 func (c *RpcClient) Start() error {
 	c.mu.Lock()
 	if c.process != nil {
@@ -117,7 +122,18 @@ func (c *RpcClient) Start() error {
 	go c.awaitExit(proc)
 	c.mu.Unlock()
 
-	time.Sleep(startSettleDelay)
+	settle := time.NewTimer(startSettleDelay)
+	defer settle.Stop()
+	select {
+	case <-proc.exited:
+		// Upstream reports the error after the window, with the child's stderr already collected: wait for the
+		// stderr reader to finish, within the window.
+		select {
+		case <-proc.stderrDone:
+		case <-settle.C:
+		}
+	case <-settle.C:
+	}
 	select {
 	case <-proc.exited:
 		c.mu.Lock()
@@ -212,6 +228,7 @@ func newAgentProcess(cmd *exec.Cmd, stdin io.WriteCloser, stdout, stderr io.Read
 		writeWake:   make(chan struct{}, 1),
 		stopWriting: make(chan struct{}),
 		exited:      make(chan struct{}),
+		stderrDone:  make(chan struct{}),
 	}
 }
 
@@ -285,6 +302,7 @@ func (proc *agentProcess) closeStdin() {
 // collectStderr accumulates stderr for error messages and mirrors it to this
 // process's stderr, as upstream does.
 func (c *RpcClient) collectStderr(proc *agentProcess, stderr io.ReadCloser) {
+	defer close(proc.stderrDone)
 	defer func() { _ = stderr.Close() }()
 	buf := make([]byte, 4096)
 	for {
