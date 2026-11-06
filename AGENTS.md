@@ -328,7 +328,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `slash-commands` | 29 | 28 | 1 | 0 | 0 | 21 | not run |
 | `startup` | 27 | 26 | 1 | 0 | 0 | 10 | not run |
 | `tools` | 34 | 34 | 0 | 0 | 0 | 35 | not run |
-| `tree` | 11 | 10 | 1 | 0 | 0 | 9 | not run |
+| `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 
 Full per-file detail: `test/parity/coverage.md`.
