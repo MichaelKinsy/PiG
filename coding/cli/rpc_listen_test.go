@@ -668,7 +668,7 @@ func TestListenASecondSIGTERMClosesAStalledConnectionAtOnce(t *testing.T) {
 	server.flood(conn, 4000, filepath.Join(filepath.Dir(server.path), "marker"))
 	start := time.Now()
 	server.signal(syscall.SIGTERM)
-	// A termination signal that arrives once the session's shutdown started is rpcShutdown.forceDie, which ends the connection with the signal's exit code instead of waiting for the peer.
+	// A termination signal that arrives once the session's shutdown started ends the server at once: the repeated signal of the server (D234) closes the stalled connection and exits with the signal's code instead of waiting for the peer.
 	for {
 		select {
 		case <-server.exited:
