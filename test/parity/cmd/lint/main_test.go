@@ -467,6 +467,42 @@ func TestLintRules(t *testing.T) {
 			},
 			wantRules: []string{"unknown-divergence"},
 		},
+		{
+			name:   "pig-only record under JSON equality passes",
+			source: "# Upstream evidence (pi v0.69.0)\n# D1 makes pig emit one extra record.\n",
+			sc: scenario{
+				Name:   "pig-only-ok",
+				Driver: "rpc-mode",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{JSONOutputEqual: true, JSONPigOnlyRecords: []jsonPigOnlyRecordRule{{Divergence: "D1", Record: `{"type":"x"}`, Count: 1, Reason: "r"}}},
+			},
+			wantRules: nil,
+		},
+		{
+			name:   "pig-only record without JSON equality fails",
+			source: "# Upstream evidence (pi v0.69.0)\n# D1 makes pig emit one extra record.\n",
+			sc: scenario{
+				Name:   "pig-only-text",
+				Driver: "rpc-mode",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{ExitCode: new(int), JSONPigOnlyRecords: []jsonPigOnlyRecordRule{{Divergence: "D1", Record: `{"type":"x"}`, Count: 1, Reason: "r"}}},
+			},
+			wantRules: []string{"json-pig-only-without-json"},
+		},
+		{
+			name:   "pig-only record without a reason fails",
+			source: "# Upstream evidence (pi v0.69.0)\n# D1 makes pig emit one extra record.\n",
+			sc: scenario{
+				Name:   "pig-only-bare",
+				Driver: "rpc-mode",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{JSONOutputEqual: true, JSONPigOnlyRecords: []jsonPigOnlyRecordRule{{Divergence: "D1", Record: `{"type":"x"}`, Count: 1}}},
+			},
+			wantRules: []string{"json-pig-only-incomplete"},
+		},
 	}
 
 	for _, tt := range tests {

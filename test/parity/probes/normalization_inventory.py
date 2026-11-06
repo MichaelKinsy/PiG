@@ -13,6 +13,7 @@ MECHANISMS = {
     "test/parity/runner/default_cwd.go": "D2/D22 fixture control balances prompt paths. Only terminal captures use length-preserving cwd digit substitution; process records retain raw paths unless an explicit JSON alias selects them.",
     "test/parity/runner/driver_rpc.go": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions. A poll_until step resends one read-only query until its response holds the awaited state and then leaves every response to that query out of the compared and raw output, because their count follows timing; every other record, including the commands that prove the settled state, is compared.",
     "test/parity/runner/json_compare.go": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists.",
+    "test/parity/runner/json_pig_only.go": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence and the complete record, and every run must carry exactly its declared count of them, so a second occurrence or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused.",
     "test/parity/runner/driver_tmux.go": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage.",
     "test/parity/runner/driver_ht.go": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr.",
     "test/parity/runner/footer_crop.go": "Footer scenarios compare the complete owned footer rows rather than unrelated transcript rows; crop configuration is inventoried per scenario.",
@@ -36,7 +37,7 @@ def inventory(root):
         data = tomllib.loads(text)
         assertions = data.get("assert", {})
         transforms = []
-        for kind in ("normalize_replace", "json_aliases"):
+        for kind in ("normalize_replace", "json_aliases", "json_pig_only_records"):
             for rule in assertions.get(kind, []):
                 if not rule.get("reason", "").strip():
                     raise ValueError(f"{path}: {kind} requires a rule-level reason")

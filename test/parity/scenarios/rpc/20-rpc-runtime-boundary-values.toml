@@ -73,6 +73,22 @@ both_not_contain = [
 ]
 runs = 3
 
+# Pi 1.5.0 agent-session.ts:1092-1106 (_handleAgentEvent) removes a delivered queued message from the pending queue only when its text is truthy, so the two empty
+# messages this scenario queues stay in Pi's pending queue and Pi emits no queue_update when each is delivered. D250 (Pi main a63c4ec5c, #8612) removes the
+# delivered empty entry too, and the RPC stream carries the resulting queue_update. These two records are the whole difference: each run of Pig carries
+# exactly one of each, and the rule fails if a run carries more or fewer.
+[[assert.json_pig_only_records]]
+divergence = "D250"
+record = '{"type":"queue_update","steering":[],"followUp":[""]}'
+count = 1
+reason = "D250: delivering the empty steering message removes it from the pending queue, leaving the empty follow-up; Pi 1.5.0 keeps it and emits nothing."
+
+[[assert.json_pig_only_records]]
+divergence = "D250"
+record = '{"type":"queue_update","steering":[],"followUp":[]}'
+count = 1
+reason = "D250: delivering the empty follow-up message empties the pending queue; Pi 1.5.0 keeps it and emits nothing."
+
 [[assert.json_aliases]]
 paths = ["/**/sections/cwd"]
 kind = "path"
