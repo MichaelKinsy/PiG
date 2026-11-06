@@ -43528,7 +43528,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -43539,7 +43539,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#Agent.Transport",
-        "go:github.com/MichaelKinsy/PiG/ai#Transport"
+        "go:github.com/MichaelKinsy/PiG/ai#Transport",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcModeResources.transport"
       ],
       "missingClosure": [
         "candidate-disambiguation",
@@ -100985,7 +100986,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -100996,7 +100997,8 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent#Agent.Transport",
-        "go:github.com/MichaelKinsy/PiG/ai#Transport"
+        "go:github.com/MichaelKinsy/PiG/ai#Transport",
+        "go:github.com/MichaelKinsy/PiG/coding/cli#rpcModeResources.transport"
       ],
       "missingClosure": [
         "candidate-disambiguation",

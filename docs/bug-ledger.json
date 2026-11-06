@@ -140,6 +140,40 @@
       ]
     },
     {
+      "id": "BF-01a63b9",
+      "title": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248)",
+      "symptom": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D248",
+      "removeWhen": "the pin reaches a Pi release containing 2cfab7c26.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "01a63b933a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "5b637b1097",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus",
+        "internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi",
+        "tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor"
+      ]
+    },
+    {
       "id": "BF-02114ff",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
@@ -159,6 +193,27 @@
       "tests": [
         "internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi",
         "tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains"
+      ]
+    },
+    {
+      "id": "BF-0224f25",
+      "title": "fix(rpc): create the --listen socket with mode 0600 from the moment it exists",
+      "symptom": "fix(rpc): create the --listen socket with mode 0600 from the moment it exists",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0224f258c2",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_unix_test.go::TestListenSocketIsPrivateUnderAPermissiveUmask"
       ]
     },
     {
@@ -423,6 +478,25 @@
       ]
     },
     {
+      "id": "BF-039dc7b",
+      "title": "fix(rpc): close a connection session on a forced termination signal",
+      "symptom": "fix(rpc): close a connection session on a forced termination signal",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "039dc7ba0c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-03ad544",
       "title": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
       "symptom": "fix(tui): card of an unregistered tool is Pi's formatToolExecution",
@@ -466,6 +540,66 @@
       "tests": [
         "ai/classifier_http_error_name_test.go::TestClassifierHTTPErrorNameDistinguishesTimeoutFromHTTPFailure",
         "ai/cloudflare_streams_test.go::TestCloudflareStreamsDropsDeferredOperationsAndLeavesTheWrappedValueUntouched"
+      ]
+    },
+    {
+      "id": "BF-04a8c5e",
+      "title": "The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find`…",
+      "symptom": "The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find` and `ls` no longer returns every result or an empty listing; a limit below 1 means 1 and a fractional limit is floored.",
+      "rootCause": "Ports Pi main (#11747). find and ls read a limit below 1 as 1 and floor fractions; find asks fd and a custom glob for limit+1 and reports the limit only when more results exist. Conformance row: globlimit. D253.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D253",
+      "removeWhen": "the pinned Pi release contains 676af1d77. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find` and `ls` no longer returns every result or an empty listing; a limit below 1 means 1 and a fractional limit is floored. A custom `FindOperations.glob` receives `limit + 1` in the Go, Python, Rust and Lisp SDKs, and a glob that ignores the limit has its results cut to it with the notice (D253).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "04a8c5e9d3",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "3cf1ce8466",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "e2e5706337",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/find_ls_limit_test.go::TestFindLimitEdgeCases7121",
+        "internal/codingagent/tools/find_ls_limit_test.go::TestLsLimitEdgeCases7121",
+        "test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-05102ad",
+      "title": "In RPC mode, a termination signal that arrives while the mode starts or tears down no longer skips the…",
+      "symptom": "In RPC mode, a termination signal that arrives while the mode starts or tears down no longer skips the extensions' `session_shutdown`: the shutdown the signal started is now run by the mode itself when no signal hook was left to run it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In RPC mode, a termination signal that arrives while the mode starts or tears down no longer skips the extensions' `session_shutdown`: the shutdown the signal started is now run by the mode itself when no signal hook was left to run it. A signal that was ignored during a running shutdown, followed by a stdout write failure that ends the mode, now leaves its `exit.log` line (\"received SIGTERM during shutdown, which the mode's end cut off (exit 143)\") and always exits 143 (D234).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "05102adc73",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_shutdown_exitlog_linux_test.go::TestRPCIgnoredSignalThenStdoutFailureLeavesAnExitLogLine",
+        "coding/cli/rpc_termination_test.go::TestRPCFinishRunsADisposeASignalClaimedButNeverRan",
+        "coding/cli/rpc_termination_test.go::TestRPCIgnoredSignalIsNotRecordedByTheModeWhenAnExitOwnsTheEnd",
+        "coding/cli/rpc_termination_test.go::TestRPCIgnoredSignalIsRecordedWhenTheModeEndsTheProcess",
+        "coding/cli/rpc_termination_test.go::TestRPCSignalBeforeTheRecordIsRegisteredStillRunsTheShutdown"
       ]
     },
     {
@@ -2023,6 +2157,29 @@
         "durable/interop/interop_test.go::TestScriptedSessionsViewIdentically",
         "durable/interop/interop_test.go::TestSecondScriptedSessionStoresMatchPiDurable",
         "internal/codingagent/prompts/hidden_tools_upstream_test.go::TestUpstreamSystemPromptHiddenTools"
+      ]
+    },
+    {
+      "id": "BF-0f8bc0f",
+      "title": "`ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the…",
+      "symptom": "`ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the current response to finish before reloading.` while a response is running, and with `Wait for compaction to finish before reloading.` during compaction or tree navigation, instead of shutting the extensions down under a running tool, which then failed with a stale-context error.",
+      "rootCause": "Session.Reload refuses with 'Wait for the current response to finish before reloading.' while a run is active and 'Wait for compaction to finish before reloading.' during compaction or tree navigation, before session_shutdown or any runner invalidation. The print and RPC reload closures invalidate the extension host only when the previous runner is stale. Records D242.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the current response to finish before reloading.` while a response is running, and with `Wait for compaction to finish before reloading.` during compaction or tree navigation, instead of shutting the extensions down under a running tool, which then failed with a stale-context error. A refused reload leaves the extensions and the running tool's context untouched, and the extension sees the error in every SDK.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0f8bc0f0de",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive",
+        "coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting"
       ]
     },
     {
@@ -4194,6 +4351,27 @@
       ]
     },
     {
+      "id": "BF-20e1c2a",
+      "title": "fix(extension-host): count only the Host's own running tools when a timer call becomes a tick",
+      "symptom": "fix(extension-host): count only the Host's own running tools when a timer call becomes a tick",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "20e1c2a698",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellCountsPendingToolsPerHost"
+      ]
+    },
+    {
       "id": "BF-211af49",
       "title": "`/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's…",
       "symptom": "`/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's `getShortcuts` Map (load order, registration order, a re-registered key keeps its first position) instead of path then key / Go map order (`coding/extension/host/inproc/runner.go` OrderedShortcuts, `internal/codingagent/interactive_hotkeys.go`, `interactive_helpers.go`; `TestRunnerShortcutsMatchPi` now compares Map order, regression `TestHotkeysCommandListsExtensionShortcutsInRegistrationOrder`).",
@@ -4754,6 +4932,35 @@
       ]
     },
     {
+      "id": "BF-2544a44",
+      "title": "A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits…",
+      "symptom": "A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits the limits, was reported as not truncated, so the model got no truncation notice and no path to the complete log that PiG had already saved.",
+      "rootCause": "Ports Pi main (#10165). D244.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D244",
+      "removeWhen": "the pinned Pi release contains 66c655677. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits the limits, was reported as not truncated, so the model got no truncation notice and no path to the complete log that PiG had already saved. It now reports `truncated` and the path, for a completed and for a cancelled command (D244).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2544a44b2b",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "3cf1ce8466",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/bash_executor_oracle_test.go::TestExecuteBashWithOperationsMatchesPi",
+        "internal/codingagent/tools/bash_executor_truncation_test.go::TestExecuteBashWithOperationsReportsDiscardedChunks10164"
+      ]
+    },
+    {
       "id": "BF-25a90ea",
       "title": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
       "symptom": "fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)",
@@ -4956,6 +5163,28 @@
         "test/extension-conformance/serialize_conversation_test.go::TestConformance_SerializeConversationAgreesAcrossSDKs",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-26a08b0",
+      "title": "`PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive…",
+      "symptom": "`PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive `session_shutdown` and release their timers and sockets, as in Pi.",
+      "rootCause": "PI_STARTUP_BENCHMARK disposes the session runtime after it stops interactive mode, before the timings print. Records D262.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`PI_STARTUP_BENCHMARK=1` disposes the session runtime after it stops interactive mode, so extensions receive `session_shutdown` and release their timers and sockets, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "26a08b0995",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/startup_benchmark_test.go::TestStartupBenchmarkDisposesTheRuntimeAfterStoppingInteractiveMode"
       ]
     },
     {
@@ -6113,6 +6342,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-31118b1",
+      "title": "Installing a chord plugin's npm dependencies no longer waits for a process the install command left running…",
+      "symptom": "Installing a chord plugin's npm dependencies no longer waits for a process the install command left running: `npm install` ended only when the command had exited and every process holding its output pipes (a daemon npm started and left behind) had let go of them, which could be for as long as that process lived.",
+      "rootCause": "The test has a fake npm start a sleeping Node that inherits the pipes and exit with code 0 and with code 1 (red before: the install did not return in 25 s either way).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Installing a chord plugin's npm dependencies no longer waits for a process the install command left running: `npm install` ended only when the command had exited and every process holding its output pipes (a daemon npm started and left behind) had let go of them, which could be for as long as that process lived. The install now ends with the command, waiting for what holds the pipes for at most five seconds after the command exited, and a command that exited with code 0 still counts as installed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "31118b1520",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
+      ]
     },
     {
       "id": "BF-316eac6",
@@ -7483,6 +7734,34 @@
       "tests": []
     },
     {
+      "id": "BF-36fd3b5",
+      "title": "Hyperlinks (OSC 8) now work in Alacritty, which sets `TERM=alacritty` or `ALACRITTY_WINDOW_ID` but not…",
+      "symptom": "Hyperlinks (OSC 8) now work in Alacritty, which sets `TERM=alacritty` or `ALACRITTY_WINDOW_ID` but not `TERM_PROGRAM` (Pi #11767, D259).",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D259",
+      "removeWhen": "the pin reaches a Pi release containing 2af8a42f5.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Hyperlinks (OSC 8) now work in Alacritty, which sets `TERM=alacritty` or `ALACRITTY_WINDOW_ID` but not `TERM_PROGRAM` (Pi #11767, D259).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "36fd3b5939",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "tui/terminal_image_upstream_test.go::TestUpstreamTerminalImageCapabilities"
+      ]
+    },
+    {
       "id": "BF-37c6048",
       "title": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
       "symptom": "fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start",
@@ -7723,6 +8002,28 @@
       ]
     },
     {
+      "id": "BF-3a6a63b",
+      "title": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its…",
+      "symptom": "The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds.",
+      "rootCause": "A host whose link closed was killed on Windows after the 5 s stop grace (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel, run its exit handlers and reached its `exit` event 50 ms after the link closed; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as the process exits (mkstemp, write, rename: Node's CompileCacheHandler::Persist, run at exit). A cold cache (a tree extracted for a new CacheDir, new plugins) made that many writes, and on a loaded Windows runner they took from 1 to over 5 s: 30 of about 8000 exits of the target test took over 2 s and 7 were killed (Windows…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a chord plugin's Node host whose link had closed could be killed by the host after its five-second stop grace instead of exiting by itself (exit status 1, \"its link closed and it did not exit within 5s\"). The process had ended its channel and run its exit handlers within 50 ms; what kept it alive was Node writing the V8 compile cache of every module it compiled, one file after another, as it exited, which on a loaded Windows machine and a cold cache (a new extraction directory or new plugins) took from one to over five seconds. The host now writes the cache once it is up and after each load and reload, so its exit has none left to write.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3a6a63bbd4",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
+      ]
+    },
+    {
       "id": "BF-3a708ed",
       "title": "fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product…",
       "symptom": "fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product is wrapped in float64",
@@ -7842,6 +8143,40 @@
       ],
       "tests": [
         "ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput"
+      ]
+    },
+    {
+      "id": "BF-3b696c8",
+      "title": "A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows…",
+      "symptom": "A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows the `0.1.1` to `0.1.5` notes again on every launch: only its leading `major.minor.patch` is read.",
+      "rootCause": "An unreadable value was read as `0.0.0` and showed the whole changelog.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D245",
+      "removeWhen": "the pin reaches a Pi release containing 9a1953961. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A changelog version recorded with a prerelease or build suffix, such as `0.1.5-20261020.7`, no longer shows the `0.1.1` to `0.1.5` notes again on every launch: only its leading `major.minor.patch` is read. A recorded version without one shows nothing and is replaced by the installed version instead of showing the whole changelog (Pi #11703, D245).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "3b696c8a7f",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/changelog_oracle_test.go::TestChangelogMatchesPiOracle",
+        "internal/codingagent/changelog_test.go::TestGetNewEntries",
+        "internal/codingagent/changelog_test.go::TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes",
+        "internal/codingagent/changelog_test.go::TestRecordChangelogVersionRecordsCurrentVersionForUnreadableLastSeen",
+        "internal/codingagent/interactive_changelog_test.go::TestStartupChangelogFollowsPi",
+        "internal/codingagent/interactive_extension_changelog_test.go::TestExtensionChangelogUpdatesUpstream",
+        "internal/codingagent/interactive_extension_changelog_test.go::TestStartupExtensionChangelogBlock"
       ]
     },
     {
@@ -8541,6 +8876,34 @@
       "tests": [
         "coding/cli/git_update_upstream_test.go::TestGitUpdatesUpstream",
         "coding/cli/package_git_dependencies_upstream_test.go::TestPackageGitDependenciesOriginal"
+      ]
+    },
+    {
+      "id": "BF-3fe717a",
+      "title": "A bash or PowerShell command that timed out after its shell had already exited, because a background process…",
+      "symptom": "A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout.",
+      "rootCause": "A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "ahead-of-pi",
+      "divergence": "D243",
+      "removeWhen": "the pinned Pi release contains 06aa6563e. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A bash or PowerShell command that timed out after its shell had already exited, because a background process it started kept writing to the shared output, now reports the shell's exit code as well: `Command timed out after N seconds. The shell exited with code C after S seconds, but background processes it started kept writing output until the timeout.` The model no longer reads a failed command as a slow one and retries with a longer timeout. A shell still running at the deadline keeps the plain timeout message, and custom operations that fail with `timeout:N` are unchanged (D243).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3cf1ce8466",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "3fe717aa8a",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/bash_timeout_shell_exit_unix_test.go::TestBashTimeoutAfterShellExit11613"
       ]
     },
     {
@@ -10190,6 +10553,28 @@
       ]
     },
     {
+      "id": "BF-47ec6e8",
+      "title": "A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that…",
+      "symptom": "A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that inherited stdout or stderr) no longer holds the host's exit: `Close` and the host's `Exited` waited for that child to end, for as long as it lived.",
+      "rootCause": "The command now has WaitDelay of the stop grace, so Wait returns that long after the process exited; the ErrWaitDelay it reports for a process that exited with code 0 is no error of the process's exit. The test starts a sleeping child that inherits the pipes and requires Close to return and the exit to be clean (red before: Close did not return in 20 s).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that inherited stdout or stderr) no longer holds the host's exit: `Close` and the host's `Exited` waited for that child to end, for as long as it lived. The host now waits for its Node process to exit, and for the end of its output only for the stop grace after that, as Pi's server awaits the child's exit and not its output.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "47ec6e80d8",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit"
+      ]
+    },
+    {
       "id": "BF-48318eb",
       "title": "fix(hljs): a resumed run counts the scan iterations before its checkpoint",
       "symptom": "fix(hljs): a resumed run counts the scan iterations before its checkpoint",
@@ -10668,6 +11053,27 @@
       ],
       "tests": [
         "ai/classifier_shared_exports_test.go::TestParseClassifierUsagePricesTheModelCatalog"
+      ]
+    },
+    {
+      "id": "BF-4cdec4b",
+      "title": "fix(rpc): gate the stale-host bus allowance on the cell registry and make the crash test observe convergence",
+      "symptom": "fix(rpc): gate the stale-host bus allowance on the cell registry and make the crash test observe convergence",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4cdec4be2f",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_ext_test.go::TestListenRecoversASharedExtensionCrash"
       ]
     },
     {
@@ -13106,6 +13512,66 @@
       ]
     },
     {
+      "id": "BF-5b8189f",
+      "title": "In RPC and print mode, a shutdown that has started now finishes",
+      "symptom": "In RPC and print mode, a shutdown that has started now finishes.",
+      "rootCause": "Two signals delivered back to back can reach PiG as one, because the Go runtime merges a pending signal; send a forcing second signal a short moment after the first.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D234",
+      "removeWhen": "the pin reaches a Pi release containing ace560c30. Then the call-site markers and this record go, and the Go signal limit stays as a note in the RPC documentation.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In RPC and print mode, a shutdown that has started now finishes. Closing standard input and sending SIGTERM or SIGHUP together, as a supervisor does, no longer kills PiG in the middle of the dispose (a pending MCP token refresh was lost); a later stdin end, `ctx.shutdown()` request or single signal does nothing, and the process exits with the code of the first trigger. A second signal exits at once with 128 plus its number. Print mode keeps its signal handlers through the final cleanup. This follows Pi main ace560c30 (D234). Two signals delivered back to back can reach PiG as one, because the Go runtime merges a pending signal; send a forcing second signal a short moment after the first.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "05102adc73",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "5b8189f98a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "915c41f36e",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "caae28ae1c",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "dd6ac93271",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal",
+        "coding/cli/print_final_disposal_signal_test.go::TestPrintModeRepeatedSignalAfterStdoutFailureExitsAtOnce",
+        "coding/cli/print_final_disposal_signal_test.go::TestPrintModeSignalDuringFinalDisposalWaitsForIt",
+        "coding/cli/rpc_exit_once_test.go::TestRPCExitRunsItsStepsOnce",
+        "coding/cli/rpc_repeated_signal_test.go::TestRPCInputEndDuringSignalShutdownLetsItFinish",
+        "coding/cli/rpc_repeated_signal_test.go::TestRPCRepeatedSignalDuringShutdownExitsAtOnce",
+        "coding/cli/rpc_repeated_signal_test.go::TestRPCSingleSignalDuringInputEndShutdownLetsItFinish",
+        "coding/cli/rpc_shutdown_exitlog_linux_test.go::TestRPCIgnoredSignalThenStdoutFailureLeavesAnExitLogLine",
+        "coding/cli/rpc_shutdown_exitlog_test.go::TestRPCExitLogNamesWhatEndedTheProcess",
+        "coding/cli/rpc_shutdown_hold_test.go::TestPrintModeSignalDuringFinalDisposalDoesNotBlockARunTheHandlerStarts",
+        "coding/cli/rpc_shutdown_hold_test.go::TestRPCRepeatedSignalExitsWhileStdoutIsStuck",
+        "coding/cli/rpc_shutdown_hold_test.go::TestRPCSingleSignalDuringShutdownDoesNotBlockARunTheHandlerStarts",
+        "coding/cli/rpc_shutdown_retire_test.go::TestRPCInputEndAfterCommandReplacementKeepsPendingQuitShutdownQuiet",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndSettlesBeforeShutdownStarts",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownRepeatedSignalExitsWhileAnotherExitFlushes",
+        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownRepeatedSignalKeepsItsExitStatus",
+        "coding/cli/rpc_shutdown_test.go::TestRPCShutdownTriggers",
+        "coding/cli/rpc_termination_test.go::TestRPCFinishRunsADisposeASignalClaimedButNeverRan",
+        "coding/cli/rpc_termination_test.go::TestRPCIgnoredSignalIsRecordedWhenTheModeEndsTheProcess",
+        "coding/cli/rpc_termination_test.go::TestRPCSignalBeforeTheRecordIsRegisteredStillRunsTheShutdown",
+        "coding/cli/rpc_termination_test.go::TestRPCSignalWaitsForTheDisposeFinishStarted"
+      ]
+    },
+    {
       "id": "BF-5bc4773",
       "title": "RPC `set_model` applies after its auth check, as Pi's awaited `setModel` does, so a `cycle_model` in the same…",
       "symptom": "RPC `set_model` applies after its auth check, as Pi's awaited `setModel` does, so a `cycle_model` in the same input batch cycles from the previous model and answers first.",
@@ -13822,6 +14288,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-60473d7",
+      "title": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full…",
+      "symptom": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.",
+      "rootCause": "Ports packages/ai/test/clamp-max-tokens.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "60473d7e53",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "ai/clamp_max_tokens_test.go::TestClampMaxTokensToContextOpenRouterOvercountMargin"
+      ]
     },
     {
       "id": "BF-609d2bd",
@@ -19471,6 +19959,31 @@
       ]
     },
     {
+      "id": "BF-7056d2d",
+      "title": "Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent…",
+      "symptom": "Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent while streaming, RPC `steer` and `follow_up`) are now resized when the message is delivered, like images in idle prompts, instead of being sent and saved at full size; an image-only queued message now leaves the pending queue display after delivery (Pi #11738, #8581, D249, D250).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent while streaming, RPC `steer` and `follow_up`) are now resized when the message is delivered, like images in idle prompts, instead of being sent and saved at full size; an image-only queued message now leaves the pending queue display after delivery (Pi #11738, #8581, D249, D250).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7056d2d9e1",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/session_queue_images_test.go::TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery",
+        "coding/session_queue_images_test.go::TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages",
+        "coding/session_queue_order_test.go::TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery",
+        "internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi"
+      ]
+    },
+    {
       "id": "BF-70d51e5",
       "title": "Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including…",
       "symptom": "Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including wall-clock steps; both now show the recorded execution time.",
@@ -20004,6 +20517,46 @@
         "tui/extension_input_oracle_test.go::TestExtensionInputMatchesPi",
         "tui/extension_selector_oracle_test.go::TestExtensionSelectorMatchesPi",
         "tui/message_components_oracle_test.go::TestSummaryAndSkillMessageComponentsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-72fa7a7",
+      "title": "An extension selector with more than ten options now shows a window of ten around the cursor and a…",
+      "symptom": "An extension selector with more than ten options now shows a window of ten around the cursor and a `(selection/total)` indicator, so a long list no longer overflows the terminal (Pi #6688, D257).",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D257",
+      "removeWhen": "the pin reaches a Pi release containing 3b57ed7e2.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension selector with more than ten options now shows a window of ten around the cursor and a `(selection/total)` indicator, so a long list no longer overflows the terminal (Pi #6688, D257).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "1584ac1082",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "1628f742e1",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "72fa7a7feb",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_displace_test.go::TestExtensionSelectLongListShowsAWindowAroundTheCursor",
+        "internal/codingagent/pi_logo_upstream_test.go::TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
+        "tui/extension_selector_oracle_test.go::TestExtensionSelectorMatchesPi",
+        "tui/extension_selector_test.go::TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator",
+        "tui/extension_selector_test.go::TestExtensionSelectorWindowsLongOptionListsAroundTheSelection"
       ]
     },
     {
@@ -20884,6 +21437,32 @@
       ],
       "tests": [
         "chord/host/schema_pi_oracle_test.go::TestAssertValidMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-787c354",
+      "title": "Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on…",
+      "symptom": "Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on an Anthropic-messages provider as not supporting it.",
+      "rootCause": "The catalog family rule lists sonnet-5 and sonnet.5. The generator applies the rule to the Sonnet 5 records of the published pinned data, so the regenerated catalog is reproducible, and the comparisons with the published package accept those seven records. Records D240.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on an Anthropic-messages provider as not supporting it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "787c3547c4",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_test.go::TestAnthropicTemperatureCompatibility",
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "cmd/gen-models/d240_sonnet5_temperature_test.go::TestApplyD240SonnetFiveTemperature",
+        "internal/modelgen/family_test.go::TestApplyClaudeFamilyRules"
       ]
     },
     {
@@ -23200,6 +23779,28 @@
       ]
     },
     {
+      "id": "BF-8934633",
+      "title": "`pig config` loads the remaps in `keybindings.json`, as `/settings` and the `--resume` picker already did",
+      "symptom": "`pig config` loads the remaps in `keybindings.json`, as `/settings` and the `--resume` picker already did.",
+      "rootCause": "pig config installs the keybindings manager for the agent directory before it builds the selector, so remaps in keybindings.json work there. Records D254.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig config` loads the remaps in `keybindings.json`, as `/settings` and the `--resume` picker already did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8934633d04",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/config_theme_test.go::TestConfigSelectorUIUsesTheUsersKeybindings"
+      ]
+    },
+    {
       "id": "BF-893ff97",
       "title": "A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not…",
       "symptom": "A `read` call whose `offset` or `limit` arrives as a string shows the right line range (`:25-37`, not `:25-2512`) in the TUI and in exported HTML (Pi #9887).",
@@ -23567,6 +24168,31 @@
         "tui/settings_list_input_test.go::TestSettingsListWithoutSearchIgnoresOtherKeysAndKeepsSelection",
         "tui/settings_list_keys_test.go::TestSettingsListPageAndHomeEndKeysFollowSearchState",
         "tui/user_message_selector_oracle_test.go::TestUserMessageSelectorInputMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-8b792f9",
+      "title": "Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the…",
+      "symptom": "Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the program as a raw key did nothing before), as in Pi.",
+      "rootCause": "Windows and WSL bind app.clipboard.pasteImage to alt+v and ctrl+v. Terminals that pass Ctrl+V to the program as a raw key did nothing before. Records D241.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, WSL",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the program as a raw key did nothing before), as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b792f9bd1",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/custom_editor_test.go::TestCustomEditorExtensionShortcutThenPasteImageComeFirst",
+        "internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory",
+        "internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults",
+        "internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys"
       ]
     },
     {
@@ -28063,6 +28689,32 @@
       ]
     },
     {
+      "id": "BF-9e6d794",
+      "title": "fix(extension-host): drop per-group node state, start again after a joined process exits, forget released…",
+      "symptom": "fix(extension-host): drop per-group node state, start again after a joined process exits, forget released registry entries",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9e6d7943a2",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedCellsForgetAProcessWhenItsLastHostLeaves",
+        "coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedNodeCellAdmitsAHostWhoseJoinedProcessExitsBeforeAdmission",
+        "coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedNodeCellKeepsOneBeforeExitListenerAcrossSessions",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellDropsAGroupsStateWhenItsLastRuntimeLeaves",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellKeepsAGroupsBusWhileAListenerRemains",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellNeverCrossesAPayloadToAForeignGroup"
+      ]
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
@@ -28567,15 +29219,15 @@
     },
     {
       "id": "BF-D226",
-      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "title": "Go, Rust, Python and Lisp serve TypeBox `Value.Check` and `Value.Errors` only, through the host",
       "symptom": "none.",
-      "rootCause": "Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.",
+      "rootCause": "Check such constraints in `execute()`\"). What Pi offers an author for that is `typebox/value` (`docs/extensions.md:161`, \"Schema definitions for tool parameters\"), whose `Value.Check` runs the refinements. The four SDKs carry no TypeBox, so the host serves the two members for them.",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "ahead-of-pi",
       "divergence": "D226",
-      "removeWhen": "every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.",
+      "removeWhen": "every member of TypeBox's `Value` is served by the four SDKs, or Pi stops offering `typebox/value` to extensions.",
       "fixedIn": "Unreleased",
       "origin": "divergence",
       "commits": [
@@ -28594,10 +29246,455 @@
         {
           "hash": "e27164c914",
           "date": "2026-11-02"
+        },
+        {
+          "hash": "04b54f41a6",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "2d64420e5d",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "2ea7c28f18",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "55a49d1a10",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "574b3d1aa2",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "57bb1d4864",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "6791a37e85",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "758e965b93",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "ed16a91348",
+          "date": "2026-11-05"
         }
       ],
       "tests": [
-        "test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined"
+        "coding/extension/host/subprocess/type_engine_test.go::TestAbandonedValueWalksEndWithTheirConnection",
+        "internal/typebox/engine/refine_oracle_test.go::TestRefineMatchesTypeBox",
+        "internal/typebox/engine/value_walk_test.go::TestSessionCloseCancelsItsParkedWalks",
+        "internal/typebox/engine/value_walk_test.go::TestValueWalkCostIsLinearInTheRefinementCalls",
+        "internal/typebox/engine/value_walk_test.go::TestValueWalkFollowsRecursionAsDeepAsTypeBox",
+        "internal/typebox/refine_depth_test.go::TestWalkersStopASelfReferringSchema",
+        "test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined",
+        "test/extension-conformance/refine_value_test.go::TestConformance_RefinedValueOfASelfReferringSchemaFailsTheCall",
+        "test/extension-conformance/refine_value_test.go::TestConformance_RefinedValueRunsRefinements"
+      ]
+    },
+    {
+      "id": "BF-D235",
+      "title": "A session-graph client's two live runs with no \"no run\" read between them are one context",
+      "symptom": "none. The difference comes from the wire.",
+      "rootCause": "the wire carries no run identity. A new context per read would renumber an aborted run on every sync (the busy loop fixed in). A run that follows an aborted one is told apart, because the abort cancelled the context.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D235",
+      "removeWhen": "the getSignal wire carries a run token in all SDKs and the binding makes a new context when the token changes (a later lane).",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "81095f5f95",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort"
+      ]
+    },
+    {
+      "id": "BF-D238",
+      "title": "The output limit leaves 15% of the estimated input unused",
+      "symptom": "1.5.0 requests a near-full window of output tokens and the request is rejected.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D238",
+      "removeWhen": "the pinned Pi release contains 0a4fad548. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "7c91e3b7b0",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "ai/clamp_max_tokens_test.go::TestClampMaxTokensToContextOpenRouterOvercountMargin"
+      ]
+    },
+    {
+      "id": "BF-D240",
+      "title": "Claude Sonnet 5 takes no temperature",
+      "symptom": "1.5.0 sends `temperature` to Claude Sonnet 5 (fixed on Pi main by the commit above).",
+      "rootCause": "Pi main's rule, ahead of the pin: Sonnet 5 rejects a `temperature` field the same way Sonnet 5.5 does.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D240",
+      "removeWhen": "the pinned Pi release contains 4b9777737. Then the call-site marker and this record go; the catalog regenerates from the pinned package.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "787c3547c4",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
+        "ai/catalog_model_json_oracle_test.go::TestCatalogModelJSONMatchesPiForEveryBuiltinModel",
+        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "ai/registry_test.go::TestCodegenByteIdentical",
+        "cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi",
+        "coding/extension/model_object_oracle_test.go::TestModelObjectsMatchPisModelObjects"
+      ]
+    },
+    {
+      "id": "BF-D241",
+      "title": "Ctrl+V also pastes on Windows and WSL",
+      "symptom": "1.5.0 binds no key to `ctrl+v` on Windows and WSL (#11765).",
+      "rootCause": "Most Windows terminals handle Ctrl+V themselves and send a bracketed paste, but some pass Ctrl+V to the program as the raw `0x16` key. With only `alt+v` bound, nothing happened and no message was shown. In a terminal that handles Ctrl+V itself the program never receives the key, so the extra binding changes nothing there.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, WSL",
+      "class": "ahead-of-pi",
+      "divergence": "D241",
+      "removeWhen": "the pinned Pi release contains 37b38e9f6. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8b792f9bd1",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory",
+        "internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults",
+        "internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys"
+      ]
+    },
+    {
+      "id": "BF-D242",
+      "title": "Reload is rejected while the session is running or compacting",
+      "symptom": "1.5.0 has the TUI's entry checks only in the TUI, not in the core reload method (#9221).",
+      "rootCause": "An extension command (`ctx.reload()` in print or RPC mode) or an SDK caller could reload during a running extension tool. Reload invalidated the tool's runner, the tool's next `ctx` use threw a stale-context error, and the failed tool result entered session history.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D242",
+      "removeWhen": "the pinned Pi release contains c3b938e3e. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0f8bc0f0de",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive",
+        "coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting",
+        "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios"
+      ]
+    },
+    {
+      "id": "BF-D246",
+      "title": "OpenAI Responses sends session-id, not session_id",
+      "symptom": "1.5.0 sends `session_id` on Responses (#11639).",
+      "rootCause": "Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D246",
+      "removeWhen": "the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bf094afb3e",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "ai/cache_affinity_e2e_upstream_test.go::TestOpenAIResponsesCacheAffinityE2EUpstream",
+        "ai/openai_completions_session_affinity_upstream_test.go::TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat",
+        "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream",
+        "ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream"
+      ]
+    },
+    {
+      "id": "BF-D249",
+      "title": "Images in queued steering and follow-up messages are resized when the message is delivered",
+      "symptom": "",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D249",
+      "removeWhen": "the pin reaches a Pi release containing 4cf69332c.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "1584ac1082",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "5b637b1097",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "7056d2d9e1",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/session_queue_images_test.go::TestSessionQueuedUserMessageBuiltForAgentQueueIsResizedAtDelivery",
+        "coding/session_queue_images_test.go::TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages",
+        "internal/codingagent/queued_message_status_test.go::TestInteractiveQueuedMessagesAreBuiltBySessionForImageNormalization"
+      ]
+    },
+    {
+      "id": "BF-D250",
+      "title": "A delivered image-only queued message leaves the pending queue",
+      "symptom": "",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D250",
+      "removeWhen": "the pin reaches a Pi release containing a63c4ec5c.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "7056d2d9e1",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/session_queue_images_test.go::TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery",
+        "coding/session_queue_order_test.go::TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery"
+      ]
+    },
+    {
+      "id": "BF-D254",
+      "title": "`pig config` loads the user's keybindings",
+      "symptom": "1.5.0 ignores `keybindings.json` in `pi config` (#11651).",
+      "rootCause": "`selectConfig()` never installed the user's bindings, so a remap did nothing in the config selector.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D254",
+      "removeWhen": "the pinned Pi release contains b0c64f33c. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8934633d04",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/config_theme_test.go::TestConfigSelectorUIUsesTheUsersKeybindings"
+      ]
+    },
+    {
+      "id": "BF-D255",
+      "title": "`pig mcp list` sends the provider's token",
+      "symptom": "1.5.0 reports a signed-in provider's MCP server as needing sign-in.",
+      "rootCause": "The shell command built its connections without a token, so a server that takes the provider's token always looked signed out.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D255",
+      "removeWhen": "the pinned Pi release contains 4d72d05bc. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "c807fb7058",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/mcp_provider_token_test.go::TestMcpProviderTokenReaderReadsTheAgentDirectoryCredentials",
+        "coding/mcpext/cli_test.go::TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider"
+      ]
+    },
+    {
+      "id": "BF-D256",
+      "title": "An unreachable llama.cpp server error names the server and the cause",
+      "symptom": "1.5.0 drops the cause of a failed fetch (#11745).",
+      "rootCause": "The refused connection, wrong port or `https://` against a plain-HTTP server all read `fetch failed`, which gave the user nothing to go on.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D256",
+      "removeWhen": "the pinned Pi release contains ea0f49a36. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "fa4a558a1b",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/client_test.go::TestClientRequestErrorsMirrorFetch",
+        "internal/codingagent/llama/index_test.go::TestLlamaCommandOffersRetryWhenTheServerIsUnreachable",
+        "internal/codingagent/llama/native_provider_test.go::TestModelsProviderRefreshReportsNetworkErrorsAndAbortedCallers"
+      ]
+    },
+    {
+      "id": "BF-D261",
+      "title": "SSE lines end at CR, LF or CRLF",
+      "symptom": "1.5.0 parses a CR-framed stream as one `id` line at EOF (#11764).",
+      "rootCause": "A server that frames its SSE with a lone CR was unusable.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D261",
+      "removeWhen": "the pinned Pi release contains b64e6badd. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "ce7dae9221",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "mcp/sse_cr_pi_test.go::TestConsumeSSEStreamDispatchesCRTerminatedEventsWhileTheStreamStaysOpen",
+        "mcp/sse_cr_pi_test.go::TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks"
+      ]
+    },
+    {
+      "id": "BF-D262",
+      "title": "The startup benchmark disposes the session runtime",
+      "symptom": "1.5.0 never emits `session_shutdown` in the benchmark (#11693).",
+      "rootCause": "An extension that releases a timer or a socket in its `session_shutdown` handler kept the process alive after the timings printed. In PiG the deferred close of the runtime ran only on the success return, after the timings, and an error exit skipped it.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D262",
+      "removeWhen": "the pinned Pi release contains efb45b51d. Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "26a08b0995",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bfe1b032a7",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/startup_benchmark_test.go::TestStartupBenchmarkDisposesTheRuntimeAfterStoppingInteractiveMode"
+      ]
+    },
+    {
+      "id": "BF-D267",
+      "title": "The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes",
+      "symptom": "Pi's `installDependencies` hangs until a process that inherited npm's pipes ends (`child.on(\"close\", resolve)`, `install.ts:42`). Not reported upstream.",
+      "rootCause": "A plugin install that hangs on a descendant the user cannot see blocks the plugin load behind it with no error and no way out but killing the app; the 0.7.1 fix of the Windows Node-host exit (commit) found the same exposure in the Node host's own process wait and fixed it there (`NodeHost` waits for the process's exit, as Pi's workers do with `child.once(\"exit\")`, `next-node/workers/process.ts:79`, so that path matches Pi and is no divergence). The install is the one place where PiG waits as Pi's `close` does, so it follows the exit instead.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D267",
+      "removeWhen": "Pi stops waiting on inherited pipes (its install settles on the command's `exit`, or bounds the wait for `close`). Then the call-site marker and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0bc49744aa",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "79032e4d1f",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
       ]
     },
     {
@@ -29129,6 +30226,40 @@
       ]
     },
     {
+      "id": "BF-a40694a",
+      "title": "fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out",
+      "symptom": "fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a40694ab0e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffRetriesTransientErrors",
+        "coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffReturnsAPermanentError",
+        "coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffStopsWhenTheServerStops",
+        "coding/cli/rpc_listen_accept_test.go::TestHoldForFurtherSignalsForwardsASignalAfterTheFanOut",
+        "coding/cli/rpc_listen_accept_test.go::TestHoldForFurtherSignalsForwardsASignalDuringTheFanOut",
+        "coding/cli/rpc_listen_accept_test.go::TestNextAcceptDelayDoublesFromFiveMillisecondsToOneSecond",
+        "coding/cli/rpc_listen_ext_test.go::TestListenCloseDuringAConfirmDialogLeavesNothingBehind",
+        "coding/cli/rpc_listen_ext_test.go::TestListenCloseDuringASlowToolCallEndsOnlyThatSession",
+        "coding/cli/rpc_listen_test.go::TestListenASecondSIGTERMEndsAServerWhoseSessionDisposeHangs",
+        "coding/cli/rpc_listen_test.go::TestListenExitsOnSIGINT",
+        "coding/cli/rpc_listen_test.go::TestListenExitsOnSIGTERMDuringABuild",
+        "coding/cli/rpc_listen_test.go::TestListenRefusesAnExistingPath",
+        "coding/cli/rpc_listen_test.go::TestListenSecondConnectionMatchesPigModeRPC",
+        "coding/cli/rpc_listen_test.go::TestListenServesOneRPCSessionPerConnection"
+      ]
+    },
+    {
       "id": "BF-a40a16d",
       "title": "fix(codingagent): typed input restarts the idle collection's wait on every route",
       "symptom": "fix(codingagent): typed input restarts the idle collection's wait on every route",
@@ -29653,6 +30784,47 @@
       ],
       "tests": [
         "internal/codingagent/autocomplete_session_cwd_test.go::TestAutocompleteProviderCompletesPathsFromSessionCwd"
+      ]
+    },
+    {
+      "id": "BF-a808864",
+      "title": "Grep match lines, codemode output and previews, compaction summaries of tool results, and MCP server…",
+      "symptom": "Grep match lines, codemode output and previews, compaction summaries of tool results, and MCP server summaries and connection-error stderr tails no longer cut an emoji or other non-BMP character in half when they truncate: the whole character is dropped, so no lone surrogate reaches the session file, RPC and JSON clients, extensions or providers.",
+      "rootCause": "Ports Pi main (#11757). Adds jsstring.SliceHead/SliceTail/HeadUnits/TailUnits and uses them in TruncateLine (and its Go, Python, Rust and Lisp SDK copies), the codemode output and previews, compaction summaries and the MCP summaries and stderr tail. D252.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D252",
+      "removeWhen": "the pinned Pi release contains 9e870f6f0. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Grep match lines, codemode output and previews, compaction summaries of tool results, and MCP server summaries and connection-error stderr tails no longer cut an emoji or other non-BMP character in half when they truncate: the whole character is dropped, so no lone surrogate reaches the session file, RPC and JSON clients, extensions or providers. `TruncateLine` of the Go, Python, Rust and Lisp SDKs follows, and a negative `maxChars` now keeps nothing of the line (D252).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3cf1ce8466",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "a808864bf4",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "e2e5706337",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/extension/builtin/codemode/execute_oracle_test.go::TestExecuteOutputMatchesPi",
+        "coding/extension/builtin/codemode/execute_oracle_test.go::TestTruncateOutputKeepsSurrogatePairsWhole",
+        "coding/mcpext/truncate_slice_test.go::TestStderrTailDropsASplitSurrogatePair",
+        "coding/mcpext/truncate_slice_test.go::TestTruncateDropsASplitSurrogatePair",
+        "internal/codingagent/compaction/serialization_oracle_test.go::TestSerializeConversationDropsASurrogatePairAtTheCut",
+        "internal/codingagent/compaction/utils_test.go::TestTruncateForSummaryDropsASplitSurrogatePair",
+        "internal/codingagent/tools/grep_test.go::TestTruncateLine",
+        "internal/jsstring/slice_pair_test.go::TestSliceHeadAndTailMatchSliceWithoutSurrogates",
+        "internal/jsstring/slice_pair_test.go::TestSliceHeadAndTailNeverSplitAPair",
+        "test/extension-conformance/truncation_helpers_test.go::TestConformance_TruncationHelpersAgreeAcrossSDKs"
       ]
     },
     {
@@ -30423,6 +31595,27 @@
       "tests": []
     },
     {
+      "id": "BF-ac8664c",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ac8664c774",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/custom_editor_test.go::TestCustomEditorExtensionShortcutThenPasteImageComeFirst"
+      ]
+    },
+    {
       "id": "BF-aca35e7",
       "title": "In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last…",
       "symptom": "Pi-goal-x's `create_goal` could start a goal turn while the run was ending, print `Extension error (\u003cruntime\u003e): This extension ctx is stale ...` and leave the goal paused.",
@@ -30570,6 +31763,26 @@
         "internal/codingagent/session_line_capacity_test.go::TestMessageEntryRecordKeepsNoSpareCapacity",
         "test/perfgate/process_test.go::TestRPCTurnProcessGate"
       ]
+    },
+    {
+      "id": "BF-ada7018",
+      "title": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack",
+      "symptom": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.",
+      "rootCause": "Every build creates its Host on the server's registry, a connection's shutdown no longer holds its retirements, a stale Host still serves events.off and xref.hello, a migrated bus listener is tracked, and a lone shared Node member restarts into the shared cell.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ada701819c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-ae1ee6d",
@@ -32757,6 +33970,44 @@
       ]
     },
     {
+      "id": "BF-bd8849d",
+      "title": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…",
+      "symptom": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D247",
+      "removeWhen": "the pin reaches a Pi release containing 7a53c310a.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.0's order (Pi #9124, D247).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "694685ee71",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "bd8849d729",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "c28332bfcb",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/print_signal_exit_test.go::TestPrintModeJSONSignalStopsOutputAndPersistence",
+        "coding/cli/print_signal_exit_test.go::TestPrintModeSignalDisposalRunsLikePisEventLoop",
+        "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
+      ]
+    },
+    {
       "id": "BF-bdb7ad8",
       "title": "A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the…",
       "symptom": "A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder.",
@@ -32862,6 +34113,29 @@
         "internal/codingagent/home_dir_test.go::TestValidateAutoDiscoveredOverridesRejectsWhereNoHomeDirectoryExists",
         "internal/nodehome/nodehome_test.go::TestDirIsNodesOSHomedir",
         "internal/nodehome/nodehome_test.go::TestErrorIsNodesMessage"
+      ]
+    },
+    {
+      "id": "BF-bf094af",
+      "title": "The OpenAI Responses API now gets the session-affinity header `session-id` instead of `session_id`, as in Pi…",
+      "symptom": "The OpenAI Responses API now gets the session-affinity header `session-id` instead of `session_id`, as in Pi, because nginx drops underscored headers by default and Envoy can reject them, which lost cache affinity behind such proxies.",
+      "rootCause": "The OpenAI Responses API now gets the session-affinity header `session-id` instead of `session_id`, as in Pi, because nginx drops underscored headers by default and Envoy can reject them, which lost cache affinity behind such proxies.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The OpenAI Responses API now gets the session-affinity header `session-id` instead of `session_id`, as in Pi, because nginx drops underscored headers by default and Envoy can reject them, which lost cache affinity behind such proxies. The Completions API still sends `session_id`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf094afb3e",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream",
+        "ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream"
       ]
     },
     {
@@ -33262,6 +34536,25 @@
       "tests": []
     },
     {
+      "id": "BF-c1b8890",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c1b88904c3",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c1ed918",
       "title": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and…",
       "symptom": "fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and args_raw fields",
@@ -33439,6 +34732,36 @@
       ],
       "tests": [
         "coding/mcpext/reconnect_cancel_test.go::TestMCPReconnectDoesNotOpenAfterCancellationDuringCleanup"
+      ]
+    },
+    {
+      "id": "BF-c3656e5",
+      "title": "Files ending in `.dart`, `.nix`, `.groovy` and `.gradle` are now syntax highlighted in the read and write…",
+      "symptom": "Files ending in `.dart`, `.nix`, `.groovy` and `.gradle` are now syntax highlighted in the read and write views (Pi #11643, D260).",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D260",
+      "removeWhen": "the pin reaches a Pi release containing c13f6acfb.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Files ending in `.dart`, `.nix`, `.groovy` and `.gradle` are now syntax highlighted in the read and write views (Pi #11643, D260).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "c3656e595c",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "tui/highlight_test.go::TestHighlightCodeHighlightsDartNixAndGroovy",
+        "tui/highlight_test.go::TestLanguageFromPath",
+        "tui/language_from_path_oracle_test.go::TestLanguageFromPathMatchesPi"
       ]
     },
     {
@@ -34104,6 +35427,29 @@
       ]
     },
     {
+      "id": "BF-c807fb7",
+      "title": "`pig mcp list` sends the token of the provider named by a server's `auth.provider` (Radius, for example)…",
+      "symptom": "`pig mcp list` sends the token of the provider named by a server's `auth.provider` (Radius, for example), refreshed when expired, so a signed-in provider's server no longer shows as needing sign-in.",
+      "rootCause": "pig mcp list sends the token of the provider named by auth.provider. Records D255.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig mcp list` sends the token of the provider named by a server's `auth.provider` (Radius, for example), refreshed when expired, so a signed-in provider's server no longer shows as needing sign-in. The hint then reads `/login \u003cprovider\u003e in pig`, `--json` carries `authProvider`, and `pig mcp login` and `pig mcp logout` point to `/login` and `/logout` instead of failing with \"does not use OAuth\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c807fb7058",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/mcp_provider_token_test.go::TestMcpProviderTokenReaderReadsTheAgentDirectoryCredentials",
+        "coding/mcpext/cli_test.go::TestMcpCommandSendsTheTokenOfTheProviderNamedByAuthProvider"
+      ]
+    },
+    {
       "id": "BF-c80895b",
       "title": "An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each…",
       "symptom": "An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each entry owns its record, so a context built from scattered records retains what it holds and not the gaps between them.",
@@ -34525,6 +35871,29 @@
       "tests": [
         "tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemFirstLineIsTextMatchesPi",
         "tui/markdown_task_item_oracle_test.go::TestMarkdownTaskItemNeedsATextAfterTheSpacesMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-caae28a",
+      "title": "In RPC mode, `exit.log` no longer says \"received SIGTERM\" for a single signal that arrived during a shutdown…",
+      "symptom": "In RPC mode, `exit.log` no longer says \"received SIGTERM\" for a single signal that arrived during a shutdown that stdin's end or `ctx.shutdown()` had started and that finished with exit status 0.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In RPC mode, `exit.log` no longer says \"received SIGTERM\" for a single signal that arrived during a shutdown that stdin's end or `ctx.shutdown()` had started and that finished with exit status 0. The line now reads \"received SIGTERM during shutdown, which completed (exit 0)\", and a repeated signal's line reads \"received SIGTERM again during shutdown (exit 143)\". The cleanup, the log line and the process exit of an RPC exit now run once, so a repeated signal that arrives while another exit is already past its stdout wait no longer repeats them (D234).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "caae28ae1c",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_exit_once_test.go::TestRPCExitRunsItsStepsOnce",
+        "coding/cli/rpc_shutdown_exitlog_test.go::TestRPCExitLogNamesWhatEndedTheProcess"
       ]
     },
     {
@@ -35095,6 +36464,29 @@
       ]
     },
     {
+      "id": "BF-ce7dae9",
+      "title": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their…",
+      "symptom": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their events, as in Pi; the call used to fail with \"stream ended without a response\".",
+      "rootCause": "A line of a server-sent event stream ends at CR, LF or CRLF. The stdio framing is unchanged. Records D261.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP servers that frame server-sent events with a lone CR (or a CRLF split across reads) now deliver their events, as in Pi; the call used to fail with \"stream ended without a response\".",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ce7dae9221",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "mcp/sse_cr_pi_test.go::TestConsumeSSEStreamDispatchesCRTerminatedEventsWhileTheStreamStaysOpen",
+        "mcp/sse_cr_pi_test.go::TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks"
+      ]
+    },
+    {
       "id": "BF-ce8587e",
       "title": "On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing…",
       "symptom": "On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing AppKit an address in freed memory.",
@@ -35475,6 +36867,44 @@
       "tests": [
         "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
         "mcp/oauth/oauth_test.go::TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet"
+      ]
+    },
+    {
+      "id": "BF-d1785c8",
+      "title": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of…",
+      "symptom": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of saying \"Only one model in scope\", and cycling from outside the scope selects the first scoped model forward and the last backward instead of skipping the first (Pi #11806, D258).",
+      "rootCause": "Ctrl+P with `--models A` and another model active said \"Only one model in scope\", and with `--models A,B` it went to B, skipping A. Likewise an active model that is no longer available with one other available model.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D258",
+      "removeWhen": "the pin reaches a Pi release containing 5732bac06.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of saying \"Only one model in scope\", and cycling from outside the scope selects the first scoped model forward and the last backward instead of skipping the first (Pi #11806, D258).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "1584ac1082",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "5b637b1097",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "d1785c847b",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "coding/agent_session_oracle_test.go::TestAgentSessionMatchesPi",
+        "coding/model_registration_snapshot_test.go::TestSessionCycleModelSeesExtensionProviderRegistration",
+        "coding/session_model_extension_upstream_test.go::TestSessionModelExtensionCyclesUpstream"
       ]
     },
     {
@@ -37941,7 +39371,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38006,7 +39435,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38071,7 +39499,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38136,7 +39563,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38201,7 +39627,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38266,7 +39691,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38331,7 +39755,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38396,7 +39819,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38461,7 +39883,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38526,7 +39947,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38591,7 +40011,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38656,7 +40075,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38721,7 +40139,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38786,7 +40203,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38851,7 +40267,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38916,7 +40331,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -38981,7 +40395,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39046,7 +40459,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39111,7 +40523,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39176,7 +40587,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39241,7 +40651,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestRewriteBuildKnowsAnExistingCompileErrorUnderAWindowsPath",
         "coding/cli/extension_upgrade_test.go::TestCommandWordQuotesForTheShellOfThePlatform",
         "coding/cli/package_update_shared_checkout_test.go::TestUpdateExtensionsRunsThePackagesOfOneCheckoutOneAtATime",
-        "coding/cli/rpc_shutdown_settle_test.go::TestRPCShutdownInputEndDuringSignalDisposeKeepsItsExitStatus",
         "coding/extension/host/subprocess/integration_test.go::TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI",
         "coding/extension/host/subprocess/push_proxy_test.go::TestPushProxyIsFrameOnlyForRenderedFrames",
         "coding/extension/host/subprocess/runtime_node_registry_runtime_test.go::TestNodeModelRegistryRuntimeAnswersAsAModelRuntime",
@@ -39394,6 +40803,28 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape"
+      ]
+    },
+    {
+      "id": "BF-ddc6060",
+      "title": "fix(extension-host): keep shared cell processes alive past the spawner and out of quarantine",
+      "symptom": "fix(extension-host): keep shared cell processes alive past the spawner and out of quarantine",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ddc6060aa0",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/cell_registry_test.go::TestSharedCellsNeverShareAQuarantinedCell",
+        "coding/extension/host/subprocess/cell_registry_test.go::TestSharedCellsOutliveTheSpawnersLoadContext"
       ]
     },
     {
@@ -40309,6 +41740,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e0a4613",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "The compile-cache test took its count right after Load, but host.mjs replies to a load before it writes the load's cache entry, so on a loaded machine the count could precede that entry and the test reported an exit write that did not happen (4 of 100 runs failed pinned to one core with four busy loops, xd670). It now sends one more request (Reload with no scripts) first: the host handles it only after the load's write. With the barrier 250 of 250 runs pass under the same contention.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e0a4613856",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessThatExitedByItselfAfterItsLinkClosedWhileAChildHeldItsPipesIsNotReportedKilled",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits"
+      ]
     },
     {
       "id": "BF-e16cbba",
@@ -42252,6 +43706,28 @@
       ]
     },
     {
+      "id": "BF-edae8e7",
+      "title": "fix(rpc): track live hosts, escape a hung dispose on a second signal, and prove --listen concurrency",
+      "symptom": "fix(rpc): track live hosts, escape a hung dispose on a second signal, and prove --listen concurrency",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "edae8e70d7",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_test.go::TestListenASecondSIGTERMEndsAServerWhoseSessionDisposeHangs",
+        "coding/cli/rpc_listen_test.go::TestListenSessionsRunConcurrently"
+      ]
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
@@ -43628,6 +45104,31 @@
       ]
     },
     {
+      "id": "BF-f34cb22",
+      "title": "fix(extension-host): scope ctx.abort per host group and prove the drain, registry-hold and xref group rules",
+      "symptom": "fix(extension-host): scope ctx.abort per host group and prove the drain, registry-hold and xref group rules",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f34cb22f47",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellAbortsOnlyTheEmittingHostsRun",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellCrossesPayloadsToTheRequestersHostFirst",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellDrainsOnlyTheClosingHost",
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellHoldsRegistryWritesPerHost",
+        "test/extension-conformance/shared_cells_test.go::TestConformance_SharedCellsIsolatePerHostInstances"
+      ]
+    },
+    {
       "id": "BF-f3b4045",
       "title": "`.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now…",
       "symptom": "`.gitignore`, `.ignore` and `.fdignore` rules that skills, packages and extension entry discovery read now follow the `ignore` package Pi uses: a pattern ending in a slash ignores directories only (a file named `build` survives `build/`), patterns match case-insensitively, a path inside an ignored directory stays ignored, a pattern with a slash before its end is anchored, `[a-c]` and `[!a]` bracket expressions work, and `**/x`, `x/**` and `x/**/y` follow Pi's forms.",
@@ -43706,6 +45207,41 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_node_store_test.go::TestStoreAFailedStoreReachesOnErrorOnceAndClosesTheHost"
+      ]
+    },
+    {
+      "id": "BF-f43fb00",
+      "title": "A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when…",
+      "symptom": "A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when an editor-slot custom UI closes, and when queued messages are restored above it, instead of coming back as the literal `[paste #N ...]` marker (Pi #9809, D251).",
+      "rootCause": "The receiving editor has no stored paste for the marker, so the draft comes back as the literal `[paste #1 +12 lines]` and the pasted content is lost.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D251",
+      "removeWhen": "the pin reaches a Pi release containing 51313540a.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when an editor-slot custom UI closes, and when queued messages are restored above it, instead of coming back as the literal `[paste #N ...]` marker (Pi #9809, D251).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "5b637b1097",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "f43fb00cfc",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_custom_test.go::TestExtUIContextCustomKeepsCollapsedPasteContent",
+        "internal/codingagent/ext_ui_custom_test.go::TestRestoreQueuedMessagesKeepsCollapsedPasteContent",
+        "internal/codingagent/ext_ui_custom_test.go::TestSetRemoteEditorKeepsCollapsedPasteContent",
+        "internal/codingagent/remote_overlay_close_test.go::TestRemoteOverlayEditorSlotKeepsCollapsedPasteContent"
       ]
     },
     {
@@ -45821,6 +47357,30 @@
       "tests": []
     },
     {
+      "id": "BF-fa4a558",
+      "title": "An unreachable llama.cpp server now reports `Could not reach llama.cpp server at \u003curl\u003e: \u003ccause\u003e` (in `/login…",
+      "symptom": "An unreachable llama.cpp server now reports `Could not reach llama.cpp server at \u003curl\u003e: \u003ccause\u003e` (in `/login llama.cpp`, `/llama` and the model refresh) instead of `fetch failed`, as in Pi.",
+      "rootCause": "A failed llama.cpp request or watch reports 'Could not reach llama.cpp server at \u003curl\u003e: \u003ccause\u003e' instead of 'fetch failed'. Records D256.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An unreachable llama.cpp server now reports `Could not reach llama.cpp server at \u003curl\u003e: \u003ccause\u003e` (in `/login llama.cpp`, `/llama` and the model refresh) instead of `fetch failed`, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fa4a558a1b",
+          "date": "2026-11-05"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/client_test.go::TestClientRequestErrorsMirrorFetch",
+        "internal/codingagent/llama/index_test.go::TestLlamaCommandOffersRetryWhenTheServerIsUnreachable",
+        "internal/codingagent/llama/native_provider_test.go::TestModelsProviderRefreshReportsNetworkErrorsAndAbortedCallers"
+      ]
+    },
+    {
       "id": "BF-fac4703",
       "title": "The extension editor dialog (`ctx.ui.editor()`, `/tree` summary prompt) shows the hint keys the user bound…",
       "symptom": "The extension editor dialog (`ctx.ui.editor()`, `/tree` summary prompt) shows the hint keys the user bound for submit, newline and cancel instead of the default key names (`internal/codingagent/extension_editor.go`, extension-editor.ts keyHint; extended `TestExtensionEditorHandleInputMatchesPi` renders the hint row under five rebindings, red before).",
@@ -47050,7 +48610,7 @@
     },
     {
       "id": "D226",
-      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "title": "Go, Rust, Python and Lisp serve TypeBox `Value.Check` and `Value.Errors` only, through the host",
       "entry": "BF-D226"
     },
     {
@@ -47072,6 +48632,141 @@
       "id": "D233",
       "title": "A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first…",
       "entry": "BF-d4e641b"
+    },
+    {
+      "id": "D234",
+      "title": "PiG follows Pi main ace560c30 ahead of the v1.5.0 pin: a started RPC or print shutdown finishes, and only a…",
+      "entry": "BF-5b8189f"
+    },
+    {
+      "id": "D235",
+      "title": "A session-graph client's two live runs with no \"no run\" read between them are one context",
+      "entry": "BF-D235"
+    },
+    {
+      "id": "D238",
+      "title": "The output limit leaves 15% of the estimated input unused",
+      "entry": "BF-D238"
+    },
+    {
+      "id": "D240",
+      "title": "Claude Sonnet 5 takes no temperature",
+      "entry": "BF-D240"
+    },
+    {
+      "id": "D241",
+      "title": "Ctrl+V also pastes on Windows and WSL",
+      "entry": "BF-D241"
+    },
+    {
+      "id": "D242",
+      "title": "Reload is rejected while the session is running or compacting",
+      "entry": "BF-D242"
+    },
+    {
+      "id": "D243",
+      "title": "A bash or PowerShell timeout after the shell already exited reports the shell's exit code",
+      "entry": "BF-3fe717a"
+    },
+    {
+      "id": "D244",
+      "title": "A user bash result whose earlier output was discarded is reported as truncated",
+      "entry": "BF-2544a44"
+    },
+    {
+      "id": "D245",
+      "title": "The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and…",
+      "entry": "BF-3b696c8"
+    },
+    {
+      "id": "D246",
+      "title": "OpenAI Responses sends session-id, not session_id",
+      "entry": "BF-D246"
+    },
+    {
+      "id": "D247",
+      "title": "Quit settles the interrupted run before session_shutdown and disposal",
+      "entry": "BF-bd8849d"
+    },
+    {
+      "id": "D248",
+      "title": "The /tree search line draws a cursor while the selector is focused",
+      "entry": "BF-01a63b9"
+    },
+    {
+      "id": "D249",
+      "title": "Images in queued steering and follow-up messages are resized when the message is delivered",
+      "entry": "BF-D249"
+    },
+    {
+      "id": "D250",
+      "title": "A delivered image-only queued message leaves the pending queue",
+      "entry": "BF-D250"
+    },
+    {
+      "id": "D251",
+      "title": "A draft moved out of and back into the editor keeps its collapsed paste content",
+      "entry": "BF-f43fb00"
+    },
+    {
+      "id": "D252",
+      "title": "Truncating text never splits a surrogate pair",
+      "entry": "BF-a808864"
+    },
+    {
+      "id": "D253",
+      "title": "find and ls read a limit below 1 as 1, and find reports the limit only when more results exist",
+      "entry": "BF-04a8c5e"
+    },
+    {
+      "id": "D254",
+      "title": "`pig config` loads the user's keybindings",
+      "entry": "BF-D254"
+    },
+    {
+      "id": "D255",
+      "title": "`pig mcp list` sends the provider's token",
+      "entry": "BF-D255"
+    },
+    {
+      "id": "D256",
+      "title": "An unreachable llama.cpp server error names the server and the cause",
+      "entry": "BF-D256"
+    },
+    {
+      "id": "D257",
+      "title": "The extension selector draws a window of at most ten options with a position indicator",
+      "entry": "BF-72fa7a7"
+    },
+    {
+      "id": "D258",
+      "title": "Model cycling selects the only model in scope and cycles into the scope from outside it",
+      "entry": "BF-d1785c8"
+    },
+    {
+      "id": "D259",
+      "title": "Alacritty is detected for OSC 8 hyperlinks without TERM_PROGRAM",
+      "entry": "BF-36fd3b5"
+    },
+    {
+      "id": "D260",
+      "title": ".dart, .nix, .groovy and .gradle files are highlighted in read and write views",
+      "entry": "BF-c3656e5"
+    },
+    {
+      "id": "D261",
+      "title": "SSE lines end at CR, LF or CRLF",
+      "entry": "BF-D261"
+    },
+    {
+      "id": "D262",
+      "title": "The startup benchmark disposes the session runtime",
+      "entry": "BF-D262"
+    },
+    {
+      "id": "D267",
+      "title": "The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes",
+      "entry": "BF-D267"
     }
   ],
   "exemptCommits": {

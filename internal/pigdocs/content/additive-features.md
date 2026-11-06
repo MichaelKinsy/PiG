@@ -1,6 +1,6 @@
 # Additive features
 
-These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: extensions and SDKs, Piglets and Binaries, and diagnostic commands. 22 more additive records cover performance, crash handling, security, and platform details; they do not change how you author. Search this page with `grep -n -i <word>`. [Divergences](divergences.md) lists the places where PiG behaves differently from Pi.
+These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: extensions and SDKs, Piglets and Binaries, and diagnostic commands. 23 more additive records cover performance, crash handling, security, and platform details; they do not change how you author. Search this page with `grep -n -i <word>`. [Divergences](divergences.md) lists the places where PiG behaves differently from Pi.
 
 | ID | Title | Summary |
 |---|---|---|
