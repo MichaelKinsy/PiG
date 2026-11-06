@@ -954,7 +954,7 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 
 	// Upstream onEscape aborts the running `!` command (session.abortBash) when no agent run streams, and asks nothing
 	// else to abort. A deferred command can outlive the run that was streaming when it started.
-	if action == actionInterrupt && m.bashCancel != nil && m.retryCountdownStop == nil && !m.runStreaming() {
+	if action == actionInterrupt && m.bashCancel != nil && !m.retryEscapeHandler && !m.runStreaming() {
 		m.bashCancel()
 		return nil
 	}

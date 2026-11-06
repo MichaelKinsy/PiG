@@ -20,19 +20,31 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // layoutProvider answers a request with the text "42", or, when tool is set, answers the first request with a bash tool call and the next with "42".
 type layoutProvider struct {
 	tool     bool
 	requests atomic.Int32
+	// answered closes with the answer to the request numbered answeredAt.
+	answeredAt int32
+	answered   chan struct{}
+}
+
+func newLayoutProvider(tool bool, answeredAt int32) *layoutProvider {
+	return &layoutProvider{tool: tool, answeredAt: answeredAt, answered: make(chan struct{})}
 }
 
 func (p *layoutProvider) ID() string   { return "faux" }
 func (p *layoutProvider) Close() error { return nil }
 
 func (p *layoutProvider) Stream(context.Context, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-	first := p.requests.Add(1) == 1
+	number := p.requests.Add(1)
+	first := number == 1
+	if number == p.answeredAt {
+		defer close(p.answered)
+	}
 	message := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "42"}}, Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonStop, Timestamp: time.Now().UnixMilli()}
 	if p.tool && first {
 		message.Content = []ai.AssistantContentBlock{ai.ToolCall{ID: "call-1", Name: "bash", Arguments: ai.JsonObject{"command": "expr 20 + 22"}}}
@@ -65,7 +77,7 @@ func noopHandlers() map[string][]extension.HandlerFn {
 var toolDuration = regexp.MustCompile(`Took \d+(\.\d+)?m?s`)
 
 // runLayoutTranscript sends "prompt" through the real owner loop and a real Session and returns the transcript rows once the run has settled.
-func runLayoutTranscript(t *testing.T, provider *layoutProvider, handlers map[string][]extension.HandlerFn, wantRequests int32) string {
+func runLayoutTranscript(t *testing.T, provider *layoutProvider, handlers map[string][]extension.HandlerFn) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
@@ -99,9 +111,11 @@ func runLayoutTranscript(t *testing.T, provider *layoutProvider, handlers map[st
 		SystemPromptOptions: options, SystemPrompt: prompts.BuildDefaultPrompt(prompts.FromExtensionOptions(options)),
 	}, nil)
 	h.Do(func() { h.Enter("What is 20+22?") })
-	deadline := time.Now().Add(10 * time.Second)
-	for provider.requests.Load() < wantRequests && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
+	// The loop is idle until the turn starts, so the provider's last answer comes before the idle wait.
+	select {
+	case <-provider.answered:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatalf("the provider answered %d of %d requests", provider.requests.Load(), provider.answeredAt)
 	}
 	h.WaitIdle(t, 10*time.Second)
 	rows := strings.Split(toolDuration.ReplaceAllString(h.Chat(), "Took Ns"), "\n")
@@ -124,8 +138,8 @@ func TestRunWithNoopEventHandlersKeepsTheTranscriptLayout(t *testing.T) {
 		{"tool", true, 2, "\n What is 20+22?\n\n\n\n $ expr 20 + 22\n\n 42\n\n Took Ns\n\n\n 42"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			without := runLayoutTranscript(t, &layoutProvider{tool: tc.tool}, nil, tc.requests)
-			with := runLayoutTranscript(t, &layoutProvider{tool: tc.tool}, noopHandlers(), tc.requests)
+			without := runLayoutTranscript(t, newLayoutProvider(tc.tool, tc.requests), nil)
+			with := runLayoutTranscript(t, newLayoutProvider(tc.tool, tc.requests), noopHandlers())
 			if with != without {
 				t.Fatalf("handlers that return nothing changed the transcript\nwithout:\n%q\nwith:\n%q", without, with)
 			}
