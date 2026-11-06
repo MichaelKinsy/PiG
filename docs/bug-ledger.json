@@ -3246,15 +3246,15 @@
       "id": "BF-1724c9e",
       "title": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose…",
       "symptom": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`.",
-      "rootCause": "Pi main's rule, ahead of the pin. An agent directory whose `auth.json` is a symlink to a shared file locked a different directory than the real file, so two processes entered the credential section together and refreshed one single-use OAuth refresh token twice (`invalid_grant`).",
-      "rootCauseSource": "divergence record",
+      "rootCause": "The auth lock resolved the file with filepath.EvalSymlinks. On Windows that expands 8.3 short names (RUNNER~1 -\u003e runneradmin) and looks up a component a '..' cancels, where Node's fs.realpath (what proper-lockfile and Pi main use) keeps the spelling and resolves the path first. The walk moves to internal/noderealpath so pilock can use it; codingagent keeps its callers. The five new testenv.Symlink callers are file links and join the registry. The OAuth abort fixture writes its started path as a JSON (JavaScript) string literal.",
+      "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
+      "platform": "Windows",
       "class": "ahead-of-pi",
       "divergence": "D236",
       "removeWhen": "the pin reaches a Pi release containing 081a6e87f. Then the two call-site markers and this record go.",
       "fixedIn": "Unreleased",
-      "releaseNote": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236).",
+      "releaseNote": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236), and resolves the path as Node's `fs.realpath` does: a `..` step cancels a directory that need not exist, and on Windows the case and 8.3 short names (`RUNNER~1`) of components that are not links stay as given, so a lock error names the path as Pi's does.",
       "origin": "release note",
       "commits": [
         {
@@ -3266,17 +3266,34 @@
           "date": "2026-11-05"
         },
         {
+          "hash": "72e19b38b8",
+          "date": "2026-11-06"
+        },
+        {
           "hash": "800dd85f35",
           "date": "2026-11-06"
         },
         {
           "hash": "a018d069d8",
           "date": "2026-11-06"
+        },
+        {
+          "hash": "fe838e3528",
+          "date": "2026-11-06"
         }
       ],
       "tests": [
         "ai/auth_dangling_link_test.go::TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile",
         "ai/auth_dangling_link_test.go::TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile",
+        "ai/auth_storage_lock_error_upstream_test.go::TestAuthStorageLockErrorIsProperLockfileErrorUpstream",
+        "ai/auth_storage_lock_error_upstream_test.go::TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream",
+        "internal/codingagent/session_continue_test.go::TestSessionCwdMatches_ResolvesSymlinks",
+        "internal/noderealpath/noderealpath_test.go::TestSyncFollowsADirectoryLink",
+        "internal/noderealpath/noderealpath_test.go::TestSyncResolvesDotSegmentsBeforeWalking",
+        "internal/noderealpath/realpath_windows_test.go::TestVolumeGUIDPathClassification",
+        "internal/noderealpath/win32_test.go::TestNodeRealpathWin32KeepsComponentSpelling",
+        "internal/noderealpath/win32_test.go::TestNodeRealpathWin32MatchesNode",
+        "internal/noderealpath/win32_test.go::TestWin32ResolveMatchesNode",
         "internal/pilock/symlink_alias_test.go::TestAuthLockOfASymlinkedFileInAnotherDirectoryIsTheRealFilesLock",
         "internal/pilock/symlink_alias_test.go::TestAuthLocksShareOneLockAcrossSymlinkedPaths",
         "internal/pilock/symlink_alias_test.go::TestSettingsLockStaysOnTheGivenPath"
@@ -12993,9 +13010,7 @@
           "date": "2026-10-26"
         }
       ],
-      "tests": [
-        "internal/codingagent/canonical_path_relative_test.go::TestRealPathSyncMatchesNodeRealpathSync"
-      ]
+      "tests": []
     },
     {
       "id": "BF-55573f4",

@@ -42,7 +42,7 @@
     },
     {
       "source": "test/parity/runner/json_pig_only.go",
-      "sha256": "79e647eb17b58724ebc4c9f88c119698ea41156630c73dddb9c28261f08e945d",
+      "sha256": "af8fb4702a202ed046990b61156373e0ed786d4367b4c6f1a6b0b9fc11b35c66",
       "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence, the complete record and the type of the record that must follow it, and every run must carry exactly its declared count of them, each at that position, so a second occurrence, a moved emission or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
     },
     {

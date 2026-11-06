@@ -127,7 +127,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-168d095](#bf-168d095) | fix(photonimage): decode farbfeld as Photon does | PiG's own defect | All platforms | Unreleased |
 | [BF-16d0758](#bf-16d0758) | A LiteLLM pre-call context check (`litellm.ContextWindowExceededError: ... Context Window exceeded for given… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
-| [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
@@ -3215,15 +3215,15 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** A Pi defect that PiG fixed first (divergence D236)
 - **Symptom:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`.
-- **Root cause:** Pi main's rule, ahead of the pin. An agent directory whose `auth.json` is a symlink to a shared file locked a different directory than the real file, so two processes entered the credential section together and refreshed one single-use OAuth refresh token twice (`invalid_grant`).
+- **Root cause:** The auth lock resolved the file with filepath.EvalSymlinks. On Windows that expands 8.3 short names (RUNNER~1 -> runneradmin) and looks up a component a '..' cancels, where Node's fs.realpath (what proper-lockfile and Pi main use) keeps the spelling and resolves the path first. The walk moves to internal/noderealpath so pilock can use it; codingagent keeps its callers. The five new testenv.Symlink callers are file links and join the registry. The OAuth abort fixture writes its started path as a JSON (JavaScript) string literal.
 - **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
+- **Platform:** Windows
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** the pin reaches a Pi release containing 081a6e87f. Then the two call-site markers and this record go.
-- **Fix commits:** `1724c9e834` (2026-11-05), `79461e0ddf` (2026-11-05), `800dd85f35` (2026-11-06), `a018d069d8` (2026-11-06)
-- **Tests:** `ai/auth_dangling_link_test.go::TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile`, `ai/auth_dangling_link_test.go::TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile`, `internal/pilock/symlink_alias_test.go::TestAuthLockOfASymlinkedFileInAnotherDirectoryIsTheRealFilesLock`, `internal/pilock/symlink_alias_test.go::TestAuthLocksShareOneLockAcrossSymlinkedPaths`, `internal/pilock/symlink_alias_test.go::TestSettingsLockStaysOnTheGivenPath`
-- **Release note:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236).
+- **Fix commits:** `1724c9e834` (2026-11-05), `79461e0ddf` (2026-11-05), `72e19b38b8` (2026-11-06), `800dd85f35` (2026-11-06), `a018d069d8` (2026-11-06), `fe838e3528` (2026-11-06)
+- **Tests:** `ai/auth_dangling_link_test.go::TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile`, `ai/auth_dangling_link_test.go::TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile`, `ai/auth_storage_lock_error_upstream_test.go::TestAuthStorageLockErrorIsProperLockfileErrorUpstream`, `ai/auth_storage_lock_error_upstream_test.go::TestFileModelsStoreLockErrorIsProperLockfileErrorUpstream`, `internal/codingagent/session_continue_test.go::TestSessionCwdMatches_ResolvesSymlinks`, `internal/noderealpath/noderealpath_test.go::TestSyncFollowsADirectoryLink`, `internal/noderealpath/noderealpath_test.go::TestSyncResolvesDotSegmentsBeforeWalking`, `internal/noderealpath/realpath_windows_test.go::TestVolumeGUIDPathClassification` and 6 more in docs/bug-ledger.json
+- **Release note:** Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236), and resolves the path as Node's `fs.realpath` does: a `..` step cancels a directory that need not exist, and on Windows the case and 8.3 short names (`RUNNER~1`) of components that are not links stay as given, so a lock error names the path as Pi's does.
 
 ### BF-173060b
 
@@ -7793,7 +7793,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `54e3983c76` (2026-10-26)
-- **Tests:** `internal/codingagent/canonical_path_relative_test.go::TestRealPathSyncMatchesNodeRealpathSync`
+- **Tests:** None recorded.
 
 ### BF-55573f4
 
