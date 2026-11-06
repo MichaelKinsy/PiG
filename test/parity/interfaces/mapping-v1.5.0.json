@@ -175761,9 +175761,9 @@
         "call:coding/extension/host/inproc/runner.go#Runner.AddErrorListener"
       ],
       "evidence": [
+        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK",
         "test:test/extension-conformance/message_update_delta_test.go#TestConformance_MessageUpdateDeltas",
-        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas",
-        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
+        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas"
       ]
     },
     {
@@ -175783,9 +175783,9 @@
         "call:coding/extension/host/inproc/runner.go#Runner.AddErrorListener"
       ],
       "evidence": [
+        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK",
         "test:test/extension-conformance/message_update_delta_test.go#TestConformance_MessageUpdateDeltas",
-        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas",
-        "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders"
+        "test:test/extension-conformance/tool_execution_update_delta_test.go#TestConformance_ToolExecutionUpdateDeltas"
       ]
     },
     {
@@ -220258,7 +220258,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
         "test:test/extension-conformance/conformance_test.go#TestModelEventPayloadsMatchAcrossSDKs",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/deep_event_delta_test.go#TestDeepEventStreamDeltasReachEverySDK"
       ]
     },
     {
