@@ -240,15 +240,24 @@ func executableName(base string) string {
 }
 
 // executableScript is a program that runs as the named tool: a shell script,
-// or on Windows a copy of HOSTNAME.EXE.
+// or on Windows a copy of this test binary. Either prints a version line that
+// passes the identity probe.
 func executableScript(t *testing.T, name string) []byte {
 	t.Helper()
 	if runtime.GOOS == "windows" {
-		program, err := os.ReadFile(filepath.Join(os.Getenv("SystemRoot"), "System32", "HOSTNAME.EXE"))
+		// A copy of this test binary: TestMain answers --version as the tool its file name says (fakeToolVersion).
+		self, err := os.Executable()
+		if err != nil {
+			t.Fatal(err)
+		}
+		program, err := os.ReadFile(self)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return program
+	}
+	if name == "rg" {
+		name = "ripgrep"
 	}
 	return []byte("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then\n  echo \"" + name + " version 1.0\"\nfi\n")
 }

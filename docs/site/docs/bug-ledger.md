@@ -420,6 +420,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4d2f44e](#bf-4d2f44e) | A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4d32556](#bf-4d32556) | `Math.exp` in `internal/jsmath` returns Node's bits on arm64 | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4d33f78](#bf-4d33f78) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
+| [BF-4d731f2](#bf-4d731f2) | Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is… | PiG's own defect | Windows | Unreleased |
 | [BF-4d965e3](#bf-4d965e3) | The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4db62b6](#bf-4db62b6) | Quitting during startup (Ctrl-D, or Ctrl-C twice, while the tools download or the terminal colours are… | PiG's own defect | All platforms | Unreleased |
 | [BF-4e204f4](#bf-4e204f4) | fix(sdk-py): clear bandit's findings in the 0.5.2 Python SDK code | PiG's own defect | All platforms | Unreleased |
@@ -1099,6 +1100,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D262](#bf-d262) | The startup benchmark disposes the session runtime | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D266](#bf-d266) | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D267](#bf-d267) | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D269](#bf-d269) | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -7263,6 +7265,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `4d33f78449` (2026-10-11)
 - **Tests:** `internal/codingagent/model_registry_availability_refresh_gaps_test.go::TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover`, `tui/tool_execution_test.go::TestErrorResultStaysCollapsedUntilExpanded`
+
+### BF-4d731f2
+
+**Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is not fd or ripgrep as one.
+- **Root cause:** Debian's FDclone installs as /usr/bin/fd and opens /dev/tty, so the @ autocomplete and the find tool handed it the terminal. Upstream's commandExists only checks for ENOENT and has the same bug. A mismatch moves on to the next name, then the managed download. Every fd/rg search also starts in a new session (detached process on Windows).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `39b6e4dbe3` (2026-11-06), `4d731f2eec` (2026-11-06)
+- **Tests:** `internal/codingagent/tools/grep_test.go::TestGrepLiteralPatternStartingWithDash`, `internal/codingagent/tools/testmain_test.go::TestMain`, `internal/codingagent/tools/tool_probe_linux_test.go::TestFindAndGrepKeepSearchInCallersSession`, `internal/codingagent/tools/tool_probe_linux_test.go::TestVersionProbeCannotReachTheTerminal`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsFdWrapperWithoutShebang`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsPlainFd`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathChecksRipgrepIdentity`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathManagedCopyNeedsNoProbe` and 7 more in docs/bug-ledger.json
+- **Release note:** Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is not fd or ripgrep as one. Debian's `fdclone` package installs a file manager as `/usr/bin/fd`; it opened `/dev/tty` and took over the terminal, and it hid a real fd installed as `fdfind`. A system `fd`, `fdfind` or `rg` is now used only if `<bin> --version` exits 0 and prints `fd `, `fdfind ` or `ripgrep ` first; otherwise PiG tries the next name and then downloads its own, and the tools status no longer counts the impostor as installed. The check runs once per binary (cached by path, modification time and size), in a new session with stdin on `/dev/null` and a 5 s bound, and starts the program the way the searches do. The `@` search also runs fd in a new session, and on Windows without a visible console window. Pi has the same bug.
 
 ### BF-4d965e3
 
@@ -16724,6 +16740,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0bc49744aa` (2026-11-05), `79032e4d1f` (2026-11-05)
 - **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes`
 
+### BF-D269
+
+**A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D269)
+- **Symptom:** `commandExists` in `packages/coding-agent/src/utils/tools-manager.ts` accepts any program that spawns, so an unrelated `fd` passes. To report upstream.
+- **Root cause:** typing `@` over ssh on a host with fdclone launched a full-screen file manager, and a real fd installed as `fdfind` was never reached. Pi has the same bug.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi checks that the program it found is the tool, not only that it spawns. Then the probe, the autocomplete's new session and this record go.
+- **Fix commits:** `39b6e4dbe3` (2026-11-06), `c2fe0b3fc9` (2026-11-06), `cd18360e93` (2026-11-06)
+- **Tests:** `internal/codingagent/tools/tool_probe_linux_test.go::TestFindAndGrepKeepSearchInCallersSession`, `internal/codingagent/tools/tool_probe_linux_test.go::TestVersionProbeCannotReachTheTerminal`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsFdWrapperWithoutShebang`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathChecksRipgrepIdentity`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathRejectsLoneImpostor`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathSkipsImpostorFdForFdfind`, `internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionDoesNotCacheStartFailure`, `internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionTimesOutHungProgramAndItsChildren` and 4 more in docs/bug-ledger.json
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -25407,6 +25438,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
+| D269 | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | [BF-D269](#bf-d269) |
 
 ## Fix-titled commits that are not bugs in a release
 

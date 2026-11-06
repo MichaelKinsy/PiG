@@ -40,7 +40,6 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
-	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	_ "github.com/MichaelKinsy/PiG/internal/tlsdistrust" // hardens http.DefaultTransport, which the tool downloads use (pig additive (D191))
 )
@@ -186,7 +185,8 @@ func (m *ToolsManager) arch() string {
 //
 // Lookup order:
 //  1. <agentDir>/bin/<binary>[.exe] (local install)
-//  2. systemBinaryNames in PATH
+//  2. systemBinaryNames in PATH that pass the --version identity probe
+//     (see LookupToolPath)
 func (m *ToolsManager) GetToolPath(tool string) string {
 	config, ok := toolsTable[tool]
 	if !ok {
@@ -200,18 +200,7 @@ func (m *ToolsManager) GetToolPath(tool string) string {
 	if _, err := os.Stat(localPath); err == nil {
 		return localPath
 	}
-	for _, name := range systemBinaryNames(systemToolConfig{
-		BinaryName:        config.BinaryName,
-		SystemBinaryNames: config.SystemBinaryNames,
-	}) {
-		if path, err := nodespawn.LookPath(name, "", nil); err == nil {
-			if runtime.GOOS == "windows" {
-				return name
-			}
-			return path
-		}
-	}
-	return ""
+	return systemToolPath(tool, systemToolConfigs[tool])
 }
 
 // ToolStatus mirrors upstream ToolStatus: progress and failures EnsureTool

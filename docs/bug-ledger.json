@@ -11687,6 +11687,46 @@
       ]
     },
     {
+      "id": "BF-4d731f2",
+      "title": "Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is…",
+      "symptom": "Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is not fd or ripgrep as one.",
+      "rootCause": "Debian's FDclone installs as /usr/bin/fd and opens /dev/tty, so the @ autocomplete and the find tool handed it the terminal. Upstream's commandExists only checks for ENOENT and has the same bug. A mismatch moves on to the next name, then the managed download. Every fd/rg search also starts in a new session (detached process on Windows).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is not fd or ripgrep as one. Debian's `fdclone` package installs a file manager as `/usr/bin/fd`; it opened `/dev/tty` and took over the terminal, and it hid a real fd installed as `fdfind`. A system `fd`, `fdfind` or `rg` is now used only if `\u003cbin\u003e --version` exits 0 and prints `fd `, `fdfind ` or `ripgrep ` first; otherwise PiG tries the next name and then downloads its own, and the tools status no longer counts the impostor as installed. The check runs once per binary (cached by path, modification time and size), in a new session with stdin on `/dev/null` and a 5 s bound, and starts the program the way the searches do. The `@` search also runs fd in a new session, and on Windows without a visible console window. Pi has the same bug.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "39b6e4dbe3",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "4d731f2eec",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_test.go::TestGrepLiteralPatternStartingWithDash",
+        "internal/codingagent/tools/testmain_test.go::TestMain",
+        "internal/codingagent/tools/tool_probe_linux_test.go::TestFindAndGrepKeepSearchInCallersSession",
+        "internal/codingagent/tools/tool_probe_linux_test.go::TestVersionProbeCannotReachTheTerminal",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsFdWrapperWithoutShebang",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsPlainFd",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathChecksRipgrepIdentity",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathManagedCopyNeedsNoProbe",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathRejectsLoneImpostor",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathSkipsImpostorFdForFdfind",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionDoesNotCacheStartFailure",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionTimesOutHungProgramAndItsChildren",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestToolProbeCachesPerFileRevision",
+        "tui/file_autocomplete_session_linux_test.go::TestWalkDirectoryWithFdCancelKillsTheGroup",
+        "tui/file_autocomplete_session_linux_test.go::TestWalkDirectoryWithFdRunsInANewSession"
+      ]
+    },
+    {
       "id": "BF-4d965e3",
       "title": "The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `\u003c`, `\u003e`…",
       "symptom": "It used to sort the members and could cut a multi-byte character.",
@@ -30635,6 +30675,48 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
+      ]
+    },
+    {
+      "id": "BF-D269",
+      "title": "A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session",
+      "symptom": "`commandExists` in `packages/coding-agent/src/utils/tools-manager.ts` accepts any program that spawns, so an unrelated `fd` passes. To report upstream.",
+      "rootCause": "typing `@` over ssh on a host with fdclone launched a full-screen file manager, and a real fd installed as `fdfind` was never reached. Pi has the same bug.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D269",
+      "removeWhen": "Pi checks that the program it found is the tool, not only that it spawns. Then the probe, the autocomplete's new session and this record go.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "39b6e4dbe3",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "c2fe0b3fc9",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "cd18360e93",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/tool_probe_linux_test.go::TestFindAndGrepKeepSearchInCallersSession",
+        "internal/codingagent/tools/tool_probe_linux_test.go::TestVersionProbeCannotReachTheTerminal",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsFdWrapperWithoutShebang",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathChecksRipgrepIdentity",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathRejectsLoneImpostor",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathSkipsImpostorFdForFdfind",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionDoesNotCacheStartFailure",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionTimesOutHungProgramAndItsChildren",
+        "internal/codingagent/tools/tool_probe_unix_test.go::TestToolProbeCachesPerFileRevision",
+        "internal/codingagent/tools/tools_lookup_windows_test.go::TestLookupToolPathFindsToolsAsPiDoes",
+        "tui/file_autocomplete_session_linux_test.go::TestWalkDirectoryWithFdCancelKillsTheGroup",
+        "tui/file_autocomplete_session_linux_test.go::TestWalkDirectoryWithFdRunsInANewSession"
       ]
     },
     {
@@ -50512,6 +50594,11 @@
       "id": "D268",
       "title": "The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by…",
       "entry": "BF-c551a63"
+    },
+    {
+      "id": "D269",
+      "title": "A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session",
+      "entry": "BF-D269"
     }
   ],
   "exemptCommits": {
