@@ -14,10 +14,8 @@ import (
 type nativeAutocompleteRequest struct {
 	provider        *AsyncAutocompleteProvider
 	force, explicit bool
-	// request, cursor and lines are the editor's state when the key asked; a request whose text moved on is dropped.
+	// request is the editor's request number when the key asked; a later request or a cancel supersedes this one. The text and cursor it asks about are read when it starts.
 	request uint64
-	cursor  [2]int
-	lines   []string
 }
 
 // requestNativeAutocomplete is editor.ts requestAutocomplete for the local provider. A natural symbol request waits out Pi's debounce timer on the ordered worker the extension providers use. Every other request waits for FlushAutocomplete: the end of the read that made it is Pi's microtask checkpoint.
@@ -27,14 +25,13 @@ func (e *Editor) requestNativeAutocomplete(force, explicit bool) {
 		e.asyncCancel = nil
 	}
 	triggers := e.nativeTriggerCharacters()
-	lines := slices.Clone(e.lines)
-	if debouncedAutocomplete(lines, e.cursor, triggers, force, explicit) {
+	if debouncedAutocomplete(e.lines, e.cursor, triggers, force, explicit) {
 		// Pi starts a debounced request from setTimeout (editor.ts:2305-2312), a later task than any terminal read.
 		e.nativeAutocomplete = nil
 		e.requestAutocompleteProvider(&AsyncAutocompleteProvider{TriggerCharacters: triggers, GetSuggestions: e.ownerPreparedSuggestions(e.autocomplete)}, force, explicit)
 		return
 	}
-	e.nativeAutocomplete = &nativeAutocompleteRequest{force: force, explicit: explicit, request: e.autocompleteRequestID, cursor: e.cursor, lines: lines}
+	e.nativeAutocomplete = &nativeAutocompleteRequest{force: force, explicit: explicit, request: e.autocompleteRequestID}
 	// A host that does not call FlushAutocomplete after each read still starts the request, on its owner loop.
 	e.scheduleAsyncApply(e.FlushAutocomplete)
 }
@@ -53,7 +50,8 @@ func (e *Editor) FlushAutocomplete() {
 		return
 	}
 	e.nativeAutocomplete = nil
-	if e.forwards() || pending.request != e.autocompleteRequestID || e.cursor != pending.cursor || !slices.Equal(e.lines, pending.lines) {
+	// The request starts against the text and cursor the editor holds now: a key of the same read that triggered nothing (editor.ts leaves the request alone) moved them on. Only a later request, or a cancel, supersedes it.
+	if e.forwards() || pending.request != e.autocompleteRequestID {
 		return
 	}
 	if e.autocompleteLifetime != nil && e.autocompleteLifetime.Err() != nil {
@@ -68,15 +66,16 @@ func (e *Editor) FlushAutocomplete() {
 	if e.autocomplete == nil {
 		return
 	}
-	lines, row, col := e.autocompleteView()
-	result, query := prepareNativeAutocomplete(e.autocomplete, slices.Clone(lines), row, col, pending.force)
-	if query == nil && e.autocompleteWorkerIdle() {
-		e.publishAutocomplete(pending.force, pending.explicit, pending.cursor, result, nil)
+	if !e.autocompleteWorkerIdle() {
+		// An earlier request is still on the worker: Pi's next request awaits it (editor.ts:2321-2323) and asks the provider, with the text then current, when it starts.
+		e.requestAutocompleteProvider(&AsyncAutocompleteProvider{TriggerCharacters: e.nativeTriggerCharacters(), GetSuggestions: e.ownerPreparedSuggestions(e.autocomplete)}, pending.force, pending.explicit)
 		return
 	}
+	lines, row, col := e.autocompleteView()
+	result, query := prepareNativeAutocomplete(e.autocomplete, slices.Clone(lines), row, col, pending.force)
 	if query == nil {
-		// An earlier request is still on the worker: Pi's next request awaits it (editor.ts:2321-2323).
-		query = func(context.Context) (*AutocompleteSuggestions, error) { return result, nil }
+		e.publishAutocomplete(pending.force, pending.explicit, e.cursor, result, nil)
+		return
 	}
 	e.requestAutocompleteProvider(&AsyncAutocompleteProvider{
 		TriggerCharacters: e.nativeTriggerCharacters(),

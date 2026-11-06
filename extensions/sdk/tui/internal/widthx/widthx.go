@@ -119,7 +119,9 @@ func boxDrawingAt(s string, i int) bool {
 
 // NormalizeTerminalOutput rewrites Thai/Lao AM vowels to compatibility
 // decompositions that preserve logical content while avoiding stale-cell
-// artifacts in some terminal differential repaints. Visible tabs are expanded
+// artifacts in some terminal differential repaints. An unpaired UTF-16 unit
+// stays in the string, as in upstream, where VisibleWidth measures it as zero
+// cells; Terminal.Write encodes it when the frame is written. Visible tabs are expanded
 // to the fixed layout width (3 spaces, matching VisibleWidth) so terminal tab
 // stops cannot wrap a logical line; tabs inside ANSI sequences stay untouched.
 // Unpaired UTF-16 units stay as they are: upstream measures a row as a UTF-16 string, where one is nonprinting, and only the

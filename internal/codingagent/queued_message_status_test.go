@@ -52,7 +52,7 @@ func TestInteractiveQueuedMessagesAreBuiltBySessionForImageNormalization(t *test
 	image := ai.ImageContent{MimeType: "image/png", Data: "AA=="}
 	m.steerMessageWithImages("steer", []ai.ImageContent{image})
 	m.followUpMessageWithImages("follow up", []ai.ImageContent{image})
-	m.queueCompactionMessageForActiveTurn(compactionQueuedMessage{text: "flushed", images: []ai.ImageContent{image}, mode: compactionQueueSteer})
+	m.deliverCompactionQueued(t.Context(), compactionQueuedMessage{text: "flushed", images: []ai.ImageContent{image}, mode: compactionQueueSteer})
 	if want := []string{"steer", "follow up", "flushed"}; !slices.Equal(handle.built, want) {
 		t.Fatalf("messages built by the Session = %v, want %v", handle.built, want)
 	}

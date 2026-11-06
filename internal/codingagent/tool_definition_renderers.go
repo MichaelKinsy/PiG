@@ -14,7 +14,7 @@ import (
 
 var toolCardSeq atomic.Uint64
 
-// applyToolPresentation binds definition renderers and their retained call arguments. Core read/write cards use the same built-in definitions as extension overrides, so presentation never depends on private tool-result metadata.
+// applyToolPresentation binds definition renderers and their retained call arguments. Every built-in tool's card uses its built-in definition, as an extension override of it does, so presentation never depends on private tool-result metadata.
 func (m *InteractiveMode) applyToolPresentation(comp *tui.ToolExecutionComponent, toolCallID, name string, args json.RawMessage) {
 	if comp == nil {
 		return
@@ -66,7 +66,7 @@ func (m *InteractiveMode) resolveToolRenderers(name string) *extension.ToolRende
 		if m.newRunner != nil {
 			definition, ok = m.newRunner.GetToolDefinition(name)
 		}
-		if !ok && (name == "read" || name == "write" || name == "edit") {
+		if !ok && tui.HasBuiltInToolRenderers(name) {
 			definition, ok = extension.ToolDefinition{Name: name}, true
 			if name == "edit" {
 				// upstream: core/tools/edit.ts renderShell: "self"

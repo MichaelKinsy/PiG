@@ -524,7 +524,7 @@ func TestRPCCompactionResultShape(t *testing.T) {
 
 func TestRPCCompactionEndEventShape(t *testing.T) {
 	events, err := rpcAgentEvent(agent.CompactionEndEvent{
-		Reason: "manual", Summary: "summary", FirstKeptEntryID: "keep",
+		Reason: "manual", HasResult: true, Summary: "summary", FirstKeptEntryID: "keep",
 		TokensBefore: 100, EstimatedTokensAfter: 20,
 		Usage:   &ai.Usage{Input: 10, Output: 2, TotalTokens: 12},
 		Details: map[string]any{"readFiles": []string{}},
@@ -546,7 +546,7 @@ func TestRPCCompactionEndEventShape(t *testing.T) {
 	}
 
 	withoutDetails, err := rpcAgentEvent(agent.CompactionEndEvent{
-		Reason: "manual", Summary: "summary", FirstKeptEntryID: "keep",
+		Reason: "manual", HasResult: true, Summary: "summary", FirstKeptEntryID: "keep",
 	})
 	if err != nil {
 		t.Fatal(err)

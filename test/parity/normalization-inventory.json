@@ -936,11 +936,6 @@
       "scenario": "test/parity/scenarios/extensions-runtime/03-tool-call-blocker.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Extension tool_call handler blocks bash tool, faux detects blocked result",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "blocked:parity-blocked",
@@ -2484,6 +2479,102 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/91-boundary-entries-render-live.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end": "BOUNDARY-MESSAGE"
+          },
+          "reason": "Owned visible surface: Entries an extension appends at a turn boundary are drawn live: a custom entry through its renderer, a displayed custom message, not a hidden one",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/92-boundary-compaction-render-live.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": " 42",
+            "capture_end": "AFTER-COMPACTION"
+          },
+          "reason": "Owned visible surface: A compaction an extension appends at a turn boundary rebuilds the transcript around its summary and draws each later entry once",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/93-shutdown-during-run-waits-for-settle.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end": "SHUTDOWN_EVENT quit"
+          },
+          "reason": "Owned visible surface: ctx.shutdown() from a handler that runs during a reply ends the session after the reply, when the run settles",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/94-noop-event-handlers-keep-layout.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Handlers that return nothing for every agent, turn, message, tool and input event leave the rows between the reply and the editor border as Pi draws them",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/95-noop-event-handlers-keep-tool-layout.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "Took \\d+\\.\\ds",
+          "with": "Took Ns",
+          "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: expr 20 + 22",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Handlers that return nothing leave the rows of a tool run between the reply and the editor border as Pi draws them",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -2830,11 +2921,6 @@
           "reason": "Completed tool duration varies with scheduling; retain the label, units and surrounding output."
         },
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Tall tool completion collapses to the same settled visible tail as Pi.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "LIVE-TOOL-24",
@@ -2853,11 +2939,6 @@
       "scenario": "test/parity/scenarios/fullscreen/07-main-screen-editor-growth.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: A multi-row editor grows over the same settled transcript rows as Pi.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "LIVE-TOOL-DONE",
@@ -2875,11 +2956,6 @@
     {
       "scenario": "test/parity/scenarios/fullscreen/08-main-screen-editor-shrink.toml",
       "transforms": [
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Shrinking a multi-row editor removes stale rows and restores Pi's transcript viewport.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
         {
           "kind": "terminal_crop",
           "configuration": {
@@ -3091,11 +3167,6 @@
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
         },
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Bash tool result box renders with correct padding, colors, and spacing.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "$ expr 20 + 22",
@@ -3118,11 +3189,6 @@
           "pattern": "Took \\d+\\.\\ds",
           "with": "Took Ns",
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Two tool turns retain separate tool cards and assistant replies in conversation order.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
@@ -3188,11 +3254,6 @@
           "pattern": "Took \\d+\\.\\d+s",
           "with": "Took Ns",
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Bash tool result >5 lines renders visual-truncate hint + last 5 lines (collapsed preview).",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
@@ -3955,11 +4016,6 @@
       "scenario": "test/parity/scenarios/interactive-rendering/47-bash-execution-output-pad-0.toml",
       "transforms": [
         {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: `!` command output has no horizontal padding when outputPad is 0, including the status row.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "────────────────────────────────────────────────────────────────────────────────",
@@ -4000,11 +4056,6 @@
           "pattern": "Took \\d+\\.\\d+s",
           "with": "Took Ns",
           "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: Bash tool card rows have no horizontal padding when outputPad is 0.",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         },
         {
           "kind": "terminal_crop",
@@ -6259,6 +6310,31 @@
             "capture_end_regex": "then restart pi(g)?\\."
           },
           "reason": "Owned visible surface: A project whose only configuration is mcp.json asks for project trust, and cancelling it shows the untrusted-project warning.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/project-trust/24-trust-selector-keys.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\.pig",
+          "with": ".pi",
+          "reason": "D2: the selector's rows and saved-decision text contain only the product-owned configuration name, not user content."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Project trust",
+            "capture_start_last": true,
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: Both binaries move the /trust selector highlight with Down, k and j, clamp at the last row and ignore other keys.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -8847,6 +8923,90 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Custom summarization instructions",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: Both binaries send typed keys and Ctrl+J to the extension editor, which shows the text on two lines without submitting.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/selectors/17-extension-editor-cancel.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Summarize branch?",
+            "capture_end": "cancel",
+            "capture_start_last": true
+          },
+          "reason": "Owned visible surface: Both binaries cancel the extension editor with Escape, discard the typed text and show the summary choice again.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "~/\\.pig/agent/",
+          "with": "~/.pi/agent/",
+          "reason": "D2: the selector subtitle names the host configuration directory."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\.pig/settings\\.json",
+          "with": ".pi/settings.json",
+          "reason": "D2: the project scope's subtitle names the host configuration directory."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(User \\()/[^\\n)]*/parity-snap-(?:PIG_HOME-[0-9]+/agent|PI_CODING_AGENT_DIR-[0-9]+)/",
+          "with": "${1}<agent>/",
+          "reason": "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\n {6}\\[x\\] pig-login[^\\n]*",
+          "with": "",
+          "reason": "D2: PiG's built-in pig-login extension (the /sprite command) is listed with the other built-in extensions; Pi has no such entry. Only that one row is removed; the others, their order and the selector chrome stay compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike.",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Project Local Resources",
+            "capture_end": "zinc.json"
+          },
+          "reason": "Owned visible surface: Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/session/01-session-selector.toml",
       "transforms": [
         {
@@ -9120,6 +9280,24 @@
             "capture_end_regex": "name=\\S*"
           },
           "reason": "Owned visible surface: --name is a new interactive Session's first entry, before the start model and thinking level",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/37-session-selector-sort-named-delete.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Resume Session (Current Folder)",
+            "capture_end_regex": "^─+$"
+          },
+          "reason": "Owned visible surface: Sort, name filter and the delete confirmation of the real resume picker match Pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -10243,6 +10421,154 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP KEYS READY:",
+            "capture_end": "draft=[]"
+          },
+          "reason": "Owned visible surface: A Ctrl-C pressed while extension startup is still running clears the draft in the startup editor",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/17-startup-exit-key-before-session-start-completes.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Ctrl-D on the empty startup editor exits while extension startup is still running",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP KEYS HOLD"
+          },
+          "reason": "Owned visible surface: Ctrl-D on the empty startup editor exits while extension startup is still running",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Model scope:",
+            "capture_end": "to cycle)"
+          },
+          "reason": "Owned visible surface: The main-screen renderer prints the model scope notice before the UI starts, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "remember zulu-3120",
+            "capture_end": "models.json error:"
+          },
+          "reason": "Owned visible surface: The resumed transcript is painted before the startup notices, as pi orders init() and run().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP CHANGELOG VERSION:",
+            "capture_end_regex": "STARTUP CHANGELOG VERSION:[^\\n]*"
+          },
+          "reason": "Owned visible surface: The changelog version is recorded before session_start handlers run, as pi's init() computes the changelog first.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP CHANGELOG VERSION:",
+            "capture_end_regex": "STARTUP CHANGELOG VERSION:[^\\n]*"
+          },
+          "reason": "Owned visible surface: A resumed session with no messages records the changelog version, as pi tests the message count and not whether the session was resumed.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/22-startup-initial-extension-commands-run-in-order.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "COMMAND HOLD",
+            "capture_end_regex": "COMMAND AFTER:[^\\n]*"
+          },
+          "reason": "Owned visible surface: The positional messages that are extension commands run one after the other, each finishing before the next starts, as pi awaits each prompt().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/23-startup-typed-extension-commands-run-in-order.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "COMMAND HOLD",
+            "capture_end_regex": "COMMAND AFTER:[^\\n]*"
+          },
+          "reason": "Owned visible surface: An extension command typed while another one runs starts only after that one returned, as pi's prompt loop awaits each prompt().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/tools/17-tool-rpc-error-and-bash-wire.toml",
       "transforms": [
         {
@@ -10445,6 +10771,42 @@
             "capture_end": "(1/1)"
           },
           "reason": "Owned visible surface: Digits enter the tree query and filtered rows use visible ancestor geometry.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/14-tree-label-input-render.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Type to search:",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: The label editor replaces the tree rows with the prompt, the typed text and the key hints.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/15-tree-label-save-and-filter-cycle.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Type to search:",
+            "capture_end": "[user]"
+          },
+          "reason": "Owned visible surface: Saving a label returns to the list with the label shown, and Ctrl+O steps the filter modes.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

@@ -19,7 +19,7 @@ Date.now = () => now;
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
 const results = JSON.parse(input).map((test) => {
-  setCapabilities({ images: null, trueColor: true, hyperlinks: false });
+  setCapabilities({ images: test.images || null, trueColor: true, hyperlinks: false });
   initTheme("dark");
   setKeybindings(new KeybindingsManager(test.bindings ?? {}));
   now = clockStart;

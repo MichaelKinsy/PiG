@@ -1,0 +1,108 @@
+# Behavior family: interactive-rendering
+# Surface: /fork user-message selector input state machine (UserMessageList.handleInput: up and down wrap,
+#          page keys clamp, confirm selects the highlighted message, cancel dismisses the selector)
+#
+# Three user messages are listed, the latest selected. Down wraps to the first, Up wraps back to the last,
+# Up steps to the middle, PageDown clamps to the last, PageUp clamps to the first, Down steps to the middle, and Enter confirms the middle one: the fork puts that message in the
+# editor. The crop starts at the editor, below the transcript whose blank rows depend on the startup header
+# (the scenario's pi run lists a loaded extension, pig runs with none).
+#
+# Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
+#
+
+name = "67-user-message-selector-navigation-confirm"
+description = "The /fork selector wraps, clamps on page keys and confirms the highlighted message in both binaries."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 80
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: beta"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["reply with exactly: alpha", "Enter"]
+settle_seconds = 4
+wait_contains = ["alpha"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["reply with exactly: beta", "Enter"]
+settle_seconds = 4
+wait_contains = ["beta"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["reply with exactly: gamma", "Enter"]
+settle_seconds = 4
+wait_contains = ["gamma"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+settle_seconds = 1
+wait_contains = ["Fork from Message", "Message 3 of 3"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Down"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: alpha"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: gamma"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: beta"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["PgDn"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: gamma"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["PgUp"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: alpha"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Down"]
+settle_seconds = 1
+wait_visible_contains = ["› reply with exactly: beta"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 3
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

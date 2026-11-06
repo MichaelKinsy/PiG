@@ -8043,6 +8043,62 @@
       "tests": []
     },
     {
+      "id": "BF-3ca9095",
+      "title": "The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide…",
+      "symptom": "The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide keybindings and only the named-filter binding from the manager the component was built with, as Pi does.",
+      "rootCause": "Pi reads getKeybindings() for tab, sort, path, delete, rename and noninvasive delete and for every hint, and the manager given to the component only for the named filter. PiG read the component's manager for all app.session.* actions and hints, so a component built with a manager that differs from the process-wide one acted on the wrong keys. A selected row whose text is empty drew an empty bold span; chalk leaves an empty string unstyled, so PiG now does too.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide keybindings and only the named-filter binding from the manager the component was built with, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3ca9095d0b",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_selector_contract_test.go::TestSessionListHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorComponentHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorDeleteOutcomeReportsInTheHeader",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorKeybindingSourcesMatchPi",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorSharedKeysFollowRebinding",
+        "internal/codingagent/session_selector_render_contract_test.go::TestSessionHeaderRenderMatchesPi",
+        "internal/codingagent/session_selector_render_contract_test.go::TestSessionListRenderMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-3ca9095-2",
+      "title": "A selected session row with no text no longer draws an empty bold span",
+      "symptom": "A selected session row with no text no longer draws an empty bold span.",
+      "rootCause": "Pi reads getKeybindings() for tab, sort, path, delete, rename and noninvasive delete and for every hint, and the manager given to the component only for the named filter. PiG read the component's manager for all app.session.* actions and hints, so a component built with a manager that differs from the process-wide one acted on the wrong keys. A selected row whose text is empty drew an empty bold span; chalk leaves an empty string unstyled, so PiG now does too.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A selected session row with no text no longer draws an empty bold span.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3ca9095d0b",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_selector_contract_test.go::TestSessionListHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorComponentHandleInputContractsMatchPi",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorDeleteOutcomeReportsInTheHeader",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorKeybindingSourcesMatchPi",
+        "internal/codingagent/session_selector_contract_test.go::TestSessionSelectorSharedKeysFollowRebinding",
+        "internal/codingagent/session_selector_render_contract_test.go::TestSessionHeaderRenderMatchesPi",
+        "internal/codingagent/session_selector_render_contract_test.go::TestSessionListRenderMatchesPi"
+      ]
+    },
+    {
       "id": "BF-3cb7131",
       "title": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns…",
       "symptom": "fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns gofmt-clean",
@@ -28675,6 +28731,39 @@
         "internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy",
         "internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys"
+      ]
+    },
+    {
+      "id": "BF-a0b2fa3",
+      "title": "The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty…",
+      "symptom": "The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty rows.",
+      "rootCause": "The tree help rows were truncated to the terminal width after wrapping, which turned the one-cell rows Pi draws at width 0 into empty rows. Pi's TreeHelp returns the wrapped rows as they are.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty rows.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a0b2fa3e31",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tree_selector_contract_test.go::TestTreeListHandleInputContractsMatchPi",
+        "internal/codingagent/tree_selector_contract_test.go::TestTreeListRemappedKeysMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go::TestTreeLabelInputAndRoutingContractsMatchPi",
+        "internal/codingagent/tree_selector_label_contract_test.go::TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt",
+        "internal/codingagent/tree_selector_label_contract_test.go::TestTreeSearchLineTakesNoInput",
+        "internal/codingagent/tree_selector_label_contract_test.go::TestTreeSelectorCapturesViewportInputExceptWhileLabelling",
+        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeHelpRenderMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeHorizontalViewportMatchesPiAtEveryWidth",
+        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeLabelInputRenderMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeListRenderMatchesPi",
+        "internal/codingagent/tree_selector_render_contract_test.go::TestTreeSearchLineRenderMatchesPi",
+        "tui/tree_select_contract_test.go::TestTreeFoldedRowIsNotFoldable"
       ]
     },
     {

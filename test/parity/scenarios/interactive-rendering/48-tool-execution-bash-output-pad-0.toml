@@ -39,10 +39,7 @@ wait_timeout_seconds = 15
 [assert]
 both_reach_ready = true
 both_not_contain = ["unknown command", "panic:", "goroutine "]
-# lint-known-gap: bg-paint SGR encoding differs between pig (paintBgWith with
-# reset re-application) and upstream (Box delegation with theme.bg). The visible
-# content, spacing, and structure are identical.
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 # runs=3 because tool-execution timing has shown ~12% flake (1/8) at runs=1.
 # Repeating + normalize_replace nail the durability.

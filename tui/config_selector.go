@@ -278,10 +278,10 @@ func (h configSelectorHeader) Render(width int) []string {
 		action = "cycle inherit/+/-"
 	}
 	title := ChalkBold(titleText)
-	sep := t.Muted + " · " + "\x1b[39m"
+	sep := t.Fg("muted", " · ")
 	hint := RawKeyHint("space", action) + sep + RawKeyHint("esc", "close")
 	if cs.projectModeAvailable {
-		hint = RawKeyHint("tab", "switch mode") + sep + hint
+		hint = KeyHint(ActionKeyText(KBInputTab), "switch mode") + sep + hint
 	}
 	titleW := widthx.VisibleWidth(title)
 	hintW := widthx.VisibleWidth(hint)
@@ -289,7 +289,7 @@ func (h configSelectorHeader) Render(width int) []string {
 	// Upstream ConfigSelectorHeader and ResourceList truncate every row to the
 	// width (items with "...", the rest without an ellipsis).
 	fit := func(line string) string { return widthx.TruncateToWidth(line, width, "", false) }
-	lines = append(lines, fit(title+strings.Repeat(" ", spacing)+hint), fit(t.Muted+scopeHint+"\x1b[39m"))
+	lines = append(lines, fit(title+strings.Repeat(" ", spacing)+hint), fit(t.Fg("muted", scopeHint)))
 
 	return lines
 }
@@ -312,7 +312,7 @@ func (l configResourceList) Render(width int) []string {
 	lines = append(lines, "")
 
 	if len(cs.filtered) == 0 {
-		lines = append(lines, fit(t.Muted+"  No resources found"+"\x1b[39m"))
+		lines = append(lines, t.Fg("muted", "  No resources found"))
 	} else {
 		// Calculate visible range.
 		start := max(0, min(cs.cursor-cs.maxVisible/2, len(cs.filtered)-cs.maxVisible))
@@ -325,19 +325,19 @@ func (l configResourceList) Render(width int) []string {
 			switch e.entryType {
 			case "group":
 				label := e.group.Label
-				color := t.Accent
+				token := "accent"
 				if cs.writeScope == "project" && e.group.Scope == "user" {
 					label += " · inherited global"
-					color = t.Dim
+					token = "dim"
 				}
-				gl := color + ChalkBold(label) + "\x1b[39m"
+				gl := t.Fg(token, ChalkBold(label))
 				lines = append(lines, fit("  "+gl))
 			case "subgroup":
-				color := t.Muted
+				token := "muted"
 				if cs.writeScope == "project" && e.group.Scope == "user" {
-					color = t.Dim
+					token = "dim"
 				}
-				sgl := color + e.subgroup.Label + "\x1b[39m"
+				sgl := t.Fg(token, e.subgroup.Label)
 				lines = append(lines, fit("    "+sgl))
 			case "item":
 				cursor := "  "
@@ -346,25 +346,25 @@ func (l configResourceList) Render(width int) []string {
 				}
 				dimmed := cs.writeScope == "project" && e.item.Inherited && e.item.Override == "inherit"
 				// upstream renderCheckbox: outside the project scope an enabled item is green; in it only an override is coloured and an inherited state is dim, enabled or not.
-				checkbox := t.Dim + "[ ]" + "\x1b[39m"
+				checkbox := t.Fg("dim", "[ ]")
 				switch {
 				case cs.writeScope == "project" && e.item.Enabled:
-					checkbox = t.Dim + "[x]" + "\x1b[39m"
+					checkbox = t.Fg("dim", "[x]")
 				case cs.writeScope != "project" && e.item.Enabled:
-					checkbox = t.Success + "[x]" + "\x1b[39m"
+					checkbox = t.Fg("success", "[x]")
 				}
 				suffix := ""
 				if cs.writeScope == "project" {
 					switch e.item.Override {
 					case "load":
-						checkbox = t.Success + "[+]" + "\x1b[39m"
-						suffix = t.Muted + "  project load" + "\x1b[39m"
+						checkbox = t.Fg("success", "[+]")
+						suffix = t.Fg("muted", "  project load")
 					case "unload":
-						checkbox = t.Warning + "[-]" + "\x1b[39m"
-						suffix = t.Muted + "  project unload" + "\x1b[39m"
+						checkbox = t.Fg("warning", "[-]")
+						suffix = t.Fg("muted", "  project unload")
 					case "inherit":
 						if e.item.Inherited {
-							suffix = t.Dim + "  inherited global" + "\x1b[39m"
+							suffix = t.Fg("dim", "  inherited global")
 						}
 					}
 				}
@@ -373,11 +373,12 @@ func (l configResourceList) Render(width int) []string {
 					name = ChalkBold(name)
 				}
 				if dimmed {
-					name = t.Dim + name + "\x1b[39m"
+					name = t.Fg("dim", name)
 				}
 				status := ""
+				// pig divergence (D230): a declared Package member whose file is absent is listed with a warning `  missing` suffix; Pi lists only files that exist.
 				if e.item.Health != "" {
-					status = t.Warning + "  " + e.item.Health + "\x1b[39m"
+					status = t.Fg("warning", "  "+e.item.Health)
 				}
 				lines = append(lines, widthx.TruncateToWidth(cursor+"    "+checkbox+" "+name+suffix+status, width, "...", false))
 			}
@@ -397,7 +398,7 @@ func (l configResourceList) Render(width int) []string {
 				}
 			}
 			if itemCount > 0 {
-				lines = append(lines, fit(t.Dim+fmt.Sprintf("  (%d/%d)", currentItemIndex, itemCount)+"\x1b[39m"))
+				lines = append(lines, t.Fg("dim", fmt.Sprintf("  (%d/%d)", currentItemIndex, itemCount)))
 			}
 		}
 	}
@@ -453,19 +454,20 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 	case data == " " || kb.Matches(data, KBSelectConfirm): // Space or Enter: toggle
 		if cs.cursor >= 0 && cs.cursor < len(cs.filtered) {
 			e := cs.filtered[cs.cursor]
-			if e.entryType == "item" {
+			// config-selector.ts:494: the project scope toggles every item; the global scope only items whose scope is not project.
+			if e.entryType == "item" && (cs.writeScope == "project" || e.item.Scope != "project") {
 				if cs.writeScope == "project" {
 					state := nextProjectOverride(e.item.Override, e.item.InheritedEnabled)
 					if cs.OnOverride == nil || cs.OnOverride(e.item, state) == nil {
 						e.item.Override = state
 						if state == "inherit" {
-							e.item.Enabled = e.item.InheritedEnabled
+							cs.updateItem(e.item, e.item.InheritedEnabled)
 						} else {
-							e.item.Enabled = state == "load"
+							cs.updateItem(e.item, state == "load")
 						}
 					}
 				} else {
-					e.item.Enabled = !e.item.Enabled
+					cs.updateItem(e.item, !e.item.Enabled)
 					if cs.OnToggle != nil {
 						cs.OnToggle(e.item, e.item.Enabled)
 					}
@@ -479,6 +481,22 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 		cs.filterItems()
 	}
 	cs.Invalidate()
+}
+
+// updateItem is ResourceList.updateItem: it sets the item's state and the state of the first item of the current scope's groups with the same path and
+// resource type.
+func (cs *ConfigSelectorComponent) updateItem(item *ResourceItem, enabled bool) {
+	item.Enabled = enabled
+	for _, group := range cs.groups {
+		for _, subgroup := range group.Subgroups {
+			for _, found := range subgroup.Items {
+				if found.Path == item.Path && found.ResourceType == item.ResourceType {
+					found.Enabled = enabled
+					return
+				}
+			}
+		}
+	}
 }
 
 func nextProjectOverride(current string, inheritedEnabled bool) string {

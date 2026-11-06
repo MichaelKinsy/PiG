@@ -119,7 +119,7 @@ func TestCompactionQueuePreservesUnprocessedImages(t *testing.T) {
 			m.pendingMessagesContainer = tui.NewContainer()
 			m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 			attachment := ai.ImageContent{Data: "unprocessed", MimeType: "image/png"}
-			m.queueCompactionMessageForActiveTurn(compactionQueuedMessage{text: "queued", images: []ai.ImageContent{attachment}, mode: mode})
+			m.queueUserInput(t.Context(), "queued", []ai.ImageContent{attachment}, mode == compactionQueueFollowUp, extension.InputSourceUser)
 			steer, follow := m.agent.PendingMessages()
 			messages := steer
 			if mode == compactionQueueFollowUp {

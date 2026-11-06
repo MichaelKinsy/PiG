@@ -1,0 +1,50 @@
+# Behavior family: extensions-runtime
+# Surface: entry_appended of InteractiveMode.handleEvent (interactive-mode.ts 3505-3548) for entries an extension appends at a turn boundary.
+#
+# A turn_end handler returns custom, custom_message and compaction drafts (agent-session.ts _applyBoundaryDrafts, _commitBoundaryDrafts emits one
+# entry_appended event per entry). Pi draws a custom entry with its registered renderer, a displayed custom message as a message, and ignores a hidden one.
+# PiG's interactive mode drew only the entries of the host appendEntry action and usage entries, so boundary entries appeared only after a resume.
+#
+# Upstream evidence (Pi 1.5.0 oracle, parity harness, 2026-11-03, 100x35 tmux, test-faux): after "What is 20+22?" the reply and then the boundary entries
+# appear in the live transcript; the hidden message never does.
+name = "91-boundary-entries-render-live"
+description = "Entries an extension appends at a turn boundary are drawn live: a custom entry through its renderer, a displayed custom message, not a hidden one"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "BOUNDARY_KIND=entries"]
+pi = ["PI_SKIP_VERSION_CHECK=1", "BOUNDARY_KIND=entries"]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/boundary-entries.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/boundary-entries.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "What is 20+22?"
+capture_end = "BOUNDARY-MESSAGE"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["boundaryentry:BOUNDARY-ENTRY:expanded=false", "BOUNDARY-MESSAGE"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["boundaryentry:BOUNDARY-ENTRY:expanded=false", "BOUNDARY-MESSAGE"]
+both_not_contain = ["BOUNDARY-HIDDEN", "panic:", "goroutine "]
+output_equal = true
+runs = 3

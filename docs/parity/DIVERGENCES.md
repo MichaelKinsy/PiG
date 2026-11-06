@@ -2842,11 +2842,11 @@ Why: Replicating the Pi behavior makes the output depend on which identical bloc
 
 Pi bug: not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`): both cases above, run against the pinned Pi, with the rows Pi and PiG render.
 
-Scope: `tui.Markdown` rendering (`tui/markdown.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
+Scope: `tui.Markdown` rendering (`tui/markdown_blocks.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
 
 Owner decision: 2026-11-01, owner approved recording this as a numbered divergence (D220).
 
-Call-site markers: `tui/markdown.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
+Call-site markers: `tui/markdown_blocks.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
 
 Parity allowance: `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`) runs the pinned Pi for both cases and a control, and states both sides of each row: Pi autolinks the URL inside the open `<a>` and PiG does not. It fails when either side changes.
 
@@ -2982,6 +2982,28 @@ Call-site markers: `internal/codingagent/interactive_queue_hint.go` (`dequeueHin
 Evidence: `TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage` (a tool call holds the turn, a steering message is queued, plain Up with `TERM_PROGRAM=Apple_Terminal` restores it, the editor is cleared, the tool ends and no model request body contains the queued text; a request count cannot show this, since a queued steering message rides in the request that carries the tool result; red on 0d8500283a), `TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun`, `TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState`, `TestQueuedHintAndTipNameTheConfiguredDequeueKey` and `TestExtensionEditorKeepsPiUpBehavior` (`internal/codingagent/interactive_queue_hint_test.go`; the second drives a delegated remote editor and an installed editor factory), and the byte sweep `TestOptionUpEncodingsPerTerminalAgainstTheKeyDecoder`.
 
 Parity allowance: scenario `interactive-rendering/59-up-recalls-queued-message-copy-tip` compares the screen with Pi's byte for byte under `TERM_PROGRAM=tmux` and removes only the tip rows; scenario `interactive-rendering/60-terminal-app-up-dequeues-queued-message` states each side's outcome under `TERM_PROGRAM=Apple_Terminal`, where the screens differ by this record. Alt+Up bytes stay compared with Pi in `interactive-rendering/58-alt-up-dequeues-queued-message`.
+
+## D230 `pig config` lists declared Package members that are missing from disk, marked `missing`
+
+What: when a Package declares a member (an extension, skill, prompt or theme entry in its manifest) whose file is absent, `pig config` lists it in the resource list like any other row, followed by the warning-colored suffix `  missing`, and the toggle keys disable or enable it. Pi 1.5.0's config list is built from resolved paths that exist (`config-selector.ts` `buildGroups` over `ResolvedPaths`; `ResourceList.render` draws `${cursor}    ${checkbox} ${name}${suffix}` with no health marker), so a declared member that matches no file has no row there. The row is `ResourceItem.Health == "missing"`, set where the Package's members are resolved (`internal/packagemanager/resources.go`) and drawn after the name and the project-scope suffix in `ResourceList.render`. Every other row, the search, the navigation, the toggles and the header are unchanged and equal to Pi's.
+
+Why: Pi skips a declared member that matches nothing, so startup proceeds, and gives the user no way to see or disable the stale entry in `pi config`. PiG keeps the entry visible so the user can disable it, which rewrites the Package filter exactly as for an existing member (`-extensions/missing-extension`).
+
+Pi bug: none; this is an addition to Pi's behaviour for a state Pi hides.
+
+Scope: the `pig config` selector (global and project scope) for Packages with declared members that are absent. Packages whose members all exist render exactly as Pi's.
+
+Owner decision: 2026-11-03, owner approved keeping the missing-member rows (`handoffs/next/owner/2026-11-03-decisions.md` item 3).
+
+SCRUTINIZED:approved
+
+Remove when: Pi lists declared-but-missing Package members in `pi config`, or the owner withdraws the feature.
+
+Call-site markers: `tui/config_selector.go` (the `Health` suffix in `configResourceList.Render`), `internal/packagemanager/resources.go` (the `Health: "missing"` member).
+
+Evidence: `TestConfigSelectorDisablesEnabledMissingPackageMember` (`coding/cli/config_selector_command_test.go`: the selector shows the enabled missing extension and Space writes `-extensions/missing-extension`), the `ConfigSelector` case of `TestSelectorDialogListComponentsNeverExceedRenderWidth` (`tui/component_width_table_test.go`: a `missing` row at every width).
+
+Parity allowance: Pi has no row for this state, so no Pi-paired scenario can show it. Every other row of the list is compared with Pi byte for byte by `TestConfigSelectorContractMatchesPi` (`tui/config_selector_contract_test.go`, no probe holds a missing member) and scenarios `selectors/02-config-resources-list` and `selectors/18-config-project-toggle`.
 
 ## D231 PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`
 

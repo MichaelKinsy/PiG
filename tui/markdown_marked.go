@@ -217,10 +217,13 @@ type markedInlineState struct {
 	// lexedBracket records that inline text with a "[" was lexed; relex that a definition arrived after it, so a reference may have been lexed before its definition.
 	lexedBracket, relex bool
 	// The buffers below are reused by the next lexMarkedInline call, so its caller renders the tokens before lexing again. runes is the code-point form of the source; frames holds, per inlineTokens nesting depth, the token list being built and the masked source; arena holds the finished token lists.
-	runes  []rune
-	frames []markedLexFrame
-	depth  int
-	arena  []markedToken
+	runes []rune
+	// block is the block lexer and blockSource the code points of the text it reads; both are reused by the next text.
+	block       markedBlockLexer
+	blockSource []rune
+	frames      []markedLexFrame
+	depth       int
+	arena       []markedToken
 }
 
 type markedLexFrame struct {
@@ -239,10 +242,11 @@ const maxPooledMarkedBytes = 64 << 10
 // last rendered document alive; a state whose buffers grew past maxPooledMarkedBytes is dropped, and the pool makes a fresh one.
 func (l *markedInlineState) release() {
 	tokenSize, runeSize := int(unsafe.Sizeof(markedToken{})), int(unsafe.Sizeof(rune(0)))
-	size := cap(l.runes)*runeSize + cap(l.arena)*tokenSize
+	size := (cap(l.runes)+cap(l.blockSource))*runeSize + cap(l.arena)*tokenSize + cap(l.block.queue)*int(unsafe.Sizeof((*markedInlineEntry)(nil)))
 	for _, frame := range l.frames {
 		size += cap(frame.tokens)*tokenSize + cap(frame.masked)*runeSize
 	}
+	size += len(l.block.slabs) * markedSlabSize * int(unsafe.Sizeof(markedBlock{}))
 	if size > maxPooledMarkedBytes {
 		return
 	}
@@ -252,6 +256,12 @@ func (l *markedInlineState) release() {
 	}
 	clear(l.links)
 	clear(l.defined)
+	clear(l.block.queue)
+	l.block.queue = l.block.queue[:0]
+	for _, slab := range l.block.slabs {
+		clear(slab)
+	}
+	clear(l.block.topTokens[:cap(l.block.topTokens)])
 	markedInlineStates.Put(l)
 }
 
@@ -1440,7 +1450,11 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 			out.WriteString(style.applyText(segment))
 		}
 	}
-	for _, token := range tokens {
+	// pig divergence (D265): after a skipped HTML comment the next text may lose its leading blanks, as in Pi main 54280c4ff.
+	dropLeadingSpace := false
+	for i, token := range tokens {
+		token = dropsLeadingSpace(token, dropLeadingSpace)
+		dropLeadingSpace = false
 		switch token.kind {
 		case markedLatex:
 			text := token.latex.raw
@@ -1457,7 +1471,11 @@ func (m *Markdown) renderInlineTokensSequential(tokens []markedToken, style inli
 		case markedText, markedImage:
 			applyText(token.text)
 		case markedHTML:
-			applyText(token.raw)
+			if comment, drop := skipsHTMLComment(tokens, i); comment {
+				dropLeadingSpace = drop
+			} else {
+				applyText(token.raw)
+			}
 		case markedStrong:
 			out.WriteString(theme().Bold(m.renderInlineTokensSequential(token.tokens, style)))
 			out.WriteString(style.stylePrefix)

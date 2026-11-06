@@ -1,0 +1,41 @@
+# Behavior family: startup
+# Surface: the moment init() records the changelog version.
+#
+# Upstream evidence (Pi 1.5.0 interactive-mode.ts init(), 974-981): init() computes the changelog data right after registering the signal handlers, before
+# the model scope notice, the UI and the extensions. getChangelogForDisplay() on a first start (no lastChangelogVersion, no messages) records the running version
+# in settings.json at once, so a session_start handler that reads settings.json already finds it. The agent directory has no settings.json, so both binaries take
+# the first-start branch; the recorded value is each binary's own version, so the extension reports only whether one is present.
+
+name = "20-startup-changelog-version-recorded-before-session-start"
+description = "The changelog version is recorded before session_start handlers run, as pi's init() computes the changelog first."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-fresh"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-fresh", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/startup-changelog/recorded.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-changelog/recorded.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "STARTUP CHANGELOG VERSION:"
+ready_pattern_pi = "STARTUP CHANGELOG VERSION:"
+ready_timeout_seconds = 30
+settle_seconds = 1
+capture_start = "STARTUP CHANGELOG VERSION:"
+capture_end_regex = 'STARTUP CHANGELOG VERSION:[^\n]*'
+
+[assert]
+both_reach_ready = true
+both_contain = ["STARTUP CHANGELOG VERSION: recorded"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

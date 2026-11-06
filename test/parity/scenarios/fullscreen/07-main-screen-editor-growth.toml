@@ -43,7 +43,7 @@ settle_seconds = 1
 both_reach_ready = true
 both_contain = ["LIVE-TOOL-DONE", "EDITOR-0001-"]
 both_not_contain = ["Working...", "panic:", "goroutine "]
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 runs = 3
 

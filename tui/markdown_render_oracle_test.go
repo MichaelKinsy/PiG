@@ -1,15 +1,10 @@
 package tui
 
 import (
-	"bytes"
-	"encoding/json"
-	"os/exec"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 type markdownRenderProbe struct {
@@ -128,23 +123,7 @@ func compareMarkdownWithPi(t *testing.T, docs []string) {
 // piMarkdownRows renders every probe with the pinned pi-tui, one list of rows per width.
 func piMarkdownRows(t *testing.T, probes []markdownRenderProbe) [][][]string {
 	t.Helper()
-	input, err := json.Marshal(probes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/markdown_render.mjs", pigversion.UpstreamPackageVersion)
-	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
-	}
-	var rows [][][]string
-	if err := json.Unmarshal(output, &rows); err != nil {
-		t.Fatal(err)
-	}
-	return rows
+	return piOracleProbes[markdownRenderProbe, [][]string](t, "markdown_render.mjs", probes)
 }
 
 // taggedMarkdownTheme tags each style call with its name, as markdown_render.mjs does, so every style call is visible.

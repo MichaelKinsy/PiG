@@ -20,6 +20,7 @@ func GetTextOutput(content []ai.ToolResultMessageContent, showImages bool) strin
 		case ai.TextContent:
 			texts = append(texts, strings.ReplaceAll(SanitizeBinaryOutput(text.StripANSIString(value.Text)), "\r", ""))
 		case ai.ImageContent:
+			// pig divergence (D266): an empty mimeType is an absent one here, so it is named image/unknown; Pi names it "" (`img.mimeType ?? "image/unknown"`).
 			mimeType := value.MimeType
 			if mimeType == "" {
 				mimeType = "image/unknown"

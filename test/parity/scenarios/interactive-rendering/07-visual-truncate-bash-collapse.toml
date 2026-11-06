@@ -75,7 +75,7 @@ wait_timeout_seconds = 15
 [assert]
 both_reach_ready = true
 both_not_contain = ["panic:", "goroutine "]
-output_normalized_equal = true
+escaped_output_equal = true
 runtime_ratio_max = 2.0
 # runs=3 because bash tool completion timing has natural sub-second jitter.
 runs = 3
