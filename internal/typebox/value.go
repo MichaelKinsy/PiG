@@ -76,7 +76,7 @@ func (e ValueError) ParamsObject() *chordjson.Object {
 func Check(schema, value any) bool { return RefineCheck(schema, value, nil) }
 
 // Plain returns value with every *chordjson.Object as a map[string]any and every Go number as float64, the form the
-// validator reads. Other values are returned as they are.
+// walkers read. Other values are returned as they are.
 func Plain(value any) any {
 	switch typed := value.(type) {
 	case *Ordered:

@@ -3,8 +3,8 @@ package typebox
 // Ports typebox 1.3.27 build/schema/errors.mjs, the Error* functions of build/schema/engine/*.mjs and
 // build/system/locale/en_US.mjs: Value.Errors walks the schema keyword by keyword in the engine's order, collects at
 // most maxErrors (8) errors in a context, and reports a failing anyOf, allOf, oneOf or $ref operand's errors before
-// the keyword's own. Keyword checks that TypeBox delegates to its checker (const, enum, format, pattern, lengths,
-// numeric bounds, not, contains) use Check on the keyword alone. unevaluatedItems and unevaluatedProperties, which
+// the keyword's own. The leaf keywords (const, enum, format, pattern, lengths, numeric bounds, item and property counts, uniqueItems) call checkKeyword (keywords.go), which is the check of Value.Check too, and add their
+// error when it fails; not and contains walk their schema. unevaluatedItems and unevaluatedProperties, which
 // need the evaluated-key tracking, use Check on the whole schema and report TypeBox's message when every other keyword passed; when another keyword failed too, TypeBox may add the unevaluated error after it and this walker does not. A schema object visits its members in its own order: a
 // *chordjson.Object keeps the declaration order TypeBox follows, a Go map has none and visits them in JavaScript
 // own-key order of the sorted names. Members of the value are visited in the order they arrived in when it is a *chordjson.Object (Errors records each object's member order), and sorted when it is a Go map.
@@ -272,7 +272,7 @@ func (n node) list(key string) ([]any, bool) {
 
 func (n node) has(key string) bool { _, ok := n.get(key); return ok }
 
-// keyword is a schema holding one keyword of n, for the checks TypeBox delegates to its checker.
+// keyword is a map holding the named keywords of n, to read the limits a leaf keyword reports in its params and message.
 func (n node) keyword(names ...string) map[string]any {
 	out := map[string]any{}
 	for _, name := range names {
