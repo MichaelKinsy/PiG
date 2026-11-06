@@ -1,7 +1,7 @@
 // Pi main 54280c4ff (fix(tui): hide HTML comments in Markdown rendering, #11755) applied to the pinned pi-tui Markdown (D265), for the oracle
 // drivers that compare Markdown rendering. Each replacement must find its anchor exactly once, so the overlay fails when the pin moves
 // and the divergence can be removed. Set PIG_PI_MARKDOWN=pinned to get the pinned Markdown unchanged (TestMarkdownHTMLCommentsDifferFromPinnedPi).
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -71,7 +71,13 @@ const markdownParser = new Marked();`);
                     else {
                         result += applyTextWithNewlines(token.raw);
                     }`);
-  const file = join(mkdtempSync(join(tmpdir(), "pi-md-html-comments-")), "markdown.mjs");
-  writeFileSync(file, source);
-  return (await import(pathToFileURL(file).href)).Markdown;
+  const dir = mkdtempSync(join(tmpdir(), "pi-md-html-comments-"));
+  try {
+    const file = join(dir, "markdown.mjs");
+    writeFileSync(file, source);
+    return (await import(pathToFileURL(file).href)).Markdown;
+  } finally {
+    // The module stays loaded once imported.
+    rmSync(dir, { recursive: true, force: true });
+  }
 }

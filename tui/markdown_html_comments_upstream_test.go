@@ -1,7 +1,9 @@
 package tui
 
 import (
+	"math/rand/v2"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -97,7 +99,7 @@ func TestMarkdownHTMLCommentsMatchPiMain(t *testing.T) {
 	compareMarkdownWithPi(t, markdownHTMLCommentDocs())
 }
 
-// TestMarkdownHTMLCommentsStreamLikeAFreshRender renders every prefix of every document through one component that is given each
+// TestMarkdownHTMLCommentsStreamLikeAFreshRender (tagged theme: every render starts at the top; the resumed path is TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender) renders every prefix of every document through one component that is given each
 // longer text in turn, as the interactive mode streams an answer, and requires the rows of a fresh component and of Pi (with
 // 54280c4ff) for the same text: a comment whose removal depends on what follows it, an unclosed one and one that a later chunk
 // closes must not leave a stale or missing row behind.
@@ -170,4 +172,50 @@ func TestMarkdownHTMLCommentsDifferFromPinnedPi(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender streams documents of several HTML-comment entries joined by blank lines, single
+// newlines and nothing, byte by byte, through a component whose default theme resumes from the last block start the longer text cannot have
+// changed, and requires the rows of a render with a theme that never resumes (opaqueMarkdownTheme), at a random width. A comment block removed
+// together with a neighbouring blank line, or still open at the end of the text, must not leave a stale or missing row in a resumed render; the
+// test requires that a large share of the frames did resume.
+func TestMarkdownHTMLCommentsResumedRenderEqualsAFreshRender(t *testing.T) {
+	mdCaseSetup(t)
+	rng := rand.New(rand.NewPCG(11, 12))
+	entries := markdownHTMLCommentDocs()
+	separators := []string{"\n\n", "\n", "\n\n\n", ""}
+	reference := opaqueMarkdownTheme()
+	frames, resumed := 0, 0
+	for range 300 {
+		var document strings.Builder
+		for n := 3 + rng.IntN(6); n > 0; n-- {
+			document.WriteString(entries[rng.IntN(len(entries))])
+			if n > 1 {
+				document.WriteString(separators[rng.IntN(len(separators))])
+			}
+		}
+		text := document.String()
+		width := 10 + rng.IntN(60)
+		streamed := NewMarkdownWithOptions("", 0, 0, nil, nil, nil)
+		for end := 0; end <= len(text); end++ {
+			if end < len(text) && !utf8.RuneStart(text[end]) {
+				continue
+			}
+			prefix := text[:end]
+			if streamed.resume != nil && streamed.resume.pick(prefix) != nil {
+				resumed++
+			}
+			streamed.SetText(prefix)
+			got := streamed.Render(width)
+			want := NewMarkdownWithOptions(prefix, 0, 0, reference, nil, nil).Render(width)
+			frames++
+			if !slices.Equal(got, want) {
+				t.Fatalf("%d bytes of %q at width %d:\n got %q\nwant %q", end, text, width, got, want)
+			}
+		}
+	}
+	if resumed < frames/10 {
+		t.Fatalf("only %d of %d frames resumed", resumed, frames)
+	}
+	t.Logf("%d of %d frames resumed", resumed, frames)
 }
