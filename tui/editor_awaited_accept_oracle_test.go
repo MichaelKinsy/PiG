@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
@@ -164,6 +165,9 @@ func compareAwaitedAcceptProbesWithPi(t *testing.T, script string, probes []awai
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "testdata/"+script, pigversion.UpstreamPackageVersion)
+	// The script makes the autocomplete base directory with mkdtemp(os.tmpdir()); give it a temporary directory of its own, which the test removes, so the shared one keeps nothing (CI test-fast assert-clean-tmp). Node reads TMPDIR, and TEMP or TMP on Windows.
+	scratch := t.TempDir()
+	cmd.Env = append(os.Environ(), "TMPDIR="+scratch, "TEMP="+scratch, "TMP="+scratch)
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
