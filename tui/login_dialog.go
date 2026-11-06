@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -392,7 +393,7 @@ func (d *LoginDialogComponent) redactLocked(text string) string {
 	if d.inputActive && d.inputMasked && d.input != nil {
 		values = append(values, d.input.Text())
 	}
-	slices.SortFunc(values, func(a, b string) int { return len(b) - len(a) })
+	sortx.Func(values, func(a, b string) int { return len(b) - len(a) })
 	for _, value := range values {
 		text = RedactSecretInput(text, value)
 	}

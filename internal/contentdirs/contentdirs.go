@@ -13,12 +13,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gofrs/flock"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 const (
@@ -123,7 +124,7 @@ func Dirs(parent, base string) ([]string, error) {
 		}
 		dirs = append(dirs, dir{filepath.Join(parent, entry.Name()), info.ModTime()})
 	}
-	slices.SortFunc(dirs, func(a, b dir) int { return b.used.Compare(a.used) })
+	sortx.Func(dirs, func(a, b dir) int { return b.used.Compare(a.used) })
 	paths := make([]string, len(dirs))
 	for i, d := range dirs {
 		paths[i] = d.path

@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -498,7 +499,7 @@ func (p *CombinedProvider) fdFileSuggestionsCtx(ctx context.Context, rawQuery st
 	}
 
 	pathCollator := localecompare.NewCollator()
-	slices.SortFunc(scoredEntries, func(a, b scoredEntry) int {
+	sortx.Func(scoredEntries, func(a, b scoredEntry) int {
 		if a.score != b.score {
 			return b.score - a.score
 		}
@@ -688,7 +689,7 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 	// Directories first, then alphabetical. Mirrors upstream sort
 	// (autocomplete.ts:607-614).
 	autocompleteCollator := localecompare.NewCollator()
-	slices.SortFunc(items, func(a, b AutocompleteItem) int {
+	sortx.Func(items, func(a, b AutocompleteItem) int {
 		aDir := strings.HasSuffix(a.Label, "/")
 		bDir := strings.HasSuffix(b.Label, "/")
 		if aDir && !bDir {

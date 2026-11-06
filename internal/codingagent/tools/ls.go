@@ -9,7 +9,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -18,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -224,14 +224,14 @@ func sortEntriesLikeLocaleCompare(entries []string) {
 	}
 	if replacement {
 		collator := localecompare.NewCollator()
-		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
+		sortx.Stable(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
 	} else {
 		collator := collate.New(language.Und)
 		var buf collate.Buffer
 		for i := range sorted {
 			sorted[i].key = collator.KeyFromString(&buf, sorted[i].lower)
 		}
-		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return bytes.Compare(a.key, b.key) })
+		sortx.Stable(sorted, func(a, b sortEntry) int { return bytes.Compare(a.key, b.key) })
 	}
 	for i := range sorted {
 		entries[i] = sorted[i].name

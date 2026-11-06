@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Object is a JSON object that keeps JavaScript's property order. Keys iterate in own-key order (Reflect.ownKeys, Object.keys): array-index keys first in ascending numeric order, then the other keys in insertion order. Setting an existing key keeps its position; deleting a key and setting it again moves it to the end, as in JavaScript.
@@ -222,7 +224,7 @@ func (object *Object) All() iter.Seq2[string, any] {
 				indexed = append(indexed, at)
 			}
 		}
-		slices.SortFunc(indexed, func(left, right int) int {
+		sortx.Func(indexed, func(left, right int) int {
 			return compareOwnKeys(object.entries[left].key, object.entries[right].key)
 		})
 		for _, at := range indexed {

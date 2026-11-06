@@ -9,7 +9,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -17,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // SessionListProgress receives completed-file counts. A nil partial means no snapshot was published; a non-nil empty slice is an empty published snapshot.
@@ -60,7 +60,7 @@ func listSessionsInDirWithOptions(dir string, options SessionListOptions) ([]Ses
 			files = append(files, filepath.Join(dir, entry.Name()))
 		}
 	}
-	slices.SortStableFunc(files, func(a, b string) int { return localeCompare(filepath.Base(b), filepath.Base(a)) })
+	sortx.Stable(files, func(a, b string) int { return localeCompare(filepath.Base(b), filepath.Base(a)) })
 	return summarizeSessionFilesWithOptions(files, options, 10, false)
 }
 
@@ -108,7 +108,7 @@ func listSessionsAcrossRootWithOptions(root string, options SessionListOptions) 
 			mtimes[file] = float64(float64(mod.Unix())*1000) + float64(mod.Nanosecond())/1e6
 		}
 	}
-	slices.SortStableFunc(files, func(a, b string) int {
+	sortx.Stable(files, func(a, b string) int {
 		if c := cmp.Compare(mtimes[b], mtimes[a]); c != 0 {
 			return c
 		}
@@ -167,7 +167,7 @@ func summarizeSessionFilesWithOptions(files []string, options SessionListOptions
 				infos = append(infos, *info)
 			}
 		}
-		slices.SortStableFunc(infos, compareSessionModifiedDesc)
+		sortx.Stable(infos, compareSessionModifiedDesc)
 		return infos
 	}
 	loaded := 0

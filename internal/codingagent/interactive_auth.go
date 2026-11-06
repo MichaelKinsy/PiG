@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -84,7 +85,7 @@ func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) 
 		}
 		all = append(all, tui.OAuthProvider{ID: provider.ID(), Name: name, AuthType: "oauth"})
 	}
-	slices.SortFunc(all, func(a, b tui.OAuthProvider) int {
+	sortx.Func(all, func(a, b tui.OAuthProvider) int {
 		return strings.Compare(a.Name, b.Name)
 	})
 	if mode == "login-api-key" {

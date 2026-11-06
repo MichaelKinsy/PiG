@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type recoveryMembersKey struct{}
@@ -132,7 +134,7 @@ func (h *Host) recoverNodeProcess(failed *packedProcessState, reason string) {
 		}
 		members = append(members, p.members...)
 	}
-	slices.SortFunc(members, func(a, b *managedExt) int { return h.loadOrder[a.config.Name] - h.loadOrder[b.config.Name] })
+	sortx.Func(members, func(a, b *managedExt) int { return h.loadOrder[a.config.Name] - h.loadOrder[b.config.Name] })
 	// Invalidate every old process before any replacement may register. Old sockets retain no UI/provider authority.
 	for _, p := range processes {
 		h.packedCellGeneration[p.key]++

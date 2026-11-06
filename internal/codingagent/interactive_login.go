@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -78,7 +79,7 @@ func authSubscriptionArg(subscription *bool) []bool {
 
 func sortAuthProviders(providers []tui.OAuthProvider) {
 	collator := localecompare.NewCollator()
-	slices.SortStableFunc(providers, func(a, b tui.OAuthProvider) int { return collator.CompareString(a.Name, b.Name) })
+	sortx.Stable(providers, func(a, b tui.OAuthProvider) int { return collator.CompareString(a.Name, b.Name) })
 }
 
 func (m *InteractiveMode) getLoginProviderOptions(includeStatus ...bool) []tui.OAuthProvider {
@@ -159,7 +160,7 @@ func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteI
 		}
 		if !slices.Contains(providers[index].authTypes, option.AuthType) {
 			providers[index].authTypes = append(providers[index].authTypes, option.AuthType)
-			slices.SortFunc(providers[index].authTypes, func(a, b string) int {
+			sortx.Func(providers[index].authTypes, func(a, b string) int {
 				if a == b {
 					return 0
 				}

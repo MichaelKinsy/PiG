@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // skillLoadResult holds the outcome of resolving and loading all skills for a
@@ -158,7 +159,7 @@ func orderPigletSkills(p *piglet.Piglet, resolved []piglet.ResolvedSkill, market
 			added = append(added, name)
 		}
 	}
-	slices.SortStableFunc(added, func(a, b string) int {
+	sortx.Stable(added, func(a, b string) int {
 		return indexOrEnd(declared, a, len(added)) - indexOrEnd(declared, b, len(added))
 	})
 	return append(out, added...)

@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // A runeRange is the inclusive range of code points lo..hi.
@@ -20,7 +22,7 @@ const (
 
 // newRuneSet sorts and merges ranges. It reuses the slice.
 func newRuneSet(ranges []runeRange) runeSet {
-	slices.SortFunc(ranges, func(a, b runeRange) int { return int(a.lo) - int(b.lo) })
+	sortx.Func(ranges, func(a, b runeRange) int { return int(a.lo) - int(b.lo) })
 	out := ranges[:0]
 	for _, r := range ranges {
 		if n := len(out); n > 0 && out[n-1].hi+1 >= r.lo {

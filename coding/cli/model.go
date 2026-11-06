@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -167,7 +168,7 @@ func modelListLines(entries []codingagent.ModelEntry, search string) []string {
 		return []string{`No models matching "` + search + `"`}
 	}
 	entries = slices.Clone(entries)
-	slices.SortFunc(entries, func(a, b codingagent.ModelEntry) int {
+	sortx.Func(entries, func(a, b codingagent.ModelEntry) int {
 		if c := localecompare.Compare(a.ProviderID, b.ProviderID); c != 0 {
 			return c
 		}

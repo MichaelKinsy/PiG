@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"reflect"
-	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // extensionCatalogEncoding caches only the model projection: the chat catalog and the typed (image and classifier) models. It compares an owned snapshot of the composed metadata and registration order for the chat catalog, and drops the typed encoding on every committed registry change (invalidateTyped, called from the registry change observer that also publishes the catalog) or chat catalog change; provider auth and errors are read on every publication. The cache is owned by one bridge binding and retains one catalog, not a history of revisions.
@@ -92,7 +92,7 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 	}
 	if registry != nil {
 		if compare := registry.extensionModelOrder(); compare != nil {
-			slices.SortStableFunc(ordered, func(a, b *ai.Model) int {
+			sortx.Stable(ordered, func(a, b *ai.Model) int {
 				return compare(a.ProviderMeta.ProviderID, a.ID, b.ProviderMeta.ProviderID, b.ID)
 			})
 		}

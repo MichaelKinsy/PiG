@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // A whole-history read (GetEntries, GetBranch, GetTree) returns each message entry that is not resident as a sessionentry.LazyEntry over its
@@ -72,7 +73,7 @@ func readRecordsAt(file io.ReaderAt, ats []sessionentry.RecordAt, out []json.Raw
 	for k := range order {
 		order[k] = k
 	}
-	slices.SortFunc(order, func(a, b int) int { return cmp.Compare(ats[a].Off, ats[b].Off) })
+	sortx.Func(order, func(a, b int) int { return cmp.Compare(ats[a].Off, ats[b].Off) })
 	for start := 0; start < len(order); {
 		first := ats[order[start]]
 		end := first.Off + int64(first.Size) + 1

@@ -581,3 +581,10 @@ path = "internal/photonimage/testdata/png-real/go/*.png"
 precedence = "closest"
 SPDX-FileCopyrightText = "The Go Authors"
 SPDX-License-Identifier = "BSD-3-Clause"
+
+# internal/sortx/zsortfunc.go is Go 1.27.3's src/sort/zsortfunc.go with the helper declarations it needs, under the Go Authors' license.
+[[annotations]]
+path = "internal/sortx/zsortfunc.go"
+precedence = "override"
+SPDX-FileCopyrightText = "The Go Authors"
+SPDX-License-Identifier = "BSD-3-Clause"

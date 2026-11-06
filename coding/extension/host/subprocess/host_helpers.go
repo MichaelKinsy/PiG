@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -18,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodebase64"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/internal/yaml12"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -229,7 +229,7 @@ func javaScriptKeyOrder(keys []string) []string {
 			others = append(others, key)
 		}
 	}
-	slices.SortFunc(indexes, func(a, b string) int {
+	sortx.Func(indexes, func(a, b string) int {
 		if len(a) != len(b) {
 			return len(a) - len(b)
 		}

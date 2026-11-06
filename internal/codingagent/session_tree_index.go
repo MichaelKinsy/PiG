@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // treeFacts are what the /tree selector reads of an assistant message for every row before it formats any: whether the row hides when it is
@@ -249,7 +250,7 @@ func (s *Session) lazyTree() ([]*SessionTreeNode, *lazyTree) {
 	for len(stack) > 0 {
 		n := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		slices.SortStableFunc(n.Children, func(a, b *SessionTreeNode) int {
+		sortx.Stable(n.Children, func(a, b *SessionTreeNode) int {
 			return cmpDates(s.slots[lt.nodes[a].slot].ts, s.slots[lt.nodes[b].slot].ts)
 		})
 		stack = append(stack, n.Children...)

@@ -10,6 +10,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // CompactionSettings controls when and how compaction runs.
@@ -43,7 +44,7 @@ func SortedPaths(set map[string]struct{}) []string {
 	if paths == nil {
 		paths = []string{}
 	}
-	slices.SortFunc(paths, func(a, b string) int { return slices.Compare(utf16.Encode([]rune(a)), utf16.Encode([]rune(b))) })
+	sortx.Func(paths, func(a, b string) int { return slices.Compare(utf16.Encode([]rune(a)), utf16.Encode([]rune(b))) })
 	return paths
 }
 

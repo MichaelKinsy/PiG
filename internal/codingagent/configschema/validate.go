@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type jsonKind uint8
@@ -115,7 +117,7 @@ func jsKeyOrder(keys []string) []string {
 			rest = append(rest, key)
 		}
 	}
-	slices.SortStableFunc(indexes, func(a, b string) int {
+	sortx.Stable(indexes, func(a, b string) int {
 		x, _ := arrayIndexKey(a)
 		y, _ := arrayIndexKey(b)
 		return cmp.Compare(x, y)

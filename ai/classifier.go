@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -256,7 +256,7 @@ func jsObjectKeyOrder(keys []string) []int {
 			others = append(others, i)
 		}
 	}
-	slices.SortStableFunc(indexes, func(a, b int) int {
+	sortx.Stable(indexes, func(a, b int) int {
 		x, _ := arrayIndexKey(keys[a])
 		y, _ := arrayIndexKey(keys[b])
 		return cmp.Compare(x, y)

@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"regexp"
 	"regexp/syntax"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Regexp is a lazily compiled *regexp.Regexp.
@@ -344,7 +345,7 @@ func sortedPairs(pairs []rune) []rune {
 	for i := 0; i < len(pairs); i += 2 {
 		spans = append(spans, span{pairs[i], pairs[i+1]})
 	}
-	slices.SortFunc(spans, func(a, b span) int { return int(a.lo - b.lo) })
+	sortx.Func(spans, func(a, b span) int { return int(a.lo - b.lo) })
 	out := make([]rune, 0, len(pairs))
 	for _, s := range spans {
 		if n := len(out); n > 0 && s.lo <= out[n-1]+1 {
