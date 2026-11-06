@@ -429,6 +429,11 @@ func startEventMessage(msg AgentMessage) AgentMessage {
 		out.ToolResult = new(*msg.ToolResult)
 	case msg.Custom != nil:
 		out.Custom = maps.Clone(msg.Custom)
+		if msg.source != nil {
+			// The member-order record is shared by the copies of one message, so a replacement's adoption would reach this envelope; it keeps its own, as Clone does.
+			record := *msg.source
+			out.source = &record
+		}
 	}
 	return out
 }
