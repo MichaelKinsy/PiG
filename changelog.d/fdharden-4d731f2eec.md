@@ -1,0 +1,3 @@
+### Fixed
+
+- Typing `@` in the editor, the `find` tool and the tools status no longer run a program that is not fd. Debian's `fdclone` package installs a file manager as `/usr/bin/fd`; it opened `/dev/tty` and took over the terminal, and it also hid a real fd installed as `fdfind`. A system `fd`, `fdfind` or `rg` is now used only if `<bin> --version` exits 0 and prints `fd `, `fdfind ` or `ripgrep ` first; otherwise PiG tries the next name and then downloads its own. The check runs once per binary (cached by path, modification time and size), in a new session with stdin on `/dev/null`, and every fd and rg search also starts in a new session (a detached process on Windows). Pi has the same bug. <!-- fix: 4d731f2eec -->
