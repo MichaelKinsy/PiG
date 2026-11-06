@@ -1,12 +1,14 @@
 package codingagent
 
 import (
+	"context"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -63,3 +65,8 @@ func TestInteractiveQueuedMessagesAreBuiltBySessionForImageNormalization(t *test
 }
 
 func (h *queuingSessionHandle) Inner() *Session { return nil }
+
+// RunInputHandlers passes the input through: the compaction flush runs it before the message is queued.
+func (h *queuingSessionHandle) RunInputHandlers(_ context.Context, text string, images []ai.ImageContent, _ extension.InputSource, _ string) (string, []ai.ImageContent, bool, error) {
+	return text, images, false, nil
+}
