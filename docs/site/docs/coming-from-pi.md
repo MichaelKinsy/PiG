@@ -28,7 +28,7 @@ Every difference that a user or an extension can observe has a numbered record i
 | Requests identify as `pi/<version>` | Requests identify as `pig/<version>`. PiG never identifies itself as Pi to a service. | D26, D65 |
 | Hosted endpoints on pi.dev | Hosted endpoints on pi-in-go.dev, including `/share`, the version check and the installer. | D64 |
 | `/bug` can upload a report | `/bug` writes a zip file and prints a link to a PiG issue form. | D62 |
-| First-time setup for official Pi builds | First-time setup on every fresh config directory, with a sprite step. | D88 |
+| First-time setup in Pi's own distribution only, behind `PI_EXPERIMENTAL=1` | First-time setup on every fresh config directory, with a sprite step. | D88 |
 
 ### Extensions
 
@@ -49,7 +49,7 @@ PiG runs a TypeScript extension in a subprocess, as the next section explains. M
 
 | Difference | Record |
 |---|---|
-| A setting of the wrong JSON type is ignored with one warning. Pi 1.4.0 throws. | D158 |
+| A setting of the wrong JSON type is ignored with one warning. Pi throws. | D158 |
 | Session directories are created with mode 0700. | D132 |
 | A local Package typed as an absolute path is stored as typed. | D215 |
 | Installing an npm or Git extension root as a Package is refused when it holds no Package resources. | D57 |
