@@ -434,3 +434,37 @@ func TestNativeProviderAuthSavesARefreshedCredentialWhenALaterStepFailsWithTheAb
 		t.Fatalf("auth.json after Close = %+v, %v; want the rotated token", got, err)
 	}
 }
+
+// Pi's exit waits for the work under credentials.modify, which is the OAuth refresh (resolve.ts:119-155), and for nothing else: an API-key resolver runs outside it, with the request's signal. NativeProviderAuth used to hold the tracked transaction across the whole provider resolution, so a provider whose apiKey.resolve never returns, called with a context that exit does not cancel (an extension's getModelAuth), kept Settled, and so Close, waiting without limit. A stored API-key credential now resolves outside the transaction. Red before: Close does not return.
+func TestRuntimeCloseDoesNotWaitForAnAPIKeyResolverOfANativeProvider(t *testing.T) {
+	runtime, services, _, respond := rotatingOAuthRuntime(t)
+	defer respond()
+	if err := services.Auth().Set("native-key", ai.Credential{Type: ai.CredentialAPIKey, Key: "stored"}); err != nil {
+		t.Fatal(err)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	defer releaseOnce.Do(func() { close(release) })
+	provider := nativeAuthProvider("native-key", func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
+		close(started)
+		<-release // a resolver that never sees the abort and does not return
+		return &ai.AuthResult{}, nil, nil
+	})
+	if err := services.Registry().RegisterNativeProvider(t.Context(), provider); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		_, _ = services.Registry().NativeProviderAuth(t.Context(), "native-key", ai.AuthResolutionOverrides{})
+	}()
+	<-started
+	closed := make(chan error, 1)
+	go func() { closed <- runtime.Close() }()
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatalf("Close = %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Close waits for an API-key resolver that Pi's exit does not wait for")
+	}
+}
