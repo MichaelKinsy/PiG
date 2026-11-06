@@ -11,6 +11,8 @@ import (
 	"os"
 	"slices"
 	"sync"
+
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // Host calls for Pi's pure helpers that need the host's parsers: parseFrontmatter (the host's YAML parser, the one that reads skills and prompt templates)
@@ -627,7 +629,9 @@ func highlightCodeLines(code, lang string) ([]string, error) {
 	var reply struct {
 		Lines []string `json:"lines"`
 	}
-	if err := json.Unmarshal(result.Result, &reply); err != nil {
+	// A line may hold a lone UTF-16 surrogate of the code (the host sends it as an escape, as Pi's JavaScript strings carry it): the SDK's codec keeps the
+	// unit in the Go string, where encoding/json would replace it.
+	if err := sdkjson.Unmarshal(result.Result, &reply); err != nil {
 		return nil, fmt.Errorf("decode highlightCode: %w", err)
 	}
 	return reply.Lines, nil
