@@ -3632,3 +3632,33 @@ Call-site markers: `chord/nextnode/plugins/plugins_install.go` (`InstallDependen
 Evidence: `TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes` (`chord/nextnode/plugins/plugins_install_test.go`; red on 989927eff4: the install did not return in 25 s for exit 0 and for exit 1).
 
 Parity allowance: none needed; Pi's install tests (`install.test.ts`, ported in `plugins_install_test.go`) pass unchanged, and none of them leaves a process holding the pipes.
+
+## D268 The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by V8's stack
+
+What: Pi's own runtime (the Node SDK) returns a tool's arguments only while V8 has stack for `JSON.stringify`. On Node 24.22.1 with the default stack, arguments shaped `{"zeta":1,"meta":{"d":[...]}}` come back as an object at d=4300 and fail with `RangeError: Maximum call stack size exceeded` at d=4400 (`JSON.stringify` fails past 4459 at the default stack and past 9103 with `--stack-size=2000`; plain `JSON.parse` reads any depth). The limit is V8 stack exhaustion: it moves with the call depth, the Node version, the platform and `--stack-size`, so no fixed Pi depth exists to reproduce. PiG's Go, Python, Rust and Lisp SDKs return the object, and the texts Pi writes for it, for every frame the host can send. An argument value can nest 10000 levels (the host's marshal validates it alone against 10000: d=9998 in the row shape above). None of the four ends its extension or its connection on deeper input: a request is answered with the RangeError message, a host call result is an error, a notification is dropped with a line on stderr. The Node SDK is Pi's own runtime and is unchanged.
+
+| SDK | What reads the frame | Bound |
+| --- | --- | --- |
+| Go | `json.UnmarshalFrame` (`extensions/sdk/json`; `Unmarshal` and the host's marshal keep the standard 10000) | 10064 levels of the whole frame |
+| Python | `json.loads`, then a non-recursive parser (`_loads_deep`); ordering and stringify are iterative | 10100 levels (`MAX_FRAME_DEPTH`); `json.loads` alone stops at about 9997 on 3.12 and about 990 on 3.11 |
+| Rust | `from_json_str` on a 64 MB decode stack; a request with deep arguments runs on a 64 MB thread | 10016 levels (`MAX_NESTING_DEPTH`) |
+| Lisp | the JSON reader on the image's 64 MB control stack (kept by every thread: address space reserved with `MAP_NORESERVE`) | 10016 levels (`*max-json-depth*`) |
+| Node | Pi's own `JSON.parse` and `JSON.stringify` | V8's stack (about 4400 levels on Node 24) |
+
+Why: Before, an extension could die on arguments Pi's own host sends it. The Go SDK ended its connection from d=9997: its reader validated the whole frame against encoding/json's 10000-level limit, while the host validates a request's arguments alone, so a frame the host sends nests a few levels past it (a limit of the codec, not a stack). The Python SDK failed the call from about 1000 levels, and from about 990 on Python 3.11, because its ordering and `JSON.stringify` were recursive and its JSON reader is bound by the recursion limit. The Rust and Lisp readers ended the connection past 4096 and 2000 levels, and Rust's `Context::tool_params` returned none past 128. Matching Pi's observable result for the arguments Pi accepts, and failing a call (never the extension) beyond what an SDK reads, keeps tool calls with legitimately nested JSON working. Pi's exact cut-off is not reproducible.
+
+Pi bug: none; Pi's limit is the stack of the JavaScript engine, not a defect to report.
+
+Scope: arguments, results and events read by the Go, Python, Rust and Lisp SDKs, up to the host's 10000 levels. Not the Node SDK. Not a value nested past 10000 levels (the host refuses to send one).
+
+Owner decision: pending; proposed by the 0.7.1 coordinator.
+
+SCRUTINIZED:pending
+
+Remove when: Pi parses and returns tool arguments without a stack-bound depth limit, or the owner decides the SDKs should stop at Pi's observed depth. Then the call-site markers and this record go.
+
+Call-site markers: `extensions/sdk/protocol.go` (`readLoop`), `extensions/sdk-py/pig_sdk/__init__.py` (`Extension._read`), `extensions/sdk-rs/src/protocol.rs` (`MAX_NESTING_DEPTH`), `extensions/sdk-lisp/src/json.lisp` (`*max-json-depth*`; Lisp is not scanned by `check-divergence-consistency.sh`).
+
+Evidence: `TestToolParamsNestingAcrossSDKs` (`test/extension-conformance/tool_params_deep_test.go`; red on 03c551f3e2 for Go at d=9998, and for Python, Rust and Lisp), `TestModelStreamEventWithDeepToolArgumentsReachesEverySDK` (`model_stream_deep_event_test.go`), and each SDK's own suite for the frames past its bound (`extensions/sdk/protocol_deep_frame_test.go`, `extensions/sdk-py/tests/test_deep_frames.py`, `extensions/sdk-rs/src/surrogate_tests.rs`, `extensions/sdk-lisp/tests/json-tests.lisp`).
+
+Parity allowance: the row pins every SDK's outcome at depths 200, 1000, 4000, 5000, 9000 and 9998: the object for the Go, Python, Rust and Lisp SDKs at all six; for the Node SDK (Pi's own runtime, pinned Node 24.22.1) the object at 200, 1000 and 4000 and V8's RangeError at 5000, 9000 and 9998. Each depth is followed by a call to the same extension. Pi's runtime gives the object at d=4300 and the RangeError at d=4400 on that Node; the row does not pin those, because the cut-off moves with the Node version.
