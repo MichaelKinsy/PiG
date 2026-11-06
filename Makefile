@@ -761,8 +761,9 @@ bench-report: ## Re-render report.md and summary.csv from a raw.json: make bench
 additive-list: ## Regenerate the agent docs page additive-features.md from docs/additive-features.md
 	@python3 automation/gen/gen-additive-list.py
 
-docs-bundle: ## Regenerate the shared pages of the agent docs bundle, the glossary and the customize chooser from the site pages (internal/pigdocs/bundle-manifest.json)
+docs-bundle: ## Regenerate the shared pages of the agent docs bundle, the glossary and the customize chooser from the site pages (internal/pigdocs/bundle-manifest.json), then the compressed pages the binary embeds (go generate)
 	@python3 automation/gen/gen-docs-bundle.py
+	@cd internal/pigdocs && go generate .
 
 knowledge-graph: ## Regenerate the knowledge graph page, JSON-LD, and Mermaid from docs/knowledge-graph/pig.graph.json
 	@python3 automation/gen/gen-knowledge-graph.py

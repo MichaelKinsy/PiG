@@ -24,27 +24,31 @@
 package pigdocs
 
 import (
-	"crypto/sha256"
-	"embed"
-	"encoding/hex"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/gofrs/flock"
 
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/contentdirs"
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
-//go:embed content/*.md
-var content embed.FS
+//go:generate go run ../../automation/gen/pack-pigdocs.go
+
+// pagesFrame is the pages of content/*.md back to back in pageNames order as one zstd frame, written by pack-pigdocs.go. A page is decoded only when a
+// caller asks for its bytes; the names, sizes and digest are in pages_gen.go, so listing and naming the bundle decode nothing.
+//
+//go:embed pages.zst
+var pagesFrame []byte
 
 const (
 	// stagingPrefix names the private trees a sync builds beside the bundle directories.
@@ -64,11 +68,7 @@ func init() { configroot.RegisterDocsBundle(bundleName) }
 
 // bundleName is this build's bundle directory name under <config root>/docs.
 func bundleName() (string, error) {
-	digest, err := contentDigest()
-	if err != nil {
-		return "", err
-	}
-	return contentdirs.Name(bundleBase, digest)
+	return contentdirs.Name(bundleBase, contentDigest)
 }
 
 // DocsDir returns the absolute directory of this build's bundle for a given config root.
@@ -84,51 +84,15 @@ func DocsDir(configRoot string) string {
 // List returns the embedded doc filenames in stable alphabetical
 // order. It is the canonical source for `pig docs list` and for any
 // caller that needs to enumerate available topics.
-func List() []string {
-	entries, err := content.ReadDir("content")
+func List() []string { return slices.Clone(pageNames[:]) }
+
+// pages decodes the frame into the page bytes back to back. The caller drops the result when done with it: nothing keeps a decoded copy.
+func pages() ([]byte, error) {
+	raw, err := zstdblob.Decode(pagesFrame)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("pig docs: decode embedded pages: %w", err)
 	}
-	out := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if !strings.HasSuffix(e.Name(), ".md") {
-			continue
-		}
-		out = append(out, e.Name())
-	}
-	sort.Strings(out)
-	return out
-}
-
-// contentDigest is the digest of the embedded docs. The embedded content never changes, so it is computed once per process.
-var contentDigest = sync.OnceValues(computeContentDigest)
-
-// computeContentDigest hashes "name\x00size\x00contents" for every doc, streaming the contents so the startup check does not copy every embedded doc into memory.
-func computeContentDigest() (string, error) {
-	hash := sha256.New()
-	buffer := make([]byte, 32<<10)
-	for _, name := range List() {
-		file, err := content.Open("content/" + name)
-		if err != nil {
-			return "", fmt.Errorf("pig docs: read %s for digest: %w", name, err)
-		}
-		info, err := file.Stat()
-		if err != nil {
-			_ = file.Close()
-			return "", fmt.Errorf("pig docs: read %s for digest: %w", name, err)
-		}
-		_, _ = fmt.Fprintf(hash, "%s\x00%d\x00", name, info.Size())
-		// The embedded file's reader is the only method used; hiding the other methods keeps io.CopyBuffer on the supplied buffer.
-		_, err = io.CopyBuffer(hash, struct{ io.Reader }{file}, buffer)
-		_ = file.Close()
-		if err != nil {
-			return "", fmt.Errorf("pig docs: read %s for digest: %w", name, err)
-		}
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	return raw, nil
 }
 
 // Read returns the embedded bytes of a single doc file. Names may be
@@ -145,7 +109,20 @@ func Read(name string) ([]byte, error) {
 	if !strings.HasSuffix(name, ".md") {
 		name += ".md"
 	}
-	return content.ReadFile("content/" + name)
+	index, found := slices.BinarySearch(pageNames[:], name)
+	if !found {
+		return nil, &fs.PathError{Op: "open", Path: "content/" + name, Err: fs.ErrNotExist}
+	}
+	raw, err := pages()
+	if err != nil {
+		return nil, err
+	}
+	start := 0
+	for _, size := range pageSizes[:index] {
+		start += size
+	}
+	// A copy, so the caller does not keep every page alive through one.
+	return slices.Clone(raw[start : start+pageSizes[index]]), nil
 }
 
 // Sync writes this build's bundle directory from the embedded docs, replacing a directory already there, and returns the page names written.
@@ -165,10 +142,7 @@ var errStagingRemoved = errors.New("staging tree removed by another sync")
 // installs first is kept unless replace is set. It never waits for another process. When it finds the staging lock free it first removes
 // stranded staging trees and evicts the least recently used bundles of other builds; other builds' bundles are otherwise left alone.
 func syncBundle(configRoot string, replace bool) ([]string, error) {
-	digest, err := contentDigest()
-	if err != nil {
-		return nil, err
-	}
+	digest := contentDigest
 	dir := DocsDir(configRoot)
 	parent := filepath.Dir(dir)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
@@ -265,9 +239,9 @@ func install(staging, dir, digest string, replace bool) error {
 
 // buildStaging writes the complete bundle, marker last, into a new private tree in parent and returns the tree and the page names written.
 func buildStaging(parent, digest string) (staging string, written []string, err error) {
-	entries, err := fs.ReadDir(content, "content")
+	raw, err := pages()
 	if err != nil {
-		return "", nil, fmt.Errorf("pig docs: read embed: %w", err)
+		return "", nil, err
 	}
 	staging, err = os.MkdirTemp(parent, stagingPrefix)
 	if err != nil {
@@ -283,18 +257,13 @@ func buildStaging(parent, digest string) (staging string, written []string, err 
 	if err := os.Chmod(staging, 0o755); err != nil {
 		return fail(err)
 	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
-			continue
-		}
-		data, err := content.ReadFile("content/" + e.Name())
-		if err != nil {
+	for index, name := range &pageNames {
+		data := raw[:pageSizes[index]:pageSizes[index]]
+		raw = raw[pageSizes[index]:]
+		if err := writeNewFile(filepath.Join(staging, name), data, 0o644); err != nil {
 			return fail(err)
 		}
-		if err := writeNewFile(filepath.Join(staging, e.Name()), data, 0o644); err != nil {
-			return fail(err)
-		}
-		written = append(written, e.Name())
+		written = append(written, name)
 	}
 	if err := writeNewFile(filepath.Join(staging, markerFile), []byte(digest+"\n"), 0o644); err != nil {
 		return fail(err)
@@ -330,10 +299,7 @@ func current(dir, digest string) bool {
 // exits (the exit path calls it just before the exit record counts descriptors) and tests call it. The bundle is read again once leased, so an eviction between the check and the lease is not mistaken for a held bundle.
 // pig additive (D22): Pi's package docs stay where they are for as long as Pi runs; PiG's bundle lives in a directory that other builds evict.
 func HoldBundle(configRoot string) (release func()) {
-	digest, err := contentDigest()
-	if err != nil {
-		return func() {}
-	}
+	digest := contentDigest
 	dir := DocsDir(configRoot)
 	if !current(dir, digest) {
 		return func() {}
@@ -352,10 +318,7 @@ func HoldBundle(configRoot string) (release func()) {
 // root lets this process create it, the condition under which [EnsureSynced] writes it; nothing is written here.
 // pig additive (D22): Pi's package docs exist before it starts; PiG writes its bundle before the first reader instead of at every start.
 func Prepare(configRoot string) (present, pending bool, err error) {
-	digest, err := contentDigest()
-	if err != nil {
-		return false, false, err
-	}
+	digest := contentDigest
 	dir := DocsDir(configRoot)
 	if current(dir, digest) {
 		contentdirs.Touch(dir)
@@ -382,15 +345,12 @@ func canCreate(dir string) bool {
 // EnsureSynced is the idempotent startup helper. A complete bundle of this build costs one marker read and, at most hourly, a recorded use time;
 // otherwise it syncs. All errors are returned to the caller; Pig core treats any failure as the bundle being absent.
 func EnsureSynced(configRoot string) error {
-	digest, err := contentDigest()
-	if err != nil {
-		return err
-	}
+	digest := contentDigest
 	if dir := DocsDir(configRoot); current(dir, digest) {
 		contentdirs.Touch(dir)
 		return nil
 	}
-	_, err = syncBundle(configRoot, false)
+	_, err := syncBundle(configRoot, false)
 	return err
 }
 
