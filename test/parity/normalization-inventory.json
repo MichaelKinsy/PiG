@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "1736a9c76dba7820401a8cd970b57606d1e3eb7113d575c5e5016fb20cf1b3ec",
+      "sha256": "377ce40e43952adac9a3b5d2080eb5f4a943c4e17e47836187cceb1ec8fb2dce",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -27,7 +27,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "b76c6974a5eaad47d77e42e17c9d4f5d6ae73bd6fc8b2150bd0a6806d2aa5305",
+      "sha256": "84dc8e44efd154fa7092a78f7b743e9f38027758a721878cbe08c52b2b1f9a41",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
     },
     {
@@ -11049,6 +11049,24 @@
             "capture_end": "[user]"
           },
           "reason": "Owned visible surface: Saving a label returns to the list with the label shown, and Ctrl+O steps the filter modes.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/15-tree-navigation-no-stale-frame.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "ask one",
+            "capture_end": "Navigated to selected point"
+          },
+          "reason": "Owned visible surface: After /tree selection with no summary the first frame is the fork point, never the old transcript with the prompt closed.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {

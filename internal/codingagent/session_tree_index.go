@@ -188,6 +188,47 @@ func parallelOver(items []int, work func(part []int)) {
 	wg.Wait()
 }
 
+// parallelOverWeighted is parallelOver for items whose cost is their weight and not their number: it splits items into contiguous parts of
+// about equal cost on up to GOMAXPROCS goroutines, each part at least minWeight. Every item costs its weight plus a share of minWeight, so a
+// run of parallelReadMinLines items fills a part as it does for parallelOver. A session whose records are tool outputs of tens of kilobytes
+// holds few lines and much to decode, and a split by line count leaves one goroutine decoding nearly all of it.
+func parallelOverWeighted(items []int, weight func(item int) int64, minWeight int64, work func(part []int)) {
+	fixed := minWeight / parallelReadMinLines
+	var total int64
+	for _, item := range items {
+		total += weight(item) + fixed
+	}
+	if total/minWeight <= 1 {
+		work(items)
+		return
+	}
+	// pig additive (D174): the parts run at the runtime default width.
+	defer procpolicy.Widen()()
+	parts := int(min(total/minWeight, int64(runtime.GOMAXPROCS(0)), int64(len(items))))
+	if parts <= 1 {
+		work(items)
+		return
+	}
+	var wg sync.WaitGroup
+	start, spent := 0, int64(0)
+	for n := 1; start < len(items); n++ {
+		// A part ends where the cost so far reaches its share of the whole; the last takes the rest.
+		end := len(items)
+		if n < parts {
+			share := total * int64(n) / int64(parts)
+			end = start
+			for end < len(items) && (spent < share || end == start) {
+				spent += weight(items[end]) + fixed
+				end++
+			}
+		}
+		part := items[start:end]
+		wg.Go(func() { work(part) })
+		start = end
+	}
+	wg.Wait()
+}
+
 // lazyTree is a session tree for the /tree selector whose rows carry their entries only once a row needs one: an entry that is not resident
 // is a RawEntry of its base members until the row is formatted, copied or searched.
 type lazyTree struct {

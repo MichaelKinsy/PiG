@@ -382,6 +382,8 @@ type InteractiveMode struct {
 	switchHeapReleases atomic.Int64
 
 	branchSummaryCancel context.CancelFunc
+	// frameHold is true while a tree navigation holds the frames its selection requested (holdFrames). Owner loop only.
+	frameHold bool
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes
@@ -777,8 +779,26 @@ func (m *InteractiveMode) armFrameTimer(due time.Time) {
 // main loop. A frame wakes a parked spinner ticker, whose next tick re-checks
 // whether the session still animates (D172).
 func (m *InteractiveMode) runScheduledRender() {
+	if m.frameHold {
+		return
+	}
 	m.tuiInst.RunDueRender()
 	m.wakeSpinner()
+}
+
+// pig divergence (D270): a /tree choice holds the owner loop's frames until the navigation returns.
+// holdFrames stops the owner loop from painting until releaseFrames. The frames requested meanwhile stay requested: releaseFrames
+// replaces them with one that follows whatever changed. A paint a component asks for by name (Render) is not held.
+func (m *InteractiveMode) holdFrames() { m.frameHold = true }
+
+// releaseFrames ends holdFrames and requests the frame that shows what changed during it.
+func (m *InteractiveMode) releaseFrames() {
+	if !m.frameHold {
+		return
+	}
+	m.frameHold = false
+	m.tuiInst.CancelPendingRender()
+	m.tuiInst.RequestRender()
 }
 
 // runOnMain hands fn to the main input loop and blocks until the loop accepts

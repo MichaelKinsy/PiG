@@ -37,6 +37,9 @@ import (
 // dispatched here via the UIBridge.
 type ExtUIContext struct {
 	m *InteractiveMode
+	// commit, when set, runs on the owner loop as a dialog this context opens resolves with a choice, before the dialog closes and before the
+	// paint that follows the key. It belongs to those dialogs alone: a dialog another context opens, stacked over or under them, never runs it.
+	commit func(choice string)
 }
 
 type specialLinesComponent struct {
@@ -325,6 +328,10 @@ func (u *ExtUIContext) runDialog(
 				return
 			}
 			pending = false
+			// pig divergence (D270): the tree prompt's choice holds the frames of its close.
+			if commit := u.commit; commit != nil && !cancelled {
+				commit(value)
+			}
 			u.m.finishExtensionDialog(dialog)
 			resultCh <- extensionDialogResult{value: value, cancelled: cancelled}
 		}

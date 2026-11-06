@@ -237,6 +237,8 @@ func resolveModelFromItems(input string, items []tui.ModelSelectorItem) (string,
 // Accessors capture references to interactive state so handlers see
 // live values.
 func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
+	// holdFor is the arrangement HoldFramesOnChoice sets: the dialogs this context opens after it hold the frames of their close for the choices it accepts.
+	var holdFor func(choice string) bool
 	var sc *SlashContext
 	sc = &SlashContext{
 		Append: func(s string) {
@@ -479,9 +481,19 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// import confirmation and the missing-cwd confirmation (interactive-mode.ts:5565, 5580, 6547,
 		// promptForMissingSessionCwd). Each is a dialog on the extension dialog stack, so it stacks with the dialogs an
 		// extension opens meanwhile and reports its blocked status.
-		ShowExtensionSelector: func(title string, options []string) (string, bool) { return m.askSelector(ctx, title, options) },
-		ShowExtensionConfirm:  func(title, message string) bool { return m.askConfirm(ctx, title, message) },
-		ShowExtensionEditor:   func(title, prefill string) (string, bool) { return m.askEditor(ctx, title, prefill) },
+		ShowExtensionSelector: func(title string, options []string) (string, bool) {
+			return m.askSelectorCommit(ctx, title, options, holdCommit(m, holdFor))
+		},
+		ShowExtensionConfirm: func(title, message string) bool { return m.askConfirm(ctx, title, message) },
+		ShowExtensionEditor: func(title, prefill string) (string, bool) {
+			return m.askEditorCommit(ctx, title, prefill, holdCommit(m, holdFor))
+		},
+		HoldFramesOnChoice: func(holds func(choice string) bool) {
+			holdFor = holds
+			if holds == nil {
+				m.releaseFrames()
+			}
+		},
 		// Pi's /bug does not use the dialog stack: bug-report.ts builds its own ExtensionSelectorComponent and
 		// ExtensionEditorComponent, puts them in the editor slot with focus and puts the editor back when each closes
 		// (showOverlay, restoreEditor). It reports no blocked status, as it never touches the program status.
@@ -1199,4 +1211,16 @@ func (m *InteractiveMode) newSessionTreeSelect(roots []*SessionTreeNode, lt *laz
 		selectedID = &initialSelectedID
 	}
 	return newLazyTreeSelectorComponent(roots, lt, currentLeafID, m.tuiInst.Height(), selectedID, settings.GetTreeFilterMode())
+}
+
+// holdCommit is the ExtUIContext.commit that holds the owner loop's frames for the choices holds accepts; nil when nothing is armed.
+func holdCommit(m *InteractiveMode, holds func(choice string) bool) func(choice string) {
+	if holds == nil {
+		return nil
+	}
+	return func(choice string) {
+		if holds(choice) {
+			m.holdFrames()
+		}
+	}
 }

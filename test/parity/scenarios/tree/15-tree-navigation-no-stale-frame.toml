@@ -1,0 +1,70 @@
+# Upstream evidence: Pi 1.5.0 interactive-mode.ts:5694-5775: the tree handler awaits `this.session.navigateTree(...)` (5750), then runs
+# `this.chatContainer.clear(); this.renderInitialMessages();` (5768) and shows "Navigated to selected point". The key that closes the "Summarize branch?"
+# prompt asks for an immediate frame (tui.ts:1158-1161) that runs on process.nextTick (tui.ts:1044-1058), before the microtask that resumes the await. So Pi
+# paints the old transcript with the prompt gone first, and keeps it painted for as long as the navigation takes: a few milliseconds, or the whole await of an
+# extension's session_before_tree handler.
+# Owner bug (0.7.1): after selecting an entry PiG's chat redrew at the old position and snapped to the fork point about a second later, because its navigation
+# decodes the session on a worker for that long. D270 (owner approved): PiG holds the frames of the choice that starts the navigation until it returns, so the
+# first frame after the choice is the fork point.
+# A session_before_tree handler that awaits 600 ms makes the window a known length in both programs. Pi paints the old transcript through it, so only PiG's
+# samples are asserted: no sample of the visible pane, taken every 10 ms from before the Enter that chooses "No summary" until "Navigated to selected point"
+# shows, may show the old leaf with the prompt gone. The watch ends with the step's waits (the settle is a step of its own), so min_samples fails a step that
+# ended at once. Both programs end on the same pane.
+# Mutation run: InteractiveMode.holdFrames made a no-op fails the first pair, "pig run 1: 42 of 119 sampled panes were a forbidden frame".
+name = "15-tree-navigation-no-stale-frame"
+description = "After /tree selection with no summary the first frame is the fork point, never the old transcript with the prompt closed."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/tui.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--session", "sessions/linear.jsonl"]
+pi_args = ["--no-extensions", "--session", "sessions/linear.jsonl"]
+pig_extensions = ["testdata/slow-before-tree/slow-before-tree.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/slow-before-tree/slow-before-tree.mjs"]
+
+[tmux]
+width = 120
+height = 40
+cwd = "testdata/w4-linear"
+ready_pattern_pig = "SLOW HOOK READY"
+ready_pattern_pi = "SLOW HOOK READY"
+ready_timeout_seconds = 30
+capture_start = "ask one"
+capture_end = "Navigated to selected point"
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_visible_contains = ["Type to search:"]
+
+[[tmux.steps]]
+keys = ["Up", "Up", "Up", "Up", "Up", "Up"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["Summarize branch?"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["Navigated to selected point"]
+wait_not_contains = ["FINAL LEAF REPLY"]
+wait_timeout_seconds = 10
+[tmux.steps.frame_watch]
+stale_contains = ["FINAL LEAF REPLY"]
+stale_unless_contains = ["Summarize branch?"]
+min_samples = 20
+
+[[tmux.steps]]
+keys = []
+settle_seconds = 1
+
+[assert]
+runs = 3
+both_reach_ready = true
+both_contain = ["ask two", "reply two", "Navigated to selected point"]
+both_not_contain = ["FINAL LEAF REPLY", "ask three", "unknown command", "panic:", "goroutine "]
+output_equal = true
+pig_no_stale_frames = true

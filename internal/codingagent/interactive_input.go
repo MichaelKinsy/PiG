@@ -294,7 +294,7 @@ func (m *InteractiveMode) dispatchTerminalRead(ctx context.Context, input inputC
 	// Match upstream's immediate keyboard paint before the autocomplete
 	// request resolves and asks for its throttled follow-up frame.
 	defer func() {
-		if dispatched && err == nil {
+		if dispatched && err == nil && !m.frameHold {
 			m.tuiInst.Render()
 		}
 		if err == nil && m.editor != nil {

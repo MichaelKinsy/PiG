@@ -41,7 +41,10 @@ const minExtensionDialogChatLines = 3
 func (m *InteractiveMode) setExtensionDialogViewMode(on bool, dialogLines int) {
 	if !on {
 		m.chatContainer.SetMaxLines(0)
-		m.tuiInst.Render()
+		// Closing the dialog that chose a navigation paints with the navigation (holdFrames).
+		if !m.frameHold {
+			m.tuiInst.Render()
+		}
 		return
 	}
 	available := m.tuiInst.Height() - dialogLines - extensionDialogReservedLines

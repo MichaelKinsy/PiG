@@ -184,6 +184,20 @@ type TmuxStep struct {
 	// for an animation that emits no completion output.
 	WaitStableMilliseconds int `toml:"wait_stable_milliseconds"`
 	WaitTimeoutSeconds     int `toml:"wait_timeout_seconds"`
+	// FrameWatch samples the visible pane from before the step's keys until the step's waits end and counts the samples it forbids.
+	FrameWatch *TmuxFrameWatch `toml:"frame_watch"`
+}
+
+// TmuxFrameWatch names a frame a step must never put on screen. The terminal keeps what the program last drew, so a frame the program
+// draws and replaces within a few milliseconds is not on screen long enough to sample; the watch is for a state that lasts, such as a
+// transcript left unchanged behind a closed prompt while a slow operation runs.
+type TmuxFrameWatch struct {
+	// StaleContains is every row a forbidden pane shows.
+	StaleContains []string `toml:"stale_contains"`
+	// StaleUnlessContains is a row that makes a pane legitimate, such as the prompt that is still open.
+	StaleUnlessContains []string `toml:"stale_unless_contains"`
+	// MinSamples is the fewest samples a passing watch takes: a step that finished before the watch could look proves nothing.
+	MinSamples int `toml:"min_samples"`
 }
 
 // visibleContains is the step's visible-state wait for the binary labeled label: the shared rows plus that binary's own.
@@ -244,7 +258,10 @@ type AssertSpec struct {
 	EscapedOutputEqual    bool            `toml:"escaped_output_equal"`
 	RuntimeRatioMax       float64         `toml:"runtime_ratio_max"`
 	BothReachReady        bool            `toml:"both_reach_ready"`
-	Runs                  int             `toml:"runs"`
+	// PigNoStaleFrames requires every pig run's frame_watch steps to have sampled enough panes and found no forbidden one. It is pig-only for a
+	// scenario whose operation Pi awaits without holding the frame (an extension handler that awaits), so Pi's samples are not asserted.
+	PigNoStaleFrames bool `toml:"pig_no_stale_frames"`
+	Runs             int  `toml:"runs"`
 
 	// ChangelogHeadersComplete compares all rendered release headers with each binary's own document, in reverse source order (D22).
 	ChangelogHeadersComplete bool `toml:"changelog_headers_complete"`

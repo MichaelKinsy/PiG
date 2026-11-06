@@ -38,7 +38,7 @@ type awaitedDialog struct {
 // ok is false when the dialog was dismissed (Esc, or a timeout) or the TUI is unavailable. A Session replacement or /reload
 // disposes the dialog too (resetExtensionUI); Pi leaves the awaiting promise pending then and its continuation never runs,
 // but the owner loop cannot park for good in a nested loop that ignores submissions, so the wait ends as a dismissal.
-func awaitOwnerDialog[T any](m *InteractiveMode, ctx context.Context, ask func(context.Context, *ExtUIContext) (T, error)) (T, bool) {
+func awaitOwnerDialog[T any](m *InteractiveMode, ctx context.Context, commit func(choice string), ask func(context.Context, *ExtUIContext) (T, error)) (T, bool) {
 	var value T
 	dialogCtx, dismiss := context.WithCancel(ctx)
 	defer dismiss()
@@ -52,7 +52,7 @@ func awaitOwnerDialog[T any](m *InteractiveMode, ctx context.Context, ask func(c
 		stop := context.AfterFunc(workCtx, dismiss)
 		defer stop()
 		var err error
-		value, err = ask(dialogCtx, &ExtUIContext{m: m})
+		value, err = ask(dialogCtx, &ExtUIContext{m: m, commit: commit})
 		return err
 	})
 	return value, err == nil
@@ -60,14 +60,19 @@ func awaitOwnerDialog[T any](m *InteractiveMode, ctx context.Context, ask func(c
 
 // askSelector is `await showExtensionSelector(title, options)`: the chosen option, or ok false when the selector was dismissed.
 func (m *InteractiveMode) askSelector(ctx context.Context, title string, options []string) (string, bool) {
-	return awaitOwnerDialog(m, ctx, func(ctx context.Context, ui *ExtUIContext) (string, error) {
+	return m.askSelectorCommit(ctx, title, options, nil)
+}
+
+// askSelectorCommit is askSelector with commit run as the selector resolves with a choice (ExtUIContext.commit).
+func (m *InteractiveMode) askSelectorCommit(ctx context.Context, title string, options []string, commit func(choice string)) (string, bool) {
+	return awaitOwnerDialog(m, ctx, commit, func(ctx context.Context, ui *ExtUIContext) (string, error) {
 		return ui.Select(ctx, title, options, extension.ExtensionUIDialogOptions{})
 	})
 }
 
 // askConfirm is `await showExtensionConfirm(title, message)`: whether Yes was chosen. Dismissing it answers No.
 func (m *InteractiveMode) askConfirm(ctx context.Context, title, message string) bool {
-	confirmed, ok := awaitOwnerDialog(m, ctx, func(ctx context.Context, ui *ExtUIContext) (bool, error) {
+	confirmed, ok := awaitOwnerDialog(m, ctx, nil, func(ctx context.Context, ui *ExtUIContext) (bool, error) {
 		return ui.Confirm(ctx, title, message, extension.ExtensionUIDialogOptions{})
 	})
 	return ok && confirmed
@@ -75,7 +80,12 @@ func (m *InteractiveMode) askConfirm(ctx context.Context, title, message string)
 
 // askEditor is `await showExtensionEditor(title, prefill)`: the text, or ok false when the editor was dismissed.
 func (m *InteractiveMode) askEditor(ctx context.Context, title, prefill string) (string, bool) {
-	return awaitOwnerDialog(m, ctx, func(ctx context.Context, ui *ExtUIContext) (string, error) {
+	return m.askEditorCommit(ctx, title, prefill, nil)
+}
+
+// askEditorCommit is askEditor with commit run as the editor resolves with text.
+func (m *InteractiveMode) askEditorCommit(ctx context.Context, title, prefill string, commit func(choice string)) (string, bool) {
+	return awaitOwnerDialog(m, ctx, commit, func(ctx context.Context, ui *ExtUIContext) (string, error) {
 		return ui.Editor(ctx, title, prefill)
 	})
 }
