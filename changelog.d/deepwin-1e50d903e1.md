@@ -1,3 +1,0 @@
-### Fixed
-
-- Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An existing connection was forcibly closed by the remote host`, or waited for it for minutes) because the generated image was built with a 64 MB control stack that every thread it starts keeps, and SBCL on Windows commits a thread's whole stack. The image keeps SBCL's default control stack again; the SDK's JSON reader and writer keep nested containers on a stack of their own, so a request with arguments nested up to the 10000 levels the host sends is still read, answered and written on any thread. <!-- fix: 1e50d903e1749df37da672f62ae751ea9b849e28 -->
