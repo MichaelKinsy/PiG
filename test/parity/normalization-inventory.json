@@ -42,8 +42,8 @@
     },
     {
       "source": "test/parity/runner/json_pig_only.go",
-      "sha256": "dabb1d39390ef42ad263e4bcc1c9d60852d61083a0d5da7780edc58b96eee730",
-      "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence and the complete record, and every run must carry exactly its declared count of them, so a second occurrence or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
+      "sha256": "79e647eb17b58724ebc4c9f88c119698ea41156630c73dddb9c28261f08e945d",
+      "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence, the complete record and the type of the record that must follow it, and every run must carry exactly its declared count of them, each at that position, so a second occurrence, a moved emission or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",
@@ -6531,14 +6531,16 @@
           "divergence": "D250",
           "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[\"\"]}",
           "count": 1,
-          "reason": "D250: delivering the empty steering message removes it from the pending queue, leaving the empty follow-up; Pi 1.5.0 keeps it and emits nothing."
+          "before_type": "message_start",
+          "reason": "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
         },
         {
           "kind": "json_pig_only_records",
           "divergence": "D250",
           "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[]}",
           "count": 1,
-          "reason": "D250: delivering the empty follow-up message empties the pending queue; Pi 1.5.0 keeps it and emits nothing."
+          "before_type": "message_start",
+          "reason": "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
         }
       ]
     },
@@ -7143,14 +7145,16 @@
           "divergence": "D250",
           "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[\"\"]}",
           "count": 1,
-          "reason": "D250: delivering the empty steering message removes it from the pending queue, leaving the empty follow-up; Pi 1.5.0 keeps it and emits nothing."
+          "before_type": "message_start",
+          "reason": "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
         },
         {
           "kind": "json_pig_only_records",
           "divergence": "D250",
           "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[]}",
           "count": 1,
-          "reason": "D250: delivering the empty follow-up message empties the pending queue; Pi 1.5.0 keeps it and emits nothing."
+          "before_type": "message_start",
+          "reason": "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
         }
       ]
     },

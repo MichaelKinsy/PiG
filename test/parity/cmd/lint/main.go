@@ -163,6 +163,7 @@ type jsonPigOnlyRecordRule struct {
 	Divergence string `toml:"divergence"`
 	Record     string `toml:"record"`
 	Count      int    `toml:"count"`
+	BeforeType string `toml:"before_type"`
 	Reason     string `toml:"reason"`
 }
 
@@ -622,8 +623,8 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 		out = append(out, violation{path, "json-pig-only-without-json", "json_pig_only_records applies only to json_output_equal"})
 	}
 	for _, rule := range sc.Assert.JSONPigOnlyRecords {
-		if rule.Divergence == "" || rule.Record == "" || rule.Count < 1 || strings.TrimSpace(rule.Reason) == "" {
-			out = append(out, violation{path, "json-pig-only-incomplete", "json_pig_only_records requires a divergence, the exact record, a count of at least 1 and a reason"})
+		if rule.Divergence == "" || rule.Record == "" || rule.Count < 1 || rule.BeforeType == "" || strings.TrimSpace(rule.Reason) == "" {
+			out = append(out, violation{path, "json-pig-only-incomplete", "json_pig_only_records requires a divergence, the exact record, a count of at least 1, the type of the record that follows it, and a reason"})
 		}
 	}
 	for _, rule := range sc.Assert.JSONAliases {
