@@ -5,5 +5,5 @@ package nodespawn
 import "os/exec"
 
 // DetachFromTerminal does nothing where the platform has neither sessions nor
-// detached console processes.
+// console windows.
 func DetachFromTerminal(*exec.Cmd) {}

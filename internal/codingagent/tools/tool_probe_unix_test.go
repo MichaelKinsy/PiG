@@ -5,7 +5,10 @@ package tools
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -112,20 +115,90 @@ func TestToolProbeCachesPerFileRevision(t *testing.T) {
 	}
 }
 
-// A hung --version must not stall lookup forever; this checks the probe is
-// bounded without waiting out the production timeout.
-func TestProbeToolVersionTimesOutHungProgram(t *testing.T) {
+// A hung --version must not stall lookup forever, the timeout must end the
+// wrapper's children too, and the verdict of a cut-short probe must not stick.
+func TestProbeToolVersionTimesOutHungProgramAndItsChildren(t *testing.T) {
 	if testing.Short() {
 		t.Skip("waits out toolProbeTimeout")
 	}
 	dir := t.TempDir()
-	p := writeFakeBin(t, dir, "fd", "exec sleep 60\n")
+	pidFile := filepath.Join(dir, "pid")
+	// Not exec: sleep is a grandchild that only a group kill reaches.
+	p := writeFakeBin(t, dir, "fd", "sleep 60 &\necho $! > "+pidFile+"\nwait\n")
+	t.Setenv("PATH", dir)
 	start := time.Now()
-	if probeToolVersion(p, []string{"fd "}) {
-		t.Fatal("hung program accepted")
+	if ok, completed := probeToolVersion(p, []string{"fd "}); ok || completed {
+		t.Fatal("hung program accepted or its timeout counted as a verdict")
 	}
 	if d := time.Since(start); d > toolProbeTimeout+3*time.Second {
 		t.Fatalf("probe took %v", d)
+	}
+	raw, err := os.ReadFile(pidFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 50 {
+		if syscall.Kill(pid, 0) != nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if syscall.Kill(pid, 0) == nil {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+		t.Fatalf("the probe's child %d outlived the timeout", pid)
+	}
+	if got := systemToolIdentity(p, "fd", []string{"fd "}); got {
+		t.Fatal("hung program accepted")
+	}
+	if _, cached := toolProbeCache.Load(toolProbeKeyFor(t, p, "fd")); cached {
+		t.Fatal("a timed-out probe was cached")
+	}
+}
+
+func toolProbeKeyFor(t *testing.T, path, tool string) toolProbeKey {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return toolProbeKey{path: path, tool: tool, modTime: info.ModTime(), size: info.Size()}
+}
+
+// A failed start is no verdict either: the file may still be being written.
+func TestProbeToolVersionDoesNotCacheStartFailure(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "fd")
+	if err := os.WriteFile(p, []byte("#!/nonexistent-interpreter\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if ok, completed := probeToolVersion(p, []string{"fd "}); ok || completed {
+		t.Fatalf("start failure gave ok=%v completed=%v", ok, completed)
+	}
+	if systemToolIdentity(p, "fd", []string{"fd "}) {
+		t.Fatal("unstartable program accepted")
+	}
+	if _, cached := toolProbeCache.Load(toolProbeKeyFor(t, p, "fd")); cached {
+		t.Fatal("a start failure was cached")
+	}
+}
+
+// Pi's libuv starts a file with no #! line through /bin/sh (glibc's execvp
+// fallback), and so do the searches; the probe has to start it the same way.
+func TestLookupToolPathAcceptsFdWrapperWithoutShebang(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("posix_spawn on macOS does not run a #!-less file through sh")
+	}
+	dir := t.TempDir()
+	p := filepath.Join(dir, "fd")
+	if err := os.WriteFile(p, []byte("echo 'fd 10.3.0'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	if got := LookupToolPath("fd", ""); got != p {
+		t.Fatalf("LookupToolPath(fd) = %q, want %q", got, p)
 	}
 }
 
@@ -147,7 +220,7 @@ func BenchmarkProbeToolVersionUncached(b *testing.B) {
 	p := writeFakeBin(b, dir, "fd", "echo 'fd 10.3.0'\n")
 	b.ReportAllocs()
 	for b.Loop() {
-		if !probeToolVersion(p, []string{"fd "}) {
+		if ok, completed := probeToolVersion(p, []string{"fd "}); !ok || !completed {
 			b.Fatal("probe failed")
 		}
 	}

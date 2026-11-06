@@ -2,18 +2,14 @@
 
 package nodespawn
 
-import (
-	"os/exec"
-	"syscall"
+import "os/exec"
 
-	"golang.org/x/sys/windows"
-)
-
-// DetachFromTerminal starts cmd without a console, the Windows counterpart of
-// Setsid: the child cannot attach to PiG's console.
+// DetachFromTerminal gives cmd a console of its own without a window
+// (CREATE_NO_WINDOW and a hidden window, as HideWindow does), the Windows
+// counterpart of a new session: the child does not share PiG's console. A
+// console program that a shim starts opens no visible window either, as it
+// would under DETACHED_PROCESS. cmd's stdin must be the null device and its
+// stdout and stderr pipes.
 func DetachFromTerminal(cmd *exec.Cmd) {
-	if cmd.SysProcAttr == nil {
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-	}
-	cmd.SysProcAttr.CreationFlags |= windows.DETACHED_PROCESS
+	HideWindow(cmd, Ignore, Pipe, Pipe)
 }

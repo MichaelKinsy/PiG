@@ -6,7 +6,11 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // A search program that opens /dev/tty (FDclone) must find no controlling
@@ -25,4 +29,46 @@ func TestWalkDirectoryWithFdRunsInANewSession(t *testing.T) {
 	if string(b) != "leader\n" {
 		t.Fatalf("fd ran with %q, want a new session", b)
 	}
+}
+
+// Cancelling the search ends the whole group, so no fd child outlives it.
+func TestWalkDirectoryWithFdCancelKillsTheGroup(t *testing.T) {
+	dir := t.TempDir()
+	pidFile := filepath.Join(dir, "pid")
+	fd := filepath.Join(dir, "fdbin")
+	script := "#!/bin/sh\nsleep 60 &\necho $! > " + pidFile + "\nwait\n"
+	if err := os.WriteFile(fd, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p := NewCombinedProvider(nil, dir, fd)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		p.walkDirectoryWithFd(ctx, dir, "x", 0)
+		close(done)
+	}()
+	var pid int
+	for range 100 {
+		if raw, err := os.ReadFile(pidFile); err == nil {
+			if n, err := strconv.Atoi(strings.TrimSpace(string(raw))); err == nil {
+				pid = n
+				break
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if pid == 0 {
+		cancel()
+		t.Fatal("fd stub never started its child")
+	}
+	cancel()
+	<-done
+	for range 50 {
+		if syscall.Kill(pid, 0) != nil {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	_ = syscall.Kill(pid, syscall.SIGKILL)
+	t.Fatalf("child %d of the cancelled fd outlived it", pid)
 }

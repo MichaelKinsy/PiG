@@ -255,8 +255,6 @@ type ripgrepRun struct {
 func runRipgrep(ctx context.Context, rgPath, dir string, args []string, limit float64) ([]grepMatch, ripgrepRun, error) {
 	//nolint:gosec // G204 (class b): program is rg resolved by PiG's tools manager; args are fixed flags, then -- and the pattern and search path from the grep tool call, so the model cannot reach an rg option.
 	cmd := exec.CommandContext(ctx, rgPath, args...)
-	// Backstop: a program that is not the real fd/rg cannot take over the terminal.
-	nodespawn.DetachFromTerminal(cmd)
 	// Upstream's spawn has no cwd option, so on Windows libuv finds rg from
 	// PiG's working directory: the lookup precedes cmd.Dir.
 	nodespawn.SetProgram(cmd)
