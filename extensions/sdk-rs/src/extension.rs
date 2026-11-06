@@ -788,10 +788,24 @@ impl Context {
     }
 }
 
-/// Stack of a request's thread. The arguments of a tool call can nest as deep as the host's own JSON marshal allows (10000 levels), and dropping, ordering or writing
-/// such a `Value` recurses once per level: a debug build uses about 2 KiB of stack per level, far past the 2 MiB a thread gets by default. The stack is address space, reserved
-/// and not resident until used.
-const REQUEST_THREAD_STACK: usize = 64 * 1024 * 1024;
+/// Stack of the thread of a request whose arguments nest past serde_json's limit. Such arguments can nest as deep as the host's own JSON marshal allows (10000 levels), and
+/// dropping, ordering or writing the `Value` recurses once per level: a debug build uses about 2 KiB of stack per level in a decode or an ordering, far past the 2 MiB a thread gets by default.
+const DEEP_REQUEST_THREAD_STACK: usize = 64 * 1024 * 1024;
+
+/// Stack of every other request's thread: 8 MiB, what a C thread gets on Linux (`ulimit -s`). A request can still meet a deep value that did not come in its arguments (a
+/// `model_stream_event` carrying the tool arguments of a partial message, a host call's result holding a session entry), and dropping or cloning one 10000 levels deep needs
+/// about 2 MiB of stack, which Rust's 2 MiB default does not leave room for. A thread stack is address space that is not resident until used, and is committed only under
+/// `vm.overcommit_memory=2` or `ulimit -v`, where 8 MiB per concurrent request is what any C program pays; 64 MiB per request would not be.
+const REQUEST_THREAD_STACK: usize = 8 * 1024 * 1024;
+
+/// The stack size a request's thread asks for: the deep stack when its arguments needed the deep decode, and otherwise `REQUEST_THREAD_STACK`.
+pub(crate) fn request_stack_size(req: &RequestMsg) -> usize {
+    if req.deep_args {
+        DEEP_REQUEST_THREAD_STACK
+    } else {
+        REQUEST_THREAD_STACK
+    }
+}
 
 /// Extension is the main builder for a pig subprocess extension.
 pub struct Extension {
@@ -1983,7 +1997,7 @@ impl Extension {
                         let failed_threads = threads.clone();
                         if let Err(err) = thread::Builder::new()
                             .name(format!("pig-request-{id}"))
-                            .stack_size(REQUEST_THREAD_STACK)
+                            .stack_size(request_stack_size(&req))
                             .spawn(move || {
                                 if req.method != "events.dispatch" {
                                     loaded_gate.wait();
@@ -2007,23 +2021,22 @@ impl Extension {
                                         payload.downcast_ref::<String>().cloned().or_else(|| {
                                             payload.downcast_ref::<&str>().map(|s| s.to_string())
                                         });
-                                    let respond = || {
-                                        let _ = conn.respond(
-                                            &id,
-                                            None,
-                                            Some(ErrorInfo {
-                                                code: Some("handler_panic".to_string()),
-                                                message: match detail {
-                                                    Some(detail) => format!(
-                                                        "extension handler panicked: {detail}"
-                                                    ),
-                                                    None => {
-                                                        "extension handler panicked".to_string()
-                                                    }
-                                                },
-                                            }),
-                                        );
-                                    };
+                                    let respond =
+                                        || {
+                                            let _ = conn.respond(
+                                        &id,
+                                        None,
+                                        Some(ErrorInfo {
+                                            code: Some("handler_panic".to_string()),
+                                            message: match detail {
+                                                Some(detail) => {
+                                                    format!("extension handler panicked: {detail}")
+                                                }
+                                                None => "extension handler panicked".to_string(),
+                                            },
+                                        }),
+                                    );
+                                        };
                                     // A handler that panics after its dialog was answered still responds in the order of the answers.
                                     match &start {
                                         Some(start) => start.respond(respond),
@@ -3891,6 +3904,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "render_message".to_string(),
@@ -3977,6 +3991,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4146,6 +4161,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_login".to_string(),
@@ -4216,6 +4232,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_get_api_key".to_string(),
@@ -4244,6 +4261,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_refresh".to_string(),
@@ -4273,6 +4291,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_store_credentials".to_string(),
@@ -4299,6 +4318,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_credential_status".to_string(),
@@ -4395,6 +4415,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4431,6 +4452,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4503,6 +4525,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4564,6 +4587,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4647,6 +4671,7 @@ mod tests {
                     stream: None,
                     stream_error: None,
                     args_error: None,
+                    deep_args: false,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4713,6 +4738,7 @@ mod tests {
                 stream: None,
                 stream_error: None,
                 args_error: None,
+                deep_args: false,
                 tool_call_index: None,
                 args_raw: None,
                 method: method.to_string(),

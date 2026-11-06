@@ -118,7 +118,7 @@ fn nested_request(depth: usize, text: &str) -> String {
 #[test]
 fn a_tool_request_nested_past_serde_jsons_limit_still_decodes() {
     // The deep values drop on a stack made for them, as a request's thread does (a test thread has 2 MiB).
-    on_deep_stack(|| tool_request_nested_past_serde_jsons_limit_still_decodes()).unwrap();
+    on_deep_stack(tool_request_nested_past_serde_jsons_limit_still_decodes).unwrap();
 }
 
 fn tool_request_nested_past_serde_jsons_limit_still_decodes() {
@@ -137,7 +137,7 @@ fn tool_request_nested_past_serde_jsons_limit_still_decodes() {
 
 #[test]
 fn nesting_past_the_bound_is_refused_and_brackets_in_strings_do_not_count() {
-    on_deep_stack(|| nesting_past_the_bound_is_refused()).unwrap();
+    on_deep_stack(nesting_past_the_bound_is_refused).unwrap();
 }
 
 fn nesting_past_the_bound_is_refused() {
@@ -215,7 +215,7 @@ fn nested_notify(method: &str, depth: usize) -> String {
 // notification is marked, not refused, so the connection keeps serving and the loop drops it with a diagnostic.
 #[test]
 fn a_notification_nested_up_to_the_bound_decodes_and_past_it_is_marked() {
-    on_deep_stack(|| notification_nested_up_to_the_bound_decodes()).unwrap();
+    on_deep_stack(notification_nested_up_to_the_bound_decodes).unwrap();
 }
 
 fn notification_nested_up_to_the_bound_decodes() {
@@ -223,10 +223,42 @@ fn notification_nested_up_to_the_bound_decodes() {
         let envelope = decode_frame(nested_notify(method, 9990).as_bytes()).unwrap();
         let notify = envelope.notify.unwrap();
         assert!(notify.args_error.is_none(), "{method}");
-        assert!(notify.args.is_some() || notify.custom_input.is_some() || method == "state_update", "{method}");
-        let envelope = decode_frame(nested_notify(method, MAX_NESTING_DEPTH + 10).as_bytes()).unwrap();
+        assert!(
+            notify.args.is_some() || notify.custom_input.is_some() || method == "state_update",
+            "{method}"
+        );
+        let envelope =
+            decode_frame(nested_notify(method, MAX_NESTING_DEPTH + 10).as_bytes()).unwrap();
         let notify = envelope.notify.unwrap();
-        assert_eq!(notify.args_error.as_deref(), Some(TOO_DEEP_MESSAGE), "{method}");
-        assert!(notify.args.is_none() && notify.custom_input.is_none(), "{method}");
+        assert_eq!(
+            notify.args_error.as_deref(),
+            Some(TOO_DEEP_MESSAGE),
+            "{method}"
+        );
+        assert!(
+            notify.args.is_none() && notify.custom_input.is_none(),
+            "{method}"
+        );
     }
+}
+
+// Only a request whose arguments needed the deep decode (nesting past serde_json's 128 levels) asks for the deep stack, which a thread stack committed under
+// vm.overcommit_memory=2 or ulimit -v would charge per concurrent request; every other request runs on 8 MiB, enough to drop a deep value that reached it in a notification or a host call result.
+#[test]
+fn only_a_request_with_deep_arguments_runs_on_the_deep_stack() {
+    let size_of = |depth: usize| {
+        on_deep_stack(|| {
+            let envelope = decode_frame(nested_request(depth, "ok").as_bytes()).unwrap();
+            crate::extension::request_stack_size(&envelope.request.unwrap())
+        })
+        .unwrap()
+    };
+    for depth in [0, 10, 100] {
+        assert_eq!(size_of(depth), 8 << 20, "depth {depth}");
+    }
+    for depth in [130, 1000, 9000] {
+        assert_eq!(size_of(depth), 64 << 20, "depth {depth}");
+    }
+    // Past the bound the request is answered with the RangeError without running its handler.
+    assert_eq!(size_of(MAX_NESTING_DEPTH + 10), 8 << 20);
 }

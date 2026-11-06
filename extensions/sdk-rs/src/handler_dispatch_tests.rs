@@ -103,6 +103,7 @@ impl Host {
                 stream: None,
                 stream_error: None,
                 args_error: None,
+                deep_args: false,
                 tool_call_index: None,
                 args_raw: None,
                 method: method.into(),

@@ -30,6 +30,7 @@ fn provider_superseded_keeps_the_stream_the_host_still_calls() {
             stream: None,
             stream_error: None,
             args_error: None,
+            deep_args: false,
             tool_call_index: None,
             args_raw: None,
             method: "provider_stream_simple".into(),
