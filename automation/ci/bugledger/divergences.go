@@ -75,10 +75,10 @@ func parseDivergences(text string) map[string]divergence {
 // fixesPiDefect reports whether the record says Pi has a defect that PiG fixes: it has a "Pi bug:" paragraph or cites a Pi issue.
 func (d divergence) fixesPiDefect() bool { return d.PiBug != "" || d.PiIssue != "" }
 
-// symptom is what a user sees in Pi because of the defect.
+// symptom is what a user sees in Pi because of the defect: the first of the Pi bug, observable effect and What paragraphs that still says something once the private wording is dropped (a Pi bug paragraph that only cites Pi's source and release says nothing public), otherwise the title.
 func (d divergence) symptom() string {
 	for _, s := range []string{d.PiBug, d.Observable, d.What} {
-		if s != "" {
+		if publicText(s) != "" {
 			return s
 		}
 	}

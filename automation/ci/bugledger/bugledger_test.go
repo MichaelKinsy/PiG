@@ -90,6 +90,28 @@ func TestRootCausePrefersALabelThenCauseWordsThenTheFirstParagraph(t *testing.T)
 	}
 }
 
+func TestDivergenceSymptomSkipsAPiBugThatOnlyCitesPiSource(t *testing.T) {
+	d := divergence{
+		Title:      "A title",
+		PiBug:      "Pi 1.5.0 (`agent-session.ts` `_queueSteer`), fixed by Pi main 4cf69332c.",
+		Observable: "A queued image reaches the model at full size.",
+		What:       "PiG ports a change.",
+	}
+	if got := d.symptom(); got != d.Observable {
+		t.Errorf("symptom() = %q, want the observable effect %q", got, d.Observable)
+	}
+	d.Observable = ""
+	if got := d.symptom(); got != d.What {
+		t.Errorf("symptom() = %q, want What %q", got, d.What)
+	}
+	if got := (divergence{Title: "A title"}).symptom(); got != "A title" {
+		t.Errorf("symptom() = %q, want the title", got)
+	}
+	if got := (divergence{PiBug: "A bug.", Observable: "Seen."}).symptom(); got != "A bug." {
+		t.Errorf("symptom() = %q, want the public Pi bug paragraph", got)
+	}
+}
+
 func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 	cases := []struct{ note, impact, platform string }{
 		{"A deadlock froze the UI on macOS.", "Crash, hang or runaway process", "macOS"},
