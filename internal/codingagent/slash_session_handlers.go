@@ -374,6 +374,7 @@ func treeNavigateWithSummarize(sc *SlashContext, entryID string) error {
 	// no summary through the same result handling as a chosen "No summary".
 	skipPrompt := sc.SettingsManager != nil && sc.SettingsManager.GetBranchSummarySettings().SkipPrompt
 
+	// pig divergence (D270): the frames of the prompt's close are held.
 	// The frames of a dialog's close are held when its choice leads to the navigation, so the first frame after the choice is the fork
 	// point (navigateTree). Cancelling a dialog, or choosing the custom prompt, shows the next dialog or the tree at once.
 	holdFor := func(holds func(choice string) bool) {

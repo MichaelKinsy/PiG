@@ -21,10 +21,15 @@ func (m *InteractiveMode) rebuildChatFromSession() {
 
 // rebuildChat clears and repaints the transcript; populateHistory is renderSessionEntries' option of the same name.
 func (m *InteractiveMode) rebuildChat(populateHistory bool) {
+	m.rebuildChatFrom(m.sessionEntriesToRender(), populateHistory)
+}
+
+// rebuildChatFrom is rebuildChat over entries read beforehand, as sessionEntriesToRender reads them.
+func (m *InteractiveMode) rebuildChatFrom(entries []SessionEntry, populateHistory bool) {
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
 	m.tuiInst.ForceFullRender()
-	m.renderSessionEntriesWithHistory(populateHistory)
+	m.renderSessionEntriesFrom(entries, populateHistory)
 }
 
 // renderSessionEntries renders session messages/entries into the chat
@@ -126,7 +131,12 @@ func (m *InteractiveMode) showSessionCompactedStatus() {
 // `chatContainer.clear(); renderInitialMessages()` does after a Session replacement and a tree navigation (interactive-mode.ts:2004-2005,
 // 2201-2209, 5634-5635). rebuildChatFromSession alone is upstream's rebuildChatFromMessages, which paints no warning.
 func (m *InteractiveMode) repaintInitialMessages() {
-	m.rebuildChat(true)
+	m.repaintInitialMessagesFrom(m.sessionEntriesToRender())
+}
+
+// repaintInitialMessagesFrom is repaintInitialMessages over entries read beforehand, so the owner loop decodes no record of the Session.
+func (m *InteractiveMode) repaintInitialMessagesFrom(entries []SessionEntry) {
+	m.rebuildChatFrom(entries, true)
 	m.renderProjectTrustWarningIfNeeded()
 	m.showSessionCompactedStatus()
 	m.releaseSwitchHeap()
@@ -140,16 +150,31 @@ func (m *InteractiveMode) renderSessionEntries() {
 // renderSessionEntriesWithHistory is renderSessionEntries with upstream's populateHistory option: each rendered user message's text also goes to the
 // editor history.
 func (m *InteractiveMode) renderSessionEntriesWithHistory(populateHistory bool) {
-	var entries []SessionEntry
+	m.renderSessionEntriesFrom(m.sessionEntriesToRender(), populateHistory)
+}
+
+// sessionEntriesToRender reads the entries the transcript paints from the current Session.
+func (m *InteractiveMode) sessionEntriesToRender() []SessionEntry {
+	return transcriptEntries(m.currentSession(), m.showCacheMissNotices())
+}
+
+// transcriptEntries reads the entries the transcript paints from session: the kept range and everything after it render the same from the
+// context branch, and the entries before it hydrate the same state; cache-miss notices scan the whole branch, and a compaction whose kept
+// entry is not on the branch renders the whole branch. It decodes the records a cold read finds, so it runs off the owner loop when it can.
+func transcriptEntries(session *Session, showCacheMisses bool) []SessionEntry {
+	if session == nil {
+		return nil
+	}
+	if showCacheMisses || !session.KeptRangeOnBranch() {
+		return session.GetBranch()
+	}
+	return session.GetContextBranch()
+}
+
+// renderSessionEntriesFrom paints entries, which sessionEntriesToRender read, and refreshes the footer name.
+func (m *InteractiveMode) renderSessionEntriesFrom(entries []SessionEntry, populateHistory bool) {
 	name := ""
 	if session := m.currentSession(); session != nil {
-		// The kept range and everything after it render the same from the context branch, and the entries before it hydrate the same state;
-		// cache-miss notices scan the whole branch, and a compaction whose kept entry is not on the branch renders the whole branch.
-		if m.showCacheMissNotices() || !session.KeptRangeOnBranch() {
-			entries = session.GetBranch()
-		} else {
-			entries = session.GetContextBranch()
-		}
 		name = session.GetSessionName()
 	}
 	if m.statusLine != nil {

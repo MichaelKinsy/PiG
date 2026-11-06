@@ -384,9 +384,6 @@ type InteractiveMode struct {
 	branchSummaryCancel context.CancelFunc
 	// frameHold is true while a tree navigation holds the frames its selection requested (holdFrames). Owner loop only.
 	frameHold bool
-	// dialogCommit, when set, runs on the owner loop as a dialog resolves with a choice, before the dialog closes and before the paint
-	// that follows the key (ext_ui_context.go runDialog). The tree navigation sets it to hold the frames of its prompt's close.
-	dialogCommit func(choice string)
 
 	// Bash-prefix execution state.
 	// bashCancel cancels the currently-running `!cmd` (Esc routes
@@ -789,6 +786,7 @@ func (m *InteractiveMode) runScheduledRender() {
 	m.wakeSpinner()
 }
 
+// pig divergence (D270): a /tree choice holds the owner loop's frames until the navigation returns.
 // holdFrames stops the owner loop from painting until releaseFrames. The frames requested meanwhile stay requested: releaseFrames
 // replaces them with one that follows whatever changed. A paint a component asks for by name (Render) is not held.
 func (m *InteractiveMode) holdFrames() { m.frameHold = true }
