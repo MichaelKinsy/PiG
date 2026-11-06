@@ -114,7 +114,7 @@ func runChild(mode string) int {
 	case "exit-with-stderr":
 		fmt.Fprint(os.Stderr, "child failed loudly\n")
 		// A record large enough that the parent is still reading it when the child's exit is observed.
-		fmt.Fprintf(os.Stdout, "{\"type\":\"custom\",\"pad\":%q}\n", strings.Repeat("x", 8<<20))
+		_, _ = fmt.Fprintf(os.Stdout, "{\"type\":\"custom\",\"pad\":%q}\n", strings.Repeat("x", 8<<20))
 		return 2
 	case "not-reading":
 		time.Sleep(time.Minute)
