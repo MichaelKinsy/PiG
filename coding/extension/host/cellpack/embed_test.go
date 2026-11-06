@@ -1,9 +1,12 @@
 package cellpack
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -71,6 +74,36 @@ func TestEmbeddedDefaultManifestIsEmpty(t *testing.T) {
 	}
 	if len(m.Cells) != 0 {
 		t.Errorf("committed default manifest must be empty, got %d cells", len(m.Cells))
+	}
+}
+
+// The manifest stock pig embeds is the one every start reads: it must come back as the decoder would give it, without the decoder.
+func TestStockManifestFastPathEqualsTheDecoder(t *testing.T) {
+	got, err := loadManifest(cells)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := loadManifest(fstest.MapFS{"cells/manifest.json": {Data: []byte(`{"cells": []}`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, decoded) {
+		t.Errorf("stock manifest = %#v, decoder gives %#v", got, decoded)
+	}
+	if raw, err := fs.ReadFile(cells, "cells/manifest.json"); err != nil || string(bytes.TrimSpace(raw)) != stockManifest {
+		t.Errorf("cells/manifest.json = %q, %v; stockManifest names %q", raw, err, stockManifest)
+	}
+}
+
+// Reading the stock manifest is two allocations (the file's bytes, the embedded copy's). Through the decoder it was about twenty, and the first decode of
+// the Manifest type allocated the 128 KB type-link table of reflect once in every process.
+func TestLoadManifestOfTheStockManifestDoesNotDecode(t *testing.T) {
+	if got := testing.AllocsPerRun(20, func() {
+		if _, err := loadManifest(cells); err != nil {
+			t.Fatal(err)
+		}
+	}); got > 3 {
+		t.Errorf("loadManifest of the stock manifest allocates %v times, want at most 3", got)
 	}
 }
 

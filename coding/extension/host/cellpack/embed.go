@@ -97,10 +97,19 @@ func loadedCellsFromManifest(m Manifest, baseDir string) []LoadedCell {
 	return out
 }
 
+// stockManifest is the content of the manifest stock pig embeds (cells/manifest.json): no cell.
+const stockManifest = `{"cells":[]}`
+
 func loadManifest(fsys fs.FS) (Manifest, error) {
 	data, err := fs.ReadFile(fsys, "cells/manifest.json")
 	if err != nil {
 		return Manifest{}, fmt.Errorf("read embedded cell manifest: %w", err)
+	}
+	// Stock pig commits exactly this manifest. Decoding it through reflection is not free: the Manifest's field types, which no code takes a pointer to, make the
+	// JSON package ask reflect for their pointer types, and reflect answers by copying the binary's type-link table (128 KB in one allocation) in every start.
+	// The result is the one the decoder gives, so the manifest a Piglet Binary build stages is the only one decoded.
+	if string(bytes.TrimSpace(data)) == stockManifest {
+		return Manifest{Cells: []CellEntry{}}, nil
 	}
 	var m Manifest
 	decoder := json.NewDecoder(bytes.NewReader(data))
