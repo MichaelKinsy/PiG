@@ -41,6 +41,7 @@ var toolProbeCache sync.Map // toolProbeKey -> bool
 // nodespawn.DetachFromTerminal) and reads /dev/null. Only a probe that ran to
 // completion is cached: a timeout or a failed start (a package manager still
 // writing the file) is tried again at the next lookup.
+// pig divergence (D269): a system fd or rg counts only when its --version names it.
 func systemToolIdentity(path, tool string, prefixes []string) bool {
 	//perf:ok one stat per lookup: it is the cache key (mtime and size), and a lookup runs at provider build, startup and per find or grep call
 	info, err := os.Stat(path)
@@ -62,6 +63,7 @@ func systemToolIdentity(path, tool string, prefixes []string) bool {
 // with one of prefixes after an exit 0. completed is false when the probe was
 // cut short or could not start, so its verdict says nothing about the binary.
 func probeToolVersion(path string, prefixes []string) (ok, completed bool) {
+	//portlint:allow ctxbackground LookupToolPath, like Pi's getToolPath, takes no context; toolProbeTimeout bounds the probe
 	ctx, cancel := context.WithTimeout(context.Background(), toolProbeTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, path, "--version")
