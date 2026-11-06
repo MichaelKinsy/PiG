@@ -337,3 +337,100 @@ func TestRuntimeCloseSettlesCredentialWritesBeforeItRetiresTheFactoryResources(t
 		t.Fatalf("retirements after Close = %v, want [retire:quit]", order)
 	}
 }
+
+// nativeAuthProvider is a subprocess extension's provider whose ResolveAuth is resolve.
+func nativeAuthProvider(id string, resolve func(context.Context, *ai.Credential, ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error)) *extension.NativeProvider {
+	return &extension.NativeProvider{
+		ID: id, Name: id, BaseURL: "https://example.test/v1",
+		Models:                   []extension.ProviderModelConfig{{ID: "model", Name: "model"}},
+		Auth:                     ai.ProviderAuth{OAuth: &ai.OAuthAuth{Name: id}},
+		CheckAuth:                func(context.Context, *ai.Credential) (*ai.AuthCheck, error) { return nil, nil },
+		ResolveAuth:              resolve,
+		ResolveRefreshCredential: func(context.Context, *ai.Credential) (*ai.Credential, *ai.Credential, error) { return nil, nil, nil },
+		Stream: func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			return nil, errors.New("unused")
+		},
+	}
+}
+
+// Pi resolves a provider's auth with the caller's signal (resolve.ts:33-44, 193-205); only the OAuth refresh inside it is detached. So the abort of a cancelled caller reaches the provider's resolvers, and the auth.json lock they run under is released with them: the next credential operation is not queued behind a resolver that waits for its signal. Red when the whole resolution runs on a context nobody cancels (TestNativeProviderHostLifecycle hung there): the second call never gets the lock.
+func TestNativeProviderAuthGivesTheCallersCancellationToTheResolverAndReleasesTheLock(t *testing.T) {
+	_, services, _, respond := rotatingOAuthRuntime(t)
+	defer respond()
+	var waiting = make(chan struct{})
+	var once sync.Once
+	provider := nativeAuthProvider("native-wait", func(ctx context.Context, _ *ai.Credential, _ ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
+		first := false
+		once.Do(func() { first = true })
+		if !first {
+			return &ai.AuthResult{}, nil, nil
+		}
+		close(waiting)
+		<-ctx.Done()
+		return nil, nil, context.Cause(ctx)
+	})
+	if err := services.Registry().RegisterNativeProvider(t.Context(), provider); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	first := make(chan error, 1)
+	go func() {
+		_, err := services.Registry().NativeProviderAuth(ctx, "native-wait", ai.AuthResolutionOverrides{})
+		first <- err
+	}()
+	<-waiting
+	cancel(errors.New("abort"))
+	if err := <-first; err == nil {
+		t.Fatal("the cancelled caller got no error")
+	}
+	second := make(chan error, 1)
+	go func() {
+		_, err := services.Registry().NativeProviderAuth(t.Context(), "native-wait", ai.AuthResolutionOverrides{})
+		second <- err
+	}()
+	select {
+	case err := <-second:
+		if err != nil {
+			t.Fatalf("second NativeProviderAuth = %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the next NativeProviderAuth is queued behind a resolver that never saw the abort: the auth.json lock was not released")
+	}
+}
+
+// A refreshed credential is saved even when a later step of the resolution fails with the abort (Pi saves the refresh inside modify, and toAuth runs after it): the provider's resolver rotated the token, the caller then cancelled, and the resolver reports the cancellation together with the update.
+func TestNativeProviderAuthSavesARefreshedCredentialWhenALaterStepFailsWithTheAbort(t *testing.T) {
+	runtime, services, _, respond := rotatingOAuthRuntime(t)
+	defer respond()
+	if err := services.Auth().Set("native-late", ai.Credential{Type: ai.CredentialOAuth, Access: "old-access", Refresh: "old-refresh", Expires: time.Now().Add(-time.Second).UnixMilli()}); err != nil {
+		t.Fatal(err)
+	}
+	refreshed := make(chan struct{})
+	provider := nativeAuthProvider("native-late", func(ctx context.Context, _ *ai.Credential, _ ai.AuthResolutionOverrides) (*ai.AuthResult, *ai.Credential, error) {
+		next := ai.Credential{Type: ai.CredentialOAuth, Access: "new-access", Refresh: "new-refresh", Expires: time.Now().Add(time.Hour).UnixMilli()}
+		close(refreshed)
+		<-ctx.Done()
+		return nil, &next, context.Cause(ctx)
+	})
+	if err := services.Registry().RegisterNativeProvider(t.Context(), provider); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	returned := make(chan error, 1)
+	go func() {
+		_, err := services.Registry().NativeProviderAuth(ctx, "native-late", ai.AuthResolutionOverrides{})
+		returned <- err
+	}()
+	<-refreshed
+	cancel(errors.New("abort"))
+	<-returned
+	if err := runtime.Close(); err != nil {
+		t.Fatalf("Close = %v", err)
+	}
+	got, err := services.Registry().ReadCredential(t.Context(), "native-late")
+	if err != nil || got == nil || got.Refresh != "new-refresh" {
+		t.Fatalf("auth.json after Close = %+v, %v; want the rotated token", got, err)
+	}
+}

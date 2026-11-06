@@ -1,5 +1,5 @@
 // A native Provider with an OAuth method whose token endpoint is a fake: refresh() writes RPC_OAUTH_REFRESH_STARTED, then answers after RPC_OAUTH_REFRESH_MS with a rotated token. The catalog refresh of RPC mode refreshes an expired credential of this provider (refreshModels is declared, as for the built-in catalogs), so the token request is in flight when the test ends the process (Pi main b2cb62923, #11692).
-import { writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 
 export default function (pi) {
   const models = [{
@@ -27,9 +27,11 @@ export default function (pi) {
     stream: () => { throw new Error("unused"); },
     streamSimple: () => { throw new Error("unused"); },
   });
-  // A request-time refresh that nobody awaits when the run ends: the extension asks for the provider's credentials at session start and goes on, as a request that its caller abandoned does.
-  if (process.env.RPC_OAUTH_REFRESH_ON_SESSION_START) {
+  // A request-time refresh that nobody awaits when the run ends: the extension asks for the provider's credentials at session start and goes on, as a request that its caller abandoned does. A test that drives an interactive process waits for the session_start line in PIG_TEST_REPLACE_LOG.
+  if (process.env.RPC_OAUTH_REFRESH_ON_SESSION_START || process.env.PIG_TEST_REPLACE_LOG) {
     pi.on("session_start", (_event, ctx) => {
+      if (process.env.PIG_TEST_REPLACE_LOG) appendFileSync(process.env.PIG_TEST_REPLACE_LOG, "session_start\n");
+      if (!process.env.RPC_OAUTH_REFRESH_ON_SESSION_START) return;
       const model = ctx.modelRegistry.find("rotating-oauth", "rotating-model");
       void ctx.modelRegistry.getApiKeyAndHeaders(model).catch(() => {});
     });

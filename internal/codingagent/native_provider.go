@@ -94,23 +94,24 @@ func (r *ModelRegistry) NativeProviderAuth(ctx context.Context, id string, overr
 	if key, ok := r.RuntimeAPIKey(id); ok && overrides.APIKey == nil {
 		overrides.APIKey = &key
 	}
-	// pig divergence (D237): the transaction is Pi's refreshStoredOAuthCredential. The caller returns when ctx ends (Pi's abortable race), but the transaction goes on without ctx: a refresh that has started may already have spent the single-use token, so its result must reach auth.json, and the caller's exit waits for it (RuntimeCredentials.Settled). ctx ends only the wait for the lock. The reverse callback runs on the detached context to the end, so the refresh's result is in the snapshot when it returns, and nothing reads the snapshot while a late refresh writes it.
+	// pig divergence (D237): the transaction is Pi's refreshStoredOAuthCredential. The caller returns when ctx ends (Pi's abortable race, resolve.ts:33-44), but the transaction goes on to its end, bounded by the lock wait and the fifteen-second refresh timeout: a refresh that has started may already have spent the single-use token, so its result is saved whatever else fails, and the caller's exit waits for it (RuntimeCredentials.Settled). ctx ends only the wait for the lock. The provider's callbacks (apiKey resolve and check, toAuth) get ctx itself, as in Pi, so the abort reaches them and none holds the lock past it; only the OAuth refresh inside them is detached (the provider's resolveAuth).
 	type outcome struct {
 		resolution *ai.AuthResult
 		err        error
 	}
-	detached := context.WithoutCancel(ctx)
 	done := make(chan outcome, 1)
 	go func() {
 		var resolution *ai.AuthResult
+		var resolveErr error
 		_, err := ai.ModifyCredentialDetached(ctx, credentials, id, func(current *ai.Credential) (*ai.Credential, error) {
-			resolved, updated, err := p.ResolveAuth(detached, current, overrides)
-			if err != nil {
-				return nil, err
-			}
-			resolution = resolved
+			resolved, updated, err := p.ResolveAuth(ctx, current, overrides)
+			resolution, resolveErr = resolved, err
+			// A refreshed credential is saved even when a later step failed with the abort; without an update the failure ends the transaction unwritten.
 			return updated, nil
 		})
+		if err == nil {
+			err = resolveErr
+		}
 		done <- outcome{resolution, err}
 	}()
 	select {
