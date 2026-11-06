@@ -182,6 +182,11 @@ func TestRenderHighlightedHtmlParity(t *testing.T) {
 		encoder := json.NewEncoder(&line)
 		encoder.SetEscapeHTML(false)
 		result := renderHighlightedHTMLProbe(probe)
+		if result.Out != nil {
+			// The renderer keeps JavaScript's UTF-16 units; the stream is what Node writes, a lone surrogate as one U+FFFD (the Pi script's toWellFormed).
+			written := string(jsstring.ToUTF8(*result.Out))
+			result.Out = &written
+		}
 		if err := encoder.Encode(result); err != nil {
 			t.Fatal(err)
 		}
