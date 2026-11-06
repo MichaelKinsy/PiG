@@ -1604,7 +1604,7 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 					return
 				}
 				fileTask = run
-				baseRes = provider.GetSuggestions(context.Background(), view, row, col, AutocompleteSuggestionOptions{Force: force})
+				baseRes = provider.GetSuggestions(ctx, view, row, col, AutocompleteSuggestionOptions{Force: force})
 				taken = true
 			})
 			select {

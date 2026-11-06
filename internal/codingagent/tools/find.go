@@ -180,6 +180,7 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	resultLimitReached := float64(len(relativized)) > effectiveLimit
 	if resultLimitReached {
+		//portlint:allow numbers len(relativized) > effectiveLimit and effectiveLimit is floored above, so int holds it exactly and slice(0, effectiveLimit) takes the first effectiveLimit results
 		relativized = relativized[:int(effectiveLimit)]
 	}
 	return formatFindResults(relativized, effectiveLimit, resultLimitReached, false), nil
@@ -213,6 +214,7 @@ func (t *FindTool) findWithOperations(ctx context.Context, pattern, searchPath s
 	limitReached := false
 	// pig divergence (D253): a custom glob receives limit+1; the extra result only reports that the limit was reached.
 	if float64(len(results)) > limit {
+		//portlint:allow numbers len(results) > limit and limit is the whole number the caller floored, so int holds it exactly and slice(0, limit) takes the first limit results
 		results = results[:int(limit)]
 		limitReached = true
 	}

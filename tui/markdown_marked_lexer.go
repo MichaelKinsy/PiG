@@ -166,6 +166,7 @@ func (l *markedBlockLexer) blockTokens(src []rune, str string, tokens *[]*marked
 		at := pos
 		restStr := ""
 		if len(str) == len(src) {
+			//portlint:allow utf16units len(str) == len(src) means every character of str is one byte, so the byte offset pos is the code point and code unit offset
 			restStr = str[pos:]
 		}
 
@@ -387,6 +388,7 @@ func markedCode(src []rune) (*markedBlock, int) {
 			}
 		}
 		r, size := jsstring.DecodeCodePoint(raw[i:])
+		//portlint:allow utf16units size is the byte length of the code point DecodeCodePoint just decoded at i, so the copy writes that one code point with a lone surrogate's WTF-8 bytes intact
 		text.WriteString(raw[i : i+size])
 		i += size
 		atLineStart = r == '\n' || r == '\r' || r == '\u2028' || r == '\u2029'
@@ -812,6 +814,7 @@ func markedStripQuoteMarkers(s string) string {
 			}
 		}
 		r, size := jsstring.DecodeCodePoint(s[i:])
+		//portlint:allow utf16units size is the byte length of the code point DecodeCodePoint just decoded at i, so the copy writes that one code point with a lone surrogate's WTF-8 bytes intact
 		out.WriteString(s[i : i+size])
 		i += size
 		lineStart = r == '\n' || r == '\r' || r == '\u2028' || r == '\u2029'
@@ -1090,6 +1093,7 @@ func markedBlockquoteBegin(line string, n int) bool {
 // markedHTMLBeginAt is other.htmlBeginRegex(indent), /^ {0,n}<(?:[a-z].*>|!--)/i, where . excludes the line terminators.
 func markedHTMLBeginAt(line string, n int) bool {
 	rest, ok := markedIndented(line, n)
+	//portlint:allow utf16units the match needs rest[0] to be the ASCII '<' and rest[1] a further byte: a one-unit rest is a single byte, and any other first byte fails either way
 	if !ok || len(rest) < 2 || rest[0] != '<' {
 		return false
 	}
@@ -1099,6 +1103,7 @@ func markedHTMLBeginAt(line string, n int) bool {
 	if c := rest[1] | 0x20; c < 'a' || c > 'z' {
 		return false
 	}
+	//portlint:allow utf16units rest[1] matched an ASCII letter, so rest[2:] starts on a character boundary; the loop only looks for the ASCII '>' and the line terminators
 	for _, r := range rest[2:] {
 		switch r {
 		case '>':
@@ -1112,6 +1117,7 @@ func markedHTMLBeginAt(line string, n int) bool {
 
 // markedTaskPrefix is the length of other.listReplaceTask, /^\[[ xX]\] +/, on s, and whether it is a task (other.listIsTask, /^\[[ xX]\] +\S/) as well.
 func markedTaskPrefix(s string) (length int, isTask bool) {
+	//portlint:allow utf16units the rule is ASCII bytes only ("[", one of " xX", "]", " "): a string shorter than four bytes or with another byte there does not match, whatever its UTF-16 length
 	if len(s) < 4 || s[0] != '[' || s[1] != ' ' && s[1] != 'x' && s[1] != 'X' || s[2] != ']' || s[3] != ' ' {
 		return 0, false
 	}
@@ -1164,6 +1170,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 	ordered := len(bull) > 1
 	list := &markedBlock{kind: "list", ordered: ordered}
 	if ordered {
+		//portlint:allow numbers bull is one to nine ASCII digits and a . or ) (markedBulletEnd), so Atoi on the digits is parseInt and cannot fail
 		list.start, _ = strconv.Atoi(bull[:len(bull)-1])
 	}
 
@@ -1365,6 +1372,7 @@ func markedListItem(src []rune, bull string) (bulletLength, length int, ok bool)
 		return 0, 0, false
 	}
 	marker := string(src[spaces:end]) // the bullet rule matched ASCII
+	//portlint:allow utf16units bull and marker are ASCII (the bullet rule matched ASCII), so their byte lengths and last bytes are their .length and charAt
 	if len(bull) == 1 && marker != bull || len(bull) > 1 && (len(marker) < 2 || marker[len(marker)-1] != bull[len(bull)-1]) {
 		return 0, 0, false
 	}

@@ -786,7 +786,7 @@ func (c *mcpCLI) list(ctx context.Context, loaded LoadedMcpConfig, asJSON bool, 
 		if report.state == string(StateNeedsAuth) {
 			// pig divergence (D255): Pi 4d72d05bc names /login <provider> for a provider-backed server.
 			if report.authProvider != "" {
-				c.log(fmt.Sprintf("  sign in with: /login %s in %s", report.authProvider, c.app))
+				c.log("  sign in with: /login " + report.authProvider + " in " + c.app)
 			} else {
 				c.log(fmt.Sprintf("  sign in with: %s mcp login %s", c.app, report.name))
 			}
