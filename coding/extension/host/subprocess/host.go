@@ -3257,6 +3257,8 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	entry, factoryLauncher := nodeLauncherEntry(binPath)
 	if factoryLauncher {
 		// The first generation keys Pi's factory cache by this Host's configured cwd, as every later admission does; the process's own cwd is the physical path.
+		// pig additive (D232): a PIG_EXT_GROUP the user exported is not a group: only this Host's own group reaches the launcher.
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(value string) bool { return envHasKey(value, "PIG_EXT_GROUP") })
 		cmd.Env = append(cmd.Env, h.factoryLauncherEnv()...)
 		if admissionWriter, err = cmd.StdinPipe(); err != nil {
 			cancel()

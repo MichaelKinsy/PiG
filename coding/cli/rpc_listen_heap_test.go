@@ -4,6 +4,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // The settler frees once, a quiet period after the last build of a burst, and never after it stops (D232).
@@ -21,7 +23,7 @@ func TestHeapSettlerFreesOnceAfterTheLastTouch(t *testing.T) {
 	last := time.Now()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("the heap was never freed")
 	}
 	if since := time.Since(last); since < delay/2 {
