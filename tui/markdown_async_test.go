@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 func TestAsyncMarkdownReplacesPendingGeneration(t *testing.T) {
@@ -93,5 +95,27 @@ func BenchmarkAsyncMarkdownCached(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		md.Render(80)
+	}
+}
+
+// An async transform's output that Markdown joins (two adjacent surrogate halves) is rendered once: the cache compares the output as it came.
+func TestAsyncMarkdownNonCanonicalOutputRendersOnce(t *testing.T) {
+	high, low := jsstring.FromUTF16([]uint16{0xd83d}), jsstring.FromUTF16([]uint16{0xde00})
+	var workers sync.WaitGroup
+	md := NewMarkdown("x")
+	md.AsyncTransform = &AsyncMarkdownTransform{
+		Context: t.Context(), Start: workers.Go,
+		Prepare: func(string, int) func(context.Context) string {
+			return func(context.Context) string { return "a " + high + low }
+		},
+	}
+	md.Render(20)
+	workers.Wait()
+	first := md.Render(20)
+	if len(first) != 1 || !strings.Contains(first[0], "a \U0001F600") {
+		t.Fatalf("rows %q", first)
+	}
+	if second := md.Render(20); &second[0] != &first[0] {
+		t.Fatal("the second Render of an unchanged non-canonical async result drew the rows again")
 	}
 }

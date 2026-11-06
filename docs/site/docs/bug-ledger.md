@@ -16482,7 +16482,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **Images in queued steering and follow-up messages are resized when the message is delivered**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D249)
-- **Symptom:** 
+- **Symptom:** A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.
 - **Root cause:** Not recorded.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
@@ -16497,9 +16497,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **A delivered image-only queued message leaves the pending queue**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D250)
-- **Symptom:** 
+- **Symptom:** After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.
 - **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
+- **User impact:** Wrong display
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
@@ -16587,7 +16587,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…**
 
 - **Source:** A Pi defect that PiG fixed first (divergence D266)
-- **Symptom:** 
+- **Symptom:** Pi's tool card names an image block whose `mimeType` is the empty string `[Image: []]`, an empty bracket pair, where PiG names it `[Image: [image/unknown]]`.
 - **Root cause:** PiG's output names the image with a type a reader can recognise instead of an empty bracket pair, and keeping absent and empty alike avoids a presence flag on a core public type (`ai.ImageContent`) for one fallback label. Only an extension or MCP server that sends `mimeType: ""` can reach it.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms

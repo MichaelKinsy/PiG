@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -359,6 +360,12 @@ func (m *Markdown) Render(width int) []string {
 	if m.Transform != nil && m.AsyncTransform == nil {
 		content = m.Transform(content, contentWidth)
 	}
+	// cachedTransformed is compared with the async transform's output above, so it keeps that output as it came.
+	transformed := content
+	// A JavaScript string never holds a high half followed by a low half: they are one character. Canonical joins two such halves a caller built with a plain Go concatenation. It copies the text, so only text that has such a pair goes through it; the rest, valid or not, is rendered as it is.
+	if jsstring.HasAdjacentSurrogates(content) {
+		content = jsstring.Canonical(content)
+	}
 	out := []string{}
 	if widthx.JSTrim(content) != "" {
 		out = m.renderDocument(content, width, contentWidth)
@@ -367,7 +374,7 @@ func (m *Markdown) Render(width int) []string {
 	}
 	m.cachedContent, m.cachedWidth, m.cachedLines = m.Content, width, out
 	m.cachedTransformState, m.cachedTheme = transformState, ActiveTheme()
-	m.cachedRevision, m.cachedTransformed = revision, content
+	m.cachedRevision, m.cachedTransformed = revision, transformed
 	if m.finished {
 		m.dropStreamingMemos()
 	}

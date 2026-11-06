@@ -90,6 +90,28 @@ func TestRootCausePrefersALabelThenCauseWordsThenTheFirstParagraph(t *testing.T)
 	}
 }
 
+func TestDivergenceSymptomSkipsAPiBugThatOnlyCitesPiSource(t *testing.T) {
+	d := divergence{
+		Title:      "A title",
+		PiBug:      "Pi 1.5.0 (`agent-session.ts` `_queueSteer`), fixed by Pi main 4cf69332c.",
+		Observable: "A queued image reaches the model at full size.",
+		What:       "PiG ports a change.",
+	}
+	if got := d.symptom(); got != d.Observable {
+		t.Errorf("symptom() = %q, want the observable effect %q", got, d.Observable)
+	}
+	d.Observable = ""
+	if got := d.symptom(); got != d.What {
+		t.Errorf("symptom() = %q, want What %q", got, d.What)
+	}
+	if got := (divergence{Title: "A title"}).symptom(); got != "A title" {
+		t.Errorf("symptom() = %q, want the title", got)
+	}
+	if got := (divergence{PiBug: "A bug.", Observable: "Seen."}).symptom(); got != "A bug." {
+		t.Errorf("symptom() = %q, want the public Pi bug paragraph", got)
+	}
+}
+
 func TestImpactAndPlatformComeFromTheWording(t *testing.T) {
 	cases := []struct{ note, impact, platform string }{
 		{"A deadlock froze the UI on macOS.", "Crash, hang or runaway process", "macOS"},
@@ -1889,5 +1911,39 @@ func TestACorrectionAndTheCommitItReplacesShareTheCorrectionsEntry(t *testing.T)
 	}
 	if len(l.Entries) != 1 || !strings.Contains(l.Entries[0].Title, "by hiding it") {
 		t.Fatalf("entries = %+v, want one titled after the first commit", l.Entries)
+	}
+}
+
+// A commit that names a divergence only to mark its call site, and that a "Bug-Ledger: exempt" trailer or an exempt.txt line excuses, is not a fix commit of the divergence's entry.
+func TestADivergenceEntryOmitsAnExemptMarkerCommit(t *testing.T) {
+	r := newFixture(t)
+	r.write("docs/parity/DIVERGENCES.md", divergenceFixture+"\n## D2 Aborted tools\n\nWhat: PiG stops.\n\nPi bug: Pi waits forever.\n\nPi issue: https://example.com/pi/issues/1\n\nRemove when: Pi stops waiting.\n\nSCRUTINIZED:approved\n")
+	r.write("loop.go", "package x\n")
+	fix := r.commit("Record D2 and stop on abort", "docs/parity/DIVERGENCES.md", "loop.go")
+	r.write("loop.go", "package x\n\n// pig divergence (D2): stops on abort.\n")
+	trailer := r.commit("loop: mark D2\n\nBug-Ledger: exempt Follow-up to unreleased work: comment-only marker", "loop.go")
+	r.write("loop.go", "package x\n\n// pig divergence (D2): stops on abort.\n// D2 again.\n")
+	listed := r.commit("loop: mark D2 again", "loop.go")
+	r.write("loop.go", "package x\n\n// pig divergence (D2): stops on abort.\n// D2 again.\n// and again, D2.\n")
+	plain := r.commit("loop: mark D2 a third time", "loop.go")
+	r.write("automation/ci/bugledger/exempt.txt", listed[:10]+" Follow-up to unreleased work: comment-only marker\n")
+
+	l, err := build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var hashes []string
+	for _, e := range l.Entries {
+		if e.Divergence == "D2" {
+			for _, c := range e.Commits {
+				hashes = append(hashes, c.Hash)
+			}
+		}
+	}
+	slices.Sort(hashes)
+	want := []string{fix[:10], plain[:10]}
+	slices.Sort(want)
+	if !slices.Equal(hashes, want) {
+		t.Errorf("D2 commits = %v, want %v (not the exempt %s and %s)", hashes, want, trailer[:10], listed[:10])
 	}
 }

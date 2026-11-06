@@ -234,7 +234,8 @@ func (b *AssistantMessageComponent) appendDelta(thinking bool, delta string) {
 	if len(b.content) == 0 || b.content[len(b.content)-1].Thinking != thinking {
 		b.content = append(b.content, AssistantSegment{Thinking: thinking})
 	}
-	b.content[len(b.content)-1].Text += delta
+	last := &b.content[len(b.content)-1]
+	last.Text = jsstring.Concat(last.Text, delta) // a high half ending one delta and a low half starting the next are one character, as in JavaScript
 	b.SetContent(b.content)
 }
 
