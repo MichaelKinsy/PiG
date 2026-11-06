@@ -1212,7 +1212,7 @@ func cmdAddHuman(args []string, allowInstallScripts bool, stdout, stderr io.Writ
 		}
 	}
 	// An origin record whose YAML is gone belongs to no registered Piglet, and `piglet remove` has nothing to act on. A remote add would conflict with it (the record carries its add time), and a local add would succeed beside a record that no longer matches its YAML and breaks the inventory, so name the file before add reclaims or writes anything.
-	if _, err := os.Stat(destination); os.IsNotExist(err) {
+	if _, err := os.Stat(destination); os.IsNotExist(err) { //perf:ok cold: once per piglet add
 		if originPath := originPathForPiglet(destination); fileExists(originPath) {
 			_, _ = fmt.Fprintf(stderr, "error: %s is the origin record of a Piglet whose source is gone, so no registered Piglet owns it and PiG will not delete it; delete that file yourself and add again\n", originPath)
 			return 1

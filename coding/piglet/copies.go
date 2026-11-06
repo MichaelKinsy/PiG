@@ -84,8 +84,8 @@ func sameFilePath(a, b string) bool {
 	if filepath.Clean(a) == filepath.Clean(b) {
 		return true
 	}
-	infoA, errA := os.Stat(a)
-	infoB, errB := os.Stat(b)
+	infoA, errA := os.Stat(a) //perf:ok cold: a piglet add or remove compares a few paths
+	infoB, errB := os.Stat(b) //perf:ok cold: a piglet add or remove compares a few paths
 	return errA == nil && errB == nil && os.SameFile(infoA, infoB)
 }
 
@@ -175,10 +175,10 @@ func planPigletCopiedFiles(yamlPath string) (pigletCopiedFilePlan, error) {
 			continue
 		}
 		if others := claims.owners(target); len(others) > 0 {
-			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: Piglet %s also uses it", target, strings.Join(others, ", ")))
+			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: Piglet %s also uses it", target, strings.Join(others, ", "))) //perf:ok cold: a message per kept file of one piglet remove
 			continue
 		}
-		info, err := os.Lstat(target)
+		info, err := os.Lstat(target) //perf:ok cold: once per file a piglet copied, on remove
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -186,7 +186,7 @@ func planPigletCopiedFiles(yamlPath string) (pigletCopiedFilePlan, error) {
 			return plan, fmt.Errorf("inspect copied file %s: %w", target, err)
 		}
 		if !info.Mode().IsRegular() || rejectPigletDestinationSymlinks(target) != nil {
-			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: it is no longer a regular file PiG copied", target))
+			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: it is no longer a regular file PiG copied", target)) //perf:ok cold: a message per kept file of one piglet remove
 			continue
 		}
 		data, err := os.ReadFile(target)
@@ -194,7 +194,7 @@ func planPigletCopiedFiles(yamlPath string) (pigletCopiedFilePlan, error) {
 			return plan, fmt.Errorf("read copied file %s: %w", target, err)
 		}
 		if digestPigletData(data) != copies.Files[relative] {
-			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: it changed after PiG copied it; delete it yourself if you no longer need it", target))
+			plan.kept = append(plan.kept, fmt.Sprintf("kept %s: it changed after PiG copied it; delete it yourself if you no longer need it", target)) //perf:ok cold: a message per kept file of one piglet remove
 			continue
 		}
 		plan.removals = append(plan.removals, pigletFacetRemoval{path: target, label: "copied file"})
@@ -276,7 +276,7 @@ func pigletRegistrationName(pigletsDir, target string) (string, bool) {
 // already gone (for example deleted by hand): the earlier record still names them, and the same ownership and digest
 // rules as `piglet remove --source` decide which are deleted.
 func reclaimOrphanedPigletCopies(pigletsDir, yamlPath string, stdout io.Writer) error {
-	if _, err := os.Stat(yamlPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(yamlPath); !os.IsNotExist(err) { //perf:ok cold: once per piglet add
 		return err
 	}
 	plan, err := planPigletCopiedFiles(yamlPath)
