@@ -128,7 +128,8 @@ func isValueLike(value any) bool {
 	return false
 }
 
-// isDeepEqual is Guard.IsDeepEqual.
+// isDeepEqual is Guard.IsDeepEqual. An array equals only an array. An object equals an object, and also an array (DeepEqualObject accepts any object on the right): the object then needs
+// the own property names of the array, its indices and "length", with the items and the length as values.
 func isDeepEqual(left, right any) bool {
 	switch typed := left.(type) {
 	case []any:
@@ -143,17 +144,36 @@ func isDeepEqual(left, right any) bool {
 		}
 		return true
 	case map[string]any:
-		other, ok := right.(map[string]any)
-		if !ok || len(typed) != len(other) {
-			return false
-		}
-		for key, item := range typed {
-			counterpart, exists := other[key]
-			if !exists || !isDeepEqual(item, counterpart) {
+		switch other := right.(type) {
+		case map[string]any:
+			if len(typed) != len(other) {
 				return false
 			}
+			for key, item := range typed {
+				counterpart, exists := other[key]
+				if !exists || !isDeepEqual(item, counterpart) {
+					return false
+				}
+			}
+			return true
+		case []any:
+			if len(typed) != len(other)+1 {
+				return false
+			}
+			for key, item := range typed {
+				if key == "length" {
+					if !isDeepEqual(item, float64(len(other))) {
+						return false
+					}
+					continue
+				}
+				index, isIndex := jsstring.ArrayIndex(key)
+				if !isIndex || int(index) >= len(other) || !isDeepEqual(item, other[index]) {
+					return false
+				}
+			}
+			return true
 		}
-		return true
 	case nil, bool, string, float64:
 		switch right.(type) {
 		case nil, bool, string, float64:
