@@ -1953,18 +1953,58 @@ func (e *Editor) HandleInput(data string) {
 	}
 	if MatchesKeyID(data, "shift+space") {
 		e.insertCharacter(" ")
-		e.refreshAutocomplete()
+		e.refreshAutocompleteAfterTyping(" ")
 		return
 	}
 	if ch, ok := DecodePrintableKey(data); ok {
 		e.insertCharacter(ch)
-		e.refreshAutocomplete()
+		e.refreshAutocompleteAfterTyping(ch)
 		return
 	}
 	if len(data) > 0 && data[0] >= 0x20 {
 		e.insertCharacter(data)
-		e.refreshAutocomplete()
+		e.refreshAutocompleteAfterTyping(data)
 	}
+}
+
+// refreshAutocompleteAfterTyping is the end of editor.ts insertCharacter, which runs after char was inserted. An open popup is updated whatever was typed.
+// A closed one opens only for "/" at the start of the message, for a trigger character where a trigger token ends at the cursor, and for a letter, digit,
+// ".", "-", "_" or CJK character in a slash command (its arguments included) or a trigger token; a space, "é" or "/" typed after "/cmd" opens none.
+func (e *Editor) refreshAutocompleteAfterTyping(char string) {
+	if !e.AutocompleteOpen() && !e.typedCharacterOpensAutocomplete(char) {
+		return
+	}
+	e.refreshAutocomplete()
+}
+
+// typedCharacterOpensAutocomplete is the closed-popup branch of editor.ts insertCharacter: the first of its three conditions that char meets decides.
+func (e *Editor) typedCharacterOpensAutocomplete(char string) bool {
+	row := e.cursor[0]
+	before := jsstring.Slice(e.lines[row], 0, e.cursor[1])
+	triggers := e.autocompleteTriggerCharacters
+	if e.asyncAutocomplete != nil {
+		triggers = autocompleteTriggerRunes(e.asyncAutocomplete.TriggerCharacters)
+	}
+	switch {
+	case char == "/" && row == 0 && (widthx.JSTrim(before) == "" || widthx.JSTrim(before) == "/"):
+		return true
+	case isAutocompleteTriggerCharacter(char, triggers):
+		return autocompleteTriggeredBy(before, triggers)
+	case strings.ContainsFunc(char, autocompleteWordCharacter) || widthx.IsCJKBreak(char):
+		return row == 0 && strings.HasPrefix(strings.TrimLeftFunc(before, widthx.IsJSSpace), "/") || autocompleteTriggeredBy(before, triggers)
+	}
+	return false
+}
+
+// isAutocompleteTriggerCharacter is editor.ts autocompleteTriggerCharacters.includes(char): char is exactly one trigger character.
+func isAutocompleteTriggerCharacter(char string, triggers []rune) bool {
+	r, size := utf8.DecodeRuneInString(char)
+	return size == len(char) && !(r == utf8.RuneError && size <= 1) && slices.Contains(triggers, r)
+}
+
+// autocompleteWordCharacter is editor.ts insertCharacter's /[a-zA-Z0-9.\-_]/.
+func autocompleteWordCharacter(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '-' || r == '_'
 }
 
 // matchesDeleteCharBackward is upstream editor.ts handleInput's `tui.editor.deleteCharBackward || matchesKey(data, "shift+backspace")`.
