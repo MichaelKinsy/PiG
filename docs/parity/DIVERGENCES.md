@@ -3117,7 +3117,7 @@ SCRUTINIZED:approved
 
 Remove when: the pinned Pi release contains 0a4fad548. Then the call-site marker and this record go.
 
-Call-site markers: `ai/simple_options.go` (`ClampMaxTokensToContext`).
+Call-site markers: `ai/simple_options.go` (`ClampMaxTokensToContext`, `minOutputWithRatioMargin`).
 
 Evidence: `TestClampMaxTokensToContextOpenRouterOvercountMargin` (`ai/clamp_max_tokens_test.go`, Pi's `clamp-max-tokens.test.ts`; red on 989927eff4: the flat margin returns 823665 tokens where 794638 is wanted for the #10497 case).
 
@@ -3521,7 +3521,7 @@ SCRUTINIZED:approved
 
 Remove when: the pin reaches a Pi release containing 3b57ed7e2.
 
-Call-site markers: `tui/extension_selector.go` (`visibleWindow`).
+Call-site markers: `tui/extension_selector.go` (`visibleWindow`, `selectorMaxVisible`).
 
 Evidence: `TestExtensionSelectorWindowsLongOptionListsAroundTheSelection`, `TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator` (Pi's two tests), `TestExtensionSelectLongListShowsAWindowAroundTheCursor` (extension dialog path through the mode's key dispatch).
 
