@@ -2,6 +2,10 @@
 
 Status: implemented on `feat/rpc-listen`, commits `205cfa483..bd6f9cad3` and the Task 7 record. Additive feature record: D232 in `docs/additive-features.md`.
 
+## Default and opt-in (owner decision for 0.7.1)
+
+Sharing extension processes shares everything a language keeps per process, so it is not the default. A `--listen` server gives every session its own extension processes, and no extension state is shared between sessions. `--listen-share-extensions` (valid only with `--listen`) joins the Hosts to the cell registry this design describes, and its help line and the D232 record warn that module-level state is then shared. The sections below describe the shared mode; the isolated mode is the existing `Host` behaviour (`Host.cells == nil`), which the server selects by not creating a registry. Extensions compiled into the host program run in the server process in both modes.
+
 ## Intent
 
 PiG runs one Session per process. A client that needs many concurrent sessions (a swarm runner, an IDE, an evaluation harness) starts one `pig --mode rpc` process per session, and every process pays the whole runtime again: about 14 MB of private memory on macOS for the Go runtime and the relocated data segments of the binary, plus every extension process the session loads. jcode and OpenCode v2 host every session in one daemon and pay those costs once.
@@ -21,7 +25,7 @@ The last two rows are the problem this design solves: a session's extension proc
 ## Goals
 
 1. One `pig` process serves many concurrent RPC sessions, each speaking Pi's RPC protocol byte for byte.
-2. Sessions that load the same extensions share the extension processes. Memory per additional session, extensions included, is a small fraction of today's.
+2. With `--listen-share-extensions`, sessions that load the same extensions share the extension processes. Memory per additional session, extensions included, is a small fraction of today's.
 3. Every extension sees exactly what it sees in a `pig --mode rpc` process of its own: its own registration, its own replicated state, its own events, its own session lifecycle.
 4. Nothing changes for a process that does not opt in. The feature is an inert capability of Stock PiG.
 

@@ -93022,6 +93022,17 @@
       "shapeHash": "sha256:fc49acff4acc83115671862548fcbafc57cbda82ddce53c8ce1d40ad8e90d3e2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#makePrivateBindDir",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "makePrivateBindDir",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(parent string) (string, error)"
+      },
+      "shapeHash": "sha256:627ca847d12cfb8a40b216dcc40af6d9c517de1c62afb4707e55781bb882bcce"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#manualUses",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "manualUses",

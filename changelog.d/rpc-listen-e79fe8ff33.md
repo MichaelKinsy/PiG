@@ -1,6 +1,6 @@
 ### Added
 
-- `pig --mode rpc --listen <path>` serves one Pi RPC session per connection on a Unix socket, in one process; sessions that load the same extensions share the extension processes, so an additional session costs about 3 MB instead of about 28 MB, and about 12 MB instead of about 107 MB with a Go and a Node extension loaded (D232). Each session keeps its own extension instance, registration, replicated state and events, but module-level state (Node module variables, `process.env`, `globalThis`, timers; Go, Rust and Python package variables) is shared between the sessions in one extension process (exact standalone extensions and quarantined cells keep their own process).
+- `pig --mode rpc --listen <path>` serves one Pi RPC session per connection on a Unix socket, in one process, so an additional session costs a few MB instead of a process of its own. Every session has its own extension processes, so no extension state is shared between sessions. `--listen-share-extensions` makes the sessions share the extension processes, which cuts the cost of a session that loads extensions further; module-level state (Node module variables, `process.env`, `globalThis`, timers; Go, Rust and Python package variables) is then shared between the sessions that share a process, and the flag's help line says so (D232). Contributed by @balcsida (#404).
 
 ### Fixed
 
