@@ -43,6 +43,11 @@ func peekPipe(file *os.File) (avail uint32, ended, closed bool) {
 }
 
 // pollReadable waits up to timeoutMS for the read end of a pipe to hold bytes or to end. closed is true when the handle is gone.
+//
+// This is a 1 ms poll because no wait object exists for it. os.Pipe hands out synchronous handles, and the I/O on a synchronous handle is serialized on
+// its file object: a zero-byte ReadFile (libuv's way to wait for data) or any blocking read pending on the earlier pipe would hold up the PeekNamedPipe
+// that a later pipe's reader makes on it (holdsOutput), and a pending read could not be told apart from a handle Wait closed. An event wait needs the pipe
+// created with FILE_FLAG_OVERLAPPED, which changes what Start is given; see the 0.7.1 WinWaits hand-off.
 func pollReadable(file *os.File, timeoutMS int) (readable, closed bool) {
 	deadline := time.Now().Add(time.Duration(timeoutMS) * time.Millisecond)
 	for {
