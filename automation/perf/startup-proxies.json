@@ -47,7 +47,8 @@
     "TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes",
     "TestSyncFailureKeepsPreviousTreeAndCleansStaging",
     "TestPruneWithoutCacheEntriesDoesNotFingerprintStagedSDKs",
-    "TestBundleHashStreamsTheWholeFileDigest"
+    "TestBundleHashIsTheStagingDigestOfItsFiles",
+    "TestWarmBundleCheckDecodesNothing"
   ],
   "./coding": [
     "TestRuntimeOpenUsesTheValidatedSessionSnapshot",

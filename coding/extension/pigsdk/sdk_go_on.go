@@ -3,9 +3,6 @@
 package pigsdk
 
 import (
-	"slices"
-	"sync"
-
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
@@ -20,8 +17,5 @@ func goBundle() (sdkBundle, bool) {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.ExtensionSDKGo) {
 		return sdkBundle{}, false
 	}
-	return sdkBundle{lang: "go", files: goBundleFiles(), fsys: sdk.Source}, true
+	return sdkBundle{lang: "go", stagedHash: sdk.StagedHash(), unpack: func() ([]byte, error) { return decodeBundle(sdk.Source) }}, true
 }
-
-// goBundleFiles lists the embedded Go SDK once per process: the embedded files never change, and staging and the staged directory's hash both read the list, which they never write; its capacity is clipped, so an append copies it.
-var goBundleFiles = sync.OnceValue(func() []string { return slices.Clip(sdk.BundledFiles()) })

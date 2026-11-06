@@ -1,8 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Fail when a compressed SDK copy (the .gz files, bundle_embed.go, the Lisp sdk.tgz and bundle_pack.go) differs from what
-# `make sdk-bundles` writes from the SDK sources. The generators write in place, so this runs them, compares against a copy of
-# the four SDK directories taken first, and puts the committed bytes back.
+# Fail when a packed SDK bundle (each SDK's sdk.zst and bundle_pack.go) differs from what `make sdk-bundles` writes from the SDK
+# sources. The generator keeps a frame that already decodes to the sources' files, so the comparison is of the files the frame
+# holds as well as of the bytes. It writes in place, so this runs it, compares against a copy of the four SDK directories taken
+# first, and puts the committed bytes back.
 set -eu
 dirs="extensions/sdk extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs"
 tmp=$(mktemp -d)
@@ -24,6 +25,6 @@ sed -e "s#$tmp/##g" "$tmp/diff" >&2
 # shellcheck disable=SC2086
 rm -rf $dirs
 tar -xf "$tmp/before.tar"
-echo "SDK compressed copies are stale (listed above)" >&2
+echo "packed SDK bundles are stale (listed above)" >&2
 echo "run: make generate (or: make sdk-bundles), then commit the result" >&2
 exit 1
