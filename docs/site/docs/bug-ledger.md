@@ -207,6 +207,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27b7a4e](#bf-27b7a4e) | Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail… | A fix Pi shipped that PiG ported | Windows, WSL | 0.7.0 |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-27e5b1e](#bf-27e5b1e) | `pig piglet remove <name> --source` now deletes the prompt file `pig piglet add` copied for that Piglet, so… | PiG's own defect | All platforms | Unreleased |
 | [BF-27e9bc8](#bf-27e9bc8) | `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f6a7e](#bf-27f6a7e) | The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then… | PiG's own defect | Windows | 0.7.0 |
@@ -4325,6 +4326,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `27ddc30867` (2026-10-13), `5d2eb77efe` (2026-10-13), `a98ed4d6ae` (2026-10-13)
 - **Tests:** `internal/codingagent/interactive_events_stream_args_test.go::TestInteractiveStreamedToolArgsDeltaCostIsFlat`, `internal/codingagent/interactive_events_write_stream_oracle_test.go::TestInteractiveStreamedWriteCardMatchesPiOracle`, `internal/codingagent/tool_builtin_renderers_args_cost_test.go::TestEditRenderersDoNotReencodeUnchangedArgs`, `tui/bash_execution_append_cost_test.go::TestBashExecutionAppendOutputDoesNotCopyCleanChunks`, `tui/tool_execution_streamed_args_test.go::TestStreamedArgsEncodeOncePerDraw`
 - **Release note:** A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its first lines and the "(N more lines, M total" hint as the content arrives, instead of a bare `write ...` header until the last delta. The card reads the arguments the provider's streaming JSON parser has already decoded and encodes them only when it draws, so a delta costs the same however long the arguments are (10 allocations and 1.7 KB per delta at 1 KB and at 504 KB received).
+
+### BF-27e5b1e
+
+**`pig piglet remove <name> --source` now deletes the prompt file `pig piglet add` copied for that Piglet, so…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig piglet remove <name> --source` now deletes the prompt file `pig piglet add` copied for that Piglet, so an edited Piglet of the same name adds again instead of failing with `destination .../piglets/prompt.md already exists with different content`.
+- **Root cause:** `remove --source` deleted only the YAML, and an edited re-add then failed on the leftover file ("already exists with different content; remove it explicitly before replacing") even though the same inputs install into a fresh home (#417).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `27e5b1e20c` (2026-11-06)
+- **Tests:** `coding/piglet/copies_test.go::TestAddIdenticalSourceTwiceStaysIdempotent`, `coding/piglet/copies_test.go::TestAddRefusesPromptAnotherPigletCopiedAndNamesIt`, `coding/piglet/copies_test.go::TestAddRefusesUnrecordedLeftoverPromptAndNamesTheFix`, `coding/piglet/copies_test.go::TestAddReplacesFilesOfOrphanedRegistrationOfTheSameName`, `coding/piglet/copies_test.go::TestAddWithRegisteredNameNamesTheRemoveCommand`, `coding/piglet/copies_test.go::TestPigletCopiesRejectsWhatTheRecordCannotSafelyName`, `coding/piglet/copies_test.go::TestReadPigletCopiesIsStrict`, `coding/piglet/copies_test.go::TestRemoveSourceDeletesCopiedPromptAndEditedReAddSucceeds` and 6 more in docs/bug-ledger.json
+- **Release note:** `pig piglet remove <name> --source` now deletes the prompt file `pig piglet add` copied for that Piglet, so an edited Piglet of the same name adds again instead of failing with `destination .../piglets/prompt.md already exists with different content`. Add records each copied file and its SHA-256 digest in `<name>.files.json` beside the registered YAML. Remove keeps, and reports, a copied file that another registered Piglet lists or references, or whose content changed after it was copied; it never deletes a file it has no record of. A leftover record whose YAML was deleted by hand lets `add` of the same name replace its unchanged files, and an add that still conflicts names the Piglet that owns the file or says that no registered Piglet copied it. A prompt copied by 0.7.0 or earlier has no record: delete that file yourself or use another relative prompt path. Replacing a source Piglet is `pig piglet remove <name> --source` and then `pig piglet add` (#417, reported by @Cade-Peterson).
 
 ### BF-27e9bc8
 
