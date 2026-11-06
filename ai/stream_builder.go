@@ -3,10 +3,11 @@ package ai
 import (
 	"cmp"
 	"context"
-	"slices"
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type assistantStreamBuilder struct {
@@ -690,7 +691,7 @@ type endingBlock struct {
 
 // sortEndingBlocks orders blocks by content index, the order their end events follow. Content indices are distinct, so the unstable sort is deterministic; the typed comparison avoids sort.Slice's reflective swapper, which allocates on every stream end.
 func sortEndingBlocks(blocks []endingBlock) {
-	slices.SortFunc(blocks, func(a, b endingBlock) int { return cmp.Compare(a.contentIndex, b.contentIndex) })
+	sortx.Func(blocks, func(a, b endingBlock) int { return cmp.Compare(a.contentIndex, b.contentIndex) })
 }
 
 // closeGrammarToolInputJSONState closes the input of a custom tool call that ends without a complete input of its own.

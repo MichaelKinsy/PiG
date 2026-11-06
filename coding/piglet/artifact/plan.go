@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ComponentKind identifies an executable/runtime Piglet component class.
@@ -112,7 +114,7 @@ func BuildPlan(inputs []ComponentInput) (Plan, error) {
 		components = append(components, component)
 	}
 
-	slices.SortFunc(components, func(a, b Component) int {
+	sortx.Func(components, func(a, b Component) int {
 		return cmp.Or(cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.Name, b.Name))
 	})
 	for i := 1; i < len(components); i++ {

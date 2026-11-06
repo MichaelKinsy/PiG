@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ToolName is the name of the tool.
@@ -145,7 +146,7 @@ func selectCatalog(groups []*catalogGroup, budget *int) map[string]bool {
 			continue
 		}
 		queue := slices.Clone(group.entries)
-		slices.SortStableFunc(queue, func(a, b catalogEntry) int { return a.cost - b.cost })
+		sortx.Stable(queue, func(a, b catalogEntry) int { return a.cost - b.cost })
 		queues = append(queues, queue)
 	}
 	if budget == nil {
@@ -213,7 +214,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 	for i, key := range order {
 		ordered[i] = groups[key]
 	}
-	slices.SortStableFunc(ordered, func(a, b *catalogGroup) int {
+	sortx.Stable(ordered, func(a, b *catalogGroup) int {
 		switch {
 		case a.namespace == nil && b.namespace == nil:
 			return 0

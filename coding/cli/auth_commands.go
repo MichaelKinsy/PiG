@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type loginCommand string
@@ -403,7 +404,7 @@ func sortedOAuthProviders() []ai.OAuthProviderInterface {
 		"github-copilot": 1,
 		"openai-codex":   2,
 	}
-	slices.SortFunc(providers, func(a, b ai.OAuthProviderInterface) int {
+	sortx.Func(providers, func(a, b ai.OAuthProviderInterface) int {
 		aiOrder, aok := order[a.ID()]
 		biOrder, bok := order[b.ID()]
 		switch {

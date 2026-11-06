@@ -1,8 +1,9 @@
 package ai
 
 import (
-	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // APIKeyProviderInfo is a static description of a provider that authenticates
@@ -32,7 +33,7 @@ func APIKeyProviders() []APIKeyProviderInfo {
 		}
 		out = append(out, APIKeyProviderInfo{ID: providerID, Name: ProviderDisplayName(providerID)})
 	}
-	slices.SortFunc(out, compareAPIKeyProviderNames)
+	sortx.Func(out, compareAPIKeyProviderNames)
 	return out
 }
 

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Object is a draft handle of a JSON object. It is usable only while its
@@ -131,7 +133,7 @@ func integerKeysFirst(keys []string) []string {
 		}
 		others = append(others, key)
 	}
-	slices.SortFunc(indices, func(left, right string) int {
+	sortx.Func(indices, func(left, right string) int {
 		if len(left) != len(right) {
 			return len(left) - len(right)
 		}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
@@ -110,7 +111,7 @@ func (e *Extension) serversMenu() McpMenu {
 	e.mu.Lock()
 	servers := slices.Clone(e.servers)
 	e.mu.Unlock()
-	slices.SortStableFunc(servers, func(a, b *server) int {
+	sortx.Stable(servers, func(a, b *server) int {
 		if rank := e.attentionRank(a) - e.attentionRank(b); rank != 0 {
 			return rank
 		}

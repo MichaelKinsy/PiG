@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/eventwire"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // defaultStaleMessage matches the upstream default verbatim. This string
@@ -1097,7 +1098,7 @@ func (r *Runner) Shortcuts(resolvedKeybindings map[string][]string) []ShortcutEn
 			}
 			return 1
 		}
-		slices.SortStableFunc(actions, func(a, b string) int { return cmp.Compare(rank(a), rank(b)) })
+		sortx.Stable(actions, func(a, b string) int { return cmp.Compare(rank(a), rank(b)) })
 		for _, action := range actions {
 			_, restricted := reservedKeybindings[action]
 			for _, key := range resolvedKeybindings[action] {

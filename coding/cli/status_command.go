@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -311,7 +312,7 @@ func collectStatus() statusOutput {
 				status.Resources.Disabled++
 			}
 		}
-		slices.SortFunc(status.Resources.Items, func(a, b statusResourceItem) int {
+		sortx.Func(status.Resources.Items, func(a, b statusResourceItem) int {
 			for _, value := range []int{strings.Compare(a.Kind, b.Kind), strings.Compare(a.Name, b.Name), strings.Compare(a.Scope, b.Scope), strings.Compare(a.Path, b.Path)} {
 				if value != 0 {
 					return value

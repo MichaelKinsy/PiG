@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodehome"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -454,7 +455,7 @@ func OrderResolvedResources(packages, ambient []ResolvedResource) []ResolvedReso
 		byPath[resource.Path] = struct{}{}
 		accumulated = append(accumulated, resource)
 	}
-	slices.SortStableFunc(accumulated, func(a, b ResolvedResource) int {
+	sortx.Stable(accumulated, func(a, b ResolvedResource) int {
 		return ResourcePrecedenceRank(a.Metadata) - ResourcePrecedenceRank(b.Metadata)
 	})
 	ordered := make([]ResolvedResource, 0, len(accumulated))

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"weak"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // maxDeltaOperations is tracker.ts MAX_DELTA_OPERATIONS: a larger batch folds
@@ -717,7 +719,7 @@ func emitOperations(root *node) ([]Op, error) {
 	var emissions []emission
 	collectEmissions(root, []any{}, root.ctx.dirtySeq, &emissions)
 	// tracker.ts emitOperations buckets nodes by path length, keeping the order in which they first became dirty within a bucket.
-	slices.SortStableFunc(emissions, func(a, b emission) int {
+	sortx.Stable(emissions, func(a, b emission) int {
 		if len(a.path) != len(b.path) {
 			return len(a.path) - len(b.path)
 		}
@@ -785,7 +787,7 @@ func collectEmissions(n *node, path []any, fold int, out *[]emission) {
 				kids = append(kids, located{position, e.kid})
 			}
 		}
-		slices.SortFunc(kids, func(a, b located) int { return a.position - b.position })
+		sortx.Func(kids, func(a, b located) int { return a.position - b.position })
 		for _, kid := range kids {
 			if kid.kid.modified() {
 				collectEmissions(kid.kid, childPath(path, kid.position), fold, out)
@@ -929,7 +931,7 @@ func emitArray(n *node, path []any, ops *[]Op) {
 			overrides = append(overrides, override{position, e})
 		}
 	}
-	slices.SortFunc(overrides, func(a, b override) int { return a.e.setSeq - b.e.setSeq })
+	sortx.Func(overrides, func(a, b override) int { return a.e.setSeq - b.e.setSeq })
 	for _, o := range overrides {
 		if len(*ops) > maxDeltaOperations {
 			return

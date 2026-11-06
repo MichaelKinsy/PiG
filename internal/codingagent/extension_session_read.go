@@ -25,6 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ExtensionSessionView names the session an extension reads and the facts
@@ -561,7 +562,7 @@ func (l sessionReadLog) tree() []*extensionSessionTreeNode {
 	var encode func(n *node) *extensionSessionTreeNode
 	encode = func(n *node) *extensionSessionTreeNode {
 		// JavaScript's sort compares with NaN as equal, keeping order.
-		slices.SortStableFunc(n.children, func(a, b *node) int {
+		sortx.Stable(n.children, func(a, b *node) int {
 			left, right := timeOf(a), timeOf(b)
 			switch {
 			case left < right:

@@ -15,7 +15,8 @@ package jv
 
 import (
 	"maps"
-	"slices"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Object is a JSON object with ECMAScript key order.
@@ -211,7 +212,7 @@ func (o *Object) orderedKeys() []string {
 			rest = append(rest, k)
 		}
 	}
-	slices.SortFunc(idx, func(a, b string) int {
+	sortx.Func(idx, func(a, b string) int {
 		switch {
 		case indexLess(a, b):
 			return -1

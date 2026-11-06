@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Value is a strict JSON value.
@@ -162,7 +164,7 @@ func MapOwnKeys(object map[string]any) []string {
 }
 
 // SortOwnKeys sorts unordered keys as MapOwnKeys does: array-index keys first in ascending numeric order, then the other keys ascending.
-func SortOwnKeys(keys []string) { slices.SortFunc(keys, compareOwnKeys) }
+func SortOwnKeys(keys []string) { sortx.Func(keys, compareOwnKeys) }
 
 func compareOwnKeys(left, right string) int {
 	leftIndex, rightIndex := isArrayIndexKey(left), isArrayIndexKey(right)

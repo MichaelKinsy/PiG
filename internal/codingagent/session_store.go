@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Pi's SessionManager keeps every parsed entry of the file in memory (session-manager.ts fileEntries/byId). A persisted Session keeps an index
@@ -461,7 +462,7 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 	for k := range order {
 		order[k] = k
 	}
-	slices.SortFunc(order, func(a, b int) int {
+	sortx.Func(order, func(a, b int) int {
 		return cmp.Compare(s.coldPart(&s.slots[indexes[a]]).off, s.coldPart(&s.slots[indexes[b]]).off)
 	})
 	file, opened := s.openRecordsLocked()
