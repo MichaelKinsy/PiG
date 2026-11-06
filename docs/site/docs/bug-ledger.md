@@ -325,6 +325,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-3ebb315](#bf-3ebb315) | Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ee123c](#bf-3ee123c) | CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit | PiG's own defect | Linux | 0.5.2 |
 | [BF-3f82770](#bf-3f82770) | A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3f82770-2](#bf-3f82770-2) | On Windows, `ERROR_PIPE_NOT_CONNECTED`, `ERROR_BAD_PIPE`, `ERROR_GEN_FAILURE`, `ERROR_IO_DEVICE` and… | PiG's own defect | Windows | 0.7.0 |
@@ -5943,6 +5944,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3e88414c8c` (2026-10-22)
 - **Tests:** `internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets`, `internal/codingagent/export/upstream_test.go::TestExportHTMLRendering`, `internal/codingagent/export/upstream_test.go::TestExportHTMLSystemMessages`
+
+### BF-3ebb315
+
+**Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object.
+- **Root cause:** Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3ebb3155aa` (2026-11-06)
+- **Tests:** `test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK`
+- **Release note:** Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object. The payload is copied without recursion now, so a handler receives it up to where its own `JSON.stringify` runs out of V8 stack, as in Pi.
 
 ### BF-3ee123c
 

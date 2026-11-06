@@ -8936,6 +8936,28 @@
       ]
     },
     {
+      "id": "BF-3ebb315",
+      "title": "Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack…",
+      "symptom": "Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object.",
+      "rootCause": "Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Node extension runtime: a `message_update` or `tool_execution_update` handler failed with `Maximum call stack size exceeded` from about 2500 levels of nested arrays (about 4960 levels of nested objects), because the runtime copied each event payload recursively for its handler; Pi's handler gets the object. The payload is copied without recursion now, so a handler receives it up to where its own `JSON.stringify` runs out of V8 stack, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3ebb3155aa",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK"
+      ]
+    },
+    {
       "id": "BF-3ee123c",
       "title": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit",
       "symptom": "CI: the `Linux / portmap` job (`make portmap-check`) no longer runs out its 60-minute limit.",
