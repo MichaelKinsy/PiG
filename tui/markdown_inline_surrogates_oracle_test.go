@@ -61,8 +61,8 @@ func compareMarkdownTextsWithPi(t *testing.T, texts []string) {
 
 // Every inline kind and block that holds a lone surrogate renders as Pi does: paragraph, heading, emphasis, strikethrough, code span, link and image
 // (text and destination), autolink, bare URL, email, escape, entity, inline HTML, hard break, table, list, quote, and link reference definitions
-// (label, destination and title) with the references that use them. Not covered: HTML comments (D265 differs from the pinned Pi) and LaTeX, whose
-// renderer (internal/latex) still reads a lone surrogate as U+FFFD.
+// (label, destination and title) with the references that use them, and math (inline, display and bracketed, with the unit in a script, a fraction and
+// text). Not covered: HTML comments (D265 differs from the pinned Pi).
 func TestMarkdownInlineLoneSurrogatesMatchPi(t *testing.T) {
 	high, low := jsstring.FromUTF16([]uint16{0xd83d}), jsstring.FromUTF16([]uint16{0xde00})
 	var texts []string
@@ -80,6 +80,8 @@ func TestMarkdownInlineLoneSurrogatesMatchPi(t *testing.T) {
 			"[a][b"+h+"]\n\n[b"+h+"]: /u", "[b"+h+"][]\n\n[b"+h+"]: /u", "[b"+h+"]\n\n[b"+h+"]: /u \"title\"", "[foo]\n\n[foo]: http://x.com/"+h,
 			"[foo]\n\n[foo]: /u \"title"+h+"\"", "[foo"+h+"]: /u\n\ntext "+h, "![a][b"+h+"]\n\n[B"+h+"]: /u", "[a][B"+h+"]\n\n[b"+h+"]: /u",
 			"<div>"+h+"</div>\n\ntext", "para"+h+"\n\n    code"+h+"\n\n```\nfence"+h+"\n```", "a "+h+" b\n\n---\n\nc "+h,
+			"$x"+h+"$", "$"+h+"$ and $a"+h+"+b$ more", "$x^{"+h+"}$ text", "$\\frac{"+h+"}{2}$", "$$\n"+h+"\n$$", "$$\n\\frac{"+h+"}{y}\n$$", "\\("+h+"\\)", "\\["+h+"\\]",
+			"\\[\n\\begin{matrix} "+h+" & b \\\\ c & d \\end{matrix}\n\\]", "price $"+h+" and $x$ or $5",
 			// A text that holds characters of the private-use area keeps its own.
 			"\U0010F800\n\n```js\nx"+h+"y\n```", "\U0010F83D"+h+"\U0010FFFF text", "[a][b\U0010F83D"+h+"]\n\n[b\U0010F83D"+h+"]: /u",
 		)
