@@ -91,6 +91,29 @@ func TestAsyncAutocompleteNaturalTriggers(t *testing.T) {
 	})
 }
 
+// Pi editor.ts insertCharacter queries with the popup closed only for "/" at the start of the message, for a trigger character in a trigger token, and for a letter, digit, ".", "-", "_" or CJK character in a slash command or trigger token; the extension provider chain follows the same gate, so a space or "é" after "/cmd" asks nothing.
+func TestAsyncAutocompleteClosedPopupQueriesOnlyForTheCharactersPiTriggersOn(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var calls atomic.Int32
+		provider := &AsyncAutocompleteProvider{GetSuggestions: func(context.Context, []string, int, int, bool) (*AutocompleteSuggestions, error) {
+			calls.Add(1)
+			return nil, nil
+		}}
+		p := newAsyncEditorProbe(t, provider)
+		for _, row := range []struct {
+			typed string
+			want  int32
+		}{{"/", 1}, {"c", 1}, {"m", 1}, {" ", 0}, {"é", 0}, {"/", 0}, {"-", 1}, {"日", 1}, {"!", 0}, {"7", 1}} {
+			calls.Store(0)
+			p.editor.HandleInput(row.typed)
+			p.drain()
+			if calls.Load() != row.want {
+				t.Fatalf("typing %q after %q queried the provider %d times, want %d", row.typed, p.editor.Text()[:len(p.editor.Text())-len(row.typed)], calls.Load(), row.want)
+			}
+		}
+	})
+}
+
 // Pi editor.ts:2284-2335 awaits suggestions without blocking new input; only synchronous completion and trigger callbacks hold input.
 func TestForcedAutocompleteQueryDoesNotHoldInput(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
