@@ -763,3 +763,32 @@ func TestNetErrorCauseNamesTheCauseNotThePrivateBindPath(t *testing.T) {
 		t.Fatalf("netErrorCause of a plain error = %v", got)
 	}
 }
+
+// Closing the listener leaves the path alone: a path another server or a user put there while this server ran survives its shutdown, because only removeOwnSocket removes the path, and only while it still names the server's socket (D232).
+func TestListenCloseLeavesAPathItDidNotCreate(t *testing.T) {
+	path := filepath.Join(shortTempDir(t), "s.sock")
+	listener, err := listenPrivateUnixSocket(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	created := lstatPinned(path)
+	if created == nil {
+		_ = listener.Close()
+		t.Fatal("no file ID for the server's socket")
+	}
+	if err := os.Remove(path); err != nil {
+		_ = listener.Close()
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("theirs"), 0o600); err != nil {
+		_ = listener.Close()
+		t.Fatal(err)
+	}
+	if err := listener.Close(); err != nil {
+		t.Fatal(err)
+	}
+	removeOwnSocket(path, created)
+	if data, err := os.ReadFile(path); err != nil || string(data) != "theirs" {
+		t.Fatalf("the server's shutdown removed or changed a path it did not create: %q, %v", data, err)
+	}
+}
