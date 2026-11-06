@@ -184,8 +184,8 @@ func uniqueHashes(items []any) map[uint64]struct{} {
 }
 
 // hashValue is Hashing.Hash (build/system/hashing/hash.mjs) of a JSON value: FNV-1a 64 over a byte marker per type, an
-// array's items, an object's members in the UTF-16 order of their names, a number's 8 little-endian bytes and a string's UTF-8
-// text (a lone surrogate encodes as U+FFFD). 0 and -0 hash apart.
+// array's items, an object's members in the UTF-16 order of their names (InstanceKeys leaves out the name "constructor"), a
+// number's 8 little-endian bytes and a string's UTF-8 text (a lone surrogate encodes as U+FFFD). 0 and -0 hash apart.
 func hashValue(value any) uint64 {
 	hash := fnvOffset64
 	hash.value(value)
@@ -243,7 +243,9 @@ func (h *fnv64) value(value any) {
 		h.op(markerObject)
 		names := make([]string, 0, len(typed))
 		for name := range typed {
-			names = append(names, name)
+			if name != "constructor" {
+				names = append(names, name)
+			}
 		}
 		slices.SortFunc(names, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
 		for _, name := range names {
