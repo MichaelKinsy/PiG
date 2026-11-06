@@ -32,29 +32,33 @@ Memory, no extensions:
 
 | Sessions | `listen` (isolated) | `listen-shared` | `rpc` |
 |---|---|---|---|
-| 1 | 51.5 MB | 51.3 MB | 50.3 MB |
-| 10 | 61.2 MB | 64.7 MB | 148.2 MB |
-| 100 | 141.4 MB | 147.7 MB | 1109.2 MB |
-| slope per additional session (N 1 to 100) | 0.91 MB | 0.97 MB | 10.70 MB |
+| 1 | 54.3 MB | 53.7 MB | 51.1 MB |
+| 10 | 70.7 MB | 69.7 MB | 146.0 MB |
+| 100 | 137.3 MB | 146.2 MB | 1101.0 MB |
+| slope per additional session (N 1 to 100) | 0.84 MB | 0.93 MB | 10.61 MB |
 
 With the two extensions (`--extensions`), memory and extension processes:
 
 | Sessions | `listen` (isolated) | ext | `listen-shared` | ext | `rpc` | ext |
 |---|---|---|---|---|---|---|
-| 1 | 182.8 MB | 2 | 185.6 MB | 2 | 209.8 MB | 2 |
-| 10 | 727.4 MB | 20 | 310.1 MB | 2 | 1225.4 MB | 20 |
-| 100 | 5413.8 MB | 200 | 1298.0 MB | 2 | 10752.8 MB | 200 |
-| slope per additional session (N 1 to 100) | 52.8 MB | | 11.2 MB | | 106.5 MB | |
+| 1 | 188.0 MB | 2 | 187.2 MB | 2 | 209.9 MB | 2 |
+| 10 | 877.5 MB | 20 | 303.2 MB | 2 | 1240.2 MB | 20 |
+| 100 | 6537.8 MB | 200 | 1146.6 MB | 2 | 10661.5 MB | 200 |
+| slope per additional session (N 1 to 100) | 64.1 MB | | 9.7 MB | | 105.6 MB | |
 
-Start-up. `server` is the time until the server's socket exists; `each` is the time from the connections until a session's first `get_state` answer, divided by N (the `listen` builds run one at a time); `all` is the time until the last of N sessions answered.
+Start-up. `server` is the time until the server's socket exists; `each` is the time from the connections until a session's first `get_state` answer, divided by N; `all` is the time until the last of N sessions answered.
 
 | Arm | Extensions | N | server | each | all |
 |---|---|---|---|---|---|
-| `listen` | none | 1 / 10 / 100 | 73 / 46 / 45 ms | 5 / 6 / 6 ms | 0.01 / 0.06 / 0.61 s |
-| `listen-shared` | none | 1 / 10 / 100 | 38 / 34 / 35 ms | 4 / 5 / 5 ms | 0.00 / 0.05 / 0.49 s |
-| `rpc` | none | 1 / 10 / 100 | | 35 / 15 / 4 ms | 0.03 / 0.15 / 0.40 s |
-| `listen` | 2 | 1 / 10 / 100 | 279 / 299 / 300 ms | 189 / 239 / 239 ms | 0.19 / 2.39 / 23.9 s |
-| `listen-shared` | 2 | 1 / 10 / 100 | 310 / 302 / 268 ms | 211 / 96 / 98 ms | 0.21 / 0.96 / 9.84 s |
-| `rpc` | 2 | 1 / 10 / 100 | | 610 / 64 / 54 ms | 0.61 / 0.64 / 5.39 s |
+| `listen` | none | 1 / 10 / 100 | 73 / 33 / 44 ms | 5 / 5 / 2 ms | 0.00 / 0.05 / 0.16 s |
+| `listen-shared` | none | 1 / 10 / 100 | 34 / 35 / 34 ms | 6 / 7 / 5 ms | 0.01 / 0.07 / 0.53 s |
+| `rpc` | none | 1 / 10 / 100 | | 35 / 13 / 3 ms | 0.03 / 0.13 / 0.32 s |
+| `listen` | 2 | 1 / 10 / 100 | 321 / 298 / 299 ms | 213 / 53 / 49 ms | 0.21 / 0.53 / 4.95 s |
+| `listen-shared` | 2 | 1 / 10 / 100 | 303 / 331 / 291 ms | 202 / 58 / 37 ms | 0.20 / 0.58 / 3.74 s |
+| `rpc` | 2 | 1 / 10 / 100 | | 573 / 69 / 55 ms | 0.57 / 0.69 / 5.54 s |
 
-Reading it. The server removes the per-session Go runtime (about 10 MB of the `rpc` slope) in both modes. Only `--listen-share-extensions` removes the extension processes, and the price of that is shared module-level state (D232); the default halves the per-session cost with extensions loaded and shares nothing. The default brings 100 sessions that load two extensions up in 23.9 s against 5.4 s for 100 `rpc` processes, because the server builds one session at a time and `rpc` starts its processes in parallel. The `listen` slope without extensions is above the 0.5 MB per session of the Go SDK spike in `docs/specs/multi-session-rpc-server.md`: the server builds each connection's own settings, resources, `ModelRuntime` and Session, and the spike shared them. The bench does not separate the `ModelRuntime` from the rest of the build. The numbers of the 2026-11-01 run on an Apple M3 Max (`phys_footprint`) were 315.0 MB against 2853.4 MB for 100 sessions without extensions.
+What made the default slow, and what changed. A default session does not rebuild its extensions: the content-addressed artifact is built once and every later session finds it (14 ms to check a Go cell, with the per-digest publisher lock). What cost about 240 ms per session was that the server built its sessions one at a time (`buildMu`), so every session's Node process start (about 190 ms) waited for the one before it, and that a Go process capped at 2 Ps (D174's general cap) did the server-side work of 100 starting sessions on two cores. The default server now builds sessions concurrently (the shared mode keeps `buildMu`, because its Hosts use one registry) and releases the cap at startup (`procpolicy.Release`). Before the change, with the same bench: `listen` with two extensions at 100 sessions was ready after 23.9 s, `listen-shared` after 9.8 s; the 2-P cap alone accounts for 13.2 s of the default's time with concurrent builds (`GOMAXPROCS=2`) against 4.95 s without it.
+
+The price: concurrent starts raise the memory of the default with extensions, 5414 MB before and 6538 MB now at 100 sessions (64.1 MB against 52.8 MB per session). With `GOMAXPROCS=2` and concurrent builds it was 6217 MB, so about 800 MB of the rise comes with the concurrent starts and about 300 MB with the wider scheduler. The cause of the first part was not isolated (a guess is that Node processes that start together find less in the shared caches than processes that start one after the other).
+
+Reading it. The server removes the per-session Go runtime (about 10 MB of the `rpc` slope) in both modes. Only `--listen-share-extensions` removes the extension processes, and the price of that is shared module-level state (D232). The default now comes up in about the time of the `rpc` arm (4.95 s against 5.54 s for 100 sessions with two extensions) and uses 61% of its memory. The `listen` slope without extensions is above the 0.5 MB per session of the Go SDK spike in `docs/specs/multi-session-rpc-server.md`: the server builds each connection's own settings, resources, `ModelRuntime` and Session, and the spike shared them. The bench does not separate the `ModelRuntime` from the rest of the build. The numbers of the 2026-11-01 run on an Apple M3 Max (`phys_footprint`) were 315.0 MB against 2853.4 MB for 100 sessions without extensions.
