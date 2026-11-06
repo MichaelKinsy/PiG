@@ -108,7 +108,8 @@ func loadManifest(fsys fs.FS) (Manifest, error) {
 	// Stock pig commits exactly this manifest, and every start reads it. Decoding it builds the JSON decoder of the Manifest type, 46 objects and 2.7 KB, for a
 	// result that is known. Only the exact bytes (with the whitespace JSON allows around them) take this path, and it gives the value the decoder gives; any other
 	// content, including a manifest a Piglet Binary build stages, goes through the decoder and its errors. (The 128 KB type-link table that reflect copies when a
-	// decoder asks for a pointer type the binary lacks is allocated by a later decode, models.json's, not by this one.)
+	// JSON coder asks for a pointer type the binary lacks is allocated by the next coder that needs one; in the startup fixture that is the provider
+	// registration's json.Marshal in providerConfigFromRegistration, not this decode.)
 	if string(bytes.Trim(data, " \t\r\n")) == stockManifest {
 		return Manifest{Cells: []CellEntry{}}, nil
 	}
