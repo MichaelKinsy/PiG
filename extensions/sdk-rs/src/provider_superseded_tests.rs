@@ -28,6 +28,7 @@ fn provider_superseded_keeps_the_stream_the_host_still_calls() {
             terminal_input: None,
             stream: None,
             stream_error: None,
+            args_error: None,
             tool_call_index: None,
             args_raw: None,
             method: "provider_stream_simple".into(),

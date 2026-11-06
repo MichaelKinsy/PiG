@@ -132,7 +132,11 @@ fn a_tool_request_nested_past_serde_jsons_limit_still_decodes() {
 
 #[test]
 fn nesting_past_the_bound_is_refused_and_brackets_in_strings_do_not_count() {
-    assert!(decode_frame(nested_request(MAX_NESTING_DEPTH + 10, "ok").as_bytes()).is_err());
+    // Past the bound the frame still decodes (a refused frame ended the connection): the request is answered with Pi's RangeError.
+    let envelope = decode_frame(nested_request(MAX_NESTING_DEPTH + 10, "ok").as_bytes()).unwrap();
+    let request = envelope.request.unwrap();
+    assert_eq!(request.args_error.as_deref(), Some(TOO_DEEP_MESSAGE));
+    assert!(request.args.is_none());
     let brackets = "[".repeat(MAX_NESTING_DEPTH * 2);
     let envelope = decode_frame(nested_request(130, &brackets).as_bytes()).unwrap();
     assert_eq!(

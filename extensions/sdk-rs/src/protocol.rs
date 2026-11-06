@@ -357,6 +357,8 @@ pub struct RequestMsg {
     pub tool_call_index: Option<u32>,
     /// On `tool_call`: the JSON text of `args` as the host wrote it.
     pub args_raw: Option<String>,
+    /// Why the arguments were not decoded: they nest deeper than `MAX_NESTING_DEPTH`, which is Pi's `RangeError` (`Maximum call stack size exceeded`) and not a reason to end the connection. The request is answered with this error.
+    pub args_error: Option<String>,
 }
 
 /// The delta of an event payload: a request with args is a keyframe the extension keeps, one without applies `ops` to the payload numbered `base`.
@@ -409,22 +411,45 @@ struct RawRequestMsg {
     stream: Option<EventStream>,
 }
 
+/// The message of the error a value nested past `MAX_NESTING_DEPTH` is answered with: V8's `RangeError`, as Pi's JavaScript parser or stringify throws it.
+pub(crate) const TOO_DEEP_MESSAGE: &str = "Maximum call stack size exceeded";
+
+/// Whether `err` is a value refused for its nesting (`from_json_str` leaves serde_json's recursion error for a value past the bound).
+fn is_too_deep(err: &serde_json::Error) -> bool {
+    err.to_string().starts_with("recursion limit exceeded")
+}
+
 impl TryFrom<RawRequestMsg> for RequestMsg {
     type Error = serde_json::Error;
     fn try_from(raw: RawRequestMsg) -> Result<Self, Self::Error> {
         let mut terminal_input = None;
+        let mut args_error = None;
         let args = if raw.method == "terminal_input" {
-            terminal_input = raw
+            match raw
                 .args
                 .as_ref()
                 .map(|a| from_json_str(a.get()))
-                .transpose()?;
+                .transpose()
+            {
+                Ok(decoded) => terminal_input = decoded,
+                Err(err) if is_too_deep(&err) => args_error = Some(TOO_DEEP_MESSAGE.to_string()),
+                Err(err) => return Err(err),
+            }
             None
         } else {
-            raw.args
+            match raw
+                .args
                 .as_ref()
                 .map(|a| from_json_str(a.get()))
-                .transpose()?
+                .transpose()
+            {
+                Ok(decoded) => decoded,
+                Err(err) if is_too_deep(&err) => {
+                    args_error = Some(TOO_DEEP_MESSAGE.to_string());
+                    None
+                }
+                Err(err) => return Err(err),
+            }
         };
         let args_raw = if raw.method == "tool_call" {
             raw.args.as_ref().map(|a| a.get().to_string())
@@ -445,6 +470,7 @@ impl TryFrom<RawRequestMsg> for RequestMsg {
             stream_error: None,
             tool_call_index: raw.tool_call_index,
             args_raw,
+            args_error,
         })
     }
 }

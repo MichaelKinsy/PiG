@@ -163,6 +163,7 @@ mod tests {
                 evict: Vec::new(),
             }),
             stream_error: None,
+            args_error: None,
             tool_call_index: None,
             args_raw: None,
         }

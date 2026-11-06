@@ -4169,12 +4169,103 @@ def _user_bash_event_result(value: Any) -> Any:
 
 
 def _js_ordered(value: Any) -> Any:
-    """``value`` with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order."""
-    if isinstance(value, dict):
-        return {key: _js_ordered(value[key]) for key in _ordered_keys(value)}
-    if isinstance(value, list):
-        return [_js_ordered(item) for item in value]
-    return value
+    """``value`` with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order.
+
+    It walks with a stack of its own, not the interpreter's: arguments nested thousands of levels deep (Pi takes 4000) are read, and no depth ends in a RecursionError."""
+    if not isinstance(value, (dict, list)):
+        return value
+    root = {} if isinstance(value, dict) else []
+    stack = [(value, root)]
+    while stack:
+        source, target = stack.pop()
+        if isinstance(source, dict):
+            for key in _ordered_keys(source):
+                item = source[key]
+                if isinstance(item, (dict, list)):
+                    child = {} if isinstance(item, dict) else []
+                    stack.append((item, child))
+                    target[key] = child
+                else:
+                    target[key] = item
+        else:
+            for item in source:
+                if isinstance(item, (dict, list)):
+                    child = {} if isinstance(item, dict) else []
+                    stack.append((item, child))
+                    target.append(child)
+                else:
+                    target.append(item)
+    return root
+
+
+TOO_DEEP_MESSAGE = "Maximum call stack size exceeded"
+
+
+def _frame_head(body: bytes | bytearray) -> tuple[str | None, str | None]:
+    """The ``type`` and ``id`` strings of the envelope in ``body``, read without decoding the members that nest: the brackets are counted and the strings read whole."""
+    from json.decoder import scanstring
+
+    text = bytes(body).decode("utf-8", "replace")
+    end, size, found = 0, len(text), {}
+    try:
+        while end < size and text[end] in " \t\r\n":
+            end += 1
+        if end >= size or text[end] != "{":
+            return None, None
+        end += 1
+        while True:
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end >= size or text[end] != '"':
+                break
+            key, end = scanstring(text, end + 1)
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end >= size or text[end] != ":":
+                break
+            end += 1
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end < size and text[end] == '"':
+                value, end = scanstring(text, end + 1)
+                found[key] = value
+            else:
+                depth = 0
+                while end < size:
+                    char = text[end]
+                    if char == '"':
+                        _, end = scanstring(text, end + 1)
+                        continue
+                    if char in "{[":
+                        depth += 1
+                    elif char in "}]":
+                        if depth == 0:
+                            break
+                        depth -= 1
+                    elif char == "," and depth == 0:
+                        break
+                    end += 1
+            while end < size and text[end] in " \t\r\n":
+                end += 1
+            if end < size and text[end] == ",":
+                end += 1
+            else:
+                break
+    except (ValueError, IndexError):
+        pass
+    return found.get("type"), found.get("id")
+
+
+def _too_deep_envelope(body: bytes | bytearray) -> dict[str, Any]:
+    """What a frame nested too deep to decode stands for: a request that is answered with an error, a host call's result that is an error, or nothing."""
+    kind, frame_id = _frame_head(body)
+    if not isinstance(frame_id, str):
+        return {"type": "refused"}
+    if kind == "request":
+        return {"type": "request", "id": frame_id, "refused": TOO_DEEP_MESSAGE}
+    if kind == "call_result":
+        return {"type": "call_result", "id": frame_id, "call_result": {"error": {"message": TOO_DEEP_MESSAGE}}}
+    return {"type": "refused"}
 
 
 class Extension:
@@ -5118,6 +5209,8 @@ class Extension:
                 continue
             if env.get("type") == "notify":
                 self._handle_notify(env)
+            elif env.get("type") == "request" and env.get("refused"):
+                self._respond(env.get("id", ""), None, {"message": env["refused"]})
             elif env.get("type") == "request":
                 self._apply_event_stream(env.get("request") or {})
                 self._start_request(env)
@@ -6517,7 +6610,12 @@ class Extension:
         size = struct.unpack(">I", hdr)[0]
         if size > MAX_FRAME_SIZE:
             raise RuntimeError(f"frame too large: {size}")
-        return json.loads(self._read_exact(size))
+        body = self._read_exact(size)
+        try:
+            return json.loads(body)
+        except RecursionError:
+            # A value nested past what the interpreter's JSON reader takes is Pi's RangeError, not the end of the connection: the request it came in is answered with that error.
+            return _too_deep_envelope(body)
 
     def _read_exact(self, n: int) -> bytes | bytearray:
         """Read exactly ``n`` bytes straight into one buffer: a large frame is not grown chunk by chunk and copied again. ``b""`` means the peer closed before the first byte."""

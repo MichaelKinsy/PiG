@@ -13,7 +13,7 @@
 (deftype octets () '(simple-array (unsigned-byte 8) (*)))
 
 (defconstant +max-safe-integer+ 9007199254740992)
-(defparameter *max-json-depth* 2000)
+(defparameter *max-json-depth* 4096)
 
 (defun json-fail (message &optional offset)
   (error 'json-error :message message :offset offset))

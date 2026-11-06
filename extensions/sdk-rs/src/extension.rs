@@ -2537,6 +2537,24 @@ impl Extension {
             tool: start,
             request: request_start,
         } = starts;
+        if let Some(message) = req.args_error.take() {
+            // Arguments nested past the bound are Pi's RangeError: the call fails with it, and the connection keeps serving.
+            if let Some(request_start) = request_start {
+                request_start.begin();
+            }
+            if let Some(start) = start {
+                start.begin();
+            }
+            let _ = conn.respond(
+                id,
+                None,
+                Some(ErrorInfo {
+                    code: None,
+                    message,
+                }),
+            );
+            return;
+        }
         match req.method.as_str() {
             "autocomplete.sync" | "autocomplete.suggest" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
@@ -3858,6 +3876,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "render_message".to_string(),
@@ -3943,6 +3962,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4111,6 +4131,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_login".to_string(),
@@ -4180,6 +4201,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_get_api_key".to_string(),
@@ -4207,6 +4229,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_refresh".to_string(),
@@ -4235,6 +4258,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_store_credentials".to_string(),
@@ -4260,6 +4284,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "oauth_credential_status".to_string(),
@@ -4355,6 +4380,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4390,6 +4416,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4461,6 +4488,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4521,6 +4549,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4603,6 +4632,7 @@ mod tests {
                     terminal_input: None,
                     stream: None,
                     stream_error: None,
+                    args_error: None,
                     tool_call_index: None,
                     args_raw: None,
                     method: "command".to_string(),
@@ -4668,6 +4698,7 @@ mod tests {
                 terminal_input: None,
                 stream: None,
                 stream_error: None,
+                args_error: None,
                 tool_call_index: None,
                 args_raw: None,
                 method: method.to_string(),

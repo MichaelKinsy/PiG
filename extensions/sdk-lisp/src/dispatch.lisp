@@ -489,6 +489,8 @@ The register frame is sent, and the dispatches read before the shutdown are answ
                       (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
                      ((equal type "call_result") (deliver-call-result ext env))
                      ((equal type "notify") (handle-notify ext env))
+                     ((and (equal type "request") (jget env "refused"))
+                      (respond ext (jget env "id" "") nil (jget env "refused")))
                      ((equal type "request")
                       (apply-event-stream ext (or (jget env "request") (obj)))
                       (start-request ext env))

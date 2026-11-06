@@ -263,8 +263,10 @@ impl Context {
 
     /// The running tool call's arguments with every object, at any depth, in the member order JavaScript's `Object.keys` gives (array-index keys ascending, then the others in insertion order), which Pi's `execute` params keep and an extension that writes the arguments back out (`JSON.stringify(params.metadata)`) relies on. `None` outside a tool handler or when the arguments are not an object.
     pub fn tool_params(&self) -> Option<Map<String, Value>> {
+        // The arguments are the frame's raw text, which spells a lone UTF-16 surrogate of the model's JSON as an escape: `from_json_str` reads each as U+FFFD
+        // (a Rust string cannot hold the unit) where serde_json refuses the text, and also reads nesting and numbers JavaScript's parser takes.
         let Value::Object(object) =
-            js_ordered(serde_json::from_str(self.tool_input.as_deref()?).ok()?)
+            js_ordered(crate::protocol::from_json_str(self.tool_input.as_deref()?).ok()?)
         else {
             return None;
         };
