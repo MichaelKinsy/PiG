@@ -1,4 +1,4 @@
-// Package noderealpath is Node's fs.realpathSync: the path Node's JS realpath walk reports, which Go's filepath.EvalSymlinks differs from on Windows (it expands 8.3 short names and the case of non-link components, follows a rooted link target on the process drive, and resolves a ".." step against a component that need not exist).
+// Package noderealpath is Node's fs.realpathSync: the path Node's JS realpath walk reports, which Go's filepath.EvalSymlinks differs from. Node resolves the path before it walks it, so a ".." step cancels a component that need not exist, where EvalSymlinks looks the component up first and fails. On Windows EvalSymlinks also expands 8.3 short names and the case of non-link components and follows a rooted link target on the process drive.
 package noderealpath
 
 import "github.com/MichaelKinsy/PiG/internal/nodepath"

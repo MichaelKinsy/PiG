@@ -42,7 +42,7 @@ func isJSONPkg(p string) bool {
 
 // hotPackage reports whether rel is in a package where env, stat and loop-format sites count.
 func hotPackage(rel string) bool {
-	for _, prefix := range []string{"agent/", "ai/", "coding/", "extensions/sdk/", "internal/codingagent/"} {
+	for _, prefix := range []string{"agent/", "ai/", "coding/", "extensions/sdk/", "internal/codingagent/", "internal/noderealpath/"} {
 		if strings.HasPrefix(rel, prefix) {
 			return true
 		}

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -357,7 +358,7 @@ func TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand(t *test
 	}
 	calls, _ := os.ReadFile(log)
 	// npm gets the real path of the install root, as package-manager.ts uninstallNpm passes it (a temporary directory may be a symlink).
-	realRoot, err := codingagent.RealPathSync(root)
+	realRoot, err := noderealpath.Sync(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,7 +388,7 @@ func TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASy
 	if err := pm.Remove("npm:left-pad", false); err != nil {
 		t.Fatal(err)
 	}
-	realRoot, err := codingagent.RealPathSync(filepath.Join(realAgent, "npm"))
+	realRoot, err := noderealpath.Sync(filepath.Join(realAgent, "npm"))
 	if err != nil {
 		t.Fatal(err)
 	}

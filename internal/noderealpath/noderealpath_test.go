@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// fs.realpathSync resolves the path before it walks it, so a ".." step cancels a component that does not exist, and a relative path comes back absolute. filepath.EvalSymlinks looks the component up first and fails on Windows.
+// fs.realpathSync resolves the path before it walks it, so a ".." step cancels a component that does not exist, and a relative path comes back absolute. filepath.EvalSymlinks looks the component up first and fails on every OS.
 func TestSyncResolvesDotSegmentsBeforeWalking(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
