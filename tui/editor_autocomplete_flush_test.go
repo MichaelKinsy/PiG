@@ -53,7 +53,6 @@ func TestFlushAutocompleteDropsARequestTheEditorMovedOnFrom(t *testing.T) {
 	for name, move := range map[string]func(*Editor){
 		"text replaced":  func(e *Editor) { e.SetText("plain") },
 		"menu cancelled": func(e *Editor) { e.AutocompleteCancel() },
-		"cursor moved":   func(e *Editor) { e.HandleInput("\x1b[D") },
 	} {
 		t.Run(name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
@@ -69,6 +68,34 @@ func TestFlushAutocompleteDropsARequestTheEditorMovedOnFrom(t *testing.T) {
 				flush()
 				completionUpstreamRequests(t, calls, nil)
 				completionUpstreamOpen(t, e, false)
+			})
+		})
+	}
+}
+
+// upstream: editor.ts startAutocompleteRequest snapshots getText() and the cursor when the request starts, after the read: a key of the read that makes no request (a cursor move) leaves it alone, and it asks about the text the read left
+// (TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi compares this with Pi's Editor).
+func TestFlushAutocompleteStartsARequestAgainstTheTextTheReadLeft(t *testing.T) {
+	for name, tail := range map[string]struct {
+		keys string
+		want string
+	}{
+		"cursor moved": {"\x1b[D", "/m"},
+		"space typed":  {" ", "/mo "},
+	} {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				e, flush := completionUpstreamEditor(t)
+				var calls []string
+				e.SetAutocomplete(&completionUpstreamProvider{query: func(prefix string, _ bool) *AutocompleteSuggestions {
+					calls = append(calls, prefix)
+					return completionUpstreamItems(prefix, "/model")
+				}})
+				completionUpstreamType(e, "/mo")
+				e.HandleInput(tail.keys)
+				e.FlushAutocomplete()
+				flush()
+				completionUpstreamRequests(t, calls, []string{tail.want})
 			})
 		})
 	}
