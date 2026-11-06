@@ -213,18 +213,19 @@ func sortEntriesLikeLocaleCompare(entries []string) {
 		key         []byte
 	}
 	sorted := make([]sortEntry, len(entries))
-	replacement := false
+	replacement, lowerBytes := false, 0
 	for i, entry := range entries {
 		lower := jsstring.ToLower(entry)
 		sorted[i] = sortEntry{name: entry, lower: lower}
 		replacement = replacement || strings.Contains(lower, "\uFFFD")
+		lowerBytes += len(lower)
 	}
 	if replacement {
 		collator := localecompare.NewCollator()
 		sortx.Stable(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
 	} else {
 		collator := localecompare.NewCollator()
-		var keys []byte
+		keys := make([]byte, 0, 8*lowerBytes) // a key takes about 5 bytes per ASCII byte of name; growing it by doubling costs 4 MB of copies at 10,000 names
 		ends := make([]int, len(sorted))
 		for i := range sorted {
 			keys = collator.AppendKey(keys, sorted[i].lower)

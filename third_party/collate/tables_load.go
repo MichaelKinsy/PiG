@@ -15,10 +15,23 @@ import (
 //go:embed tables.bin
 var compressedTables string
 
-var tablesLoaded sync.Once
+var (
+	tablesLoaded sync.Once
+	tablesFailed any // what decodeTables panicked with; set inside tablesLoaded, read after it
+)
 
-// loadTables fills the table arrays on first use. It returns after every goroutine that calls it has seen the arrays complete.
-func loadTables() { tablesLoaded.Do(decodeTables) }
+// loadTables fills the table arrays on first use. It returns after every goroutine that calls it has seen the arrays complete. If the tables
+// cannot be decoded, the first call panics and so does every later call, with the same value: sync.Once counts a panicking function as done,
+// and without this the later calls would compare with half-filled arrays.
+func loadTables() {
+	tablesLoaded.Do(func() {
+		defer func() { tablesFailed = recover() }()
+		decodeTables()
+	})
+	if tablesFailed != nil {
+		panic(tablesFailed)
+	}
+}
 
 func decodeTables() {
 	r := flate.NewReader(strings.NewReader(compressedTables))
@@ -45,8 +58,11 @@ func decodeTables() {
 			}
 		}
 	}
-	if _, err := io.ReadFull(r, d.plane[:1]); err != io.EOF {
+	switch n, err := io.ReadFull(r, d.plane[:1]); {
+	case n != 0:
 		panic("collate: tables.bin holds more than tables.go declares")
+	case err != io.EOF:
+		panic("collate: tables.bin is corrupt: " + err.Error())
 	}
 }
 
