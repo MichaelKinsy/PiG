@@ -55,6 +55,23 @@ func init() {
 			map[string]any{"0": map[string]any{"0": 1.0, "length": 1.0}, "1": map[string]any{}, "length": 2.0}, map[string]any{"0": map[string]any{"0": "a", "length": 1.0}, "length": 1.0},
 			[]any{"a"}, []any{}, []any{"a", "b"}, map[string]any{})
 	}
+	// A keyword whose value has the wrong type is skipped (Schema.IsMinLength and the others need a finite number, a string, an array or a boolean), whatever the value is.
+	wrong := []string{`"3"`, `"abc"`, `""`, `null`, `true`, `false`, `[1]`, `{ a: 1 }`, `Infinity`, `NaN`, `-Infinity`, `[]`}
+	everyValue := []any{
+		"", "ab", "abcdef", "a@b.c", 0.0, 5.0, -1.0, 2.5, []any{}, []any{1.0}, []any{1.0, 2.0, 3.0}, []any{1.0, 1.0}, map[string]any{}, map[string]any{"a": 1.0}, nil, true,
+	}
+	for _, keyword := range []string{
+		"minLength", "maxLength", "pattern", "format", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "const", "enum", "minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties",
+	} {
+		for _, bad := range wrong {
+			if keyword == "const" && (bad == `Infinity` || bad == `NaN` || bad == `-Infinity`) {
+				// const has no guard and the schema reaches this package as JSON, which has no Infinity or NaN.
+				continue
+			}
+			add(`Type.Unsafe({ `+keyword+`: `+bad+` })`, everyValue...)
+		}
+	}
+	add(`Type.Unsafe({ minLength: "3", maxLength: 1, minimum: "1", maximum: 2, minItems: "5", maxItems: 2, pattern: 5, enum: 3, const: "x" })`, everyValue...)
 	// uniqueItems hashes the values: an object's members in the order of their names, 0 and -0 apart.
 	add(`Type.Array(Type.Any(), { uniqueItems: true })`,
 		[]any{1.0, 1.0}, []any{0.0, math.Copysign(0, -1)}, []any{1.0, "1"}, []any{map[string]any{"a": 1.0, "b": 2.0}, map[string]any{"b": 2.0, "a": 1.0}},
