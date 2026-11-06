@@ -304,6 +304,7 @@ func (e *rpcExit) run(code int, flushStdout, forced bool) {
 	e.cleanup()
 	e.record(code, forced)
 	e.end(code)
+	//portlint:allow doubleclose commit hands the end to one owner, the only run that gets here, so ended closes once
 	close(e.ended)
 }
 

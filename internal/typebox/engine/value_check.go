@@ -238,6 +238,7 @@ func (s *Session) serveValue(member string, args []any, fail func(name, message 
 	s.walks[walk.token] = walk
 	s.mu.Unlock()
 	schema, value := schemaData(args[0]), valueData(args[1])
+	//portlint:allow golifetime the walk ends through walk.cancel, which Session.Close and forget close, and every send and receive it makes selects on it
 	go walk.run(member, schema, value)
 	return s.await(walk, fail)
 }

@@ -519,7 +519,8 @@ func readTruncation(details any) *truncationView {
 		if limit, ok := numberValue(raw["maxLines"]); ok {
 			view.maxLines = tui.JSNumberString(limit)
 		}
-		if limit, ok := numberValue(raw["maxBytes"]); ok {
+		if limit, ok := numberValue(raw["maxBytes"]); ok && math.Abs(limit) < 1<<53 {
+			//portlint:allow numbers limit is finite and below 2^53 in magnitude here, so the conversion is defined; maxBytes is the whole byte count the read tool wrote
 			view.maxBytes = int(limit)
 		}
 		return view

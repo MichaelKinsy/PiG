@@ -559,14 +559,16 @@ func (m *InteractiveMode) afterExtensionCommand(returned <-chan struct{}, fn fun
 	if ctx == nil {
 		ctx = m.runCtx
 	}
-	if ctx == nil {
-		ctx = context.Background()
+	// A mode that never ran has no context: the wait then ends only when the command returns, and runOnMain posts without a cancellation source.
+	var stopped <-chan struct{}
+	if ctx != nil {
+		stopped = ctx.Done()
 	}
 	m.backgroundTasks.Go(func() {
 		select {
 		case <-returned:
 			m.runOnMain(ctx, fn)
-		case <-ctx.Done():
+		case <-stopped:
 		}
 	})
 }
