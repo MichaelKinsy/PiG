@@ -38,3 +38,6 @@ edae8e70d7 Follow-up to unreleased work: --listen live-host tracking and second-
 f34cb22f47 Follow-up to unreleased work: ctx.abort scoped per host group for the --listen server's shared cells (D232)
 ddc6060aa0 Follow-up to unreleased work: shared cell processes of the --listen server outlive their spawner (D232)
 a95098aa83 Follow-up to unreleased work: the --listen socket is bound in a private directory instead of under a changed umask (D232)
+85b025699f Follow-up to unreleased work: a --listen connection's exit ends its session (D232), found in review before any release
+1e9847163e Follow-up to unreleased work: the first generation of an isolated Node launcher carries its Host's group in the opt-in shared mode of --listen (D232)
+9d84543b6c Follow-up to unreleased work: --listen burst memory, accept messages and socket removal (D232)
