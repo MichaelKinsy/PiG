@@ -2074,7 +2074,7 @@ func (e *Editor) typedCharacterOpensAutocomplete(char string) bool {
 // isAutocompleteTriggerCharacter is editor.ts autocompleteTriggerCharacters.includes(char): char is exactly one trigger character.
 func isAutocompleteTriggerCharacter(char string, triggers []rune) bool {
 	r, size := utf8.DecodeRuneInString(char)
-	return size == len(char) && !(r == utf8.RuneError && size <= 1) && slices.Contains(triggers, r)
+	return size == len(char) && (r != utf8.RuneError || size > 1) && slices.Contains(triggers, r)
 }
 
 // autocompleteWordCharacter is editor.ts insertCharacter's /[a-zA-Z0-9.\-_]/.
