@@ -3115,11 +3115,11 @@ SCRUTINIZED:approved
 
 Remove when: the pinned Pi release contains 4b9777737. Then the call-site marker and this record go; the catalog regenerates from the pinned package.
 
-Call-site markers: `internal/modelgen/family_anthropic.go` (`temperatureUnsupported`), `cmd/gen-models/d240_sonnet5_temperature.go` (`applyD240SonnetFiveTemperature`), `ai/d240_sonnet5_allowance_test.go` and the node script of `ai/catalog_model_json_oracle_test.go` (the allowances).
+Call-site markers: `internal/modelgen/family_anthropic.go` (`temperatureUnsupported`), `cmd/gen-models/d240_sonnet5_temperature.go` (`applyD240SonnetFiveTemperature`), `ai/d240_sonnet5_allowance_test.go`, the node script of `ai/catalog_model_json_oracle_test.go` and `coding/extension/model_object_oracle_test.go` (the allowances).
 
 Evidence: `TestAnthropicTemperatureCompatibility/omits_zero_for_Claude_Sonnet_5` (red on 989927eff4: `temperature = 0, want omitted`), `TestApplyClaudeFamilyRules/sonnet_5_drops_the_temperature` (red: got `{"forceAdaptiveThinking":true}`), `TestCatalogGenerationMatchesPi` (golden regenerated with Pi's generator with 4b9777737 applied).
 
-Parity allowance: the generated catalog and `cmd/gen-models/testdata/catalog-generation/golden.sha256` follow Pi main for these records. `TestGeneratedCatalogsMatchPublishedPackage`, `TestCatalogModelJSONMatchesPiForEveryBuiltinModel` and `TestBuiltinCatalogsMatchPinnedProviderDataModules` accept exactly the seven records above with compat.supportsTemperature false added and nothing else (`d240SonnetFiveRecords`; the JSON test adds the member after forceAdaptiveThinking so the bytes are compared in Pi's member order). `TestCodegenByteIdentical` needs no allowance: it regenerates through the same generator and reproduces the committed bytes.
+Parity allowance: the generated catalog and `cmd/gen-models/testdata/catalog-generation/golden.sha256` follow Pi main for these records. `TestGeneratedCatalogsMatchPublishedPackage`, `TestCatalogModelJSONMatchesPiForEveryBuiltinModel` and `TestBuiltinCatalogsMatchPinnedProviderDataModules` accept exactly the seven records above with compat.supportsTemperature false added and nothing else (`d240SonnetFiveRecords`; the JSON test adds the member after forceAdaptiveThinking so the bytes are compared in Pi's member order). `TestModelObjectsMatchPisModelObjects` (`coding/extension`) accepts the same seven records with the same member added after forceAdaptiveThinking: the extension-visible model object follows the host catalog, as Pi main's does. `TestCodegenByteIdentical` needs no allowance: it regenerates through the same generator and reproduces the committed bytes.
 
 ## D241 Ctrl+V also pastes on Windows and WSL
 
