@@ -1121,6 +1121,25 @@
       ]
     },
     {
+      "id": "BF-08ab103",
+      "title": "fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be…",
+      "symptom": "fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be queried; the timeout bound on Close is documented",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "08ab103e5b",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-08bf076",
       "title": "An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason…",
       "symptom": "Every failure reached the flow as a cancel.",
@@ -5706,6 +5725,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-285ae70",
+      "title": "Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a…",
+      "symptom": "Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a pending read or when the pipe is closed; both wait on the operation's own completion.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a pending read or when the pipe is closed; both wait on the operation's own completion. The clipboard open retry ends at once when the command is cancelled.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "285ae70166",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsPendingRead",
+        "chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsWrites",
+        "chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeWriteWhileReadWaits"
+      ]
     },
     {
       "id": "BF-286d303",
@@ -21810,6 +21853,25 @@
       ]
     },
     {
+      "id": "BF-76548a5",
+      "title": "fix(chord): Close and writeSynchronous treat a failed cancel alike; the pipe tests say what they check",
+      "symptom": "fix(chord): Close and writeSynchronous treat a failed cancel alike; the pipe tests say what they check",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "76548a5eda",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-7662334",
       "title": "An extension that writes a large amount to stderr no longer grows its diagnostic log without limit",
       "symptom": "An extension that writes a large amount to stderr no longer grows its diagnostic log without limit.",
@@ -32834,6 +32896,26 @@
         "ai/http_transport_reuse_test.go::TestStreamingTransportIsKeyedByItsSettings",
         "coding/model_runtime_conn_reuse_test.go::TestModelRuntimeReusesOneConnectionAcrossRequests"
       ]
+    },
+    {
+      "id": "BF-aeabf18",
+      "title": "Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped…",
+      "symptom": "Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped named pipes (as Node's are), and Pig waits for their output on an event instead of polling every millisecond.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped named pipes (as Node's are), and Pig waits for their output on an event instead of polling every millisecond. The child's end of each pipe is still an ordinary synchronous handle, and the order in which stdout and stderr are delivered is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aeabf180be",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-aec0042",

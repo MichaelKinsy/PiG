@@ -58,6 +58,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-082f350](#bf-082f350) | `markdown.codeBlockIndent`: Pi's getter is `markdown?.codeBlockIndent ?? " "`, so an authored `""` means no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-08ab103](#bf-08ab103) | fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be… | PiG's own defect | All platforms | Unreleased |
 | [BF-08bf076](#bf-08bf076) | An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-0920a00](#bf-0920a00) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
@@ -210,6 +211,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f6a7e](#bf-27f6a7e) | The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then… | PiG's own defect | Windows | 0.7.0 |
 | [BF-2843d60](#bf-2843d60) | Starting `pig` from a working directory that has been deleted now prints "Error: The current working… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-285ae70](#bf-285ae70) | Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a… | PiG's own defect | Windows | Unreleased |
 | [BF-286d303](#bf-286d303) | A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-28b8425](#bf-28b8425) | Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
@@ -781,6 +783,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
 | [BF-761f5a2](#bf-761f5a2) | `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7633906](#bf-7633906) | On arm64, `tool_search` and `searchTools()` scores use the same natural logarithm as Pi running on Node for… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-76548a5](#bf-76548a5) | fix(chord): Close and writeSynchronous treat a failed cancel alike; the pipe tests say what they check | PiG's own defect | All platforms | Unreleased |
 | [BF-7662334](#bf-7662334) | An extension that writes a large amount to stderr no longer grows its diagnostic log without limit | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7689b82](#bf-7689b82) | An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-76f780d](#bf-76f780d) | A tool call that streams many argument deltas no longer costs time and memory that grow with the square of… | PiG's own defect | All platforms | 0.7.0 |
@@ -1172,6 +1175,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ae49fdd](#bf-ae49fdd) | fix(gen-models): link the TLS distrust hook into the catalog generator | PiG's own defect | All platforms | Unreleased |
 | [BF-ae79485](#bf-ae79485) | fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
+| [BF-aeabf18](#bf-aeabf18) | Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped… | PiG's own defect | Windows | Unreleased |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-af36fe8](#bf-af36fe8) | A streamed tool call whose arguments are valid JSON but not an object (`[]`, `null`, `5`, `"s"`) keeps them… | PiG's own defect | All platforms | 0.5.0 |
@@ -2255,6 +2259,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `086395a8bd` (2026-10-11)
 - **Tests:** `coding/services_test.go::TestDefaultAgentDirHonorsTheAgentDirVariable`
 - **Release note:** `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR` (`PI_CODING_AGENT_DIR` with `PIG_USE_PI_DIRS=1`), tilde expanded, as the `pig` binary does; before, SDK embedders, `--skill` loading, the default skills directory and the interactive default ignored the variable and used `$PIG_HOME/agent`.
+
+### BF-08ab103
+
+**fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be queried; the timeout bound on Close is documented
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `08ab103e5b` (2026-11-06)
+- **Tests:** None recorded.
 
 ### BF-08bf076
 
@@ -4362,6 +4379,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2843d60cd9` (2026-10-30, #11509)
 - **Tests:** None recorded.
 - **Release note:** Starting `pig` from a working directory that has been deleted now prints "Error: The current working directory no longer exists. Change to an existing directory and try again." and exits 1, where it printed `get cwd:` with the operating system error. Carried forward from Pi 88ffcdc7 (earendil-works/pi#11509), past the 1.4.0+b3a29f11 pin.
+
+### BF-285ae70
+
+**Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a pending read or when the pipe is closed; both wait on the operation's own completion.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `285ae70166` (2026-11-06)
+- **Tests:** `chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsPendingRead`, `chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeCloseEndsWrites`, `chord/host/manager_pipe_handle_windows_test.go::TestHandlePipeWriteWhileReadWaits`
+- **Release note:** Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a pending read or when the pipe is closed; both wait on the operation's own completion. The clipboard open retry ends at once when the command is cancelled.
 
 ### BF-286d303
 
@@ -12272,6 +12303,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/jsmath/log_oracle_test.go::TestLogMatchesNode`
 - **Release note:** On arm64, `tool_search` and `searchTools()` scores use the same natural logarithm as Pi running on Node for arm64, whose V8 math library fuses each multiply-add in one step. Before, the logarithm in the BM25 weights differed from Node's in the last bit for about 1 in 500 arguments, which could change scores and break ties in a different order.
 
+### BF-76548a5
+
+**fix(chord): Close and writeSynchronous treat a failed cancel alike; the pipe tests say what they check**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): Close and writeSynchronous treat a failed cancel alike; the pipe tests say what they check
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `76548a5eda` (2026-11-06)
+- **Tests:** None recorded.
+
 ### BF-7662334
 
 **An extension that writes a large amount to stderr no longer grows its diagnostic log without limit**
@@ -17728,6 +17772,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `04b10bcaa0` (2026-10-09), `aeaaf97297` (2026-10-09)
 - **Tests:** `ai/http_transport_reuse_test.go::TestProvidersReuseOneConnectionAcrossBuilds`, `ai/http_transport_reuse_test.go::TestStreamingTransportIsKeyedByItsSettings`, `coding/model_runtime_conn_reuse_test.go::TestModelRuntimeReusesOneConnectionAcrossRequests`
 - **Release note:** Model requests reuse their HTTP connection. Every provider build used to create its own transport, so each request and tool round trip opened a new TCP (and TLS, and proxy CONNECT) connection and left an idle socket with its goroutines for two minutes. Providers now share one transport per TLS mode; a changed idle timeout or proxy environment replaces it, as Pi's configureHttpDispatcher replaces its single dispatcher.
+
+### BF-aeabf18
+
+**Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped named pipes (as Node's are), and Pig waits for their output on an event instead of polling every millisecond.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `aeabf180be` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** Windows: the pipes that carry the output of the bash tool's shell and of `pi.exec` children are overlapped named pipes (as Node's are), and Pig waits for their output on an event instead of polling every millisecond. The child's end of each pipe is still an ordinary synchronous handle, and the order in which stdout and stderr are delivered is unchanged.
 
 ### BF-aec0042
 
