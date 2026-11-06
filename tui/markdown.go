@@ -360,8 +360,8 @@ func (m *Markdown) Render(width int) []string {
 	if m.Transform != nil && m.AsyncTransform == nil {
 		content = m.Transform(content, contentWidth)
 	}
-	// A JavaScript string never holds a high half followed by a low half: they are one character. Join two such halves a caller built with a plain Go concatenation; valid text is returned as is.
-	content = jsstring.JoinAdjacentSurrogates(content)
+	// A JavaScript string never holds a high half followed by a low half: they are one character. Canonical joins two such halves a caller built with a plain Go concatenation; valid text is returned as is.
+	content = jsstring.Canonical(content)
 	out := []string{}
 	if widthx.JSTrim(content) != "" {
 		out = m.renderDocument(content, width, contentWidth)
