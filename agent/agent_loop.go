@@ -406,6 +406,7 @@ func (r *loopRun) applyUpdate(context *AgentContext, model *ai.Model, thinking *
 // appendMessage emits a message's lifecycle and adds it to the transcript, the
 // loop context, and the run's new messages.
 func (r *loopRun) appendMessage(msg AgentMessage) {
+	msg = msg.WithOrderRecord()
 	r.h.emit(MessageStartEvent{Message: startEventMessage(msg)})
 	r.context = append(r.context, msg)
 	r.newMessages = append(r.newMessages, msg)

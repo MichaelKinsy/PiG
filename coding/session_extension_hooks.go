@@ -378,6 +378,8 @@ func replaceMessageInPlace(target, replacement agent.AgentMessage) {
 		fields := maps.Clone(replacement.Custom)
 		clear(target.Custom)
 		maps.Copy(target.Custom, fields)
+		// The members follow the replacement's order, in every copy of the message.
+		target.AdoptMemberOrder(replacement)
 	}
 }
 
@@ -407,7 +409,7 @@ func (s *Session) QueueAgentStartMessages(messages []extension.CustomMessageRef)
 		if message.Details != nil {
 			fields["details"] = message.Details
 		}
-		custom = append(custom, agent.AgentMessage{Custom: fields})
+		custom = append(custom, agent.AgentMessage{Custom: fields}.WithOrderRecord())
 	}
 	s.agentStartMu.Lock()
 	s.agentStartMessages = append(s.agentStartMessages, custom...)
