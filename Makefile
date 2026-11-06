@@ -347,7 +347,7 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 		(cd "$$module" && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...); \
 	done
 
-test-aot-conformance: ## Run the extension conformance suite on the compiled aot host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 0.7.4 runtime executable)
+test-aot-conformance: ## Run the extension conformance suite on the compiled Pi-Bolt host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 1.1.2 runtime executable)
 	@piglets/pig-bolt/conformance.sh
 
 # The Rust SDK's own unit tests. `test` builds the Rust conformance fixtures,
@@ -605,6 +605,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/bunruntime >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/standard/pig-standard.yaml >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-bolt.yaml >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-aot.yaml >/dev/null
 
 ##@ Gates
 
