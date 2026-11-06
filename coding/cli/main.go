@@ -890,6 +890,10 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	runMode := processAppMode(flags)
+	if flags.Listen != "" {
+		// pig additive (D232): a --listen server runs many sessions, so it ends D174's cap of 2 Ps: sessions that start together do their server-side work on every P.
+		procpolicy.Release()
+	}
 	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
 	if (runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC) && flags.Listen == "" {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
@@ -1196,9 +1200,9 @@ func Main(args []string, options *MainOptions) {
 		},
 	}
 	if flags.Listen != "" {
-		// pig additive (D232): a --listen server builds one session at a time. Its Hosts share cell processes through one registry only with --listen-share-extensions; otherwise every session's Host spawns its own, as a process per session would.
-		builder.buildMu = &sync.Mutex{}
+		// pig additive (D232): with --listen-share-extensions the server's Hosts share cell processes through one registry and its builds run one at a time. Otherwise every session's Host spawns its own processes, as a process per session would, and sessions build concurrently.
 		if flags.ListenShareExtensions {
+			builder.buildMu = &sync.Mutex{}
 			builder.cellRegistry = subprocess.NewCellRegistry()
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -243,12 +244,9 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	defer setTerminationPrelude(nil)
 	defer setTerminationShutdownHook(nil)
 
+	// pig additive (D232): builds are serialized (buildMu) only in the shared mode, whose Hosts look up and register processes in one registry. In the default mode a build only spawns the session's own processes: concurrent sessions overlap their spawns, and a cache entry two of them need is published once (the content-addressed publisher takes a per-digest lock).
 	buildMu := builder.buildMu
-	if buildMu == nil {
-		buildMu = &sync.Mutex{}
-		builder.buildMu = buildMu
-	}
-	startupBuildTaken := false
+	var startupBuildTaken atomic.Bool
 	cwd := resources.Build.CWD
 
 	var conns sync.WaitGroup
@@ -270,22 +268,27 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 			}
 			conns.Go(func() {
 				defer func() { _ = conn.Close() }()
-				buildMu.Lock()
+				if buildMu != nil {
+					buildMu.Lock()
+				}
 				if ctx.Err() != nil {
-					buildMu.Unlock()
+					if buildMu != nil {
+						buildMu.Unlock()
+					}
 					return
 				}
 				var build *cliBuild
 				var buildErr error
 				connResources := rpcModeResources{Builder: builder}
-				if !startupBuildTaken {
-					startupBuildTaken = true
+				if startupBuildTaken.CompareAndSwap(false, true) {
 					build = resources.Build
 					connResources.SessionManager, connResources.ResumePath = resources.SessionManager, resources.ResumePath
 				} else {
 					build, buildErr = builder.listenBuild(ctx, cwd)
 				}
-				buildMu.Unlock()
+				if buildMu != nil {
+					buildMu.Unlock()
+				}
 				if buildErr != nil {
 					fmt.Fprintf(os.Stderr, "pig --listen: build: %v\n", buildErr)
 					return

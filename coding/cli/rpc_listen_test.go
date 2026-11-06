@@ -70,8 +70,14 @@ func listenEnv(t *testing.T, dir string) []string {
 // startListenServer starts the server on dir/pig.sock unless args already carry --listen.
 func startListenServer(t *testing.T, env []string, args ...string) *listenServer {
 	t.Helper()
+	return startListenServerBinary(t, buildPigBinaryForSignalTest(t), env, args...)
+}
+
+// startListenServerBinary starts the server from the pig executable at binary.
+func startListenServerBinary(t *testing.T, binary string, env []string, args ...string) *listenServer {
+	t.Helper()
 	s := &listenServer{t: t, errBuf: &lockedBuffer{}, exited: make(chan struct{}), budget: testbudget.Wait(t)}
-	cmd := exec.Command(buildPigBinaryForSignalTest(t), args...)
+	cmd := exec.Command(binary, args...)
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Stderr = s.errBuf
 	cmd.WaitDelay = 10 * time.Second

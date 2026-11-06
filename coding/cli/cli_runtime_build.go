@@ -76,14 +76,16 @@ type cliRuntimeBuilder struct {
 	settingsDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	startupUIOptions    codingagent.StartupUIOptions
 	trustStore          *codingagent.ProjectTrustStore
-	trustByCWD          map[string]bool
+	// trustMu guards trustByCWD: a --listen server's concurrent builds read and write it (pig additive (D232)).
+	trustMu    sync.Mutex
+	trustByCWD map[string]bool
 	// stageExtensionSDKs stages the embedded extension SDKs and returns the failure to report (stageExtensionSDKsFor). stageSDKs runs it once per
 	// process, before the first extension load that starts an extension: a run that loads none stages nothing.
 	stageExtensionSDKs func() error
 	stageSDKs          sync.Once
 	// extensionFactories are MainOptions.ExtensionFactories, the compiled-in extensions the program's main adds after the built-in ones (main.ts:575).
 	extensionFactories []extension.InlineExtension
-	// buildMu is set only by a --listen server, and cellRegistry only by one started with --listen-share-extensions (pig additive (D232)): the mutex that serializes its builds, and the registry its Hosts share cell processes through.
+	// buildMu and cellRegistry are set only by a --listen server started with --listen-share-extensions (pig additive (D232)): the mutex that serializes its builds, and the registry its Hosts share cell processes through. A default --listen server builds its sessions concurrently.
 	cellRegistry *subprocess.CellRegistry
 	buildMu      *sync.Mutex
 }
@@ -200,7 +202,9 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		}
 		projectTrusted = saved == nil || *saved
 	}
+	b.trustMu.Lock()
 	cached, hasCached := b.trustByCWD[cwd]
+	b.trustMu.Unlock()
 	if flags.ProjectTrustOverride == nil && hasTrustResources && hasCached {
 		projectTrusted = cached
 	}
@@ -353,7 +357,9 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		if err != nil {
 			return nil, cliCLIError("resolve project trust: %v", err)
 		}
+		b.trustMu.Lock()
 		b.trustByCWD[cwd] = projectTrusted
+		b.trustMu.Unlock()
 		services.SettingsManager().SetProjectTrusted(projectTrusted)
 		settings = services.Settings()
 		trace.Mark("trust-resolved")

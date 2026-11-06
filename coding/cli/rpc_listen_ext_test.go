@@ -102,44 +102,66 @@ func requireCellCounts(t *testing.T, s *listenServer, wantNode, wantGo int, what
 	}
 }
 
+// installListenGoExtension copies the Go counter fixture into the extensions directory of an agent directory, with its SDK replacement pointing at the repository's.
+func installListenGoExtension(t *testing.T, extensions string) {
+	t.Helper()
+	goDir := filepath.Join(extensions, "listen-counter-go")
+	if err := os.MkdirAll(goDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []struct {
+		from, to string
+		edit     func(string) string
+	}{
+		{filepath.Join("testdata", "listen-counter-go", "extension.go"), filepath.Join(goDir, "extension.go"), func(s string) string { return s }},
+		{filepath.Join("testdata", "listen-counter-go", "go.mod"), filepath.Join(goDir, "go.mod"), func(s string) string {
+			return strings.Replace(s, "../../../../extensions/sdk", filepath.ToSlash(sdkDir), 1)
+		}},
+	} {
+		data, err := os.ReadFile(f.from)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(f.to, []byte(f.edit(string(data))), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // shareExtensions is the opt-in that makes a --listen server's sessions share extension processes (D232).
 const shareExtensions = "--listen-share-extensions"
 
 // listenExtensionServer starts a server whose agent directory holds the Go and the Node counter fixtures, and returns it with the file the fixtures' session_shutdown handlers append to. extra are further server arguments, such as shareExtensions.
 func listenExtensionServer(t *testing.T, extra ...string) (*listenServer, string) {
 	t.Helper()
+	return listenExtensionServerBinary(t, buildPigBinaryForSignalTest(t), extra...)
+}
+
+// listenExtensionServerBinary is listenExtensionServer over the pig executable at binary.
+func listenExtensionServerBinary(t *testing.T, binary string, extra ...string) (*listenServer, string) {
+	t.Helper()
 	dir := listenTempDir(t)
 	extensions := filepath.Join(dir, "agent", "extensions")
-	goDir := filepath.Join(extensions, "listen-counter-go")
 	nodeDir := filepath.Join(extensions, "listen-counter")
-	for _, d := range []string{goDir, nodeDir} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.MkdirAll(nodeDir, 0o755); err != nil {
+		t.Fatal(err)
 	}
-	copyFixture := func(from, to string, edit func(string) string) {
-		data, err := os.ReadFile(from)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(to, []byte(edit(string(data))), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	same := func(s string) string { return s }
-	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk"))
+	installListenGoExtension(t, extensions)
+	data, err := os.ReadFile(filepath.Join("testdata", "listen-counter.mjs"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	copyFixture(filepath.Join("testdata", "listen-counter-go", "extension.go"), filepath.Join(goDir, "extension.go"), same)
-	copyFixture(filepath.Join("testdata", "listen-counter-go", "go.mod"), filepath.Join(goDir, "go.mod"), func(s string) string {
-		return strings.Replace(s, "../../../../extensions/sdk", filepath.ToSlash(sdkDir), 1)
-	})
-	copyFixture(filepath.Join("testdata", "listen-counter.mjs"), filepath.Join(nodeDir, "index.js"), same)
+	if err := os.WriteFile(filepath.Join(nodeDir, "index.js"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	log := filepath.Join(dir, "shutdown.log")
 	path := filepath.Join(dir, "pig.sock")
 	env := append(listenEnv(t, dir), "LISTEN_FIXTURE_LOG="+log, "PIG_TEST_FAUX_SCENARIO=parity-basic")
-	s := startListenServer(t, env, append([]string{"--mode", "rpc", "--listen", path, "--model", "test-faux/faux-1", "--no-session"}, extra...)...)
+	s := startListenServerBinary(t, binary, env, append([]string{"--mode", "rpc", "--listen", path, "--model", "test-faux/faux-1", "--no-session"}, extra...)...)
 	s.path = path
 	return s, log
 }
