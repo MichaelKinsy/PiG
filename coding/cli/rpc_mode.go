@@ -458,6 +458,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		func(code int) {
 			if !transport.processOwned {
 				transport.exit(code)
+				// pig additive (D232): a connection's exit ends its mode, as os.Exit ends the process. A reader that finds the shutdown already started (an extension's ctx.shutdown(), a drained loop) waits on ctx (D234), and the command loop waits on it too, so without this the session would never be released, its extension processes would stay, and the server's signal would wait for it forever.
+				cancel()
 				return
 			}
 			// pig additive (D102): a claimed exit.log line is flushed first, and an emergency exit in flight ends the process with its 129.

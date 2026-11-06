@@ -127,3 +127,31 @@ func TestListenConnectionEndsWriteNoExitLogLine(t *testing.T) {
 		t.Fatalf("exit.log = %q, want one line naming SIGTERM", lines)
 	}
 }
+
+// An extension's ctx.shutdown() on a connection ends that session and releases it: the connection closes, its extension process goes, the other sessions are served, and one signal then ends the server (D232; D234 makes a later trigger of a started shutdown a no-op, so the connection's own exit has to end its mode).
+func TestListenExtensionShutdownEndsOnlyThatSession(t *testing.T) {
+	server, report, _ := listenShutdownServer(t)
+	first := server.dial()
+	requestResponse(first, "ready", "get_state")
+	second := server.dial()
+	requestResponse(second, "ready", "get_state")
+	requireCellCounts(t, server, 2, 0, "with two sessions open")
+	first.sendJSON(map[string]any{"id": "quit", "type": "prompt", "message": "/quit"})
+	first.waitForEOF()
+	if !slices.Contains(readRPCShutdownReportFile(report), "session_shutdown") {
+		t.Fatalf("the quit command did not shut the session down: %q\n%s", readRPCShutdownReportFile(report), server.stderr())
+	}
+	requireCellCounts(t, server, 1, 0, "after the first session quit: its extension process must be gone")
+	requestResponse(second, "again", "get_state")
+	third := server.dial()
+	requestResponse(third, "ready", "get_state")
+	second.closeInput()
+	second.waitForEOF()
+	third.closeInput()
+	third.waitForEOF()
+	requireCellCounts(t, server, 0, 0, "after every session ended")
+	server.signal(syscall.SIGTERM)
+	if code := server.waitForExit(); code != 128+int(syscall.SIGTERM) {
+		t.Fatalf("exit %d, want %d: one signal must end a server whose session quit by itself\n%s", code, 128+int(syscall.SIGTERM), server.stderr())
+	}
+}
