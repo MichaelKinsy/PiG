@@ -29,11 +29,11 @@ Dictionary sources are in `data/brkitr/dictionaries/`:
 
 | File | SHA256 | Embedded index bytes |
 |---|---|---:|
-| `cjdict.txt` | `e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0` | 4,212,243 |
-| `thaidict.txt` | `3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274` | 260,897 |
-| `laodict.txt` | `3c876934a3fa81031d2333525eafaca6a7c9f842e3b98f18c38880420afb5d36` | 335,860 |
-| `khmerdict.txt` | `87bee2d17cd5148aa36957eb05409eefc124de8ad519b81b789298ef3e60b5d9` | 974,071 |
-| `burmesedict.txt` | `61d8abc3d9102b2f9bf0c9f44db0d7ab89b18172d8cd26832e4c83174bd8673b` | 537,893 |
+| `cjdict.txt` | `e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0` | 3,343,339 |
+| `thaidict.txt` | `3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274` | 188,340 |
+| `laodict.txt` | `3c876934a3fa81031d2333525eafaca6a7c9f842e3b98f18c38880420afb5d36` | 251,846 |
+| `khmerdict.txt` | `87bee2d17cd5148aa36957eb05409eefc124de8ad519b81b789298ef3e60b5d9` | 751,243 |
+| `burmesedict.txt` | `61d8abc3d9102b2f9bf0c9f44db0d7ab89b18172d8cd26832e4c83174bd8673b` | 424,809 |
 
 The Unicode property files are from <https://www.unicode.org/Public/17.0.0/ucd/>. `generate_sea_dictionary.py` pins and verifies the hashes of `LineBreak.txt`, `Scripts.txt`, `auxiliary/WordBreakProperty.txt`, and `auxiliary/GraphemeBreakProperty.txt`.
 
@@ -47,9 +47,9 @@ python3 internal/wordsegmenter/generate_sea_dictionary.py /path/to/source-direct
 gofmt -w internal/wordsegmenter/rule_data.go
 ```
 
-The CJK index has one current unversioned shape: a little-endian uint32 entry count, `count + 1` uint32 offsets, `count` byte weights, and concatenated UTF-8 words in byte-lexical order.
+Both generators write the index with `dictionary_format.py`, which defines the one current unversioned shape: a little-endian uint32 entry count, one uint32 offset per block of 16 words (the offset of the block's first word in the word bytes), one length byte per word, one weight byte per word when the dictionary has weights, and the concatenated words in byte-lexical order. A word starts at its block's offset plus the lengths of the words before it in the block, so a lookup adds at most 15 bytes and the offsets cost a quarter byte per word, not four.
 
-The Southeast Asian indexes have one current unversioned shape: a little-endian uint32 entry count, `count + 1` uint32 offsets, and concatenated offset-transformed word bytes in lexical order. They preserve the byte transforms in ICU's `data/BUILDRULES.py`, including the ZWNJ/ZWJ reserved bytes. They need no weights. The four indexes total 2,108,721 bytes.
+The CJK index holds UTF-8 words and weights. The Southeast Asian indexes hold concatenated offset-transformed word bytes and need no weights. They preserve the byte transforms in ICU's `data/BUILDRULES.py`, including the ZWNJ/ZWJ reserved bytes. The four Southeast Asian indexes total 1,616,238 bytes.
 
 Lookup borrows the embedded strings. It narrows a sorted prefix range without constructing a runtime dictionary map or decompressing the data on the input loop. `PossibleWord` caches have fixed size. Per-call temporary storage scales with the supplied text, not Session history. No worker, retained cache, IPC, network call or file descriptor is created.
 

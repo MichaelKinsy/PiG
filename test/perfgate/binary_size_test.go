@@ -95,11 +95,12 @@ func buildHeadless(t *testing.T, root, tags, goos, goarch string) string {
 	return out
 }
 
-// The word-segmentation dictionaries (internal/wordsegmenter/*_dictionary.bin, 6.3 MB) belong to the terminal editor and
+// The word-segmentation dictionaries (internal/wordsegmenter/*_dictionary.bin, 5 MB) belong to the terminal editor and
 // must not be linked into an embedder that draws no terminal. The size gate only notices when the program grows past its
 // ceiling; this checks the content: the build fails if any 64-byte slice of a dictionary appears in the headless binary.
 // (Linker deadcode keeps a go:embed blob only while the package's reader is reachable, so a partial copy cannot occur;
-// the check covers every offset of the binary against every 64-byte window of each dictionary.)
+// the check covers every offset of the binary against every 64-byte window of each dictionary.) A window of one repeated
+// byte (the run of equal word lengths in a dictionary's length table) is no part of the evidence: it occurs in any binary.
 func TestHeadlessEmbedLinksNoWordDictionaries(t *testing.T) {
 	root := testenv.ModuleRoot(t)
 	dictionaries, err := filepath.Glob(filepath.Join(root, "internal", "wordsegmenter", "*_dictionary.bin"))
@@ -129,11 +130,14 @@ func TestHeadlessEmbedLinksNoWordDictionaries(t *testing.T) {
 const dictionarySlice = 64
 
 // dictionarySliceIn finds the first offset of binary where a dictionarySlice-byte slice of dictionary starts, as the
-// offset in binary and the offset in dictionary; at is -1 when none appears. Every offset of dictionary is a start: the
-// slices are indexed by their first eight bytes.
+// offset in binary and the offset in dictionary; at is -1 when none appears. Every offset of dictionary is a start,
+// except a slice of one repeated byte: the slices are indexed by their first eight bytes.
 func dictionarySliceIn(binary, dictionary []byte) (offset, at int) {
 	index := make(map[uint64][]int, len(dictionary))
 	for i := 0; i+dictionarySlice <= len(dictionary); i++ {
+		if bytes.Count(dictionary[i:i+dictionarySlice], dictionary[i:i+1]) == dictionarySlice {
+			continue
+		}
 		key := binaryLE(dictionary[i:])
 		index[key] = append(index[key], i)
 	}

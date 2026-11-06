@@ -10,7 +10,6 @@ package wordsegmenter
 
 import (
 	_ "embed"
-	"encoding/binary"
 	"slices"
 	"sort"
 	"strings"
@@ -26,28 +25,20 @@ import (
 //go:embed cjk_dictionary.bin
 var cjkDictionary string
 
-func dictionaryUint32(offset int) int {
-	//portlint:allow utf16units offset indexes the embedded little-endian ICU dictionary bytes, not a JS string; Pi's Intl.Segmenter (utils.ts:getWordSegmenter) has no such table
-	return int(binary.LittleEndian.Uint32([]byte(cjkDictionary[offset : offset+4])))
-}
-func dictionaryWord(index int) string {
-	count := dictionaryUint32(0)
-	start := 4 + (count+1)*4 + count
-	return cjkDictionary[start+dictionaryUint32(4+index*4) : start+dictionaryUint32(8+index*4)]
-}
 func dictionaryMatches(text string, offsets []int, start int, visit func(length int, cost uint32)) {
-	count := dictionaryUint32(0)
+	cjkIndex := wordIndex{data: cjkDictionary, weighted: true}
+	count := cjkIndex.count()
 	low, high := 0, count
 	for length := 1; length <= 20 && start+length < len(offsets); length++ {
 		//portlint:allow utf16units offsets are byte positions of Go's own UTF-8 text built by the segmenter; Intl.Segmenter (utils.ts:getWordSegmenter) reports UTF-16 indexes that segments.go converts at its boundary
 		prefix := text[offsets[start]:offsets[start+length]]
-		low += sort.Search(high-low, func(i int) bool { return dictionaryWord(low+i) >= prefix })
-		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(dictionaryWord(low+i), prefix) })
+		low += sort.Search(high-low, func(i int) bool { return cjkIndex.word(low+i, count) >= prefix })
+		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(cjkIndex.word(low+i, count), prefix) })
 		if low == high {
 			return
 		}
-		if dictionaryWord(low) == prefix {
-			visit(length, uint32(cjkDictionary[4+(count+1)*4+low]))
+		if cjkIndex.word(low, count) == prefix {
+			visit(length, cjkIndex.weight(low, count))
 		}
 	}
 }
