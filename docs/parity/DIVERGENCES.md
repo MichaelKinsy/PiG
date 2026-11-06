@@ -3794,3 +3794,36 @@ Call-site markers: `extensions/sdk/protocol.go` (`readLoop`), `extensions/sdk-py
 Evidence: `TestToolParamsNestingAcrossSDKs` (`test/extension-conformance/tool_params_deep_test.go`; red on 03c551f3e2 for Go at d=9998, and for Python, Rust and Lisp), `TestModelStreamEventWithDeepToolArgumentsReachesEverySDK` (`model_stream_deep_event_test.go`), `TestDeepEventStreamDeltasReachEverySDK` (`deep_event_delta_test.go`; deep `message_update` and `tool_execution_update` deltas, red for Rust on c1da695c1d), both over isolated and packed placements, and each SDK's own suite for the frames past its bound (`extensions/sdk/protocol_deep_frame_test.go`, `extensions/sdk-py/tests/test_deep_frames.py`, `extensions/sdk-rs/src/surrogate_tests.rs`, `extensions/sdk-lisp/tests/json-tests.lisp`).
 
 Parity allowance: the row pins every SDK's outcome at depths 200, 1000, 4000, 5000, 9000 and 9998: the object for the Go, Python, Rust and Lisp SDKs at all six; for the Node SDK (Pi's own runtime, pinned Node 24.22.1) the object at 200, 1000 and 4000 and V8's RangeError at 5000, 9000 and 9998. The event rows (`TestDeepEventStreamDeltasReachEverySDK`) pin the payload of a `message_update` or `tool_execution_update` delta, in arrays and in objects, at 200, 3000, 4000, 9000 (and 1 after them): every SDK hands its handler the payload, except that the Node SDK's handler at 9000 throws V8's RangeError from its own `JSON.stringify`, as a handler does in Pi, which gives the handler the object without copying. Each depth is followed by a call to the same extension. Pi's runtime gives the object at d=4300 and the RangeError at d=4400 on that Node; the row does not pin those, because the cut-off moves with the Node version.
+
+## D269 A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session
+
+What: Pi's tools-manager `commandExists` runs `spawnSync(cmd, ["--version"], { stdio: "pipe" })` and counts any result but a spawn error as "installed", with no timeout, in Pi's own session. `getToolPath("fd")` therefore returns the first of `fd`, `fdfind` that spawns, and Pi runs it at startup (`ensureTool("fd")`) and on `@`. Debian's `fdclone` package installs a file manager as `/usr/bin/fd`; it opens `/dev/tty`, so Pi's `@` autocomplete, `find` and startup hand it the terminal. PiG's base only looked the name up (it never spawned), so it started FDclone at `@` and in `find`. PiG now:
+
+| Step | Pi | PiG |
+| --- | --- | --- |
+| Candidate names | `fd`, then `fdfind` (rg: `rg`) | same |
+| Acceptance of a PATH candidate | `spawnSync(cmd, ["--version"])` returns without a spawn error | `<bin> --version` exits 0 and stdout starts with `fd ` or `fdfind ` (rg: `ripgrep `); Debian's sharkdp build prints `fdfind 10.3.0` |
+| On mismatch | the impostor wins | next name, then the managed download in `<agentDir>/bin` |
+| The probe | Pi's session, no timeout | started like the searches (`nodespawn.SetProgram`), in a new session on unix or a console of its own without a window on Windows (`nodespawn.HideWindow`), stdin `/dev/null`, stdout a pipe; a 5 s bound (1 s pipe grace) that kills the process group; a completed verdict is cached per path, mtime and size, a timeout or start failure is not |
+| `@` autocomplete fd search | Pi's session | new session on unix (a cancel kills the group); on Windows a console of its own without a window. `DETACHED_PROCESS` is not used: a Scoop or Chocolatey shim started under it opens a visible console window for the real program |
+| `find` and `grep` fd/rg search | Pi's session | unchanged: the caller's session and group, so a terminal Ctrl+C in print mode reaches the search with the agent |
+
+The managed copy in `<agentDir>/bin` is PiG's own download and is not probed.
+
+Why: typing `@` over ssh on a host with fdclone launched a full-screen file manager, and a real fd installed as `fdfind` was never reached. Pi has the same bug.
+
+Pi bug: `commandExists` in `packages/coding-agent/src/utils/tools-manager.ts` accepts any program that spawns, so an unrelated `fd` passes. To report upstream.
+
+Scope: `tools.LookupToolPath` and `ToolsManager.GetToolPath` (so `EnsureTool`, `BeginEnsureTool` at startup through `ensureManagedTools`, the tools status line, and the `find`, `grep` and `@` lookups), and the `@` autocomplete's fd run. A system `fd` or `rg` whose `--version` line is not one of the prefixes (a wrapper, a custom build) is no longer used; it falls through to the managed download, or to nothing offline. Narrower than the first proposal: `find` and `grep` do not run their search in a new session, because the identity probe already keeps an impostor out and a new session would orphan rg and fd on a terminal Ctrl+C in print and json modes.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
+
+SCRUTINIZED:approved
+
+Remove when: Pi checks that the program it found is the tool, not only that it spawns. Then the probe, the autocomplete's new session and this record go.
+
+Call-site markers: `internal/codingagent/tools/tool_probe.go` (`systemToolIdentity`, the 5 s probe bound, the 1 s pipe grace), `tui/file_autocomplete.go` (`walkDirectoryWithFd`).
+
+Evidence: `TestLookupToolPathSkipsImpostorFdForFdfind`, `TestLookupToolPathRejectsLoneImpostor`, `TestLookupToolPathChecksRipgrepIdentity`, `TestLookupToolPathAcceptsFdWrapperWithoutShebang`, `TestToolProbeCachesPerFileRevision`, `TestProbeToolVersionTimesOutHungProgramAndItsChildren`, `TestProbeToolVersionDoesNotCacheStartFailure`, `TestVersionProbeCannotReachTheTerminal`, `TestFindAndGrepKeepSearchInCallersSession` (`internal/codingagent/tools/tool_probe_unix_test.go`, `tool_probe_linux_test.go`) and `TestWalkDirectoryWithFdRunsInANewSession`, `TestWalkDirectoryWithFdCancelKillsTheGroup` (`tui/file_autocomplete_session_linux_test.go`). The impostor and no-shebang cases fail on a45b578455, where a fake `fd` ahead of `fdfind` was returned.
+
+Parity allowance: `TestLookupToolPathFindsToolsAsPiDoes` keeps comparing lookup order with Pi's `getToolPath` on Windows with fixtures that answer `--version` as the tool, so only the identity check differs.
