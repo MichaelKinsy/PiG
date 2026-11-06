@@ -62,8 +62,7 @@ func connectionErrorDetail(err error) string {
 
 // serverFailure is client.ts fetchServer's catch: a network-level failure names the server and its cause; an abort or a timeout is rethrown unchanged.
 func serverFailure(serverURL string, err error) error {
-	var fetch *fetchError
-	if errors.As(err, &fetch) {
+	if _, ok := errors.AsType[*fetchError](err); ok {
 		return &unreachableError{serverURL: serverURL, cause: err}
 	}
 	return err

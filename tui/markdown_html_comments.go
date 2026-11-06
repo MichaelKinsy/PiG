@@ -23,11 +23,11 @@ func stripHTMLComments(html string) string {
 	for start >= 0 {
 		out.WriteString(html[:start])
 		rest := html[start+len("<!--"):]
-		end := strings.Index(rest, "-->")
-		if end < 0 {
+		_, after, ok := strings.Cut(rest, "-->")
+		if !ok {
 			return out.String()
 		}
-		html = rest[end+len("-->"):]
+		html = after
 		start = strings.Index(html, "<!--")
 	}
 	out.WriteString(html)

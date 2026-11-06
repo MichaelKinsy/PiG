@@ -23,11 +23,11 @@ func TestAltScreenOSC52CopyEncodesALoneSurrogate(t *testing.T) {
 	ui.HandleViewportInput("\x1b[<32;9;3M")
 	ui.HandleViewportInput("\x1b[<0;9;3m")
 	s := out.String()
-	i := strings.Index(s, "\x1b]52;c;")
-	if i < 0 {
+	_, after, ok := strings.Cut(s, "\x1b]52;c;")
+	if !ok {
 		t.Fatalf("no OSC 52 in %q", s)
 	}
-	payload := s[i+len("\x1b]52;c;"):]
+	payload := after
 	payload = payload[:strings.IndexByte(payload, 7)]
 	decoded, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {

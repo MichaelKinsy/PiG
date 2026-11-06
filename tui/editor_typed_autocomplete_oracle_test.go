@@ -102,7 +102,7 @@ func typedAutocompleteProbes() []awaitedAcceptProbe {
 	}
 	alphabet := []string{"/", "l", " ", "é", "@", "a", "$", "日"}
 	sequences := [][]string{nil}
-	for length := 0; length < 3; length++ {
+	for length := range 3 {
 		for _, sequence := range sequences[len(sequences)-pow(len(alphabet), length):] {
 			for _, next := range alphabet {
 				sequences = append(sequences, append(append([]string{}, sequence...), next))

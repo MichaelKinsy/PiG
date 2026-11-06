@@ -82,7 +82,7 @@ func TestLiveProvidersDefaultPackagesCoverEveryLiveTaggedPackage(t *testing.T) {
 		t.Fatalf("the input default %q and the step's fallback %v must name the same packages", inputDefault[1], stepDefault)
 	}
 	covered := map[string]bool{}
-	for _, pkg := range strings.Fields(inputDefault[1]) {
+	for pkg := range strings.FieldsSeq(inputDefault[1]) {
 		covered[path.Clean(pkg)] = true
 	}
 	live := map[string]bool{}

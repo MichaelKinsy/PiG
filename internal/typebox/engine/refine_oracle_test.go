@@ -247,7 +247,7 @@ func serveToCompletion(t testing.TB, member string, schema json.RawMessage, valu
 	var calls []recordedCall
 	sent := 0
 	request := fmt.Sprintf(`{"member":%q,"args":[%s,%s]}`, member, schema, value)
-	for round := 0; round < 1_000_000; round++ {
+	for range 1_000_000 {
 		sent += len(request)
 		reply := serve(t, request)
 		if reply.Error != nil {

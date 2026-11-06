@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"maps"
 	"sync"
 	"testing"
 
@@ -61,9 +62,7 @@ func TestAdoptMemberOrderReachesEveryCopy(t *testing.T) {
 	for key := range event.Custom {
 		delete(event.Custom, key)
 	}
-	for key, value := range replacement.Custom {
-		event.Custom[key] = value
-	}
+	maps.Copy(event.Custom, replacement.Custom)
 	event.AdoptMemberOrder(replacement)
 	want := `{"timestamp":2,"role":"custom","customType":"c","display":false,"content":[]}`
 	for name, m := range map[string]AgentMessage{"transcript": transcript, "event": event} {
@@ -93,9 +92,7 @@ func TestAdoptMemberOrderWithoutARecordChangesNothing(t *testing.T) {
 // replacement's, in its order, in every copy that shares the record.
 func replaceCustomInPlace(target, replacement AgentMessage) {
 	clear(target.Custom)
-	for key, value := range replacement.Custom {
-		target.Custom[key] = value
-	}
+	maps.Copy(target.Custom, replacement.Custom)
 	target.AdoptMemberOrder(replacement)
 }
 
@@ -121,16 +118,14 @@ func TestStartEventMessageOfACustomMessageIsRaceFreeWithAReplacement(t *testing.
 	start := startEventMessage(original)
 	replacement := decodeCustom(t, `{"timestamp":2,"display":false,"customType":"c","role":"custom","content":"y"}`)
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for range 200 {
 			if _, err := json.Marshal(start); err != nil {
 				t.Error(err)
 				return
 			}
 		}
-	}()
+	})
 	for range 200 {
 		original.AdoptMemberOrder(replacement)
 	}

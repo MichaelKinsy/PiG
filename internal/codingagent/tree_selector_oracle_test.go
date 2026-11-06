@@ -337,8 +337,8 @@ func normalizeTreeSearchLinesD248(got, want [][]string, width int) {
 			}
 			emptyQuery := strings.HasSuffix(want[frame][i], "Type to search:\x1b[39m")
 			line := got[frame][i]
-			if strings.HasSuffix(line, cursorCell) {
-				line = strings.TrimSuffix(line, cursorCell)
+			if before, ok := strings.CutSuffix(line, cursorCell); ok {
+				line = before
 				if wantLine := want[frame][i]; strings.Contains(wantLine, "Type to search:") || widthx.VisibleWidth(wantLine) >= width-1 {
 					if emptyQuery && widthx.VisibleWidth(wantLine) == width-1 {
 						got[frame][i], want[frame][i] = "", ""
