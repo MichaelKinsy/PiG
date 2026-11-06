@@ -14,8 +14,12 @@ import (
 func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, rec *resumeRecorder) (loopOut, final []string, finalBase int) {
 	// pig divergence (D220): every block renders with the inline lexer state at its position. Pi 0f21a331 reuses the lines of a block of the same source from this render or the previous one (markdown.ts:381), so it autolinks a bare URL inside a still-open <a>, which marked does not.
 	state := m.lexerState()
+	content, hidden := hideLoneSurrogates(content)
 	src := state.blockRunes(content)
 	tokens := state.blockLexer().lexRunes(src, content)
+	if hidden {
+		showLoneSurrogatesIn(tokens)
+	}
 	trimPartialClosingFences(tokens)
 	// pig divergence (D265): Pi main 54280c4ff hides HTML comments; the pinned v1.5.0 renders them as text. Only a source that holds "<!--" has a comment.
 	if strings.Contains(content, "<!--") {
