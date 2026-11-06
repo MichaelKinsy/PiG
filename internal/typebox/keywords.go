@@ -29,10 +29,21 @@ func checkKeyword(n node, key string, value any) bool {
 		if !isText || !hasLimit {
 			return true
 		}
+		// The conversion to UTF-16 units waits until the byte length or an ASCII text cannot decide. A text has at most one unit per byte, so fewer bytes than minLength are too short
+		// and at most maxLength bytes are short enough; an ASCII text has one unit and one grapheme cluster per byte.
 		if key == "minLength" {
-			return isMinLength(jsstring.ToUTF16(text), limit)
+			if limit == 0 {
+				return true
+			}
+			if float64(len(text)) < limit {
+				return false
+			}
+			return jsstring.ASCIIPrefix(text) == len(text) || isMinLength(jsstring.ToUTF16(text), limit)
 		}
-		return isMaxLength(jsstring.ToUTF16(text), limit)
+		if float64(len(text)) <= limit {
+			return true
+		}
+		return jsstring.ASCIIPrefix(text) != len(text) && isMaxLength(jsstring.ToUTF16(text), limit)
 	case "pattern":
 		text, isText := value.(string)
 		pattern, isPattern := declared.(string)
