@@ -43,6 +43,9 @@ func TestReleaseBinarySizeGate(t *testing.T) {
 				t.Fatal(err)
 			}
 			perfgate.Check(t, "binary.pig."+platform.goos+"_"+platform.goarch+".bytes", float64(info.Size()))
+			if t.Failed() {
+				t.Logf("the binary grew: find the package with `go run ./automation/ci/sizereport -goos %s -goarch %s -out after.tsv`, the same at the last good commit with -out before.tsv, and `-base before.tsv` for the difference; the chain of references that keeps a package: `-why <package>`. The cause goes; the ceiling does not move up", platform.goos, platform.goarch)
+			}
 		})
 	}
 }
