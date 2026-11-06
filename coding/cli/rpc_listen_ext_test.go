@@ -102,8 +102,11 @@ func requireCellCounts(t *testing.T, s *listenServer, wantNode, wantGo int, what
 	}
 }
 
-// listenExtensionServer starts a server whose agent directory holds the Go and the Node counter fixtures, and returns it with the file the fixtures' session_shutdown handlers append to.
-func listenExtensionServer(t *testing.T) (*listenServer, string) {
+// shareExtensions is the opt-in that makes a --listen server's sessions share extension processes (D232).
+const shareExtensions = "--listen-share-extensions"
+
+// listenExtensionServer starts a server whose agent directory holds the Go and the Node counter fixtures, and returns it with the file the fixtures' session_shutdown handlers append to. extra are further server arguments, such as shareExtensions.
+func listenExtensionServer(t *testing.T, extra ...string) (*listenServer, string) {
 	t.Helper()
 	dir := listenTempDir(t)
 	extensions := filepath.Join(dir, "agent", "extensions")
@@ -136,7 +139,7 @@ func listenExtensionServer(t *testing.T) (*listenServer, string) {
 	log := filepath.Join(dir, "shutdown.log")
 	path := filepath.Join(dir, "pig.sock")
 	env := append(listenEnv(t, dir), "LISTEN_FIXTURE_LOG="+log, "PIG_TEST_FAUX_SCENARIO=parity-basic")
-	s := startListenServer(t, env, "--mode", "rpc", "--listen", path, "--model", "test-faux/faux-1", "--no-session")
+	s := startListenServer(t, env, append([]string{"--mode", "rpc", "--listen", path, "--model", "test-faux/faux-1", "--no-session"}, extra...)...)
 	s.path = path
 	return s, log
 }
@@ -194,8 +197,9 @@ func requireShutdownLines(t *testing.T, s *listenServer, log string, want int) [
 	}
 }
 
+// With --listen-share-extensions the sessions run in one process per cell and share its module-level state (D232).
 func TestListenSharesExtensionProcessesAcrossSessions(t *testing.T) {
-	s, log := listenExtensionServer(t)
+	s, log := listenExtensionServer(t, shareExtensions)
 	conns := make([]*rpcProcess, 3)
 	for i := range conns {
 		conns[i] = s.dial()
@@ -205,6 +209,12 @@ func TestListenSharesExtensionProcessesAcrossSessions(t *testing.T) {
 			}
 		}
 		requireCellCounts(t, s, 1, 1, fmt.Sprintf("after connection %d", i+1))
+		// Module-level state lives in the shared process, so the sessions count together (the hazard the opt-in's warning names).
+		for _, tool := range []string{"node_module_counter", "go_module_counter"} {
+			if got := callTool(conns[i], tool); got != strconv.Itoa(i+1) {
+				t.Fatalf("connection %d %s = %q, want %d: module-level state is shared with --listen-share-extensions\n%s", i+1, tool, got, i+1, s.stderr())
+			}
+		}
 	}
 	// A ping from the first session reaches that session's instances only.
 	for _, tool := range []string{"node_ping", "go_ping"} {
@@ -261,7 +271,7 @@ func TestListenSharesExtensionProcessesAcrossSessions(t *testing.T) {
 }
 
 func TestListenRecoversASharedExtensionCrash(t *testing.T) {
-	s, _ := listenExtensionServer(t)
+	s, _ := listenExtensionServer(t, shareExtensions)
 	first, second := s.dial(), s.dial()
 	for _, conn := range []*rpcProcess{first, second} {
 		if got := callTool(conn, "node_counter"); got != "1" {
@@ -310,7 +320,7 @@ func TestListenRecoversASharedExtensionCrash(t *testing.T) {
 }
 
 func TestListenSessionShutdownReachesEverySessionOnSIGTERM(t *testing.T) {
-	s, log := listenExtensionServer(t)
+	s, log := listenExtensionServer(t, shareExtensions)
 	for range 2 {
 		conn := s.dial()
 		for _, tool := range []string{"node_counter", "go_counter"} {
@@ -360,7 +370,7 @@ func finishListenSession(t *testing.T, s *listenServer, log string, b *rpcProces
 
 // Closing a connection during a running tool call is that session's input end: the session shuts down (the call is cancelled), the other session keeps its instances, and no process, Host or connection outlives the close.
 func TestListenCloseDuringASlowToolCallEndsOnlyThatSession(t *testing.T) {
-	s, log := listenExtensionServer(t)
+	s, log := listenExtensionServer(t, shareExtensions)
 	a, b := s.dial(), s.dial()
 	closeDuringCall(t, s, log, a, b, "node_slow", func(r rpcRecord) bool {
 		return r["type"] == "tool_execution_start" && r["toolName"] == "node_slow"
@@ -370,7 +380,7 @@ func TestListenCloseDuringASlowToolCallEndsOnlyThatSession(t *testing.T) {
 
 // Closing a connection during a ctx.ui.confirm dialog: the dialog is pending when the input ends. The unwind resolves it as cancelled, but whether the extension's handler resumes before its generation ends is a race, as it is in Pi when its process exits first: it never resumes with true, nothing outlives the close, and the other session is unaffected (D232).
 func TestListenCloseDuringAConfirmDialogLeavesNothingBehind(t *testing.T) {
-	s, log := listenExtensionServer(t)
+	s, log := listenExtensionServer(t, shareExtensions)
 	a, b := s.dial(), s.dial()
 	closeDuringCall(t, s, log, a, b, "node_confirm", func(r rpcRecord) bool {
 		return r["type"] == "extension_ui_request" && r["method"] == "confirm"
@@ -381,4 +391,46 @@ func TestListenCloseDuringAConfirmDialogLeavesNothingBehind(t *testing.T) {
 			t.Fatalf("the dialog of the closed connection was answered %q, want only cancelled (false)", answer)
 		}
 	}
+}
+
+// By default every session has its own extension processes, so module-level state is not shared between sessions (D232).
+func TestListenIsolatesExtensionProcessesAndModuleStateByDefault(t *testing.T) {
+	s, log := listenExtensionServer(t)
+	conns := make([]*rpcProcess, 3)
+	for i := range conns {
+		conns[i] = s.dial()
+		for _, tool := range []string{"node_counter", "go_counter", "node_module_counter", "go_module_counter"} {
+			if got := callTool(conns[i], tool); got != "1" {
+				t.Fatalf("connection %d %s = %q, want 1: module-level state must not leak between sessions\n%s", i+1, tool, got, s.stderr())
+			}
+		}
+		requireCellCounts(t, s, i+1, i+1, fmt.Sprintf("after connection %d", i+1))
+	}
+	// Each session counts on in its own process.
+	for _, tool := range []string{"node_module_counter", "go_module_counter"} {
+		if got := callTool(conns[0], tool); got != "2" {
+			t.Fatalf("connection 1 %s again = %q, want 2\n%s", tool, got, s.stderr())
+		}
+	}
+	for i, conn := range conns[1:] {
+		if got := callTool(conn, "node_module_counter"); got != "2" {
+			t.Fatalf("connection %d node_module_counter again = %q, want 2: another session's calls leaked in\n%s", i+2, got, s.stderr())
+		}
+	}
+	// Closing a connection ends its processes and no one else's.
+	conns[0].closeInput()
+	conns[0].waitForEOF()
+	requireShutdownLines(t, s, log, 2)
+	requireCellCounts(t, s, 2, 2, "after the first connection closed")
+	if got := callTool(conns[1], "go_module_counter"); got != "2" {
+		t.Fatalf("connection 2 go_module_counter = %q, want 2 from its own process\n%s", got, s.stderr())
+	}
+	conns[1].closeInput()
+	conns[1].waitForEOF()
+	conns[2].closeInput()
+	conns[2].waitForEOF()
+	requireShutdownLines(t, s, log, 6)
+	requireCellCounts(t, s, 0, 0, "after the last connection closed")
+	s.signal(syscall.SIGTERM)
+	s.waitForExit()
 }
