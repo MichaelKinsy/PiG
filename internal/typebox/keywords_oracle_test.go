@@ -3,6 +3,7 @@ package typebox
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // The leaf keywords (keywords.go) against typebox 1.3.27: every case runs through TestValueMatchesTypeboxOnCases, which compares Value.Check and
@@ -23,6 +24,11 @@ func init() {
 		add(`Type.String({ minLength: `+limit+` })`, texts...)
 		add(`Type.String({ maxLength: `+limit+` })`, texts...)
 		add(`Type.String({ minLength: `+limit+`, maxLength: `+limit+` })`, texts...)
+	}
+	// Limits that are negative, fractional or large, against ASCII, non-ASCII and empty texts (textMinLength and textMaxLength decide ASCII texts by their byte length).
+	for _, limit := range []string{"-1", "0.5", "1.5", "2.5", "3.0000001", "1000"} {
+		add(`Type.String({ minLength: `+limit+` })`, append([]any{"abcd", "ab\u00e9", "\u00e9\u00e9\u00e9", "x" + strings.Repeat("y", 1000)}, texts...)...)
+		add(`Type.String({ maxLength: `+limit+` })`, append([]any{"abcd", "ab\u00e9", "\u00e9\u00e9\u00e9", "x" + strings.Repeat("y", 1000)}, texts...)...)
 	}
 	// multipleOf uses a tolerance of 1e-10 and takes an integer for a multiple of any 1/n.
 	numbers := []any{0.0, 1.0, 3.0, 0.3, 0.7, 0.1, 0.15, 7.5, 1e-11, 1e-9, 0.30000000000000004, 1e21, math.Copysign(0, -1), -3.0, -0.3, 2.5}
