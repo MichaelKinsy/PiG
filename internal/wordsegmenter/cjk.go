@@ -11,7 +11,6 @@ package wordsegmenter
 import (
 	_ "embed"
 	"slices"
-	"sort"
 	"strings"
 
 	"golang.org/x/text/unicode/norm"
@@ -25,20 +24,20 @@ import (
 //go:embed cjk_dictionary.bin
 var cjkDictionary string
 
-func dictionaryMatches(text string, offsets []int, start int, visit func(length int, cost uint32)) {
-	cjkIndex := wordIndex{data: cjkDictionary, weighted: true}
-	count := cjkIndex.count()
-	low, high := 0, count
+// dictionaryMatches visits the length in characters and the weight of every dictionary word that is a prefix of the text from character start.
+func dictionaryMatches(index *wordIndex, text string, offsets []int, start int, visit func(length int, cost uint32)) {
+	low, high := 0, index.count
 	for length := 1; length <= 20 && start+length < len(offsets); length++ {
 		//portlint:allow utf16units offsets are byte positions of Go's own UTF-8 text built by the segmenter; Intl.Segmenter (utils.ts:getWordSegmenter) reports UTF-16 indexes that segments.go converts at its boundary
 		prefix := text[offsets[start]:offsets[start+length]]
-		low += sort.Search(high-low, func(i int) bool { return cjkIndex.word(low+i, count) >= prefix })
-		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(cjkIndex.word(low+i, count), prefix) })
+		low = index.first(low, high, &bound{kind: atLeast, key: prefix}, false)
+		high = index.first(low, high, &bound{kind: unprefixed, key: prefix}, true)
 		if low == high {
 			return
 		}
-		if cjkIndex.word(low, count) == prefix {
-			visit(length, cjkIndex.weight(low, count))
+		// The word at low starts with prefix, so it is prefix when it is as long.
+		if index.length(low) == len(prefix) {
+			visit(length, index.weight(low))
 		}
 	}
 }
@@ -78,6 +77,7 @@ func cjkBoundaries(text string) []int {
 	}
 	offsets = append(offsets, len(normalized))
 	n := len(chars)
+	index := newWordIndex(cjkDictionary, true, false)
 	const unreachable = ^uint32(0)
 	best := make([]uint32, allocsize.Add(n, 1))
 	previous := make([]int, allocsize.Add(n, 1))
@@ -103,7 +103,7 @@ func cjkBoundaries(text string) []int {
 				previous[next] = i
 			}
 		}
-		dictionaryMatches(normalized, offsets, i, consider)
+		dictionaryMatches(&index, normalized, offsets, i, consider)
 		if !single && (r < 0xac00 || r > 0xd7a3) {
 			consider(1, 255)
 		}

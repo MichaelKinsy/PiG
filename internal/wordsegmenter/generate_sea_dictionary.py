@@ -40,7 +40,7 @@ for name, file, digest, base in DICTIONARIES:
     rows.sort()
     if len(set(rows)) != len(rows):
         raise SystemExit("duplicate dictionary word")
-    encoded = dictionary_format.encode(rows)
+    encoded = dictionary_format.encode(rows, keyed=True)
     (ROOT / (name + "_dictionary.bin")).write_bytes(encoded)
     notices.append(file + ".txt (ICU release-78.3)\n\n" + "\n".join(notice).strip())
     print(f"{name}: {len(rows)} entries, {len(encoded)} bytes, sha256:{digest}")
