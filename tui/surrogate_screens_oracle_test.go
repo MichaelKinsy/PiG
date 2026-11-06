@@ -10,8 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -107,10 +105,7 @@ func TestSurrogateRowsMatchPiScreens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/surrogate_screens.mjs", pigversion.UpstreamPackageVersion)
-	// A replayed step that overflows makes Pi write pi-tui-crash.log to os.tmpdir(); give the script a temporary directory of its own, which the test removes (CI test-fast assert-clean-tmp). Node reads TMPDIR, and TEMP or TMP on Windows.
-	scratch := t.TempDir()
-	cmd.Env = append(os.Environ(), "TMPDIR="+scratch, "TEMP="+scratch, "TMP="+scratch)
+	cmd := piOracleCommand(t, "testdata/surrogate_screens.mjs", pigversion.UpstreamPackageVersion)
 	cmd.Stdin = bytes.NewReader(input)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

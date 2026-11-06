@@ -46,7 +46,9 @@ process.stdout.write(JSON.stringify(result));
 	//nolint:gosec // G204 (class b): program is node from exec.LookPath; args are fixed --input-type=module -e with a constant script, and the input is on stdin.
 	cmd := exec.CommandContext(t.Context(), node, args...)
 	cmd.Stdin = bytes.NewReader(payload)
-	cmd.Env = append(os.Environ(), "PI_ORACLE_ROOT="+Root(t))
+	// Pi writes pi-tui-crash.log and similar files to os.tmpdir() (Pi 1.5.0 tui-main-screen.ts:524), so the child gets a temporary directory of its own, which the test removes, and the shared one keeps nothing (CI test-fast assert-clean-tmp). Node reads TMPDIR, and TEMP or TMP on Windows. A caller's env entries come last and win.
+	scratch := t.TempDir()
+	cmd.Env = append(os.Environ(), "PI_ORACLE_ROOT="+Root(t), "TMPDIR="+scratch, "TEMP="+scratch, "TMP="+scratch)
 	cmd.Env = append(cmd.Env, env...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
