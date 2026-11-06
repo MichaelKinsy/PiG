@@ -3121,6 +3121,15 @@ func (h *Host) ensureNodeRuntime(ctx context.Context) error {
 	return nil
 }
 
+// factoryLauncherEnv is what the first generation of a Node factory launcher reads from its environment: the Host's configured cwd, which keys Pi's factory cache as every later admission does (the process's own cwd is the physical path), and, pig additive (D232), the Host's group when it shares cells, passed to the first generation as every later admission passes it, because the registry offers the process to the other Hosts. cli.mjs reads and deletes both.
+func (h *Host) factoryLauncherEnv() []string {
+	env := []string{"PIG_EXT_CWD=" + h.cwd}
+	if group := h.Group(); group != "" {
+		env = append(env, "PIG_EXT_GROUP="+group)
+	}
+	return env
+}
+
 // connectExt establishes the extension connection. For a fused in-process
 // extension (D31) it serves the factory over an in-memory pipe in a host
 // goroutine, with no socket and no subprocess; otherwise it creates a Unix
@@ -3248,7 +3257,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	entry, factoryLauncher := nodeLauncherEntry(binPath)
 	if factoryLauncher {
 		// The first generation keys Pi's factory cache by this Host's configured cwd, as every later admission does; the process's own cwd is the physical path.
-		cmd.Env = append(cmd.Env, "PIG_EXT_CWD="+h.cwd)
+		cmd.Env = append(cmd.Env, h.factoryLauncherEnv()...)
 		if admissionWriter, err = cmd.StdinPipe(); err != nil {
 			cancel()
 			return nil, newLoadError(me.config.Name, "spawn", "spawn_failed", fmt.Errorf("spawn %s: %w", binPath, err))
