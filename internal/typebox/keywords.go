@@ -5,8 +5,10 @@ package typebox
 // maxProperties (build/guard/guard.mjs, build/guard/string.mjs, build/system/hashing/hash.mjs). The walkers (errors.go, refine.go)
 // call checkKeyword for them, so one checker answers Value.Check and Value.Errors and no JSON Schema library is linked for them.
 //
-// A keyword whose value has the wrong JSON type (a limit that is not a number, a pattern that is not a string) fails the check, as a
-// comparison with NaN does in JavaScript.
+// A keyword whose value has the wrong JSON type is not a keyword of the schema: Schema.IsMinLength, IsMaximum, IsMultipleOf, IsMinItems and the other guards of build/schema/types need a finite number (minLength, maxLength,
+// minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, minProperties, maxProperties), a string (pattern, format), an array (enum) or a boolean (uniqueItems), and CheckSchema and ErrorSchema skip the
+// keyword otherwise, so it passes every value. Only const has no guard: it applies to any value. A value of the wrong type for the keyword passes as well, as the walkers
+// only call a keyword with the value type it belongs to.
 
 import (
 	"math"
@@ -17,15 +19,15 @@ import (
 )
 
 // checkKeyword is the check of the leaf keyword key of n on value: a string for the string keywords, a float64 for the numeric ones, a
-// list for the item keywords and an object for the property counts. const and enum take any value.
+// list for the item keywords and an object for the property counts. const and enum take any value. A keyword the schema declares with the wrong type, and a value of the wrong type, pass.
 func checkKeyword(n node, key string, value any) bool {
 	declared, _ := n.get(key)
 	switch key {
 	case "minLength", "maxLength":
 		text, isText := value.(string)
-		limit, hasLimit := Plain(declared).(float64)
+		limit, hasLimit := finiteNumber(declared)
 		if !isText || !hasLimit {
-			return false
+			return true
 		}
 		if key == "minLength" {
 			return isMinLength(jsstring.ToUTF16(text), limit)
@@ -35,7 +37,7 @@ func checkKeyword(n node, key string, value any) bool {
 		text, isText := value.(string)
 		pattern, isPattern := declared.(string)
 		if !isText || !isPattern {
-			return false
+			return true
 		}
 		expression, err := CompilePattern(pattern)
 		return err == nil && expression.MatchString(text)
@@ -43,16 +45,16 @@ func checkKeyword(n node, key string, value any) bool {
 		text, isText := value.(string)
 		name, isName := declared.(string)
 		if !isText || !isName {
-			// Format.Test returns true for a format the registry does not have.
 			return true
 		}
+		// Format.Test returns true for a format the registry does not have.
 		check, registered := Formats()[name]
 		return !registered || check(text)
 	case "maximum", "minimum", "exclusiveMaximum", "exclusiveMinimum":
 		number, isNumber := value.(float64)
-		limit, hasLimit := Plain(declared).(float64)
+		limit, hasLimit := finiteNumber(declared)
 		if !isNumber || !hasLimit {
-			return false
+			return true
 		}
 		switch key {
 		case "maximum":
@@ -65,14 +67,14 @@ func checkKeyword(n node, key string, value any) bool {
 		return number > limit
 	case "multipleOf":
 		number, isNumber := value.(float64)
-		divisor, hasDivisor := Plain(declared).(float64)
-		return isNumber && hasDivisor && isMultipleOf(number, divisor)
+		divisor, hasDivisor := finiteNumber(declared)
+		return !isNumber || !hasDivisor || isMultipleOf(number, divisor)
 	case "const":
 		return equalsAllowed(value, Plain(declared))
 	case "enum":
 		options, isList := declared.([]any)
 		if !isList {
-			return false
+			return true
 		}
 		for _, option := range options {
 			if equalsAllowed(value, Plain(option)) {
@@ -88,11 +90,11 @@ func checkKeyword(n node, key string, value any) bool {
 		case map[string]any:
 			count = len(typed)
 		default:
-			return false
+			return true
 		}
-		limit, hasLimit := Plain(declared).(float64)
+		limit, hasLimit := finiteNumber(declared)
 		if !hasLimit {
-			return false
+			return true
 		}
 		if key == "minItems" || key == "minProperties" {
 			return float64(count) >= limit
@@ -100,12 +102,19 @@ func checkKeyword(n node, key string, value any) bool {
 		return float64(count) <= limit
 	case "uniqueItems":
 		items, isList := value.([]any)
-		if !isList {
-			return false
+		unique, isBool := declared.(bool)
+		if !isList || !isBool {
+			return true
 		}
-		return declared == false || len(uniqueHashes(items)) == len(items)
+		return !unique || len(uniqueHashes(items)) == len(items)
 	}
 	return true
+}
+
+// finiteNumber is a keyword value that Guard.IsNumber accepts: a JSON number (Infinity and NaN are not JSON) as a float64.
+func finiteNumber(declared any) (float64, bool) {
+	number, isNumber := Plain(declared).(float64)
+	return number, isNumber && !math.IsInf(number, 0) && !math.IsNaN(number)
 }
 
 // equalsAllowed is the comparison of const and enum: === with a value-like option, Guard.IsDeepEqual with any other.
