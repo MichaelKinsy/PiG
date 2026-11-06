@@ -713,7 +713,27 @@ func claimedElsewhere(ds, claimed map[string]bool) bool {
 	return false
 }
 
+// withoutExempt is hashes without the commits that exempt.txt or a "Bug-Ledger: exempt <category>: <reason>" trailer excuses from the ledger, such as a commit that only adds a call-site marker for a divergence its message names.
+func (b *builder) withoutExempt(hashes []string, exempt map[string]string) ([]string, error) {
+	var out []string
+	for _, h := range hashes {
+		msg, err := b.message(h)
+		if err != nil {
+			return nil, err
+		}
+		if reason := exemptReason(exempt, h, msg); reason != "" && !strings.HasPrefix(reason, "see ") {
+			continue
+		}
+		out = append(out, h)
+	}
+	return out, nil
+}
+
 func (b *builder) divergenceEntries(divs map[string]divergence, path string) error {
+	exempt, err := exemptions(b.root)
+	if err != nil {
+		return err
+	}
 	var ids []string
 	for id, d := range divs {
 		if d.fixesPiDefect() {
@@ -732,6 +752,9 @@ func (b *builder) divergenceEntries(divs map[string]divergence, path string) err
 		}
 		hashes, err := divergenceCommits(b.r, b.base, id, path)
 		if err != nil {
+			return err
+		}
+		if hashes, err = b.withoutExempt(hashes, exempt); err != nil {
 			return err
 		}
 		// The release note of the fix cites the divergence and no other: class it and keep one entry. A note that cites several divergences, such as a documentation fix that lists them, is not the fix of any one. The earliest such note is the fix; a later one is a follow-up.
