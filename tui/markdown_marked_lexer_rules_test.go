@@ -163,3 +163,9 @@ func TestMarkedBlockRulesEqualTheirPatterns(t *testing.T) {
 		}
 	})
 }
+
+// markedLatexStart is markedLatexStartAt at the start of src.
+func markedLatexStart(src []rune) int {
+	next := -1
+	return markedLatexStartAt(src, 0, &next)
+}
