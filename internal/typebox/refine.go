@@ -460,7 +460,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 		}
 	}
 	if hasContains && n.has("maxContains") {
-		limit, _ := Plain(n.keyword("maxContains")["maxContains"]).(float64)
+		limit, _ := Plain(n.declared("maxContains")).(float64)
 		count := 0
 		for _, item := range items {
 			if w.check(context, contains, item) {
@@ -475,7 +475,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 		return false
 	}
 	if hasContains && n.has("minContains") {
-		limit, _ := Plain(n.keyword("minContains")["minContains"]).(float64)
+		limit, _ := Plain(n.declared("minContains")).(float64)
 		count := 0
 		for index, item := range items {
 			if w.check(context, contains, item) && context.addIndex(index) {

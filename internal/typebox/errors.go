@@ -272,15 +272,10 @@ func (n node) list(key string) ([]any, bool) {
 
 func (n node) has(key string) bool { _, ok := n.get(key); return ok }
 
-// keyword is a map holding the named keywords of n, to read the limits a leaf keyword reports in its params and message.
-func (n node) keyword(names ...string) map[string]any {
-	out := map[string]any{}
-	for _, name := range names {
-		if value, ok := n.get(name); ok {
-			out[name] = value
-		}
-	}
-	return out
+// declared is the value of the keyword key of n, nil when n has no such keyword.
+func (n node) declared(key string) any {
+	value, _ := n.get(key)
+	return value
 }
 
 // valueKeys are a JSON object's own keys in JavaScript enumeration order.
@@ -359,16 +354,20 @@ func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, 
 		step(w.array(context, spath, path, n, items))
 	}
 	if _, ok := value.(string); ok {
-		for _, rule := range []struct{ key, message string }{
-			{"maxLength", "must not have more than " + numberText(n.keyword("maxLength")["maxLength"]) + " characters"},
-			{"minLength", "must not have fewer than " + numberText(n.keyword("minLength")["minLength"]) + " characters"},
-			{"format", `must match format "` + textOf(n, "format") + `"`},
-			{"pattern", `must match pattern "` + textOf(n, "pattern") + `"`},
+		for _, rule := range [...]struct{ key, before, after string }{
+			{"maxLength", "must not have more than ", " characters"}, {"minLength", "must not have fewer than ", " characters"},
+			{"format", `must match format "`, `"`}, {"pattern", `must match pattern "`, `"`},
 		} {
-			if n.has(rule.key) {
-				limit, _ := n.get(rule.key)
-				step(checkKeyword(n, rule.key, value) || context.addError(rule.key, params1(Plain(limit)), spath, path, rule.message))
+			if !n.has(rule.key) || checkKeyword(n, rule.key, value) {
+				continue
 			}
+			// The message is built for a failing keyword only.
+			limit := n.declared(rule.key)
+			text, isText := limit.(string)
+			if !isText {
+				text = numberText(limit)
+			}
+			step(context.addError(rule.key, params1(Plain(limit)), spath, path, rule.before+text+rule.after))
 		}
 	}
 	if _, ok := value.(float64); ok {
@@ -376,22 +375,23 @@ func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, 
 			{"exclusiveMaximum", "<"}, {"exclusiveMinimum", ">"}, {"maximum", "<="}, {"minimum", ">="},
 		} {
 			if n.has(rule.key) {
-				limit := n.keyword(rule.key)[rule.key]
+				limit := n.declared(rule.key)
 				step(checkKeyword(n, rule.key, value) || context.addError(rule.key, params2(rule.comparison, Plain(limit)), spath, path, "must be "+rule.comparison+" "+numberText(limit)))
 			}
 		}
 		if n.has("multipleOf") {
-			step(checkKeyword(n, "multipleOf", value) || context.addError("multipleOf", params1(Plain(n.keyword("multipleOf")["multipleOf"])), spath, path, "must be multiple of "+numberText(n.keyword("multipleOf")["multipleOf"])))
+			divisor := n.declared("multipleOf")
+			step(checkKeyword(n, "multipleOf", value) || context.addError("multipleOf", params1(Plain(divisor)), spath, path, "must be multiple of "+numberText(divisor)))
 		}
 	}
 	if ref, ok := n.get("$ref"); ok {
 		step(w.ref(context, path, ref, value))
 	}
 	if n.has("const") {
-		step(checkKeyword(n, "const", value) || context.addError("const", params1(Plain(n.keyword("const")["const"])), spath, path, "must be equal to constant"))
+		step(checkKeyword(n, "const", value) || context.addError("const", params1(Plain(n.declared("const"))), spath, path, "must be equal to constant"))
 	}
 	if n.has("enum") {
-		step(checkKeyword(n, "enum", value) || context.addError("enum", params1(Plain(n.keyword("enum")["enum"])), spath, path, "must be equal to one of the allowed values"))
+		step(checkKeyword(n, "enum", value) || context.addError("enum", params1(Plain(n.declared("enum"))), spath, path, "must be equal to one of the allowed values"))
 	}
 	if condition, ok := n.get("if"); ok {
 		step(w.ifKeyword(context, spath, path, n, condition, value))
@@ -460,12 +460,6 @@ func (w errorWalker) notPasses(context *errorContext, n node, value any) bool {
 	}
 	context.tracking().merge([]*checkContext{next})
 	return true
-}
-
-func textOf(n node, key string) string {
-	value, _ := n.get(key)
-	text, _ := value.(string)
-	return text
 }
 
 func (w errorWalker) typeKeyword(context *errorContext, spath *pathSeg, path string, typeValue, value any) bool {
@@ -575,12 +569,13 @@ func (w errorWalker) object(context *errorContext, spath *pathSeg, path string, 
 		}
 		step(len(invalid) == 0 || context.addError("propertyNames", params1(invalid), spath, path, "property names "+strings.Join(invalid, ", ")+" are invalid"))
 	}
-	for _, rule := range []struct{ key, message string }{
+	for _, rule := range [...]struct{ key, message string }{
 		{"minProperties", "must not have fewer than %s properties"},
 		{"maxProperties", "must not have more than %s properties"},
 	} {
 		if n.has(rule.key) {
-			step(checkKeyword(n, rule.key, object) || context.addError(rule.key, params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, strings.Replace(rule.message, "%s", numberText(n.keyword(rule.key)[rule.key]), 1)))
+			limit := n.declared(rule.key)
+			step(checkKeyword(n, rule.key, object) || context.addError(rule.key, params1(Plain(limit)), spath, path, strings.Replace(rule.message, "%s", numberText(limit), 1)))
 		}
 	}
 	return valid
@@ -626,26 +621,27 @@ func (w errorWalker) array(context *errorContext, spath *pathSeg, path string, n
 			}
 		}
 	}
-	for _, rule := range []struct{ key, message string }{
+	for _, rule := range [...]struct{ key, message string }{
 		{"maxContains", ""}, {"maxItems", "must not have more than %s items"}, {"minContains", ""}, {"minItems", "must not have fewer than %s items"},
 	} {
-		limit, ok := Plain(n.keyword(rule.key)[rule.key]).(float64)
 		if !n.has(rule.key) {
 			continue
 		}
+		declared := n.declared(rule.key)
+		limit, ok := Plain(declared).(float64)
 		switch rule.key {
 		case "maxContains":
 			// maxContains.mjs and minContains.mjs count only with a contains schema (IsValid); their keyword is
 			// contains.
 			minContains := any(float64(1))
-			if declared, has := n.get("minContains"); has {
-				minContains = Plain(declared)
+			if declaredMin, has := n.get("minContains"); has {
+				minContains = Plain(declaredMin)
 			}
-			step(!hasContains || !ok || float64(w.recount(contains, items, matching)) <= limit || context.addError("contains", params2(minContains, Plain(n.keyword(rule.key)[rule.key])), spath, path, "must contain at least 1 valid item"))
+			step(!hasContains || !ok || float64(w.recount(contains, items, matching)) <= limit || context.addError("contains", params2(minContains, Plain(declared)), spath, path, "must contain at least 1 valid item"))
 		case "minContains":
-			step(!hasContains || !ok || float64(w.recount(contains, items, matching)) >= limit || context.addError("contains", params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, "must contain at least 1 valid item"))
+			step(!hasContains || !ok || float64(w.recount(contains, items, matching)) >= limit || context.addError("contains", params1(Plain(declared)), spath, path, "must contain at least 1 valid item"))
 		default:
-			step(checkKeyword(n, rule.key, items) || context.addError(rule.key, params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, strings.Replace(rule.message, "%s", numberText(limit), 1)))
+			step(checkKeyword(n, rule.key, items) || context.addError(rule.key, params1(Plain(declared)), spath, path, strings.Replace(rule.message, "%s", numberText(limit), 1)))
 		}
 	}
 	if prefix, ok := n.list("prefixItems"); ok && len(items) > 0 {
