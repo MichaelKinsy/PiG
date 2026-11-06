@@ -367,7 +367,7 @@ func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, 
 		} {
 			if n.has(rule.key) {
 				limit, _ := n.get(rule.key)
-				step(Check(n.keyword(rule.key), value) || context.addError(rule.key, params1(Plain(limit)), spath, path, rule.message))
+				step(checkKeyword(n, rule.key, value) || context.addError(rule.key, params1(Plain(limit)), spath, path, rule.message))
 			}
 		}
 	}
@@ -377,21 +377,21 @@ func (w errorWalker) schema(context *errorContext, spath *pathSeg, path string, 
 		} {
 			if n.has(rule.key) {
 				limit := n.keyword(rule.key)[rule.key]
-				step(Check(n.keyword(rule.key), value) || context.addError(rule.key, params2(rule.comparison, Plain(limit)), spath, path, "must be "+rule.comparison+" "+numberText(limit)))
+				step(checkKeyword(n, rule.key, value) || context.addError(rule.key, params2(rule.comparison, Plain(limit)), spath, path, "must be "+rule.comparison+" "+numberText(limit)))
 			}
 		}
 		if n.has("multipleOf") {
-			step(Check(n.keyword("multipleOf"), value) || context.addError("multipleOf", params1(Plain(n.keyword("multipleOf")["multipleOf"])), spath, path, "must be multiple of "+numberText(n.keyword("multipleOf")["multipleOf"])))
+			step(checkKeyword(n, "multipleOf", value) || context.addError("multipleOf", params1(Plain(n.keyword("multipleOf")["multipleOf"])), spath, path, "must be multiple of "+numberText(n.keyword("multipleOf")["multipleOf"])))
 		}
 	}
 	if ref, ok := n.get("$ref"); ok {
 		step(w.ref(context, path, ref, value))
 	}
 	if n.has("const") {
-		step(Check(n.keyword("const"), value) || context.addError("const", params1(Plain(n.keyword("const")["const"])), spath, path, "must be equal to constant"))
+		step(checkKeyword(n, "const", value) || context.addError("const", params1(Plain(n.keyword("const")["const"])), spath, path, "must be equal to constant"))
 	}
 	if n.has("enum") {
-		step(Check(n.keyword("enum"), value) || context.addError("enum", params1(Plain(n.keyword("enum")["enum"])), spath, path, "must be equal to one of the allowed values"))
+		step(checkKeyword(n, "enum", value) || context.addError("enum", params1(Plain(n.keyword("enum")["enum"])), spath, path, "must be equal to one of the allowed values"))
 	}
 	if condition, ok := n.get("if"); ok {
 		step(w.ifKeyword(context, spath, path, n, condition, value))
@@ -580,7 +580,7 @@ func (w errorWalker) object(context *errorContext, spath *pathSeg, path string, 
 		{"maxProperties", "must not have more than %s properties"},
 	} {
 		if n.has(rule.key) {
-			step(Check(n.keyword(rule.key), object) || context.addError(rule.key, params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, strings.Replace(rule.message, "%s", numberText(n.keyword(rule.key)[rule.key]), 1)))
+			step(checkKeyword(n, rule.key, object) || context.addError(rule.key, params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, strings.Replace(rule.message, "%s", numberText(n.keyword(rule.key)[rule.key]), 1)))
 		}
 	}
 	return valid
@@ -645,7 +645,7 @@ func (w errorWalker) array(context *errorContext, spath *pathSeg, path string, n
 		case "minContains":
 			step(!hasContains || !ok || float64(w.recount(contains, items, matching)) >= limit || context.addError("contains", params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, "must contain at least 1 valid item"))
 		default:
-			step(Check(n.keyword(rule.key), items) || context.addError(rule.key, params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, strings.Replace(rule.message, "%s", numberText(limit), 1)))
+			step(checkKeyword(n, rule.key, items) || context.addError(rule.key, params1(Plain(n.keyword(rule.key)[rule.key])), spath, path, strings.Replace(rule.message, "%s", numberText(limit), 1)))
 		}
 	}
 	if prefix, ok := n.list("prefixItems"); ok && len(items) > 0 {
@@ -654,7 +654,7 @@ func (w errorWalker) array(context *errorContext, spath *pathSeg, path string, n
 		}
 	}
 	if unique, _ := n.get("uniqueItems"); unique == true {
-		step(Check(n.keyword("uniqueItems"), items) || context.addError("uniqueItems", params1(duplicateIndices(items)), spath, path, "must not have duplicate items"))
+		step(checkKeyword(n, "uniqueItems", items) || context.addError("uniqueItems", params1(duplicateIndices(items)), spath, path, "must not have duplicate items"))
 	}
 	return valid
 }
@@ -772,16 +772,16 @@ func (w errorWalker) combinator(context *errorContext, spath *pathSeg, path stri
 	}
 }
 
-// duplicateIndices are the indices of the items that repeat an earlier one, as uniqueItems.mjs lists them.
+// duplicateIndices are the indices of the items whose hash an earlier item has, as uniqueItems.mjs lists them.
 func duplicateIndices(items []any) []any {
 	out := []any{}
+	seen := make(map[uint64]struct{}, len(items))
 	for index, item := range items {
-		for _, earlier := range items[:index] {
-			if reflect.DeepEqual(Plain(earlier), Plain(item)) {
-				out = append(out, float64(index))
-				break
-			}
+		hash := hashValue(item)
+		if _, repeated := seen[hash]; repeated {
+			out = append(out, float64(index))
 		}
+		seen[hash] = struct{}{}
 	}
 	return out
 }

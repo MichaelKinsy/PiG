@@ -21,3 +21,5 @@ Every path that reads a metaschema goes through `dialect.getSchema`, which compi
 ## Updating
 
 Copy the new upstream release over this directory, then repeat the differences above. Rewrite the import paths as in 3, run `go test ./third_party/...` (also with `-race -run 'ConcurrentFirstUse'`) and the root `ai` and `coding/piglet` validation tests. Offer nothing upstream without the owner.
+
+9. No package of the product imports the fork any more. `coding/piglet` (`ValidateAgainstSchema`) checks the Piglet schema with `schema`, PiG's port of Pi's JSON Schema package, and `internal/typebox` walks TypeBox schemas with its own checker, so neither the validator nor `golang.org/x/text/message` (the printer of `kind`'s messages) is part of any binary; only the fork's own tests build it.

@@ -210,14 +210,14 @@ func (w errorWalker) check(context *checkContext, schema, value any) bool {
 	}
 	if text, isString := value.(string); isString {
 		for _, key := range []string{"maxLength", "minLength", "format", "pattern"} {
-			if n.has(key) && !Check(n.keyword(key), text) {
+			if n.has(key) && !checkKeyword(n, key, text) {
 				return false
 			}
 		}
 	}
 	if _, isNumber := value.(float64); isNumber {
 		for _, key := range []string{"exclusiveMaximum", "exclusiveMinimum", "maximum", "minimum", "multipleOf"} {
-			if n.has(key) && !Check(n.keyword(key), value) {
+			if n.has(key) && !checkKeyword(n, key, value) {
 				return false
 			}
 		}
@@ -226,7 +226,7 @@ func (w errorWalker) check(context *checkContext, schema, value any) bool {
 		return false
 	}
 	for _, key := range []string{"const", "enum"} {
-		if n.has(key) && !Check(n.keyword(key), value) {
+		if n.has(key) && !checkKeyword(n, key, value) {
 			return false
 		}
 	}
@@ -290,9 +290,11 @@ func (w errorWalker) check(context *checkContext, schema, value any) bool {
 	if n.has("unevaluatedProperties") && !w.checkUnevaluatedProperties(context, n, value) {
 		return false
 	}
-	for _, id := range refinementIDs(n) {
-		if !w.runRefine(id, value) {
-			return false
+	if w.refine != nil {
+		for _, id := range refinementIDs(n) {
+			if !w.runRefine(id, value) {
+				return false
+			}
 		}
 	}
 	return true
@@ -407,7 +409,7 @@ func (w errorWalker) checkObject(context *checkContext, n node, object map[strin
 		}
 	}
 	for _, key := range []string{"minProperties", "maxProperties"} {
-		if n.has(key) && !Check(n.keyword(key), object) {
+		if n.has(key) && !checkKeyword(n, key, object) {
 			return false
 		}
 	}
@@ -469,7 +471,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 			return false
 		}
 	}
-	if n.has("maxItems") && !Check(n.keyword("maxItems"), items) {
+	if n.has("maxItems") && !checkKeyword(n, "maxItems", items) {
 		return false
 	}
 	if hasContains && n.has("minContains") {
@@ -484,7 +486,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 			return false
 		}
 	}
-	if n.has("minItems") && !Check(n.keyword("minItems"), items) {
+	if n.has("minItems") && !checkKeyword(n, "minItems", items) {
 		return false
 	}
 	if prefix, ok := n.list("prefixItems"); ok && len(items) > 0 {
@@ -494,7 +496,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 			}
 		}
 	}
-	if unique, _ := n.get("uniqueItems"); unique == true && !Check(n.keyword("uniqueItems"), items) {
+	if unique, _ := n.get("uniqueItems"); unique == true && !checkKeyword(n, "uniqueItems", items) {
 		return false
 	}
 	return true

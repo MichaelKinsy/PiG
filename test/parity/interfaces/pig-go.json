@@ -118212,6 +118212,17 @@
       "shapeHash": "sha256:30d202c37121eba0366f3f0891e1f1ee959b08a88a7981ab931ed2473fd90e7a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#stockManifest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
+      "name": "stockManifest",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#untarNodeSources",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
       "name": "untarNodeSources",
@@ -173537,9 +173548,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/third_party/jsonschema.Schema"
+        "type": "*github.com/MichaelKinsy/PiG/schema.Validator"
       },
-      "shapeHash": "sha256:dfe5ece70deeb369babc6ea74a80b51f3d1680ae77d4b622e9b374534d73e520"
+      "shapeHash": "sha256:ea3db7291d87ad189d7abbba79a77e7214da443c63f6f4c01572b46eda1f7d1a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#componentJSON",
@@ -174593,9 +174604,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() (*github.com/MichaelKinsy/PiG/third_party/jsonschema.Schema, error)"
+        "type": "func() (*github.com/MichaelKinsy/PiG/schema.Validator, error)"
       },
-      "shapeHash": "sha256:9c26f3b478b7a8802e6dbf6dc1c9b9c44f1aeb82eee54ae360147c7abfccc098"
+      "shapeHash": "sha256:d6a4ecb4a6d7134a5b2f291447dc98a8bc57d9588423ef381e1879aeef34c112"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/piglet#pigletSchemaJSON",
@@ -291361,6 +291372,28 @@
         "type": "func(id string, config providerConfig) ProviderConfigInput"
       },
       "shapeHash": "sha256:c98c3b8087d1924337c1271e252be9da7c314ee2d1ebcfe98c952b133a18568d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#providerOrderCache",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "providerOrderCache",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{mu sync.Mutex; valid bool; data string; order []string}"
+      },
+      "shapeHash": "sha256:8fdace308dd995d7846c9bf088156ad9f6416df92d54df350e5dc0ab3e6deffa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#providerOrderOf",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "providerOrderOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) []string"
+      },
+      "shapeHash": "sha256:16b3f80e8b708dd877fa5349ef16d4fe5eead1c2d3eba1bef58b7cea77391361"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#quarantineDirName",

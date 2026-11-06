@@ -187,11 +187,11 @@
 
 # binary: stripped stock pig per release platform (TestReleaseBinarySizeGate).
 # 0.5.2 batch: owner-approved 2026-10-21, ceilings raised to the measured sizes (rounded up to 8 KiB): linux_amd64 67,009,312 -> 69918720 (+4.3%), linux_arm64 62,821,600 -> 65413120, darwin_arm64 64,504,688 -> 67190784, windows_amd64 68,666,240 -> 71606272. Train 3 alone measured 66,826,400 on linux_amd64; the growth is train 4: the Python and Rust SDK sources embedded in the binary (extensions/sdk-py 0.78 -> 1.41 MB, extensions/sdk-rs 1.2 -> 2.0 MB) and about 1.4 MB of new Go code (SDK tui kit, pi-ai helpers, session graph, TLS distrust, classifier images). Shrink in 0.5.3.
-"binary.pig.linux_amd64.bytes" = 69918720
-"binary.pig.linux_arm64.bytes" = 65413120
-"binary.pig.darwin_arm64.bytes" = 67190784
+"binary.pig.linux_amd64.bytes" = 69480448
+"binary.pig.linux_arm64.bytes" = 64819200
+"binary.pig.darwin_arm64.bytes" = 66625536
 # windows_amd64: owner-approved 2026-10-16 for the Pi v1.3.0 pin. Stripped size 72,289,792 at 9db1ecc0a3 -> 72,310,272 (+20,480 B); symbol growth: type data +12.8 KB, ai +6.1 KB, go/types +2.8 KB, tui/widthx +1.5 KB, coding/cli +0.6 KB.
-"binary.pig.windows_amd64.bytes" = 71606272
+"binary.pig.windows_amd64.bytes" = 71221248
 
 # binary: the headless embed example (examples/headless: session API, MCP, one provider, no terminal) per release platform, stripped as released (TestHeadlessEmbedBinarySizeGate). "default" is a plain build; "stripped" passes every strip tag except pig_strip_mcp. Measured at the change that stopped the Node view kit's editor builder (tui.Editor and the 6.3 MB word dictionaries behind it) and the announcement image (539 KB) from linking into programs that never draw an interactive editor, rounded up to 8 KiB with one 4 KiB page of linker alignment as headroom (the same program built by the test and by hand differed by a page). A ceiling only moves down. The default ceilings were lowered when Amazon Bedrock (ai/providers/bedrock, the AWS SDK) stopped linking into a plain import of ai: measured at that change, rounded the same way (linux_amd64 40,148,992 -> 36,675,584 B).
 # linux_amd64 and darwin_arm64 (default): owner-approved 2026-10-27 for the Pi b3a29f11 pin. Stripped size 36,675,744 (linux_amd64) over 36,675,584 -> ceiling 36,683,776 (+8,192 B); 35,259,074 (darwin_arm64) over 35,250,176 -> ceiling 35,266,560 (+16,384 B). Symbol growth (go tool nm -size, batch vs head, linux_amd64): internal/codingagent +877 B, tui +526 B, ai +427 B, all ported Pi b3a29f11 code.
@@ -203,15 +203,15 @@
 # headless ceilings, owner approved 2026-10-30 (Michael Kinsy), Photon formats TIFF/ICO/PNM/DDS/HDR/farbfeld (fix/follow-photon-decode-d): linux_amd64 default 36,937,728 approved by the owner; the other targets are measured by TestHeadlessEmbedBinarySizeGate on the integration head ba33bfe21a and rounded up to 8 KiB: default linux_arm64 34,406,560, darwin_arm64 35,508,658, windows_amd64 38,262,784; stripped linux_amd64 30,421,152, darwin_arm64 29,012,818, windows_amd64 31,728,128 (stripped linux_arm64 is unchanged).
 # headless ceilings, owner rule (measured size rounded up to 8 KiB; owner-approved 2026-10-30 for the Photon format decoders) moved again for Photon's BMP, GIF and PNG decoders (fix/follow-photon-decode-e) on integration head c7fef98b6d: default linux_amd64 36,982,944, linux_arm64 34,537,632, darwin_arm64 35,559,554, windows_amd64 38,311,424; stripped linux_amd64 30,466,208, darwin_arm64 29,063,506, windows_amd64 31,777,280 (stripped linux_arm64 unchanged). At ba33bfe21a they measured 36,933,792, 34,406,560, 35,508,658, 38,262,784 and 30,421,152, 29,012,818, 31,728,128.
 # headless ceilings, owner rule (measured size rounded up to 8 KiB; OWNER APPROVED 2026-10-31 to apply once after the merge-back of the 0.6.0 line into next) on the merged head ca413772f0: measured by TestHeadlessEmbedBinarySizeGate default linux_amd64 37,028,000, darwin_arm64 35,593,986, windows_amd64 38,358,528, stripped linux_amd64 30,515,360, linux_arm64 28,115,104, darwin_arm64 29,114,466, windows_amd64 31,823,872 B; default linux_arm64 (34,537,632) stays at its ceiling 34,545,664.
-"binary.headless.default.linux_amd64.bytes" = 37036032
-"binary.headless.default.linux_arm64.bytes" = 34545664
-"binary.headless.default.darwin_arm64.bytes" = 35594240
-"binary.headless.default.windows_amd64.bytes" = 38363136
-"binary.headless.stripped.linux_amd64.bytes" = 30523392
+"binary.headless.default.linux_amd64.bytes" = 36868096
+"binary.headless.default.linux_arm64.bytes" = 34410496
+"binary.headless.default.darwin_arm64.bytes" = 35446784
+"binary.headless.default.windows_amd64.bytes" = 38191104
+"binary.headless.stripped.linux_amd64.bytes" = 30449664
 # default linux_amd64, darwin_arm64 and windows_amd64, owner-approved 2026-10-29 (Michael Kinsy) for the 0.6.0 features that landed after the closed-Piglet-Binary approval (ext-autocomplete-v2, ownThinkingRuns across the SDKs, SDK key vectors, the MCP close fix): measured by TestHeadlessEmbedBinarySizeGate on the 0.6.0 head linux_amd64 36,724,896, darwin_arm64 35,310,370 and windows_amd64 38,052,352 B, each rounded up to 8 KiB: linux_amd64 36,732,928, darwin_arm64 35,315,712, windows_amd64 38,060,032; linux_arm64 is unchanged. On this line the ceilings above (Photon decoders) are the ones in force; the merged head is measured against them.
-"binary.headless.stripped.linux_arm64.bytes" = 28123136
-"binary.headless.stripped.darwin_arm64.bytes" = 29122560
-"binary.headless.stripped.windows_amd64.bytes" = 31825920
+"binary.headless.stripped.linux_arm64.bytes" = 28053504
+"binary.headless.stripped.darwin_arm64.bytes" = 29073408
+"binary.headless.stripped.windows_amd64.bytes" = 31756288
 
 # process: interactive start to the first ready frame, then Ctrl+D (test/integration TestInteractiveFirstFrameProcessGate, integration tag, tmux). The idle time between the frame and Ctrl+D adds timer work, so the margin is wider.
 "process.interactive_first_frame.allocs" = 22700
