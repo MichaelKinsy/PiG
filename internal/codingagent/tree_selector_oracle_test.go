@@ -349,6 +349,13 @@ func normalizeTreeSearchLinesD248(got, want [][]string, width int) {
 					continue // a cursor line of something else (the label input) is compared as it is
 				}
 			}
+			if wantLine := want[frame][i]; !strings.HasSuffix(got[frame][i], cursorCell) && strings.Contains(wantLine, "Type to search:") {
+				// While a label is edited the cursor is the label input's and the line keeps its width; an empty query still ends in the space.
+				if emptyQuery {
+					want[frame][i] = widthx.TruncateToWidth(wantLine+" ", width, "...", false)
+				}
+				continue
+			}
 			if emptyQuery || strings.HasSuffix(want[frame][i], "Type to search:\x1b[39m") {
 				line = strings.TrimSuffix(line, " ") // the empty query's trailing space, with or without the cursor
 			}

@@ -238,6 +238,8 @@ func runTreeContracts(t *testing.T, cases []treeContractCase) []treeContractTrac
 			got := replayTreeContract(t, probe)
 			traces[i] = got
 			want := expected[i]
+			// pig divergence (D248): the search line draws a cursor Pi 1.5.0 does not; the rest of every frame is compared as it is.
+			normalizeTreeSearchLinesD248(got.Frames, want.Frames, probe.Width)
 			if !reflect.DeepEqual(got.Steps, want.Steps) || !reflect.DeepEqual(got.Frames, want.Frames) {
 				t.Fatalf("keys=%q differ from Pi:\nsteps = %q\nPi    = %q\n%s", probe.Keys, got.Steps, want.Steps, firstFrameDifference(got.Frames, want.Frames))
 			}
@@ -387,7 +389,8 @@ func wantFrameLacks(parts ...string) func(t *testing.T, tr treeContractTrace) {
 func wantSearch(want string) func(t *testing.T, tr treeContractTrace) {
 	return func(t *testing.T, tr treeContractTrace) {
 		t.Helper()
-		if got := treeSearchRow(tr.lastFrame()); got != want {
+		// pig divergence (D248): an empty query's search row ends in a space Pi 1.5.0 does not draw.
+		if got := strings.TrimSuffix(treeSearchRow(tr.lastFrame()), " "); got != strings.TrimSuffix(want, " ") {
 			t.Errorf("search row = %q, want %q", got, want)
 		}
 	}
