@@ -30,7 +30,17 @@ func deepNesting(shape string, depth int) any {
 var deepDeltaShapes = []struct {
 	shape string
 	depth int
-}{{"arrays", 200}, {"arrays", 9000}, {"objects", 9000}, {"arrays", 1}}
+}{{"arrays", 200}, {"arrays", 3000}, {"objects", 3000}, {"arrays", 4000}, {"objects", 4000}, {"arrays", 9000}, {"objects", 9000}, {"arrays", 1}}
+
+// nodeHandlerFails is where the Node SDK's handler fails: it hands the handler the object as Pi does (no copy), and the probe's JSON.stringify of it runs out of V8 stack
+// on the pinned Node between 4400 and 9000 levels, as it does in Pi (D268).
+func nodeHandlerFails(depth int) bool { return depth >= 9000 }
+
+// carriesDeepValue reports whether the event holds the nested value (the first update of a stream holds none yet): its JSON is at least two bytes a level long.
+func carriesDeepValue(event any, depth int) bool {
+	whole, err := json.Marshal(event)
+	return err == nil && len(whole) >= 2*depth
+}
 
 // A message_update whose partial gains a tool call with deeply nested arguments: the host sends the block in a delta's `set` operation, and the operation must be read whole.
 func deepMessageUpdateEvents(shape string, depth int) []extension.MessageUpdateEvent {
@@ -76,7 +86,7 @@ func deepToolUpdateEvents(shape string, depth int) []extension.ToolExecutionUpda
 
 // TestDeepEventStreamDeltasReachEverySDK pins that a message_update or tool_execution_update delta whose operations carry a value nested past serde_json's 128 levels (up to
 // what the host's marshal sends) reaches the Go, Python, Rust and Lisp SDKs, in every placement (isolated and in a shared runtime cell): the handler receives the payload the
-// event encodes to (the Node SDK, Pi's own runtime, only up to 4000 levels: D268), and the same extension reads the ordinary update that follows (D268: no SDK ends its connection on deep input).
+// event encodes to (the Node SDK, Pi's own runtime, up to 4000 levels; at 9000 its handler's own JSON.stringify throws V8's RangeError, as in Pi: D268), and the same extension reads the ordinary update that follows (D268: no SDK ends its connection on deep input).
 func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -101,18 +111,28 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 			defer removeListener()
 			for _, name := range []string{"message_update", "tool_execution_update"} {
 				var events []extension.ExtensionEvent
+				// handlerFailures is how many handlers of the Node SDK fail on each event: the probe, and for a tool update that holds the arguments the fixture's own handler, which stringifies them.
+				var handlerFailures []int
 				for _, c := range deepDeltaShapes {
-					if node && c.depth >= 5000 {
-						// Pi's own runtime (the Node SDK) fails from where V8 runs out of stack, as D268 records.
-						continue
-					}
 					if name == "message_update" {
 						for _, event := range deepMessageUpdateEvents(c.shape, c.depth) {
 							events = append(events, event)
+							handlerFailures = append(handlerFailures, 0)
+							if node && nodeHandlerFails(c.depth) && carriesDeepValue(event, c.depth) {
+								handlerFailures[len(handlerFailures)-1] = 1
+							}
 						}
 					} else {
 						for _, event := range deepToolUpdateEvents(c.shape, c.depth) {
 							events = append(events, event)
+							handlerFailures = append(handlerFailures, 0)
+							if node && nodeHandlerFails(c.depth) && carriesDeepValue(event, c.depth) {
+								handlerFailures[len(handlerFailures)-1] = 1
+								args, _ := event.Args.(map[string]any)
+								if _, holdsArguments := args["meta"]; holdsArguments {
+									handlerFailures[len(handlerFailures)-1] = 2
+								}
+							}
 						}
 					}
 				}
@@ -128,6 +148,13 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 						t.Fatalf("%s: emit %d: %v", name, index, err)
 					}
 				}
+				wantReports, wantFailures := 0, 0
+				for _, failed := range handlerFailures {
+					wantFailures += failed
+					if failed == 0 {
+						wantReports++
+					}
+				}
 				var reported []string
 				pollUntilConformance(t, "the handler did not report every "+name, func() bool {
 					reported = reported[:0]
@@ -136,29 +163,39 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 							reported = append(reported, strings.TrimSuffix(rest, ":info"))
 						}
 					}
-					return len(reported) >= len(events)
+					return len(reported) >= wantReports && len(failures) >= wantFailures
 				})
-				if len(failures) > 0 {
-					t.Fatalf("%s: a handler failed: %v", name, failures)
+				if len(failures) != wantFailures {
+					t.Fatalf("%s: %d handlers failed, want %d: %v", name, len(failures), wantFailures, failures)
+				}
+				for _, failure := range failures {
+					if !strings.Contains(failure, "Maximum call stack size exceeded") {
+						t.Fatalf("%s: a handler failed with %q, want V8's RangeError", name, failure)
+					}
 				}
 				// The row means nothing if the host sent keyframes only: it must have sent deltas whose operations nest deep.
 				if deep := h.wire.frames.deepDeltaFrames()[name]; deep == 0 {
 					t.Fatalf("%s: the host sent no delta whose operations nest past 128 levels (%d event frames)", name, h.wire.frames.eventFrames()[name])
 				}
+				next := 0
 				for index, event := range events {
+					if handlerFailures[index] > 0 {
+						continue
+					}
 					whole, err := json.Marshal(event)
 					if err != nil {
 						t.Fatal(err)
 					}
 					var got, want any
-					if err := json.Unmarshal([]byte(reported[index]), &got); err != nil {
+					if err := json.Unmarshal([]byte(reported[next]), &got); err != nil {
 						t.Fatalf("%s: payload %d is not JSON: %v", name, index, err)
 					}
 					if err := json.Unmarshal(whole, &want); err != nil {
 						t.Fatal(err)
 					}
+					next++
 					if !reflect.DeepEqual(got, want) {
-						t.Fatalf("%s: payload %d = %.200s…, want %.200s…", name, index, reported[index], whole)
+						t.Fatalf("%s: payload %d = %.200s…, want %.200s…", name, index, reported[next-1], whole)
 					}
 				}
 			}
