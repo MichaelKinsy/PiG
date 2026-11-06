@@ -4679,6 +4679,28 @@
       ]
     },
     {
+      "id": "BF-22866b5",
+      "title": "Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a…",
+      "symptom": "Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a parallel read split its records by line count, so a session of few large records was decoded on one goroutine.",
+      "rootCause": "A read of few large records, a session of tool outputs of tens of kilobytes, split by line count left one goroutine decoding nearly all of it: the cold context read of a 27 MB, 600-entry session took 830 ms. The parts are now balanced by record size (a part is at least 1 MiB, and a run of 256 lines still fills one), 82 ms on 16 cores.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a parallel read split its records by line count, so a session of few large records was decoded on one goroutine. The read splits by record bytes now; the cold context read of a 27 MB, 600-entry session went from 830 ms to 82 ms on 16 cores.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22866b5c9d",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_parallel_weighted_test.go::TestParallelOverWeightedSplitsByRecordBytes"
+      ]
+    },
+    {
       "id": "BF-228dbea",
       "title": "fix(durable/core): follow the microtask schedule of Pi",
       "symptom": "fix(durable/core): follow the microtask schedule of Pi",
@@ -13874,6 +13896,31 @@
         "internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRunOnMainAndWaitOnOwnerLoopRunsInline",
         "internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRunOnMainFromOwnerLoopNeverBlocksOnItsOwnQueue",
         "internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRunOnOwnerInlineOnLoopQueuedElsewhere"
+      ]
+    },
+    {
+      "id": "BF-59693cd",
+      "title": "Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a…",
+      "symptom": "Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a second later on a large session, snapped to the fork point.",
+      "rootCause": "The prompt that chose a navigation closed and painted the old transcript with the editor back, and the worker's decode of the context kept that frame on screen until the fork point replaced it. The choice that starts the navigation now holds the owner loop's frames, including the paint after its key and the dialog close's own, until the navigation has returned and the transcript is swapped. A dialog an extension opens meanwhile, a summary's status, Esc and the custom-prompt choice are not held.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a second later on a large session, snapped to the fork point. The frames of the choice that starts the navigation are held until the transcript is swapped, so the prompt stays up and the first frame after it is the fork point.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59693cd597",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionDialog",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryNavigationKeepsPaintingFrames",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose"
       ]
     },
     {
@@ -30752,6 +30799,33 @@
         "internal/codingagent/tools/tools_lookup_windows_test.go::TestLookupToolPathFindsToolsAsPiDoes",
         "tui/file_autocomplete_session_linux_test.go::TestWalkDirectoryWithFdCancelKillsTheGroup",
         "tui/file_autocomplete_session_linux_test.go::TestWalkDirectoryWithFdRunsInANewSession"
+      ]
+    },
+    {
+      "id": "BF-D270",
+      "title": "After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first",
+      "symptom": "none.",
+      "rootCause": "the owner asked that the user never see the old leaf after selecting. Pi's old-transcript frame is brief enough not to be seen; PiG's decode is not always brief, and a hold is the only way to show no stale frame whatever the navigation takes.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D270",
+      "removeWhen": "PiG's navigation completes within one frame for every session, or the owner decides to match Pi's brief old-transcript frame.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "8ece4ea7e5",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeDialogsOfOtherContextsNeverStartTheHold",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionDialog",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionOverlay",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap",
+        "internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose"
       ]
     },
     {
@@ -50634,6 +50708,11 @@
       "id": "D269",
       "title": "A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session",
       "entry": "BF-D269"
+    },
+    {
+      "id": "D270",
+      "title": "After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first",
+      "entry": "BF-D270"
     }
   ],
   "exemptCommits": {

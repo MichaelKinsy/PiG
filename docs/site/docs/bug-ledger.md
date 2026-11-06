@@ -175,6 +175,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | 0.7.0 |
 | [BF-227a4c1](#bf-227a4c1) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | 0.7.0 |
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-22866b5](#bf-22866b5) | Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a… | PiG's own defect | All platforms | Unreleased |
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-2307f4e](#bf-2307f4e) | An extension's message_end replacement of a custom message that has no `content` now writes `content` after… | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
@@ -487,6 +488,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
 | [BF-598e27f](#bf-598e27f) | Escape over an open autocomplete list during compaction now closes the list and lets compaction continue, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59b5dae](#bf-59b5dae) | OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59e2efb](#bf-59e2efb) | A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then… | PiG's own defect | All platforms | 0.7.0 |
@@ -1102,6 +1104,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D266](#bf-d266) | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D267](#bf-d267) | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D269](#bf-d269) | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D270](#bf-d270) | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -3876,6 +3879,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `433d232815` (2026-10-09), `75c06b6556` (2026-10-09), `2280bf8320` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi` and 3 more in docs/bug-ledger.json
 - **Release note:** The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated `ai.StreamX`/`ai.StreamSimpleX` aliases) end a failure inside the API's own stream the way Pi's API module does: the final message carries the module's `api` (its own API for azure-openai-responses, bedrock-converse-stream, google-generative-ai, google-vertex and openai-codex-responses, the model's `api` otherwise), and a request aborted before it starts stops with `aborted` instead of `error`. Only `streamSimple`'s missing-key check stays a setup error carrying the model's `api`.
+
+### BF-22866b5
+
+**Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a parallel read split its records by line count, so a session of few large records was decoded on one goroutine.
+- **Root cause:** A read of few large records, a session of tool outputs of tens of kilobytes, split by line count left one goroutine decoding nearly all of it: the cold context read of a 27 MB, 600-entry session took 830 ms. The parts are now balanced by record size (a part is at least 1 MiB, and a run of 256 lines still fills one), 82 ms on 16 cores.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `22866b5c9d` (2026-11-06)
+- **Tests:** `internal/codingagent/session_parallel_weighted_test.go::TestParallelOverWeightedSplitsByRecordBytes`
+- **Release note:** Session files with large tool outputs opened slowly when `/tree` navigated or the transcript repainted: a parallel read split its records by line count, so a session of few large records was decoded on one goroutine. The read splits by record bytes now; the cold context read of a 27 MB, 600-entry session went from 830 ms to 82 ms on 16 cores.
 
 ### BF-228dbea
 
@@ -8189,6 +8206,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `59456ae205` (2026-10-09)
 - **Tests:** `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestNestedOwnerLoopRestoresOwner`, `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestOwnerLoopIdentity`, `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestPostToMainWithRoomSkipsOwnerCheck`, `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRemoteOverlayKeyOnOwnerLoopDoesNotWaitOnOwnerQueue`, `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRunOnMainAndWaitOnOwnerLoopRunsInline`, `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRunOnMainFromOwnerLoopNeverBlocksOnItsOwnQueue`, `internal/codingagent/overlay_owner_loop_deadlock_test.go::TestRunOnOwnerInlineOnLoopQueuedElsewhere`
 - **Release note:** Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches the overlay on the main loop (public PR #197).
+
+### BF-59693cd
+
+**Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a second later on a large session, snapped to the fork point.
+- **Root cause:** The prompt that chose a navigation closed and painted the old transcript with the editor back, and the worker's decode of the context kept that frame on screen until the fork point replaced it. The choice that starts the navigation now holds the owner loop's frames, including the paint after its key and the dialog close's own, until the navigation has returned and the transcript is swapped. A dialog an extension opens meanwhile, a summary's status, Esc and the custom-prompt choice are not held.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `59693cd597` (2026-11-06)
+- **Tests:** `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionDialog`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryNavigationKeepsPaintingFrames`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`
+- **Release note:** Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a second later on a large session, snapped to the fork point. The frames of the choice that starts the navigation are held until the transcript is swapped, so the prompt stays up and the first frame after it is the fork point.
 
 ### BF-598e27f
 
@@ -16769,6 +16800,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi checks that the program it found is the tool, not only that it spawns. Then the probe, the autocomplete's new session and this record go.
 - **Fix commits:** `39b6e4dbe3` (2026-11-06), `c2fe0b3fc9` (2026-11-06), `cd18360e93` (2026-11-06)
 - **Tests:** `internal/codingagent/tools/tool_probe_linux_test.go::TestFindAndGrepKeepSearchInCallersSession`, `internal/codingagent/tools/tool_probe_linux_test.go::TestVersionProbeCannotReachTheTerminal`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathAcceptsFdWrapperWithoutShebang`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathChecksRipgrepIdentity`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathRejectsLoneImpostor`, `internal/codingagent/tools/tool_probe_unix_test.go::TestLookupToolPathSkipsImpostorFdForFdfind`, `internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionDoesNotCacheStartFailure`, `internal/codingagent/tools/tool_probe_unix_test.go::TestProbeToolVersionTimesOutHungProgramAndItsChildren` and 4 more in docs/bug-ledger.json
+
+### BF-D270
+
+**After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D270)
+- **Symptom:** none.
+- **Root cause:** the owner asked that the user never see the old leaf after selecting. Pi's old-transcript frame is brief enough not to be seen; PiG's decode is not always brief, and a hold is the only way to show no stale frame whatever the navigation takes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** PiG's navigation completes within one frame for every session, or the owner decides to match Pi's brief old-transcript frame.
+- **Fix commits:** `8ece4ea7e5` (2026-11-06)
+- **Tests:** `internal/codingagent/interactive_tree_frames_test.go::TestTreeDialogsOfOtherContextsNeverStartTheHold`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionDialog`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionOverlay`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`
 
 ### BF-a076a50
 
@@ -25454,6 +25500,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
 | D269 | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | [BF-D269](#bf-d269) |
+| D270 | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | [BF-D270](#bf-d270) |
 
 ## Fix-titled commits that are not bugs in a release
 

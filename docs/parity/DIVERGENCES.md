@@ -3827,3 +3827,25 @@ Call-site markers: `internal/codingagent/tools/tool_probe.go` (`systemToolIdenti
 Evidence: `TestLookupToolPathSkipsImpostorFdForFdfind`, `TestLookupToolPathRejectsLoneImpostor`, `TestLookupToolPathChecksRipgrepIdentity`, `TestLookupToolPathAcceptsFdWrapperWithoutShebang`, `TestToolProbeCachesPerFileRevision`, `TestProbeToolVersionTimesOutHungProgramAndItsChildren`, `TestProbeToolVersionDoesNotCacheStartFailure`, `TestVersionProbeCannotReachTheTerminal`, `TestFindAndGrepKeepSearchInCallersSession` (`internal/codingagent/tools/tool_probe_unix_test.go`, `tool_probe_linux_test.go`) and `TestWalkDirectoryWithFdRunsInANewSession`, `TestWalkDirectoryWithFdCancelKillsTheGroup` (`tui/file_autocomplete_session_linux_test.go`). The impostor and no-shebang cases fail on a45b578455, where a fake `fd` ahead of `fdfind` was returned.
 
 Parity allowance: `TestLookupToolPathFindsToolsAsPiDoes` keeps comparing lookup order with Pi's `getToolPath` on Windows with fixtures that answer `--version` as the tool, so only the identity check differs.
+
+## D270 After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first
+
+What: Pi's tree handler (interactive-mode.ts:5694-5775) awaits `session.navigateTree` (5750) and then runs `chatContainer.clear(); renderInitialMessages()` (5768). The key that closes the "Summarize branch?" prompt asks for an immediate frame (tui.ts:1158-1161) that runs on `process.nextTick` (tui.ts:1044-1058), before the microtask that resumes the await. So Pi paints the old transcript with the prompt gone first, and the fork point replaces it on the next frame: a few milliseconds without an extension handler, and the whole await of a `session_before_tree` handler that awaits. PiG's navigation runs on a worker and decodes the session's records for the context: on a 27 MB, 600-entry session of 88 KB tool results that is about 60 ms at 16 cores and about 190 ms at 4 (about 750 ms at 1) after the parallel read splits by record bytes (it was 830 ms at 16 before), and the owner saw the old transcript for about a second before the fork point. PiG now holds its frames from the choice that starts the navigation (No summary, Summarize, the custom prompt's submit, or the tree selection when `branchSummary.skipPrompt` is set) until the navigation has returned and the transcript is swapped, so the prompt stays on screen and the first frame after the choice is the fork point. The transcript's entries are read on the worker, so the repaint decodes nothing on the owner loop.
+
+Why: the owner asked that the user never see the old leaf after selecting. Pi's old-transcript frame is brief enough not to be seen; PiG's decode is not always brief, and a hold is the only way to show no stale frame whatever the navigation takes.
+
+Pi bug: none.
+
+Scope: `/tree` navigation. The hold starts only from the choice of the prompt's own dialog. It ends when the navigation returns, when an extension opens a dialog or an overlay, when a summary shows its status, and when the run is aborted before navigating. Esc and the custom-prompt choice are not held. While it lasts, nothing that only requests a frame is painted: the user's typing, `setStatus`, `setWidget`, footer and header changes. A paint that names a render (`showStatus`, `showError`, notifications) still paints the old transcript with the prompt gone. The hold has no upper bound: a handler that awaits for a minute keeps the "Summarize branch?" prompt on screen for a minute, where Pi shows the old transcript.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
+
+SCRUTINIZED:approved
+
+Remove when: PiG's navigation completes within one frame for every session, or the owner decides to match Pi's brief old-transcript frame.
+
+Call-site markers: `internal/codingagent/interactive_tree.go` (`navigateTree`), `internal/codingagent/interactive.go` (`holdFrames`), `internal/codingagent/slash_session_handlers.go` (`treeNavigateWithSummarize`), `internal/codingagent/ext_ui_context.go` (`runDialog`).
+
+Evidence: `TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap` (red without the hold: the editor painted during the navigation), `TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`, `TestTreeDialogsOfOtherContextsNeverStartTheHold`, `TestTreeNavigationPaintsAnExtensionDialog` and `TestTreeNavigationPaintsAnExtensionOverlay` (`internal/codingagent/interactive_tree_frames_test.go`); scenario `tree/15-tree-navigation-no-stale-frame` (fails 42 of 119 sampled panes with `holdFrames` a no-op).
+
+Parity allowance: scenario `tree/15-tree-navigation-no-stale-frame` runs a `session_before_tree` handler that awaits 600 ms. Both programs end on the same pane (`output_equal`). PiG's pane, sampled every 10 ms from the choice until "Navigated to selected point" shows, never shows the old leaf with the prompt gone (`pig_no_stale_frames`); Pi's samples are not asserted, because Pi shows that pane throughout the await.
