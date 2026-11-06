@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf16"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
@@ -108,10 +107,7 @@ func (l *markedInlineState) blockRunes(src string) []rune {
 	if n := len(src); cap(l.blockSource) < n {
 		l.blockSource = make([]rune, 0, n)
 	}
-	l.blockSource = l.blockSource[:0]
-	for _, r := range src {
-		l.blockSource = append(l.blockSource, r)
-	}
+	l.blockSource = jsstring.AppendCodePoints(l.blockSource[:0], src)
 	return l.blockSource
 }
 
@@ -316,7 +312,7 @@ func (l *markedBlockLexer) blockTokens(src []rune, str string, tokens *[]*marked
 	l.top = true
 }
 
-func markedRuneCount(s string) int { return utf8.RuneCountInString(s) }
+func markedRuneCount(s string) int { return jsstring.CodePointCount(s) }
 
 // markedLineEnd is the index of the first "\n" of src from from, or len(src).
 func markedLineEnd(src []rune, from int) int {
@@ -374,7 +370,7 @@ func markedCode(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	raw := markedTrimTrailingBlankLines(match.String())
+	raw := markedTrimTrailingBlankLines(matchString(match))
 	// codeRemoveIndent, /^(?: {1,4}| {0,3}\t)/gm: the space alternative wins whenever a line starts with a space, and a line starts after "\n", "\r", U+2028 and U+2029.
 	var text strings.Builder
 	text.Grow(len(raw))
@@ -390,7 +386,7 @@ func markedCode(src []rune) (*markedBlock, int) {
 				break
 			}
 		}
-		r, size := utf8.DecodeRuneInString(raw[i:])
+		r, size := jsstring.DecodeCodePoint(raw[i:])
 		text.WriteString(raw[i : i+size])
 		i += size
 		atLineStart = r == '\n' || r == '\r' || r == '\u2028' || r == '\u2029'
@@ -411,7 +407,7 @@ func markedFence(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	raw := match.String()
+	raw := matchString(match)
 	info, _ := markedGroup(match, 2)
 	content, _ := markedGroup(match, 3)
 	lang := ""
@@ -433,13 +429,13 @@ func markedIndentCodeCompensation(raw, text string) string {
 	}
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
-		runes := []rune(line)
+		runes := jsstring.CodePoints(line)
 		lead := 0
 		for lead < len(runes) && jsstring.IsSpace(runes[lead]) {
 			lead++
 		}
 		if lead >= indent {
-			lines[i] = string(runes[indent:])
+			lines[i] = jsstring.FromCodePoints(runes[indent:])
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -469,7 +465,7 @@ func (l *markedBlockLexer) heading(src []rune) (*markedBlock, int) {
 			text = widthx.JSTrim(trimmed)
 		}
 	}
-	raw := markedRtrim(match.String(), '\n')
+	raw := markedRtrim(matchString(match), '\n')
 	return l.inline(l.newBlock(markedBlock{kind: "heading", raw: raw, depth: len(hashes), text: text}), text), markedRuneCount(raw)
 }
 
@@ -483,7 +479,7 @@ func markedHr(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	raw := markedRtrim(match.String(), '\n')
+	raw := markedRtrim(matchString(match), '\n')
 	return &markedBlock{kind: "hr", raw: raw}, markedRuneCount(raw)
 }
 
@@ -497,7 +493,7 @@ func markedHTMLBlock(src []rune) (*markedBlock, int) {
 	if match == nil {
 		return nil, 0
 	}
-	raw := markedTrimTrailingBlankLines(match.String())
+	raw := markedTrimTrailingBlankLines(matchString(match))
 	return &markedBlock{kind: "html", raw: raw, text: raw}, markedRuneCount(raw)
 }
 
@@ -506,7 +502,7 @@ func markedDef(src []rune) (*markedBlock, int) {
 	if spaces := markedLeadingSpaces(src); spaces > 3 || spaces >= len(src) || src[spaces] != '[' {
 		return nil, 0
 	}
-	if !markedDefCandidate(string(src[:markedLineEnd(src, 0)])) {
+	if !markedDefCandidate(jsstring.FromCodePoints(src[:markedLineEnd(src, 0)])) {
 		return nil, 0
 	}
 	match := markedBlockDef.exec(src)
@@ -520,7 +516,7 @@ func markedDef(src []rune) (*markedBlock, int) {
 	if len(destination) >= 2 && destination[0] == '<' && destination[len(destination)-1] == '>' {
 		destination = destination[1 : len(destination)-1]
 	}
-	raw := markedRtrim(match.String(), '\n')
+	raw := markedRtrim(matchString(match), '\n')
 	return &markedBlock{kind: "def", raw: raw, tag: markedLinkLabel(label), text: markedUnescapePunctuation(destination)}, markedRuneCount(raw)
 }
 
@@ -572,7 +568,7 @@ func (l *markedBlockLexer) table(src []rune) (*markedBlock, int) {
 		}
 		rowSources = strings.Split(cells, "\n")
 	}
-	raw := markedRtrim(match.String(), '\n')
+	raw := markedRtrim(matchString(match), '\n')
 	// header and align columns must be equal, rows can be different.
 	if len(headers) != strings.Count(aligns, "|")+1 {
 		return nil, 0
@@ -673,7 +669,7 @@ func (l *markedBlockLexer) lheading(src []rune) (*markedBlock, int) {
 	if underline[0] == '=' {
 		depth = 1
 	}
-	raw := markedRtrim(match.String(), '\n')
+	raw := markedRtrim(matchString(match), '\n')
 	return l.inline(&markedBlock{kind: "heading", raw: raw, depth: depth, text: text}, text), markedRuneCount(raw)
 }
 
@@ -747,7 +743,7 @@ func markedRawText(src []rune, str string, n int) string {
 	if str != "" {
 		return str[:n]
 	}
-	return string(src[:n])
+	return jsstring.FromCodePoints(src[:n])
 }
 
 // markedLatexStartAt is the start() of the latexBlock extension on src[pos:].slice(1): the index in that slice of the first display-math start at its beginning or behind a line break, or -1. The cut is src.substring(0, start+1). It serves the successive positions of one lexing: next remembers the first display-math start behind a line break after the last position (-1 before the first call), so the search reads each line of the text once.
@@ -788,7 +784,7 @@ func markedLatexBlock(src []rune) (*markedBlock, int) {
 	if !markedLatexOpener(src) {
 		return nil, 0
 	}
-	token, ok := tokenizeBlockLatex(string(src))
+	token, ok := tokenizeBlockLatex(jsstring.FromCodePoints(src))
 	if !ok {
 		return nil, 0
 	}
@@ -815,7 +811,7 @@ func markedStripQuoteMarkers(s string) string {
 				continue
 			}
 		}
-		r, size := utf8.DecodeRuneInString(s[i:])
+		r, size := jsstring.DecodeCodePoint(s[i:])
 		out.WriteString(s[i : i+size])
 		i += size
 		lineStart = r == '\n' || r == '\r' || r == '\u2028' || r == '\u2029'
@@ -867,7 +863,7 @@ func (l *markedBlockLexer) blockquote(src []rune) (*markedBlock, int) {
 	if matched == 0 {
 		return nil, 0
 	}
-	token := l.blockquoteOf(string(src[:matched]))
+	token := l.blockquoteOf(jsstring.FromCodePoints(src[:matched]))
 	return token, markedConsumed(src, token.raw)
 }
 
@@ -934,7 +930,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		// parse blockquote lines as top level tokens; merge paragraphs if this is a continuation
 		top := l.top
 		l.top = true
-		l.blockTokens([]rune(currentText), currentText, &tokens, true)
+		l.blockTokens(jsstring.CodePoints(currentText), currentText, &tokens, true)
 		l.top = top
 
 		// if there is no continuation then we are done
@@ -951,7 +947,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 			// include continuation in nested blockquote
 			continuation := strings.Join(lines, "\n")
 			newText := last.raw + "\n" + markedStripQuoteMarkers(continuation)
-			newToken, _ := l.blockquote([]rune(newText))
+			newToken, _ := l.blockquote(jsstring.CodePoints(newText))
 			tokens[len(tokens)-1] = newToken
 
 			raw = raw + "\n" + continuation
@@ -960,7 +956,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		case last != nil && last.kind == "list":
 			// include continuation in nested list
 			newText := last.raw + "\n" + strings.Join(lines, "\n")
-			newToken, _ := l.list([]rune(newText))
+			newToken, _ := l.list(jsstring.CodePoints(newText))
 			tokens[len(tokens)-1] = newToken
 			raw = markedWithoutTail(raw, last.raw) + newToken.raw
 			text = markedWithoutTail(text, last.raw) + newToken.raw
@@ -1126,7 +1122,7 @@ func markedTaskPrefix(s string) (length int, isTask bool) {
 	if length >= len(s) {
 		return length, false
 	}
-	r, _ := utf8.DecodeRuneInString(s[length:])
+	r, _ := jsstring.DecodeCodePoint(s[length:])
 	return length, !jsstring.IsSpace(r)
 }
 
@@ -1164,7 +1160,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 	if !ok {
 		return nil, 0
 	}
-	bull := string(src[spaces:end])
+	bull := string(src[spaces:end]) // the bullet rule matched ASCII
 	ordered := len(bull) > 1
 	list := &markedBlock{kind: "list", ordered: ordered}
 	if ordered {
@@ -1189,7 +1185,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 
 		var raw strings.Builder
 		raw.Grow(itemEnd)
-		raw.WriteString(string(rest[:itemEnd]))
+		writeCodePoints(&raw, rest[:itemEnd])
 		pos += itemEnd
 
 		line := markedFirstLine(rest[bulletLength:itemEnd])
@@ -1285,7 +1281,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 	for _, item := range list.items {
 		l.top = false
 		var tokens []*markedBlock
-		l.blockTokens([]rune(item.text), item.text, &tokens, false)
+		l.blockTokens(jsstring.CodePoints(item.text), item.text, &tokens, false)
 		item.tokens = tokens
 
 		if !list.loose {
@@ -1356,7 +1352,7 @@ func markedCheckboxChecked(raw string) bool {
 }
 
 // markedFirstLine is the text of src before its first newline.
-func markedFirstLine(src []rune) string { return string(src[:markedLineEnd(src, 0)]) }
+func markedFirstLine(src []rune) string { return jsstring.FromCodePoints(src[:markedLineEnd(src, 0)]) }
 
 // markedListItem is the item rule other.listItemRegex(bull) builds, ^( {0,3}bull)((?:[\t ][^\n]*)?(?:\n|$)), on src: the length of its first group, the length of the whole match, and whether it matches.
 func markedListItem(src []rune, bull string) (bulletLength, length int, ok bool) {
@@ -1368,10 +1364,21 @@ func markedListItem(src []rune, bull string) (bulletLength, length int, ok bool)
 	if !ok {
 		return 0, 0, false
 	}
-	marker := string(src[spaces:end])
+	marker := string(src[spaces:end]) // the bullet rule matched ASCII
 	if len(bull) == 1 && marker != bull || len(bull) > 1 && (len(marker) < 2 || marker[len(marker)-1] != bull[len(bull)-1]) {
 		return 0, 0, false
 	}
 	lineEnd := markedLineEnd(src, end)
 	return end, lineEnd + min(1, len(src)-lineEnd), true
+}
+
+// writeCodePoints writes the text of runes to b, a lone surrogate spelled as WTF-8, without building a string.
+func writeCodePoints(b *strings.Builder, runes []rune) {
+	for _, r := range runes {
+		if r >= 0xD800 && r <= 0xDFFF {
+			b.WriteString(jsstring.CodePointString(r))
+			continue
+		}
+		b.WriteRune(r)
+	}
 }

@@ -10,32 +10,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-func TestHideAndShowLoneSurrogates(t *testing.T) {
-	high, low := jsstring.FromUTF16([]uint16{0xd800}), jsstring.FromUTF16([]uint16{0xdfff})
-	for _, text := range []string{high, low, "a" + high + "é" + low + "😀" + high + high, "plain é text"} {
-		hidden, found := hideLoneSurrogates(text)
-		if want := text != "plain é text"; found != want {
-			t.Fatalf("found = %v for %q", found, text)
-		}
-		if found && hidden == text {
-			t.Fatalf("%q was not hidden", text)
-		}
-		for _, r := range hidden {
-			if r == 0xFFFD {
-				t.Fatalf("%q hides to %q, which holds a replacement character", text, hidden)
-			}
-		}
-		if got := showLoneSurrogates(hidden); got != text {
-			t.Fatalf("show(hide(%q)) = %q", text, got)
-		}
-	}
-	// A text that holds a stand-in already cannot be restored, so it is left alone.
-	own := "x" + string(rune(loneSurrogateStandIn)) + high
-	if hidden, found := hideLoneSurrogates(own); found || hidden != own {
-		t.Fatalf("a text with a stand-in was changed: %q, %v", hidden, found)
-	}
-}
-
 // The code of a block quote, a list item and an indented code block keeps a lone surrogate too, against Pi's rows.
 func TestMarkdownNestedCodeWithLoneSurrogatesMatchesPi(t *testing.T) {
 	type probe struct {

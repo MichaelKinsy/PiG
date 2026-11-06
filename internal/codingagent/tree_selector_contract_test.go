@@ -389,8 +389,12 @@ func wantFrameLacks(parts ...string) func(t *testing.T, tr treeContractTrace) {
 func wantSearch(want string) func(t *testing.T, tr treeContractTrace) {
 	return func(t *testing.T, tr treeContractTrace) {
 		t.Helper()
-		// pig divergence (D248): an empty query's search row ends in a space Pi 1.5.0 does not draw.
-		if got := strings.TrimSuffix(treeSearchRow(tr.lastFrame()), " "); got != strings.TrimSuffix(want, " ") {
+		got := treeSearchRow(tr.lastFrame())
+		// pig divergence (D248): an empty query's search row ends in a space Pi 1.5.0 does not draw; a query's own trailing space is compared as it is.
+		if want == "  Type to search:" {
+			got = strings.TrimSuffix(got, " ")
+		}
+		if got != want {
 			t.Errorf("search row = %q, want %q", got, want)
 		}
 	}

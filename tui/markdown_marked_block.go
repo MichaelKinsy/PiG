@@ -64,16 +64,19 @@ func markedLinkLabel(label string) string {
 	label = jsstring.ToLower(label)
 	var out strings.Builder
 	space := false
-	for _, r := range label {
+	for i := 0; i < len(label); {
+		r, size := jsstring.DecodeCodePoint(label[i:])
 		if jsstring.IsSpace(r) {
 			space = true
+			i += size
 			continue
 		}
 		if space {
 			out.WriteByte(' ')
 			space = false
 		}
-		out.WriteRune(r)
+		out.WriteString(label[i : i+size])
+		i += size
 	}
 	if space {
 		out.WriteByte(' ')
