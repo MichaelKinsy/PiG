@@ -49,7 +49,11 @@ func (m AgentMessage) Clone() AgentMessage {
 		clone.ToolResult = &value
 	case m.Custom != nil:
 		clone.Custom = maps.Clone(m.Custom)
-		clone.source = m.source
+		if m.source != nil {
+			// The record is shared by the copies of one message, so a replacement of one reaches them all; a clone is another message.
+			record := *m.source
+			clone.source = &record
+		}
 	}
 	return clone
 }
@@ -298,7 +302,7 @@ func (m AgentMessage) SourceJSON() ([]byte, error) {
 	if text := m.sourceText(); text != nil {
 		return bytes.Clone(text), nil
 	}
-	if m.Custom != nil && m.source != nil {
+	if m.Custom != nil && m.source != nil && len(m.source.text) > 0 {
 		encoded, err := orderedjson.MarshalInSourceOrder(m.Custom, m.source.text)
 		if err != nil {
 			return nil, err
@@ -468,10 +472,48 @@ func (m AgentMessage) WithEmptyContent() AgentMessage {
 		result.source = withEmptyContent(result.source, "[]")
 		m.ToolResult = &result
 	case m.Custom != nil:
+		// Pi writes {...message, content: []}: the members keep their order and content follows them.
+		order := m.customMemberOrder()
+		if order == nil {
+			// The shape's order, written out so that the member added below follows it.
+			if role, _ := m.Custom["role"].(string); role != "" {
+				order, _ = marshalCustomMessage(role, m.Custom)
+			}
+		}
 		m.Custom = maps.Clone(m.Custom)
 		m.Custom["content"] = []any{}
+		m.source = &messageSource{text: order}
 	}
 	return m
+}
+
+// WithOrderRecord gives a custom message the record of its member order that every copy of it shares (the Custom map is shared the same way), so
+// a message_end replacement applied to the copy an event carries is the order the transcript and persistence write too (agent-session.ts
+// _replaceMessageInPlace deletes the members of the shared object and assigns the replacement's, in its order). A message of another kind, or
+// one that has the record already (a decoded one), is returned as it is.
+func (m AgentMessage) WithOrderRecord() AgentMessage {
+	if m.Custom != nil && m.source == nil {
+		m.source = &messageSource{}
+	}
+	return m
+}
+
+// AdoptMemberOrder makes the member order of m, a custom message, that of replacement, a custom message that was applied to m's members, through the
+// record the copies of m share. It does nothing when m has no record (WithOrderRecord) or replacement is not a custom message.
+func (m AgentMessage) AdoptMemberOrder(replacement AgentMessage) {
+	if m.Custom == nil || m.source == nil || replacement.Custom == nil {
+		return
+	}
+	m.source.text = replacement.customMemberOrder()
+}
+
+// customMemberOrder is the JSON text whose member order m's members are written in: the text m was decoded from, or the order of its role's shape; nil
+// when that is the shape's order (a record of no text).
+func (m AgentMessage) customMemberOrder() []byte {
+	if m.source != nil && len(m.source.text) > 0 && m.source.text[0] == '{' {
+		return m.source.text
+	}
+	return nil
 }
 
 // NullContent reports a system, user, assistant or toolResult message whose content is null or missing: in the object it was decoded from, or in its fields when it was not decoded.

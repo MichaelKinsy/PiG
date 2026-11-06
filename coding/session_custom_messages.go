@@ -38,7 +38,7 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 	if message.Details != nil {
 		fields["details"] = message.Details
 	}
-	app := agent.AgentMessage{Custom: fields}
+	app := agent.AgentMessage{Custom: fields}.WithOrderRecord()
 	var opts extension.SendMessageOptions
 	if options != nil {
 		opts = *options

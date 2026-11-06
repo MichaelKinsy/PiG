@@ -4,7 +4,7 @@
     {
       "id": "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
+      "disposition": "ported",
       "pigTargets": [
         "coding/session.go#currentRunner",
         "coding/session_boundaries.go#handleAgentEvent",
@@ -14,6 +14,8 @@
         "internal/codingagent/event_bridge.go#DispatchAgentLoopEvent"
       ],
       "evidence": [
+        "agent/message_custom_order_test.go#TestAdoptMemberOrderReachesEveryCopy",
+        "coding/session_message_source_test.go#TestMessageEndCustomReplacementWithoutContentPutsContentLast",
         "coding/session_emit_extension_event_oracle_test.go#TestEmitExtensionEventMatchesPi",
         "coding/session_extension_hooks_test.go#TestMessageEndReplacementPersisted",
         "coding/session_rpc33_observation_test.go#TestSessionExtensionUpdateUsesCurrentMessage",
@@ -25,7 +27,7 @@
         "coding-agent/extensions/current-session-lifecycle-context"
       ],
       "divergence": "",
-      "rationale": "Pending owner decision (handoffs/0.7.1/owner-decisions-s22.md, decision 2): a message_end replacement of a custom message without `content` has `content` in canonical position in PiG and appended last in Pi."
+      "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
@@ -2181,20 +2183,21 @@
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/renderer.ts#<module>.renderResult",
       "ownerFamily": "extensions-runtime",
-      "disposition": "pending",
+      "disposition": "divergence",
       "pigTargets": [
         "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
       ],
       "evidence": [
         "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
         "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
-        "test/parity/scenarios/tools/25-codemode-cards.toml"
+        "test/parity/scenarios/tools/25-codemode-cards.toml",
+        "internal/codingagent/empty_mimetype_image_divergence_test.go#TestEmptyMimeTypeImageDiffersFromPi"
       ],
       "contracts": [
         "coding-agent/codemode-renderer/result"
       ],
-      "divergence": "",
-      "rationale": "Pending owner decision (handoffs/0.7.1/owner-decisions-s22.md, decision 1): an image block whose mimeType is the empty string prints `[Image: [image/unknown]]` in PiG and `[Image: []]` in Pi, because ai.ImageContent cannot tell an empty mimeType from an absent one."
+      "divergence": "D266",
+      "rationale": ""
     },
     {
       "id": "render:packages/coding-agent/src/extensions/codemode/tool.ts#<module>.renderToolSection",
