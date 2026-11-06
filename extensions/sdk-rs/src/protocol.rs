@@ -1652,7 +1652,7 @@ pub(crate) fn decode_json_str<T: serde::de::DeserializeOwned + Send>(
             match replace_unpaired_surrogate_escapes(text.as_bytes())
                 .and_then(|repaired| String::from_utf8(repaired).ok())
             {
-                Some(repaired) => from_json_str(&repaired),
+                Some(repaired) => decode_json_str(&repaired, deep),
                 None => Err(err),
             }
         }

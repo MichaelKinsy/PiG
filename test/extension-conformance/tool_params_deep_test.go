@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -56,6 +57,38 @@ func TestToolParamsNestingAcrossSDKs(t *testing.T) {
 			}
 			if _, again := call(r, 200); again != "" {
 				t.Fatalf("after nesting %d the extension fails the next call: %s", depth, again)
+			}
+		}
+	})
+}
+
+// A tool call whose arguments hold a lone surrogate escape and nest almost as deep as the host sends: the Rust SDK reads the surrogate as U+FFFD, a retry that must keep the
+// deep decode (the arguments nest past serde_json's 128 levels), or the call fails. Isolated and packed.
+func TestToolParamsLoneSurrogateAndDeepNestingRust(t *testing.T) {
+	const depth = 9990
+	eachModelTypesPlacementOf(t, []string{"rust"}, func(t *testing.T, r *modelTypesRig) {
+		for _, shape := range []string{"arrays", "objects"} {
+			nested, err := json.Marshal(deepNesting(shape, depth))
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw := `{"zeta":1,"s":"a\ud83db","meta":{"d":` + string(nested) + `}}`
+			result, err := r.ext.Tools["c3_tool_call"].Definition.Execute(t.Context(), "call-c3_tool_call", json.RawMessage(raw), nil)
+			if err != nil {
+				t.Fatalf("%s: the call failed: %v", shape, err)
+			}
+			var report struct {
+				Keys []string `json:"keys"`
+				Meta *string  `json:"meta"`
+			}
+			if err := json.Unmarshal([]byte(result.Text()), &report); err != nil {
+				t.Fatalf("%s: %.80q: %v", shape, result.Text(), err)
+			}
+			if want := `{"d":` + string(nested) + `}`; report.Meta == nil || *report.Meta != want {
+				t.Errorf("%s: meta = %.80q…, want the object", shape, deepValue(report.Meta))
+			}
+			if want := []string{"zeta", "s", "meta"}; !reflect.DeepEqual(report.Keys, want) {
+				t.Errorf("%s: keys = %v, want %v", shape, report.Keys, want)
 			}
 		}
 	})

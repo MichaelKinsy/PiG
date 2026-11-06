@@ -316,3 +316,30 @@ fn a_value_cut_out_of_a_frame_reads_an_unpaired_surrogate_escape_as_u_fffd() {
     assert_eq!(lines, ["x\u{fffd}y"]);
     assert!(from_json_str::<serde_json::Value>(r#"{"lines":["\ud83d"#).is_err());
 }
+
+// The surrogate retry of a refused value decodes again with the deep stack and must say so, or the request that carries the value runs on the stack of a normal
+// one: a tool call whose arguments hold a lone surrogate escape and nest past serde_json's limit is read, and its request gets the deep stack.
+#[test]
+fn a_request_with_an_unpaired_surrogate_escape_and_deep_nesting_gets_the_deep_stack() {
+    on_deep_stack(|| {
+        let depth = MAX_NESTING_DEPTH - 10;
+        // The escape comes before the nesting, so the first decode is refused for it, not for the depth.
+        let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+        let frame = format!(
+            r#"{{"type":"request","id":"t","request":{{"method":"tool_call","args":{{"name":"echo","params":{{"text":"a\ud83db","v":{deep}}}}}}}}}"#
+        );
+        let envelope = decode_frame(frame.as_bytes()).unwrap();
+        let req = envelope.request.unwrap();
+        assert!(req.args_error.is_none());
+        assert!(req.deep_args);
+        assert_eq!(crate::extension::request_stack_size(&req), 64 << 20);
+        let params = req.args.unwrap();
+        assert_eq!(params["params"]["text"], "a\u{fffd}b");
+        let mut level = &params["params"]["v"];
+        for _ in 0..depth {
+            level = &level[0];
+        }
+        assert_eq!(level, 1);
+    })
+    .unwrap();
+}
