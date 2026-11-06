@@ -1970,11 +1970,22 @@ func (e *Editor) HandleInput(data string) {
 // refreshAutocompleteAfterTyping is the end of editor.ts insertCharacter, which runs after char was inserted. An open popup is updated whatever was typed.
 // A closed one opens only for "/" at the start of the message, for a trigger character where a trigger token ends at the cursor, and for a letter, digit,
 // ".", "-", "_" or CJK character in a slash command (its arguments included) or a trigger token; a space, "é" or "/" typed after "/cmd" opens none.
+// A character that opens nothing still supersedes a request in flight, whose answer Pi drops as stale once the text moved on: it is cancelled rather than run to its end.
 func (e *Editor) refreshAutocompleteAfterTyping(char string) {
-	if !e.AutocompleteOpen() && !e.typedCharacterOpensAutocomplete(char) {
+	if e.AutocompleteOpen() || e.typedCharacterOpensAutocomplete(char) {
+		e.refreshAutocomplete()
 		return
 	}
-	e.refreshAutocomplete()
+	e.autocompleteMousePressedIndex = nil
+	e.autocompleteRequestID++
+	if e.asyncAutocomplete != nil {
+		e.AutocompleteCancel()
+		return
+	}
+	if e.asyncCancel != nil {
+		e.asyncCancel()
+		e.asyncCancel = nil
+	}
 }
 
 // typedCharacterOpensAutocomplete is the closed-popup branch of editor.ts insertCharacter: the first of its three conditions that char meets decides.
