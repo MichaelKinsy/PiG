@@ -29,15 +29,15 @@ func sliceRunesFrom(s string, n int) string {
 	if n <= 0 {
 		return s
 	}
-	r := []rune(s)
+	r := jsstring.CodePoints(s)
 	if n >= len(r) {
 		return ""
 	}
-	return string(r[n:])
+	return jsstring.FromCodePoints(r[n:])
 }
 
 func indexOfRune(src []rune, sub string, from int) int {
-	subR := []rune(sub)
+	subR := jsstring.CodePoints(sub)
 	if len(subR) == 0 {
 		return from
 	}
@@ -63,3 +63,14 @@ func runesHavePrefix(src, prefix []rune) bool {
 	}
 	return true
 }
+
+// withRune is s + string(r), a lone surrogate spelled as its WTF-8 bytes. A surrogate is never a key of a table here, so lookups keep string(r), and
+// for valid text the conversion stays on the stack as it does without the check.
+func withRune(s string, r rune) string {
+	if r >= 0xD800 && r <= 0xDFFF {
+		return withSurrogate(s, r)
+	}
+	return s + string(r)
+}
+
+func withSurrogate(s string, r rune) string { return s + jsstring.CodePointString(r) }
