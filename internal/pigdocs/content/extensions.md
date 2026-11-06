@@ -225,6 +225,8 @@ A build that also fails on an error that is not an SDK change, in the extension 
 
 `pig extension upgrade [<name|path>...] [--all] [--dry-run] [--summary]` rewrites the extension with the rules in `extensions/sdk/upgrade`. The rules parse and type-check the Go source, edit only the SDK uses they recognize, and format the result with `go/format`. The command copies the original files to `<config root>/state/extension-upgrade/<time>-<name>/` first (`<time>-<name>-2/` and so on when that directory exists), prints a unified diff, rebuilds the extension, and reports one status per extension: `upgraded`, `up to date`, `needs manual changes`, `failed` or `skipped`. `--dry-run` prints the diff and changes nothing. `--summary` prints one line per extension. With no argument, the command upgrades every Go extension that settings, packages, the agent directory and a trusted project directory load.
 
+The type check does not run in the `pig` binary. `pig` builds the program in `extensions/sdk/upgrade/driver` from the SDK it stages, with the Go toolchain that builds the extension, and runs it. The Go build cache keeps the program. The first analysis after a Go or SDK update compiles it, which takes a few seconds on a cold build cache. Later analyses start it in a fraction of a second. The build needs no network.
+
 Before, written for SDK 0.2.0:
 
 ```go
