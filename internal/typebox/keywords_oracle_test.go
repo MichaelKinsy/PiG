@@ -43,6 +43,18 @@ func init() {
 			map[string]any{"a": 1.0}, []any{1.0, "1", true, nil}, []any{1.0, 1.0, true, nil}, []any{}, map[string]any{}, 1.0, "1", "a", nil, false, true, 0.0, math.Copysign(0, -1),
 			map[string]any{"x": []any{1.0}}, []any{2.0, 3.0}, []any{3.0, 2.0})
 	}
+	// Guard.IsDeepEqual: an object on the left equals an array on the right when they have the same own property names, the indices and "length".
+	for _, schema := range []string{
+		`Type.Unsafe({ const: ["a"] })`, `Type.Unsafe({ enum: [["a"], true] })`, `Type.Unsafe({ const: [] })`, `Type.Unsafe({ const: ["a", "b"] })`, `Type.Unsafe({ const: { k: ["a"] } })`,
+		`Type.Unsafe({ const: [[1], {}] })`, `Type.Unsafe({ const: { "0": "a", length: 1 } })`, `Type.Unsafe({ const: [["a"]] })`,
+	} {
+		add(schema,
+			map[string]any{"0": "a", "length": 1.0}, map[string]any{"0": "a", "length": 2.0}, map[string]any{"0": "a", "length": "1"}, map[string]any{"0": "a", "1": "b"}, map[string]any{"0": "a"},
+			map[string]any{"length": 0.0}, map[string]any{"length": 0.0, "x": 1.0}, map[string]any{"0": "a", "1": "b", "length": 2.0}, map[string]any{"1": "a", "length": 1.0},
+			map[string]any{"00": "a", "length": 1.0}, map[string]any{"0": "b", "length": 1.0}, map[string]any{"k": map[string]any{"0": "a", "length": 1.0}},
+			map[string]any{"0": map[string]any{"0": 1.0, "length": 1.0}, "1": map[string]any{}, "length": 2.0}, map[string]any{"0": map[string]any{"0": "a", "length": 1.0}, "length": 1.0},
+			[]any{"a"}, []any{}, []any{"a", "b"}, map[string]any{})
+	}
 	// uniqueItems hashes the values: an object's members in the order of their names, 0 and -0 apart.
 	add(`Type.Array(Type.Any(), { uniqueItems: true })`,
 		[]any{1.0, 1.0}, []any{0.0, math.Copysign(0, -1)}, []any{1.0, "1"}, []any{map[string]any{"a": 1.0, "b": 2.0}, map[string]any{"b": 2.0, "a": 1.0}},
