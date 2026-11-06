@@ -114,7 +114,7 @@ func TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunnin
 	}
 }
 
-// Not Pi's: Pi's install waits for the `close` of the command, the end of its output, so a process the command started that
+// pig divergence (D267), not Pi's: Pi's install waits for the `close` of the command, the end of its output, so a process the command started that
 // inherited the pipes holds the install for as long as it lives. Here the fake npm starts a sleeping Node that inherits them
 // and exits with code 0 (then with code 1): the install ends with the command, within the stop grace of its exit, with the
 // result of its exit code and the output it wrote.
