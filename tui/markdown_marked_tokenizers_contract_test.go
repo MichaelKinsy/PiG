@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// markedBlockSources are sources of up to six lines drawn from the lines that start, continue and end the blocks the tokenizers of marked's block lexer read.
+// markedBlockSources are sources of up to six lines drawn from the lines that start, continue and end the blocks the tokenizers of marked's block lexer read. The hr lines "    ---", "     ***", "-_-", "- - - x" and "***---" are the indentation and spacing boundaries of the hr rule that the other lines rarely reach.
 func markedBlockSources(each func(src string)) {
-	lines := []string{"", " ", "  ", "\t", "a", "ab c", "# h", "#", "####### h", "#h", " ## h ##", "---", "***", "___", "- - -", "-", "=", "===", " ===  ", "--", "> q", ">", " > q", "- item", "1. item", "1) i", "* x", "+ y",
+	lines := []string{"", " ", "  ", "\t", "a", "ab c", "# h", "#", "####### h", "#h", " ## h ##", "---", "***", "___", "- - -", "    ---", "     ***", "-_-", "- - - x", "***---", "-", "=", "===", " ===  ", "--", "> q", ">", " > q", "- item", "1. item", "1) i", "* x", "+ y",
 		"```", "```go", "``` a`b", "~~~", "~~~ x", "````", " ```", "  ~~~", "    code", "\tcode", "   x", "<div>", "</div>", "<div", "<!--", "<!-->", "<!--->", "-->", "<pre>", "</pre>", "<script>", "</script>", "<?x", "?>", "<![CDATA[", "]]>", "<!A", "<a href=\"x\">", "<a b='c' d>", "<br/>", "<x-y>", "</x>",
 		"[a]: u", "[a]:", "[a]: <u v>", "[a]: u \"t\"", "[a]: u 't", "\"t\"", "'t'", "(t)", "[ ]: u", "[a\\]]: u", "[a]: u t", "[a]:\n", "| a |", "|-|", "a|b", "--|--", ":-:|-:", "| - |", "|", "$$", "\\[", "x\\"}
 	rng := rand.New(rand.NewPCG(5, 6))

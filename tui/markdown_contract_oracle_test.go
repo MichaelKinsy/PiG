@@ -1,10 +1,8 @@
 package tui
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"reflect"
 	"slices"
 	"strconv"
@@ -12,7 +10,6 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -133,26 +130,7 @@ func (p markdownContractProbe) build(log *markdownContractLog) *Markdown {
 
 func piMarkdownContract(t *testing.T, probes []markdownContractProbe) [][]markdownContractRender {
 	t.Helper()
-	input, err := json.Marshal(probes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), "node", "testdata/markdown_contract.mjs", pigversion.UpstreamPackageVersion)
-	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
-	}
-	var expected [][]markdownContractRender
-	if err := json.Unmarshal(output, &expected); err != nil {
-		t.Fatal(err)
-	}
-	if len(expected) != len(probes) {
-		t.Fatalf("Pi returned %d results for %d probes", len(expected), len(probes))
-	}
-	return expected
+	return piOracleProbes[markdownContractProbe, []markdownContractRender](t, "markdown_contract.mjs", probes)
 }
 
 // compareMarkdownContract requires the Pig component of every probe to render the rows and make the callbacks pi-tui does, and returns the number of probes that differ.

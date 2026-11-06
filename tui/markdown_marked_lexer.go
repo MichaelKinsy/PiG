@@ -29,7 +29,7 @@ var (
 	markedBlockFences   = newAnchoredMarkedRegexp(markedFencesSource, false)
 	markedBlockHeading  = newAnchoredMarkedRegexp(markedHeadingSource, false)
 	markedBlockLheading = newAnchoredMarkedRegexp(markedLheadingSource, false)
-	// markedBlockquoteSetext and markedBlockquoteMarker are other.blockquoteSetextReplace and other.blockquoteSetextReplace2 (rules.ts:75-76).
+	// markedBlockquoteSetext is other.blockquoteSetextReplace (rules.ts:75); markedStripQuoteMarkers is other.blockquoteSetextReplace2 (rules.ts:76).
 	markedBlockquoteSetext = newMarkedRegexp(`\n {0,3}((?:=+|-+) *)(?=\n|$)`)
 )
 
@@ -677,7 +677,7 @@ func (l *markedBlockLexer) lheading(src []rune) (*markedBlock, int) {
 	return l.inline(&markedBlock{kind: "heading", raw: raw, depth: depth, text: text}, text), markedRuneCount(raw)
 }
 
-// markedParagraphStart are the characters a line may open with, after at most three spaces, to end a paragraph other than through an HTML tag, a table or a line of spaces.
+// markedParagraphStarts are the characters a line may open with, after at most three spaces, to end a paragraph other than through an HTML tag, a table or a line of spaces; markedQuoteStarts are the same inside a blockquote, where a list item of any number ends it.
 const (
 	markedParagraphStarts = "-_*#>`~+1"
 	markedQuoteStarts     = "-_*#>`~+0123456789"
@@ -750,13 +750,7 @@ func markedRawText(src []rune, str string, n int) string {
 	return string(src[:n])
 }
 
-// markedLatexStart is the start() of the latexBlock extension on src.slice(1): the index in that slice of the first display-math start at its beginning or behind a line break, or -1. The cut is src.substring(0, start+1).
-func markedLatexStart(src []rune) int {
-	next := -1
-	return markedLatexStartAt(src, 0, &next)
-}
-
-// markedLatexStartAt is markedLatexStart of src[pos:] for the successive positions of one lexing: next remembers the first display-math start behind a line break after the last position (-1 before the first call), so the search reads each line of the text once.
+// markedLatexStartAt is the start() of the latexBlock extension on src[pos:].slice(1): the index in that slice of the first display-math start at its beginning or behind a line break, or -1. The cut is src.substring(0, start+1). It serves the successive positions of one lexing: next remembers the first display-math start behind a line break after the last position (-1 before the first call), so the search reads each line of the text once.
 func markedLatexStartAt(src []rune, pos int, next *int) int {
 	if pos+1 >= len(src) {
 		return -1
@@ -1097,7 +1091,7 @@ func markedBlockquoteBegin(line string, n int) bool {
 	return ok && strings.HasPrefix(rest, ">")
 }
 
-// markedHTMLBegin is other.htmlBeginRegex(indent), /^ {0,n}<(?:[a-z].*>|!--)/i, where . excludes the line terminators.
+// markedHTMLBeginAt is other.htmlBeginRegex(indent), /^ {0,n}<(?:[a-z].*>|!--)/i, where . excludes the line terminators.
 func markedHTMLBeginAt(line string, n int) bool {
 	rest, ok := markedIndented(line, n)
 	if !ok || len(rest) < 2 || rest[0] != '<' {
