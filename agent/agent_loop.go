@@ -406,6 +406,7 @@ func (r *loopRun) applyUpdate(context *AgentContext, model *ai.Model, thinking *
 // appendMessage emits a message's lifecycle and adds it to the transcript, the
 // loop context, and the run's new messages.
 func (r *loopRun) appendMessage(msg AgentMessage) {
+	msg = msg.WithOrderRecord()
 	r.h.emit(MessageStartEvent{Message: startEventMessage(msg)})
 	r.context = append(r.context, msg)
 	r.newMessages = append(r.newMessages, msg)
@@ -428,6 +429,11 @@ func startEventMessage(msg AgentMessage) AgentMessage {
 		out.ToolResult = new(*msg.ToolResult)
 	case msg.Custom != nil:
 		out.Custom = maps.Clone(msg.Custom)
+		if msg.source != nil {
+			// The member-order record is shared by the copies of one message, so a replacement's adoption would reach this envelope; it keeps its own, as Clone does.
+			record := *msg.source
+			out.source = &record
+		}
 	}
 	return out
 }

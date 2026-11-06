@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -260,6 +262,51 @@ func TestToolCallInputAcrossSDKs(t *testing.T) {
 			t.Errorf("index without an assistant message = %d, want none", *report.Index)
 		}
 	})
+}
+
+// Tool arguments with a lone UTF-16 surrogate, which the model's JSON can spell as an escape (`"\ud83d"`): the handler still reads the arguments. Pi's JavaScript holds the unit, and
+// every SDK's ToolInput spells it as the escape JSON.stringify writes, and the Node, Go, Python and Lisp SDKs return the object with the unit. A Rust String cannot hold a lone
+// surrogate, which is a mechanic of the language, so the Rust SDK's ToolParams reads each unit as U+FFFD; it must still return the object and its keys (an unreadable text made it answer none).
+func TestToolCallInputWithALoneSurrogateAcrossSDKs(t *testing.T) {
+	const raw = `{"zeta":1,"s":"a\ud83db","meta":{"t":"\ude00"}}`
+	eachModelTypesPlacement(t, func(t *testing.T, r *modelTypesRig) {
+		def, ok := r.ext.Tools["c3_tool_call"]
+		if !ok {
+			t.Fatalf("the fixture has no tool c3_tool_call (tools: %v)", r.ext.ToolOrder)
+		}
+		result, err := def.Definition.Execute(t.Context(), "call-c3_tool_call", json.RawMessage(raw), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var report struct {
+			Input *string  `json:"input"`
+			Keys  []string `json:"keys"`
+			Meta  *string  `json:"meta"`
+		}
+		if err := jsstring.UnmarshalKeepingSurrogates([]byte(result.Text()), &report); err != nil {
+			t.Fatalf("%q: %v", result.Text(), err)
+		}
+		input, meta := `{"zeta":1,"s":"a\ud83db","meta":{"t":"\ude00"}}`, `{"t":"\ude00"}`
+		if strings.Contains(t.Name(), "/rust-") {
+			meta = "{\"t\":\"\ufffd\"}"
+		}
+		if want := []string{"zeta", "s", "meta"}; !reflect.DeepEqual(report.Keys, want) {
+			t.Errorf("keys = %v, want %v (the arguments were not read)", report.Keys, want)
+		}
+		if report.Input == nil || *report.Input != input {
+			t.Errorf("input = %q, want %q", valueOrNone(report.Input), input)
+		}
+		if report.Meta == nil || *report.Meta != meta {
+			t.Errorf("meta = %q, want %q", valueOrNone(report.Meta), meta)
+		}
+	})
+}
+
+func valueOrNone(text *string) string {
+	if text == nil {
+		return "<none>"
+	}
+	return *text
 }
 
 // ctx.extensionSourceInfo: the provenance the loader stamped on the extension, the value ExtensionRunner.getExtensionPaths reads.

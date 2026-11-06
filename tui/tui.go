@@ -16,10 +16,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -1435,6 +1437,39 @@ func (w terminalWriter) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+// utf8Writer is a byte sink that encodes each write like Node's process.stdout: an unpaired surrogate, which a PiG string carries as WTF-8, becomes U+FFFD.
+// A Terminal does this in its own Write; a renderer built on a bare io.Writer stands in for stdout.
+type utf8Writer struct{ out io.Writer }
+
+func (w utf8Writer) Write(data []byte) (int, error) {
+	if utf8.Valid(data) {
+		return w.out.Write(data)
+	}
+	if _, err := w.out.Write([]byte(jsstring.StreamText(string(data)))); err != nil {
+		return 0, err
+	}
+	return len(data), nil
+}
+
+// WriteString is Write without the copy io.WriteString makes for a writer that is not an io.StringWriter.
+func (w utf8Writer) WriteString(data string) (int, error) {
+	if utf8.ValidString(data) {
+		return io.WriteString(w.out, data)
+	}
+	if _, err := io.WriteString(w.out, jsstring.StreamText(data)); err != nil {
+		return 0, err
+	}
+	return len(data), nil
+}
+
+// stdoutWriter is out as a sink for frames: a terminalWriter already reaches a Terminal that encodes its writes, any other writer is wrapped as stdout.
+func stdoutWriter(out io.Writer) io.Writer {
+	if _, ok := out.(terminalWriter); ok {
+		return out
+	}
+	return utf8Writer{out}
+}
+
 type terminalCursorWriter struct{ terminal Terminal }
 
 func (w terminalCursorWriter) Write(data []byte) (int, error) {
@@ -1480,7 +1515,7 @@ func NewTuiMainScreen(terminal Terminal, showHardwareCursor *bool, logDirectory 
 func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 	t := &TuiMainScreen{
 		tuiBase: tuiBase{
-			out:                out,
+			out:                stdoutWriter(out),
 			terminalBackground: &terminalBackgroundQueries{},
 			fixedSize:          true,
 			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",

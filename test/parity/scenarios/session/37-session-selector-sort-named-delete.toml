@@ -1,0 +1,50 @@
+# Ctrl+S and Ctrl+N are sent as raw bytes (hex:13, hex:0e): the runner's named tmux keys do not include them.
+# Upstream evidence: session-selector.ts SessionList.handleInput (530-636) and SessionSelectorHeader.render (120-176).
+# The real --resume picker lists five named sessions. Ctrl+S steps the sort threaded -> recent (header "Sort: Recent"), Ctrl+N switches the name filter to named
+# (header "Name: Named"), and Ctrl+D on the highlighted row asks for a delete confirmation: the two hint rows are replaced by the confirm/cancel hint and the
+# pending row is drawn in the error colour. Future message timestamps keep the age column "now" in both products. The crop is the picker through its closing border.
+name = "37-session-selector-sort-named-delete"
+description = "Sort, name filter and the delete confirmation of the real resume picker match Pi."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/search-cwd"
+ready_pattern_pig = "golf seven"
+ready_pattern_pi = "golf seven"
+ready_timeout_seconds = 25
+capture_start = "Resume Session (Current Folder)"
+capture_end_regex = "^─+$"
+
+[[tmux.steps]]
+keys = ["hex:13"]
+wait_visible_contains = ["Sort: Recent"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:0e"]
+wait_visible_contains = ["Name: Named"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["C-d"]
+wait_visible_contains = ["Delete session?"]
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--no-skills", "--resume", "--session-dir", "sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--resume", "--session-dir", "sessions"]
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["Sort: Recent", "Name: Named", "Delete session? enter confirm", "golf seven"]
+both_not_contain = ["tab scope"]
+runs = 3

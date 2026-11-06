@@ -53,6 +53,7 @@ libs  ./internal/childwait
 libs  ./internal/codingagent/llama
 libs  ./internal/evals
 libs  ./internal/sessionentry
+libs  ./internal/typebox/engine
 libs  ./mcp
 libs  ./mcp/oauth
 libs  ./cmd/gen-models

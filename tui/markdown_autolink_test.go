@@ -98,7 +98,7 @@ func TestAutoLinkScannerRenderingPrecedence(t *testing.T) {
 		{"**bold**user@example.com", "\x1b[1mbold" + SGRBoldDimReset + link("user@example.com")},
 		{"https://example.com/a(b)).", link("https://example.com/a(b)") + ")."},
 	} {
-		if got := NewMarkdown("").inlineMarkdown(tc.input); got != tc.want {
+		if got := NewMarkdown("").renderEntry(&markedInlineEntry{src: tc.input}, nil); got != tc.want {
 			t.Errorf("%q: got %q, want %q", tc.input, got, tc.want)
 		}
 	}

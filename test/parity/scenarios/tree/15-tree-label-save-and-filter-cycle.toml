@@ -1,0 +1,51 @@
+# Upstream evidence: tree-selector.ts LabelInput.handleInput confirm branch (1312-1314), TreeSelectorComponent.showLabelInput/hideLabelInput (1390-1412)
+# and TreeList.handleInput app.tree.filter.cycleForward (1069-1075).
+# Save the label "ta" on the "active" row, which returns to the list with the label shown in warning colour, then cycle the filter twice with Ctrl+O:
+# no-tools keeps every row of this session, user-only keeps the three user rows and the highlighted row stays "active".
+name = "15-tree-label-save-and-filter-cycle"
+description = "Saving a label returns to the list with the label shown, and Ctrl+O steps the filter modes."
+covers = ["packages/coding-agent/src/modes/interactive/components/tree-selector.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--session", "sessions/branch.jsonl"]
+pi_args = ["--session", "sessions/branch.jsonl"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/w3-branch"
+ready_pattern_pig = "active 12345"
+ready_pattern_pi = "active 12345"
+capture_start = "Type to search:"
+capture_end = "[user]"
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_visible_contains = ["(3/5)"]
+
+[[tmux.steps]]
+keys = ["Up", "L"]
+wait_visible_contains = ["Label (empty to remove):"]
+
+[[tmux.steps]]
+keys = ["t", "a", "Enter"]
+wait_visible_contains = ["[ta]"]
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_visible_contains = ["[no-tools]"]
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_visible_contains = ["[user]"]
+
+[assert]
+runs = 3
+both_contain = ["[ta] user: active 12345", "(2/3) [user]"]
+both_not_contain = ["Label (empty to remove):", "assistant"]
+output_equal = true

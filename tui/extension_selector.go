@@ -155,6 +155,7 @@ func (e *ExtensionSelectorComponent) updateList() {
 }
 
 // selectorMaxVisible is the most option rows the selector draws.
+// pig divergence (D257): Pi main 3b57ed7e2 (#11072) caps the window at 10; Pi 1.5.0 draws every option.
 const selectorMaxVisible = 10
 
 // visibleWindow is the option rows [start, end) drawn: a window of up to selectorMaxVisible centered on the cursor and clamped to the list.

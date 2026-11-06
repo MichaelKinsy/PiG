@@ -91,18 +91,42 @@ func TestAsyncAutocompleteNaturalTriggers(t *testing.T) {
 	})
 }
 
-// Pi editor.ts:2284-2335 awaits suggestions without blocking new input; only synchronous completion and trigger callbacks hold input.
+// Pi editor.ts insertCharacter queries with the popup closed only for "/" at the start of the message, for a trigger character in a trigger token, and for a letter, digit, ".", "-", "_" or CJK character in a slash command or trigger token; the extension provider chain follows the same gate, so a space or "é" after "/cmd" asks nothing.
+func TestAsyncAutocompleteClosedPopupQueriesOnlyForTheCharactersPiTriggersOn(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var calls atomic.Int32
+		provider := &AsyncAutocompleteProvider{GetSuggestions: func(context.Context, []string, int, int, bool) (*AutocompleteSuggestions, error) {
+			calls.Add(1)
+			return nil, nil
+		}}
+		p := newAsyncEditorProbe(t, provider)
+		for _, row := range []struct {
+			typed string
+			want  int32
+		}{{"/", 1}, {"c", 1}, {"m", 1}, {" ", 0}, {"é", 0}, {"/", 0}, {"-", 1}, {"日", 1}, {"!", 0}, {"7", 1}} {
+			calls.Store(0)
+			p.editor.HandleInput(row.typed)
+			p.drain()
+			if calls.Load() != row.want {
+				t.Fatalf("typing %q after %q queried the provider %d times, want %d", row.typed, p.editor.Text()[:len(p.editor.Text())-len(row.typed)], calls.Load(), row.want)
+			}
+		}
+	})
+}
+
+// Pi editor.ts:2284-2335 awaits suggestions without blocking new input; only synchronous completion and trigger callbacks hold input. A key that triggers nothing touches no request (insertCharacter):
+// the request that started is not aborted, it finishes, and its answer is dropped because the text moved on (isAutocompleteRequestCurrent).
 func TestForcedAutocompleteQueryDoesNotHoldInput(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		entered, cancelled := make(chan struct{}), make(chan struct{})
+		entered, release, aborted := make(chan struct{}), make(chan struct{}), make(chan bool, 1)
 		provider := &AsyncAutocompleteProvider{GetSuggestions: func(ctx context.Context, _ []string, _, _ int, force bool) (*AutocompleteSuggestions, error) {
 			if !force {
 				return nil, nil
 			}
 			close(entered)
-			<-ctx.Done()
-			close(cancelled)
-			return nil, ctx.Err()
+			<-release
+			aborted <- ctx.Err() != nil
+			return &AutocompleteSuggestions{Items: []AutocompleteItem{{Value: "xa", Label: "xa"}}, Prefix: "x"}, nil
 		}}
 		p := newAsyncEditorProbe(t, provider)
 		p.editor.HandleInput("x")
@@ -119,13 +143,21 @@ func TestForcedAutocompleteQueryDoesNotHoldInput(t *testing.T) {
 		}
 		p.editor.HandleInput("y")
 		p.drain()
+		close(release)
+		p.drain()
 		select {
-		case <-cancelled:
+		case wasAborted := <-aborted:
+			if wasAborted {
+				t.Fatal("typing a character that triggers nothing aborted the forced query; Pi lets it finish")
+			}
 		default:
-			t.Fatal("typing did not cancel forced query")
+			t.Fatal("the forced query did not finish")
+		}
+		if p.editor.AutocompleteOpen() {
+			t.Fatal("the answer for the text before the key was published")
 		}
 		if len(p.errors) != 0 {
-			t.Fatalf("cancelled request displayed %v", p.errors)
+			t.Fatalf("the finished request displayed %v", p.errors)
 		}
 	})
 }

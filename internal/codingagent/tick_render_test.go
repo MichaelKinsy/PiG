@@ -107,9 +107,9 @@ func TestInteractiveMountPaintsBeforeInput(t *testing.T) {
 // The owner's frozen session: a long bash tool call runs, a steering message
 // is queued behind it, and nobody types. Pi's Loader interval advances the
 // "Working" spinner every 80ms and requests a render, and bash.ts re-renders its
-// "Elapsed" footer on a timer, so both reach the terminal with no input. Pig
+// "Elapsed" footer on a one-second timer, so both reach the terminal with no input. Pig
 // drives the same frames from tickSpinner through the owner loop. Every tick
-// must write the next spinner frame and the new elapsed time; a spinner that
+// must write the next spinner frame and every second the new elapsed time; a spinner that
 // only moves when a key invalidates the editor makes a working session look
 // hung.
 func TestTimerDrivenFramesReachTerminalWithoutInput(t *testing.T) {
@@ -117,16 +117,24 @@ func TestTimerDrivenFramesReachTerminalWithoutInput(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m, term := newTickRenderProbe(t, mode)
-				m.handleAgentEvent(agent.AgentStartEvent{})
+				m.handleAgentEvent(agent.TurnStartEvent{})
 				args, err := json.Marshal(map[string]any{"command": "sleep 600"})
 				if err != nil {
 					t.Fatal(err)
 				}
 				m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "t1", ToolName: "bash", Args: args})
+				// The bash tool reports an empty partial result as soon as it starts (bash.ts:318-319), which is what shows the elapsed row.
+				m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "t1", ToolName: "bash", PartialResult: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}}})
+				// The shell card's timer runs until a final result renders; end the call so it does not outlive the bubble.
+				card := m.toolByID["t1"]
+				t.Cleanup(func() {
+					m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "t1", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}}})
+					card.Render(80)
+				})
 				m.steerMessageWithImages("please also check the logs", nil)
 				m.tuiInst.Render()
 				screen := widthx.StripAnsi(term.take())
-				for _, want := range []string{"Steering: please also check the logs", "to edit all queued messages", tui.DefaultSpinnerFrames[0] + " Working"} {
+				for _, want := range []string{"Steering: please also check the logs", "to edit all queued messages", tui.DefaultSpinnerFrames[0] + " Working", "Elapsed 0.0s"} {
 					if !strings.Contains(screen, want) {
 						t.Fatalf("initial frame lacks %q:\n%s", want, screen)
 					}
@@ -135,7 +143,7 @@ func TestTimerDrivenFramesReachTerminalWithoutInput(t *testing.T) {
 				ctx, cancel := context.WithCancel(t.Context())
 				done := make(chan struct{})
 				go func() { defer close(done); m.tickSpinner(ctx) }()
-				lastElapsed := ""
+				lastElapsed := "Elapsed 0.0s"
 				for tick := 1; tick <= 2*len(tui.DefaultSpinnerFrames); tick++ {
 					time.Sleep(80 * time.Millisecond)
 					synctest.Wait()
@@ -145,7 +153,8 @@ func TestTimerDrivenFramesReachTerminalWithoutInput(t *testing.T) {
 					if !strings.Contains(frame, spinner) {
 						t.Fatalf("tick %d wrote no %q; the spinner is frozen until input. frame=%q", tick, spinner, frame)
 					}
-					elapsed := "Elapsed " + tui.FormatToolDuration(time.Duration(tick)*80*time.Millisecond)
+					// The shell card's timer (bash.ts setInterval, 1000ms) redraws its elapsed time once a second.
+					elapsed := "Elapsed " + tui.FormatToolDuration(time.Duration(tick*80/1000)*time.Second)
 					if elapsed != lastElapsed && !strings.Contains(frame, elapsed) {
 						t.Fatalf("tick %d wrote no %q. frame=%q", tick, elapsed, frame)
 					}
@@ -165,7 +174,7 @@ func TestSpinnerCadenceSurvivesDispatchJitter(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m, term := newTickRenderProbe(t, mode)
-				m.handleAgentEvent(agent.AgentStartEvent{})
+				m.handleAgentEvent(agent.TurnStartEvent{})
 				m.tuiInst.Render()
 				term.take()
 				ctx, cancel := context.WithCancel(t.Context())
@@ -201,7 +210,7 @@ func TestSpinnerCadenceSurvivesDispatchJitter(t *testing.T) {
 func TestSpinnerReplacementKeepsItsFirstDeadline(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, term := newTickRenderProbe(t, "regular")
-		m.handleAgentEvent(agent.AgentStartEvent{})
+		m.handleAgentEvent(agent.TurnStartEvent{})
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		go m.tickSpinner(ctx)
@@ -245,7 +254,7 @@ func TestStatusIndicatorRelabelsReachTerminalWithoutInput(t *testing.T) {
 					m.drainMainLoopOnce()
 					return widthx.StripAnsi(term.take())
 				}
-				m.handleAgentEvent(agent.AgentStartEvent{})
+				m.handleAgentEvent(agent.TurnStartEvent{})
 				m.tuiInst.Render()
 				term.take()
 
@@ -370,7 +379,7 @@ func TestGitBranchChangeReachesTerminalWhileIdle(t *testing.T) {
 func TestRetryCountdownSkipsNoSecondUnderSaturatedQueue(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, term := newTickRenderProbe(t, "regular")
-		m.handleAgentEvent(agent.AgentStartEvent{})
+		m.handleAgentEvent(agent.TurnStartEvent{})
 		m.handleAgentEvent(agent.AutoRetryStartEvent{Attempt: 1, MaxAttempts: 3, DelayMs: 5000})
 		screen := widthx.StripAnsi(term.take())
 

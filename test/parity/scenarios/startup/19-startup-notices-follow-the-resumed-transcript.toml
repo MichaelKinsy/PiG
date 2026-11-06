@@ -1,0 +1,39 @@
+# Behavior family: startup
+# Surface: the order of init()'s resumed transcript and run()'s startup notices.
+#
+# Upstream evidence (Pi 1.5.0 interactive-mode.ts): run() awaits init(), whose last steps are rebindCurrentSession() and renderInitialMessages() (1125-1128), and
+# only then shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the crash notice (run(), after init()).
+# With `-c` on a staged session and an unparsable models.json, the resumed turns are therefore painted first and "models.json error:" follows them. The crop runs
+# from the first resumed message to the start of the error line; the error text itself differs between the JSON parsers and is outside the crop.
+
+name = "19-startup-notices-follow-the-resumed-transcript"
+description = "The resumed transcript is painted before the startup notices, as pi orders init() and run()."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-bad-models"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-bad-models", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "models.json error:"
+ready_pattern_pi = "models.json error:"
+ready_timeout_seconds = 25
+capture_start = "remember zulu-3120"
+capture_end = "models.json error:"
+settle_seconds = 2
+cwd = "testdata/continue-session"
+
+[assert]
+both_reach_ready = true
+both_contain = ["remember zulu-3120", "noted zulu-3120", "models.json error:"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

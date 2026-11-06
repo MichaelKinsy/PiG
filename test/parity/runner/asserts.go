@@ -169,7 +169,11 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 	}
 	if a.JSONOutputEqual {
 		for run := range min(len(o.Pig.Runs), len(o.Pi.Runs)) {
-			if err := compareJSONResults(o.Pig.Runs[run], o.Pi.Runs[run], a.JSONAliases); err != nil {
+			pig, err := dropPigOnlyRecords(o.Pig.Runs[run], a.JSONPigOnlyRecords)
+			if err == nil {
+				err = compareJSONResults(pig, o.Pi.Runs[run], a.JSONAliases)
+			}
+			if err != nil {
 				o.Failures = append(o.Failures, fmt.Sprintf("run %d JSON output: %v", run+1, err))
 			}
 		}

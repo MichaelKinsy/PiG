@@ -53,6 +53,7 @@ func (m *InteractiveMode) clearStatusIndicator(kind string) {
 	if previous != nil && previous.Kind == "retry" && m.retryCountdownStop != nil {
 		m.retryCountdownStop()
 		m.retryCountdownStop = nil
+		m.retryEscapeHandler = false
 	}
 	m.activeStatusIndicator = nil
 	m.activeWorkingIndicatorEmbedded = false

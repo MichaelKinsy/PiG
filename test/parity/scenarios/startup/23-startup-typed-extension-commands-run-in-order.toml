@@ -1,0 +1,63 @@
+# Behavior family: startup
+# Surface: the main prompt loop awaits one prompt at a time.
+#
+# Upstream evidence (Pi 1.5.0 interactive-mode.ts run(), 1276-1284): `while (true) { const userInput = await this.getUserInput(); await this.session.prompt(userInput); }`.
+# An idle submission reaches the loop through getUserInput, and prompt() awaits an extension command's handler, so a second command typed while the first is
+# still running waits in pendingUserInputs and starts once the first returned: the handler of /hold waits for a barrier key and then reports that it is done,
+# and /after, typed while /hold waits, reports whether it found /hold done.
+
+name = "23-startup-typed-extension-commands-run-in-order"
+description = "An extension command typed while another one runs starts only after that one returned, as pi's prompt loop awaits each prompt()."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/startup-commands/hold-then-after.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-commands/hold-then-after.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+capture_start = "COMMAND HOLD"
+capture_end_regex = 'COMMAND AFTER:[^\n]*'
+
+[[tmux.steps]]
+keys = ["/hold"]
+wait_contains = ["/hold"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["COMMAND HOLD"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/after"]
+wait_contains = ["/after"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["~"]
+wait_contains = ["COMMAND AFTER:"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["COMMAND HOLD DONE", "COMMAND AFTER: hold done"]
+both_not_contain = ["COMMAND AFTER: hold pending", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

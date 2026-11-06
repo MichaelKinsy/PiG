@@ -105,7 +105,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 			latest := contextFixtureEntry(t, "latest", "previous", "compaction", map[string]any{"summary": "summary", "firstKeptEntryId": "kept", "tokensBefore": 123, "usage": usage})
 			previous := compactionUIEntry(t, "previous", "", "previous summary", usage)
 			m.chatContainer.Add(tui.NewText("old transcript"))
-			m.renderCompactionResult(agent.CompactionEndEvent{Reason: "manual", Summary: "summary", TokensBefore: 123, Usage: usage}, []SessionEntry{latest, previous})
+			m.renderCompactionResult(agent.CompactionEndEvent{Reason: "manual", HasResult: true, Summary: "summary", TokensBefore: 123, Usage: usage}, []SessionEntry{latest, previous})
 			output := stripANSI(strings.Join(m.chatContainer.Render(120), "\n"))
 			if strings.Contains(output, "old transcript") {
 				t.Fatal("transcript not cleared")
@@ -125,7 +125,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 			caller.opts.SessionHandle = handle
 			caller.turnActive.Store(true)
 			caller.compactionQueue = []compactionQueuedMessage{{text: "queued after", mode: compactionQueueSteer}}
-			caller.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", Summary: "summary", TokensBefore: 123, Usage: usage})
+			caller.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", HasResult: true, Summary: "summary", TokensBefore: 123, Usage: usage})
 			if len(caller.compactionQueue) != 0 || !reflect.DeepEqual(handle.inputs, []string{"queued after"}) {
 				t.Fatal("compaction end did not flush with willRetry=false")
 			}
@@ -169,7 +169,7 @@ func TestInteractiveCompactionUpstream(t *testing.T) {
 			m.opts.SessionHandle = h
 			m.turnActive.Store(true)
 			m.compactionQueue = []compactionQueuedMessage{{text: "change direction", mode: compactionQueueSteer}}
-			m.flushCompactionQueue(t.Context(), true)
+			m.flushCompactionQueue(t.Context(), false)
 			if len(m.compactionQueue) != 0 || !reflect.DeepEqual(h.inputs, []string{"change direction"}) || !reflect.DeepEqual(h.behaviors, []string{"steer"}) {
 				t.Fatalf("inputs=%v modes=%v queue=%v", h.inputs, h.behaviors, m.compactionQueue)
 			}

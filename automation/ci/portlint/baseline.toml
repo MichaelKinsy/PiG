@@ -3985,12 +3985,6 @@ snippet = "grow = int(math.Floor(float64(max(0, natural[i]-minWidths[i])) / floa
 
 [[hit]]
 check = "numbers"
-file = "tui/markdown_list.go"
-func = "parseMarkdownList"
-snippet = "list.start, _ = strconv.Atoi(marker[:len(marker)-1])"
-
-[[hit]]
-check = "numbers"
 file = "tui/system_theme.go"
 func = "hexOfRgb"
 snippet = "digits := strconv.FormatInt(int64(jsnumber.Round(channel)), 16)"

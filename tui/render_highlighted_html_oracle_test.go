@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 type highlightHTMLProbe struct {
@@ -144,7 +145,8 @@ func TestRenderHighlightedHtmlMatchesPi(t *testing.T) {
 		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
 	}
 	var expected []highlightHTMLResult
-	if err := json.Unmarshal(output, &expected); err != nil {
+	// A lone surrogate stays a lone surrogate on both sides (the rendered text keeps UTF-16 units until the terminal write encodes them).
+	if err := jsstring.UnmarshalKeepingSurrogates(output, &expected); err != nil {
 		t.Fatal(err)
 	}
 	failures := 0
@@ -152,8 +154,8 @@ func TestRenderHighlightedHtmlMatchesPi(t *testing.T) {
 		got := renderHighlightedHTMLProbe(probe)
 		if !reflect.DeepEqual(got, expected[i]) {
 			if failures++; failures <= 5 {
-				g, _ := json.Marshal(got)
-				e, _ := json.Marshal(expected[i])
+				g, _ := jsstring.MarshalKeepingSurrogates(got)
+				e, _ := jsstring.MarshalKeepingSurrogates(expected[i])
 				p, _ := json.Marshal(probe)
 				t.Errorf("%s:\n  Pig %s\n  Pi  %s", p, g, e)
 			}
@@ -180,6 +182,11 @@ func TestRenderHighlightedHtmlParity(t *testing.T) {
 		encoder := json.NewEncoder(&line)
 		encoder.SetEscapeHTML(false)
 		result := renderHighlightedHTMLProbe(probe)
+		if result.Out != nil {
+			// The renderer keeps JavaScript's UTF-16 units; the stream is what Node writes, a lone surrogate as one U+FFFD (the Pi script's toWellFormed).
+			written := string(jsstring.ToUTF8(*result.Out))
+			result.Out = &written
+		}
 		if err := encoder.Encode(result); err != nil {
 			t.Fatal(err)
 		}

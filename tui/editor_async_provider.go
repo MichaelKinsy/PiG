@@ -123,7 +123,8 @@ func autocompleteSeparator(r rune) bool {
 	return widthx.IsJSSpace(r) || strings.ContainsRune("，．：；！？（）［］｛｝“”‘’…—", r) || (unicode.IsPunct(r) && widthx.IsCJKBreak(string(r)))
 }
 
-func autocompleteTriggered(before string, characters []string) bool {
+// autocompleteTriggerRunes is editor.ts setAutocompleteTriggerCharacters: the default @ and #, then each provider character that is one UTF-16 unit and neither "/", whitespace nor already listed.
+func autocompleteTriggerRunes(characters []string) []rune {
 	triggers := []rune{'@', '#'}
 	for _, character := range characters {
 		r, size := utf8.DecodeRuneInString(character)
@@ -132,6 +133,15 @@ func autocompleteTriggered(before string, characters []string) bool {
 			triggers = append(triggers, r)
 		}
 	}
+	return triggers
+}
+
+func autocompleteTriggered(before string, characters []string) bool {
+	return autocompleteTriggeredBy(before, autocompleteTriggerRunes(characters))
+}
+
+// autocompleteTriggeredBy reports whether before ends in a trigger token that starts with one of the trigger characters.
+func autocompleteTriggeredBy(before string, triggers []rune) bool {
 	previousBoundary := true
 	for offset, r := range before {
 		if previousBoundary && slices.Contains(triggers, r) {
@@ -181,17 +191,19 @@ func (e *Editor) requestAsyncAutocomplete(force, explicit bool) {
 		e.asyncCancel()
 		e.asyncCancel = nil
 	}
-	lines := slices.Clone(e.lines)
-	if debouncedAutocomplete(lines, e.cursor, provider.TriggerCharacters, force, explicit) || (force && provider.ShouldTriggerFileCompletion != nil) {
+	if debouncedAutocomplete(e.lines, e.cursor, provider.TriggerCharacters, force, explicit) || (force && provider.ShouldTriggerFileCompletion != nil) {
 		e.nativeAutocomplete = nil
 		e.requestAutocompleteProvider(provider, force, explicit)
 		return
 	}
-	e.nativeAutocomplete = &nativeAutocompleteRequest{provider: provider, force: force, explicit: explicit, request: e.autocompleteRequestID, cursor: e.cursor, lines: lines}
+	e.nativeAutocomplete = &nativeAutocompleteRequest{provider: provider, force: force, explicit: explicit, request: e.autocompleteRequestID}
 	// A host that does not call FlushAutocomplete after each read still starts the request, on its owner loop.
 	e.scheduleAsyncApply(e.FlushAutocomplete)
 }
 
+// requestAutocompleteProvider is editor.ts requestAutocomplete and startAutocompleteRequest for a provider that answers on a worker. The request is made here and starts on
+// the worker once its debounce timer ran out and the request before it finished. A request that waited reads the editor's text and cursor when it starts, as startAutocompleteRequest
+// snapshots getText() after `await previousTask`, not when requestAutocomplete made it: a key typed meanwhile that triggers nothing (a space, "é", "/" after "@al") leaves it alone.
 func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider, force, explicit bool) {
 	if e.asyncCancel != nil {
 		e.asyncCancel()
@@ -220,6 +232,8 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 	if debouncedAutocomplete(lines, cursor, provider.TriggerCharacters, force, explicit) {
 		timer = time.NewTimer(attachmentAutocompleteDebounce)
 	}
+	// A request behind an unfinished one, and a debounced one, start later than they were made, against the text current then.
+	waits := timer != nil || !closedSignal(previous)
 	// the extension provider chain's request holds the host's next read until the chain settles or announces that it awaits I/O. A
 	// request behind an unfinished one, and a debounced one, cannot settle in the checkpoint after the read: neither holds.
 	runCtx, endHold := ctx, func() {}
@@ -246,6 +260,35 @@ func (e *Editor) requestAutocompleteProvider(provider *AsyncAutocompleteProvider
 			}
 			if ctx.Err() != nil {
 				return
+			}
+			if waits {
+				// The request starts on the owner loop, where it takes the text and cursor it asks about; one that was superseded meanwhile (editor.ts startToken) asks nothing.
+				type snapshot struct {
+					ok            bool
+					lines         []string
+					cursor        [2]int
+					queryLines    []string
+					queryRow, col int
+				}
+				taken := make(chan snapshot, 1)
+				e.scheduleAsyncApply(func() {
+					if ctx.Err() != nil || request != e.autocompleteRequestID {
+						taken <- snapshot{}
+						return
+					}
+					view, row, col := e.autocompleteView()
+					taken <- snapshot{true, slices.Clone(e.lines), e.cursor, slices.Clone(view), row, col}
+				})
+				var now snapshot
+				select {
+				case now = <-taken:
+				case <-ctx.Done():
+				case <-lifetime.Done():
+				}
+				if !now.ok {
+					return
+				}
+				lines, cursor, queryLines, queryRow, queryCol = now.lines, now.cursor, now.queryLines, now.queryRow, now.col
 			}
 			result, err := provider.GetSuggestions(runCtx, queryLines, queryRow, queryCol, force)
 			if ctx.Err() != nil {
@@ -302,7 +345,6 @@ func closedSignal(done <-chan struct{}) bool {
 func (e *Editor) publishAutocomplete(force, explicit bool, cursor [2]int, result *AutocompleteSuggestions, err error) {
 	defer e.requestRender()
 	e.asyncCancel = nil
-	e.autocompleteFromAwaited = e.asyncAutocomplete == nil
 	if err != nil {
 		e.autocompleteError(err)
 		return

@@ -1,0 +1,40 @@
+# Behavior family: startup
+# Upstream evidence: Pi 1.5.0 interactive-mode.ts init() (974-1152) binds defaultEditor.onAction("app.clear", handleCtrlC) and onCtrlD before ui.start(), so a first Ctrl-C while extension startup is held clears the draft (handleCtrlC -> clearEditor) and the remaining startup keeps the editor accepting text. A manual upstream-first tmux probe holds session_start on a terminal-input barrier, types a draft, sends Ctrl-C, releases the barrier and submits a prompt; the input handler reports the draft the barrier saw.
+name = "16-startup-clear-key-before-session-start-completes"
+description = "A Ctrl-C pressed while extension startup is still running clears the draft in the startup editor"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/startup-keys/observe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-keys/observe.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "STARTUP KEYS HOLD"
+ready_pattern_pi = "STARTUP KEYS HOLD"
+ready_timeout_seconds = 30
+capture_start = "STARTUP KEYS READY:"
+capture_end = "draft=[]"
+
+[[tmux.steps]]
+keys = ["draft"]
+wait_contains = ["draft"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["C-c", "~", "go", "Enter"]
+wait_contains = ["STARTUP KEYS READY: go; draft=["]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["STARTUP KEYS READY: go; draft=[]"]
+both_not_contain = ["STARTUP KEYS EARLY", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

@@ -11,7 +11,6 @@ package latex
 import (
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
@@ -57,13 +56,13 @@ type RenderLatexOptions struct {
 func RenderLatex(source string, opts RenderLatexOptions) (string, bool) {
 	n := []layoutNode{}
 	nodes := &n
-	p := &parser{src: []rune(source), nodes: nodes, display: opts.Display, ok: true, stack: true}
+	p := &parser{src: jsstring.CodePoints(source), nodes: nodes, display: opts.Display, ok: true, stack: true}
 	rendered, ok := p.render()
 	if !ok {
 		return "", false
 	}
 	if nodes == nil || len(*nodes) == 0 {
-		return strings.ReplaceAll(rendered, protectedSpace, " "), true
+		return jsstring.Canonical(strings.ReplaceAll(rendered, protectedSpace, " ")), true
 	}
 	lines := renderLayout(rendered, *nodes).lines
 
@@ -72,7 +71,7 @@ func RenderLatex(source string, opts RenderLatexOptions) (string, bool) {
 		if trimJS(line) == "" {
 			continue
 		}
-		lead := utf8.RuneCountInString(line) - utf8.RuneCountInString(trimStartJS(line))
+		lead := jsstring.CodePointCount(line) - jsstring.CodePointCount(trimStartJS(line))
 		if indentation < 0 || lead < indentation {
 			indentation = lead
 		}
@@ -84,14 +83,26 @@ func RenderLatex(source string, opts RenderLatexOptions) (string, bool) {
 	for i, line := range lines {
 		out[i] = trimEndJS(sliceRunesFrom(line, indentation))
 	}
-	return strings.ReplaceAll(trimEndJS(strings.Join(out, "\n")), protectedSpace, " "), true
+	return jsstring.Canonical(strings.ReplaceAll(trimEndJS(strings.Join(out, "\n")), protectedSpace, " ")), true
 }
 
 // --- string helpers (faithful to the TS regex/format helpers) ---
 
+// arrayFromLen is Array.from(value).length: two adjacent surrogate halves are one character, however the argument came to hold them.
+func arrayFromLen(value string) int {
+	n := 0
+	for i := 0; i < len(value); n++ {
+		_, size := jsstring.DecodeRuneInString(value[i:])
+		i += size
+	}
+	return n
+}
+
 func replaceCharacters(value string, table map[string]string) (string, bool) {
 	var b strings.Builder
-	for _, r := range value {
+	for i := 0; i < len(value); {
+		r, size := jsstring.DecodeCodePoint(value[i:])
+		i += size
 		rep, ok := table[string(r)]
 		if !ok {
 			return "", false
@@ -104,14 +115,16 @@ func replaceCharacters(value string, table map[string]string) (string, bool) {
 func normalizeScriptValue(value string) string {
 	value = trimJS(value)
 	var out string
-	for _, r := range value {
+	for i := 0; i < len(value); {
+		r, size := jsstring.DecodeCodePoint(value[i:])
+		i += size
 		switch {
 		case r == '=' || r == '+' || r == '-':
 			out = trimEndJS(out) + string(r)
 		case jsstring.IsSpace(r) && (strings.HasSuffix(out, "=") || strings.HasSuffix(out, "+") || strings.HasSuffix(out, "-")):
 			continue
 		default:
-			out += string(r)
+			out = withRune(out, r)
 		}
 	}
 	return out
@@ -134,28 +147,30 @@ func formatScript(value, kind string) string {
 	if unicode, ok := formatUnicodeScript(value, kind); ok {
 		return unicode
 	}
-	if utf8.RuneCountInString(value) == 1 || (kind == "sub" && reASCIILetters.MatchString(value)) {
+	if arrayFromLen(value) == 1 || (kind == "sub" && reASCIILetters.MatchString(value)) {
 		return prefix + value
 	}
 	return prefix + "(" + value + ")"
 }
 
+// The simple-argument tests of formatFraction and formatRoot and the named-operator spacing are /u regexes in Pi, which see two adjacent halves as the one astral
+// letter or digit they spell; RE2 reads the non-canonical six bytes as U+FFFD, so the text is joined before it is matched.
 func formatFraction(numerator, denominator string) string {
-	numerator = trimJS(numerator)
-	denominator = trimJS(denominator)
+	numerator = jsstring.Canonical(trimJS(numerator))
+	denominator = jsstring.Canonical(trimJS(denominator))
 	num := numerator
 	if !reSimpleLetterNumber.MatchString(numerator) {
 		num = "(" + numerator + ")"
 	}
 	den := denominator
-	if !reSimpleNumber.MatchString(denominator) && utf8.RuneCountInString(denominator) != 1 {
+	if !reSimpleNumber.MatchString(denominator) && arrayFromLen(denominator) != 1 {
 		den = "(" + denominator + ")"
 	}
 	return num + "/" + den
 }
 
 func formatRoot(value, symbol string) string {
-	value = trimJS(value)
+	value = jsstring.Canonical(trimJS(value))
 	if reSimpleLetterNumber.MatchString(value) {
 		return symbol + value
 	}
@@ -163,7 +178,7 @@ func formatRoot(value, symbol string) string {
 }
 
 func normalizeOutput(value string) string {
-	value = reNamedOperatorLeft.ReplaceAllString(value, "${1} ")
+	value = reNamedOperatorLeft.ReplaceAllString(jsstring.Canonical(value), "${1} ")
 	value = strings.ReplaceAll(value, namedOperatorStart, "")
 	value = reNamedOperatorRight.ReplaceAllString(value, " ${1}")
 	value = strings.ReplaceAll(value, namedOperatorEnd, "")
@@ -468,7 +483,7 @@ func (p *parser) parseSequence(end rune) string {
 				}
 			}
 		}
-		result += string(c)
+		result = withRune(result, c)
 		p.pos++
 	}
 	if end != 0 {
@@ -503,7 +518,7 @@ func (p *parser) parseScripts(initialMarker rune) string {
 	needsLayout := p.scriptDepth > 0
 	for _, kind := range order {
 		value := scripts[kind]
-		if strings.Contains(value, "/") || (!strings.Contains(value, layoutMarkerStart) && utf8.RuneCountInString(value) > 1 && !reLayoutScript.MatchString(value)) {
+		if strings.Contains(value, "/") || (!strings.Contains(value, layoutMarkerStart) && arrayFromLen(value) > 1 && !reLayoutScript.MatchString(value)) {
 			canUseLayout = false
 		}
 		if _, ok := formatUnicodeScript(value, kind); !ok {
@@ -561,9 +576,9 @@ func (p *parser) parseCommand() string {
 		for p.pos < len(p.src) && isASCIILetter(p.src[p.pos]) {
 			p.pos++
 		}
-		command = string(p.src[start:p.pos])
+		command = jsstring.FromCodePoints(p.src[start:p.pos])
 	} else {
-		command = string(first)
+		command = withRune("", first)
 		p.pos++
 	}
 
@@ -590,12 +605,12 @@ func (p *parser) parseCommand() string {
 		if negated, ok := latexNegatedSymbols()[value]; ok {
 			return " " + negated + " "
 		}
-		chars := []rune(value)
-		if len(chars) == 0 {
+		if value == "" {
 			p.ok = false
 			return ""
 		}
-		return " " + string(chars[0]) + "\u0338" + string(chars[1:]) + " "
+		_, size := jsstring.DecodeRuneInString(value)
+		return " " + value[:size] + "\u0338" + value[size:] + " "
 	case latexLimitOperators()[command]:
 		return p.parseOperator(command, "bracket", true, true)
 	}
@@ -657,7 +672,7 @@ func (p *parser) parseCommand() string {
 	}
 	if accent, ok := latexAccents()[command]; ok {
 		value := p.parseRequiredArgument(true)
-		if utf8.RuneCountInString(value) == 1 {
+		if arrayFromLen(value) == 1 {
 			return value + accent
 		}
 		return command + "(" + value + ")"
@@ -665,12 +680,14 @@ func (p *parser) parseCommand() string {
 	if command == "mathbb" {
 		value := p.parseRequiredArgument(true)
 		var b strings.Builder
-		for _, r := range value {
+		for i := 0; i < len(value); {
+			r, size := jsstring.DecodeCodePoint(value[i:])
 			if bb, ok := latexBlackboard()[string(r)]; ok {
 				b.WriteString(bb)
 			} else {
-				b.WriteRune(r)
+				b.WriteString(value[i : i+size])
 			}
+			i += size
 		}
 		return b.String()
 	}
@@ -824,7 +841,14 @@ func (p *parser) parseRequiredArgumentValue() string {
 	if p.src[p.pos] == '\\' {
 		return p.parseCommand()
 	}
-	value := string(p.src[p.pos])
+	r := p.src[p.pos]
+	if r > 0xFFFF {
+		// Pi reads one UTF-16 unit: the high half is the argument and the low half stays in the source as the next character. The parser owns p.src.
+		r -= 0x10000
+		p.src[p.pos] = 0xDC00 + r&0x3FF
+		return withSurrogate("", 0xD800+r>>10)
+	}
+	value := withRune("", r)
 	p.pos++
 	return value
 }
@@ -841,7 +865,7 @@ func (p *parser) parseOptionalArgument() *string {
 		p.ok = false
 		return nil
 	}
-	value := string(p.src[p.pos+1 : end])
+	value := jsstring.FromCodePoints(p.src[p.pos+1 : end])
 	p.pos = end + 1
 	rendered := p.renderNested(value, true)
 	return &rendered
@@ -871,7 +895,7 @@ func (p *parser) readRawGroup() (string, bool) {
 			depth--
 		}
 		if depth == 0 {
-			value := string(p.src[start:p.pos])
+			value := jsstring.FromCodePoints(p.src[start:p.pos])
 			p.pos++
 			return value, true
 		}
@@ -896,8 +920,8 @@ func (p *parser) parseEnvironment() string {
 		p.ok = false
 		return ""
 	}
-	body := string(p.src[p.pos:end])
-	p.pos = end + utf8.RuneCountInString(endMarker)
+	body := jsstring.FromCodePoints(p.src[p.pos:end])
+	p.pos = end + jsstring.CodePointCount(endMarker)
 
 	switch environment {
 	case "equation", "equation*", "displaymath":
@@ -1087,7 +1111,7 @@ func (p *parser) matrixLayout(lines []string) string {
 }
 
 func (p *parser) renderNested(source string, stackFractions bool) string {
-	sub := &parser{src: []rune(source), nodes: p.nodes, display: p.display && stackFractions, ok: true, stack: true}
+	sub := &parser{src: jsstring.CodePoints(source), nodes: p.nodes, display: p.display && stackFractions, ok: true, stack: true}
 	rendered, ok := sub.render()
 	if !ok {
 		p.ok = false

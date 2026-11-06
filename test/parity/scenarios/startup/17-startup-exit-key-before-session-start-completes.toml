@@ -1,0 +1,32 @@
+# Behavior family: startup
+# Upstream evidence: Pi 1.5.0 interactive-mode.ts init() (974-1152) binds defaultEditor.onCtrlD = handleCtrlD before ui.start(), so Ctrl-D on the empty startup editor shuts Pi down while extension startup is still held. A manual upstream-first tmux probe holds session_start on a terminal-input barrier and sends Ctrl-D.
+name = "17-startup-exit-key-before-session-start-completes"
+description = "Ctrl-D on the empty startup editor exits while extension startup is still running"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/startup-keys/observe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-keys/observe.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "STARTUP KEYS HOLD"
+ready_pattern_pi = "STARTUP KEYS HOLD"
+ready_timeout_seconds = 30
+keys = ["C-d"]
+settle_seconds = 2
+capture_start = "STARTUP KEYS HOLD"
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_contain = ["STARTUP KEYS HOLD"]
+both_not_contain = ["STARTUP KEYS READY", "panic:", "goroutine "]
+runs = 3
+escaped_output_equal = true

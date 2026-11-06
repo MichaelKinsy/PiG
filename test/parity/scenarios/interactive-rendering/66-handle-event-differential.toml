@@ -1,0 +1,36 @@
+# Behavior family: interactive-rendering (InteractiveMode.handleEvent)
+# Upstream evidence: handle-event-pi.mjs drives the pinned Pi InteractiveMode.handleEvent (interactive-mode.ts 3467-3865) on stubbed collaborators and
+# real status, message, tool, custom-message and entry components. The Go probe TestHandleEventProbe drives the production owner-loop handler with
+# the same corpus (handle-event-corpus.json). After every step both record the terminal progress writes, the status indicator, where Escape goes
+# (the main handler, the retry delay or a compaction), the pending-messages display, the editor border color, the terminal title, whether shutdown was
+# requested and the chat text. The corpus covers every event type of the handler: run start (agent_start leaves progress and status to turn_start,
+# hidden working status), retry and compaction status with Escape routing, queue_update, thinking_level_changed, agent_settled with and without a
+# shutdown request, the no-op bash_execution_update, session_info_changed, entry_appended (displayed and hidden custom messages, registered and
+# unregistered custom entries, other entries), and the message and tool events with an aborted run and events that arrive with no streaming message.
+# Progress is compared with the setting on and off. The app name in the terminal title is the program's own and is left out of both sides. The
+# compaction branch of entry_appended and the successful compaction_end rebuild need a session and are proved by unit tests and scenarios extensions-runtime/91 and 92.
+name = "66-handle-event-differential"
+description = "InteractiveMode.handleEvent shows the same progress, status, Escape routing, pending messages, border, title, shutdown and chat as Pi for every event."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/handle-event-pig.sh"]
+pig_go_tests = ["./internal/codingagent"]
+pi_args = ["node", "./test/parity/testdata/handle-event-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["HANDLE_EVENT", "retry|Retrying (1/3) in 3s... (escape to cancel)", "compaction|Compacting context... (escape to cancel)", "\"esc\":\"retry\"", "\"esc\":\"main\"", "Steering: steer one", "SHOWN MESSAGE", "Operation aborted"]
+runs = 3

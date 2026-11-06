@@ -65,7 +65,7 @@ func TestSessionCompactedStatusIsShownByInitialRenderOnly(t *testing.T) {
 
 	afterCompact := resumedModeWithOutputPad(t, 1, compactedSession(t, 1))
 	entries := afterCompact.currentSession().GetBranch()
-	afterCompact.renderCompactionResult(agent.CompactionEndEvent{Summary: "again", TokensBefore: 50}, entries)
+	afterCompact.renderCompactionResult(agent.CompactionEndEvent{HasResult: true, Summary: "again", TokensBefore: 50}, entries)
 	if got := renderedChat(afterCompact); strings.Contains(got, "Session compacted") {
 		t.Errorf("the transcript after a manual compaction shows the notice:\n%s", got)
 	}

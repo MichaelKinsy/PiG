@@ -76,6 +76,7 @@ func TestCompactionReplacesPhysicalTranscript(t *testing.T) {
 
 	mode.handleAgentEvent(agent.CompactionEndEvent{
 		Reason:       "manual",
+		HasResult:    true,
 		Summary:      summaryMarker,
 		TokensBefore: 12345,
 	})

@@ -259,6 +259,9 @@ type AssertSpec struct {
 	// ArtifactBothNotContain rejects each substring in either artifact.
 	ArtifactBothNotContain []string `toml:"artifact_both_not_contain"`
 
+	// JSONPigOnlyRecords names the whole records an approved numbered divergence makes Pig emit and Pi never emit; each is dropped from Pig's output before the JSON comparison.
+	JSONPigOnlyRecords []JSONPigOnlyRecordRule `toml:"json_pig_only_records"`
+
 	// NormalizeReplace applies individually justified replacements to text comparators. JSON comparison never applies these rules.
 	NormalizeReplace []NormalizeReplaceRule `toml:"normalize_replace"`
 
@@ -350,6 +353,14 @@ func validate(sc *Scenario) error {
 	}
 	if sc.Assert.JSONOutputEqual && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
 		return fmt.Errorf("json_output_equal cannot use text normalization")
+	}
+	if len(sc.Assert.JSONPigOnlyRecords) > 0 && !sc.Assert.JSONOutputEqual {
+		return fmt.Errorf("json_pig_only_records requires json_output_equal")
+	}
+	for _, rule := range sc.Assert.JSONPigOnlyRecords {
+		if err := rule.validate(); err != nil {
+			return err
+		}
 	}
 	for _, rule := range sc.Assert.NormalizeReplace {
 		if rule.Reason == "" {

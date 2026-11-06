@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -528,9 +529,7 @@ func expectedBuiltinReport(c, reference map[string]any) map[string]any {
 		}
 	}
 	want := map[string]any{}
-	for k, v := range reference {
-		want[k] = v
-	}
+	maps.Copy(want, reference)
 	want["calls"] = adjusted
 	return want
 }

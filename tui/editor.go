@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -64,8 +65,13 @@ type Editor struct {
 	autocompleteTaskDone   <-chan struct{}
 	autocompleteChanged    func(AutocompleteProvider)
 	asyncCancel            context.CancelFunc
-	asyncSeq               uint64
-	scheduleAsyncApply     func(func())
+	// pendingFileAnswer is the answer of a file search of an editor with no owner loop, for the caller's goroutine to publish.
+	pendingFileAnswer  atomic.Pointer[fileAnswer]
+	asyncSeq           uint64
+	scheduleAsyncApply func(func())
+	// pendingAutocompleteApply publishes the latest local suggestion result the host has scheduled but not yet run.
+	pendingAutocompleteApply func()
+	pendingApplySeq          uint64
 	// nativeAutocomplete is the request of the terminal read in progress, started by FlushAutocomplete.
 	nativeAutocomplete *nativeAutocompleteRequest
 	// autocompleteHold holds the host's terminal input for a request of the extension provider chain.
@@ -77,18 +83,13 @@ type Editor struct {
 	autocompletePrefix            string // buffer slice the popup is matching against
 	autocompleteMousePressedIndex *int
 	// autocompleteQueryCursor is the text cursor at the moment
-	// autocompleteItems/autocompletePrefix were last populated. The local
-	// and async suggestion applies are themselves deferred (scheduleAsyncApply
-	// posts them to run on the host's main loop, single-threaded with
-	// keystroke handling, so a fast keystroke burst can dispatch more inserts
-	// -- including Enter -- before an already-computed apply for an earlier
-	// keystroke actually runs). AutocompleteAccept compares this against the
-	// live cursor before trusting autocompletePrefix's length, so an accept
-	// that arrives after the buffer moved on treats the popup as stale
-	// instead of splicing the suggestion's full value into the wrong offset.
+	// autocompleteItems/autocompletePrefix were last populated. A remote
+	// provider's accept (acceptAsyncAutocomplete) compares it against the
+	// live cursor and drops the accept when the buffer moved on, because the
+	// remote completion is applied by the provider at the position it was
+	// asked about.
 	autocompleteQueryCursor [2]int
 	autocompleteForced      bool
-	autocompleteFromAwaited bool
 	autocompleteMax         int // max visible rows (default 5)
 	autocompletePopupMax    int // the row limit the open popup was built with: Pi builds its SelectList once per suggestion update, so a later setAutocompleteMaxVisible only applies from the next one
 	paddingX                int
@@ -973,6 +974,7 @@ func (e *Editor) Render(width int) []string {
 	if e.forwards() {
 		return e.renderRemote(width)
 	}
+	e.applyPendingFileAnswer()
 	// Build the full visual layout first (all chunks of all logical
 	// lines, with cursor decoration applied), then scroll/window it
 	// per upstream editor.ts scrollOffset + maxVisibleLines logic.
@@ -1253,7 +1255,6 @@ func (e *Editor) AutocompleteOpen() bool { return !e.forwards() && len(e.autocom
 // AutocompleteCancel dismisses the popup without applying.
 func (e *Editor) AutocompleteCancel() {
 	e.autocompleteForced = false
-	e.autocompleteFromAwaited = false
 	e.autocompleteMousePressedIndex = nil
 	e.autocompleteRequestID++
 	e.asyncSeq++
@@ -1283,26 +1284,15 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	if len(e.autocompleteItems) == 0 || e.autocomplete == nil {
 		return false
 	}
-	// Accept the published menu without re-querying; only a moved cursor needs a synchronous refresh or rejection of an awaited result.
-	if !e.autocompleteFromAwaited && e.cursor != e.autocompleteQueryCursor {
-		res := e.getAutocompleteSuggestions(e.autocompleteForced)
-		if res == nil || len(res.Items) == 0 {
-			e.setAutocompleteItems(nil)
-			e.autocompleteCursor = 0
-			e.autocompletePrefix = ""
-			e.Invalidate()
-			return false
-		}
-		e.setAutocompleteItems(res.Items)
-		e.autocompletePrefix = res.Prefix
-		e.autocompleteQueryCursor = e.cursor
-		e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
-	} else if e.cursor != e.autocompleteQueryCursor {
-		// An awaited command result cannot be recomputed on the input loop. Reject a popup whose cursor belongs to older text.
-		e.setAutocompleteItems(nil)
-		e.autocompleteCursor = 0
-		e.autocompletePrefix = ""
-		e.Invalidate()
+	// The popup the editor last published is applied as it stands: Pi's confirm handler does not query the provider again,
+	// so an edit that does not refresh the popup leaves its suggestion applied at the new cursor. A result the host has not
+	// yet published is published first, the way Pi's awaited result lands before the next terminal read.
+	if e.pendingAutocompleteApply != nil {
+		apply := e.pendingAutocompleteApply
+		e.pendingAutocompleteApply = nil
+		apply()
+	}
+	if len(e.autocompleteItems) == 0 {
 		return false
 	}
 	item := e.autocompleteItems[e.autocompleteCursor]
@@ -1438,23 +1428,23 @@ func (e *Editor) naturalAutocompleteContext() bool {
 // refreshAutocomplete re-queries an open popup or an eligible natural trigger context after a mutation.
 func (e *Editor) refreshAutocomplete() {
 	e.autocompleteMousePressedIndex = nil
-	e.autocompleteRequestID++
 	if e.asyncAutocomplete != nil {
 		if natural, _ := e.naturalAsyncAutocomplete(); !natural {
-			e.AutocompleteCancel()
 			return
 		}
+		e.autocompleteRequestID++
 		e.requestAsyncAutocomplete(e.autocompleteForced, false)
 		return
 	}
+	if !e.AutocompleteOpen() && !e.naturalAutocompleteContext() {
+		return
+	}
+	e.autocompleteRequestID++
 	// Always cancel any in-flight async query so its late delivery
 	// can't overwrite items belonging to a newer buffer state.
 	if e.asyncCancel != nil {
 		e.asyncCancel()
 		e.asyncCancel = nil
-	}
-	if !e.AutocompleteOpen() && !e.naturalAutocompleteContext() {
-		return
 	}
 	if e.autocomplete == nil {
 		return
@@ -1501,7 +1491,7 @@ func (e *Editor) refreshAutocomplete() {
 			e.Invalidate()
 		}
 		// Complete a deferred filesystem answer if the local provider has one.
-		e.kickFileAutocomplete(nil, fileTask, filePrefix)
+		e.kickFileAutocomplete(nil, fileTask, filePrefix, force)
 		return
 	}
 	requestID, text, cursor := e.autocompleteRequestID, e.Text(), e.cursor
@@ -1520,15 +1510,32 @@ func (e *Editor) refreshAutocomplete() {
 	// Upstream awaits even local suggestions. Paint the input before a popup
 	// can grow the viewport, and reject results superseded by submit/cancel.
 	if e.scheduleAsyncApply != nil {
-		e.scheduleAsyncApply(apply)
+		e.pendingApplySeq++
+		sequence := e.pendingApplySeq
+		e.pendingAutocompleteApply = apply
+		e.scheduleAsyncApply(func() {
+			if sequence == e.pendingApplySeq {
+				e.pendingAutocompleteApply = nil
+			}
+			apply()
+		})
 	} else {
 		apply()
 	}
-	e.kickFileAutocomplete(res, fileTask, filePrefix)
+	e.kickFileAutocomplete(res, fileTask, filePrefix, force)
 }
 
-// kickFileAutocomplete completes a deferred local filesystem query without running the search on the input loop.
-func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string) {
+// kickFileAutocomplete completes a deferred local filesystem query without running the search on the input loop. It is the request of an editor with no task owner
+// (SetAutocompleteTaskOwner): the answer of the local provider is applied at the key and only the search is deferred. The search runs on a goroutine, after Pi's 20 ms debounce
+// under an @ token, and its answer is published on the one goroutine that may touch the editor, as Pi's answer comes back to its event loop.
+//
+// With an owner loop (SetAsyncApply) the search starts there against the text and cursor the editor holds then (editor.ts startAutocompleteRequest takes them when the request
+// starts, not when it was made): a key typed meanwhile that triggers nothing leaves it alone, and the provider is asked again about the newer text; the answer is applied there.
+//
+// With no loop there is no goroutine to run on and no one to tell, so the worker touches no editor state: it searches for the text the key left, and leaves its answer in a mailbox the
+// caller's goroutine drains at the next key or render (applyPendingFileAnswer), where the answer is checked against the editor as before. The popup then opens at that key or render,
+// not at the moment the search ends.
+func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string, force bool) {
 	if fileTask == nil {
 		return
 	}
@@ -1540,10 +1547,35 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 	}
 	ctx, cancel := context.WithCancel(lifetime)
 	e.asyncCancel = cancel
+	schedule := e.scheduleAsyncApply
+	waits := strings.HasPrefix(filePrefix, "@")
+	startsOnLoop := waits && schedule != nil
 	lines, cursor, request := slices.Clone(e.lines), e.cursor, e.autocompleteRequestID
-	work := func() {
+	provider := e.autocomplete
+	// publish applies a search's answer; it reads the editor, so it runs only where the editor may be read.
+	publish := func(items []AutocompleteItem) {
+		var final []AutocompleteItem
+		prefix := filePrefix
+		if baseRes != nil {
+			final = append(final, baseRes.Items...)
+			prefix = baseRes.Prefix
+		}
+		final = append(final, items...)
+		if lifetime.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.cursor != cursor || !slices.Equal(e.lines, lines) {
+			return
+		}
+		e.autocompleteMousePressedIndex = nil
+		e.setAutocompleteItems(final)
+		e.autocompletePrefix = prefix
+		e.autocompleteQueryCursor = cursor
+		if e.autocompleteCursor >= len(final) {
+			e.autocompleteCursor = 0
+		}
+		e.Invalidate()
+	}
+	go func() {
 		defer cancel()
-		if strings.HasPrefix(filePrefix, "@") {
+		if waits {
 			timer := time.NewTimer(attachmentAutocompleteDebounce)
 			defer timer.Stop()
 			select {
@@ -1552,40 +1584,74 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 				return
 			}
 		}
+		if startsOnLoop {
+			// The request starts: it takes the editor's text and cursor on the loop, and asks the provider about them.
+			files, ok := provider.(AsyncFileSearcher)
+			if !ok {
+				return
+			}
+			taken := false
+			done := make(chan struct{})
+			schedule(func() {
+				defer close(done)
+				if ctx.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.autocomplete != provider || e.IsBashMode() {
+					return
+				}
+				lines, cursor = slices.Clone(e.lines), e.cursor
+				view, row, col := e.autocompleteView()
+				var run func(context.Context) []AutocompleteItem
+				if filePrefix, run, ok = files.FileSearchTask(view, row, col); !ok {
+					return
+				}
+				fileTask = run
+				baseRes = provider.GetSuggestions(context.Background(), view, row, col, AutocompleteSuggestionOptions{Force: force})
+				taken = true
+			})
+			select {
+			case <-done:
+			case <-ctx.Done():
+				return
+			}
+			if !taken || ctx.Err() != nil {
+				return
+			}
+		}
 		items := fileTask(ctx)
 		if ctx.Err() != nil {
 			return
 		}
-		var final []AutocompleteItem
-		prefix := filePrefix
-		if baseRes != nil {
-			final = append(final, baseRes.Items...)
-			prefix = baseRes.Prefix
+		if schedule == nil {
+			e.offerFileAnswer(&fileAnswer{sequence: sequence, publish: func() { publish(items) }})
+			return
 		}
-		final = append(final, items...)
-		apply := func() {
-			if lifetime.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.cursor != cursor || !slices.Equal(e.lines, lines) {
-				return
-			}
-			e.autocompleteMousePressedIndex = nil
-			e.setAutocompleteItems(final)
-			e.autocompletePrefix = prefix
-			e.autocompleteQueryCursor = cursor
-			if e.autocompleteCursor >= len(final) {
-				e.autocompleteCursor = 0
-			}
-			e.Invalidate()
+		schedule(func() { publish(items) })
+	}()
+}
+
+// A fileAnswer is the answer of the file search made as search number sequence.
+type fileAnswer struct {
+	sequence uint64
+	publish  func()
+}
+
+// offerFileAnswer leaves a worker's answer in the mailbox unless it holds the answer of a later search: a worker that was cancelled after it passed its checks, and stalled, must
+// never replace the answer of the search that superseded it.
+func (e *Editor) offerFileAnswer(answer *fileAnswer) {
+	for {
+		held := e.pendingFileAnswer.Load()
+		if held != nil && held.sequence > answer.sequence {
+			return
 		}
-		if e.scheduleAsyncApply != nil {
-			e.scheduleAsyncApply(apply)
-		} else {
-			apply()
+		if e.pendingFileAnswer.CompareAndSwap(held, answer) {
+			return
 		}
 	}
-	if e.startAutocompleteTask != nil {
-		e.startAutocompleteTask(work)
-	} else {
-		go work()
+}
+
+// applyPendingFileAnswer publishes the answer a search of an editor with no owner loop left in its mailbox. It runs on the caller's goroutine, at the start of a key and of a render.
+func (e *Editor) applyPendingFileAnswer() {
+	if answer := e.pendingFileAnswer.Swap(nil); answer != nil {
+		answer.publish()
 	}
 }
 
@@ -1710,6 +1776,7 @@ func (e *Editor) HandleInput(data string) {
 		e.remote.remote.Input(data)
 		return
 	}
+	e.applyPendingFileAnswer()
 
 	if e.jumpMode != "" {
 		if kb := GetTUIKeybindings(); kb.Matches(data, KBEditorJumpForward) || kb.Matches(data, KBEditorJumpBackward) {
@@ -1762,8 +1829,15 @@ func (e *Editor) HandleInput(data string) {
 	if kb.Matches(data, KBInputCopy) {
 		return
 	}
+	if kb.Matches(data, KBEditorUndo) {
+		e.undo()
+		return
+	}
 	if len(e.autocompleteItems) > 0 {
 		switch {
+		case kb.Matches(data, KBSelectCancel):
+			e.AutocompleteCancel()
+			return
 		case kb.Matches(data, KBSelectUp):
 			e.AutocompleteMove(-1)
 			return
@@ -1775,9 +1849,6 @@ func (e *Editor) HandleInput(data string) {
 				e.autocompleteCursor = index
 				e.Invalidate()
 			}
-			return
-		case kb.Matches(data, KBSelectCancel):
-			e.AutocompleteCancel()
 			return
 		case kb.Matches(data, KBInputTab):
 			if e.AutocompleteAccept() {
@@ -1796,35 +1867,114 @@ func (e *Editor) HandleInput(data string) {
 			e.refreshAutocomplete()
 			return
 		}
-		if e.forceFileAutocomplete() {
-			return
-		}
+		e.forceFileAutocomplete()
+		return
 	}
 
-	// Dedicated history actions always browse entries instead of moving the
-	// cursor. Upstream checks them after the copy, undo, tab, deletion, and
-	// kill-ring actions and before cursor movement, newline, and submit
-	// (editor.ts handleInput), so a key bound to both keeps the earlier action.
-	if !e.matchesActionBeforeHistory(kb, data) {
-		if kb.Matches(data, KBEditorHistoryPrevious) {
-			e.AutocompleteCancel()
-			e.navigateHistory(-1)
-			return
-		}
-		if kb.Matches(data, KBEditorHistoryNext) {
-			e.AutocompleteCancel()
-			e.navigateHistory(1)
-			return
-		}
+	// Upstream editor.ts handleInput checks the remaining actions in this fixed order, so a key bound to two of them performs the earlier one.
+	if kb.Matches(data, KBEditorDeleteToLineEnd) {
+		e.deleteToLineEnd()
+		return
 	}
-
-	// ─── Editor dispatch ─────────────────────────────────────────────────
-	// All editing actions go through the keybinding registry so user
-	// overrides take effect. Mirrors upstream editor.ts handleInput chain
-	// (editor.ts:585-820). Each branch corresponds to one keybinding ID;
-	// the registry knows which raw terminal sequences map to each ID.
-	switch {
-	case kb.Matches(data, KBEditorCursorUp):
+	if kb.Matches(data, KBEditorDeleteToLineStart) {
+		e.deleteToLineStart()
+		return
+	}
+	if kb.Matches(data, KBEditorDeleteWordBack) {
+		e.deleteWordBackward()
+		return
+	}
+	if kb.Matches(data, KBEditorDeleteWordForward) {
+		e.deleteWordForward()
+		return
+	}
+	if matchesDeleteCharBackward(kb, data) {
+		e.backspace()
+		e.refreshAutocomplete()
+		return
+	}
+	if matchesDeleteCharForward(kb, data) {
+		e.forwardDelete()
+		e.refreshAutocomplete()
+		return
+	}
+	if kb.Matches(data, KBEditorYank) {
+		if e.killRing.Len() > 0 {
+			e.saveHistory()
+			text := e.killRing.Peek()
+			e.insert(text)
+			e.notifyChange()
+			e.lastAction = "yank"
+		}
+		return
+	}
+	if kb.Matches(data, KBEditorYankPop) {
+		if e.lastAction == "yank" && e.killRing.Len() > 1 {
+			e.saveHistory()
+			e.deleteYankedText()
+			e.killRing.Rotate()
+			text := e.killRing.Peek()
+			e.insert(text)
+			e.notifyChange()
+			e.lastAction = "yank"
+		}
+		return
+	}
+	if kb.Matches(data, KBEditorHistoryPrevious) {
+		e.AutocompleteCancel()
+		e.navigateHistory(-1)
+		return
+	}
+	if kb.Matches(data, KBEditorHistoryNext) {
+		e.AutocompleteCancel()
+		e.navigateHistory(1)
+		return
+	}
+	if kb.Matches(data, KBEditorCursorLineStart) {
+		e.lastAction = ""
+		e.setCursorCol(0)
+		e.Invalidate()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorLineEnd) {
+		e.lastAction = ""
+		e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
+		e.Invalidate()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorWordLeft) {
+		e.cursorWordBackward()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorWordRight) {
+		e.cursorWordForward()
+		return
+	}
+	if matchesEditorNewLine(data, kb) {
+		if e.shouldSubmitOnBackslashEnter(data, kb) {
+			e.backspace()
+			e.submitValue()
+			return
+		}
+		e.AutocompleteCancel()
+		e.insertNewline()
+		return
+	}
+	if kb.Matches(data, KBInputSubmit) {
+		if e.DisableSubmit {
+			return
+		}
+		line := e.lines[e.cursor[0]]
+		if e.cursor[1] > 0 && jsstring.Slice(line, e.cursor[1]-1, e.cursor[1]) == "\\" {
+			e.backspace()
+			e.AutocompleteCancel()
+			e.insertNewline()
+			return
+		}
+		e.submitValue()
+		return
+	}
+	if kb.Matches(data, KBEditorCursorUp) {
 		switch {
 		case e.isOnFirstVisualLine() && (e.isEditorEmpty() || e.inputHistIdx >= 0 || e.cursor[1] == 0):
 			e.navigateHistory(-1)
@@ -1835,7 +1985,9 @@ func (e *Editor) HandleInput(data string) {
 		default:
 			e.moveCursor(-1, 0)
 		}
-	case kb.Matches(data, KBEditorCursorDown):
+		return
+	}
+	if kb.Matches(data, KBEditorCursorDown) {
 		switch {
 		case e.inputHistIdx >= 0 && e.isOnLastVisualLine():
 			e.navigateHistory(1)
@@ -1846,141 +1998,88 @@ func (e *Editor) HandleInput(data string) {
 		default:
 			e.moveCursor(1, 0)
 		}
-	case kb.Matches(data, KBEditorCursorWordRight):
-		// alt+right / ctrl+right / alt+f: cursor word forward
-		// Mirrors upstream `tui.editor.cursorWordRight` (keybindings.ts:128).
-		e.cursorWordForward()
-	case kb.Matches(data, KBEditorCursorWordLeft):
-		// alt+left / ctrl+left / alt+b: cursor word backward
-		// Mirrors upstream `tui.editor.cursorWordLeft` (keybindings.ts:124).
-		e.cursorWordBackward()
-	case kb.Matches(data, KBEditorCursorRight):
+		return
+	}
+	if kb.Matches(data, KBEditorCursorRight) {
 		e.moveCursor(0, 1)
-	case kb.Matches(data, KBEditorCursorLeft):
+		return
+	}
+	if kb.Matches(data, KBEditorCursorLeft) {
 		e.moveCursor(0, -1)
-	case matchesEditorNewLine(data, kb):
-		if e.shouldSubmitOnBackslashEnter(data, kb) {
-			e.backspace()
-			e.submitValue()
-			return
-		}
-		e.insertNewline()
-		e.refreshAutocomplete()
-	case kb.Matches(data, KBInputSubmit):
-		if e.DisableSubmit {
-			return
-		}
-		line := e.lines[e.cursor[0]]
-		if e.cursor[1] > 0 && jsstring.Slice(line, e.cursor[1]-1, e.cursor[1]) == "\\" {
-			e.backspace()
-			e.insertNewline()
-			e.refreshAutocomplete()
-			return
-		}
-		e.submitValue()
-	case kb.Matches(data, KBEditorDeleteWordBack):
-		// alt+backspace / ctrl+w: delete word backward
-		// Mirrors upstream `tui.editor.deleteWordBackward`
-		// (.upstream/current/packages/tui/src/keybindings.ts:100).
-		e.deleteWordBackward()
-	case kb.Matches(data, KBEditorDeleteWordForward):
-		// alt+d / alt+delete: delete word forward
-		// Mirrors upstream `tui.editor.deleteWordForward` (keybindings.ts:104).
-		e.deleteWordForward()
-	case matchesDeleteCharBackward(kb, data):
-		// backspace: delete char backward
-		e.backspace()
-		e.refreshAutocomplete()
-	case matchesDeleteCharForward(kb, data):
-		// Delete key / Ctrl+D: forward delete
-		// Mirrors upstream editor.ts::forwardDelete (keybindings.ts:92).
-		e.forwardDelete()
-		e.refreshAutocomplete()
-	case kb.Matches(data, KBEditorCursorLineStart):
-		// Home / Ctrl+A: start of line
-		e.lastAction = ""
-		e.setCursorCol(0)
-		e.Invalidate()
-	case kb.Matches(data, KBEditorCursorLineEnd):
-		// End / Ctrl+E: end of line
-		e.lastAction = ""
-		e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
-		e.Invalidate()
-	case kb.Matches(data, KBEditorDeleteToLineStart):
-		// Ctrl+U: kill to line start
-		// Mirrors upstream editor.ts::deleteToStartOfLine.
-		e.deleteToLineStart()
-	case kb.Matches(data, KBEditorDeleteToLineEnd):
-		// Ctrl+K: kill to end of line
-		// Mirrors upstream editor.ts::deleteToEndOfLine.
-		e.deleteToLineEnd()
-	case kb.Matches(data, KBEditorYank):
-		// Ctrl+Y: yank
-		// Mirrors upstream editor.ts::yank.
-		if e.killRing.Len() > 0 {
-			e.saveHistory()
-			text := e.killRing.Peek()
-			e.insert(text)
-			e.notifyChange()
-			e.lastAction = "yank"
-		}
-	case kb.Matches(data, KBEditorYankPop):
-		// Alt+Y: yank-pop; cycles kill ring after a yank
-		// Mirrors upstream editor.ts::yankPop.
-		if e.lastAction == "yank" && e.killRing.Len() > 1 {
-			e.saveHistory()
-			// Delete the previously yanked text.
-			e.deleteYankedText()
-			// Rotate: move last entry to front; new Peek is the previous second.
-			e.killRing.Rotate()
-			// Re-insert the new top.
-			text := e.killRing.Peek()
-			e.insert(text)
-			e.notifyChange()
-			e.lastAction = "yank"
-		}
-	case kb.Matches(data, KBEditorUndo):
-		// Ctrl+- (default): undo. Upstream binds undo to `ctrl+-` (which
-		// emits \x1f on most terminals); user can rebind via
-		// ~/.pig/keybindings.json.
-		e.lastAction = ""
-		e.undo()
-	case kb.Matches(data, KBEditorPageUp):
+		return
+	}
+	if kb.Matches(data, KBEditorPageUp) {
 		e.pageScroll(-1)
-	case kb.Matches(data, KBEditorPageDown):
+		return
+	}
+	if kb.Matches(data, KBEditorPageDown) {
 		e.pageScroll(1)
-	case kb.Matches(data, KBEditorJumpForward):
+		return
+	}
+	if kb.Matches(data, KBEditorJumpForward) {
 		e.jumpMode = "forward"
-	case kb.Matches(data, KBEditorJumpBackward):
+		return
+	}
+	if kb.Matches(data, KBEditorJumpBackward) {
 		e.jumpMode = "backward"
-	default:
-		if len(data) > 0 && data[0] >= 0x20 {
-			e.insertCharacter(data)
-			e.refreshAutocomplete()
-		} else if ch, ok := DecodePrintableKey(data); ok {
-			e.insertCharacter(ch)
-			e.refreshAutocomplete()
-		}
+		return
+	}
+	if MatchesKeyID(data, "shift+space") {
+		e.insertCharacter(" ")
+		e.refreshAutocompleteAfterTyping(" ")
+		return
+	}
+	if ch, ok := DecodePrintableKey(data); ok {
+		e.insertCharacter(ch)
+		e.refreshAutocompleteAfterTyping(ch)
+		return
+	}
+	if len(data) > 0 && data[0] >= 0x20 {
+		e.insertCharacter(data)
+		e.refreshAutocompleteAfterTyping(data)
 	}
 }
 
-// actionsBeforeHistory are the editor actions upstream's handleInput checks
-// before tui.editor.historyPrevious/historyNext.
-var actionsBeforeHistory = []TUIKeybinding{
-	KBInputCopy, KBEditorUndo, KBInputTab,
-	KBEditorDeleteToLineEnd, KBEditorDeleteToLineStart,
-	KBEditorDeleteWordBack, KBEditorDeleteWordForward,
-	KBEditorDeleteCharBack, KBEditorDeleteCharForward,
-	KBEditorYank, KBEditorYankPop,
+// refreshAutocompleteAfterTyping is the end of editor.ts insertCharacter, which runs after char was inserted. An open popup is updated whatever was typed.
+// A closed one opens only for "/" at the start of the message, for a trigger character where a trigger token ends at the cursor, and for a letter, digit,
+// ".", "-", "_" or CJK character in a slash command (its arguments included) or a trigger token; a space, "é" or "/" typed after "/cmd" opens none.
+func (e *Editor) refreshAutocompleteAfterTyping(char string) {
+	if e.AutocompleteOpen() || e.typedCharacterOpensAutocomplete(char) {
+		e.refreshAutocomplete()
+		return
+	}
+	// editor.ts touches no request here: one that has not started starts against the text current then, and one that started finishes and its answer is dropped as stale (its snapshot of the text no longer matches).
+	e.autocompleteMousePressedIndex = nil
 }
 
-func (e *Editor) matchesActionBeforeHistory(kb *TUIKeybindingsManager, data string) bool {
-	for _, action := range actionsBeforeHistory {
-		if kb.Matches(data, action) {
-			return true
-		}
+// typedCharacterOpensAutocomplete is the closed-popup branch of editor.ts insertCharacter: the first of its three conditions that char meets decides.
+func (e *Editor) typedCharacterOpensAutocomplete(char string) bool {
+	row := e.cursor[0]
+	before := jsstring.Slice(e.lines[row], 0, e.cursor[1])
+	triggers := e.autocompleteTriggerCharacters
+	if e.asyncAutocomplete != nil {
+		triggers = autocompleteTriggerRunes(e.asyncAutocomplete.TriggerCharacters)
 	}
-	return matchesDeleteCharBackward(kb, data) || matchesDeleteCharForward(kb, data)
+	switch {
+	case char == "/" && row == 0 && (widthx.JSTrim(before) == "" || widthx.JSTrim(before) == "/"):
+		return true
+	case isAutocompleteTriggerCharacter(char, triggers):
+		return autocompleteTriggeredBy(before, triggers)
+	case strings.ContainsFunc(char, autocompleteWordCharacter) || widthx.IsCJKBreak(char):
+		return row == 0 && strings.HasPrefix(strings.TrimLeftFunc(before, widthx.IsJSSpace), "/") || autocompleteTriggeredBy(before, triggers)
+	}
+	return false
+}
+
+// isAutocompleteTriggerCharacter is editor.ts autocompleteTriggerCharacters.includes(char): char is exactly one trigger character.
+func isAutocompleteTriggerCharacter(char string, triggers []rune) bool {
+	r, size := utf8.DecodeRuneInString(char)
+	return size == len(char) && (r != utf8.RuneError || size > 1) && slices.Contains(triggers, r)
+}
+
+// autocompleteWordCharacter is editor.ts insertCharacter's /[a-zA-Z0-9.\-_]/.
+func autocompleteWordCharacter(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '.' || r == '-' || r == '_'
 }
 
 // matchesDeleteCharBackward is upstream editor.ts handleInput's `tui.editor.deleteCharBackward || matchesKey(data, "shift+backspace")`.

@@ -2842,11 +2842,11 @@ Why: Replicating the Pi behavior makes the output depend on which identical bloc
 
 Pi bug: not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`): both cases above, run against the pinned Pi, with the rows Pi and PiG render.
 
-Scope: `tui.Markdown` rendering (`tui/markdown.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
+Scope: `tui.Markdown` rendering (`tui/markdown_blocks.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
 
 Owner decision: 2026-11-01, owner approved recording this as a numbered divergence (D220).
 
-Call-site markers: `tui/markdown.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
+Call-site markers: `tui/markdown_blocks.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
 
 Parity allowance: `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`) runs the pinned Pi for both cases and a control, and states both sides of each row: Pi autolinks the URL inside the open `<a>` and PiG does not. It fails when either side changes.
 
@@ -2983,6 +2983,28 @@ Evidence: `TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage` (a tool call 
 
 Parity allowance: scenario `interactive-rendering/59-up-recalls-queued-message-copy-tip` compares the screen with Pi's byte for byte under `TERM_PROGRAM=tmux` and removes only the tip rows; scenario `interactive-rendering/60-terminal-app-up-dequeues-queued-message` states each side's outcome under `TERM_PROGRAM=Apple_Terminal`, where the screens differ by this record. Alt+Up bytes stay compared with Pi in `interactive-rendering/58-alt-up-dequeues-queued-message`.
 
+## D230 `pig config` lists declared Package members that are missing from disk, marked `missing`
+
+What: when a Package declares a member (an extension, skill, prompt or theme entry in its manifest) whose file is absent, `pig config` lists it in the resource list like any other row, followed by the warning-colored suffix `  missing`, and the toggle keys disable or enable it. Pi 1.5.0's config list is built from resolved paths that exist (`config-selector.ts` `buildGroups` over `ResolvedPaths`; `ResourceList.render` draws `${cursor}    ${checkbox} ${name}${suffix}` with no health marker), so a declared member that matches no file has no row there. The row is `ResourceItem.Health == "missing"`, set where the Package's members are resolved (`internal/packagemanager/resources.go`) and drawn after the name and the project-scope suffix in `ResourceList.render`. Every other row, the search, the navigation, the toggles and the header are unchanged and equal to Pi's.
+
+Why: Pi skips a declared member that matches nothing, so startup proceeds, and gives the user no way to see or disable the stale entry in `pi config`. PiG keeps the entry visible so the user can disable it, which rewrites the Package filter exactly as for an existing member (`-extensions/missing-extension`).
+
+Pi bug: none; this is an addition to Pi's behaviour for a state Pi hides.
+
+Scope: the `pig config` selector (global and project scope) for Packages with declared members that are absent. Packages whose members all exist render exactly as Pi's.
+
+Owner decision: 2026-11-03, the owner approved keeping the missing-member rows.
+
+SCRUTINIZED:approved
+
+Remove when: Pi lists declared-but-missing Package members in `pi config`, or the owner withdraws the feature.
+
+Call-site markers: `tui/config_selector.go` (the `Health` suffix in `configResourceList.Render`), `internal/packagemanager/resources.go` (the `Health: "missing"` member).
+
+Evidence: `TestConfigSelectorDisablesEnabledMissingPackageMember` (`coding/cli/config_selector_command_test.go`: the selector shows the enabled missing extension and Space writes `-extensions/missing-extension`), the `ConfigSelector` case of `TestSelectorDialogListComponentsNeverExceedRenderWidth` (`tui/component_width_table_test.go`: a `missing` row at every width).
+
+Parity allowance: Pi has no row for this state, so no Pi-paired scenario can show it. Every other row of the list is compared with Pi byte for byte, escapes included, by `TestConfigSelectorContractMatchesPi` (`tui/config_selector_contract_test.go`, no probe holds a missing member; the dark, light and faint-dim system themes) and by scenario `selectors/18-config-project-toggle` (`escaped_output_equal`; only the D2 configuration-directory names, the allocated snapshot path and PiG's built-in `pig-login` row are normalized). Scenario `selectors/02-config-resources-list` compares the global list with the escapes stripped.
+
 ## D231 PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()`
 
 What: PiG's RPC mode takes Pi main commit 1708b4788 ("fix(coding-agent): process idle ctx.shutdown() requests in RPC mode", Pi #11746, fixing #11599) before the pin reaches a release that contains it. An extension's `ctx.shutdown()` sets a request and schedules one check on the next tick of the stdin executor. The check shuts down only when a request is pending, input is attached, no command is being handled and the session is idle, and it is repeated when a command ends (for `prompt`, when the prompt settles), at `agent_settled` and when input is attached. A request made while the session is idle (for example from a timer) shuts down at once instead of waiting for the next stdin command. A request made during startup, such as a synchronous `ctx.shutdown()` in `session_start`, is handled once input is attached. A shutdown requested by an extension command waits until the command finished, so the command's `prompt` response is written before `session_shutdown` and the exit. A shutdown that has started is not started again by a repeated request. A request made while an extension-started compaction runs still waits for the next command or run.
@@ -3095,7 +3117,7 @@ SCRUTINIZED:approved
 
 Remove when: the pinned Pi release contains 0a4fad548. Then the call-site marker and this record go.
 
-Call-site markers: `ai/simple_options.go` (`ClampMaxTokensToContext`).
+Call-site markers: `ai/simple_options.go` (`ClampMaxTokensToContext`, `minOutputWithRatioMargin`).
 
 Evidence: `TestClampMaxTokensToContextOpenRouterOvercountMargin` (`ai/clamp_max_tokens_test.go`, Pi's `clamp-max-tokens.test.ts`; red on 989927eff4: the flat margin returns 823665 tokens where 794638 is wanted for the #10497 case).
 
@@ -3297,7 +3319,7 @@ Call-site markers: `tui/tree_select.go` (`renderSearchLine`).
 
 Evidence: `TestTreeSelectSearchCursor` (Pi's three tests), `TestEditorSlotTreeSelectorTakesAndReturnsFocus` (runtime focus path of `/tree`). The oracle normalization of `TestTreeSelectorInputMatchesPi` (`normalizeTreeSearchLinesD248`) landed in commit 7056d2d9e1, with the queue changes of D249 and D250, not with the search-cursor commit 01a63b933a.
 
-Parity allowance: tmux parity scenario `tree/06-tree-header-spacing` compares the whole overlay with `escaped_output_equal`, so it carries a D248-cited `normalize_replace` that removes exactly the cursor cell (` ESC[7m ESC[0m` after `Type to search:ESC[0m`) from the escaped capture. The other tree scenarios crop plain text from "Type to search:" and are unaffected. `TestTreeSelectorInputMatchesPi` compares pig's search line minus the cursor cell and the empty query's trailing space with Pi's line truncated to width-1 (Pi main keeps the last column for the cursor); the one case left uncompared is an empty-query line exactly width-1 wide.
+Parity allowance: tmux parity scenario `tree/06-tree-header-spacing` compares the whole overlay with `escaped_output_equal`, so it carries a D248-cited `normalize_replace` that removes exactly the cursor cell (` ESC[7m ESC[0m` after `Type to search:ESC[0m`) from the escaped capture. Scenario `interactive-rendering/65-app-action-keys` ends on the same overlay and carries the same rule for the `Type to search:ESC[39m` form of its escaped capture. The other tree scenarios crop plain text from "Type to search:" and are unaffected. `TestTreeSelectorInputMatchesPi` and the tree-selector contract tests (`TestTreeListHandleInputContractsMatchPi`, `TestTreeLabelInputRenderMatchesPi` and the others of `tree_selector_contract_test.go`, through the same `normalizeTreeSearchLinesD248`) compare pig's search line minus the cursor cell and the empty query's trailing space with Pi's line truncated to width-1 (Pi main keeps the last column for the cursor); the one case left uncompared is an empty-query line exactly width-1 wide.
 
 ## D249 Images in queued steering and follow-up messages are resized when the message is delivered
 
@@ -3306,6 +3328,8 @@ What: PiG ports Pi main 4cf69332c (`fix(coding-agent): resize images in queued s
 Why: Pi 1.5.0 queues the images unprocessed, so a 1200x9000 PNG reaches the model and the session file at full size and is replayed on every later request.
 
 Pi bug: Pi 1.5.0 (`agent-session.ts` `_queueSteer`, `_queueFollowUp`), fixed by Pi main 4cf69332c ([#11738](https://github.com/earendil-works/pi/issues/11738)).
+
+Observable effect: A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.
 
 Scope: queued user messages with images only. Idle prompts are unchanged.
 
@@ -3331,7 +3355,9 @@ Why: Pi 1.5.0 guarded the match with a truthy text, so an image-only message sta
 
 Pi bug: Pi 1.5.0 (`agent-session.ts` `_handleAgentEvent`, user `message_start`), fixed by Pi main a63c4ec5c ([#8581](https://github.com/earendil-works/pi/issues/8581)).
 
-Scope: `Session.consumeQueuedMessage`. A non-queued user message with empty text can remove a queued empty entry, as in Pi main.
+Observable effect: After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.
+
+Scope: `Session.consumeQueuedMessage`. A non-queued user message with empty text can remove a queued empty entry, as in Pi main. Removing the entry emits the `queue_update` event before the user message's `message_start`, as Pi main does, so every mode's event stream carries it, the RPC stream included. When RPC `steer` and `follow_up` queue empty messages during an empty `prompt`, two removals follow: the prompt's own `message_start` removes the queued empty steering entry, and the delivery of the steer's message then removes the queued empty follow-up entry. RPC emits those two `queue_update` records, one per removal, that Pi 1.5.0 does not.
 
 Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S8).
 
@@ -3341,9 +3367,9 @@ Remove when: the pin reaches a Pi release containing a63c4ec5c.
 
 Call-site markers: `coding/session.go` (`consumeQueuedMessage`).
 
-Evidence: `TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery` (Pi's test), `TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery` (replaces the test that pinned 1.5.0's retention).
+Evidence: `TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery` (Pi's test), `TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery` (replaces the test that pinned 1.5.0's retention), `TestSessionEmptyQueuedMessagesPublishTheQueueTheyLeaveAtDelivery` (the `queue_update` records of both removals).
 
-Parity allowance: none needed; the pinned-Pi agent-session oracle makes no model call, so its queued messages are never delivered.
+Parity allowance: the pinned-Pi agent-session oracle makes no model call, so its queued messages are never delivered. The RPC scenarios `20-rpc-runtime-boundary-values` and `35-rpc-queue-prompt-await` queue empty `steer` and `follow_up` messages behind an empty `prompt` and let the run deliver them. Each carries two `json_pig_only_records` rules, one per removal above: `{"type":"queue_update","steering":[],"followUp":[""]}` (the prompt's removal) and `{"type":"queue_update","steering":[],"followUp":[]}` (the steer's). A rule drops its record from Pig's output only, requires exactly one per run, and requires it directly before a `message_start` record; a run with more, fewer or a moved record fails.
 
 ## D251 A draft moved out of and back into the editor keeps its collapsed paste content
 
@@ -3495,7 +3521,7 @@ SCRUTINIZED:approved
 
 Remove when: the pin reaches a Pi release containing 3b57ed7e2.
 
-Call-site markers: `tui/extension_selector.go` (`visibleWindow`).
+Call-site markers: `tui/extension_selector.go` (`visibleWindow`, `selectorMaxVisible`).
 
 Evidence: `TestExtensionSelectorWindowsLongOptionListsAroundTheSelection`, `TestExtensionSelectorShortAndEmptyListsHaveNoScrollIndicator` (Pi's two tests), `TestExtensionSelectLongListShowsAWindowAroundTheCursor` (extension dialog path through the mode's key dispatch).
 
@@ -3521,7 +3547,7 @@ Call-site markers: `coding/session_model_cycle.go` (`nextCycleIndex`).
 
 Evidence: `TestSessionModelExtensionCyclesUpstream` ("cycles to the only scoped model and to the first scoped model from outside the scope", Pi's test), `TestSessionCycleModelSeesExtensionProviderRegistration` (cycle after the active model's provider is unregistered).
 
-Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared, and so does a forward cycle whose first two entries are the same model with the same thinking level (1.5.0's second entry is main's first). Measured: 137 of 600 scenarios stop, and 3629 of 4520 ops (80.3%) are still compared with Pi. The test logs those numbers on every run.
+Parity allowance: `TestAgentSessionMatchesPi` replays 600 seeded scenarios against the pinned Pi 1.5.0. A replay stops (an explicit stop flag from `runAgentSessionWithPig`, and only the ops before it are compared) at a `cycleModel` op that starts outside its candidate list going forward, or outside a one-entry list in either direction (`cycleDiffersFromPinnedPi`); a backward cycle from outside a list of two or more entries selects the last entry in both versions and stays compared, and so does a forward cycle whose first two entries are the same model with the same thinking level (1.5.0's second entry is main's first). Measured: 137 of 600 scenarios stop, and 3629 of 4520 ops are still compared with Pi. The test logs those numbers on every run.
 
 ## D259 Alacritty is detected for OSC 8 hyperlinks without TERM_PROGRAM
 
@@ -3610,6 +3636,57 @@ Call-site markers: `coding/cli/main.go` (`runStartupBenchmark`).
 Evidence: `TestStartupBenchmarkDisposesTheRuntimeAfterStoppingInteractiveMode` (`coding/cli/startup_benchmark_test.go`; red on 989927eff4: `runStartupBenchmark` takes no dispose step, so the test does not compile). Pi added no test: the path needs a TTY.
 
 Parity allowance: none needed.
+
+## D265 PiG follows Pi main 54280c4ff ahead of the v1.5.0 pin: Markdown hides HTML comments
+
+What: PiG's Markdown component takes Pi main commit 54280c4ff ("fix(tui): hide HTML comments in Markdown rendering", Pi #11755, fixing #11710) before the pin reaches a release that contains it. marked lexes `<!-- ... -->` as `html` tokens and Pi 1.5.0 renders their raw text, so a comment shows in every Markdown surface (Extension Updates, What's New, `/changelog`, messages). With the commit:
+
+- After lexing, next to `trimPartialClosingFences`, block `html` tokens that hold only comments are removed, also inside list items and blockquotes. A removed comment between two blank lines, or at the start or end of the text, also drops one blank line, so no extra gap remains.
+- Block HTML with other content renders as text with its comments stripped (`<!-- x --> text` renders `text`).
+- An inline comment renders nothing; when the text before it ended with a space or tab (or there is none), the next text token loses its leading spaces and tabs (`See <!-- c --> the docs.` renders `See the docs.`).
+- An unclosed comment runs to the end of its HTML block (CommonMark), so a streamed comment stays hidden. Other HTML still renders as text (`with <tag> markers`).
+
+Why: The owner pulled the fix into 0.7.1. Pi 1.5.0 prints the comment text; release notes and changelogs carry `<!-- ... -->` markers, so the raw markers show on screen.
+
+Pi bug: Pi 1.5.0 (`packages/tui/src/components/markdown.ts`: the `html` cases of `renderToken` and `renderInlineTokens` push `token.raw`), fixed by Pi main 54280c4ff ([#11710](https://github.com/earendil-works/pi/issues/11710)).
+
+Scope: `tui.Markdown` rendering, so every surface PiG draws with it, including the kit `Markdown` node of the Go, Python, Rust and Lisp SDKs. Only a text that holds `<!--` renders differently; every other document is compared with Pi byte for byte. The Node SDK runs Pi's own code, so a Node extension that builds `Markdown` from `@earendil-works/pi-tui` itself keeps Pi 1.5.0's behavior and shows its comments until the pin moves.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-05 for 0.7.1 (SCOPE-PROPOSAL row S12; port of Pi main 54280c4ff ahead of the pin).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains 54280c4ff. Then the call-site markers, `tui/markdown_html_comments.go`'s divergence note, `testdata/pi_markdown_overlay.mjs` and this record go; the overlay's anchors stop matching when the pin's `markdown.js` already holds the change.
+
+Call-site markers: `tui/markdown_blocks.go` (`renderBlocks`, the `html` case of `renderToken`), `tui/markdown_marked.go` (`renderInlineTokensSequential`), `tui/markdown_spans.go` (`writeInlineTokens`), `tui/markdown_html_comments.go`.
+
+Evidence: `TestUpstreamMarkdownHTMLComments` (`tui/markdown_html_comments_upstream_test.go`, Pi's five tests, red on e4fd4114a0), `TestMarkdownHTMLCommentsMatchPiMain` (about 200 documents at several widths and paddings against Pi's `markdown.ts` with 54280c4ff applied to the pinned dist by `tui/testdata/pi_markdown_overlay.mjs`), `TestMarkdownHTMLCommentsStreamLikeAFreshRender` (every prefix of those documents, streamed through one component, against a fresh component and Pi), and the other Markdown oracle tests of `tui`, whose drivers (`markdown_render.mjs`, `markdown_contract.mjs`, `markdown_style_state_contract.mjs` and the marked golden generator) load the same overlay.
+
+Parity allowance: `TestMarkdownHTMLCommentsDifferFromPinnedPi` (`tui/markdown_html_comments_upstream_test.go`) runs the pinned Pi unchanged (`PIG_PI_MARKDOWN=pinned`) and states both sides: Pi 1.5.0 renders the comment, PiG hides it. It fails when either side changes.
+
+## D266 An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the empty string
+
+What: `getTextOutput` (`packages/coding-agent/src/core/tools/render-utils.ts`) draws a fallback line for each image block the terminal does not show, naming it `img.mimeType ?? "image/unknown"`. A block with no `mimeType` prints `[Image: [image/unknown]]` in Pi and PiG alike. A block whose `mimeType` is the empty string prints `[Image: []]` in Pi and `[Image: [image/unknown]]` in PiG. `ai.ImageContent.MimeType` is a plain string, so PiG treats an empty type as an absent one. The same call in Pi guards the image dimensions with a truthiness test (`img.data && img.mimeType`), which already treats `""` as no type. The difference shows in every card that draws `getTextOutput`: the bash, read, write, grep, find, ls, MCP and codemode result cards.
+
+Why: PiG's output names the image with a type a reader can recognise instead of an empty bracket pair, and keeping absent and empty alike avoids a presence flag on a core public type (`ai.ImageContent`) for one fallback label. Only an extension or MCP server that sends `mimeType: ""` can reach it.
+
+Pi bug: Pi 1.5.0's `??` fallback and its own truthiness guard disagree about `""`; not reported upstream.
+
+Observable effect: Pi's tool card names an image block whose `mimeType` is the empty string `[Image: []]`, an empty bracket pair, where PiG names it `[Image: [image/unknown]]`.
+
+Scope: `tools.GetTextOutput` and `codemodeTextOutput`; image blocks with an empty `mimeType` only. Blocks with a type, or with none, render as in Pi.
+
+Owner decision: 2026-11-06, owner approved keeping PiG's output and recording this as a numbered divergence (D266).
+
+SCRUTINIZED:approved
+
+Remove when: Pi treats an empty `mimeType` like an absent one in `getTextOutput`.
+
+Call-site markers: `internal/codingagent/tools/render_text_output.go` (`GetTextOutput`), `internal/codingagent/tool_codemode_renderer.go` (`codemodeTextOutput`).
+
+Evidence: `TestEmptyMimeTypeImageDiffersFromPi` (`internal/codingagent/empty_mimetype_image_divergence_test.go`), `TestCodemodeTextOutputNamesAnImageWithoutMimeType`, `TestGetTextOutput...` cases in `internal/codingagent/render_utils_pi_test.go`.
+
+Parity allowance: `TestEmptyMimeTypeImageDiffersFromPi` runs the pinned Pi for a codemode card and a bash card with an empty `mimeType` and states both sides (`[Image: []]` in Pi, `[Image: [image/unknown]]` in PiG), with a control of a real type compared byte for byte. It fails when either side changes.
 
 ## D267 The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes
 

@@ -301,3 +301,18 @@ fn delta_operations_nested_past_serde_jsons_limit_still_decode() {
     assert_eq!(req.args_error.as_deref(), Some(TOO_DEEP_MESSAGE));
     assert!(req.stream.unwrap().ops.is_none());
 }
+
+// A host call's result (the highlighted lines of `highlight_code`) is cut out of its frame as a raw value, and the host writes a lone surrogate of the
+// code as an escape. A `Value` or `String` cannot hold the unit, so the value is read with U+FFFD in its place, not refused.
+#[test]
+fn a_value_cut_out_of_a_frame_reads_an_unpaired_surrogate_escape_as_u_fffd() {
+    let value: serde_json::Value =
+        from_json_str(r#"{"lines":["a\ud83db","\ude00","\ud83d\ude00"]}"#).unwrap();
+    assert_eq!(
+        value["lines"],
+        serde_json::json!(["a\u{fffd}b", "\u{fffd}", "😀"])
+    );
+    let lines: Vec<String> = from_json_str(r#"["x\ud800y"]"#).unwrap();
+    assert_eq!(lines, ["x\u{fffd}y"]);
+    assert!(from_json_str::<serde_json::Value>(r#"{"lines":["\ud83d"#).is_err());
+}
