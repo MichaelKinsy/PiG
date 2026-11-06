@@ -215,7 +215,7 @@ func configContractResolved() map[string]map[string]configOracleResolved {
 }
 
 // config-selector.ts ResourceList.handleInput and render, ConfigSelectorHeader.render and ResourceList.renderCheckbox against the pinned Pi, in every
-// state the earlier oracle probe leaves out: dark and light themes at 24-bit and 256-color depth, widths from 7 to 100, a rebound tui.input.tab (the
+// state the earlier oracle probe leaves out: dark and light themes (and the faint-dim system theme in the directed toggle probes) at 24-bit and 256-color depth, widths from 7 to 100, a rebound tui.input.tab (the
 // header names the key, and the key switches the scope), toggles in the project scope (inherit, then unload or load, back to inherit, the checkbox glyph
 // and color and the "project load" / "project unload" / "inherited global" suffix of each state) and in global scope over items of other scopes, which Pi
 // does not toggle. The callbacks and every frame must agree byte for byte.
@@ -279,14 +279,23 @@ func TestConfigSelectorContractMatchesPi(t *testing.T) {
 		[]string{space, down, space, down, space, down, space, down, space, down, space, down, space, down, space, down, space},
 		[]string{tab, space, down, space, down, space, down, space, down, space, down, space, down, space, down, space},
 	)
-	for _, name := range []string{"mixed", "otherScopes", "many", "single", "dupes"} {
-		for _, scope := range []string{"project", "global"} {
-			for _, keys := range directed {
-				for _, width := range []int{100, 30} {
-					probes = append(probes, configContractProbe{
-						configOracleProbe: configOracleProbe{Resolved: resolveds[name], AgentDir: "/agent", Width: width, WriteScope: scope, ProjectModeAvailable: true, Keys: keys},
-						Theme:             "dark", TrueColor: true,
-					})
+	// The system theme (Pi's default) renders `dim` as a faint token (SGR 2 on top of the color), which every dim span of the list must close: a space
+	// after a dim checkbox, or the name of a project-owned item after one, must not stay faint. The dark and light themes' dim is a plain color.
+	for _, theme := range []struct {
+		name      string
+		trueColor []bool
+	}{{"dark", []bool{true}}, {SystemThemeName, []bool{true, false}}} {
+		for _, name := range []string{"mixed", "otherScopes", "many", "single", "dupes"} {
+			for _, scope := range []string{"project", "global"} {
+				for _, keys := range directed {
+					for _, width := range []int{100, 30} {
+						for _, trueColor := range theme.trueColor {
+							probes = append(probes, configContractProbe{
+								configOracleProbe: configOracleProbe{Resolved: resolveds[name], AgentDir: "/agent", Width: width, WriteScope: scope, ProjectModeAvailable: true, Keys: keys},
+								Theme:             theme.name, TrueColor: trueColor,
+							})
+						}
+					}
 				}
 			}
 		}

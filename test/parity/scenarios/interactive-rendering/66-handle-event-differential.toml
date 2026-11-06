@@ -9,7 +9,7 @@
 # unregistered custom entries, other entries), and the message and tool events with an aborted run and events that arrive with no streaming message.
 # Progress is compared with the setting on and off. The app name in the terminal title is the program's own and is left out of both sides. The
 # compaction branch of entry_appended and the successful compaction_end rebuild need a session and are proved by unit tests and scenarios extensions-runtime/91 and 92.
-name = "59-handle-event-differential"
+name = "66-handle-event-differential"
 description = "InteractiveMode.handleEvent shows the same progress, status, Escape routing, pending messages, border, title, shutdown and chat as Pi for every event."
 covers = [
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",

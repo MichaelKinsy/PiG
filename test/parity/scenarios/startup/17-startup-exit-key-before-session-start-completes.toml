@@ -29,4 +29,4 @@ exit_code = 0
 both_contain = ["STARTUP KEYS HOLD"]
 both_not_contain = ["STARTUP KEYS READY", "panic:", "goroutine "]
 runs = 3
-output_normalized_equal = true
+escaped_output_equal = true
