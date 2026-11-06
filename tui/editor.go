@@ -66,7 +66,9 @@ type Editor struct {
 	autocompleteChanged    func(AutocompleteProvider)
 	asyncCancel            context.CancelFunc
 	// asyncStarted is set once the request asyncCancel cancels has started: it waited out its debounce timer and the request before it, and holds the text it asks about. A request that has not started reads the editor's text when it does. nil for a request of the local file search, which starts at once.
-	asyncStarted       *atomic.Bool
+	asyncStarted *atomic.Bool
+	// pendingFileAnswer is the answer of a file search of an editor with no owner loop, for the caller's goroutine to publish.
+	pendingFileAnswer  atomic.Pointer[func()]
 	asyncSeq           uint64
 	scheduleAsyncApply func(func())
 	// pendingAutocompleteApply publishes the latest local suggestion result the host has scheduled but not yet run.
@@ -974,6 +976,7 @@ func (e *Editor) Render(width int) []string {
 	if e.forwards() {
 		return e.renderRemote(width)
 	}
+	e.applyPendingFileAnswer()
 	// Build the full visual layout first (all chunks of all logical
 	// lines, with cursor decoration applied), then scroll/window it
 	// per upstream editor.ts scrollOffset + maxVisibleLines logic.
@@ -1527,10 +1530,15 @@ func (e *Editor) refreshAutocomplete() {
 }
 
 // kickFileAutocomplete completes a deferred local filesystem query without running the search on the input loop. It is the request of an editor with no task owner
-// (SetAutocompleteTaskOwner): the answer of the local provider is applied at the key and only the search is deferred. A search under an @ token waits out Pi's 20 ms
-// debounce, and where the editor has an owner loop (SetAsyncApply) starts against the text and cursor the editor holds then (editor.ts startAutocompleteRequest takes them when the
-// request starts, not when it was made): a key typed meanwhile that triggers nothing leaves it alone, and the provider is asked again about the newer text. An editor with no loop
-// (the extension view editor) keeps the text the key left: a worker reading the editor would race with its caller.
+// (SetAutocompleteTaskOwner): the answer of the local provider is applied at the key and only the search is deferred. The search runs on a goroutine, after Pi's 20 ms debounce
+// under an @ token, and its answer is published on the one goroutine that may touch the editor, as Pi's answer comes back to its event loop.
+//
+// With an owner loop (SetAsyncApply) the search starts there against the text and cursor the editor holds then (editor.ts startAutocompleteRequest takes them when the request
+// starts, not when it was made): a key typed meanwhile that triggers nothing leaves it alone, and the provider is asked again about the newer text; the answer is applied there.
+//
+// With no loop there is no goroutine to run on and no one to tell, so the worker touches no editor state: it searches for the text the key left, and leaves its answer in a mailbox the
+// caller's goroutine drains at the next key or render (applyPendingFileAnswer), where the answer is checked against the editor as before. The popup then opens at that key or render,
+// not at the moment the search ends.
 func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string, force bool) {
 	if fileTask == nil {
 		return
@@ -1543,16 +1551,36 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 	}
 	ctx, cancel := context.WithCancel(lifetime)
 	e.asyncCancel = cancel
-	waits := strings.HasPrefix(filePrefix, "@")
-	// The editor's state is read where the owner loop runs: a search starts there only when the host gave the editor a loop. With none, the search keeps the text and cursor the key left, and the worker reads no editor state.
 	schedule := e.scheduleAsyncApply
+	waits := strings.HasPrefix(filePrefix, "@")
 	startsOnLoop := waits && schedule != nil
 	started := new(atomic.Bool)
 	started.Store(!startsOnLoop)
 	e.asyncStarted = started
 	lines, cursor, request := slices.Clone(e.lines), e.cursor, e.autocompleteRequestID
 	provider := e.autocomplete
-	work := func() {
+	// publish applies a search's answer; it reads the editor, so it runs only where the editor may be read.
+	publish := func(items []AutocompleteItem) {
+		var final []AutocompleteItem
+		prefix := filePrefix
+		if baseRes != nil {
+			final = append(final, baseRes.Items...)
+			prefix = baseRes.Prefix
+		}
+		final = append(final, items...)
+		if lifetime.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.cursor != cursor || !slices.Equal(e.lines, lines) {
+			return
+		}
+		e.autocompleteMousePressedIndex = nil
+		e.setAutocompleteItems(final)
+		e.autocompletePrefix = prefix
+		e.autocompleteQueryCursor = cursor
+		if e.autocompleteCursor >= len(final) {
+			e.autocompleteCursor = 0
+		}
+		e.Invalidate()
+	}
+	go func() {
 		defer cancel()
 		if waits {
 			timer := time.NewTimer(attachmentAutocompleteDebounce)
@@ -1564,7 +1592,7 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 			}
 		}
 		if startsOnLoop {
-			// The request starts: it takes the editor's text and cursor, and asks the provider about them.
+			// The request starts: it takes the editor's text and cursor on the loop, and asks the provider about them.
 			files, ok := provider.(AsyncFileSearcher)
 			if !ok {
 				return
@@ -1600,33 +1628,20 @@ func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask
 		if ctx.Err() != nil {
 			return
 		}
-		var final []AutocompleteItem
-		prefix := filePrefix
-		if baseRes != nil {
-			final = append(final, baseRes.Items...)
-			prefix = baseRes.Prefix
+		if schedule == nil {
+			answer := func() { publish(items) }
+			e.pendingFileAnswer.Store(&answer)
+			return
 		}
-		final = append(final, items...)
-		apply := func() {
-			if lifetime.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.cursor != cursor || !slices.Equal(e.lines, lines) {
-				return
-			}
-			e.autocompleteMousePressedIndex = nil
-			e.setAutocompleteItems(final)
-			e.autocompletePrefix = prefix
-			e.autocompleteQueryCursor = cursor
-			if e.autocompleteCursor >= len(final) {
-				e.autocompleteCursor = 0
-			}
-			e.Invalidate()
-		}
-		if schedule != nil {
-			schedule(apply)
-		} else {
-			apply()
-		}
+		schedule(func() { publish(items) })
+	}()
+}
+
+// applyPendingFileAnswer publishes the answer a search of an editor with no owner loop left in its mailbox. It runs on the caller's goroutine, at the start of a key and of a render.
+func (e *Editor) applyPendingFileAnswer() {
+	if answer := e.pendingFileAnswer.Swap(nil); answer != nil {
+		(*answer)()
 	}
-	go work()
 }
 
 // renderCursorAt highlights the marker-aware grapheme at a UTF-16 offset. At end of line it appends a highlighted space.
@@ -1750,6 +1765,7 @@ func (e *Editor) HandleInput(data string) {
 		e.remote.remote.Input(data)
 		return
 	}
+	e.applyPendingFileAnswer()
 
 	if e.jumpMode != "" {
 		if kb := GetTUIKeybindings(); kb.Matches(data, KBEditorJumpForward) || kb.Matches(data, KBEditorJumpBackward) {
