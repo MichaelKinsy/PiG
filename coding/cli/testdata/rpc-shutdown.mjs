@@ -70,6 +70,10 @@ export default function (pi) {
     if (process.env.RPC_SHUTDOWN_HOLD_QUIT && event.reason === "quit") {
       await new Promise(() => { setInterval(() => {}, 60_000); });
     }
+    // RPC_SHUTDOWN_NOTIFY_AFTER delays the notification, which is the first record the dispose writes to stdout, by that many milliseconds.
+    if (process.env.RPC_SHUTDOWN_NOTIFY_AFTER) {
+      await new Promise(resolve => setTimeout(resolve, Number(process.env.RPC_SHUTDOWN_NOTIFY_AFTER)));
+    }
     ctx.ui.notify("session_shutdown started", "info");
     if (process.env.RPC_SHUTDOWN_SLOW) {
       await new Promise(resolve => setTimeout(resolve, Number(process.env.RPC_SHUTDOWN_SLOW)));
