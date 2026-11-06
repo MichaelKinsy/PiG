@@ -362,6 +362,8 @@ pig piglet validate research
 pig --piglet research
 ```
 
+PiG copies the YAML and the relative `systemPrompt.file` it names, and records each copied file with its digest in `<name>.files.json`. `pig piglet remove <name> --source` removes the YAML and the copied files that no other registered Piglet uses and that you have not edited, and reports each file it keeps. To replace a registered source Piglet, run `remove --source` and then `add`. See [Replace or remove a registered source Piglet](/docs/latest/piglet-lifecycle#replace-or-remove-a-registered-source-piglet).
+
 Add a Piglet from npm or Git:
 
 ```bash

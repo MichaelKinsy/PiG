@@ -306,6 +306,8 @@ closed source contract.
 
 `piglet add` accepts a local Piglet path, an `npm:` package, or a `git:` repository. For a local path, it validates the source and copyable Piglet-relative prompt files, then copies them without replacement into `~/.pig/piglets/`. It does not infer Resources from a directory or installed state, rewrite source, or change Package settings, shell state, Sessions, or artifact inventory. A contributed catalog ref works only when installed product code registers its resolver; Stock PiG provides no `marketplace:` or `catalog:` Piglet resolver.
 
+Add records each copied prompt file, by path under `~/.pig/piglets/` and SHA-256 digest, in `<name>.files.json` beside the registered YAML. `pig piglet remove <name> --source` deletes the YAML, its origin record, and the recorded files that no other registered Piglet lists or references and whose content still matches the recorded digest. It reports each recorded file it keeps. Replace a registered source Piglet by running `remove --source` and then `add`; add never overwrites a file. If the YAML was deleted by hand, `add` of the same name deletes the files its leftover record owns under the same rules. A prompt copied by PiG 0.7.0 or earlier has no record: `remove --source` leaves it, and `add` refuses to overwrite it and says to delete it yourself or use another relative prompt path. See [Replace or remove a registered source Piglet](piglet-lifecycle.md#replace-or-remove-a-registered-source-piglet). `piglet update` does not refresh registered source Piglets.
+
 Add a Piglet from npm or Git:
 
 ```bash
