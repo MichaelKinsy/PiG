@@ -15,6 +15,7 @@ fn provider_superseded_keeps_the_stream_the_host_still_calls() {
         msg_type: "notify".into(),
         notify: Some(NotifyMsg {
             custom_input: None,
+            args_error: None,
             method: "provider_superseded".into(),
             args: Some(json!({"name": "gone"})),
         }),
@@ -28,6 +29,8 @@ fn provider_superseded_keeps_the_stream_the_host_still_calls() {
             terminal_input: None,
             stream: None,
             stream_error: None,
+            args_error: None,
+            deep_args: false,
             tool_call_index: None,
             args_raw: None,
             method: "provider_stream_simple".into(),

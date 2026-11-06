@@ -117,6 +117,11 @@ fn nested_request(depth: usize, text: &str) -> String {
 // serde_json refuses nesting past 128 levels; every other runtime takes far more, and a refused frame ended the connection.
 #[test]
 fn a_tool_request_nested_past_serde_jsons_limit_still_decodes() {
+    // The deep values drop on a stack made for them, as a request's thread does (a test thread has 2 MiB).
+    on_deep_stack(tool_request_nested_past_serde_jsons_limit_still_decodes).unwrap();
+}
+
+fn tool_request_nested_past_serde_jsons_limit_still_decodes() {
     for depth in [10, 120, 130, 1000, MAX_NESTING_DEPTH - 10] {
         let envelope = decode_frame(nested_request(depth, "ok").as_bytes())
             .unwrap_or_else(|err| panic!("depth {depth}: {err}"));
@@ -132,7 +137,15 @@ fn a_tool_request_nested_past_serde_jsons_limit_still_decodes() {
 
 #[test]
 fn nesting_past_the_bound_is_refused_and_brackets_in_strings_do_not_count() {
-    assert!(decode_frame(nested_request(MAX_NESTING_DEPTH + 10, "ok").as_bytes()).is_err());
+    on_deep_stack(nesting_past_the_bound_is_refused).unwrap();
+}
+
+fn nesting_past_the_bound_is_refused() {
+    // Past the bound the frame still decodes (a refused frame ended the connection): the request is answered with Pi's RangeError.
+    let envelope = decode_frame(nested_request(MAX_NESTING_DEPTH + 10, "ok").as_bytes()).unwrap();
+    let request = envelope.request.unwrap();
+    assert_eq!(request.args_error.as_deref(), Some(TOO_DEEP_MESSAGE));
+    assert!(request.args.is_none());
     let brackets = "[".repeat(MAX_NESTING_DEPTH * 2);
     let envelope = decode_frame(nested_request(130, &brackets).as_bytes()).unwrap();
     assert_eq!(
@@ -186,6 +199,109 @@ fn session_file_with_an_unpaired_surrogate_keeps_every_entry() {
     assert_eq!(entries[1]["message"]["content"], "x\u{fffd}y");
 }
 
+fn nested_notify(method: &str, depth: usize) -> String {
+    let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+    let args = if method == "ui.custom.input" {
+        format!(r#"{{"key":"k","data":"x","state":{deep}}}"#)
+    } else if method == "state_update" {
+        format!(r#"{{"state":{{"footerData":{deep}}}}}"#)
+    } else {
+        format!(r#"{{"event":{deep}}}"#)
+    };
+    format!(r#"{{"type":"notify","notify":{{"method":"{method}","args":{args}}}}}"#)
+}
+
+// A notification nests as a request does (model_stream_event carries the parsed tool-call arguments of a partial message): up to the bound it decodes, past it the
+// notification is marked, not refused, so the connection keeps serving and the loop drops it with a diagnostic.
+#[test]
+fn a_notification_nested_up_to_the_bound_decodes_and_past_it_is_marked() {
+    on_deep_stack(notification_nested_up_to_the_bound_decodes).unwrap();
+}
+
+fn notification_nested_up_to_the_bound_decodes() {
+    for method in ["model_stream_event", "ui.custom.input", "state_update"] {
+        let envelope = decode_frame(nested_notify(method, 9990).as_bytes()).unwrap();
+        let notify = envelope.notify.unwrap();
+        assert!(notify.args_error.is_none(), "{method}");
+        assert!(
+            notify.args.is_some() || notify.custom_input.is_some() || method == "state_update",
+            "{method}"
+        );
+        let envelope =
+            decode_frame(nested_notify(method, MAX_NESTING_DEPTH + 10).as_bytes()).unwrap();
+        let notify = envelope.notify.unwrap();
+        assert_eq!(
+            notify.args_error.as_deref(),
+            Some(TOO_DEEP_MESSAGE),
+            "{method}"
+        );
+        assert!(
+            notify.args.is_none() && notify.custom_input.is_none(),
+            "{method}"
+        );
+    }
+}
+
+// Only a request whose arguments needed the deep decode (nesting past serde_json's 128 levels) asks for the deep stack, which a thread stack committed under
+// vm.overcommit_memory=2 or ulimit -v would charge per concurrent request; every other request runs on 8 MiB, enough to drop a deep value that reached it in a notification or a host call result.
+#[test]
+fn only_a_request_with_deep_arguments_runs_on_the_deep_stack() {
+    let size_of = |depth: usize| {
+        on_deep_stack(|| {
+            let envelope = decode_frame(nested_request(depth, "ok").as_bytes()).unwrap();
+            crate::extension::request_stack_size(&envelope.request.unwrap())
+        })
+        .unwrap()
+    };
+    for depth in [0, 10, 100] {
+        assert_eq!(size_of(depth), 8 << 20, "depth {depth}");
+    }
+    for depth in [130, 1000, 9000] {
+        assert_eq!(size_of(depth), 64 << 20, "depth {depth}");
+    }
+    // Past the bound the request is answered with the RangeError without running its handler.
+    assert_eq!(size_of(MAX_NESTING_DEPTH + 10), 8 << 20);
+}
+
+fn nested_delta(depth: usize) -> String {
+    let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+    format!(
+        r#"{{"type":"request","id":"t","request":{{"method":"event","event":"message_update","stream":{{"seq":2,"base":1,"ops":[{{"op":"set","path":["content",1],"value":{{"zeta":1,"meta":{{"d":{deep}}}}}}}]}}}}}}"#
+    )
+}
+
+// The host puts a whole new subtree into a delta's `set` operation (a tool call of a partial message, with its arguments), so the operations nest as the arguments do. They are
+// read like them: past serde_json's 128 levels up to the bound, and a value past the bound is answered with the RangeError instead of ending the connection.
+#[test]
+fn a_delta_whose_operations_nest_past_serde_jsons_limit_still_decodes() {
+    on_deep_stack(delta_operations_nested_past_serde_jsons_limit_still_decode).unwrap();
+}
+
+fn delta_operations_nested_past_serde_jsons_limit_still_decode() {
+    for depth in [10, 100, 130, 200, 9000, MAX_NESTING_DEPTH - 10] {
+        let envelope = decode_frame(nested_delta(depth).as_bytes())
+            .unwrap_or_else(|err| panic!("depth {depth}: {err}"));
+        let req = envelope.request.unwrap();
+        assert!(req.args_error.is_none(), "depth {depth}");
+        assert_eq!(req.deep_args, depth >= 120, "depth {depth}");
+        let ops = req.stream.as_ref().unwrap().ops.as_ref().unwrap();
+        let mut level = &ops[0]["value"]["meta"]["d"];
+        for _ in 0..depth {
+            level = &level[0];
+        }
+        assert_eq!(level, 1, "depth {depth}");
+        assert_eq!(
+            crate::extension::request_stack_size(&req),
+            if depth >= 120 { 64 << 20 } else { 8 << 20 },
+            "depth {depth}"
+        );
+    }
+    let envelope = decode_frame(nested_delta(MAX_NESTING_DEPTH + 10).as_bytes()).unwrap();
+    let req = envelope.request.unwrap();
+    assert_eq!(req.args_error.as_deref(), Some(TOO_DEEP_MESSAGE));
+    assert!(req.stream.unwrap().ops.is_none());
+}
+
 // A host call's result (the highlighted lines of `highlight_code`) is cut out of its frame as a raw value, and the host writes a lone surrogate of the
 // code as an escape. A `Value` or `String` cannot hold the unit, so the value is read with U+FFFD in its place, not refused.
 #[test]
@@ -199,4 +315,31 @@ fn a_value_cut_out_of_a_frame_reads_an_unpaired_surrogate_escape_as_u_fffd() {
     let lines: Vec<String> = from_json_str(r#"["x\ud800y"]"#).unwrap();
     assert_eq!(lines, ["x\u{fffd}y"]);
     assert!(from_json_str::<serde_json::Value>(r#"{"lines":["\ud83d"#).is_err());
+}
+
+// The surrogate retry of a refused value decodes again with the deep stack and must say so, or the request that carries the value runs on the stack of a normal
+// one: a tool call whose arguments hold a lone surrogate escape and nest past serde_json's limit is read, and its request gets the deep stack.
+#[test]
+fn a_request_with_an_unpaired_surrogate_escape_and_deep_nesting_gets_the_deep_stack() {
+    on_deep_stack(|| {
+        let depth = MAX_NESTING_DEPTH - 10;
+        // The escape comes before the nesting, so the first decode is refused for it, not for the depth.
+        let deep = format!("{}1{}", "[".repeat(depth), "]".repeat(depth));
+        let frame = format!(
+            r#"{{"type":"request","id":"t","request":{{"method":"tool_call","args":{{"name":"echo","params":{{"text":"a\ud83db","v":{deep}}}}}}}}}"#
+        );
+        let envelope = decode_frame(frame.as_bytes()).unwrap();
+        let req = envelope.request.unwrap();
+        assert!(req.args_error.is_none());
+        assert!(req.deep_args);
+        assert_eq!(crate::extension::request_stack_size(&req), 64 << 20);
+        let params = req.args.unwrap();
+        assert_eq!(params["params"]["text"], "a\u{fffd}b");
+        let mut level = &params["params"]["v"];
+        for _ in 0..depth {
+            level = &level[0];
+        }
+        assert_eq!(level, 1);
+    })
+    .unwrap();
 }

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -373,9 +375,27 @@ func (c *conn) readLoop() {
 			return
 		}
 		var env envelope
-		if err := json.Unmarshal(data, &env); err != nil {
-			// The Node, Python and Rust SDKs end the connection on a frame they cannot decode, as the host does; skipping it would leave the host waiting for the answer to a request it carried.
-			return
+		if err := json.UnmarshalFrame(data, &env); err != nil {
+			// pig divergence (D268): Pi fails a call at a V8-stack-dependent depth (about 4400 levels); the SDK reads every frame the host can send (json.UnmarshalFrame).
+			// A frame nested past what the reader takes is not a reason to end the connection (the host sends none: its own marshal refuses a value past 10000 levels): the
+			// request it carries is answered with Pi's RangeError, a host call's result is that error, and a notification is dropped with a diagnostic. Any other frame the
+			// SDK cannot decode ends the connection, as the host does; skipping it would leave the host waiting for the answer to a request it carried.
+			if !strings.Contains(err.Error(), "exceeded max depth") {
+				return
+			}
+			kind, id := frameHead(data)
+			switch {
+			case kind == msgRequest && id != "":
+				if c.respond(id, nil, errTooDeep) != nil {
+					return
+				}
+				continue
+			case kind == msgCallResult && id != "":
+				env = envelope{Type: msgCallResult, ID: id, CallResult: &callResultMsg{Error: &errorInfo{Message: errTooDeep.Error()}}}
+			default:
+				fmt.Fprintln(os.Stderr, "pig-sdk: dropped a frame nested deeper than the reader takes")
+				continue
+			}
 		}
 		if args != nil {
 			if env.Request == nil {
@@ -415,6 +435,103 @@ func (c *conn) readLoop() {
 			c.notifications.Add(1)
 		}
 		c.incoming <- env
+	}
+}
+
+// errTooDeep is V8's RangeError, which Pi's JavaScript parser and stringify throw for a value nested past the stack: a request nested past the reader's bound fails with it.
+var errTooDeep = errors.New("Maximum call stack size exceeded")
+
+// frameHead is the "type" and "id" strings of the top-level object of frame, read without decoding the members that nest: brackets are counted, strings read whole. A
+// frame the reader refused for its depth is answered from them.
+func frameHead(frame []byte) (kind, id string) {
+	i, n := 0, len(frame)
+	skip := func() {
+		for i < n && (frame[i] == ' ' || frame[i] == '\t' || frame[i] == '\r' || frame[i] == '\n') {
+			i++
+		}
+	}
+	// str reads the string at frame[i] (a quote) and leaves i after it.
+	str := func() (string, bool) {
+		start := i
+		i++
+		for i < n && frame[i] != '"' {
+			if frame[i] == '\\' {
+				i++
+			}
+			i++
+		}
+		if i >= n {
+			return "", false
+		}
+		i++
+		var text string
+		if json.Unmarshal(frame[start:i], &text) != nil {
+			return "", false
+		}
+		return text, true
+	}
+	skip()
+	if i >= n || frame[i] != '{' {
+		return "", ""
+	}
+	i++
+	for {
+		skip()
+		if i >= n || frame[i] != '"' {
+			return kind, id
+		}
+		key, ok := str()
+		if !ok {
+			return kind, id
+		}
+		skip()
+		if i >= n || frame[i] != ':' {
+			return kind, id
+		}
+		i++
+		skip()
+		if i < n && frame[i] == '"' {
+			value, ok := str()
+			if !ok {
+				return kind, id
+			}
+			switch key {
+			case "type":
+				kind = value
+			case "id":
+				id = value
+			}
+		} else {
+			depth := 0
+		scan:
+			for i < n {
+				switch frame[i] {
+				case '"':
+					if _, ok := str(); !ok {
+						return kind, id
+					}
+					continue
+				case '{', '[':
+					depth++
+				case '}', ']':
+					if depth == 0 {
+						break scan
+					}
+					depth--
+				case ',':
+					if depth == 0 {
+						break scan
+					}
+				}
+				i++
+			}
+		}
+		skip()
+		if i < n && frame[i] == ',' {
+			i++
+			continue
+		}
+		return kind, id
 	}
 }
 

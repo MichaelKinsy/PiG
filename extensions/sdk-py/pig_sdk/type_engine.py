@@ -39,12 +39,15 @@ class BigInt:
 
 def holds_bigint(value: Any) -> bool:
     """Whether a :class:`BigInt` is anywhere inside ``value`` (a schema, a dict, a list)."""
-    if isinstance(value, BigInt):
-        return True
-    if isinstance(value, dict):
-        return any(holds_bigint(member) for member in value.values())
-    if isinstance(value, (list, tuple)):
-        return any(holds_bigint(member) for member in value)
+    pending = [value]  # a stack of its own: a value nested past the interpreter's recursion limit is read too
+    while pending:
+        item = pending.pop()
+        if isinstance(item, BigInt):
+            return True
+        if isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, (list, tuple)):
+            pending.extend(item)
     return False
 
 

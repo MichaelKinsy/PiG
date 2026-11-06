@@ -367,7 +367,15 @@ lint-rust: ## cargo fmt --check and cargo clippy --all-targets -D warnings over 
 test-sdk-py: ## Run the Python extension SDK's pytest suite with its hash-locked dev dependencies
 	@PIG_CACHE_HOME="$(PIG_CACHE_HOME)" ./automation/ci/test-sdk-py.sh
 
-.PHONY: test-sdk-py
+# The same suite under CPython 3.11, the oldest interpreter the SDK supports (requires-python >=3.11): its JSON reader is bound by the recursion limit, so tests/test_deep_frames.py guards that
+# a frame of the 10000 levels the host sends is still read there. PIG_SDK_PY_311 names the interpreter; CI installs one with actions/setup-python.
+PIG_SDK_PY_311 ?= python3.11
+test-sdk-py-311: ## Run the Python extension SDK's pytest suite under CPython 3.11 (PIG_SDK_PY_311 names the interpreter)
+	@command -v "$(PIG_SDK_PY_311)" >/dev/null || { echo "test-sdk-py-311: no Python 3.11 interpreter at $(PIG_SDK_PY_311): install one or set PIG_SDK_PY_311" >&2; exit 1; }
+	@"$(PIG_SDK_PY_311)" -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 11) else "test-sdk-py-311: $(PIG_SDK_PY_311) is Python %d.%d, not 3.11" % sys.version_info[:2])'
+	@PIG_CACHE_HOME="$(PIG_CACHE_HOME)" PIG_SDK_PY_PYTHON="$(PIG_SDK_PY_311)" ./automation/ci/test-sdk-py.sh
+
+.PHONY: test-sdk-py test-sdk-py-311
 
 # The Lisp SDK's own tests (JSON vectors, the wire against an in-process fake host), run by the pinned SBCL that
 # automation/ci/install-sbcl.sh builds; PIG_SBCL names it. A missing SBCL fails: it is an environment failure, never a skip.

@@ -370,6 +370,18 @@ jobs:
         with:
           path: ~/.cache/pig-sdk-py
           key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
+      # make test-sdk-py-311 runs the same suite under CPython 3.11, the oldest interpreter the SDK supports. update-environment: false leaves python3 on 3.12; the interpreter's path goes to the make target.
+      - name: Install Python 3.11 for the Python SDK
+        if: matrix.shard == 'toolchains'
+        id: python311
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          update-environment: false
+      - name: Name the Python 3.11 interpreter
+        if: matrix.shard == 'toolchains'
+        shell: bash
+        run: echo "PIG_SDK_PY_311=${{ steps.python311.outputs.python-path }}" >> "$GITHUB_ENV"
       # make test-term-engines builds libvterm, the Rust engine runners and the pyte venv under $PIG_CACHE_HOME/pig-term-engines (~/.cache here), each
       # in a directory named for the lock or pin that produced it, so this key changes exactly when something there would be rebuilt.
       - name: Restore the terminal-engine builds

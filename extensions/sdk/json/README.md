@@ -10,6 +10,8 @@ The production files derive from the Go 1.27.1 `src/encoding/json` v1 implementa
 
 Local changes are the surrogate branches in `appendString` and `unquoteBytes`, string-contract comments, removal of the standard library's internal experiment build tags, aliases for `encoding/json.RawMessage` and `encoding/json.Number`, a pool for `Unmarshal`'s decode state, scanner stack and error context (`decodeStatePool`, so a small message decodes without allocating them), overflow-safe allocation sizes (`addSize`, `mulSize` in `allocsize.go`) where `unquoteBytes` and `Grow` size a buffer, and narrow lint fixes or explanations, and `quoteChar`, which is `strconv.QuoteRune` in place of the standard library's hand-written quoting. The experiment tags belong to Go's selection of its own implementation; this package always uses these sources. The aliases preserve interoperability with callers of the standard library.
 
+`UnmarshalFrame` takes a document nested 64 levels past the standard library's 10000: a frame the host sends holds arguments nested to 10000 levels inside an envelope.
+
 Other local changes (lw-json):
 
 - The JSON.stringify mode: `MarshalStringify`/`AppendStringify`, `encOpts.jsStrings` and `appendCompactJS` for nested Marshaler output, plus the `StringifyAppender` splice.

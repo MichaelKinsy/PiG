@@ -93,3 +93,28 @@
 (deftest malformed-json-is-an-error
   (dolist (bad '("" "{" "[1,]" "{\"a\"}" "01" "1." "-" "tru" "\"\\x\"" "[1] 2" "{\"a\":1,}" "\"a" "nul"))
     (check-error pig:json-error (dec bad))))
+
+;; A value nested past the reader's bound (10016 levels) is Pi's RangeError, not the end of the connection (wire.lisp read-frame): the request it came in is answered with
+;; that error and the connection goes on. A frame up to the bound (past the 10000 levels of the host's own marshal) reads.
+(defun nested (depth)
+  (concatenate 'string (make-string depth :initial-element #\[) "1" (make-string depth :initial-element #\])))
+
+(deftest nesting-up-to-the-bound-reads-and-past-it-is-refused
+  (check (vectorp (dec (nested 4000))))
+  (check (vectorp (dec (nested 9996))))
+  (check (vectorp (dec (nested pig::*max-json-depth*))))
+  (check-error pig:json-error (dec (nested (1+ pig::*max-json-depth*)))))
+
+(defun frame-body (text) (sb-ext:string-to-octets text :external-format :utf-8))
+
+(deftest a-frame-nested-too-deep-stands-for-an-error-answer
+  (let ((deep (nested 30000)))
+    (check-equal '("request" "c-7") (multiple-value-list (pig::frame-head (frame-body (format nil "{\"type\":\"request\",\"id\":\"c-7\",\"request\":{\"args\":~A,\"s\":\"]}\"}}" deep)))))
+    (check-equal '("call_result" "a\"b") (multiple-value-list (pig::frame-head (frame-body (format nil "{\"id\":\"a\\\"b\",\"pad\":[{\"type\":\"x\"}],\"type\":\"call_result\",\"v\":~A}" deep)))))
+    (let ((request (pig::too-deep-envelope (frame-body (format nil "{\"type\":\"request\",\"id\":\"c-1\",\"request\":{\"args\":~A}}" deep)))))
+      (check-equal "request" (pig:jget request "type"))
+      (check-equal "c-1" (pig:jget request "id"))
+      (check-equal "Maximum call stack size exceeded" (pig:jget request "refused")))
+    (let ((result (pig::too-deep-envelope (frame-body (format nil "{\"type\":\"call_result\",\"id\":\"h-2\",\"call_result\":{\"result\":~A}}" deep)))))
+      (check-equal "Maximum call stack size exceeded" (pig:jget (pig:jget (pig:jget result "call_result") "error") "message")))
+    (check-equal "refused" (pig:jget (pig::too-deep-envelope (frame-body (format nil "{\"type\":\"notify\",\"notify\":{\"args\":~A}}" deep))) "type"))))

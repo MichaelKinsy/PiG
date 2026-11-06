@@ -33,7 +33,7 @@ ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
 ci-test-conformance-1: test-conformance-1
 ci-test-conformance-2: test-conformance-2
-ci-sdk: test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts
+ci-sdk: test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts
 ci-extensions: typescript-extension-corpus examples-check standard-check
 ci-race: test-race
 ci-term-engines: test-term-engines
