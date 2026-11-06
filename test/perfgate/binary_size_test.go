@@ -95,7 +95,7 @@ func buildHeadless(t *testing.T, root, tags, goos, goarch string) string {
 	return out
 }
 
-// The word-segmentation dictionaries (internal/wordsegmenter/*_dictionary.bin, 5 MB) belong to the terminal editor and
+// The word-segmentation dictionaries (internal/wordsegmenter/*_dictionary.bin, 2.8 MB) belong to the terminal editor and
 // must not be linked into an embedder that draws no terminal. The size gate only notices when the program grows past its
 // ceiling; this checks the content: the build fails if any 64-byte slice of a dictionary appears in the headless binary.
 // (Linker deadcode keeps a go:embed blob only while the package's reader is reachable, so a partial copy cannot occur;
