@@ -15,7 +15,7 @@ process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const base = mkdtempSync(join(tmpdir(), "awaited-accept-"));
-const skills = ["skill-a", "skill-b", "tool-a"];
+const skills = ["skill-a", "skill-b", "tool-a", "éskill-a", "日本-a"];
 const results = [];
 for (const probe of JSON.parse(input)) {
   setCapabilities({ images: null, trueColor: true, hyperlinks: false });

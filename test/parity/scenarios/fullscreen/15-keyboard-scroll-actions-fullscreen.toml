@@ -89,10 +89,11 @@ settle_seconds = 1
 keys = ["hex:1b 5b 31 38 7e"]
 settle_seconds = 1
 
-# one line down
+# one line down. The last step settles past the 1000 ms the auto scrollbar stays visible after a scroll (scroll-view.ts scrollbarHideDelayMs),
+# so both binaries are captured with the scrollbar hidden however loaded the host is; a 1 s settle raced the hide timer.
 [[tmux.steps]]
 keys = ["hex:1b 5b 31 39 7e"]
-settle_seconds = 1
+settle_seconds = 3
 
 [assert]
 both_reach_ready = true

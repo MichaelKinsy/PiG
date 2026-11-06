@@ -123,7 +123,8 @@ func autocompleteSeparator(r rune) bool {
 	return widthx.IsJSSpace(r) || strings.ContainsRune("，．：；！？（）［］｛｝“”‘’…—", r) || (unicode.IsPunct(r) && widthx.IsCJKBreak(string(r)))
 }
 
-func autocompleteTriggered(before string, characters []string) bool {
+// autocompleteTriggerRunes is editor.ts setAutocompleteTriggerCharacters: the default @ and #, then each provider character that is one UTF-16 unit and neither "/", whitespace nor already listed.
+func autocompleteTriggerRunes(characters []string) []rune {
 	triggers := []rune{'@', '#'}
 	for _, character := range characters {
 		r, size := utf8.DecodeRuneInString(character)
@@ -132,6 +133,15 @@ func autocompleteTriggered(before string, characters []string) bool {
 			triggers = append(triggers, r)
 		}
 	}
+	return triggers
+}
+
+func autocompleteTriggered(before string, characters []string) bool {
+	return autocompleteTriggeredBy(before, autocompleteTriggerRunes(characters))
+}
+
+// autocompleteTriggeredBy reports whether before ends in a trigger token that starts with one of the trigger characters.
+func autocompleteTriggeredBy(before string, triggers []rune) bool {
 	previousBoundary := true
 	for offset, r := range before {
 		if previousBoundary && slices.Contains(triggers, r) {

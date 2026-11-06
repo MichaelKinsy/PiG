@@ -10,7 +10,7 @@
 # Upstream evidence (pi 1.5.0 at the pin, bi-c5 probe): the scenario drives the pinned Pi and Pig with the same keys; the comparator below is the recorded expectation.
 #
 
-name = "62-user-message-selector-navigation-confirm"
+name = "67-user-message-selector-navigation-confirm"
 description = "The /fork selector wraps, clamps on page keys and confirms the highlighted message in both binaries."
 covers = [
   "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",

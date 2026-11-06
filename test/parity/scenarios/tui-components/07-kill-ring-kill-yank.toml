@@ -51,18 +51,23 @@ keys = ["C-a", "Right", "Right", "Right", "Right", "Right", "Right"]
 settle_seconds = 1
 
 # Step 3: kill to end of line
+# After kill, only "hello" remains (no "world"). The wait is on the visible pane, not on new output: "hello" is already on screen before the
+# kill, and the differential render of the shortened line need not write "hello" again (it clears the tail), so a wait for one more "hello" in
+# the output never completes on a terminal where it does not (tmux 3.6 on the xd670 host: both Pi and PiG failed there with
+# `step output ["hello"] not reached within 5s` while the pane showed "hello").
 [[tmux.steps]]
 keys = ["C-k"]
 settle_seconds = 1
-# After kill, only "hello" remains (no "world")
-wait_contains = ["hello"]
+wait_visible_contains = ["hello"]
+wait_not_contains = ["world"]
 wait_timeout_seconds = 5
 
 # Step 4: move to end and yank
+# The yank restores the killed text, so the visible pane shows "hello world" again (it showed "hello" alone after step 3).
 [[tmux.steps]]
 keys = ["C-e", "C-y"]
 settle_seconds = 1
-wait_contains = ["hello world"]
+wait_visible_contains = ["hello world"]
 wait_timeout_seconds = 5
 
 [assert]

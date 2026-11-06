@@ -224,9 +224,11 @@ func (p *SlashOnlyProvider) SuggestionTask(lines []string, line, col int, _ bool
 }
 
 // textBeforePrefix is upstream's currentLine.slice(0, cursorCol - prefix.length): when the cursor sits before the end of the prefix's length
-// the end offset is negative and String.slice counts it from the end of the line. Columns are bytes; the offsets count UTF-16 units.
+// the end offset is negative and String.slice counts it from the end of the line. cursorCol is a byte column; upstream's offsets count UTF-16 units.
+// The prefix is not always the text before the cursor (the editor applies the last published popup at the cursor a word move left it at), so
+// the byte subtraction stands in for the unit subtraction only when the prefix really is the bytes before the cursor.
 func textBeforePrefix(line string, cursorCol int, prefix string) string {
-	if before := cursorCol - len(prefix); before >= 0 {
+	if before := cursorCol - len(prefix); before >= 0 && line[before:cursorCol] == prefix {
 		return line[:before]
 	}
 	return jsstring.Slice(line, 0, jsstring.Length(line[:cursorCol])-jsstring.Length(prefix))

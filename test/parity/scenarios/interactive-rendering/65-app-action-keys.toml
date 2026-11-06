@@ -12,7 +12,7 @@
 # The double Escape is not driven here: tmux delivers consecutive keys too far apart to hold the 500 ms window reliably; unit tests drive it with a set lastEscapeTime.
 # Mutation proof (PiG, run in tern-ci:v7): toggleThinkingVisibility removed, /tree run for app.session.tree, handleModelPicker removed, /resume run for app.session.new and cycleThinkingLevel removed each fail a step.
 
-name = "59-app-action-keys"
+name = "65-app-action-keys"
 description = "Remapped session keys, thinking and tool toggles, the model selector key reach the same handlers in both binaries."
 covers = [
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",

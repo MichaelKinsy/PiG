@@ -1715,7 +1715,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	// Pi sets up managed tools after the startup header and before extensions, still under handleStartupSubmit; setupEditorSubmitHandler follows (interactive-mode.ts:1017-1028).
 	m.ensureManagedTools(ctx, tools.NewToolsManager(m.opts.AgentDir))
 	m.endStartupSubmitWindow()
-	// A quit the startup keys requested ends init() here; run() then takes the exit.
+	// A quit the startup keys requested ends init() here; run() then takes the exit before any startup work.
 	if m.requestExit.Load() {
 		return nil
 	}
@@ -1897,6 +1897,10 @@ func (m *InteractiveMode) startInitialMessages(ctx context.Context) {
 // run is upstream's run() after init(): the startup checks, the background refreshes, the signal and resize handlers, the initial messages and
 // the input loop.
 func (m *InteractiveMode) run(ctx context.Context) error {
+	// A quit the startup keys requested ended Init before the session was bound. None of the startup work below may run on it, and the input loop takes the exit.
+	if m.requestExit.Load() {
+		return m.inputLoop(ctx, os.Stdin)
+	}
 	mark := m.startupMark()
 	// Check tmux keyboard setup asynchronously (mirrors upstream
 	// checkTmuxKeyboardSetup, interactive-mode.ts:667-675, 768-818).

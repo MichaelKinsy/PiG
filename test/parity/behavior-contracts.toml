@@ -1061,7 +1061,7 @@ evidence = [
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentStartRestoresTheMainEscapeHandler",
   "internal/codingagent/interactive_events_contract_test.go#TestEventAgentStartClearsThePendingTools",
   "internal/codingagent/interactive_events_contract_test.go#TestEventTurnStartShowsProgressAndTheWorkingStatus",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
 ]
 
 [contract.upstream]
@@ -1085,7 +1085,7 @@ pig_targets = [
 evidence = [
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventQueueUpdateRefreshesThePendingMessages",
   "internal/codingagent/interactive_events_contract_test.go#TestEventUserMessageStartRefreshesThePendingMessages",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
   "test/parity/scenarios/interactive-rendering/58-alt-up-dequeues-queued-message.toml",
 ]
 
@@ -1111,7 +1111,7 @@ evidence = [
   "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCustomUsesTheEntryRenderer",
   "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedCustomMessageDrawsWhenDisplayed",
   "internal/codingagent/interactive_handle_event_entries_test.go#TestHandleEventEntryAppendedIgnoresOtherEntries",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
   "test/parity/scenarios/extensions-runtime/91-boundary-entries-render-live.toml",
 ]
 
@@ -1160,7 +1160,7 @@ evidence = [
   "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventSessionInfoChangedSetsTheTerminalTitle",
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventThinkingLevelChangedRefreshesTheEditorAndFooter",
   "internal/codingagent/session_name_event_test.go#TestSessionNameEventUpdatesInteractiveFooter",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
 ]
 
 [contract.upstream]
@@ -1184,7 +1184,7 @@ evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventMessageStartRendersEachRole",
   "internal/codingagent/interactive_events_contract_test.go#TestEventMessageUpdateStreamsTextAndCreatesOneCardPerToolCall",
   "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageUpdateNeedsAStreamingMessage",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
 ]
 
 [contract.upstream]
@@ -1210,7 +1210,7 @@ evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventMessageEndRequestsAFrame",
   "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndNeedsAStreamingMessage",
   "internal/codingagent/interactive_handle_event_messages_test.go#TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
 ]
 
 [contract.upstream]
@@ -1235,7 +1235,7 @@ evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventToolCardArgumentsAndExecutionStart",
   "internal/codingagent/interactive_events_contract_test.go#TestEventToolUpdateIsPartialAndEndRecordsTheDuration",
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventBashExecutionUpdateChangesNothing",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
 ]
 
 [contract.upstream]
@@ -1261,7 +1261,7 @@ evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndClearsTheRunState",
   "internal/codingagent/interactive_events_contract_test.go#TestEventAgentEndSettlesRunningToolsAndForgetsPendingArguments",
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAgentSettledChecksTheShutdownRequest",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
   "test/parity/scenarios/extensions-runtime/93-shutdown-during-run-waits-for-settle.toml",
 ]
 
@@ -1286,7 +1286,7 @@ pig_targets = [
 evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventCompactionStartAndEnd",
   "internal/codingagent/interactive_handle_event_compaction_test.go#TestHandleEventCompactionEndRedrawsTheTranscriptWithTheSummaryLast",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
   "test/parity/scenarios/compaction/01-compact-command.toml",
 ]
 
@@ -1311,7 +1311,7 @@ pig_targets = [
 evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventAutoRetry",
   "internal/codingagent/interactive_handle_event_run_test.go#TestHandleEventAutoRetryEndRestoresTheMainEscapeHandler",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
 ]
 
 [contract.upstream]
@@ -1334,7 +1334,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/interactive_events_contract_test.go#TestEventSummarizationRetry",
-  "test/parity/scenarios/interactive-rendering/59-handle-event-differential.toml",
+  "test/parity/scenarios/interactive-rendering/66-handle-event-differential.toml",
   "test/parity/scenarios/interactive-rendering/21-status-lifecycle.toml",
 ]
 
@@ -1369,7 +1369,7 @@ evidence = [
   "test/parity/scenarios/fullscreen/10-main-screen-compaction-settled.toml",
   "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
   "tui/fake_cursor_test.go#TestMainScreenResolvesTheFakeCursorOfAnOverlayComponent",
-  "tui/layout_osc133_test.go",
+  "tui/layout_osc133_test.go#TestStripOsc133ZonePrefixMatchesRegexp",
 ]
 
 [contract.upstream]
@@ -2058,7 +2058,7 @@ pig_targets = ["tui/user_message_selector.go#HandleInput"]
 evidence = [
   "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
   "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml",
-  "test/parity/scenarios/interactive-rendering/62-user-message-selector-navigation-confirm.toml",
+  "test/parity/scenarios/interactive-rendering/67-user-message-selector-navigation-confirm.toml",
   "test/parity/scenarios/interactive-rendering/63-user-message-selector-cancel.toml",
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
   "tui/user_message_selector_contract_test.go#TestUserMessageSelectorPageKeyOverlapsMatchPi",
@@ -2513,7 +2513,7 @@ pig_targets = [
   "coding/mcpext/oauth.go#renderCallbackPage",
 ]
 evidence = [
-  "coding/mcpext/oauth_callback_page_internal_test.go",
+  "coding/mcpext/oauth_callback_page_internal_test.go#TestOAuthCallbackPageEscapesRequestValues",
   "test/parity/scenarios/slash-commands/24-mcp-callback-error-page.toml",
   "coding/mcpext/oauth_callback_render_page_contract_test.go#TestMCPCallbackRenderPageMatchesPi",
 ]
@@ -3983,7 +3983,7 @@ id = "coding-agent/config-selector/resource-list-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render"
 family = "selectors"
 kind = "render-layout"
-claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message, byte for byte through navigation, search and toggling, in dark and light themes at both color depths and every width (the two rows Pi leaves unclamped stay unclamped); the one difference is D230: a declared Package member whose file is absent is listed with a warning-colored \"  missing\" suffix (ResourceItem.Health), where Pi lists only files that exist"
+claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message, byte for byte, escapes included, through navigation, search and toggling, in dark and light themes at both color depths and every width, and in the faint-dim system theme through the toggle states (the two rows Pi leaves unclamped stay unclamped); the one difference is D230: a declared Package member whose file is absent is listed with a warning-colored \"  missing\" suffix (ResourceItem.Health), where Pi lists only files that exist"
 status = "divergence"
 pig_targets = [
   "tui/config_selector.go#Render"
@@ -3993,6 +3993,7 @@ evidence = [
   "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
   "coding/cli/config_selector_command_test.go#TestConfigSelectorDisablesEnabledMissingPackageMember",
   "test/parity/scenarios/selectors/02-config-resources-list.toml",
+  "test/parity/scenarios/selectors/18-config-project-toggle.toml",
   "docs/parity/DIVERGENCES.md#D230 `pig config` lists declared Package members that are missing from disk, marked `missing`",
 ]
 
@@ -5991,7 +5992,7 @@ evidence = [
   "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersBashModeFollowsTheEditorText",
   "internal/codingagent/debug_hotkey_test.go#TestShiftCtrlDWritesTheDebugLogThroughTheTuisDebugKey",
   "test/parity/scenarios/interactive-rendering/40-suspend-resume-session.toml",
-  "test/parity/scenarios/interactive-rendering/59-app-action-keys.toml",
+  "test/parity/scenarios/interactive-rendering/65-app-action-keys.toml",
 ]
 
 [contract.upstream]

@@ -71,26 +71,22 @@ func markdownTableProbe(doc string, columns int, fit int) markdownRenderProbe {
 
 func compareMarkdownTablesWithPi(t *testing.T, probes []markdownRenderProbe) {
 	t.Helper()
-	const batch = 150
+	expected := piMarkdownRows(t, probes)
 	theme := taggedMarkdownTheme()
 	SetCapabilities(TerminalCapabilities{TrueColor: true})
 	t.Cleanup(ResetCapabilitiesCache)
 	failures, renders := 0, 0
-	for start := 0; start < len(probes); start += batch {
-		chunk := probes[start:min(start+batch, len(probes))]
-		expected := piMarkdownRows(t, chunk)
-		for i, probe := range chunk {
-			md := NewMarkdownWithOptions(probe.Text, probe.PaddingX, probe.PaddingY, &theme, nil, nil)
-			for w, width := range probe.Widths {
-				renders++
-				got := nonNil(md.Render(width))
-				if !reflect.DeepEqual(got, nonNil(expected[i][w])) {
-					failures++
-					if failures <= 10 {
-						t.Errorf("table %q width %d:\n got %q\nwant %q", probe.Text, width, got, expected[i][w])
-					}
-					break
+	for i, probe := range probes {
+		md := NewMarkdownWithOptions(probe.Text, probe.PaddingX, probe.PaddingY, &theme, nil, nil)
+		for w, width := range probe.Widths {
+			renders++
+			got := nonNil(md.Render(width))
+			if !reflect.DeepEqual(got, nonNil(expected[i][w])) {
+				failures++
+				if failures <= 10 {
+					t.Errorf("table %q width %d:\n got %q\nwant %q", probe.Text, width, got, expected[i][w])
 				}
+				break
 			}
 		}
 	}

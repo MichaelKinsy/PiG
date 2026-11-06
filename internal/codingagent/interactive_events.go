@@ -277,6 +277,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 	case agent.MessageEndEvent:
 		// Pi ends message_end for a user message without rendering or touching the pending tools (interactive-mode.ts handleEvent).
 		if e.Message.User != nil {
+			// pig: the footer holds a stored context estimate (Pi's footer recomputes it on every render), so the user message_end refreshes it here: the prompt counts as soon as the message is recorded.
+			m.refreshFooterContextUsage()
 			break
 		}
 		defer m.refreshFooterContextUsage()

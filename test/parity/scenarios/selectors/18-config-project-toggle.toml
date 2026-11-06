@@ -1,11 +1,13 @@
 # Behavior family: selectors
-# Upstream evidence: Pi 1.5.0 config-selector.ts:492-501, 632-640 and the runner's Pi 1.5.0 run of `config --local --approve` with these keys in tmux 100x35.
+# Upstream evidence: Pi 1.5.0 config-selector.ts:492-501, 632-640 and the runner's Pi 1.5.0 run of `config --local --approve` with these keys in tmux 180x35.
 # Surface: `pi config --local` / `pig config --local` project scope through the real TUI (ResourceList.handleInput space/enter, renderCheckbox)
 #
 # config-selector.ts:492-501 toggles the highlighted item in the project scope by cycling its override: an inherited enabled item goes
 # inherit -> unload ([-] "project unload") -> load ([+] "project load") -> inherit. Two Spaces on the first item and one on the second
 # give "[+] project load" on the first row and "[-] project unload" on the second; the remaining rows stay dim and "inherited global".
-# Both binaries run the same keys and the complete rows, colours included, are compared. Each binary writes its own copy of the project.
+# Both binaries run the same keys and the escaped rows, colours included, are compared byte for byte; only the D2 names below (the configuration
+# directory, the allocated snapshot path in the User label) and the row of PiG's built-in `pig-login` extension (Pi has no such entry) are normalized.
+# The pane is 180 columns wide so Pi's `User (<snapshot path>) · inherited global` row is not cut at any TMPDIR length. Each binary writes its own copy of the project.
 name = "18-config-project-toggle"
 description = "Both binaries cycle project overrides in pi config --local and draw the load, unload and inherited states alike."
 covers = [
@@ -15,7 +17,7 @@ tags = ["fast", "hermetic", "tui"]
 driver = "interactive-tmux"
 
 [tmux]
-width = 100
+width = 180
 height = 35
 ready_pattern_pig = "sample-skill"
 ready_pattern_pi = "sample-skill"
@@ -41,7 +43,7 @@ pi_args = ["config", "--local", "--approve"]
 both_reach_ready = true
 both_not_contain = ["panic:", "goroutine "]
 both_contain = ["Project Local Resources", "[+]", "[-]", "project load", "project unload", "inherited global"]
-output_normalized_equal = true
+escaped_output_equal = true
 runs = 3
 
 # normalize-rationale: D2 config-root names and isolated snapshot suffixes differ by binary.
