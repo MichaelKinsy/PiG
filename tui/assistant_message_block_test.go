@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // TestAssistantMessageBlock_EmptyRendersNothing: zero height when no content.
@@ -208,5 +210,17 @@ func TestAssistantMessageBlock_LengthStopRendersIncompleteResponseError(t *testi
 		if !strings.Contains(full, want) {
 			t.Fatalf("length stop message missing %q: %q", want, full)
 		}
+	}
+}
+
+// A high half ending one delta and a low half starting the next are one character, as in JavaScript.
+func TestAssistantMessageBlock_DeltasJoinSplitSurrogatePairs(t *testing.T) {
+	b := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+	b.SetThinkingDelta(jsstring.FromUTF16([]uint16{0xd83d}))
+	b.SetThinkingDelta(jsstring.FromUTF16([]uint16{0xde00}))
+	b.SetTextDelta("a" + jsstring.FromUTF16([]uint16{0xd83d}))
+	b.SetTextDelta(jsstring.FromUTF16([]uint16{0xde00}) + "b")
+	if b.Thinking() != "\U0001F600" || b.Text() != "a\U0001F600b" {
+		t.Errorf("thinking %q, text %q", b.Thinking(), b.Text())
 	}
 }

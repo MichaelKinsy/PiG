@@ -86,3 +86,13 @@ func TestMarkdownInlineLoneSurrogatesMatchPi(t *testing.T) {
 	}
 	compareMarkdownTextsWithPi(t, texts)
 }
+
+// A high half and a low half that reach the Markdown as one Go string, from a plain concatenation of two JavaScript strings, are one character as in
+// Pi, in a paragraph, a code span and a code fence alike.
+func TestMarkdownAdjacentSurrogateHalvesAreOneCharacterAsInPi(t *testing.T) {
+	high, low := jsstring.FromUTF16([]uint16{0xd83d}), jsstring.FromUTF16([]uint16{0xde00})
+	compareMarkdownTextsWithPi(t, []string{
+		high + low, "a " + high + low + " b", "`" + high + low + "`", "```\n" + high + low + "\n```", "```js\nx" + high + low + "y\n```",
+		"**" + high + low + "** and " + high + low + low, high + high + low + low,
+	})
+}

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -359,6 +360,8 @@ func (m *Markdown) Render(width int) []string {
 	if m.Transform != nil && m.AsyncTransform == nil {
 		content = m.Transform(content, contentWidth)
 	}
+	// A JavaScript string never holds a high half followed by a low half: they are one character. Join two such halves a caller built with a plain Go concatenation; valid text is returned as is.
+	content = jsstring.JoinAdjacentSurrogates(content)
 	out := []string{}
 	if widthx.JSTrim(content) != "" {
 		out = m.renderDocument(content, width, contentWidth)
