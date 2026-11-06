@@ -54,6 +54,7 @@ allow = [
 	"github.com/MichaelKinsy/PiG/internal/packagemanager",
 	"github.com/MichaelKinsy/PiG/internal/photonimage",
 	"github.com/MichaelKinsy/PiG/internal/sessionentry",
+	"github.com/MichaelKinsy/PiG/internal/sortx",
 	"github.com/MichaelKinsy/PiG/internal/typebox",
 	"github.com/MichaelKinsy/PiG/internal/typebox/engine",
 	"github.com/MichaelKinsy/PiG/internal/wordsegmenter",
