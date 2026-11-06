@@ -3958,6 +3958,29 @@
       ]
     },
     {
+      "id": "BF-1e50d90",
+      "title": "Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An…",
+      "symptom": "Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An existing connection was forcibly closed by the remote host`, or waited for it for minutes) because the generated image was built with a 64 MB control stack that every thread it starts keeps, and SBCL on Windows commits a thread's whole stack.",
+      "rootCause": "- ComponentKitWidgetsMatchPi packed-lisp/Editor and subprocess-lisp/Editor: the extension's connection ended (\"wsarecv: An existing connection was forcibly closed\") or never answered. Both are new since the deepjson change, which built the generated image with --control-stack-size 64MB so that every thread (one per request or kit event) could decode a frame nested 10000 levels. SBCL on Windows commits a thread's whole stack, which Linux and macOS reserve as NORESERVE address space. The image keeps SBCL's default stack again (pig-lisp-image-3); the JSON reader and writer recurse to 256 levels and walk deeper containers with a stack of their own, and clone-stream-value, core-js-ordered and…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An existing connection was forcibly closed by the remote host`, or waited for it for minutes) because the generated image was built with a 64 MB control stack that every thread it starts keeps, and SBCL on Windows commits a thread's whole stack. The image keeps SBCL's default control stack again; the SDK's JSON reader and writer keep nested containers on a stack of their own, so a request with arguments nested up to the 10000 levels the host sends is still read, answered and written on any thread.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1e50d903e1",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK",
+        "test/extension-conformance/tool_params_deep_test.go::TestToolParamsNestingAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-1ed43b3",
       "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
       "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",

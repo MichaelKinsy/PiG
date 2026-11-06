@@ -153,6 +153,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
+| [BF-1e50d90](#bf-1e50d90) | Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An… | PiG's own defect | Windows | Unreleased |
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1f2f940](#bf-1f2f940) | The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the… | PiG's own defect | All platforms | 0.7.0 |
@@ -3564,6 +3565,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1de91268b6` (2026-10-31)
 - **Tests:** `schema/formats/conformance_test.go::TestConformance`, `schema/formats/formats_test.go::TestSplitSurrogatePairs`, `schema/formats/oracle_test.go::TestOracleCorpus`
+
+### BF-1e50d90
+
+**Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An existing connection was forcibly closed by the remote host`, or waited for it for minutes) because the generated image was built with a 64 MB control stack that every thread it starts keeps, and SBCL on Windows commits a thread's whole stack.
+- **Root cause:** - ComponentKitWidgetsMatchPi packed-lisp/Editor and subprocess-lisp/Editor: the extension's connection ended ("wsarecv: An existing connection was forcibly closed") or never answered. Both are new since the deepjson change, which built the generated image with --control-stack-size 64MB so that every thread (one per request or kit event) could decode a frame nested 10000 levels. SBCL on Windows commits a thread's whole stack, which Linux and macOS reserve as NORESERVE address space. The image keeps SBCL's default stack again (pig-lisp-image-3); the JSON reader and writer recurse to 256 levels and walk deeper containers with a stack of their own, and clone-stream-value, core-js-ordered and…
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `1e50d903e1` (2026-11-06)
+- **Tests:** `test/extension-conformance/deep_event_delta_test.go::TestDeepEventStreamDeltasReachEverySDK`, `test/extension-conformance/tool_params_deep_test.go::TestToolParamsNestingAcrossSDKs`
+- **Release note:** Lisp extension SDK on Windows: an extension could end in the middle of a session (the host reported `An existing connection was forcibly closed by the remote host`, or waited for it for minutes) because the generated image was built with a 64 MB control stack that every thread it starts keeps, and SBCL on Windows commits a thread's whole stack. The image keeps SBCL's default control stack again; the SDK's JSON reader and writer keep nested containers on a stack of their own, so a request with arguments nested up to the 10000 levels the host sends is still read, answered and written on any thread.
 
 ### BF-1ed43b3
 
