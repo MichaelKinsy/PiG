@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 )
 
+// pig divergence (D272): this program is the upgrade type check, built and run by the pig command from the staged SDK so that the pig binary does not link go/types.
 func main() {
 	if err := run(os.Stdin, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "driver:", err)
