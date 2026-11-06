@@ -21,7 +21,9 @@ const pipeBuffer = 64 * 1024
 // holds up the PeekNamedPipe that the reader of a later pipe makes on it, and nothing can wait for data without a thread blocked in the read. The read
 // end here is created overlapped (a named pipe instance, as libuv's uv__create_stdio_pipe_pair makes it): Go's os.NewFile finds that out and parks the
 // reader on the completion port, a peek never waits, and pollReadable waits for data on an event instead of sleeping. The write end is a synchronous
-// handle, inheritable, because the child is an ordinary program that writes with no OVERLAPPED.
+// handle, inheritable, because the child is an ordinary program that writes with no OVERLAPPED. It is opened with FILE_READ_ATTRIBUTES besides write access,
+// as CreatePipe and libuv do: a child that asks the pipe about itself (Node closing its stdout, Cygwin and MSYS choosing a chunk size, GetNamedPipeInfo)
+// is refused without it.
 func NewPipe() (read, write *os.File, err error) {
 	var random [16]byte
 	if _, err := rand.Read(random[:]); err != nil {
@@ -47,7 +49,7 @@ func NewPipe() (read, write *os.File, err error) {
 		return nil, nil, err
 	}
 	attributes := windows.SecurityAttributes{Length: uint32(unsafe.Sizeof(windows.SecurityAttributes{})), InheritHandle: 1} //nolint:gosec // G103: the size of the struct passed to CreateFile.
-	client, err := windows.CreateFile(name, windows.GENERIC_WRITE, 0, &attributes, windows.OPEN_EXISTING, 0, 0)
+	client, err := windows.CreateFile(name, windows.GENERIC_WRITE|windows.FILE_READ_ATTRIBUTES, 0, &attributes, windows.OPEN_EXISTING, 0, 0)
 	if err != nil {
 		_ = windows.CloseHandle(server)
 		return nil, nil, err

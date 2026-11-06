@@ -5,6 +5,7 @@ package childwait
 import (
 	"errors"
 	"os"
+	"runtime"
 	"time"
 	"unsafe"
 
@@ -71,8 +72,13 @@ func peekPipe(file *os.File) (avail uint32, ended, closed bool) {
 // pollReadable waits up to timeoutMS for the read end of a pipe to hold bytes or to end. closed is true when the handle is gone.
 //
 // On the overlapped read end that NewPipe makes it waits on an event: a zero-byte ReadFile completes when the pipe holds data or its last write end
-// closes (libuv waits the same way), and closing the file cancels it. Any other handle (os.Pipe's, synchronous) cannot be waited on without holding up
-// the peek of a later pipe's reader, so it is polled every millisecond.
+// closes (libuv waits the same way). Any other handle (os.Pipe's, synchronous) cannot be waited on without holding up the peek of a later pipe's reader, so
+// it is polled every millisecond.
+//
+// timeoutMS must be finite, and it is what bounds the release of the file. Closing the file cancels a read that has been issued (poll.FD.Close calls
+// CancelIoEx), but a Close that lands between Control's reference on the handle and the ReadFile cancels nothing, and then waits in Close, inside the
+// caller's Control, for this wait to end by itself: for the timeout, or for data or the end of the pipe. With an infinite timeout that Close could hang.
+// The caller (awaitTurn) asks again after a timeout and learns then that the file is gone.
 func pollReadable(file *os.File, timeoutMS int) (readable, closed bool) {
 	conn, err := file.SyscallConn()
 	if err != nil {
@@ -84,6 +90,12 @@ func pollReadable(file *os.File, timeoutMS int) (readable, closed bool) {
 		return false, true
 	}
 	return readable, closed
+}
+
+// readOp is the zero-byte read of waitReadable: the OVERLAPPED the kernel fills in, and the count it reports.
+type readOp struct {
+	overlapped windows.Overlapped
+	n          uint32
 }
 
 func waitReadable(handle windows.Handle, timeoutMS int) (readable, closed bool) {
@@ -103,16 +115,21 @@ func waitReadable(handle windows.Handle, timeoutMS int) (readable, closed bool) 
 	}
 	defer func() { _ = windows.CloseHandle(event) }()
 	// The low-order bit of hEvent keeps this completion off the I/O completion port the Go runtime has the handle on, which would take it for one of its own.
-	op := &windows.Overlapped{HEvent: event | 1}
-	var n uint32
-	err = windows.ReadFile(handle, nil, &n, op)
+	// The kernel owns the OVERLAPPED from ReadFile until the read is over, and writes its status into it then: it must not be on a goroutine stack, which the
+	// runtime may move or shrink meanwhile. It is allocated on the heap and pinned for the call, as internal/poll does for its own.
+	op := &readOp{}
+	op.overlapped.HEvent = event | 1
+	var pinner runtime.Pinner
+	pinner.Pin(op)
+	defer pinner.Unpin()
+	err = windows.ReadFile(handle, nil, &op.n, &op.overlapped)
 	if errors.Is(err, windows.ERROR_IO_PENDING) {
 		wait := uint32(max(timeoutMS, 0))
 		if status, _ := windows.WaitForSingleObject(event, wait); status != windows.WAIT_OBJECT_0 {
 			// Timed out: end the read, and wait for it to be over, because the kernel owns op until then.
-			_ = windows.CancelIoEx(handle, op)
+			_ = windows.CancelIoEx(handle, &op.overlapped)
 		}
-		err = windows.GetOverlappedResult(handle, op, &n, true)
+		err = windows.GetOverlappedResult(handle, &op.overlapped, &op.n, true)
 	}
 	switch {
 	case err == nil:
