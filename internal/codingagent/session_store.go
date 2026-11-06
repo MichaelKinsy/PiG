@@ -502,13 +502,17 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 			out[k] = entry
 		}
 	}
-	parallelOver(order, read)
+	parallelOverWeighted(order, func(k int) int64 { return int64(s.coldPart(&s.slots[indexes[k]]).size) }, parallelReadMinBytes, read)
 	return out
 }
 
 // parallelReadMinLines is the number of lines each goroutine of a parallel read decodes at least, so a small read stays on the caller.
 // pig additive (D112): Pi holds every entry decoded (session-manager.ts _buildIndex); the split is a Go CPU choice and the result is in append order.
 const parallelReadMinLines = 256
+
+// parallelReadMinBytes is the record bytes each goroutine of a parallel read decodes at least: a read decodes about 30 MB a second on one
+// goroutine, so a million bytes is tens of milliseconds, past the cost of starting one.
+const parallelReadMinBytes = 1 << 20
 
 // allEntriesLocked returns every entry in append order, decoded. The caller holds s.mu.
 func (s *Session) allEntriesLocked() []SessionEntry {
