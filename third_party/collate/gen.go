@@ -1,7 +1,8 @@
 //go:build ignore
 
-// Command gen writes tables.go of package collate: the root-locale part of the tables of golang.org/x/text/collate at the version go.mod
-// requires, renumbered densely (see tablegen). Run by `go generate`; TestTablesMatchXText fails when tables.go and x/text disagree.
+// Command gen writes tables.go and tables.bin of package collate: the root-locale part of the tables of golang.org/x/text/collate at the version
+// go.mod requires, renumbered densely (see tablegen), and the same tables compressed. Run by `go generate`; TestTablesMatchXText fails when
+// they and x/text disagree.
 package main
 
 import (
@@ -15,24 +16,32 @@ import (
 )
 
 func main() {
-	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}} {{.Version}}", "golang.org/x/text").Output()
-	if err != nil {
+	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "gen:", err)
 		os.Exit(1)
+	}
+}
+
+func run() error {
+	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}} {{.Version}}", "golang.org/x/text").Output()
+	if err != nil {
+		return err
 	}
 	dir, version, _ := strings.Cut(strings.TrimSpace(string(out)), " ")
 	tables, err := os.ReadFile(filepath.Join(dir, "collate", "tables.go"))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "gen:", err)
-		os.Exit(1)
+		return err
 	}
 	generated, err := tablegen.Generate(tables, "golang.org/x/text@"+version+"/collate/tables.go")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "gen:", err)
-		os.Exit(1)
+		return err
 	}
-	if err := os.WriteFile("tables.go", generated, 0o644); err != nil {
-		fmt.Fprintln(os.Stderr, "gen:", err)
-		os.Exit(1)
+	compressed, err := tablegen.Compress(generated.Raw)
+	if err != nil {
+		return err
 	}
+	if err := os.WriteFile("tables.bin", compressed, 0o644); err != nil {
+		return err
+	}
+	return os.WriteFile("tables.go", generated.Source, 0o644)
 }

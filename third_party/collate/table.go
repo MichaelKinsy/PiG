@@ -37,7 +37,7 @@ func lookupString(s string) (v Elem, sz int) {
 		if c1 < tx || t2 <= c1 {
 			return 0, 1
 		}
-		return Elem(valueWindows[i][c1-tx]), 2
+		return Elem(valueWindows[int(i)*blockSize+int(c1-tx)]), 2
 	case c0 < t4:
 		if len(s) < 3 {
 			return 0, 0
@@ -47,12 +47,12 @@ func lookupString(s string) (v Elem, sz int) {
 		if c1 < tx || t2 <= c1 {
 			return 0, 1
 		}
-		i = indexWindows[i][c1-tx]
+		i = indexWindows[int(i)*blockSize+int(c1-tx)]
 		c2 := s[2]
 		if c2 < tx || t2 <= c2 {
 			return 0, 2
 		}
-		return Elem(valueWindows[i][c2-tx]), 3
+		return Elem(valueWindows[int(i)*blockSize+int(c2-tx)]), 3
 	case c0 < t5:
 		if len(s) < 4 {
 			return 0, 0
@@ -62,17 +62,17 @@ func lookupString(s string) (v Elem, sz int) {
 		if c1 < tx || t2 <= c1 {
 			return 0, 1
 		}
-		i = indexWindows[i][c1-tx]
+		i = indexWindows[int(i)*blockSize+int(c1-tx)]
 		c2 := s[2]
 		if c2 < tx || t2 <= c2 {
 			return 0, 2
 		}
-		i = indexWindows[i][c2-tx]
+		i = indexWindows[int(i)*blockSize+int(c2-tx)]
 		c3 := s[3]
 		if c3 < tx || t2 <= c3 {
 			return 0, 3
 		}
-		return Elem(valueWindows[i][c3-tx]), 4
+		return Elem(valueWindows[int(i)*blockSize+int(c3-tx)]), 4
 	}
 	// Illegal rune
 	return 0, 1
