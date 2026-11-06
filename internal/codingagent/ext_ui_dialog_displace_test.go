@@ -3,11 +3,14 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 type dialogCall struct {
@@ -139,5 +142,41 @@ func TestAbortingAHiddenDialogLeavesTheShownDialog(t *testing.T) {
 	}
 	if m.shownExtensionDialog() != nil || m.editorContainer.Children()[0] != tui.Component(m.editor) {
 		t.Fatal("answering the last dialog did not restore the editor")
+	}
+}
+
+// pi main 3b57ed7e2 (#11072; D257) through the extension dialog path: ui.select with a long list shows a ten-option window around the
+// cursor, the cursor keys dispatched by the mode move it, and the chosen option settles the call.
+func TestExtensionSelectLongListShowsAWindowAroundTheCursor(t *testing.T) {
+	m, _ := newExtensionDialogProbe(t)
+	ui := &ExtUIContext{m: m}
+	options := make([]string, 15)
+	for i := range options {
+		options[i] = "option-" + strconv.Itoa(i+1)
+	}
+	result := startDialog(t, m, func() (string, error) {
+		return ui.Select(context.Background(), "Choose", options, extension.ExtensionUIDialogOptions{})
+	})
+	shown := m.shownExtensionDialog()
+	if shown == nil {
+		t.Fatal("selector is not installed")
+	}
+	rows := func() string { return widthx.StripAnsi(strings.Join(shown.component.Render(80), "\n")) }
+	if out := rows(); !strings.Contains(out, "option-10") || strings.Contains(out, "option-11") || !strings.Contains(out, "  (1/15)") {
+		t.Fatalf("first window:\n%s", out)
+	}
+	for range 14 {
+		if err := m.dispatchKey(context.Background(), "\x1b[B"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if out := rows(); !strings.Contains(out, "→ option-15") || strings.Contains(out, "option-5\n") || !strings.Contains(out, "  (15/15)") {
+		t.Fatalf("last window:\n%s", out)
+	}
+	if err := m.dispatchKey(context.Background(), "\r"); err != nil {
+		t.Fatal(err)
+	}
+	if got := requireResult(t, result, "selector"); got.err != nil || got.value != "option-15" {
+		t.Fatalf("selected %q, %v; want option-15", got.value, got.err)
 	}
 }

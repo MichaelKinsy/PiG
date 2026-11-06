@@ -1,7 +1,6 @@
 package codingagent
 
 import (
-	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -128,21 +127,24 @@ func changelogMarkdown(entries []ChangelogEntry) string {
 	return strings.Join(parts, "\n\n")
 }
 
-// GetNewEntries returns the entries whose version is newer than sinceVersion. The last-seen version is read as upstream's
-// `lastVersion.split(".").map(Number)` does: each of the first three dot-separated parts is a JavaScript Number, and a part
-// that is missing or not a number counts as 0 (utils/changelog.ts getNewEntries).
-func GetNewEntries(entries []ChangelogEntry, sinceVersion string) []ChangelogEntry {
-	parts := strings.Split(sinceVersion, ".")
-	part := func(i int) float64 {
-		if i >= len(parts) {
-			return 0
-		}
-		if number := jsStringToNumber(parts[i]); number != 0 && !math.IsNaN(number) {
-			return number
-		}
-		return 0
+// lastSeenVersionRE reads the leading major.minor.patch of a recorded version.
+var lastSeenVersionRE = lazyregexp.New(`^v?([0-9]+)\.([0-9]+)\.([0-9]+)`)
+
+// GetNewEntries returns the entries whose version is newer than sinceVersion, and false when sinceVersion has no major.minor.patch
+// to compare against. Only the leading major.minor.patch is read, like the changelog headings, so a prerelease or build suffix such as
+// 0.1.5-20261020.7 counts as 0.1.5 and its notes are not shown again on every launch.
+//
+// pig divergence (D245): Pi 1.5.0 reads `lastVersion.split(".").map(Number)`, so 0.1.5-20261020.7 counts as 0.1.0 and an unreadable
+// value as 0.0.0; Pi main 9a1953961 (#11753) reads the leading triple and returns undefined for an unreadable one.
+func GetNewEntries(entries []ChangelogEntry, sinceVersion string) ([]ChangelogEntry, bool) {
+	parts := lastSeenVersionRE.FindStringSubmatch(jsstring.Trim(sinceVersion))
+	if parts == nil {
+		return nil, false
 	}
-	last := [3]float64{part(0), part(1), part(2)}
+	var last [3]float64
+	for i := range last {
+		last[i], _ = strconv.ParseFloat(parts[i+1], 64)
+	}
 	var newer []ChangelogEntry
 	for _, e := range entries {
 		for i, value := range [3]float64{float64(e.Major), float64(e.Minor), float64(e.Patch)} {
@@ -155,33 +157,5 @@ func GetNewEntries(entries []ChangelogEntry, sinceVersion string) []ChangelogEnt
 			break
 		}
 	}
-	return newer
-}
-
-var jsDecimalLiteral = lazyregexp.New(`^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$`)
-
-// jsStringToNumber is Number(text) for a string: surrounding JavaScript whitespace is ignored, the empty string is 0, Infinity, decimal and
-// 0x/0o/0b literals convert and anything else is NaN.
-func jsStringToNumber(text string) float64 {
-	text = jsstring.Trim(text)
-	switch {
-	case text == "":
-		return 0
-	case text == "Infinity" || text == "+Infinity":
-		return math.Inf(1)
-	case text == "-Infinity":
-		return math.Inf(-1)
-	case jsDecimalLiteral.MatchString(text):
-		number, _ := strconv.ParseFloat(text, 64)
-		return number
-	}
-	if len(text) > 2 && text[0] == '0' {
-		base := map[byte]int{'x': 16, 'X': 16, 'o': 8, 'O': 8, 'b': 2, 'B': 2}[text[1]]
-		if base != 0 {
-			if number, err := strconv.ParseUint(text[2:], base, 64); err == nil && !strings.HasPrefix(text[2:], "+") {
-				return float64(number)
-			}
-		}
-	}
-	return math.NaN()
+	return newer, true
 }

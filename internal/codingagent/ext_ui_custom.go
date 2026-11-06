@@ -149,7 +149,7 @@ func (c *customCall) build(ctx context.Context, create extension.CustomFactory, 
 	if ctx.Err() != nil {
 		return
 	}
-	c.savedText = m.editor.Text()
+	c.savedText = m.editor.GetExpandedText() // pig divergence (D251): Pi main 51313540a keeps pasted text
 	c.mu.Lock()
 	c.building = true
 	c.mu.Unlock()

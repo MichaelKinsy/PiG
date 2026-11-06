@@ -22,7 +22,7 @@
 // link silent for the heartbeat (30 s) is closed by this host, and the process exits with it; the heartbeat starts with the
 // link, so a host nothing attaches has none.
 import { EventEmitter } from "node:events";
-import { enableCompileCache } from "node:module";
+import { enableCompileCache, flushCompileCache } from "node:module";
 import { connect } from "node:net";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import "./resolve.mjs";
@@ -33,7 +33,11 @@ import { createTelemetry } from "./telemetry.mjs";
 import { inspect } from "node:util";
 
 // V8's code cache for the modules below (Pi's vendored closure, type-stripped on import), kept in the extracted tree: a
-// process after the first starts from compiled code.
+// process after the first starts from compiled code. Node writes the cache of the modules a process compiled when the process
+// exits, one file after another, which on Windows took seconds for a cold cache (a new tree, new plugins) and outlasted the
+// Go side's stop grace when the link closed: the process was killed after it had ended its channel and run its exit handlers.
+// So the cache is written once the process is up and after each load and reload (`flushCompileCache`), where no grace runs,
+// and the exit has left to write only what was compiled after them (a dynamic import in a plugin's call).
 enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
@@ -320,7 +324,11 @@ port.on("message", (message) => {
 	).then((reply) => {
 		running.delete(message.id);
 		port.control(reply);
+		// The modules the request imported (a load's plugins, a reload's) are compiled: the reply is out before the cache is written.
+		if (message.op === "load" || message.op === "reload") flushCompileCache();
 	});
 });
 
 port.control({ event: "started" });
+// After `started` is out: a Go side that waits for it (a spare process is started ahead of a load) is not held for the write.
+setImmediate(flushCompileCache);

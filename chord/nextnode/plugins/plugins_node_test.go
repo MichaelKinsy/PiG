@@ -478,6 +478,60 @@ func TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat(t *testing
 	}
 }
 
+// compileCacheFiles counts the cache entries (not their temporary files) in dir, the V8 compile cache of a process's tree.
+func compileCacheFiles(t *testing.T, dir string) int {
+	t.Helper()
+	count := 0
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && !strings.Contains(entry.Name(), ".") {
+			count++
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal(err)
+	}
+	return count
+}
+
+// Not Pi's: Pi's plugins run in the app's process. Node writes the V8 compile cache of the modules a process compiled when the
+// process exits, one file after another, before it is gone. A process whose cache is cold (a new tree, new plugins) had its
+// writes on its exit path, where each took long enough on Windows under load that together they outlasted the stop grace after
+// its link closed: the Go side killed the process after it had run its exit handlers
+// (TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat, "its link closed and it did not exit within 5s", exit
+// status 1). The process writes the cache once it is up, so its exit has none left to write.
+func TestNodeTheCompileCacheIsWrittenBeforeTheProcessExits(t *testing.T) {
+	cache := t.TempDir()
+	runtime, node := probeNode(t, `echo: async (args) => args`, NodeOptions{CacheDir: cache}, nil)
+	// The load's reply precedes the write of its cache; a request after it is handled only once that write is done.
+	if _, err := runtime.Reload(node, nil, background); err != nil {
+		t.Fatal(err)
+	}
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-node.Exited():
+		t.Fatalf("the process ended: %v", node.Err())
+	default:
+	}
+	dir := filepath.Join(tree, "v8")
+	before := compileCacheFiles(t, dir)
+	if before == 0 {
+		t.Fatal("the process, still running after its load, has written none of its compile cache: it would write it as it exits")
+	}
+	if err := node.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if after := compileCacheFiles(t, dir); after != before {
+		t.Fatalf("the compile cache has %d entries before the process exited and %d after: it wrote %d on its exit path", before, after, after-before)
+	}
+}
+
 // A link attached long after the heartbeat's window carries the host, and the heartbeat then runs for it: the Go host
 // answers the pings, so the host outlives several windows attached.
 func TestNodeALinkAttachedAfterManyHeartbeatWindowsCarriesTheHost(t *testing.T) {
@@ -896,5 +950,68 @@ export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main",
 	t.Cleanup(ref.Release)
 	if got, err := ref.Call("hi", "there", background); err != nil || got != "hi there" {
 		t.Fatalf("hi = %v, %v", got, err)
+	}
+}
+
+// holdingNode is a Node host (stop grace one second) whose process started a child that inherited its output pipes and sleeps
+// for a minute; the child is killed with the test.
+func holdingNode(t *testing.T) *NodeHost {
+	t.Helper()
+	grace := time.Second
+	_, node := probeNode(t, `hold: async () => { const { spawn } = await import("node:child_process"); const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: ["ignore", "inherit", "inherit"], detached: true }); child.unref(); return child.pid; }`, NodeOptions{StopGrace: &grace}, nil)
+	pid := probeOn(t, serverFor(t, workerRoute(node))).must("hold", nil)
+	t.Cleanup(func() {
+		if number, ok := pid.(float64); ok {
+			if process, err := os.FindProcess(int(number)); err == nil {
+				_ = process.Kill()
+			}
+		}
+	})
+	return node
+}
+
+// Not Pi's wording: the exit of the process is what the Go side waits for (Pi's server awaits `child.process.exited`), not the
+// end of its output pipes. A process the plugins started that inherited the pipes (here a Node that sleeps) outlives the host's
+// process and holds them; the host's exit must not wait for it, as `exec.Cmd.Wait` does without a WaitDelay, and the exit is a
+// clean one: the process exited with code 0.
+func TestNodeAProcessTheHostStartedThatHoldsItsPipesDoesNotHoldItsExit(t *testing.T) {
+	node := holdingNode(t)
+	done := make(chan error, 1)
+	go func() { done <- node.Close(background) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Close = %v", err)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("the process's exit waited for what holds its pipes")
+	}
+	select {
+	case <-node.Exited():
+	default:
+		t.Fatal("Close returned before the process ended")
+	}
+	if node.Err() != nil {
+		t.Fatalf("Err = %v after a requested close", node.Err())
+	}
+}
+
+// The same child holds the pipes when the link closes: the process exits by itself, so the grace of the closed link, which ends
+// before the exit is seen (the exit waits for the pipes up to the grace after the process ended), kills nothing and the exit says
+// no kill happened: it is a clean one that nobody asked for, not "its link closed and it did not exit within the grace".
+func TestNodeAProcessThatExitedByItselfAfterItsLinkClosedWhileAChildHeldItsPipesIsNotReportedKilled(t *testing.T) {
+	node := holdingNode(t)
+	node.Link().Close()
+	select {
+	case <-node.Exited():
+	case <-time.After(20 * time.Second):
+		t.Fatal("the process's exit waited for what holds its pipes")
+	}
+	var exit *NodeExit
+	if !errors.As(node.Err(), &exit) {
+		t.Fatalf("Err = %v, want the process's exit", node.Err())
+	}
+	if exit.Err != nil || exit.Reason != "" || exit.Signal != "" || exit.Code != 0 {
+		t.Fatalf("exit = %+v, want a clean exit with no kill reason (the Go side killed nothing)", exit)
 	}
 }

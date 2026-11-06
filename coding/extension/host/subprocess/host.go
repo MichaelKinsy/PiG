@@ -293,6 +293,8 @@ type Host struct {
 	nested nestedCalls
 	// sessionGraphObjects holds the session graph objects each connection built; sessionGraphBackend serves them (session_graph.go).
 	sessionGraphObjects sessionGraphTable
+	// typeEngines holds the TypeBox engine session of each connection; its parked Value walks end with it (type_engine.go).
+	typeEngines         typeEngineTable
 	sessionGraphMu      sync.Mutex
 	sessionGraphBackend SessionGraphBackend
 	// runSignals numbers the active run's signal and watches it for its abort (run_signal.go).
@@ -2562,6 +2564,7 @@ func (h *Host) Shutdown(reason string) {
 	// A child session outlives the extension's dispose of it, and the objects it was created over outlive the extension's handles. Pi's child AgentSession runs in the host's own process and ends with it; here its extension host is a process of its own, so Shutdown closes the sessions and releases the objects, and no process they started outlives it.
 	h.childSessions.closeAll()
 	h.sessionGraphObjects.closeAll()
+	h.typeEngines.closeAll()
 	if h.uiBridge != nil {
 		h.uiBridge.StopFrontendPushes()
 	}

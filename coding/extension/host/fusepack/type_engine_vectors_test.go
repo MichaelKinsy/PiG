@@ -159,7 +159,7 @@ var engineServedMembers = map[string]bool{
 }
 
 func TestTypeEngineMembersMatchPi(t *testing.T) {
-	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.NewSession().Serve})
 	t.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "test", "parity", "sdk-vectors", "pi-ai", "Type.json"))
 	if err != nil {
@@ -249,7 +249,7 @@ func TestTypeEngineMembersMatchPi(t *testing.T) {
 // BenchmarkTypeBuildThroughEngine is a schema build that reaches the engine, the way an extension builds one: Type.Pick of a four-property object, with the engine in process (the
 // fused path: the SDK's encoder and decoder and the engine, with no socket).
 func BenchmarkTypeBuildThroughEngine(b *testing.B) {
-	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.Serve})
+	sdk.SetHostHelpers(&sdk.HostHelpers{TypeEngine: engine.NewSession().Serve})
 	b.Cleanup(func() { sdk.SetHostHelpers(nil) })
 	base := sdk.Type.Object(sdk.NewOrderedObject("id", sdk.Type.String(), "name", sdk.Type.Optional(sdk.Type.String()), "n", sdk.Type.Integer(), "tags", sdk.Type.Array(sdk.Type.String())))
 	b.ReportAllocs()

@@ -1129,6 +1129,52 @@ fn main() {
             &root,
             |_, _| ToolResult::text("ok"),
         );
+        let probe = root.clone();
+        let probed = log.clone();
+        ext.command(
+            "refine_value",
+            "Run Value.check or Value.errors on the refine-probe schema",
+            move |ctx, args| {
+                let case: serde_json::Value = match serde_json::from_str(args) {
+                    Ok(case) => case,
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                };
+                let value = case
+                    .get("value")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                let outcome = match case.get("mode").and_then(|mode| mode.as_str()) {
+                    Some("cycle") => Type::unsafe_(json!({"$ref": "#"}).as_object().unwrap())
+                        .and_then(|cyclic| pig_sdk::value::Value::check(cyclic, &json!(1)))
+                        .map(|valid| json!(valid)),
+                    Some("check") => pig_sdk::value::Value::check(probe.clone(), &value)
+                        .map(|valid| json!(valid)),
+                    Some("errors") => {
+                        pig_sdk::value::Value::errors(probe.clone(), &value).map(|list| {
+                            json!(
+                                list.iter()
+                                    .map(|error| json!({
+                                        "keyword": error.keyword,
+                                        "schemaPath": error.schema_path,
+                                        "instancePath": error.instance_path,
+                                        "params": error.params,
+                                        "message": error.message,
+                                    }))
+                                    .collect::<Vec<_>>()
+                            )
+                        })
+                    }
+                    _ => return CommandResult::Error("mode must be check or errors".to_string()),
+                };
+                let calls: Vec<String> = std::mem::take(&mut *probed.lock().unwrap());
+                let report = match outcome {
+                    Ok(result) => json!({"result": result, "calls": calls}),
+                    Err(thrown) => json!({"thrown": thrown, "calls": calls}),
+                };
+                ctx.notify(&format!("refine_value:{report}:end"), "info");
+                CommandResult::Ok
+            },
+        );
         let reported = log.clone();
         ext.command(
             "refine_log",

@@ -14,7 +14,7 @@ type RefineCheck = Arc<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>;
 pub(crate) type RefineError = dyn Fn(&Value) -> Result<String, String> + Send + Sync;
 
 /// One entry of a schema's hidden `~refine` list (TypeBox's `{check, error}`): `check` decides whether a value passes and `error` words the failure (`None` is TypeBox's
-/// "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
+/// "Refine Error"). [`Value::check`](crate::value::Value::check) and [`Value::errors`](crate::value::Value::errors) run them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
 /// registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler.
 #[derive(Clone)]
 pub struct Refinement {
@@ -782,8 +782,9 @@ impl Type {
     }
     /// `Type.Optional(value)` of a value that is not a [`TSchema`]: a plain JSON object, or a list (whose copy loses the marker, see [`Type::unsafe_`]). Any other value is an error.
     /// `Type.Refine(type, check, error?)`: a copy of the schema whose hidden `~refine` list has the refinement appended; the schema's JSON does not change. The refinements are
-    /// not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler.
-    /// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
+    /// run by [`Value::check`](crate::value::Value::check) and [`Value::errors`](crate::value::Value::errors); a tool's arguments are not refined (as in Pi), so check such constraints
+    /// in the handler with them.
+    /// pig divergence (D226): Value.Check and Value.Errors reach TypeBox through the host, and the refinements run in this process; a tool's arguments are not refined, as in Pi.
     pub fn refine(
         schema: impl Into<TSchema>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
@@ -798,7 +799,7 @@ impl Type {
     }
 
     /// `Type.Refine(value, check, error?)` of a value that is not a [`TSchema`]: a plain JSON object or a list. Any other value is an error.
-    /// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
+    /// pig divergence (D226): Value.Check and Value.Errors reach TypeBox through the host, and the refinements run in this process; a tool's arguments are not refined, as in Pi.
     pub fn refine_value(
         value: impl Into<TValue>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,

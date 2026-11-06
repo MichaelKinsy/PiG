@@ -102,6 +102,38 @@ func TestExtensionChangelogUpdatesUpstream(t *testing.T) {
 		}
 	})
 
+	// pi: interactive-mode-extension-changelog.test.ts "does not repeat entries for a prerelease version" (Pi main 9a1953961, #11703); D245.
+	t.Run("does not repeat entries for a prerelease version", func(t *testing.T) {
+		sm := NewInMemorySettingsManager(Settings{})
+		info := newSourceInfo()
+		writePackage("1.0.0")
+		display(sm, info, false)
+		writePackage("1.2.0-20261020.7")
+		if got := display(sm, info, false); len(got) != 1 {
+			t.Fatalf("first display = %+v, want one update", got)
+		}
+		if got := display(sm, info, false); len(got) != 0 {
+			t.Fatalf("second display = %+v, want none", got)
+		}
+	})
+
+	t.Run("shows nothing for an unreadable last seen version and records the current one", func(t *testing.T) {
+		sm := NewInMemorySettingsManager(Settings{})
+		info := newSourceInfo()
+		_ = sm.SetExtensionChangelogVersion(source.GetSourcePackageKey(info.Source, info.Scope), "latest")
+		writePackage("1.0.0")
+		if got := display(sm, info, false); len(got) != 0 {
+			t.Fatalf("updates = %+v, want none", got)
+		}
+		if version, _ := recorded(sm, info); version != "1.0.0" {
+			t.Fatalf("recorded version = %q, want 1.0.0", version)
+		}
+		writePackage("1.2.0")
+		if got := display(sm, info, false); len(got) != 1 {
+			t.Fatalf("later update = %+v, want one", got)
+		}
+	})
+
 	t.Run("skips resumed sessions", func(t *testing.T) {
 		sm := NewInMemorySettingsManager(Settings{})
 		info := newSourceInfo()
@@ -193,7 +225,7 @@ func TestStartupExtensionChangelogBlock(t *testing.T) {
 		{Name: "demo", Version: "1.2.0", Markdown: "## demo [1.2.0]\n\nAdded B"},
 		{Name: "other", Version: "2.0.0", Markdown: "## other [2.0.0]\n\nAdded C"},
 	}
-	own := GetNewEntries(ParseChangelog("## [0.3.0]\nNewest\n\n## [0.2.0]\nMiddle"), "0.2.0")
+	own, _ := GetNewEntries(ParseChangelog("## [0.3.0]\nNewest\n\n## [0.2.0]\nMiddle"), "0.2.0")
 	render := func(collapse bool, entries []ChangelogEntry, updates []extensionChangelogUpdate) []string {
 		mode := &InteractiveMode{
 			chatContainer: tui.NewContainer(),

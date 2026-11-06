@@ -105,8 +105,8 @@ func TestSessionQueueRemovalPrecedesExtensionMessageStart(t *testing.T) {
 	}
 }
 
-// upstream: packages/coding-agent/src/core/agent-session.ts:896-909 — the truthy contentText guard deliberately retains an empty queued string in pending metadata.
-func TestSessionEmptyQueuedTextRetainsUpstreamPendingState(t *testing.T) {
+// pig divergence (D250): Pi 1.5.0 (agent-session.ts:896-909) guarded the queue match with a truthy contentText and retained an empty queued string in pending metadata; Pi main a63c4ec5c (#8612) removes it at delivery.
+func TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true}, fauxReply("done", ai.StopReasonStop, 0))
 	if _, err := h.session.Steer(t.Context(), "", nil, nil); err != nil {
 		t.Fatal(err)
@@ -114,8 +114,8 @@ func TestSessionEmptyQueuedTextRetainsUpstreamPendingState(t *testing.T) {
 	if _, err := h.session.Send(t.Context(), "start"); err != nil {
 		t.Fatal(err)
 	}
-	if pending := h.session.PendingMessageCount(); pending != 1 {
-		t.Fatalf("empty pending count=%d want1", pending)
+	if pending := h.session.PendingMessageCount(); pending != 0 {
+		t.Fatalf("empty pending count=%d want 0", pending)
 	}
 	found := false
 	for _, message := range h.session.Messages() {

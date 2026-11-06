@@ -24,7 +24,7 @@ import (
 // TestTypeEngineVectorsThroughTheHost runs every vector case the host's type engine answers (about 360 in test/parity/sdk-vectors/pi-ai/Type.json: Pick, Omit, Partial, KeyOf,
 // Mapped, Conditional, Extends, Instantiate, Cyclic, Module, Script, ...) through the Python, Rust and Lisp SDKs' own `Type` members, one case at a time, against Pi's answer: the
 // schema's JSON text, its hidden members, the message TypeBox throws, or the JSON.stringify failure of a schema that holds a bigint. Each SDK dials this test's socket (PIG_EXT_SOCKET)
-// for every type.engine call, as an extension dials the host's, and the socket is answered by the host's handler for the call (engine.Serve, what the subprocess host runs for
+// for every type.engine call, as an extension dials the host's, and the socket is answered by the host's handler for the call (engine.Session.Serve, what the subprocess host runs for
 // CallTypeEngine). The Go SDK has the same cases in TestTypeEngineMembersMatchPi (fused path) and TestConformance_TypeEngineMembersAgreeAcrossSDKs covers all three SDKs through the real
 // host with one tool; this is the case-by-case proof for Rust, Python and Lisp through a socket.
 func TestTypeEngineVectorsThroughTheHost(t *testing.T) {
@@ -122,7 +122,7 @@ func serveTypeEngineSocket(t testing.TB) string {
 					if json.Unmarshal(body, &env) != nil || env.Type != subprocess.MsgCall || env.Call == nil || env.Call.Method != subprocess.CallTypeEngine {
 						continue
 					}
-					reply, _ := json.Marshal(subprocess.Envelope{Type: subprocess.MsgCallResult, ID: env.ID, CallResult: &subprocess.CallResultPayload{Result: engine.Serve(env.Call.Args)}})
+					reply, _ := json.Marshal(subprocess.Envelope{Type: subprocess.MsgCallResult, ID: env.ID, CallResult: &subprocess.CallResultPayload{Result: engine.NewSession().Serve(env.Call.Args)}})
 					var out [4]byte
 					binary.BigEndian.PutUint32(out[:], uint32(len(reply)))
 					if _, err := conn.Write(append(out[:], reply...)); err != nil {

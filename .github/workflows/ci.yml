@@ -78,20 +78,22 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      # On release/* and the named integration branches (the pull request's base, or the pushed or dispatched ref) the compile gate, the
-      # Linux shards, the Node, Durable and Android jobs, and the Windows and macOS shards still wait for Bookkeeping or the compile gate
-      # to finish, but they are not skipped when it fails, so one run shows every failure. main keeps the cheap-first order.
-      # Keep the branch names in step with the push filter above and the PIG_INTEGRATION_BRANCHES default in integration-ci.yml.
+      # On release/* and the integration branches (automation/ci/integration-branches.txt; the pull request's base, or the pushed or dispatched
+      # ref) the compile gate, the Linux shards, the Node, Durable and Android jobs, and the Windows and macOS shards still wait for Bookkeeping
+      # or the compile gate to finish, but they are not skipped when it fails, so one run shows every failure. main keeps the cheap-first order.
+      # The push filter above lists the same names; TestIntegrationBranchesHaveOneSource keeps them equal.
       - name: Choose the job order for this branch
         id: branch
         env:
           BRANCH: ${{ github.base_ref || github.ref_name }}
         shell: bash
         run: |
+          parallel=false
           case "$BRANCH" in
-            release/*|integration/*|fix/follow-pi-next|fix/071-next) echo "os-parallel=true" ;;
-            *) echo "os-parallel=false" ;;
-          esac | tee -a "$GITHUB_OUTPUT"
+            release/*|integration/*) parallel=true ;;
+            *) grep -vE '^[[:space:]]*(#|$)' automation/ci/integration-branches.txt | grep -qxF -- "$BRANCH" && parallel=true ;;
+          esac
+          echo "os-parallel=$parallel" | tee -a "$GITHUB_OUTPUT"
       - name: Classify the change
         id: classify
         env:

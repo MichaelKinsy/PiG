@@ -52,7 +52,15 @@ func InstallDependencies(plugin Plugin, ctx context.Context, options InstallOpti
 	var output bytes.Buffer
 	child.Stdout = &output
 	child.Stderr = &output
+	// pig divergence (D267): Pi's `spawn` settles on the child's `close`, which waits for the end of its output, so a process the
+	// install started that inherited the pipes (a daemon npm left behind) holds the install for as long as it lives. The install
+	// ends with the command's exit, and what holds its pipes is waited for only for the stop grace after that.
+	child.WaitDelay = defaultStopGrace
 	err := child.Run()
+	if errors.Is(err, exec.ErrWaitDelay) {
+		// pig divergence (D267): the command exited with code 0; what it started held its output pipes past the grace.
+		err = nil
+	}
 	if ctx.Err() != nil && err != nil {
 		return context.Cause(ctx)
 	}
