@@ -666,3 +666,31 @@ func TestAddRefusesPromptNameWindowsCannotCreateWithAClearError(t *testing.T) {
 		t.Fatalf("code=%d stderr=%s", code, stderr)
 	}
 }
+
+// A local add beside a leftover origin record (its YAML deleted by hand) used to succeed and then break `piglet list`
+// and `piglet remove`, because the record no longer matches the new YAML.
+func TestLocalAddRefusesALeftoverOriginRecordAndNamesIt(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PIG_HOME", home)
+	work := t.TempDir()
+	writeFile(t, filepath.Join(work, "prompt.md"), "one\n")
+	writeFile(t, filepath.Join(work, "left.yaml"), copiesYAML("left", "1.0.0", "./prompt.md"))
+	origin := filepath.Join(home, "piglets", "left.origin.json")
+	writeFile(t, origin, "{}\n")
+
+	code, _, stderr := copiesRun(t, "add", filepath.Join(work, "left.yaml"))
+	if code != 1 || !strings.Contains(stderr, origin) || !strings.Contains(stderr, "origin record of a Piglet whose source is gone") || strings.Contains(stderr, "pig piglet remove") {
+		t.Fatalf("code=%d stderr=%s", code, stderr)
+	}
+	if left := copiesTree(t, filepath.Join(home, "piglets")); len(left) != 1 || left["left.origin.json"] != "{}\n" {
+		t.Fatalf("a refused add changed the Piglet directory: %v", left)
+	}
+
+	// Deleting the file the error names is the fix, and the inventory works afterwards.
+	if err := os.Remove(origin); err != nil {
+		t.Fatal(err)
+	}
+	copiesRequireOK(t, "add", filepath.Join(work, "left.yaml"))
+	copiesRequireOK(t, "list", "--json")
+	copiesRequireOK(t, "remove", "left", "--source")
+}
