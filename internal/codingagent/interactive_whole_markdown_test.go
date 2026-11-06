@@ -47,12 +47,16 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	if got := hex.EncodeToString(appended.Sum(nil)); got != wantAppended {
 		t.Errorf("appended rows hash %s, want %s", got, wantAppended)
 	}
-	// The /hotkeys text is the host's: upstream's handleHotkeysCommand adds " (Ctrl+Enter on Windows Terminal)" to a row on win32, and Windows
-	// keybindings change the keys, so its rows have one hash on Windows and another elsewhere; the one below was taken on Linux.
+	// The /hotkeys text is the host's: upstream's handleHotkeysCommand adds " (Ctrl+Enter on Windows Terminal)" to a row on win32 only, and Windows
+	// keybindings (native Windows and WSL) change the keys, so its rows have one hash on Windows (not taken here), one on WSL, with the Windows keys and no
+	// Ctrl+Enter row, and one elsewhere; the Linux one was taken on Linux and the WSL one on Linux with WSL_DISTRO_NAME set.
 	if runtime.GOOS == "windows" {
 		return
 	}
-	const want = "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76"
+	want := "6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76"
+	if tui.HostKeybindingPlatform() == tui.KeybindingPlatformLinuxWSL {
+		want = "4c4149c4b245033e7f8446c0d683ee902e7528c3d75315f52d00d4015faed4fc"
+	}
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("rows hash %s, want %s", got, want)
 	}
