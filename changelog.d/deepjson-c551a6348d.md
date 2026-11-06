@@ -1,0 +1,3 @@
+### Fixed
+
+- Extension SDKs: tool arguments nested thousands of levels deep no longer fail or end the extension. Pi returns them up to 4000 levels and fails the call with `Maximum call stack size exceeded` at 5000. The Python SDK failed the call from about 1000 levels (`maximum recursion depth exceeded`); the Lisp SDK ended its extension from 4000 levels (its reader took 2000); the Rust SDK ended its extension past 4096 levels, and its `Context::tool_params` returned `None` from 128. Each now reads and writes up to 4000 levels, and a call nested past what an SDK reads fails with that error while the extension answers the next call (the Lisp image is built with a 64 MB control stack to read 4096 levels). <!-- fix: c551a6348dff9de55e14a1143f471c868ea43c1f -->
