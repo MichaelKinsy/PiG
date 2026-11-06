@@ -125,7 +125,7 @@ func TestProbeToolVersionTimesOutHungProgramAndItsChildren(t *testing.T) {
 	pidFile := filepath.Join(dir, "pid")
 	// Not exec: sleep is a grandchild that only a group kill reaches.
 	p := writeFakeBin(t, dir, "fd", "sleep 60 &\necho $! > "+pidFile+"\nwait\n")
-	t.Setenv("PATH", dir)
+	t.Setenv("PATH", dir+":/usr/bin:/bin")
 	start := time.Now()
 	if ok, completed := probeToolVersion(p, []string{"fd "}); ok || completed {
 		t.Fatal("hung program accepted or its timeout counted as a verdict")

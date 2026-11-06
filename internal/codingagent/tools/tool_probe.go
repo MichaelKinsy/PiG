@@ -42,6 +42,7 @@ var toolProbeCache sync.Map // toolProbeKey -> bool
 // completion is cached: a timeout or a failed start (a package manager still
 // writing the file) is tried again at the next lookup.
 func systemToolIdentity(path, tool string, prefixes []string) bool {
+	//perf:ok one stat per lookup: it is the cache key (mtime and size), and a lookup runs at provider build, startup and per find or grep call
 	info, err := os.Stat(path)
 	if err != nil {
 		return false
@@ -63,7 +64,6 @@ func systemToolIdentity(path, tool string, prefixes []string) bool {
 func probeToolVersion(path string, prefixes []string) (ok, completed bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), toolProbeTimeout)
 	defer cancel()
-	//nolint:gosec // G204 (class b): program is a candidate found on PATH for fd or rg; the only argument is the fixed --version.
 	cmd := exec.CommandContext(ctx, path, "--version")
 	// stdin stays nil: os/exec opens the null device. Stdout is a pipe, so the
 	// probe has no terminal on any standard stream.
