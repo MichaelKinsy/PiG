@@ -247,7 +247,16 @@ func netErrorCause(err error) error {
 	return err
 }
 
-// removeOwnSocket removes path when it still names the socket the server created (created, from the Lstat after the bind), and leaves a path another server or a user put there meanwhile alone: the server's exit does not remove a path it did not create. With no record of the socket it removes the path. pig additive (D232).
+// lstatPinned is os.Lstat whose result keeps naming the file it saw. On Windows the file ID of an os.Lstat result loads lazily by path name inside os.SameFile, so an unpinned result matches whatever the path names at comparison time; SameFile(info, info) loads the ID now. It returns nil when the file or its ID is unavailable. pig additive (D232).
+func lstatPinned(path string) os.FileInfo {
+	info, err := os.Lstat(path) //perf:ok cold: one stat per server start
+	if err != nil || !os.SameFile(info, info) {
+		return nil
+	}
+	return info
+}
+
+// removeOwnSocket removes path when it still names the socket the server created (created, from lstatPinned after the bind), and leaves a path another server or a user put there meanwhile alone: the server's exit does not remove a path it did not create. With no record of the socket it removes the path. pig additive (D232).
 func removeOwnSocket(path string, created os.FileInfo) {
 	if created != nil {
 		if now, err := os.Lstat(path); err != nil || !os.SameFile(created, now) { //perf:ok cold: one stat per server exit
@@ -270,7 +279,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 		return 1
 	}
 	// The socket this server created: it removes the path at exit only while the path still names it (pig additive (D232)).
-	created, _ := os.Lstat(path) //perf:ok cold: one stat per server start
+	created := lstatPinned(path)
 	defer removeOwnSocket(path, created)
 
 	builder := resources.Builder

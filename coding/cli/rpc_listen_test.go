@@ -724,9 +724,9 @@ func TestRemoveOwnSocketLeavesAPathItDidNotCreate(t *testing.T) {
 	if err := os.WriteFile(path, []byte("ours"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	created, err := os.Lstat(path)
-	if err != nil {
-		t.Fatal(err)
+	created := lstatPinned(path)
+	if created == nil {
+		t.Fatal("no file ID for the server's socket")
 	}
 	// Another server (or a user) takes the path while this server's socket still exists elsewhere: the server holds the original's inode open, so a new file cannot reuse its number.
 	moved := filepath.Join(dir, "moved.sock")
