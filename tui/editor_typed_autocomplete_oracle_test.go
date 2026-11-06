@@ -69,7 +69,9 @@ func (typedAutocompleteProvider) ApplyCompletion(lines []string, cursorLine, cur
 	return out, cursorLine, start + len(item.Value)
 }
 
-func typedAutocompleteProviderFor(*testing.T) tui.AutocompleteProvider { return typedAutocompleteProvider{} }
+func typedAutocompleteProviderFor(*testing.T) tui.AutocompleteProvider {
+	return typedAutocompleteProvider{}
+}
 
 // typedAutocompleteProbes types each character in each context with the popup closed, then each of a few second characters, and types every short sequence of characters into an empty editor.
 func typedAutocompleteProbes() []awaitedAcceptProbe {
