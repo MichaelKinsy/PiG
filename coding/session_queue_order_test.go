@@ -132,3 +132,34 @@ func TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery(t *testing.T) {
 		t.Fatal("empty queued message was lost")
 	}
 }
+
+// pig divergence (D250): delivering an empty queued message removes its entry and publishes the queue it leaves, an event Pi 1.5.0 never emits
+// for it. RPC mode forwards session events, so the RPC stream carries these records ('20-rpc-runtime-boundary-values' and
+// '35-rpc-queue-prompt-await' name them under json_pig_only_records).
+func TestSessionEmptyQueuedMessagesPublishTheQueueTheyLeaveAtDelivery(t *testing.T) {
+	h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true}, fauxReply("done", ai.StopReasonStop, 0))
+	var updates []agent.QueueUpdateEvent
+	h.session.Subscribe(func(event agent.AgentEvent) {
+		if update, ok := event.(agent.QueueUpdateEvent); ok {
+			updates = append(updates, update)
+		}
+	})
+	if _, err := h.session.Steer(t.Context(), "", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.session.FollowUp(t.Context(), "", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.session.Send(t.Context(), "start"); err != nil {
+		t.Fatal(err)
+	}
+	want := []agent.QueueUpdateEvent{
+		{Steering: []string{""}, FollowUp: []string{}},
+		{Steering: []string{""}, FollowUp: []string{""}},
+		{Steering: []string{}, FollowUp: []string{""}},
+		{Steering: []string{}, FollowUp: []string{}},
+	}
+	if !reflect.DeepEqual(updates, want) {
+		t.Fatalf("queue updates=%#v want %#v", updates, want)
+	}
+}

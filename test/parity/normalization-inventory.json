@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "4b7eed1be1404cde27155939a2b82389fb8cc8cc91a72f51280ac4461a104991",
+      "sha256": "1736a9c76dba7820401a8cd970b57606d1e3eb7113d575c5e5016fb20cf1b3ec",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -39,6 +39,11 @@
       "source": "test/parity/runner/json_compare.go",
       "sha256": "fde6cb1d87a77f6e1ba4ff432e29e18fdc20482e3a9f434285fe9b93ab30599e",
       "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
+    },
+    {
+      "source": "test/parity/runner/json_pig_only.go",
+      "sha256": "79e647eb17b58724ebc4c9f88c119698ea41156630c73dddb9c28261f08e945d",
+      "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence, the complete record and the type of the record that must follow it, and every run must carry exactly its declared count of them, each at that position, so a second occurrence, a moved emission or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",
@@ -6771,6 +6776,22 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "json_pig_only_records",
+          "divergence": "D250",
+          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[\"\"]}",
+          "count": 1,
+          "before_type": "message_start",
+          "reason": "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
+        },
+        {
+          "kind": "json_pig_only_records",
+          "divergence": "D250",
+          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[]}",
+          "count": 1,
+          "before_type": "message_start",
+          "reason": "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
         }
       ]
     },
@@ -7369,6 +7390,22 @@
             "/**/durationMs"
           ],
           "reason": "Pi 1.1.0 measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+        },
+        {
+          "kind": "json_pig_only_records",
+          "divergence": "D250",
+          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[\"\"]}",
+          "count": 1,
+          "before_type": "message_start",
+          "reason": "D250: the empty prompt's message_start removes the queued empty steering entry, leaving the empty follow-up entry; Pi 1.5.0 keeps the entry and emits nothing."
+        },
+        {
+          "kind": "json_pig_only_records",
+          "divergence": "D250",
+          "record": "{\"type\":\"queue_update\",\"steering\":[],\"followUp\":[]}",
+          "count": 1,
+          "before_type": "message_start",
+          "reason": "D250: the steer's message_start removes the queued empty follow-up entry, emptying the pending queue; Pi 1.5.0 keeps the entry and emits nothing."
         }
       ]
     },

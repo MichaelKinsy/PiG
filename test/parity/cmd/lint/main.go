@@ -118,6 +118,7 @@ type assertBlock struct {
 	JSONOutputEqual       bool                    `toml:"json_output_equal"`
 	StderrEqual           bool                    `toml:"stderr_equal"`
 	JSONAliases           []jsonAliasRule         `toml:"json_aliases"`
+	JSONPigOnlyRecords    []jsonPigOnlyRecordRule `toml:"json_pig_only_records"`
 	ArtifactEqual         bool                    `toml:"artifact_equal"`
 	ExitCode              *int                    `toml:"exit_code"`
 	PigExitCode           *int                    `toml:"pig_exit_code"`
@@ -156,6 +157,14 @@ type jsonAliasRule struct {
 	Pattern  string   `toml:"pattern"`
 	Optional bool     `toml:"optional"`
 	Reason   string   `toml:"reason"`
+}
+
+type jsonPigOnlyRecordRule struct {
+	Divergence string `toml:"divergence"`
+	Record     string `toml:"record"`
+	Count      int    `toml:"count"`
+	BeforeType string `toml:"before_type"`
+	Reason     string `toml:"reason"`
 }
 
 type normalizeReplaceBlock struct {
@@ -609,6 +618,14 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 	}
 	if sc.Assert.JSONOutputEqual && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
 		out = append(out, violation{path, "json-text-normalization", "full JSON comparison cannot use text normalization"})
+	}
+	if len(sc.Assert.JSONPigOnlyRecords) > 0 && !sc.Assert.JSONOutputEqual {
+		out = append(out, violation{path, "json-pig-only-without-json", "json_pig_only_records applies only to json_output_equal"})
+	}
+	for _, rule := range sc.Assert.JSONPigOnlyRecords {
+		if rule.Divergence == "" || rule.Record == "" || rule.Count < 1 || rule.BeforeType == "" || strings.TrimSpace(rule.Reason) == "" {
+			out = append(out, violation{path, "json-pig-only-incomplete", "json_pig_only_records requires a divergence, the exact record, a count of at least 1, the type of the record that follows it, and a reason"})
+		}
 	}
 	for _, rule := range sc.Assert.JSONAliases {
 		if rule.Kind == "literal" && (rule.Pig == "" || rule.Pi == "") {
