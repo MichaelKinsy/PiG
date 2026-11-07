@@ -348,7 +348,7 @@ func (l *markedBlockLexer) blockTokens(src []rune, str string, tokens *[]*marked
 		}
 
 		// list
-		if token, n := l.list(rest); token != nil {
+		if token, n := l.list(rest, restStr); token != nil {
 			appendBlock(tokens, token, at)
 			pos += n
 			continue
@@ -1153,7 +1153,7 @@ func (l *markedBlockLexer) blockquoteOf(match string) *markedBlock {
 		case last != nil && last.kind == "list":
 			// include continuation in nested list
 			newText := last.raw + "\n" + strings.Join(lines, "\n")
-			newToken, _ := l.list(l.pushRunes(newText))
+			newToken, _ := l.list(l.pushRunes(newText), "")
 			l.popRunes()
 			tokens[len(tokens)-1] = newToken
 			raw = markedWithoutTail(raw, last.raw) + newToken.raw
@@ -1352,7 +1352,7 @@ func markedFirstNonSpace(line string) int {
 func markedSliceUnits(line string, from int) string { return jsstring.Slice(line, from) }
 
 // list is Tokenizer.list.
-func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
+func (l *markedBlockLexer) list(src []rune, str string) (*markedBlock, int) {
 	spaces := markedLeadingSpaces(src)
 	if spaces > 3 {
 		return nil, 0
@@ -1389,8 +1389,8 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 		raw = appendCodePoints(raw[:0], rest[:itemEnd])
 		pos += itemEnd
 
-		line := l.firstLine(rest[bulletLength:itemEnd])
-		nextLine := l.firstLine(src[pos:])
+		line := l.lineAt(src, str, pos-itemEnd+bulletLength)
+		nextLine := l.lineAt(src, str, pos)
 		nextLinePos := pos
 		blankLine := widthx.JSTrim(line) == ""
 		endEarly := false
@@ -1423,7 +1423,7 @@ func (l *markedBlockLexer) list(src []rune) (*markedBlock, int) {
 			for pos < len(src) {
 				rawLine := nextLine
 				if pos != nextLinePos {
-					rawLine = l.firstLine(src[pos:])
+					rawLine = l.lineAt(src, str, pos)
 				}
 				nextLine = rawLine
 
@@ -1559,9 +1559,13 @@ func markedCheckboxChecked(raw string) bool {
 	return false
 }
 
-// firstLine is the text of src before its first newline, in the lexer's chunk.
-func (l *markedBlockLexer) firstLine(src []rune) string {
-	return l.copyRunes(src[:markedLineEnd(src, 0)])
+// lineAt is the text of src from index from to its next newline, taken from str, the same text, when there is one, and copied to the lexer's chunk when there is not.
+func (l *markedBlockLexer) lineAt(src []rune, str string, from int) string {
+	end := markedLineEnd(src, from)
+	if str != "" {
+		return str[from:end]
+	}
+	return l.copyRunes(src[from:end])
 }
 
 // appendCodePoints appends the text of runes to dst, a lone surrogate spelled as WTF-8.

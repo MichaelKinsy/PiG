@@ -528,11 +528,18 @@ func storeHighlightLocked(key hlKey, out []string) {
 	if size > hlCacheMaxBytes {
 		return
 	}
+	// A code block that is streamed stores a longer prefix per frame, and each replaces the entry before it; the one that is stored last is the only one that stays, so those keys are not copied, or streaming a block of n bytes would copy O(n) bytes per frame more (TestScalingStreamedCodeBlockHighlight).
+	streamed := false
 	if last := hlLast; last.lang == key.lang && strings.HasPrefix(key.code, last.code) {
 		if lines, ok := hlCache[last]; ok {
 			delete(hlCache, last)
 			hlCacheBytes -= hlEntrySize(last, lines)
+			streamed = true
 		}
+	}
+	// Any other key must not hold the text it was sliced from: the code of a fence is a part of a chunk that the block lexer copied the document's strings to, and a memo entry would keep the whole chunk, which hlEntrySize does not count.
+	if !streamed {
+		key = hlKey{lang: strings.Clone(key.lang), code: strings.Clone(key.code)}
 	}
 	if len(hlCache) >= hlCacheMax || hlCacheBytes+size > hlCacheMaxBytes {
 		resetHighlightCacheLocked()
