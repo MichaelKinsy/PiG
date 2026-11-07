@@ -424,7 +424,7 @@ Pulled pig-with-batteries 0.1.0 for linux/amd64, signed by ed25519:fc4fbe0a1ba0f
   receipt: /home/you/.pig/receipts/piglets/pig-with-batteries/0.1.0/linux/amd64.pull
 ```
 
-Run the file on the `binary:` line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. It carries the PiG version it was built with, which `--version` prints and which can be older than your `pig`. `pig piglet list` shows it with the scope `binary`. `pig --piglet pig-with-batteries` does not run it, because no source is registered. [Piglet Binaries](/docs/latest/piglet-binaries#pull-a-published-binary) explains the signature checks.
+Run the file on the `binary:` line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. It carries the PiG version it was built with, which its `version` command prints and which can be older than your `pig`. `pig piglet list` shows it with the scope `binary`. `pig --piglet pig-with-batteries` does not run it, because no source is registered. [Piglet Binaries](/docs/latest/piglet-binaries#pull-a-published-binary) explains the signature checks.
 
 Pigpen's Packages are on npm as `@pi-in-go/pigpen-<name>`, for example `pig install npm:@pi-in-go/pigpen-dirty-repo-guard` ([Packages](/docs/latest/packages)). A Go extension built for an older extension SDK stops PiG at startup with `Extension "<name>" was written for an older SDK` and names the changed call, for example `Context.ConfigHome`, which returns an error since PiG 0.5.0. Remove such a Package with `pig remove npm:<name>` until its author publishes an update.
 

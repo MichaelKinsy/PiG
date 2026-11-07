@@ -115,6 +115,14 @@ class LockTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 arms.check_version(arm)
 
+    def test_pig_arms_are_checked_with_the_version_command(self):
+        # `pig --version` prints Pi's version; PiG's own release is the `pig:` field of `pig version`.
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = fakes.python_command(os.path.join(tmp, "pig"), "import sys\nprint('pig: 0.5.0\\nupstream pi: 1.2.0' if sys.argv[1:] == ['version'] else '1.2.0')\n")
+            arm = arms.load()["pig-0.5"]
+            arm.binary = fake
+            self.assertEqual(arms.check_version(arm), "pig: 0.5.0")
+
 
 class EgressTest(unittest.TestCase):
     def test_parse_proc_net(self):

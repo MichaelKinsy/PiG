@@ -207,7 +207,7 @@ parity-bin: parity-deps node-runtime
 	@go list -deps -test ./... >/dev/null
 	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X github.com/MichaelKinsy/PiG/coding/cli.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PARITY_PIG_BIN) ./cmd/pig
 	@[ "$$(uname -s)" = "Darwin" ] && command -v codesign >/dev/null 2>&1 && codesign --force --sign - $(PARITY_PIG_BIN) >/dev/null 2>&1 || true
-	@echo "parity pig: $$($(PARITY_PIG_BIN) --version) → $(PARITY_PIG_BIN)"
+	@echo "parity pig: $$($(PARITY_PIG_BIN) version | sed -n 1p) → $(PARITY_PIG_BIN)"
 
 # require-parity-ran is the loud-fail counterpart to TestParity's quiet
 # skips. ResolvePigBin/ResolveUpstreamPiBin (test/parity/runner/binaries.go) call

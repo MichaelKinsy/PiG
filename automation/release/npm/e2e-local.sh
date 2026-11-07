@@ -7,7 +7,7 @@
 #      and lay them out as release archives plus SHA256SUMS;
 #   2. generate and `npm pack` the eight packages with pack_npm.py;
 #   3. install the launcher and the host platform package into a temp prefix and
-#      run `pig --version` through the npm-installed launcher;
+#      run `pig version` and `pig --version` through the npm-installed launcher;
 #   4. install the launcher alone and check its missing-platform-package error.
 #
 # Usage: automation/release/npm/e2e-local.sh [WORKDIR]
@@ -69,9 +69,13 @@ test "$(tail -n 1 "$npm_out/publish-order.txt" | cut -d' ' -f1)" = "@pi-in-go/pi
 prefix="$work/prefix"
 export npm_config_cache="$work/npm-cache" npm_config_audit=false npm_config_fund=false npm_config_update_notifier=false
 npm install -g --prefix "$prefix" --omit=optional "$npm_out/$launcher_tgz" "$npm_out/$host_tgz" >/dev/null
-out=$("$prefix/bin/pig" --version)
-echo "e2e: npm-installed pig --version -> $out"
-case "$out" in *"$version"*) ;; *) echo "e2e: FAIL version mismatch" >&2; exit 1 ;; esac
+# `pig --version` prints Pi's version, as `pi --version` does; the PiG release is the `pig:` field of `pig version`.
+out=$("$prefix/bin/pig" version)
+echo "e2e: npm-installed pig version -> $(printf '%s' "$out" | tr '\n' ' ')"
+case "$out" in "pig: $version"$'\n'*) ;; *) echo "e2e: FAIL version mismatch" >&2; exit 1 ;; esac
+flag=$("$prefix/bin/pig" --version)
+upstream=$(printf '%s\n' "$out" | sed -n 's/^upstream pi: //p')
+case "$flag" in "${upstream%%+*}") ;; *) echo "e2e: FAIL pig --version printed '$flag', not Pi's version '${upstream%%+*}'" >&2; exit 1 ;; esac
 "$prefix/bin/pig" --help >/dev/null
 set +e
 "$prefix/bin/pig" --definitely-not-a-flag >/dev/null 2>&1

@@ -21,7 +21,7 @@ pig [options] [prompt]
 | `pig --models <patterns>` | Scope Ctrl+P model cycling to comma-separated model patterns. It is not an allow list. Without `--model`, a new session starts on the saved default model when the scope includes it, and otherwise on the first matching model. |
 | `pig --session-id <id>` | Use an exact session ID; may be combined with `--no-session` for provider cache affinity without disk persistence. |
 | `pig --mode rpc` | Start the JSONL RPC command loop on stdin/stdout. |
-| `pig --version` | Print the composite version `<PiG version>+<pinned Pi version>`. Pi prints only its own version (D63). |
+| `pig --version` | Print the pinned Pi version, exactly as `pi --version` does. `pig version` prints the PiG release and the Pi version in separate fields. |
 | `pig version` | Detailed pig/pi/Go/platform/build banner. |
 | `pig diagnose` | Print resolved config + binary identity. |
 

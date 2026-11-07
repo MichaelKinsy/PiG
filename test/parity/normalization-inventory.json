@@ -422,17 +422,6 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/cli-utils/13-cli-version-before-session-validation.toml",
-      "transforms": [
-        {
-          "kind": "normalize_replace",
-          "pattern": "^\\d+\\.\\d+\\.\\d+(?:\\+\\d+\\.\\d+\\.\\d+(?:\\.[0-9a-f]{8})?)?\\n$",
-          "with": "<version>",
-          "reason": "D63 changes release identity. Match only the complete version line including its LF; preserve all other bytes."
-        }
-      ]
-    },
-    {
       "scenario": "test/parity/scenarios/cli-utils/13-package-bare-scp-local.toml",
       "transforms": [
         {

@@ -157,7 +157,7 @@ id = "coding-agent/startup/init-header-construction"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
 family = "startup"
 kind = "startup-header"
-claim = "the startup header is built once the terminal colors arrived: verbose forces it and quietStartup true hides it, replacing it with an empty header; shown, it carries the version beside the logo (PiG's pig head and composite version are D2 and D63), the compact key hints (interrupt, clear/exit, /, !, expand tools) joined by a muted separator with the onboarding line naming the expand key and, when startup details show, loaded resources, or the expanded hints in Pi's order with the onboarding sentence, starting expanded when verbose or tools are expanded, between two spacers; with fullscreen the model scope notice follows the header, and a render is requested"
+claim = "the startup header is built once the terminal colors arrived: verbose forces it and quietStartup true hides it, replacing it with an empty header; shown, it carries the version beside the logo (PiG's pig head and composite version are D2), the compact key hints (interrupt, clear/exit, /, !, expand tools) joined by a muted separator with the onboarding line naming the expand key and, when startup details show, loaded resources, or the expanded hints in Pi's order with the onboarding sentence, starting expanded when verbose or tools are expanded, between two spacers; with fullscreen the model scope notice follows the header, and a render is requested"
 status = "ported"
 pig_targets = [
   "internal/codingagent/startup_header.go#mountStartupHeader",

@@ -354,11 +354,11 @@ func TestSetVersionRejectsAnSDKManifestWithoutAVersion(t *testing.T) {
 	assertSnapshot(t, root, before)
 }
 
-// The README shows the composite `pig --version` value for an example. Its Pi half moves with `make pin-bump`; its PiG half is the release, so
+// The README shows the composite version of the banner for an example. Its Pi half moves with `make pin-bump`; its PiG half is the release, so
 // set-version writes it, and nothing else on the page, which test/docs-drift TestProseNamesTheCurrentPin would otherwise fail at the next release.
 func TestSetVersionWritesTheREADMEVersionExample(t *testing.T) {
 	root := fixture(t)
-	const page = "Pin 0.2.1+0.87.1 stays.\n\n`pig --version` prints PiG's version as `<PiG release>+<Pi release>`, for example `0.2.1+0.87.1+0123abcd` (D63): build metadata.\n"
+	const page = "Pin 0.2.1+0.87.1 stays.\n\nThe banner and the startup line print PiG's version as `<PiG release>+<Pi release>`, for example `0.2.1+0.87.1+0123abcd`: build metadata.\n"
 	put(t, root, "README.md", page)
 	if err := run(root, options{version: "0.3.0", date: "2026-10-11"}, io.Discard, func(string, io.Writer) error { return nil }); err != nil {
 		t.Fatal(err)
@@ -380,7 +380,7 @@ func TestSetVersionRejectsAREADMEWithoutTheVersionExample(t *testing.T) {
 	}
 	before := snapshot(t, root)
 	err := run(root, options{version: "0.3.0", date: "2026-10-11"}, io.Discard, func(string, io.Writer) error { return nil })
-	if err == nil || !strings.Contains(err.Error(), "README.md: expected one `pig --version` example to update") {
+	if err == nil || !strings.Contains(err.Error(), "README.md: expected one composite version example to update") {
 		t.Fatalf("err = %v, want the missing example reported", err)
 	}
 	assertSnapshot(t, root, before)

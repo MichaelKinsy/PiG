@@ -44,7 +44,7 @@ runtime_ratio_max = 1.50
 # Upstream 1.0.0 prints its 4-cell, 2-line logo with "v<version>" beside the
 # first line and the first hints beside the second (" ▀▀█  v1.0.0"). PiG draws
 # its 16-cell, 7-line pig head in that slot instead (D2, owner decisions
-# 2026-10-01): the composite version (D63) beside the head's first line, the
+# 2026-10-01): the composite version beside the head's first line, the
 # hints, the "Press" line, the blank line and the onboarding beside the next
 # ones. The head's lines with what Pi draws beside or below its logo are
 # asserted verbatim; Pi's logo must not appear. The hints are compared with Pi
@@ -57,4 +57,4 @@ pig_contains = [
   "  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀  PiG can explain",
 ]
 pi_contains = ["▀▀█  v{{UPSTREAM_VERSION}}", "Pi can explain"]
-reason = "D2 replaces Pi's logo with PiG's pig head; D63 is the composite version; the onboarding names the product. Locked here so any future banner drift trips this assertion."
+reason = "D2 replaces Pi's logo with PiG's pig head, which carries the composite version; the onboarding names the product. Locked here so any future banner drift trips this assertion."

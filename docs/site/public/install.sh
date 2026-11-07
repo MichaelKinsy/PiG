@@ -89,7 +89,9 @@ main() {
   "$staged" --version >/dev/null 2>&1 || fail "the downloaded pig binary does not run on this machine"
   mv -f "$staged" "${install_dir}/pig"
 
-  say "Installed $("${install_dir}/pig" --version 2>/dev/null || printf 'pig %s' "$version") to ${install_dir}/pig"
+  # `pig --version` prints Pi's version, so the release comes from `pig version` (its `pig:` line).
+  installed=$("${install_dir}/pig" version 2>/dev/null | sed -n 's/^pig: //p' | sed -n 1p)
+  say "Installed pig ${installed:-$version} to ${install_dir}/pig"
   write_receipt "$install_dir" "$version" ||
     say "Could not record the install receipt; to update later, run this installer again"
   case ":${PATH:-}:" in

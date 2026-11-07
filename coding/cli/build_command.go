@@ -235,26 +235,28 @@ func builtPigVersion(path string) string {
 	return "pig"
 }
 
+// versionCommandField is the value of the `key: value` line of `pig version` output, empty when there is none.
+func versionCommandField(out, key string) string {
+	for line := range strings.Lines(out) {
+		if k, value, ok := strings.Cut(strings.TrimSpace(line), ": "); ok && k == key {
+			return value
+		}
+	}
+	return ""
+}
+
 // pigVersionIdentity reads detailedVersionString output into "pig X+Y", the
 // composite version (coding.Version).
 func pigVersionIdentity(out string) (string, bool) {
-	var pig, pi string
-	for line := range strings.Lines(out) {
-		key, value, _ := strings.Cut(strings.TrimSpace(line), ": ")
-		switch key {
-		case "pig":
-			pig = value
-		case "upstream pi":
-			pi = value
-		}
-	}
+	pig := versionCommandField(out, "pig")
+	pi := versionCommandField(out, "upstream pi")
 	switch {
 	case pig == "":
 		return "", false
 	case pi == "":
 		return "pig " + pig, true
 	default:
-		// D63: semver allows one plus sign, so a commit pin's "1.1.0+42a3497d" joins as build metadata "1.1.0.42a3497d", as in Version.
+		// Semver allows one plus sign, so a commit pin's "1.1.0+42a3497d" joins as build metadata "1.1.0.42a3497d", as in Version.
 		return fmt.Sprintf("pig %s+%s", pig, strings.ReplaceAll(pi, "+", ".")), true
 	}
 }

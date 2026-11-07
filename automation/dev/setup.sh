@@ -243,7 +243,7 @@ if ((build && !check)) && [[ -n $go_bin ]]; then
 	start=$SECONDS
 	# shellcheck source=/dev/null # env.sh is written above for this machine.
 	if (set -a && source "$dev_home/env.sh" && set +a && cd "$root" && "$go_bin" build -buildvcs=false -trimpath -o bin/pig ./cmd/pig); then
-		row build ok "bin/pig in $((SECONDS - start)) s ($("$root/bin/pig" --version 2>/dev/null | head -1))"
+		row build ok "bin/pig in $((SECONDS - start)) s ($("$root/bin/pig" version 2>/dev/null | head -1))"
 	else
 		need build "go build ./cmd/pig failed; the error is above"
 	fi

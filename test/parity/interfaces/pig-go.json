@@ -102009,6 +102009,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#versionCommandField",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "versionCommandField",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out string, key string) string"
+      },
+      "shapeHash": "sha256:65d90da81caa8716040770109fd9b8797c2f0be519d23bf8f06aebe256e858a6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#versionString",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "versionString",

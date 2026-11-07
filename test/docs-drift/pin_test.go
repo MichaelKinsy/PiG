@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// Prose that states the pinned Pi release or commit, or shows a composite `pig --version` value, must agree with internal/coding/pigversion/pigversion.go. The public-claims gate checks "Pi <version>" wording; this checks the other phrasings a README or page uses for the pin.
+// Prose that states the pinned Pi release or commit, or shows a composite version beside `pig version` or `--version`, must agree with internal/coding/pigversion/pigversion.go. The public-claims gate checks "Pi <version>" wording; this checks the other phrasings a README or page uses for the pin.
 
 var (
 	pinConst       = regexp.MustCompile(`(?m)^const (UpstreamVersion|UpstreamCommit|PigVersion) = "([^"]+)"`)

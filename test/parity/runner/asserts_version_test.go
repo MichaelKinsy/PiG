@@ -12,7 +12,7 @@ import (
 
 func TestExpandVersionTokensUsesThePins(t *testing.T) {
 	got := expandVersionTokens([]string{"{{VERSION}}"}, []string{"pi {{UPSTREAM_VERSION}}", "plain"})
-	// {{VERSION}} is D63's composite (one plus: a commit pin's 1.1.0+42a3497d joins as 1.1.0.42a3497d); {{UPSTREAM_VERSION}}
+	// {{VERSION}} is PiG's composite version (one plus: a commit pin's 1.1.0+42a3497d joins as 1.1.0.42a3497d); {{UPSTREAM_VERSION}}
 	// is what the pinned Pi build reports, its package version.
 	want := []string{coding.PigVersion + "+" + strings.ReplaceAll(coding.UpstreamVersion, "+", "."), "pi " + coding.UpstreamPackageVersion, "plain"}
 	if !slices.Equal(got, want) {
@@ -26,13 +26,13 @@ func TestDivergeTokensAreEvaluatedAgainstOutput(t *testing.T) {
 	o.Pi.Runs = []Result{{Output: coding.UpstreamPackageVersion + "\n"}}
 	EvaluateOutcome(o)
 	if len(o.Failures) != 0 {
-		t.Fatalf("composite and bare versions should satisfy D63's diverge block: %q", o.Failures)
+		t.Fatalf("the composite and bare versions should satisfy the diverge block: %q", o.Failures)
 	}
 	o.Failures = nil
 	o.Pig.Runs = []Result{{Output: coding.UpstreamPackageVersion + "\n"}}
 	EvaluateOutcome(o)
 	if len(o.Failures) == 0 {
-		t.Fatal("a bare Pi version from pig must fail D63's diverge block")
+		t.Fatal("a bare Pi version from pig must fail a diverge block that expects the composite")
 	}
 }
 

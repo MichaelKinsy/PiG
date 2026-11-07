@@ -2,7 +2,7 @@
 # Upstream evidence: interactive-mode.ts init creates expandable startup help;
 # app.tools.expand selects every configured keybinding hint and removes the
 # compact expansion hint. Probe the pinned Pi at 100x45 and press Ctrl+O.
-# Crop includes the whole hint list and onboarding, not the D2/D63 logo.
+# Crop includes the whole hint list and onboarding, not the D2 logo.
 name = "03-startup-expanded-help"
 description = "Ctrl+O expands the built-in startup header to Pi's complete configured keybinding help."
 covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]

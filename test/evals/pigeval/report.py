@@ -19,24 +19,8 @@ def _harnesses(report):
         own = f"`{h['version']}`" if h.get("version") else "not recorded"
         printed = f"`{h['version_command']}`: `{h['version_output']}`" if h.get("version_command") else "not recorded"
         lines.append(f"| {h['name']} | {own} | {printed} | {h.get('skipped', 'measured')} |")
-    lines += ["", "Version is each harness's own version. Version command output records the startup command separately. "
-              + _pig_version_note(report["harnesses"].get("pig"))]
+    lines += ["", "Version is each harness's own version. Version command output records the startup command separately."]
     return lines
-
-
-def _pig_version_note(pig):
-    """Describe PiG's --version output without contradicting the recorded run.
-
-    Current PiG prints `<PiG release>+<Pi release>` (D63). A run recorded from a
-    binary that printed only the Pi release says so instead of claiming the
-    composite form for output that does not show it.
-    """
-    composite = "PiG's `--version` prints its composite version, `<PiG release>+<Pi release>` (D63)."
-    output = (pig or {}).get("version_output") or ""
-    if not output or "+" in output:
-        return composite
-    return ("The PiG binary measured in this run predates the composite version string and printed only the pinned Pi release. "
-            "Current " + composite)
 
 
 def overhead(report, title="Harness benchmarks"):

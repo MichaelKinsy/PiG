@@ -123,7 +123,7 @@ its standalone telemetry and evaluation packages. See
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
 
-`pig --version` prints PiG's version as `<PiG release>+<Pi release>`, for example `0.7.0+1.5.0` (D63): the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither command reads user configuration.
+`pig --version` and `pig -v` print the pinned Pi package version, exactly as `pi --version` does, so a launcher that checks Pi's version reads it. The help and diagnostics banner and the interactive startup line print PiG's version as `<PiG release>+<Pi release>`, for example `0.7.0+1.5.0`: the Pi release is semver build metadata, so the version sorts as the PiG release. `pig version` prints the PiG release and the pinned Pi release as separate fields. Neither `pig --version` nor `pig version` reads user configuration.
 
 ## Repository map
 

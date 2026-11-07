@@ -13,7 +13,7 @@ Measured 2026-09-23T11:11:39Z on Linux-6.18.44-fc-v37-x86_64-with-glibc2.39 (x86
 | PiG | not recorded | `pig --version`: `0.87.1` | measured |
 | Pi | `0.87.1` | `pi --version`: `0.87.1` | measured |
 
-Version is each harness's own version. Version command output records the startup command separately. The PiG binary measured in this run predates the composite version string and printed only the pinned Pi release. Current PiG's `--version` prints its composite version, `<PiG release>+<Pi release>` (D63).
+Version is each harness's own version. Version command output records the startup command separately.
 
 ## Startup (--version)
 

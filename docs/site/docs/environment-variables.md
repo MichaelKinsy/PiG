@@ -72,14 +72,6 @@ Set `PIG_OFFLINE` in CI. Without it, every run checks for updates and fails slow
 
 Offline mode, from `--offline`, `PIG_OFFLINE` or `PI_OFFLINE`, sets `PI_OFFLINE=1` and `PI_SKIP_VERSION_CHECK=1` in the environment extensions inherit, as Pi does. Pi extensions that check `PI_OFFLINE` see PiG's offline mode.
 
-## Version output
-
-| Variable | Effect |
-|---|---|
-| `PIG_VERSION_FORMAT` | Exact value `pi` makes `pig --version` and `pig -v` print the pinned Pi package version, which is what `pi --version` prints, instead of PiG's composite version (D63). Empty and all other values keep the default composite output. This variable does not change `pig version`, help, banners, diagnostics, updates, or SDK versions |
-
-Use this opt-in when a Pi-compatible launcher checks the version before it starts PiG. The output is the version of the Pi build PiG ports, not a fabricated release.
-
 ## Diagnostics
 
 | Variable | Effect |

@@ -97,13 +97,19 @@ def build_pig(out, pgo=None):
     return out
 
 
+def version_args(arm):
+    """The argv whose output names the arm's pinned version. `pig --version` prints Pi's version, so PiG's own release comes from `pig version`."""
+    return ["version"] if arm.family == "pig" else ["--version"]
+
+
 def check_version(arm, env=None, cwd=None):
     """Run the binary's version command and require the pinned version in its output."""
-    done = subprocess.run([arm.binary, "--version"], capture_output=True, text=True, timeout=120, env=env, cwd=cwd)
+    args = version_args(arm)
+    done = subprocess.run([arm.binary, *args], capture_output=True, text=True, timeout=120, env=env, cwd=cwd)
     text = (done.stdout.strip() or done.stderr.strip())
     line = next((ln for ln in text.splitlines() if arm.version in ln), None)
     if done.returncode != 0 or line is None:
-        raise SystemExit(f"{arm.id}: `--version` printed {text[:200]!r}; the lock pins {arm.version}")
+        raise SystemExit(f"{arm.id}: `{' '.join(args)}` printed {text[:200]!r}; the lock pins {arm.version}")
     return line.strip()
 
 

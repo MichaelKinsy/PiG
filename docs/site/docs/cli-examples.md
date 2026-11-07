@@ -2,7 +2,7 @@
 
 [Command line](/docs/latest/cli) lists every verb and option. This page runs the common ones and shows what they print. Each block is a command, its output and its exit status (`exit N` after the output; 0 means success). The outputs were captured from one PiG binary under a scratch home directory, so paths read `/home/you/...` here and your own paths differ. Commands that need a network or a model say so.
 
-Version: `0.5.0+1.2.0` in the captures below. Yours prints your own release.
+Version: PiG 0.5.0 following Pi 1.2.0 in the captures below. Yours prints your own release.
 
 ## Is it installed, and what is it?
 
@@ -11,10 +11,10 @@ pig --version
 ```
 
 ```text
-0.5.0+1.2.0
+1.2.0
 ```
 
-The number is `<PiG version>+<Pi version it follows>`. Pi prints only its own version, so this is a difference (D63). `pig version` is the detailed form:
+The number is the Pi version PiG follows, what `pi --version` prints, so a launcher that checks Pi's version reads it. `pig version` names the PiG release too:
 
 ```bash
 pig version

@@ -152,18 +152,6 @@ class OverheadTest(unittest.TestCase):
         page = report.overhead(dict(base, harnesses={"pig": pig}))
         self.assertIn("| PiG | not recorded | `pig --version`: `1.0` | measured |", page)
 
-    def test_report_version_note_matches_recorded_pig_output(self):
-        base = {"generated": "t", "host": {"platform": "p", "machine": "m", "cpus": 1}, "warmup": 0, "runs": 1, "prompt": "hi",
-                "session_exchanges": 1, "results": []}
-        pig = {"name": "PiG", "version": None, "version_output": "1.0", "version_command": "pig --version"}
-        page = report.overhead(dict(base, harnesses={"pig": pig}))
-        self.assertIn("predates the composite version string and printed only the pinned Pi release", page)
-        pig["version_output"] = "2.0+1.0"
-        page = report.overhead(dict(base, harnesses={"pig": pig}))
-        self.assertNotIn("predates", page)
-        self.assertIn("PiG's `--version` prints its composite version, `<PiG release>+<Pi release>` (D63).", page)
-
-
     def test_repository_registry_reads_pig_own_version(self):
         self.assertEqual(registry.load()["pig"].own_version_args, ["version"])
 
