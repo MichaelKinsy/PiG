@@ -97,8 +97,8 @@ type EditToolOptions struct {
 	Operations *EditOperations
 }
 
-// GrepOperations is Pi's GrepOperations. IsDirectory is required and fails when the path does not exist; ReadFile is optional and, without it, matched files
-// are streamed from the local file system.
+// GrepOperations is Pi's GrepOperations. IsDirectory is required and fails when the path does not exist; ReadFile is accepted and ignored, since Pi main (8da141c2a) takes
+// grep's context lines from ripgrep and never reads a matched file.
 type GrepOperations struct {
 	IsDirectory func(absolutePath string) (bool, error)
 	ReadFile    func(absolutePath string) (string, error)
