@@ -208,3 +208,36 @@ func TestAnUnchangedContextReplyReadsNoOrder(t *testing.T) {
 		t.Errorf("an unchanged context reply allocated %d bytes: it read the order of the event", perReply)
 	}
 }
+
+// A fused extension's copy of an object that the handler dropped does not hand its order to a map that takes its address: the order keeps the copies.
+func TestFusedCopiesDoNotLeakTheOrderOfAFreedObject(t *testing.T) {
+	const nested = 500
+	var text strings.Builder
+	text.WriteString(`{"payload":{"keep":1`)
+	for i := range nested {
+		fmt.Fprintf(&text, `,"n%d":{"z":1,"y":2}`, i)
+	}
+	text.WriteString(`}}`)
+	var memo eventArgsMemo
+	data, _, order, release := memo.decodeWithMaster([]byte(text.String()))
+	defer release()
+	payload := data["payload"].(map[string]any)
+	// The first lookup reads every copy; the handler then drops them all.
+	if keys, ok := order.KeysOf(payload["n0"].(map[string]any)); !ok || keys[0] != "z" {
+		t.Fatalf("n0 = %v, %v", keys, ok)
+	}
+	for i := range nested {
+		delete(payload, fmt.Sprintf("n%d", i))
+	}
+	runtime.GC()
+	runtime.GC()
+	fresh := make([]map[string]any, 0, 4*nested)
+	for range 4 * nested {
+		fresh = append(fresh, map[string]any{"y": 1, "z": 2})
+	}
+	for _, m := range fresh {
+		if keys, ok := order.KeysOf(m); ok {
+			t.Fatalf("a new map got the order of a freed copy: %v", keys)
+		}
+	}
+}
