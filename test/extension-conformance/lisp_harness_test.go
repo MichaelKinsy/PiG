@@ -19,9 +19,14 @@ const lispFixtureName = "lisp-sdk-fixture"
 // lispFixtureConfig loads testdata/<dir> as the factory extension named name through the Lisp SDK.
 func lispFixtureConfig(t testing.TB, dir, name string) subprocess.ExtConfig {
 	t.Helper()
+	return lispFixtureConfigAt(findModuleRoot(t), dir, name)
+}
+
+// lispFixtureConfigAt is lispFixtureConfig for the repository at root.
+func lispFixtureConfigAt(root, dir, name string) subprocess.ExtConfig {
 	return subprocess.ExtConfig{
 		Name: name, Enabled: true, Isolation: "strict",
-		Source:      filepath.Join(findModuleRoot(t), "test", "extension-conformance", "testdata", dir),
+		Source:      filepath.Join(root, "test", "extension-conformance", "testdata", dir),
 		Factory:     "new-extension",
 		SDKName:     "pig-sdk-lisp",
 		Package:     dir,

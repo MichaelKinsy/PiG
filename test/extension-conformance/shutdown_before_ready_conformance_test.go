@@ -273,14 +273,11 @@ func runPackedShutdownBeforeReady(t *testing.T, language string) {
 func packedShutdownRunner(t *testing.T, language string) func(addresses []string) *exec.Cmd {
 	t.Helper()
 	root := findModuleRoot(t)
-	cacheRoot := filepath.Join(fixtureRoot, "packed-shutdown-cells")
-	sources := filepath.Join(fixtureRoot, "packed-shutdown-"+language)
+	cacheRoot := filepath.Join(os.Getenv("PIG_HOME"), "cache")
+	sources := filepath.Join(sharedSources, "packed-shutdown-"+language)
 	write := func(path, text string) {
 		t.Helper()
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		if err := writeSharedSource(path, text); err != nil {
 			t.Fatal(err)
 		}
 	}
