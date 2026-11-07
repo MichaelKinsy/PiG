@@ -2128,6 +2128,7 @@ Locked by: `TestObjectKeysAreReadInTheOrderTheHostWroteThem`, `TestObjectKeysPut
 Remove when: Pi gives a Go extension an ordered object type, or the Go SDK decodes event objects into one.
 
 Approval: approved by owner Michael Kinsy on 2026-11-07 (PortPosthorse review item R1).
+SCRUTINIZED:approved
 
 ## D276 A message or entry renderer of an SDK keeps per-message state and takes the mouse events of its view (`MessageViewEvent`, `EntryViewEvent`, `MessageRenderOptions.State`)
 
