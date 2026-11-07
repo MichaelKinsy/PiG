@@ -3305,10 +3305,14 @@ fn main() {
         },
     );
     // io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
-    ext.command("io_wait", "Wait on a socket read", |_ctx, args| match io_wait(args) {
-        Ok(()) => CommandResult::Ok,
-        Err(err) => CommandResult::Error(err.to_string()),
-    });
+    ext.command(
+        "io_wait",
+        "Wait on a socket read",
+        |_ctx, args| match io_wait(args) {
+            Ok(()) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
     let io_wait_subscriber = ext.event_subscriber();
     let io_wait_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));
@@ -5777,7 +5781,10 @@ fn state_push_reader(
                 Ok(id) => format!("tokens=250,id={id}"),
                 Err(err) => format!("error:{err}"),
             },
-            Ok(Some(usage)) => format!("tokens={}", usage.tokens.map(|n| n.to_string()).unwrap_or_default()),
+            Ok(Some(usage)) => format!(
+                "tokens={}",
+                usage.tokens.map(|n| n.to_string()).unwrap_or_default()
+            ),
             Ok(None) => "none".to_string(),
             Err(err) => format!("error:{err}"),
         }));

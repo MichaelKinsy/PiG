@@ -318204,17 +318204,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookShellExited",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
-      "name": "testHookShellExited",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookStdioGraceExpired",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "testHookStdioGraceExpired",

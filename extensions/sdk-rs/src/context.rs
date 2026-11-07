@@ -7711,12 +7711,13 @@ mod sdk_surface_call_tests {
     #[test]
     fn session_name_and_file_ask_the_host_until_a_snapshot_carried_the_session() {
         // A snapshot without a session object leaves every session read to the host.
-        let reads: [(
-            &str,
+        type Read = (
+            &'static str,
             fn(&Context) -> io::Result<serde_json::Value>,
-            &str,
+            &'static str,
             serde_json::Value,
-        ); 4] = [
+        );
+        let reads: [Read; 4] = [
             (
                 "getSessionName",
                 |c| Ok(json!(c.get_session_name()?)),

@@ -26,9 +26,11 @@ fn main() {
         let _ = wait("RPC_SETTLE_INPUT_ADDR");
         None
     });
-    ext.command("hold", "wait on a socket read", |_, _| match wait("RPC_SETTLE_ADDR") {
-        Ok(()) => CommandResult::Ok,
-        Err(error) => CommandResult::Error(error.to_string()),
+    ext.command("hold", "wait on a socket read", |_, _| {
+        match wait("RPC_SETTLE_ADDR") {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error.to_string()),
+        }
     });
     if let Err(error) = ext.run() {
         eprintln!("rpc-settle-wait-rs: {error}");

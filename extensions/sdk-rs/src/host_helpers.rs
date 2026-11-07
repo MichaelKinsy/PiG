@@ -722,7 +722,14 @@ mod tests {
         locked(&DIALLED).push((path.clone(), Arc::new(Connection::new(client))));
         crate::report_load_failure(&path).unwrap();
         let mut byte = [0u8; 1];
-        assert_eq!(host.read(&mut byte).unwrap(), 0, "the helper's connection was not closed");
-        assert!(take_dialled(&path).is_none(), "the connection is still held for run");
+        assert_eq!(
+            host.read(&mut byte).unwrap(),
+            0,
+            "the helper's connection was not closed"
+        );
+        assert!(
+            take_dialled(&path).is_none(),
+            "the connection is still held for run"
+        );
     }
 }
