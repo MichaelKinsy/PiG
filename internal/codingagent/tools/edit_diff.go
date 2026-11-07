@@ -15,35 +15,10 @@ import (
 	"unicode/utf16"
 )
 
-// detectLineEnding returns "\r\n" if content uses CRLF, else "\n".
-// Matches upstream detectLineEnding.
-func detectLineEnding(content string) string {
-	crlfIdx := strings.Index(content, "\r\n")
-	lfIdx := strings.Index(content, "\n")
-	if lfIdx == -1 {
-		return "\n"
-	}
-	if crlfIdx == -1 {
-		return "\n"
-	}
-	if crlfIdx < lfIdx {
-		return "\r\n"
-	}
-	return "\n"
-}
-
 // normalizeToLF converts \r\n and stray \r to \n.
 func normalizeToLF(text string) string {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
-	return text
-}
-
-// restoreLineEndings converts \n back to the original ending.
-func restoreLineEndings(text, ending string) string {
-	if ending == "\r\n" {
-		return strings.ReplaceAll(text, "\n", "\r\n")
-	}
 	return text
 }
 
@@ -120,6 +95,8 @@ type matchedEdit struct {
 type appliedEditsResult struct {
 	baseContent string
 	newContent  string
+	// replacements are the sorted, disjoint replacements of baseContent that turn it into newContent (upstream AppliedEditsResult.replacements).
+	replacements []matchedEdit
 }
 
 // applyEditsToNormalizedContent ports upstream's algorithm:
@@ -192,25 +169,22 @@ func applyEditsToNormalizedContent(normalizedContent string, edits []editEntry, 
 		}
 	}
 
-	// Upstream diffs against the original content. A fuzzy match rewrites
-	// only the lines its replacements touch, from the normalized base; every
-	// other line keeps its original bytes.
-	var newContent string
+	// A fuzzy match rewrites only the lines its replacements touch, from the normalized base; every other line keeps its original text.
+	replacements := matched
 	if usedFuzzyAny {
 		var err error
-		newContent, err = applyReplacementsPreservingUnchangedLines(normalizedContent, baseContent, matched)
+		replacements, err = widenReplacementsToLines(normalizedContent, baseContent, matched)
 		if err != nil {
 			return appliedEditsResult{}, err
 		}
-	} else {
-		newContent = applyReplacements(baseContent, matched, 0)
 	}
+	newContent := applyReplacements(normalizedContent, replacements, 0)
 
 	if normalizedContent == newContent {
 		return appliedEditsResult{}, noChangeErr(path, len(normEdits))
 	}
 
-	return appliedEditsResult{baseContent: normalizedContent, newContent: newContent}, nil
+	return appliedEditsResult{baseContent: normalizedContent, newContent: newContent, replacements: replacements}, nil
 }
 
 // splitLinesWithEndings mirrors upstream splitLinesWithEndings
@@ -279,16 +253,15 @@ func applyReplacements(content string, replacements []matchedEdit, offset int) s
 	return result.String()
 }
 
-// applyReplacementsPreservingUnchangedLines mirrors the upstream function of
-// the same name: each replacement matched against baseContent (a normalized
-// view of originalContent) is widened to the lines it touches; those lines
-// are rewritten from the base, and all other lines are copied from the
-// original.
-func applyReplacementsPreservingUnchangedLines(originalContent, baseContent string, replacements []matchedEdit) (string, error) {
-	originalLines := splitLinesWithEndings(originalContent)
+// widenReplacementsToLines turns replacements matched against baseContent (a normalized view of originalContent) into replacements of
+// originalContent that keep its unchanged line blocks: each replacement is widened to the lines it touches, and those lines are
+// rewritten from the base; all other lines keep their original text. The actual replacement ranges drive preservation, so duplicate
+// normalized lines cannot be aligned to the wrong occurrence. Upstream widenReplacementsToLines.
+func widenReplacementsToLines(originalContent, baseContent string, replacements []matchedEdit) ([]matchedEdit, error) {
+	originalLines := getLineSpans(originalContent)
 	baseLines := getLineSpans(baseContent)
 	if len(originalLines) != len(baseLines) {
-		return "", errors.New("Cannot preserve unchanged lines because the base content has a different line count.")
+		return nil, errors.New("Cannot preserve unchanged lines because the base content has a different line count.")
 	}
 	type group struct {
 		startLine, endLine int
@@ -300,7 +273,7 @@ func applyReplacementsPreservingUnchangedLines(originalContent, baseContent stri
 	for _, r := range sorted {
 		startLine, endLine, err := getReplacementLineRange(baseLines, r)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if n := len(groups); n > 0 && startLine < groups[n-1].endLine {
 			current := groups[n-1]
@@ -310,17 +283,92 @@ func applyReplacementsPreservingUnchangedLines(originalContent, baseContent stri
 		}
 		groups = append(groups, &group{startLine: startLine, endLine: endLine, replacements: []matchedEdit{r}})
 	}
-	var b strings.Builder
-	originalLineIndex := 0
-	for _, g := range groups {
-		b.WriteString(strings.Join(originalLines[originalLineIndex:g.startLine], ""))
+	widened := make([]matchedEdit, len(groups))
+	for i, g := range groups {
 		groupStart := baseLines[g.startLine].start
 		groupEnd := baseLines[g.endLine-1].end
-		b.WriteString(applyReplacements(baseContent[groupStart:groupEnd], g.replacements, groupStart))
-		originalLineIndex = g.endLine
+		originalStart := originalLines[g.startLine].start
+		widened[i] = matchedEdit{
+			matchIndex:  originalStart,
+			matchLength: originalLines[g.endLine-1].end - originalStart,
+			newText:     applyReplacements(baseContent[groupStart:groupEnd], g.replacements, groupStart),
+		}
 	}
-	b.WriteString(strings.Join(originalLines[originalLineIndex:], ""))
-	return b.String(), nil
+	return widened, nil
+}
+
+// applyReplacementsToOriginal applies replacements matched in normalizeToLF(originalContent) to originalContent itself. Text outside the
+// replaced ranges keeps its bytes, including its line endings. Line breaks in the new text get the line ending of the line where the
+// replaced range starts. The result, normalized to LF, equals the replacements applied to the normalized content.
+func applyReplacementsToOriginal(originalContent string, replacements []matchedEdit) string {
+	// Only CRLF changes length when normalizing: the LF of the n-th CRLF (at original offset p) is at p - n in the normalized text. Adding
+	// the number of CRLFs before a normalized offset gives the original offset, and a range that covers that LF covers the whole CRLF.
+	crlfBefore := 0
+	nextCrlf := strings.Index(originalContent, "\r\n")
+	toOriginal := func(offset int) int {
+		for nextCrlf != -1 && nextCrlf-crlfBefore < offset {
+			crlfBefore++
+			if next := strings.Index(originalContent[nextCrlf+2:], "\r\n"); next == -1 {
+				nextCrlf = -1
+			} else {
+				nextCrlf += 2 + next
+			}
+		}
+		return offset + crlfBefore
+	}
+
+	var result strings.Builder
+	result.Grow(len(originalContent))
+	endsWithCr := false
+	push := func(part string) {
+		if part == "" {
+			return
+		}
+		// A CR before a seam and an LF after it would merge into one CRLF line break, for example a kept lone CR followed by inserted
+		// text that starts with LF, or both sides of a deleted range. Adding an LF turns the CR into a CRLF of its own, so the written
+		// file has the line breaks the diff shows.
+		if endsWithCr && part[0] == '\n' {
+			result.WriteByte('\n')
+		}
+		result.WriteString(part)
+		endsWithCr = part[len(part)-1] == '\r'
+	}
+	position := 0
+	for _, r := range replacements {
+		start := toOriginal(r.matchIndex)
+		push(originalContent[position:start])
+		ending := getLineEndingAt(originalContent, start)
+		if ending == "\n" {
+			push(r.newText)
+		} else {
+			push(strings.ReplaceAll(r.newText, "\n", ending))
+		}
+		position = toOriginal(r.matchIndex + r.matchLength)
+	}
+	push(originalContent[position:])
+	return result.String()
+}
+
+// getLineEndingAt is the line ending of the line containing offset: its own LF or CRLF, or that of the line before for an unterminated
+// last line. A lone CR only counts in files without any LF (classic Mac line endings); elsewhere it is more likely a control character
+// inside a line.
+func getLineEndingAt(content string, offset int) string {
+	lineFeed := -1
+	if next := strings.IndexByte(content[offset:], '\n'); next != -1 {
+		lineFeed = offset + next
+	} else {
+		lineFeed = strings.LastIndexByte(content[:min(offset+1, len(content))], '\n')
+	}
+	if lineFeed == -1 {
+		if strings.Contains(content, "\r") {
+			return "\r"
+		}
+		return "\n"
+	}
+	if lineFeed > 0 && content[lineFeed-1] == '\r' {
+		return "\r\n"
+	}
+	return "\n"
 }
 
 // ─── error messages (match upstream wording) ──────────────────────────────────
