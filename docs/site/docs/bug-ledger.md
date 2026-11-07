@@ -326,7 +326,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d3f421](#bf-3d3f421) | A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129 | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a… | PiG's own defect | All platforms | Unreleased |
+| [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -1102,7 +1102,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D262](#bf-d262) | The startup benchmark disposes the session runtime | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D266](#bf-d266) | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D267](#bf-d267) | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-a02543e](#bf-a02543e) | A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's… | PiG's own defect | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -5976,17 +5975,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-3de4b8e
 
-**A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a…**
+**A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them.
+- **Symptom:** A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries, a string of a message) and hands them back no longer re-sorts their keys, so tool-call arguments, tool schemas and message members reach the session and the provider in the order the host sent them.
 - **Root cause:** - Lint: annotate the G103 unsafe.String in decodeKey and delete the unused compactJSON. - A handler that returns nothing, or a reply with a one-member map, no longer reads the event: the source order is built at the first question and a map with fewer than two members is never asked. A context handler returning nothing went from walking the whole context (5.5 ms, 4 MiB at 3000 messages) to 0.8 us and 392 B at any size; a nil tool_result or message_end capture is 3 allocations. - An array a handler reorders, filters or sorts in place (the blocks of a message, a request's tools, a list of messages) keeps the order of its objects: elements that no longer stand where the text has them are…
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `3de4b8e877` (2026-11-06)
 - **Tests:** `extensions/sdk/key_order_test.go::TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `extensions/sdk/key_order_test.go::TestObjectKeysPutArrayIndexKeysFirst`, `extensions/sdk/key_order_test.go::TestObjectsMovedInPlaceKeepTheirMemberOrder`
-- **Release note:** A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.
+- **Release note:** A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries, a string of a message) and hands them back no longer re-sorts their keys, so tool-call arguments, tool schemas and message members reach the session and the provider in the order the host sent them. The Go SDK records the member order of every object while it decodes the event and knows each object by its own map, so no object is ever given another's order and a reply reads nothing of the event's text. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.
 
 ### BF-3def2a7
 
@@ -16771,20 +16770,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi stops waiting on inherited pipes (its install settles on the command's `exit`, or bounds the wait for `close`). Then the call-site marker and this record go.
 - **Fix commits:** `0bc49744aa` (2026-11-05), `79032e4d1f` (2026-11-05)
 - **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes`
-
-### BF-a02543e
-
-**A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's member order into what it hands back.
-- **Root cause:** The order of an event's objects was read back from the event text when a reply was written, matching moved array elements to the text by their first string members. That wrote another object's order into a provider request when tools were sorted, siblings shared leading strings, or a string was edited in place, and it searched quadratically.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `a02543e282` (2026-11-07)
-- **Tests:** `extensions/sdk/json/object_order_test.go::TestObjectOrderIdentifiesObjectsByTheirMaps`, `extensions/sdk/json/object_order_test.go::TestObjectOrderIsReadConcurrently`, `extensions/sdk/json/object_order_test.go::TestObjectOrderKeepsEveryObjectsKeysWhole`, `extensions/sdk/json/object_order_test.go::TestUnmarshalObjectOfAValueThatIsNotAnObject`, `extensions/sdk/json/object_order_test.go::TestUnmarshalObjectRecordsTheMemberOrder`, `extensions/sdk/key_order_probe_test.go::TestAnUnchangedContextReplyReadsNoOrder`, `extensions/sdk/key_order_probe_test.go::TestObjectsEditedInPlaceKeepTheirOrderInTheContext`, `extensions/sdk/key_order_probe_test.go::TestObjectsKeepTheirOrderWhateverTheHandlerDoesToTheirPlace` and 3 more in docs/bug-ledger.json
-- **Release note:** A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's member order into what it hands back. The order of an event's objects was matched back to the event's text by the first string members of the moved elements, so sorting an OpenAI provider request's `tools` by name re-sorted each tool's `properties`, siblings with the same leading strings or only numbers swapped their orders, an escaped string or an in-place string edit gave the wrong order, and a context of 3,000 messages edited in place took 1.2 s to answer (10 s at 10,000). The Go SDK now records the member order of every object while it decodes the event and knows each object by its own map, so a moved, copied, edited or twice-listed object keeps exactly the order the host wrote it: redacting every message of a 10,000-message context takes 97 ms, and a context handler that returns nothing costs 2% more than the decode it already paid.
 
 ### BF-a076a50
 
