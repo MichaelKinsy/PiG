@@ -48,6 +48,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0631c73](#bf-0631c73) | Go, Python and Rust extensions now draw an overlay component (`ctx.custom` with `overlay: true`) at the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0636520](#bf-0636520) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
 | [BF-064181f](#bf-064181f) | fix(extension): hold the theme colors map the wire palette memo is keyed on | PiG's own defect | All platforms | Unreleased |
+| [BF-0684c43](#bf-0684c43) | A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-06a8890](#bf-06a8890) | fix(bug): tell the reporter exactly what to do with the /bug archive | PiG's own defect | All platforms | Unreleased |
 | [BF-06cb94f](#bf-06cb94f) | In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -1049,6 +1050,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9acb844](#bf-9acb844) | fix(chord/nextnode/plugins): the pipe to the Node subprocess buffers writes, so a process's last frame… | PiG's own defect | All platforms | Unreleased |
 | [BF-9af407c](#bf-9af407c) | fix(ai): race builds read provider sockets through syscall.Read | PiG's own defect | All platforms | Unreleased |
 | [BF-9b2165f](#bf-9b2165f) | fix(tui): quotes narrower than a border keep their whitespace tokens like Pi (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-9b33064](#bf-9b33064) | Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on… | PiG's own defect | All platforms | Unreleased |
 | [BF-9b4312b](#bf-9b4312b) | A Rust extension build that ends without a compiler diagnostic (cargo or rustc killed, cargo unable to start)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9b4312b-2](#bf-9b4312b-2) | The Rust build failure test asserts that a killed rustc is named by its program name, not its full path | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9b63b2b](#bf-9b63b2b) | On Windows, the bash tool no longer risks waiting forever after a command exits while a process it started in… | PiG's own defect | Windows | 0.5.0 |
@@ -1143,7 +1145,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a8f5413](#bf-a8f5413) | Fix the lint findings of the JPEG port | PiG's own defect | All platforms | Unreleased |
 | [BF-a8ff0c7](#bf-a8ff0c7) | The anthropic-messages and google-generative-ai requests build their URL as @anthropic-ai/sdk and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
-| [BF-a921aa3](#bf-a921aa3) | Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | 0.7.0 |
@@ -1227,7 +1228,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b85fd68](#bf-b85fd68) | fix(chord/host): compile the frame schema once, not for every frame a link carries | PiG's own defect | All platforms | Unreleased |
 | [BF-b88044f](#bf-b88044f) | A login flow's text prompt accepts an empty answer, as Pi's does, instead of failing with "<prompt> is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b8b83db](#bf-b8b83db) | fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop | PiG's own defect | All platforms | Unreleased |
-| [BF-b8b9af5](#bf-b8b9af5) | A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-b8c5de6](#bf-b8c5de6) | Interactive startup no longer reads terminal input while it checks for fd and rg unless one of them is being… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
@@ -2121,6 +2121,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `064181fd0a` (2026-10-11)
 - **Tests:** `internal/codingagent/ext_ui_theme_palette_test.go::TestActiveExtensionThemeWireHoldsTheColorsMapItIsKeyedOn`
+
+### BF-0684c43
+
+**A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe.
+- **Root cause:** trainRun read one chunk from the extension's connection, slept a fixed 200 ms "so the registration can finish" and closed the connection. Every extension of every build paid the 200 ms, and a registration larger than one read, or one the runtime sent in parts, was cut: the host closed after the first chunk and the runtime's next write failed with a broken pipe. The runtime sends one length-prefixed register frame and waits for nothing after it, so the host now reads that frame whole and closes on it ().
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0684c43cd0` (2026-11-06), `b8b9af5e63` (2026-11-06)
+- **Tests:** `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainHostHelper`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration`
+- **Release note:** A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe. It now ends on the registration frame (339 and 398 ms before, 150 and 197 ms after).
 
 ### BF-06a8890
 
@@ -15999,6 +16013,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9b2165ffb6` (2026-10-23)
 - **Tests:** None recorded.
 
+### BF-9b33064
+
+**Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.
+- **Root cause:** Pi-Bolt 0.7.4's compiler crashes (a null dereference, "Segmentation fault at address 0x30") in the ahead-of-time step of bun build --compile whenever the build's --bytecode-order file holds any module, function, string or key record while BUN_JSC_omitBytecodeFromStaticHeap=1 (the lean mode) is set. The bytecode build and the training run complete first, so the crash is in the last step and not in the bundle step, and it happens on the CI image and on the host alike. The same stage and order file build with the bytecode kept in the heap on 0.7.4, and Pi-Bolt 1.1.2 builds both modes, so the fix is the pin () and TestBuildCompilesAnExtensionSetAndTheHostRegistersIt is the guard.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9b33064ca0` (2026-11-06), `a921aa3352` (2026-11-06)
+- **Tests:** `coding/cli/extensions_runtime_command_test.go::TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets`, `piglets/pig-bolt/extensions/boltruntime/build_integration_test.go::TestBuildCompilesAnExtensionSetAndTheHostRegistersIt`, `piglets/pig-bolt/extensions/boltruntime/images_test.go::TestEnsureManifestDropsImagesOfAnotherCompilerRelease`, `piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestInstallRemovesTheCompilerOfAnEarlierRelease`, `piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestPinnedReleaseKeyVerifiesTheRealSignedChecksums`
+- **Release note:** Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image. Pi-Bolt 1.1.2 builds the same input; the Piglet pins it.
+
 ### BF-9b4312b
 
 **A Rust extension build that ends without a compiler diagnostic (cargo or rustc killed, cargo unable to start)…**
@@ -17333,20 +17361,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/openrouter_cost_test.go::TestAnthropicMessagesUsesOpenRouterReportedCost`, `ai/openrouter_cost_test.go::TestApplyOpenRouterReportedCost`, `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/openrouter_cost_test.go::TestOpenAICompletionsUsesOpenRouterReportedCost`, `internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets`
 - **Release note:** OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's reported total as `usage.cost.total` for OpenAI Completions and Anthropic Messages streams, plus the upstream inference cost for a BYOK request, instead of the catalog estimate, and mark it provider-reported. The export HTML header uses the recorded total. Replaces PiG's earlier D124 form of this fix with Pi's.
 
-### BF-a921aa3
-
-**Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.
-- **Root cause:** Pi-Bolt bolt-v1.1.2 (commit) replaces 0.7.4. The runtime archive layout (bun, LICENSE, LICENSE.pi, THIRD_PARTY_NOTICES.md) is unchanged; linux-x64 archive..., compiler...; darwin-arm64 archive..., compiler....
-- **User impact:** Crash, hang or runaway process
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `a921aa3352` (2026-11-06)
-- **Tests:** `coding/cli/extensions_runtime_command_test.go::TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets`, `piglets/pig-bolt/extensions/boltruntime/images_test.go::TestEnsureManifestDropsImagesOfAnotherCompilerRelease`, `piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestInstallRemovesTheCompilerOfAnEarlierRelease`, `piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestPinnedReleaseKeyVerifiesTheRealSignedChecksums`
-- **Release note:** Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image. Pi-Bolt 1.1.2 builds the same input; the Piglet pins it.
-
 ### BF-a9264aa
 
 **A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the…**
@@ -18493,20 +18507,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `b8b83db5e7` (2026-10-31)
 - **Tests:** None recorded.
-
-### BF-b8b9af5
-
-**A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe.
-- **Root cause:** Measured on xd670 with Pi-Bolt 0.7.4's bun running the runtime's cli.mjs as the training host (one registerCommand, and 3000 of them): trainRun 339 ms and 398 ms before, 150 ms and 197 ms after (6 runs each), host exit status 0 and empty stderr in every run. The compiled host could not be built here (Pi-Bolt's compiler segfaults in the bundle step in the CI container), so the order file a compiled training host writes was not compared.
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `b8b9af5e63` (2026-11-06)
-- **Tests:** `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainHostHelper`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration`
-- **Release note:** A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe. It now ends on the registration frame (339 and 398 ms before, 150 and 197 ms after).
 
 ### BF-b8c5de6
 

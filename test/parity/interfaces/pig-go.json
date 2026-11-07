@@ -149067,6 +149067,17 @@
       "shapeHash": "sha256:2fb37755026412e519fa9617358331fe04fc5d251fa754fd39bfab2d9372ac15"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#releaseVerified",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "releaseVerified",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection)"
+      },
+      "shapeHash": "sha256:c183225ee110382e46f2182657b7e78a0375b3c6f3d42bd49a3f58c72531df6f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadBuildFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "reloadBuildFailure",
@@ -150385,6 +150396,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runVerified",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "runVerified",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cmd *os/exec.Cmd, sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection) *os/exec.Cmd"
+      },
+      "shapeHash": "sha256:ac00c4d1938b72843b071c9926df1627ffa4334b58b0535e10a732793ab2b23e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runtimeDrainKey",
@@ -158450,6 +158472,61 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Executable"
+      },
+      "shapeHash": "sha256:ad05a1d98b7735b1b49bcb2c8c44315621c56947dfe4c807f1c6d6ed2f37c1c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.Close",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.ExecPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.ExecPath",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.Path",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.Path",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.settle",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.settle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Fallback",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "Fallback",
@@ -159072,9 +159149,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, m Manifest, executable string, digest string) (Reason, error)"
+        "type": "func(ctx context.Context, m Manifest, executable string, digest string) (*Executable, Reason, error)"
       },
-      "shapeHash": "sha256:e9067df25b28066509893179b2476d67e38b70d3f8b9e08370454a298bfcc5c5"
+      "shapeHash": "sha256:40e66042a791cb6921e29ee0ff0ccbda25dc6ea5566008ed0106f6722b76068f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Verifier.checkDigest",
@@ -159083,9 +159160,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(path string, want string) error"
+        "type": "func(exe *Executable, want string) error"
       },
-      "shapeHash": "sha256:5c79ba845489f85971e7a631b100487a494a839c8934aaa1bef766ed89d92a1f"
+      "shapeHash": "sha256:35953c5047cd3e4e25129d7848d3fe22ec8cefa1320fb752d76fe041fe3b2dbb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Verifier.verify",
@@ -159094,9 +159171,20 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, m Manifest, executable string, digest string) (Reason, error)"
+        "type": "func(ctx context.Context, m Manifest, exe *Executable, digest string) (Reason, error)"
       },
-      "shapeHash": "sha256:e9067df25b28066509893179b2476d67e38b70d3f8b9e08370454a298bfcc5c5"
+      "shapeHash": "sha256:abe429d103df8aba33e9d33bdac8f84796cd6e042917f76ded232deecd172391"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#descriptorPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "descriptorPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(file *os.File, info os.FileInfo) string"
+      },
+      "shapeHash": "sha256:12c730d86af4549874528146ecccd2562dcd356c9402071691f9a25dad843df9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#digestRecord",
@@ -159154,6 +159242,17 @@
       "shapeHash": "sha256:6c32208595034c358fb6e77396782379e47622724cec2b71c81f05f3334054fe"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#fileIdentity.unchangedBy",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "fileIdentity.unchangedBy",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(current fileIdentity, unlinked bool) bool"
+      },
+      "shapeHash": "sha256:39d797e1d4cc911fd24e6f39adb39633f7c418c48e645c00faaea9fbb1236443"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#hexPattern",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "hexPattern",
@@ -159207,6 +159306,17 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#newExecutable",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "newExecutable",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, file *os.File, info os.FileInfo) *Executable"
+      },
+      "shapeHash": "sha256:5b063839d756b3c0f33f637e2730be08138bab4a8e101afb908eb885a4d2a8b8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#nodeOnlyPath",
@@ -159372,6 +159482,17 @@
         "type": "func(buf *[32]byte) int"
       },
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#openRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "openRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) (*os.File, error)"
+      },
+      "shapeHash": "sha256:d124eb8d83b5354335aca908b77d38f620cc02e97965c8cebd572ab87f420d06"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#ownedByCurrentUser",
@@ -159867,6 +159988,17 @@
         "type": "func(dir string)"
       },
       "shapeHash": "sha256:eab0f33befdf215288c95c5f0137a673c10b2094e399414fc885ec4184d03858"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#unlinked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "unlinked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(info os.FileInfo) bool"
+      },
+      "shapeHash": "sha256:0aa15cef91aa57854d6e132f8ed5c4a922b4dfe1f8e374faef86be14288393f2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#usedGranularity",

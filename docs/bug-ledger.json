@@ -824,6 +824,35 @@
       ]
     },
     {
+      "id": "BF-0684c43",
+      "title": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a…",
+      "symptom": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe.",
+      "rootCause": "trainRun read one chunk from the extension's connection, slept a fixed 200 ms \"so the registration can finish\" and closed the connection. Every extension of every build paid the 200 ms, and a registration larger than one read, or one the runtime sent in parts, was cut: the host closed after the first chunk and the runtime's next write failed with a broken pipe. The runtime sends one length-prefixed register frame and waits for nothing after it, so the host now reads that frame whole and closes on it ().",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe. It now ends on the registration frame (339 and 398 ms before, 150 and 197 ms after).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0684c43cd0",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "b8b9af5e63",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainHostHelper",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration"
+      ]
+    },
+    {
       "id": "BF-06a8890",
       "title": "fix(bug): tell the reporter exactly what to do with the /bug archive",
       "symptom": "fix(bug): tell the reporter exactly what to do with the /bug archive",
@@ -28974,6 +29003,36 @@
       "tests": []
     },
     {
+      "id": "BF-9b33064",
+      "title": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on…",
+      "symptom": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.",
+      "rootCause": "Pi-Bolt 0.7.4's compiler crashes (a null dereference, \"Segmentation fault at address 0x30\") in the ahead-of-time step of bun build --compile whenever the build's --bytecode-order file holds any module, function, string or key record while BUN_JSC_omitBytecodeFromStaticHeap=1 (the lean mode) is set. The bytecode build and the training run complete first, so the crash is in the last step and not in the bundle step, and it happens on the CI image and on the host alike. The same stage and order file build with the bytecode kept in the heap on 0.7.4, and Pi-Bolt 1.1.2 builds both modes, so the fix is the pin () and TestBuildCompilesAnExtensionSetAndTheHostRegistersIt is the guard.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image. Pi-Bolt 1.1.2 builds the same input; the Piglet pins it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b33064ca0",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "a921aa3352",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/cli/extensions_runtime_command_test.go::TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets",
+        "piglets/pig-bolt/extensions/boltruntime/build_integration_test.go::TestBuildCompilesAnExtensionSetAndTheHostRegistersIt",
+        "piglets/pig-bolt/extensions/boltruntime/images_test.go::TestEnsureManifestDropsImagesOfAnotherCompilerRelease",
+        "piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestInstallRemovesTheCompilerOfAnEarlierRelease",
+        "piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestPinnedReleaseKeyVerifiesTheRealSignedChecksums"
+      ]
+    },
+    {
       "id": "BF-9b4312b",
       "title": "A Rust extension build that ends without a compiler diagnostic (cargo or rustc killed, cargo unable to start)…",
       "symptom": "A Rust extension build that ends without a compiler diagnostic (cargo or rustc killed, cargo unable to start) now says how it ended: the exit status or signal, the crate whose rustc was killed, how long cargo ran and whether the build's context had ended, instead of only \"cargo build failed\".",
@@ -31971,31 +32030,6 @@
       ]
     },
     {
-      "id": "BF-a921aa3",
-      "title": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on…",
-      "symptom": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.",
-      "rootCause": "Pi-Bolt bolt-v1.1.2 (commit) replaces 0.7.4. The runtime archive layout (bun, LICENSE, LICENSE.pi, THIRD_PARTY_NOTICES.md) is unchanged; linux-x64 archive..., compiler...; darwin-arm64 archive..., compiler....",
-      "rootCauseSource": "commit",
-      "userImpact": "Crash, hang or runaway process",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image. Pi-Bolt 1.1.2 builds the same input; the Piglet pins it.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "a921aa3352",
-          "date": "2026-11-06"
-        }
-      ],
-      "tests": [
-        "coding/cli/extensions_runtime_command_test.go::TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets",
-        "piglets/pig-bolt/extensions/boltruntime/images_test.go::TestEnsureManifestDropsImagesOfAnotherCompilerRelease",
-        "piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestInstallRemovesTheCompilerOfAnEarlierRelease",
-        "piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestPinnedReleaseKeyVerifiesTheRealSignedChecksums"
-      ]
-    },
-    {
       "id": "BF-a9264aa",
       "title": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the…",
       "symptom": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the Harness clock (`HarnessOptions.now`, the wall clock when none is given), which throws once the tool call's invocation has ended, as Pi 1.4's `ToolExecutionApi.now` does.",
@@ -34423,31 +34457,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-b8b9af5",
-      "title": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a…",
-      "symptom": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe.",
-      "rootCause": "Measured on xd670 with Pi-Bolt 0.7.4's bun running the runtime's cli.mjs as the training host (one registerCommand, and 3000 of them): trainRun 339 ms and 398 ms before, 150 ms and 197 ms after (6 runs each), host exit status 0 and empty stderr in every run. The compiled host could not be built here (Pi-Bolt's compiler segfaults in the bundle step in the CI container), so the order file a compiled training host writes was not compared.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe. It now ends on the registration frame (339 and 398 ms before, 150 and 197 ms after).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "b8b9af5e63",
-          "date": "2026-11-06"
-        }
-      ],
-      "tests": [
-        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse",
-        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame",
-        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainHostHelper",
-        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration"
-      ]
     },
     {
       "id": "BF-b8c5de6",
