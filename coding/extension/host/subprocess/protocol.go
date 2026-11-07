@@ -1555,7 +1555,7 @@ type RenderResult struct {
 	// Regions are the rectangles, local to the component's first cell, in which the MouseRegions of a Node component's tree answer a click, as Pi's
 	// hit test finds them; the host hit-tests them itself and leaves a click outside them to text selection. Absent for a component without a
 	// MouseRegion, and for one that handles the mouse itself (Mouse).
-	Regions []RenderMouseRegion `json:"regions,omitempty"`
+	Regions []RenderMouseRegion `json:"regions,omitempty"` //portlint:allow emptydrop a frame between the host and the Node runtime, not Pi output; an empty list and an absent one both mean no MouseRegion
 }
 
 // RenderMouseRegion is one rectangle of RenderResult.Regions.
@@ -1584,7 +1584,7 @@ type RenderMouseRegion struct {
 type RenderComponentPayload struct {
 	Key      string             `json:"key,omitempty"`
 	Rerender bool               `json:"rerender,omitempty"`
-	Events   []ViewEventPayload `json:"events,omitempty"`
+	Events   []ViewEventPayload `json:"events,omitempty"` //portlint:allow emptydrop a frame between the host and the Node runtime, not Pi output; an empty list and an absent one both mean no events
 	Options  json.RawMessage    `json:"options"`
 	Width    int                `json:"width"`
 	// Message or Entry is the custom message or session entry, as upstream's renderer receives it.

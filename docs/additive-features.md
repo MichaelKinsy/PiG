@@ -2059,7 +2059,7 @@ SCRUTINIZED:approved
 
 ## D276 A message or entry renderer of an SDK keeps per-message state and takes the mouse events of its view (`MessageViewEvent`, `EntryViewEvent`, `MessageRenderOptions.State`)
 
-Summary: A Go, Rust, Python or Lisp extension can keep state per displayed message or entry in its renderer and receive the clicks on the mouse regions of the view the renderer returned, so a card that a click expands works in every SDK as it does in a Pi extension.
+Summary: A Go, Rust, Python or Lisp extension keeps state per displayed message or entry in its renderer and gets clicks on its view's mouse regions, so a click-expanded card works in every SDK as in Pi.
 
 Audience: author
 

@@ -104,7 +104,7 @@ func (e *Executable) execPath(named bool) (string, error) {
 	if e.file == nil {
 		return "", fmt.Errorf("the verified handle of %s was released before it started", e.path)
 	}
-	info, err := e.file.Stat()
+	info, err := e.file.Stat() //perf:ok cold: once per extension launch
 	if err != nil {
 		return "", err
 	}
@@ -152,6 +152,7 @@ func sweepExecDirs(tmp string, now time.Time) {
 			continue
 		}
 		path := filepath.Join(tmp, name)
+		//perf:ok cold: the sweep runs once per extension launch, over the few leftover directories of dead launches
 		if info, err := os.Lstat(path); err == nil && info.IsDir() && ownedByCurrentUser(info) && now.Sub(info.ModTime()) >= staleExecDirAge {
 			_ = os.RemoveAll(path)
 		}

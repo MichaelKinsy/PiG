@@ -342,6 +342,7 @@ func (c *renderProxyComponent) enqueueEvent(ev ViewEventPayload) {
 	c.requesting = true
 	c.mu.Unlock()
 	if start {
+		//portlint:allow golifetime requestLoop ends when its answer is current: it clears c.requesting under c.mu, and only the component's next frame starts another; one loop per component
 		go c.requestLoop()
 	}
 }
