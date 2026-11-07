@@ -88,27 +88,27 @@ func TestHandlerAnsweringWithinTheQuantumIsNotSuspended(t *testing.T) {
 	}
 }
 
-// A request without the option, such as a Node handler that reports its own window, sets no timer.
+// A request without the option, such as a Node handler that reports its own window or an event that is no tail handler, command or input handler, sets no timer. The request is answered before the timer count is read, so a request that armed one at any point shows it.
 func TestRequestWithoutTheQuantumSetsNoTimer(t *testing.T) {
 	clock := newManualLivenessClock()
 	host, peer := net.Pipe()
 	defer func() { _ = peer.Close() }()
 	conn := newConnWithOptions("quantum-none", host, connOptions{Clock: clock, HeartbeatInterval: time.Hour})
 	conn.Start(t.Context())
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	done := make(chan struct{})
+	done := make(chan error, 1)
 	go func() {
-		defer close(done)
-		_, _ = conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "event", Event: "agent_settled"}})
+		_, err := conn.Request(t.Context(), &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: "event", Event: "session_info_changed"}})
+		done <- err
 	}()
-	_ = readLivenessEnvelope(t, peer)
+	request := readLivenessEnvelope(t, peer)
+	writeLivenessEnvelope(t, peer, Envelope{Type: MsgResponse, ID: request.ID, Response: &ResponsePayload{Result: json.RawMessage(`null`)}})
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
 	clock.mu.Lock()
 	asked := clock.requested[HandlerWaitQuantum]
 	clock.mu.Unlock()
 	if asked != 0 {
 		t.Fatalf("a request without the quantum asked for %d timers of %s", asked, HandlerWaitQuantum)
 	}
-	cancel()
-	<-done
 }

@@ -57,26 +57,18 @@ func (p *rpcSettlePeer) accept() net.Conn {
 // rpcSettleImplementation starts testdata/rpc-settle-wait in one SDK realization, or Pi itself, with the peer at addr.
 type rpcSettleImplementation struct {
 	name  string
-	start func(t *testing.T, addr string) *rpcProcess
+	start func(t *testing.T, env ...string) *rpcProcess
 }
 
-// rpcSettleAddrEnv names the peer for the extension, or nothing, which makes its handler and command return at once.
-func rpcSettleAddrEnv(addr string) []string {
-	if addr == "" {
-		return nil
-	}
-	return []string{"RPC_SETTLE_ADDR=" + addr}
-}
-
-func startRPCSettleWaitPig(t *testing.T, extension, addr string) *rpcProcess {
+func startRPCSettleWaitPig(t *testing.T, extension string, extraEnv []string) *rpcProcess {
 	t.Helper()
 	home := t.TempDir()
 	env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic"}
-	env = append(env, rpcSettleAddrEnv(addr)...)
+	env = append(env, extraEnv...)
 	return startRPCProcessAt(t, t.TempDir(), env, "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", "test-faux/faux-1", "-e", extension)
 }
 
-func startRPCSettleWaitPi(t *testing.T, addr string) *rpcProcess {
+func startRPCSettleWaitPi(t *testing.T, extraEnv ...string) *rpcProcess {
 	t.Helper()
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -97,7 +89,7 @@ func startRPCSettleWaitPi(t *testing.T, addr string) *rpcProcess {
 	}
 	home := t.TempDir()
 	env := []string{"HOME=" + home, "PI_CODING_AGENT_DIR=" + filepath.Join(home, "agent")}
-	env = append(env, rpcSettleAddrEnv(addr)...)
+	env = append(env, extraEnv...)
 	args := []string{filepath.Join(piRoot, "dist", "cli.js"), "--mode", "rpc", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", "test-faux/faux-1",
 		"-e", filepath.Join(root, "test", "parity", "testdata", "test-faux-provider.ts"), "-e", filepath.Join(root, "coding", "cli", "testdata", "rpc-settle-wait.mjs")}
 	return startJSONLProcessAt(t, t.TempDir(), env, node, args...)
@@ -119,15 +111,15 @@ func rpcSettleImplementations(t *testing.T) []rpcSettleImplementation {
 	}
 	return []rpcSettleImplementation{
 		{"pi", startRPCSettleWaitPi},
-		{"pig-node", func(t *testing.T, addr string) *rpcProcess { return startRPCSettleWaitPig(t, node, addr) }},
-		{"pig-go", func(t *testing.T, addr string) *rpcProcess {
-			return startRPCSettleWaitPig(t, buildGoSDKFixture(t, "rpc-settle-wait-go"), addr)
+		{"pig-node", func(t *testing.T, env ...string) *rpcProcess { return startRPCSettleWaitPig(t, node, env) }},
+		{"pig-go", func(t *testing.T, env ...string) *rpcProcess {
+			return startRPCSettleWaitPig(t, buildGoSDKFixture(t, "rpc-settle-wait-go"), env)
 		}},
-		{"pig-rust", func(t *testing.T, addr string) *rpcProcess {
-			return startRPCSettleWaitPig(t, buildRustSettleWait(t), addr)
+		{"pig-rust", func(t *testing.T, env ...string) *rpcProcess {
+			return startRPCSettleWaitPig(t, buildRustSettleWait(t), env)
 		}},
-		{"pig-python", func(t *testing.T, addr string) *rpcProcess { return startRPCSettleWaitPig(t, python, addr) }},
-		{"pig-lisp", func(t *testing.T, addr string) *rpcProcess { return startRPCSettleWaitPig(t, lisp, addr) }},
+		{"pig-python", func(t *testing.T, env ...string) *rpcProcess { return startRPCSettleWaitPig(t, python, env) }},
+		{"pig-lisp", func(t *testing.T, env ...string) *rpcProcess { return startRPCSettleWaitPig(t, lisp, env) }},
 	}
 }
 
@@ -151,7 +143,7 @@ func TestRPCCommandDuringSettleHandlerNetworkWaitAnswersAcrossSDKs(t *testing.T)
 	for _, impl := range rpcSettleImplementations(t) {
 		t.Run(impl.name, func(t *testing.T) {
 			peer := newRPCSettlePeer(t)
-			p := impl.start(t, peer.addr())
+			p := impl.start(t, "RPC_SETTLE_ADDR="+peer.addr())
 			awaitReady(p)
 			p.sendJSON(map[string]any{"id": "p", "type": "prompt", "message": "hello"})
 			p.await("agent_end", func(r rpcRecord) bool { return r["type"] == "agent_end" })
@@ -179,7 +171,7 @@ func TestRPCCommandDuringCommandNetworkWaitAnswersAcrossSDKs(t *testing.T) {
 	for _, impl := range rpcSettleImplementations(t) {
 		t.Run(impl.name, func(t *testing.T) {
 			peer := newRPCSettlePeer(t)
-			p := impl.start(t, peer.addr())
+			p := impl.start(t, "RPC_SETTLE_ADDR="+peer.addr())
 			awaitReady(p)
 			p.sendJSON(map[string]any{"id": "h", "type": "prompt", "message": "/hold"})
 			conn := peer.accept()
@@ -205,7 +197,7 @@ func TestRPCCommandDuringCommandNetworkWaitAnswersAcrossSDKs(t *testing.T) {
 func TestRPCCommandAfterAgentEndAnswersAfterFastSettleHandlerAcrossSDKs(t *testing.T) {
 	for _, impl := range rpcSettleImplementations(t) {
 		t.Run(impl.name, func(t *testing.T) {
-			p := impl.start(t, "")
+			p := impl.start(t)
 			awaitReady(p)
 			p.sendJSON(map[string]any{"id": "p", "type": "prompt", "message": "hello"})
 			p.await("agent_end", func(r rpcRecord) bool { return r["type"] == "agent_end" })
@@ -219,6 +211,36 @@ func TestRPCCommandAfterAgentEndAnswersAfterFastSettleHandlerAcrossSDKs(t *testi
 				t.Fatalf("records after agent_end = %v, want %v\n%s", seen, want, p.stderr.String())
 			}
 			p.closeAndWait("after the get_state response")
+		})
+	}
+}
+
+// An input handler that waits on a socket is awaiting I/O: Pi's prompt() awaits the handler inside its own continuation while its RPC loop reads the next stdin line (agent-session.ts prompt(), rpc-mode.ts:808-810), so get_state is answered before the run starts, and the run follows when the handler returns. In Pig, rpcAwaitHandler admits the next line only once the handler suspended or finished, so a handler of a runtime that cannot report its wait needs the quantum for it. Pig's Node runtime does not report a wait for an input handler in RPC mode (D86), so its leg runs only under Pi and the Go, Rust, Python and Lisp SDKs here.
+func TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs(t *testing.T) {
+	for _, impl := range rpcSettleImplementations(t) {
+		if impl.name == "pig-node" {
+			continue
+		}
+		t.Run(impl.name, func(t *testing.T) {
+			peer := newRPCSettlePeer(t)
+			p := impl.start(t, "RPC_SETTLE_INPUT_ADDR="+peer.addr())
+			awaitReady(p)
+			p.sendJSON(map[string]any{"id": "p", "type": "prompt", "message": "hello"})
+			conn := peer.accept()
+			p.sendJSON(map[string]any{"id": "s", "type": "get_state"})
+			var seen []string
+			p.await("the get_state response while the input handler waits", func(r rpcRecord) bool {
+				seen = append(seen, fmt.Sprint(r["type"]))
+				return r["id"] == "s"
+			})
+			if slices.Contains(seen, "agent_start") || slices.Contains(seen, "agent_end") {
+				t.Fatalf("records before the input handler returned = %v, want no run\n%s", seen, p.stderr.String())
+			}
+			if _, err := conn.Write([]byte("go\n")); err != nil {
+				t.Fatal(err)
+			}
+			p.await("agent_settled after the input handler returned", func(r rpcRecord) bool { return r["type"] == "agent_settled" })
+			p.closeAndWait("after agent_settled")
 		})
 	}
 }

@@ -26,7 +26,7 @@ func TestRPCSettleHandlerLatencyProbe(t *testing.T) {
 	for _, load := range []bool{false, true} {
 		for _, impl := range rpcSettleImplementations(t) {
 			t.Run(fmt.Sprintf("%s/load=%v", impl.name, load), func(t *testing.T) {
-				p := impl.start(t, "")
+				p := impl.start(t)
 				awaitReady(p)
 				var stop atomic.Bool
 				defer stop.Store(true)
