@@ -141,10 +141,20 @@ func build(ctx context.Context, opts buildOptions) (*buildResult, error) {
 	if opts.Dynamic {
 		files = nil
 	}
-	if finding, found, err := scanPathSensitive(files); err != nil {
+	plan, err := scanPathSensitive(files)
+	if err != nil {
 		return nil, err
-	} else if found {
-		return nil, errPathSensitive{finding}
+	}
+	if plan.Finding != nil {
+		return nil, errPathSensitive{*plan.Finding}
+	}
+	if len(plan.Rewrites) > 0 {
+		// Extension files that name their own location are compiled from copies that say where the originals are (rewrite.go): the executable has no directory of its own.
+		started = time.Now()
+		if err := st.bundleRewritten(ctx, opts, config, bytecodeHost, inputs, plan, log); err != nil {
+			return nil, fmt.Errorf("rewritten bytecode build: %w", err)
+		}
+		timed("rewrite", started)
 	}
 
 	started = time.Now()
