@@ -8,6 +8,7 @@ godebug winsymlink=0
 
 use (
 	.
+	./apps/p2
 	./extensions/sdk
 	./piglets/porter/extensions/pig-porter
 )
