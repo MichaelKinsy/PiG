@@ -1615,6 +1615,12 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
+    # registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+    def registry_model_probe(ctx, name):
+        ext.register_provider("replica-reg", {"baseUrl": "https://probe.invalid/v1", "api": "openai-completions", "apiKey": "probe-key", "models": [{"id": "m", "name": name, "reasoning": False, "input": ["text"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 1000, "maxTokens": 100}]})
+        ctx.notify("regname=" + ((ctx.get_model_info() or {}).get("name") or ""), "info")
+
+    ext.command("registry-model-probe", "Register the active model's provider with a new name, then read the model", registry_model_probe)
     ext.command("provider_probe_register", "Register a provider with one model", lambda ctx, _args: ext.register_provider("conformance-probe", json.loads(r'''{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}''')))
     ext.command("provider_probe_unregister", "Unregister the provider", lambda ctx, _args: ext.unregister_provider("conformance-probe"))
     ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
@@ -3244,12 +3250,24 @@ def _context_usage_report(usage):
     return "tokens=" + ("" if tokens is None else str(tokens))
 
 
+def _usage_then_id(ctx):
+    """A host call, then the replicated id: the id must not be older than the host's answer."""
+    usage = ctx.get_context_usage()
+    if usage is None or usage.get("tokens") is None:
+        return "none"
+    if usage["tokens"] != 250:
+        return "tokens=%d" % usage["tokens"]
+    return "tokens=250,id=" + ctx.get_session_id()
+
+
 def _state_push_reader(ctx, kind):
     """The read of one replicated accessor, as a string that fails soft: a read that raises reports its error."""
     if kind == "model":
         read = lambda: ctx.model
     elif kind == "model-name":
         read = lambda: (ctx.get_model_info() or {}).get("name") or ""
+    elif kind == "usage-then-id":
+        read = lambda: _usage_then_id(ctx)
     elif kind == "context-usage":
         read = lambda: _context_usage_report(ctx.get_context_usage())
     elif kind == "session-name":

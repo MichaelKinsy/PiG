@@ -163,7 +163,7 @@ func (r *statePushRig) kinds(language string) []statePushKind {
 		},
 		armed: func(got string) bool { return got != "" && got != "state-push-replaced" }, read: equal("state-push-replaced"),
 	}
-	// The context usage moves with no push, so a reader between requests sees it only by asking the host. The Node runtime answers it from the snapshot of the last dispatch (runtime.mjs getContextUsage), so it has no such reader.
+	// The context usage moves with no push, so a reader between requests sees it only by asking the host.
 	contextUsage := statePushKind{
 		name:   "context-usage",
 		change: func(*testing.T) { r.usageTokens.Store(250) },

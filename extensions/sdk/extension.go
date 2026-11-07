@@ -1033,7 +1033,7 @@ func (e *Extension) OwnThinkingRuns(enabled bool) {
 	conn := e.toolConn
 	e.toolMu.Unlock()
 	if conn != nil {
-		result, err := hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
+		result, err := e.hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
 		if err = callResultError(result, err); err != nil {
 			panic(fmt.Errorf("ownThinkingRuns: %w", err))
 		}

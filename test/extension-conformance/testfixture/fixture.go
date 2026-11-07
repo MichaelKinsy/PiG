@@ -517,6 +517,28 @@ func Extension() *sdk.Extension {
 		ext.UnregisterProvider("conformance-probe")
 		return nil
 	})
+	// registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+	ext.Command("registry-model-probe", "Register the active model's provider with a new name, then read the model", func(ctx sdk.Context, name string) error {
+		encoded, err := json.Marshal(name)
+		if err != nil {
+			return err
+		}
+		var config sdk.ProviderConfig
+		if err := json.Unmarshal([]byte(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"m","name":`+string(encoded)+`,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`), &config); err != nil {
+			return err
+		}
+		ext.RegisterProvider("replica-reg", config)
+		info, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
+		read := ""
+		if info != nil {
+			read = info.Name
+		}
+		ctx.Notify("regname="+read, "info")
+		return nil
+	})
 	ext.Command("commands-probe", "Read the host's slash commands", func(ctx sdk.Context, _ string) error {
 		commands, err := ctx.GetCommands()
 		if err != nil {

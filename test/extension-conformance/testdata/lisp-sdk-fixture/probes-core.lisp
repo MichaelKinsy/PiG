@@ -309,6 +309,14 @@
                                                           "managerSessionName" (text-or-null (pig:session-get-session-name manager))
                                                           "managerSessionFile" (text-or-null (pig:session-get-session-file manager))
                                                           "usage" (or (pig:ctx-get-context-usage ctx) :null))))))))
+  (pig:command ext "registry-model-probe" "Register the active model's provider with a new name, then read the model"
+               (lambda (ctx args)
+                 (pig:register-provider ext "replica-reg"
+                                        (pig:obj "baseUrl" "https://probe.invalid/v1" "api" "openai-completions" "apiKey" "probe-key"
+                                                 "models" (vector (pig:obj "id" "m" "name" args "reasoning" :false "input" (vector "text")
+                                                                           "cost" (pig:obj "input" 0 "output" 0 "cacheRead" 0 "cacheWrite" 0)
+                                                                           "contextWindow" 1000 "maxTokens" 100))))
+                 (core-info ctx (format nil "regname=~A" (let ((info (pig:ctx-get-model-info ctx))) (if info (let ((n (pig:jget info "name"))) (if (stringp n) n "")) ""))))))
   (pig:command ext "scoped-models-probe" "Report the model scope"
                (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (pig:ctx-get-scoped-models ctx)))))
   (pig:command ext "session-log-probe" "Read a paged session log"
@@ -682,6 +690,12 @@
                                     ((equal kind "model-name")
                                      (lambda () (let ((info (pig:ctx-get-model-info ctx))) (if info (let ((n (pig:jget info "name"))) (if (stringp n) n "")) ""))))
                                     ((equal kind "session-id") (lambda () (pig:ctx-get-session-id ctx)))
+                                    ((equal kind "usage-then-id")
+                                     (lambda () (let ((usage (pig:ctx-get-context-usage ctx)))
+                                                  (let ((tokens (and usage (pig:jget usage "tokens"))))
+                                                    (cond ((not (integerp tokens)) "none")
+                                                          ((= tokens 250) (format nil "tokens=250,id=~A" (pig:ctx-get-session-id ctx)))
+                                                          (t (format nil "tokens=~A" tokens)))))))
                                     ((equal kind "context-usage")
                                      (lambda () (let ((usage (pig:ctx-get-context-usage ctx)))
                                                   (if usage (let ((tokens (pig:jget usage "tokens"))) (format nil "tokens=~A" (if (integerp tokens) tokens ""))) "none"))))

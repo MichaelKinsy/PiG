@@ -501,9 +501,10 @@ type ReadyPayload struct {
 type StatePayload struct {
 	// Commands is the wire form of the slash-command catalog ([]CommandInfo),
 	// pre-encoded so the host can omit it from a state_update whose recipient already holds it.
-	Commands            json.RawMessage            `json:"commands,omitempty"`
-	ThinkingLevel       string                     `json:"thinkingLevel"`
-	Model               any                        `json:"model"`
+	Commands      json.RawMessage `json:"commands,omitempty"`
+	ThinkingLevel string          `json:"thinkingLevel"`
+	// Model is the active model object, null for a bound Session with no model. It is omitted while the host has no model source bound, so a replica keeps the value unknown and asks the host.
+	Model               any                        `json:"model,omitempty"`
 	ScopedModels        []scopedModelSnapshot      `json:"scopedModels"`
 	Session             *SessionStatePayload       `json:"session,omitempty"`
 	IsIdle              bool                       `json:"isIdle"`

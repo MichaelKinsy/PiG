@@ -1337,6 +1337,8 @@ export class Connection {
       const pending = this.pending.get(env.id);
       // The loading factory's connection has no serve loop yet: its awaited calls settle as their results arrive.
       if (pending?.synchronous || pending?.appliedOnReceipt || (pending && this.loading)) {
+        // The state the host pushed before this result is still queued, and the result settles at once: apply it first, so a read after the call is not older than the call (frame order).
+        this.applyQueuedStateUpdates?.();
         this.resolveCall(env);
         return;
       }
@@ -2950,6 +2952,14 @@ export class Runtime {
       const request = this.requestRecords.get(env.id);
       if (request && !request.settled && !request.suspensionReported) conn.requestState(env.id, "blocked", "host_call");
       return true;
+    };
+    conn.applyQueuedStateUpdates = () => {
+      for (let i = 0; i < conn.queue.length; i++) {
+        const queued = conn.queue[i];
+        if (queued.type !== "notify" || queued.notify?.method !== "state_update") continue;
+        conn.queue.splice(i--, 1);
+        this.handleNotify(queued.notify);
+      }
     };
     liveRuntimes.add(this);
     this.xrefTransport = {
@@ -4644,6 +4654,17 @@ export class Runtime {
     }
     this.providers.set(name, config);
     if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("registerProvider", { ...this.providerDeclaration(name, config), configRef: this.providerConfigRef(merged) }));
+    this.refreshCurrentModelFromRegistry();
+  }
+
+  // agent-session.ts _refreshCurrentModelFromRegistry: registerProvider and unregisterProvider replace the Session's model with the registry's object for the same provider and id before they return. The write is held over this process's registry view, which the Host's answer and its state push confirm later.
+  refreshCurrentModelFromRegistry() {
+    const current = this.state.model;
+    if (!current) return;
+    const refreshed = this.contextValues.modelRegistry?.find?.(current.provider, current.id);
+    if (!refreshed) return;
+    this.state.model = normalizeModel(refreshed);
+    this.contextValues.model = normalizeModel(this.state.model);
   }
 
   // The declaration of a provider config, as the register frame and a registration after the factory carry it: the config without its callbacks, and the operations that run in this process.
@@ -4697,6 +4718,7 @@ export class Runtime {
     this.nativeProviders.delete(name);
     if (this.loadState === "active") this.transferProviderOwnership(name, undefined);
     if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("unregisterProvider", { name }));
+    this.refreshCurrentModelFromRegistry();
   }
 
   // The Host forwards its caller's abort to a request that already settled while the extension still holds refreshSignal, until releaseRetainedSignal reports that it does not.

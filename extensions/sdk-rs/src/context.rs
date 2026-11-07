@@ -2127,6 +2127,8 @@ pub(crate) struct SessionIdentity {
     pub(crate) session_file: String,
     /// The snapshot's model object, `null` for a Session without a model; `None` until a snapshot carried the `model` key.
     pub(crate) model_wire: Option<serde_json::Value>,
+    /// `model_wire` decoded once when it changes (the error is the decode error of the host reply, as its message), so a read clones it instead of decoding under the lock the reader thread needs to apply a push.
+    pub(crate) model_info: Option<Result<Option<ModelInfo>, String>>,
     /// The snapshot's session id, `""` for none; `None` until a snapshot carried the `session` object.
     pub(crate) session_id: Option<String>,
 }
@@ -2140,6 +2142,7 @@ impl SessionIdentity {
             && self.model_wire.as_ref() != Some(model)
         {
             (self.model, self.model_provider) = model_identity(model);
+            self.model_info = Some(ModelInfo::from_wire(model).map_err(|error| error.to_string()));
             self.model_wire = Some(model.clone());
         }
         if let Some(session) = state.get("session").and_then(serde_json::Value::as_object) {
@@ -4248,9 +4251,11 @@ impl Context {
     /// the read costs no host call once one arrived and decodes the model per call; a replacement context asks the host.
     pub fn get_model_info(&self) -> io::Result<Option<ModelInfo>> {
         if let Some(identity) = self.replica()?
-            && let Some(model) = &identity.model_wire
+            && let Some(info) = &identity.model_info
         {
-            return ModelInfo::from_wire(model);
+            return info
+                .clone()
+                .map_err(|message| io::Error::new(io::ErrorKind::InvalidData, message));
         }
         let Some(v) = self.call_host("getModelInfo", None)? else {
             return Ok(None);

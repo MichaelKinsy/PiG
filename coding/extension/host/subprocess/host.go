@@ -491,6 +491,8 @@ type Host struct {
 	drainTasksClosed bool
 	// hostStatePushQueued is set while a fan-out of a host state change waits to run (see hostStateChanged); the fan-out clears it before it reads the targets, so a change that arrives while it runs queues the next one.
 	hostStatePushQueued atomic.Bool
+	// hostStateEpoch counts the host-side state changes reported through hostStateChanged. It is raised before the change's push is queued, so a call result written after the change has an epoch no extension's pushedStateEpoch reached yet.
+	hostStateEpoch atomic.Uint64
 	// stopMcpServersObserver removes the observer that reports each change of the runtime's MCP server registry to hostStateChanged. Guarded by h.mu.
 	stopMcpServersObserver func()
 	// retirements are the stops of replaced generations that a running command deferred (retireGeneration). retirementTasks joins the goroutines that run them; retirementsClosed stops new ones once Shutdown has run the pending stops. Guarded by retirementMu.
@@ -681,7 +683,9 @@ type managedExt struct {
 	// state ahead of the host (thinking level, editor text), so
 	// a push the host would otherwise skip still corrects the runtime. A cache
 	// from an older generation is not trusted.
-	runtimeStateGen    atomic.Uint64
+	runtimeStateGen atomic.Uint64
+	// pushedStateEpoch is the hostStateEpoch the last completed push to this extension began at: every change up to it is in a state this extension received.
+	pushedStateEpoch   atomic.Uint64
 	providerNames      []string
 	mcpServerNames     []string          // MCP servers this extension registered, guarded by Host.mu
 	virtualModels      []VirtualModelRef // virtual models this extension registered, guarded by Host.mu
@@ -1658,7 +1662,7 @@ func (h *Host) Builder() *Builder { return h.builder }
 // BroadcastStateUpdate sends a "state_update" notify to every connected
 // subprocess extension with a freshly-snapshotted [StatePayload]. Call this
 // after host-side transitions that mutate the synchronous getter surface
-// (thinking level, idle state, system prompt, context usage,
+// (thinking level, idle state, system prompt,
 // flag values, etc.) so extension caches stay accurate.
 //
 // Safe to call when no extensions are loaded or no UIBridge is wired -
@@ -1741,10 +1745,18 @@ func (h *Host) runtimeStateMutated(extName string) {
 // pushStateTo sends me's state on conn, one of me's connections.
 //
 //pig:hotpath
-func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) error {
+func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) (err error) {
 	if h.uiBridge == nil || me == nil || conn == nil {
 		return nil
 	}
+	// The epoch is read before the snapshot, so the snapshot holds every change up to it.
+	epoch := h.hostStateEpoch.Load()
+	defer func() {
+		if err == nil {
+			for held := me.pushedStateEpoch.Load(); held < epoch && !me.pushedStateEpoch.CompareAndSwap(held, epoch); held = me.pushedStateEpoch.Load() {
+			}
+		}
+	}()
 	if err := h.syncRunSignal(conn); err != nil {
 		return err
 	}

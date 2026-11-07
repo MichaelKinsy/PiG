@@ -74,6 +74,24 @@ func statePushReader(ctx sdk.Context, kind string) (func() string, error) {
 			}
 			return fmt.Sprintf("tokens=%d", *usage.Tokens)
 		}, nil
+	case kind == "usage-then-id":
+		// A host call, then the replicated id: the id must not be older than the host's answer.
+		return func() string {
+			usage, err := ctx.GetContextUsage()
+			switch {
+			case err != nil:
+				return "error:" + err.Error()
+			case usage == nil || usage.Tokens == nil:
+				return "none"
+			case *usage.Tokens != 250:
+				return fmt.Sprintf("tokens=%d", *usage.Tokens)
+			}
+			id, err := ctx.GetSessionID()
+			if err != nil {
+				return "error:" + err.Error()
+			}
+			return "tokens=250,id=" + id
+		}, nil
 	case kind == "session-id":
 		return func() string {
 			id, err := ctx.GetSessionID()

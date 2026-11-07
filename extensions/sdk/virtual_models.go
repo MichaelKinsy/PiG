@@ -143,7 +143,7 @@ func (e *Extension) registerVirtualModel(c *Context, model VirtualModel) error {
 		return nil
 	}
 	e.toolMu.Unlock()
-	result, err := hostCallFor(c, conn, "registerVirtualModel", decl)
+	result, err := e.hostCallFor(c, conn, "registerVirtualModel", decl)
 	if err := callResultError(result, err); err != nil {
 		e.toolMu.Lock()
 		if replaced {
@@ -174,7 +174,7 @@ func (e *Extension) unregisterVirtualModel(c *Context, provider, id string) {
 		Provider string `json:"provider"`
 		ID       string `json:"id"`
 	}{provider, id}
-	result, err := hostCallFor(c, conn, "unregisterVirtualModel", args)
+	result, err := e.hostCallFor(c, conn, "unregisterVirtualModel", args)
 	if err := callResultError(result, err); err != nil {
 		fmt.Fprintf(os.Stderr, "pig: host call unregisterVirtualModel failed: %v\n", err)
 		return

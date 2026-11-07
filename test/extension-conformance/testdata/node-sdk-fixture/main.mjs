@@ -169,6 +169,14 @@ export default function (pi) {
     ctx.ui.notify(`unbound:${parts.join(",")}`, "info");
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
+  // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+  pi.registerCommand("registry-model-probe", {
+    description: "Register the active model's provider with a new name, then read the model",
+    handler: async (args, ctx) => {
+      await pi.registerProvider("replica-reg", { baseUrl: "https://probe.invalid/v1", api: "openai-completions", apiKey: "probe-key", models: [{ id: "m", name: args, reasoning: false, input: ["text"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100 }] });
+      ctx.ui.notify("regname=" + (ctx.model?.name ?? ""), "info");
+    },
+  });
   pi.registerCommand("provider_probe_register", { description: "Register a provider with one model", handler: async () => pi.registerProvider("conformance-probe", JSON.parse(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`)) });
   pi.registerCommand("provider_probe_unregister", { description: "Unregister the provider", handler: async () => pi.unregisterProvider("conformance-probe") });
   pi.registerCommand("commands-probe", { description: "Read the host's slash commands", handler: async (_args, ctx) => {
@@ -2364,6 +2372,7 @@ export default function (pi) {
     let read;
     if (kind === "model") read = () => ctx.model?.id ?? "";
     else if (kind === "model-name") read = () => ctx.model?.name ?? "";
+    else if (kind === "usage-then-id") read = () => { const usage = ctx.getContextUsage(); if (!usage || usage.tokens == null) return "none"; return usage.tokens === 250 ? `tokens=250,id=${ctx.sessionManager.getSessionId()}` : `tokens=${usage.tokens}`; };
     else if (kind === "context-usage") read = () => { const usage = ctx.getContextUsage(); return usage ? `tokens=${usage.tokens ?? ""}` : "none"; };
     else if (kind === "session-id") read = () => ctx.sessionManager.getSessionId();
     else if (kind === "session-name") read = () => pi.getSessionName() ?? "";

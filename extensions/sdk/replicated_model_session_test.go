@@ -19,7 +19,6 @@ type replicaReads struct {
 	idErr      error
 	managerID  string
 	managerErr error
-	calls      []string
 }
 
 func newReplicaProbe(t *testing.T, ready *readyMsg, edit func(*Extension, *Context)) (*mockHost, *replicaProbe, chan error) {

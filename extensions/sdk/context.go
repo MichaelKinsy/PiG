@@ -349,22 +349,14 @@ func (c Context) callHostAfterBegin(method string, args any, detached bool, sent
 		sent()
 	}
 	result, err := c.hostConnection().waitCall(pending)
-	// The host sends the state a publishing call changed before the call's result, and the main loop applies notifies after the read loop routed the result here: wait for those notifies so the caller's next replicated read sees the write.
-	if err == nil && result != nil && statePublishingCalls[method] && c.ext != nil && c.hostConnection() == c.ext.conn {
+	// The host pushes its state before the result of a call that changed it, and before any result when a host-side change has not reached this extension yet (Host.replyToCall). The main loop applies notifies after the read loop routed the result here, so wait for them: the caller's next replicated read is then never older than the result, or than the write the call made. The wait is a counter compare when no state precedes the result.
+	if err == nil && result != nil && c.ext != nil && c.hostConnection() == c.ext.conn {
 		c.ext.waitNotifications(result.notifySeq, nil)
 	}
 	if !effect {
 		c.reportRequestState("progress", "")
 	}
 	return result, err
-}
-
-// statePublishingCalls are the Session writes after which the host pushes its state before the call's result (coding/extension/host/subprocess
-// host_calls.go publishesStateBeforeResult): the calls whose effect an SDK reads from replicated state. Pi's equivalents change the Session
-// synchronously, so a read after the call must see the write (agent-session.ts setModel, setSessionName, sessionManager.appendLabelChange and
-// appendCustomEntry, sendCustomMessage).
-var statePublishingCalls = map[string]bool{
-	"setModel": true, "appendEntry": true, "setLabel": true, "setSessionName": true, "sendMessage": true,
 }
 
 // rpcSynchronousUIEffects are the UI calls Pi's RPC mode applies at once, inside the handler's synchronous part (rpc-mode.ts
@@ -714,7 +706,7 @@ func (c Context) AppendEntry(customType string, data any) error {
 	if err != nil {
 		return err
 	}
-	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. callHost waits for the state the host pushed before the result (statePublishingCalls), so the caller's next session read sees the entry.
+	// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns. callHost waits for the state the host pushed before the result, so the caller's next session read sees the entry.
 	return callResultError(result, nil)
 }
 

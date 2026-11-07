@@ -4556,7 +4556,7 @@ func (b *UIBridge) modelWire(actions *HostCallbacks) any {
 		if info := actions.GetModelInfo(); info != nil {
 			return info
 		}
-		return nil
+		return json.RawMessage("null")
 	}
 	key := actions.GetModelKey()
 	b.mu.Lock()

@@ -2255,6 +2255,24 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+    ext.command(
+        "registry-model-probe",
+        "Register the active model's provider with a new name, then read the model",
+        |ctx, name| {
+            let config = json!({"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"m","name":name,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]});
+            if let Err(err) = ctx.model_registry().register_provider("replica-reg", config) {
+                return CommandResult::Error(err.to_string());
+            }
+            match ctx.get_model_info() {
+                Ok(info) => {
+                    ctx.notify(&format!("regname={}", info.map(|info| info.name).unwrap_or_default()), "info");
+                    CommandResult::Ok
+                }
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command("provider_probe_register", "Register a provider with one model", |ctx, _| {
         let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}"#).unwrap();
         match ctx.model_registry().register_provider("conformance-probe", config) {
@@ -5601,6 +5619,18 @@ fn state_push_reader(
                 "tokens={}",
                 usage.tokens.map(|n| n.to_string()).unwrap_or_default()
             ),
+            Ok(None) => "none".to_string(),
+            Err(err) => format!("error:{err}"),
+        }));
+    }
+    if kind == "usage-then-id" {
+        // A host call, then the replicated id: the id must not be older than the host's answer.
+        return Ok(Box::new(move || match ctx.get_context_usage() {
+            Ok(Some(usage)) if usage.tokens == Some(250) => match ctx.get_session_id() {
+                Ok(id) => format!("tokens=250,id={id}"),
+                Err(err) => format!("error:{err}"),
+            },
+            Ok(Some(usage)) => format!("tokens={}", usage.tokens.map(|n| n.to_string()).unwrap_or_default()),
             Ok(None) => "none".to_string(),
             Err(err) => format!("error:{err}"),
         }));
