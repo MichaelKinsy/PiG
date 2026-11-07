@@ -11,7 +11,7 @@ package pysdk
 
 import "slices"
 
-// The bundle is one file, sdk.zst: the package's modules, its license and pyproject.toml as one zstd frame, in the layout of internal/sdkpack (see extensions/sdk/bundle.go). bundle_pack.go (go generate, automation/gen/packsdk) embeds it as Source and lists its files and their staging hash; coding/extension/pigsdk decodes it only when it stages the SDK. pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package. TestEveryPackageSourceIsBundled fails when the list and the source tree disagree.
+// The bundle is one file, sdk.zst: the package's modules, its license and pyproject.toml as one zstd frame, in the layout internal/sdkpack documents. bundle_pack.go (go generate, automation/gen/packsdk) embeds it as Source and lists its files and their staging hash; coding/extension/pigsdk decodes it only when it stages the SDK. pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package. TestEveryPackageSourceIsBundled fails when the list and the source tree disagree.
 //
 //go:generate go run ../../automation/gen/packsdk -pkg pysdk LICENSE pyproject.toml pig_sdk/*.py pig_sdk/tui/*.py
 
