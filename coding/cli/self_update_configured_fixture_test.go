@@ -42,8 +42,9 @@ func runSelfUpdateFixture(record string) (int, bool) {
 		_, _ = fmt.Sscan(os.Getenv(selfUpdateFixtureExitEnv), &code)
 		return code, true
 	case "pig":
-		if len(os.Args) == 2 && os.Args[1] == "--version" {
-			fmt.Println(os.Getenv(selfUpdateFixtureVersionEnv))
+		if len(os.Args) == 2 && os.Args[1] == "version" {
+			// `pig --version` prints Pi's version, so the fixture answers the command that names PiG's own release.
+			fmt.Printf("pig: %s\nupstream pi: %s\ngo: go0\nplatform: test/test\nbuild: dev\n", os.Getenv(selfUpdateFixtureVersionEnv), UpstreamVersion)
 			return 0, true
 		}
 		return 2, true
@@ -51,7 +52,7 @@ func runSelfUpdateFixture(record string) (int, bool) {
 	return 0, false
 }
 
-// prepareSelfUpdateCommand puts a `pi-wrapper` update command and a `pig` that prints pigVersion first on PATH.
+// prepareSelfUpdateCommand puts a `pi-wrapper` update command and a `pig` whose `version` command names pigVersion first on PATH.
 func prepareSelfUpdateCommand(t *testing.T, pigVersion string, exitCode int) (wrapper, record string) {
 	t.Helper()
 	bin := t.TempDir()

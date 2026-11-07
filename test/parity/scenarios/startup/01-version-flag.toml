@@ -9,10 +9,11 @@
 # This locks the cli.ts entrypoint contract to the strongest observable
 # available without entering the TUI: invoking the executable with
 # --version must hand argv through to main and exit immediately. pi prints
-# its bare version; pig prints its composite version (D63).
+# its bare version, and pig prints the same bytes: the pinned Pi package
+# version. PiG's own release is in `pig version`, not here.
 
 name = "01-version-flag"
-description = "Both binaries print their version string and exit immediately; pig prints the composite PiG+Pi version (D63)."
+description = "pig --version prints exactly what pi --version prints (Pi's bare version), byte for byte, and exits immediately."
 covers = [
   "packages/coding-agent/src/cli.ts",
 ]
@@ -25,13 +26,8 @@ timeout_seconds = 15
 
 [assert]
 exit_code = 0
+output_equal = true
+both_match_regex = ["(?m)^{{UPSTREAM_VERSION}}$"]
 both_not_contain = ["panic:", "goroutine ", "Error:"]
 runtime_ratio_max = 0.25
 runs = 3
-
-# D63: pig prints its composite version PigVersion+UpstreamVersion; pi prints
-# its bare version. The tokens expand from internal/coding/pigversion/pigversion.go.
-[diverge]
-pig_contains = ["{{VERSION}}"]
-pi_contains = ["{{UPSTREAM_VERSION}}"]
-reason = "D63 SCRUTINIZED:approved. pig --version prints PiG's composite version (the PiG release with the Pi release it ports as semver build metadata, PiG+Pi) so one string names both; pi prints its bare version."

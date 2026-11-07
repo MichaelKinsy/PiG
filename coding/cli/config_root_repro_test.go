@@ -105,7 +105,7 @@ func TestCLIWithoutAHomeDirectoryReportsAnErrorInsteadOfWritingARelativePath(t *
 	if code != 1 || !strings.Contains(out, "cannot resolve PiG's config directories") || strings.Contains(out, "panic") {
 		t.Fatalf("pig --print without a home directory: exit %d, output %q; want exit 1 and the error", code, out)
 	}
-	if out, code := run("--version"); code != 0 || !strings.Contains(out, "+") {
+	if out, code := run("--version"); code != 0 || !strings.Contains(out, UpstreamPackageVersion) {
 		t.Fatalf("pig --version without a home directory: exit %d, output %q", code, out)
 	}
 	if entries, err := os.ReadDir(cwd); err != nil || len(entries) != 0 {
