@@ -2,4 +2,4 @@
 
 package subprocess
 
-const nodeRuntimeHash = "r\xb5^\x9fg<\x13l\x1f蹖C}y̨7W\x10\xee|AlS\v\x84SFT\xc4p"
+const nodeRuntimeHash = "]T\xa5\xd2R\x12\x12}\xd3\xf1 @\xeag\x87o<\b-\a\xeeK\a\xf2\x95\xed\x8e>\x1e7o\xce"

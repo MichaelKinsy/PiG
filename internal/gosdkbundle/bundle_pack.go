@@ -17,6 +17,7 @@ var bundledFiles = []string{
 	"autocomplete.go",
 	"branch_summary.go",
 	"builtin_tool.go",
+	"callback_guard.go",
 	"child_session.go",
 	"command_options.go",
 	"compaction_cutpoint.go",
@@ -26,6 +27,7 @@ var bundledFiles = []string{
 	"context_event.go",
 	"create_provider.go",
 	"credential.go",
+	"diagnostic.go",
 	"doc.go",
 	"editor_component.go",
 	"editor_hooks.go",
@@ -41,6 +43,7 @@ var bundledFiles = []string{
 	"extension_runtime.go",
 	"file_mutation_queue.go",
 	"footer_data.go",
+	"frame_member.go",
 	"frontend/frontend.go",
 	"frontend/view.go",
 	"go.mod",
@@ -57,6 +60,7 @@ var bundledFiles = []string{
 	"json/allocsize.go",
 	"json/decode.go",
 	"json/encode.go",
+	"json/fast_valid.go",
 	"json/fold.go",
 	"json/indent.go",
 	"json/scanner.go",
@@ -110,6 +114,7 @@ var bundledFiles = []string{
 	"provider_dispatch.go",
 	"provider_proxy.go",
 	"provider_stream.go",
+	"renderer_events.go",
 	"replaced_session.go",
 	"request_lifetime.go",
 	"resource_loader.go",
@@ -127,6 +132,7 @@ var bundledFiles = []string{
 	"settings_manager.go",
 	"setup_session.go",
 	"state_feed.go",
+	"state_replica.go",
 	"stored_credential.go",
 	"surface.go",
 	"system_prompt_options.go",
@@ -203,4 +209,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "bb647d1037a65988"
+const stagedHash = "d98c8988b14104ec"
