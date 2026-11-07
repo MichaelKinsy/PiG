@@ -34,7 +34,7 @@ import "slices"
 // list and the source tree disagree, and its message names the command that
 // regenerates it.
 //
-//go:generate go run ../../automation/gen/packsdk -pkg sdk -skip _test.go -skip bundle.go -skip bundle_pack.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go tui/widthx/*.go upgrade/*.go upgrade/driver/*.go
+//go:generate go run ../../automation/gen/packsdk -pkg sdk -skip _test.go -skip bundle.go -skip bundle_pack.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go upgrade/*.go upgrade/driver/*.go
 
 // BundledFiles lists the bundled filenames, relative to the module root, in a
 // stable order. It is the canonical set a stager must write to produce a

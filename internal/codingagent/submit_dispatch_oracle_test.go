@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // interactive-mode.ts setupEditorSubmitHandler against pinned Pi: which built-in command (and which argument) a submitted line runs, or whether it

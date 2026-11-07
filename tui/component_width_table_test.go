@@ -3,7 +3,7 @@ package tui
 import (
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // widthTableLong is long, space-separated prose that forces word wrapping in

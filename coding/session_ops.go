@@ -5,8 +5,8 @@ package coding
 import (
 	"fmt"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ─── Session-management methods ──────────────────────────────────────────────

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // TestEditorWordWrapLineMatchesPi compares wordWrapLine (components/editor.ts) with pinned Pi over seeded lines of letters, spaces, tabs, wide, emoji and combining

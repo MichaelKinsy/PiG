@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // dirtyText is a renderer component that reports itself changed, as an extension renderer proxy does between frames.

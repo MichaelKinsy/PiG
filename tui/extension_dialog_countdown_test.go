@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // upstream: extension-input.ts:60-76 and extension-selector.ts:56-72 (a positive opts.timeout creates a CountdownTimer whose tick rewrites the title to `${baseTitle} (${s}s)` and whose expiry calls onCancel) and dispose() 91-93 / 114-116 (countdown?.dispose()). The countdown shows the seconds at once, cancels the dialog at zero, and a disposed countdown never cancels.

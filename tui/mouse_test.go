@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func leftMouse(eventType TuiMouseEventType, x, y, width, height int) TuiMouseEvent {

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Ports of upstream test/tui-alt-screen.test.ts cases added by v0.87.1. The

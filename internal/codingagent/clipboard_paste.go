@@ -14,9 +14,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // clipboardFilePathsInsertion is the text handleClipboardPaste inserts for clipboard file paths: shell-quoted arguments in bash mode, else one path per line, padded with a space where the cursor touches a non-space character. cursor.Col counts UTF-16 code units, as upstream's does.

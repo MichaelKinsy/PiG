@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi 0.87.1 TUI.setFocus clears the previous component's focused flag and sets the next one's (tui.ts:605-612). An

@@ -4,7 +4,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ViewSource is a component whose lines an extension's view of Pi's tui

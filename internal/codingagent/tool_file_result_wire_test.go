@@ -7,7 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi 0.87.1 core/tools/renderers/read.ts:formatReadResult and write.ts:formatWriteCall use retained call arguments, not private result metadata.

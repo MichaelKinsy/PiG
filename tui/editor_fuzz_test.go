@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Any sequence of keys, pastes and text typed into the Editor leaves it rendering without a panic, within the width, with valid UTF-8 text.

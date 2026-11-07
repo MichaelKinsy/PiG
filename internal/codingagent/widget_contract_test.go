@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Boundary obligations of renderWidgets and renderWidgetContainer (packages/coding-agent/src/modes/interactive/interactive-mode.ts):

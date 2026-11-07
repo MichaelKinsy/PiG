@@ -8,7 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Ports pi-tui's alt-screen-search.ts: transcript search over rendered lines

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // TerminalColorScheme is the terminal's dark or light palette preference.

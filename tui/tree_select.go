@@ -26,8 +26,8 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // treeNodeWithLabelUpdate permits the selector to publish label edits before notifying its persistence callback.

@@ -5,7 +5,7 @@ package runner
 import (
 	"fmt"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // validateCWDFooterCrop requires the complete canonical cwd and configured branch to fit when the crop uses the snapshot name. This conservative bound does not depend on HOME abbreviation. Pi truncates the cwd row to terminal width; an invisible anchor can otherwise match the startup resource listing instead of the footer.

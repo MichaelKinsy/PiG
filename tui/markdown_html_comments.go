@@ -7,7 +7,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // stripHTMLComments is html with every comment removed (HTML_COMMENT_REGEX, /<!--[\s\S]*?(?:-->|$)/g). An unclosed comment

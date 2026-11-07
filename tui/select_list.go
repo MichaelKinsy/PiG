@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // SelectListTheme styles a [SelectList]. A nil function leaves the text unstyled.

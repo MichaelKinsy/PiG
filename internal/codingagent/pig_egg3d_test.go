@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // pig3dOraclePixels is the model's bitmap as rows of block colors, or nil for an empty pixel.

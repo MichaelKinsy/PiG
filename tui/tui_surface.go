@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // pig additive (D91): TuiSurface is a renderer Pi does not have. It keeps

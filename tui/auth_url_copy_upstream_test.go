@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Ports .upstream/v1.0.1/packages/coding-agent/test/auth-url-copy.test.ts ("sign-in URL copy key", login dialog cases).

@@ -7,10 +7,10 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/piglogin"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // headerContainer keeps host spacing outside the replaceable header component, including when a custom header renders no rows. While startup waits for the terminal's colors (startupHeaderPending) it returns one empty container, so the first paint carries no header, as Pi's headerContainer has no children until after that wait (interactive-mode.ts init()); mountStartupHeader fills it.

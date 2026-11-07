@@ -3,7 +3,7 @@ package tui
 import (
 	"slices"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // theme_selector.go: theme picker component.

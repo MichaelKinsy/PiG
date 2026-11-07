@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // The terminal's reported colors. Replaced, never mutated, on update, so themes can cache resolved colors by identity.
