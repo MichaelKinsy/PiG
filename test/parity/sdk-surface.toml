@@ -504,7 +504,7 @@ go = "ContextUsage.Tokens"
 rust = "ContextUsage.tokens"
 python = "Context.get_context_usage"
 lisp = "pig:ctx-get-context-usage|pig:ctx-get-context-usage-p|pig:ctx-context-usage-p|pig:ctx-context-usage"
-wire = "subprocess.extensionContextUsageDTO.tokens"
+wire = "extension.ContextUsage.tokens"
 
 [[row]]
 key = "ctx.getContextUsage → contextWindow"
@@ -513,7 +513,7 @@ go = "ContextUsage.ContextWindow"
 rust = "ContextUsage.context_window"
 python = "Context.get_context_usage"
 lisp = "pig:ctx-get-context-usage|pig:ctx-get-context-usage-p|pig:ctx-context-usage-p|pig:ctx-context-usage"
-wire = "subprocess.extensionContextUsageDTO.contextWindow"
+wire = "extension.ContextUsage.contextWindow"
 
 [[row]]
 key = "ctx.getContextUsage → percent"
@@ -522,7 +522,7 @@ go = "ContextUsage.Percent"
 rust = "ContextUsage.percent"
 python = "Context.get_context_usage"
 lisp = "pig:ctx-get-context-usage|pig:ctx-get-context-usage-p|pig:ctx-context-usage-p|pig:ctx-context-usage"
-wire = "subprocess.extensionContextUsageDTO.percent"
+wire = "extension.ContextUsage.percent"
 
 [[row]]
 key = "ctx.compact(options.customInstructions)"

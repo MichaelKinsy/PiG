@@ -1339,6 +1339,8 @@ export class Connection {
       const pending = this.pending.get(env.id);
       // The loading factory's connection has no serve loop yet: its awaited calls settle as their results arrive.
       if (pending?.synchronous || pending?.appliedOnReceipt || (pending && this.loading)) {
+        // The state the host pushed before this result is still queued, and the result settles at once: apply it first, so a read after the call is not older than the call (frame order).
+        this.applyQueuedStateUpdates?.();
         this.resolveCall(env);
         return;
       }
@@ -1628,7 +1630,8 @@ class RuntimeContext {
   // produced is painted (it drains input first), so a shutdown requested
   // from an editor's handleInput reaches the host after that frame.
   shutdown() { this.runtime.extensionRuntime.assertActive(); queueMicrotask(() => this.runtime.fireAndForget("shutdown", {})); }
-  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.contextUsage; }
+  // Pi computes the usage live from the branch (agent-session.ts getContextUsage) and it moves with every message the Session commits, which no state push announces, so a read asks the host: a snapshot would be stale after waitForIdle, compact or navigateTree and for a timer between requests.
+  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.callSync("getContextUsage") ?? undefined; }
   // The host reads the options flat. Upstream starts compaction without
   // awaiting it and reports the outcome through onComplete/onError, so a call
   // with callbacks carries no parent request and outlives its handler
@@ -2127,6 +2130,8 @@ export class Runtime {
     this.loadingUnsubscribers = [];
     this.extensionRuntime = createExtensionRuntime();
     this.hostReady = false;
+    // readyStateApplied is set once the ready frame's state is applied: a state the host pushed after it is newer, and one applied before it would be overwritten by it.
+    this.readyStateApplied = false;
     this.markdownTransformer = undefined;
     // PiG-only: whether this extension owns the thinking runs of assistant messages. Recorded during load, carried by the register frame; later calls go to the host.
     this.ownsThinkingRuns = false;
@@ -2263,7 +2268,6 @@ export class Runtime {
       editorText: "",
       toolsExpanded: false,
       allThemes: [],
-      contextUsage: undefined,
       systemPrompt: "",
       systemPromptOptions: {},
       flags: {},
@@ -2964,6 +2968,16 @@ export class Runtime {
       if (request && !request.settled && !request.suspensionReported) conn.requestState(env.id, "blocked", "host_call");
       return true;
     };
+    conn.applyQueuedStateUpdates = () => {
+      // A synchronous call made while the ready frame is handled settles before the ready state is applied: leave the queued states to the loop, which applies them after it, in frame order.
+      if (!this.readyStateApplied) return;
+      for (let i = 0; i < conn.queue.length; i++) {
+        const queued = conn.queue[i];
+        if (queued.type !== "notify" || queued.notify?.method !== "state_update") continue;
+        conn.queue.splice(i--, 1);
+        this.handleNotify(queued.notify);
+      }
+    };
     liveRuntimes.add(this);
     this.xrefTransport = {
       call: (method, args) => this.xrefCall(method, args),
@@ -3125,6 +3139,7 @@ export class Runtime {
             this.setFrontend(env.ready.state.frontend === true);
             this.applyState(env.ready.state);
           }
+          this.readyStateApplied = true;
           // Pi's interactive mode loads every highlight.js language once startup has emitted session_start and resources_discover
           // (interactive-mode.ts:1100-1122); print, JSON and RPC mode keep the eager set. The load evaluates every grammar on this thread,
           // so it starts when this extension's handling of those startup events ends, not while its handlers wait behind it.
@@ -3158,6 +3173,7 @@ export class Runtime {
       sharedBus.disposeRuntime(this);
       this.extensionRuntime.invalidate();
       this.hostReady = false;
+      this.readyStateApplied = false;
       liveRuntimes.delete(this);
       this.providerTransport.abort(new Error("Provider connection closed"));
       this.autocomplete.dispose();
@@ -3462,9 +3478,6 @@ export class Runtime {
       this.state.toolsExpanded = snapshot.toolsExpanded;
       this.toolsExpandedKnown = true;
       if (changed) this.fireChangeHandlers(this.toolsExpandedChangeHandlers, snapshot.toolsExpanded);
-    }
-    if (Object.hasOwn(snapshot, "contextUsage")) {
-      this.state.contextUsage = snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage };
     }
     if (snapshot.systemPromptOptions && typeof snapshot.systemPromptOptions === "object") {
       this.state.systemPromptOptions = snapshot.systemPromptOptions;
@@ -4711,6 +4724,17 @@ export class Runtime {
     }
     this.providers.set(name, config);
     if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("registerProvider", { ...this.providerDeclaration(name, config), configRef: this.providerConfigRef(merged) }));
+    this.refreshCurrentModelFromRegistry();
+  }
+
+  // agent-session.ts _refreshCurrentModelFromRegistry: registerProvider, registerNativeProvider and unregisterProvider replace the Session's model with the registry's object for the same provider and id before they return. The write is held over this process's registry view, which the Host's answer and its state push confirm later.
+  refreshCurrentModelFromRegistry() {
+    const current = this.state.model;
+    if (!current) return;
+    const refreshed = this.contextValues.modelRegistry?.find?.(current.provider, current.id);
+    if (!refreshed) return;
+    this.state.model = normalizeModel(refreshed);
+    this.contextValues.model = normalizeModel(this.state.model);
   }
 
   // The declaration of a provider config, as the register frame and a registration after the factory carry it: the config without its callbacks, and the operations that run in this process.
@@ -4747,11 +4771,12 @@ export class Runtime {
     }
     if (this.providersSent) {
       this.holdRegistryWrite(provider.id, this.fireAndForget("registerProvider", { name: provider.id, config: {}, native: declaration }));
-      return;
+    } else {
+      const models = this.allModels();
+      for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
+      for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
     }
-    const models = this.allModels();
-    for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
-    for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
+    this.refreshCurrentModelFromRegistry();
   }
 
   unregisterProvider(name) {
@@ -4764,6 +4789,7 @@ export class Runtime {
     this.nativeProviders.delete(name);
     if (this.loadState === "active") this.transferProviderOwnership(name, undefined);
     if (this.providersSent) this.holdRegistryWrite(name, this.fireAndForget("unregisterProvider", { name }));
+    this.refreshCurrentModelFromRegistry();
   }
 
   // The Host forwards its caller's abort to a request that already settled while the extension still holds refreshSignal, until releaseRetainedSignal reports that it does not.
@@ -5379,7 +5405,7 @@ export class Runtime {
     // notify and LoginOptions.getDeviceId are synchronous in Pi (auth/types.ts:160, 208).
     const providerCallback = method === "provider.callback" && (args.method === "notify" || args.method === "getDeviceId");
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getContextUsage", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
@@ -5482,7 +5508,6 @@ export class Runtime {
       isIdle: snapshot.isIdle !== false,
       projectTrusted: snapshot.projectTrusted === true,
       hasPendingMessages: snapshot.hasPendingMessages === true,
-      contextUsage: snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage },
       systemPrompt: typeof snapshot.systemPrompt === "string" ? snapshot.systemPrompt : "",
       systemPromptOptions: snapshot.systemPromptOptions ?? this.state.systemPromptOptions,
       flags: { ...(snapshot.flags ?? {}) },

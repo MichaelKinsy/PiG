@@ -395,9 +395,9 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
     (unless (hash-table-p result)
       (error 'host-call-error :message "host reply to getSystemPromptOptions is not an object" :code "invalid_reply"))
     result))
-(defun ctx-get-model-info (ctx)
-  (let ((result (call-result ctx "getModelInfo")))
-    (and (hash-table-p result) (let ((id (jget result "id"))) (and (stringp id) (plusp (length id)))) result)))
+(defun model-info-result (result)
+  (and (hash-table-p result) (let ((id (jget result "id"))) (and (stringp id) (plusp (length id)))) result))
+(defun host-model-info (ctx) (model-info-result (call-result ctx "getModelInfo")))
 (defun ctx-get-model-auth (ctx provider-id model-id)
   (call-result ctx "getModelAuth" (obj "provider" provider-id "modelId" model-id)))
 (defun ctx-get-scoped-models (ctx) (or (call-result ctx "getScopedModels" (obj)) (vector)))
@@ -416,7 +416,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   (sleep seconds)
   nil)
 (defun ctx-project-trusted-p (ctx) (eq (reply-field ctx "isProjectTrusted" "trusted") t))
-(defun ctx-get-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
+(defun host-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
 (defun ctx-get-leaf-id (ctx) (optional-string-field ctx "getLeafID" "leafId"))
 (defun ctx-get-all-themes (ctx) (reply-field ctx "ui.getAllThemes" "themes"))
 (defun ctx-get-theme (ctx name)
@@ -450,7 +450,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 
 ;;; session manager reads --------------------------------------------------------
 
-(defstruct (session-manager (:constructor make-session-manager (ctx))) ctx)
+(defstruct (session-manager (:constructor make-session-manager (ctx))) ctx (replicated t))
 
 (defun ctx-session-manager (ctx) (make-session-manager ctx))
 
@@ -459,9 +459,6 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 
 (defun session-get-cwd (m) (session-read m "getCwd"))
 (defun session-get-session-dir (m) (session-read m "getSessionDir"))
-(defun session-get-session-id (m) (session-read m "getSessionId"))
-(defun session-get-session-file (m) (session-read m "getSessionFile"))
-(defun session-get-session-name (m) (session-read m "getSessionName"))
 (defun session-get-leaf-id (m) (session-read m "getLeafId"))
 (defun session-get-header (m) (session-read m "getHeader"))
 (defun session-get-leaf-entry (m) (session-read m "getLeafEntry"))

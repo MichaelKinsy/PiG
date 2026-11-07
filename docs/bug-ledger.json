@@ -6621,6 +6621,28 @@
       ]
     },
     {
+      "id": "BF-2e8dcc1",
+      "title": "A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)…",
+      "symptom": "A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it.",
+      "rootCause": "A synchronous host call that settles while the runtime is still handling the ready frame (the xref hello that follows it) applied the state_update the host had pushed after the ready frame at once (applyQueuedStateUpdates), and the ready frame's own, older state then replaced it. The state the host pushed when a TUI frontend bound its UI (hasUI) was lost, ctx.ui was the no-op UI, and a widget set by a tool never reached the host: TestSetWidgetRendererAcrossSDKs timed out for the isolated and packed Node cells.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it. The queued update is now applied only after the ready state.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e8dcc1eea",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/host_surface_test.go::TestSetWidgetRendererAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-2ea8ad2",
       "title": "The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK…",
       "symptom": "The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK does (base query rewritten through qs, one slash dropped, WHATWG normalisation) and a URL with credentials is refused as fetch refuses it (\"Connection error.\"), where Pig sent the credentials as Basic auth.",
@@ -9663,6 +9685,25 @@
         "internal/codingagent/settings_key_order_test.go::TestSaveSettingsPatchWritesJSONStringifyText",
         "internal/codingagent/trust_store_stringify_test.go::TestProjectTrustStoreWritesJSONStringifyInUTF16KeyOrder"
       ]
+    },
+    {
+      "id": "BF-4117a5a",
+      "title": "fix(extensions): skip the pending-state flush for a reply with no managed extension",
+      "symptom": "fix(extensions): skip the pending-state flush for a reply with no managed extension",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4117a5ac52",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-411a8cb",
@@ -20793,6 +20834,31 @@
       ]
     },
     {
+      "id": "BF-6e789bb",
+      "title": "A host call that read a change of the model, session id or name between the change and its report to the…",
+      "symptom": "A host call that read a change of the model, session id or name between the change and its report to the extensions, and the first `watchSessionLog` read of a replaced Session, could reply ahead of the state that names it.",
+      "rootCause": "A change of the model, session id or name is visible to a host call before its owner reports it (Host.hostStateChanged raises the epoch after the change), so a call that read the change could reply ahead of the state that names it. The Session now brackets each such change (ObserveReplicatedStateScope: before the change is visible, and after the report), the extension host counts the open brackets (hostStateInflight, bound through UIBridge.HostStateChanging and HostStateSettled in both modes), and a reply flushes the state first while one is open, as one does when an epoch is pending.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A host call that read a change of the model, session id or name between the change and its report to the extensions, and the first `watchSessionLog` read of a replaced Session, could reply ahead of the state that names it. The Session now brackets each such change, and the host flushes its state before every reply while one is in flight, and under the cursor lock for `watchSessionLog`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6e789bbd91",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_state_push_test.go::TestAReplyFlushesTheStateWhileAChangeIsInFlight",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestAWatchSessionLogReplyFlushesUnderItsCursorLock",
+        "coding/session_replicated_state_test.go::TestSessionBracketsEveryChangeOfIdentityState",
+        "test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanAChangeInFlightAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-6ea3ba8",
       "title": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…",
       "symptom": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.",
@@ -31373,6 +31439,35 @@
       ]
     },
     {
+      "id": "BF-a16d8b4",
+      "title": "The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the…",
+      "symptom": "The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the session name and the session file, which cost a round trip each (about 55 µs in the Go SDK); they now read the host's state snapshot, as the Node runtime does.",
+      "rootCause": "The host sends the whole model object and session.sessionId in every ready state and state_update, and the Node runtime answers ctx.model and ctx.sessionManager.getSessionId() from them. The SDKs replicated only the model id and provider, so GetModelInfo, GetSessionID and the session manager's getSessionId cost a host round trip per read (two per LLM call and one per prompt in the LangSmith port).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the session name and the session file, which cost a round trip each (about 55 µs in the Go SDK); they now read the host's state snapshot, as the Node runtime does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a16d8b4900",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_replicated_reads.py",
+        "extensions/sdk/replicated_model_session_test.go::TestModelObjectAndSessionIDAreReadFromTheStateSnapshots",
+        "extensions/sdk/replicated_model_session_test.go::TestReadsBeforeTheFirstSnapshotAskTheHost",
+        "extensions/sdk/replicated_model_session_test.go::TestReplacementContextReadsAskTheHost",
+        "extensions/sdk/replicated_model_session_test.go::TestReplicatedModelInfoIsPrivateToTheCaller",
+        "extensions/sdk/replicated_model_session_test.go::TestReplicatedModelThatDoesNotDecodeIsAnError",
+        "extensions/sdk/replicated_model_session_test.go::TestReplicatedReadsOfAStaleContextReturnTheStaleMessage",
+        "test/extension-conformance/replica_reads_test.go::TestReplicatedReadsAreLocalAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-a178939",
       "title": "The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or…",
       "symptom": "The Go and Python `serializeConversation` keep an unpaired UTF-16 surrogate in a message, a tool-call name or argument, and when the 2,000-unit cut splits a surrogate pair, as Pi does; the conformance test now compares those cases against Pi's own code.",
@@ -34200,6 +34295,54 @@
       "tests": []
     },
     {
+      "id": "BF-b3b5ae8",
+      "title": "After an extension's own `registerProvider`, `unregisterProvider`, `registerVirtualModel`…",
+      "symptom": "After an extension's own `registerProvider`, `unregisterProvider`, `registerVirtualModel`, `unregisterVirtualModel` or `refreshModelRegistry`, the next read of the model returned the previous model object in the Go SDK and the Node runtime, where Pi refreshes the Session's model before the call returns.",
+      "rootCause": "A registry write (registerProvider, unregisterProvider, the virtual-model calls, refreshModelRegistry) refreshes the Session's model before it returns in Pi, and a reader that learns a host change from a host call cannot then read an older value. The replicated model object, session id, name and file broke both:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After an extension's own `registerProvider`, `unregisterProvider`, `registerVirtualModel`, `unregisterVirtualModel` or `refreshModelRegistry`, the next read of the model returned the previous model object in the Go SDK and the Node runtime, where Pi refreshes the Session's model before the call returns. The host now sends its state before the reply of those calls, the Go SDK waits for it, and the Node runtime refreshes its model from its registry view.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b3b5ae8b6f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush",
+        "test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanTheStateItFollowsAcrossSDKs",
+        "test/extension-conformance/replica_causality_test.go::TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-b3b5ae8-2",
+      "title": "A reader that learned a host change through a host call, for example the usage a new model or session moves…",
+      "symptom": "A reader that learned a host change through a host call, for example the usage a new model or session moves, could read an older replicated model, session id, name or file afterwards, because the host's own state push is asynchronous.",
+      "rootCause": "A reader that learned a host change through a host call, for example the usage a new model or session moves, could read an older replicated model, session id, name or file afterwards, because the host's own state push is asynchronous.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A reader that learned a host change through a host call, for example the usage a new model or session moves, could read an older replicated model, session id, name or file afterwards, because the host's own state push is asynchronous. The host now pushes before any call result while a change has not reached the extension, the Go SDK waits for the state that precedes each result, and the Node runtime applies the queued state before it settles a synchronous call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b3b5ae8b6f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush",
+        "test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanTheStateItFollowsAcrossSDKs",
+        "test/extension-conformance/replica_causality_test.go::TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-b430c7a",
       "title": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go…",
       "symptom": "Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go in-process widgets share a side of the editor, as in Pi.",
@@ -36219,6 +36362,28 @@
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskClose",
         "durable/harness/tool_nested_test.go::TestANestedCallKeepsTheCallersArgumentOrder",
         "durable/harness/tool_nested_test.go::TestANestedCallSlotShowsTheArgumentsItRunsWith"
+      ]
+    },
+    {
+      "id": "BF-c129008",
+      "title": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after…",
+      "symptom": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.",
+      "rootCause": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c1290084cb",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/native_provider_observers_test.go::TestRegisterNativeProviderReportsToTheRegistryObservers"
       ]
     },
     {
@@ -44305,6 +44470,33 @@
       ]
     },
     {
+      "id": "BF-e4b9bd5",
+      "title": "A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between…",
+      "symptom": "A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between requests, or a handler after `waitForIdle`, `compact` or `navigateTree`, read a stale usage where Pi reads it live.",
+      "rootCause": "Pi computes ctx.getContextUsage() live from the branch. The Node runtime answered it from the snapshot of its last dispatch, so a timer between requests, or a handler after waitForIdle, compact or navigateTree, read a stale value, and the host scanned the branch on every state push to feed it. The Node runtime now asks the host like every SDK, and StatePayload no longer carries the usage (protocol, host, runtime, tests, generated pack and digest, surface matrix wire names).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between requests, or a handler after `waitForIdle`, `compact` or `navigateTree`, read a stale usage where Pi reads it live. It now asks the host, like the Go, Rust, Python and Lisp SDKs, and the host no longer scans the session branch for the usage on every state push.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e4b9bd554e",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_presence_test.go::TestContextUsageWirePreservesAbsenceAndNull",
+        "coding/extension/host/subprocess/state_test.go::TestStatePayload_RoundTrip",
+        "extensions/sdk/replicated_session_name_file_test.go::TestSessionLeafIsStillAHostCall",
+        "extensions/sdk/replicated_session_name_file_test.go::TestSessionNameAndFileAreReadFromTheStateSnapshots",
+        "extensions/sdk/replicated_session_name_file_test.go::TestSessionNameAndFileFallbacks",
+        "test/extension-conformance/replica_reads_test.go::TestReplicatedReadsAreLocalAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-e4f8e35",
       "title": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and…",
       "symptom": "OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call.",
@@ -45590,6 +45782,29 @@
       ],
       "tests": [
         "coding/session_hidden_tools_order_test.go::TestSystemPromptOptionsListHiddenToolsInTheOrderTheHooksHidThem"
+      ]
+    },
+    {
+      "id": "BF-ec1e0b6",
+      "title": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the…",
+      "symptom": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update.",
+      "rootCause": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update. The callbacks now run on a worker, one change at a time in the order the branch changed, so a callback can call the host as it can in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec1e0b68ca",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/footer_branch_worker_test.go::TestFooterBranchCallbackMayMakeHostCalls",
+        "extensions/sdk/footer_branch_worker_test.go::TestFooterBranchCallbacksRunInOrder"
       ]
     },
     {
