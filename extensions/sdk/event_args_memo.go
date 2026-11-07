@@ -81,8 +81,8 @@ func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]a
 	if !entry.isMap {
 		return nil, nil, nil, release
 	}
-	order = new(json.ObjectOrder)
-	out, _ := cloneStreamValueOrdered(entry.master, entry.order, order).(map[string]any)
+	order = entry.order.Copies()
+	out, _ := cloneStreamValueOrdered(entry.master, order).(map[string]any)
 	return out, entry.master, order, release
 }
 

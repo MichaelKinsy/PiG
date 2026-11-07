@@ -26,9 +26,25 @@ type ObjectOrder struct {
 	// scratch is the stack of the keys of the objects a decode is in.
 	scratch []string
 
+	// count is how many objects are recorded.
+	count int
+
+	// from, for the order of the copies of another order's objects (Copies), is that order, and copies the pairs of a copy and the object it copies. A copy is
+	// not looked up until a lookup is made, so a handler that asks for no order has paid for the 16 bytes of each pair only.
+	from   *ObjectOrder
+	copies []copyEntry
+
+	// filter is a Bloom filter of the addresses of the objects, built at the first lookup: a lookup of a map no object of the event can be (the reply's own
+	// wrapper, an object the handler built) is answered without sorting the objects, which is what a lookup of an object they hold needs.
+	filterOnce sync.Once
+	filter     []uint64
+	filterMask uint64
+
 	once   sync.Once
 	sorted []orderEntry
 }
+
+type copyEntry struct{ object, source map[string]any }
 
 type orderEntry struct {
 	pointer uintptr
@@ -67,6 +83,7 @@ func (o *ObjectOrder) add(m map[string]any, keys []string) {
 		last++
 	}
 	o.blocks[last] = append(o.blocks[last], orderEntry{mapPointer(m), m, keys})
+	o.count++
 }
 
 // finish ends the object m whose keys, as read, are o.scratch[base:], and drops them from the stack.
@@ -113,6 +130,10 @@ func (o *ObjectOrder) Keys(m uintptr) ([]string, bool) {
 	if o == nil {
 		return nil, false
 	}
+	o.filterOnce.Do(o.buildFilter)
+	if !o.mayHold(m) {
+		return nil, false
+	}
 	o.once.Do(o.sort)
 	i, found := slices.BinarySearchFunc(o.sorted, m, func(e orderEntry, pointer uintptr) int { return cmp.Compare(e.pointer, pointer) })
 	if !found {
@@ -129,11 +150,53 @@ func (o *ObjectOrder) KeysOf(m map[string]any) ([]string, bool) {
 	return o.Keys(mapPointer(m))
 }
 
-// Carry gives the object to the order it has in from: to is a copy of from, which from knows. The keys are shared, never copied.
-func (o *ObjectOrder) Carry(from *ObjectOrder, source, to map[string]any) {
-	if keys, ok := from.KeysOf(source); ok {
-		o.add(to, keys)
+// Copies returns the order of the copies of o's objects, which [ObjectOrder.Carry] names one by one: a copy of an object o knows is known with the object's
+// keys, which are shared, never copied. A copy of every object o knows takes 16 bytes each.
+func (o *ObjectOrder) Copies() *ObjectOrder {
+	return &ObjectOrder{from: o, copies: make([]copyEntry, 0, o.count)}
+}
+
+// Carry makes to a copy of the object source, which the order this one copies from (Copies) may know.
+func (o *ObjectOrder) Carry(source, to map[string]any) {
+	if len(source) > 0 {
+		o.copies = append(o.copies, copyEntry{to, source})
 	}
+}
+
+// filterBitsPerObject is the bits of the filter for each object: two bits set in 16 per object leave about one lookup in 70 of a map that is not one of the
+// objects to the sort.
+const filterBitsPerObject = 16
+
+// filterBits are the two bits of the filter that the address p sets.
+func (o *ObjectOrder) filterBits(p uintptr) (first, second uint64) {
+	h := uint64(p) * 0x9E3779B97F4A7C15
+	return (h >> 20) & o.filterMask, (h >> 40) & o.filterMask
+}
+
+func (o *ObjectOrder) buildFilter() {
+	bits := uint64(64)
+	for bits < uint64(o.count+len(o.copies))*filterBitsPerObject {
+		bits *= 2
+	}
+	o.filter, o.filterMask = make([]uint64, bits/64), bits-1
+	set := func(p uintptr) {
+		a, b := o.filterBits(p)
+		o.filter[a/64] |= 1 << (a % 64)
+		o.filter[b/64] |= 1 << (b % 64)
+	}
+	for _, block := range o.blocks {
+		for _, e := range block {
+			set(e.pointer)
+		}
+	}
+	for _, c := range o.copies {
+		set(mapPointer(c.object))
+	}
+}
+
+func (o *ObjectOrder) mayHold(p uintptr) bool {
+	a, b := o.filterBits(p)
+	return o.filter[a/64]&(1<<(a%64)) != 0 && o.filter[b/64]&(1<<(b%64)) != 0
 }
 
 // sort puts the objects in one list by address, for the lookups. An order that nothing reads never pays for it.
@@ -142,10 +205,16 @@ func (o *ObjectOrder) sort() {
 	for _, block := range o.blocks {
 		n += len(block)
 	}
-	o.sorted = make([]orderEntry, 0, n)
+	o.sorted = make([]orderEntry, 0, n+len(o.copies))
 	for _, block := range o.blocks {
 		o.sorted = append(o.sorted, block...)
 	}
+	for _, c := range o.copies {
+		if keys, ok := o.from.KeysOf(c.source); ok {
+			o.sorted = append(o.sorted, orderEntry{mapPointer(c.object), c.object, keys})
+		}
+	}
+	o.copies, o.from = nil, nil
 	slices.SortFunc(o.sorted, func(a, b orderEntry) int { return cmp.Compare(a.pointer, b.pointer) })
 	o.blocks, o.free, o.scratch = nil, nil, nil
 }

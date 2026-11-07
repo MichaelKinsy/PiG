@@ -209,25 +209,26 @@ func appendStreamText(current, value any) (any, bool) {
 
 // cloneStreamValue copies the containers of a decoded payload; strings are shared, as they are immutable, and an appended string is handed out as a view of its current bytes.
 func cloneStreamValue(value any) any {
-	return cloneStreamValueOrdered(value, nil, nil)
+	return cloneStreamValueOrdered(value, nil)
 }
 
-// cloneStreamValueOrdered is cloneStreamValue that also gives each copy of an object the member order from has for the object, in to; neither is nil, or both are.
-func cloneStreamValueOrdered(value any, from, to *json.ObjectOrder) any {
+// cloneStreamValueOrdered is cloneStreamValue that also names each copy of an object in to, the order of the copies of the objects of a decode's order
+// (ObjectOrder.Copies); to is nil when no order is wanted.
+func cloneStreamValueOrdered(value any, to *json.ObjectOrder) any {
 	switch typed := value.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(typed))
 		for key, member := range typed {
-			out[key] = cloneStreamValueOrdered(member, from, to)
+			out[key] = cloneStreamValueOrdered(member, to)
 		}
 		if to != nil {
-			to.Carry(from, typed, out)
+			to.Carry(typed, out)
 		}
 		return out
 	case []any:
 		out := make([]any, len(typed))
 		for index, member := range typed {
-			out[index] = cloneStreamValueOrdered(member, from, to)
+			out[index] = cloneStreamValueOrdered(member, to)
 		}
 		return out
 	case *streamText:

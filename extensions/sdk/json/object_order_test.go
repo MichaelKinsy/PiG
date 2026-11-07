@@ -120,9 +120,10 @@ func TestObjectOrderIdentifiesObjectsByTheirMaps(t *testing.T) {
 	if _, ok := order.KeysOf(nil); ok {
 		t.Error("a nil map has an order")
 	}
-	carried := new(ObjectOrder)
-	carried.Carry(order, x, copied)
-	carried.Carry(order, map[string]any{"q": 1, "r": 2}, map[string]any{})
+	carried := order.Copies()
+	carried.Carry(x, copied)
+	carried.Carry(map[string]any{"q": 1, "r": 2}, map[string]any{"q": 1, "r": 2})
+	carried.Carry(nil, map[string]any{})
 	if keys, ok := carried.KeysOf(copied); !ok || keys[0] != "z" {
 		t.Errorf("the carried copy = %v, %v", keys, ok)
 	}
@@ -205,5 +206,63 @@ func TestObjectOrderIsReadConcurrently(t *testing.T) {
 		if !<-done {
 			t.Error("a concurrent read saw a wrong order")
 		}
+	}
+}
+
+// countingOrder is a KeyOrder that counts the questions it is asked.
+type countingOrder struct{ asked int }
+
+func (c *countingOrder) Keys(uintptr) ([]string, bool) { c.asked++; return nil, false }
+
+// A map of one member has no order to choose, so the encoder does not ask for it: an unchanged-context reply, which is one such map, reads nothing of the
+// event.
+func TestMarshalJSOrderedAsksOnlyForMapsOfTwoMembersOrMore(t *testing.T) {
+	var order countingOrder
+	if _, err := MarshalJSOrdered(map[string]any{"_pigContextUnchanged": true}, &order); err != nil {
+		t.Fatal(err)
+	}
+	if order.asked != 0 {
+		t.Errorf("a map of one member asked %d times", order.asked)
+	}
+	if _, err := MarshalJSOrdered(map[string]any{"a": map[string]any{"b": 1, "c": 2}, "d": []any{map[string]any{"e": 1}}}, &order); err != nil {
+		t.Fatal(err)
+	}
+	if order.asked != 2 {
+		t.Errorf("a map of two members and one nested map of two asked %d times, want 2", order.asked)
+	}
+}
+
+// A lookup of a map that is not one of the objects does not sort them, and a lookup of one that is finds it among thousands.
+func TestObjectOrderLookupOfAnotherMapDoesNotSort(t *testing.T) {
+	var text strings.Builder
+	text.WriteString(`{"list":[`)
+	for i := range 2000 {
+		if i > 0 {
+			text.WriteByte(',')
+		}
+		text.WriteString(`{"b":1,"a":2}`)
+	}
+	text.WriteString(`]}`)
+	value, order, err := UnmarshalObject([]byte(text.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An address no object has that the filter does not pass: the filter's answer is "not here" without a sort. (A map the filter passes by chance is sorted
+	// for, and found missing; its address cannot be chosen, so the test chooses an address.)
+	order.Keys(8)
+	var other uintptr
+	for other = 16; order.mayHold(other); other += 8 {
+	}
+	if _, ok := order.Keys(other); ok {
+		t.Fatal("an address that is not an object has an order")
+	}
+	if order.sorted != nil {
+		t.Error("a lookup of an address the filter rejects sorted the objects")
+	}
+	if keys, ok := order.KeysOf(value["list"].([]any)[1234].(map[string]any)); !ok || keys[0] != "b" {
+		t.Errorf("object 1234 = %v, %v", keys, ok)
+	}
+	if order.sorted == nil {
+		t.Error("a lookup of an object did not sort")
 	}
 }

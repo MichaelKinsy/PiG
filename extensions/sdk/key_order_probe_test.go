@@ -185,7 +185,7 @@ func redactAllArgs(count int) (args, reply string) {
 // up the order, whose first lookup sorts every object of the event.
 func TestAnUnchangedContextReplyReadsNoOrder(t *testing.T) {
 	const runs = 20
-	args := []byte(contextArgs(300))
+	args := []byte(contextArgs(3000))
 	orders := make([]*json.ObjectOrder, runs)
 	for i := range orders {
 		var err error
@@ -203,8 +203,8 @@ func TestAnUnchangedContextReplyReadsNoOrder(t *testing.T) {
 		}
 	}
 	runtime.ReadMemStats(&after)
-	// Sorting the objects of 300 messages takes tens of kilobytes; the reply itself takes under two.
-	if perReply := (after.TotalAlloc - before.TotalAlloc) / runs; perReply > 8<<10 {
+	// Asking for the order of an event of 3000 messages takes tens of kilobytes (the filter, the sorted objects); the reply itself takes about one.
+	if perReply := (after.TotalAlloc - before.TotalAlloc) / runs; perReply > 4<<10 {
 		t.Errorf("an unchanged context reply allocated %d bytes: it read the order of the event", perReply)
 	}
 }
