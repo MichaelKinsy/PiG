@@ -4417,10 +4417,14 @@ fn main() {
             panic!("probe-panic-boom");
         }
     });
-    ext.command("panic-probe", "Panic after an stderr line of the extension's own", |_ctx, _args| {
-        eprintln!("probe-err-command");
-        panic!("probe-panic-boom");
-    });
+    ext.command(
+        "panic-probe",
+        "Panic after an stderr line of the extension's own",
+        |_ctx, _args| {
+            eprintln!("probe-err-command");
+            panic!("probe-panic-boom");
+        },
+    );
     ext.command(
         "context-probe",
         "Report ctx.mode + ctx.getSystemPromptOptions()",
