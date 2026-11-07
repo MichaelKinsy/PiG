@@ -1881,6 +1881,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.RequiresAssistantAfterToolResult != nil {
 		merged.RequiresAssistantAfterToolResult = ovr.RequiresAssistantAfterToolResult
 	}
+	if ovr.RequiresNonNullAssistantContent != nil {
+		merged.RequiresNonNullAssistantContent = ovr.RequiresNonNullAssistantContent
+	}
 	if ovr.RequiresThinkingAsText != nil {
 		merged.RequiresThinkingAsText = ovr.RequiresThinkingAsText
 	}

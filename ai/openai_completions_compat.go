@@ -81,6 +81,7 @@ func detectOpenAICompletionsCompat(providerID, baseURL, modelID string) OpenAICo
 		MaxTokensField:                              maxTokensField,
 		RequiresToolResultName:                      new(false),
 		RequiresAssistantAfterToolResult:            new(false),
+		RequiresNonNullAssistantContent:             new(false),
 		RequiresThinkingAsText:                      new(false),
 		RequiresReasoningContentOnAssistantMessages: new(isDeepSeek),
 		ThinkingFormat:                              thinkingFormat,

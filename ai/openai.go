@@ -86,6 +86,7 @@ type OpenAICompat struct {
 	MaxTokensField                              string `json:"maxTokensField,omitempty"`
 	RequiresToolResultName                      *bool  `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            *bool  `json:"requiresAssistantAfterToolResult,omitempty"`
+	RequiresNonNullAssistantContent             *bool  `json:"requiresNonNullAssistantContent,omitempty"`
 	RequiresThinkingAsText                      *bool  `json:"requiresThinkingAsText,omitempty"`
 	RequiresReasoningContentOnAssistantMessages *bool  `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	SupportsOpenAIGrammarTools                  *bool  `json:"supportsOpenAIGrammarTools,omitempty"`
@@ -290,6 +291,7 @@ func (anchors toolAnchors) anchored(systemIndex int) bool {
 // Mirrors upstream openai-completions.ts convertMessages (lines 680-870).
 func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps map[string]string, instructionRole string, anchors toolAnchors, isReasoning bool) ([]oaiMessage, error) {
 	requiresAssistant := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresAssistantAfterToolResult }, false)
+	requiresNonNullContent := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresNonNullAssistantContent }, false)
 	requiresName := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresToolResultName }, false)
 	requiresThinkingAsText := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresThinkingAsText }, false)
 	requiresReasoningContent := p.compatBool(func(c *OpenAICompat) *bool { return c.RequiresReasoningContentOnAssistantMessages }, false)
@@ -300,6 +302,7 @@ func (p *openAIProvider) convertMessagesWithCompat(msgs []Message, grammarProps 
 		grammarProps:                     grammarProps,
 		thinkingAsText:                   requiresThinkingAsText,
 		requiresAssistantAfterToolResult: requiresAssistant,
+		requiresNonNullAssistantContent:  requiresNonNullContent,
 		instructionRole:                  instructionRole,
 		systemTools: func(systemIndex int, message SystemMessage) ([]oaiTool, error) {
 			if !anchors.anchored(systemIndex) || len(message.ToolsAdded) == 0 {
@@ -699,6 +702,8 @@ type completionsConvertOptions struct {
 	grammarProps                     map[string]string
 	thinkingAsText                   bool
 	requiresAssistantAfterToolResult bool
+	// requiresNonNullAssistantContent sends "" instead of null content on replayed assistant messages that carry no text.
+	requiresNonNullAssistantContent bool
 	// requiresToolResultName adds the tool result's tool name to its message.
 	requiresToolResultName bool
 	// reasoningContentOnAssistant sets an empty reasoning_content on assistant messages that carry none (compat.requiresReasoningContentOnAssistantMessages with a reasoning model).
@@ -767,7 +772,7 @@ func convertCompletionsMessages(messages []Message, options completionsConvertOp
 			}
 		case AssistantMessage:
 			converted := oaiMessage{Role: "assistant"}
-			if options.requiresAssistantAfterToolResult {
+			if options.requiresAssistantAfterToolResult || options.requiresNonNullAssistantContent {
 				converted.Content = ""
 			}
 			var textParts []oaiContentPart

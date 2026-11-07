@@ -109,6 +109,7 @@ func OpenAICompletionsCompatSchema() *Schema {
 		Optional("maxTokensField", Union(literals("max_completion_tokens", "max_tokens"), D("Which field to use for max tokens. Default: auto-detected from URL."))),
 		Optional("requiresToolResultName", Boolean(D("Whether tool results require the name field. Default: auto-detected from URL."))),
 		Optional("requiresAssistantAfterToolResult", Boolean(D("Whether a user message after tool results requires an assistant message in between. Default: auto-detected from URL."))),
+		Optional("requiresNonNullAssistantContent", Boolean(D("Whether replayed assistant messages with no text (e.g. tool-call-only messages) must send \"\" instead of null content. Default: false."))),
 		Optional("requiresThinkingAsText", Boolean(D("Whether thinking blocks must be converted to text blocks with <thinking> delimiters. Default: auto-detected from URL."))),
 		Optional("requiresReasoningContentOnAssistantMessages", Boolean(D("Whether all replayed assistant messages must include an empty reasoning_content field when reasoning is enabled. Default: auto-detected from URL."))),
 		Optional("thinkingFormat", Union(literals("openai", "openrouter", "deepseek", "together", "baseten", "zai", "qwen", "chat-template", "qwen-chat-template", "string-thinking", "ant-ling"),
