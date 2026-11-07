@@ -85,6 +85,21 @@ jobs:
           # mirror of the pin's source. The nightly once listed these by hand, left out the npm trees, and every Pi-oracle test that imports a package from them failed with
           # ERR_MODULE_NOT_FOUND (test/ci-images/nightly_oracle_install_test.go).
           make upstream-mirror
+      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (cli shard 4/4) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        # SBCL publishes no binary of the pinned release for arm64 macOS: the script builds the checksummed release source with the arm64 macOS binary row of automation/dev/toolchains.lock.
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
