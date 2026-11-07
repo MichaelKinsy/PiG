@@ -63,6 +63,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0920a00](#bf-0920a00) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0a0d27d](#bf-0a0d27d) | The training run's socket was in the build's work directory, whose path under a deep agent directory can… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a51e9d](#bf-0a51e9d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -926,6 +927,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9139ed8](#bf-9139ed8) | Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-918f21c](#bf-918f21c) | `formatThousands` (`tui/compaction_summary.go`, compaction-summary-message.ts:40… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-919575a](#bf-919575a) | A JSON syntax error reports what V8's `JSON.parse` reports in two cases it got wrong: a number or string… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-91e6a24](#bf-91e6a24) | A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new… | PiG's own defect | All platforms | Unreleased |
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
@@ -1141,6 +1143,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a8f5413](#bf-a8f5413) | Fix the lint findings of the JPEG port | PiG's own defect | All platforms | Unreleased |
 | [BF-a8ff0c7](#bf-a8ff0c7) | The anthropic-messages and google-generative-ai requests build their URL as @anthropic-ai/sdk and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
+| [BF-a921aa3](#bf-a921aa3) | Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | 0.7.0 |
@@ -1224,6 +1227,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b85fd68](#bf-b85fd68) | fix(chord/host): compile the frame schema once, not for every frame a link carries | PiG's own defect | All platforms | Unreleased |
 | [BF-b88044f](#bf-b88044f) | A login flow's text prompt accepts an empty answer, as Pi's does, instead of failing with "<prompt> is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b8b83db](#bf-b8b83db) | fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop | PiG's own defect | All platforms | Unreleased |
+| [BF-b8b9af5](#bf-b8b9af5) | A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-b8c5de6](#bf-b8c5de6) | Interactive startup no longer reads terminal input while it checks for fd and rg unless one of them is being… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b8df7eb](#bf-b8df7eb) | On Windows, a session's private snapshot file is created in the temporary directory instead of the session… | PiG's own defect | Windows | 0.5.0 |
 | [BF-b8df7eb-2](#bf-b8df7eb-2) | On Windows, an image fallback links a path that starts with a slash but no drive (`/tmp/x.png`) as Pi does… | PiG's own defect | Windows | 0.5.0 |
@@ -2327,6 +2331,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38b0f0c036` (2026-10-05), `098e33da91` (2026-10-06), `70d13f2863` (2026-10-06)
 - **Tests:** `extensions/sdk/surface_parity_test.go::TestHasUIAndUIThemeFollowReplicatedState`, `extensions/sdk/ui_theme_style_test.go::TestUIThemeFgAndBgPanicForAnUnknownToken`, `test/extension-conformance/theme_test.go::TestThemeFaintForegroundAcrossSDKs`, `tui/highlight_test.go::TestCliHighlightThemeColorsSubstitutionsWithTheTextColor`, `tui/highlight_test.go::TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationEndsWithTheString`, `tui/syntax_highlight_upstream_test.go::TestSyntaxHighlightInterpolationTakesTheTextColor`, `tui/theme_unknown_token_test.go::TestThemeTextAttributeMethodsWrapInChalkPairs` and 1 more in docs/bug-ledger.json
 - **Release note:** Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a token the palette lacks, as Pi's theme does; a theme with no palette still leaves text unstyled.
+
+### BF-0a0d27d
+
+**The training run's socket was in the build's work directory, whose path under a deep agent directory can…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The training run's socket was in the build's work directory, whose path under a deep agent directory can exceed what a Unix socket address holds (108 bytes); every training run of such a build failed to listen, was logged and skipped, and the build's function order lacked each extension's startup.
+- **Root cause:** TestGateUXNodeOnlyExtensionRunsOnNode failed on the base commit too: its extension called the Node-only API inside the factory, and the host (isStartFailure) retries on the next runtime only for a module that failed to evaluate, because a factory that threw has run. The API call moves to the module's top level.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a0d27d74a` (2026-11-06)
+- **Tests:** `piglets/pig-bolt/extensions/boltruntime/e2e_test.go::TestGateUXNodeOnlyExtensionRunsOnNode`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunWorksUnderAWorkDirectoryTooLongForASocket`
+- **Release note:** The training run's socket was in the build's work directory, whose path under a deep agent directory can exceed what a Unix socket address holds (108 bytes); every training run of such a build failed to listen, was logged and skipped, and the build's function order lacked each extension's startup. The socket is in a short directory of its own.
 
 ### BF-0a3094a
 
@@ -14283,6 +14301,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/classifier_answers_oracle_test.go::TestClassifierAnswersMatchPi`, `ai/system_one_shared_test.go::TestSystemOneSharedFailureMessages`, `internal/codingagent/bug_report_redact_oracle_test.go::TestBugReportRedactionMatchesPi`, `internal/codingagent/bug_report_redact_oracle_test.go::TestBugReportRedactionNormalizesNumbersLikeJSONStringify`, `internal/codingagent/session_file_bytes_oracle_test.go::TestSessionFileBytesMatchPi`, `internal/jsonparse/json_parse_oracle_test.go::TestValidateMatchesNodeJSONParse`, `internal/sessionentry/entry_test.go::TestBranchSummaryEntryKeepsTheMemberOrderOfDetails`
 - **Release note:** A JSON syntax error reports what V8's `JSON.parse` reports in two cases it got wrong: a number or string where a `true`, `false` or `null` literal breaks off (`t1`, `fals"`) is "Unexpected number" or "Unexpected string in JSON at position N", and a backslash followed by a character above U+00FF in a string is "Unexpected token" rather than "Bad escaped character".
 
+### BF-91e6a24
+
+**A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new URL("./x", meta.url))`) was not refused and compiled to a silently wrong result.
+- **Root cause:** A compiled executable has no directory of its own, so the bundler resolves import.meta.url (and import.meta.dir, __dirname, ...) to /$bunfs/root for every module it holds. The Piglet refused any set in which a file both named its location and read files, which left @juicesharp/rpiv-todo and pi-mcp-adapter on Bun. Its scan was also a regexp over the text: `const m = import.meta; readFileSync(new URL("./x", m.url))` named a location, read a file and was not refused, so such a set compiled in and read /$bunfs.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `91e6a2498b` (2026-11-06)
+- **Tests:** `piglets/pig-bolt/extensions/boltruntime/fileurl_test.go::TestFileURLEncodesAsNodeDoes`, `piglets/pig-bolt/extensions/boltruntime/mirror_test.go::TestWriteMirrorBoundsTheLinksOfAHugeDirectory`, `piglets/pig-bolt/extensions/boltruntime/mirror_test.go::TestWriteMirrorLaysOutCopiesAndLinksTheRest`, `piglets/pig-bolt/extensions/boltruntime/rewrite_cast_test.go::TestRewriteModuleReadsATypeScriptCastOfImportMeta`, `piglets/pig-bolt/extensions/boltruntime/rewrite_integration_test.go::TestBuildCompilesAnExtensionThatLocatesItselfAndItFindsItsFiles`, `piglets/pig-bolt/extensions/boltruntime/rewrite_integration_test.go::TestBuildRefusesWhatTheRewriteCannotPin`, `piglets/pig-bolt/extensions/boltruntime/rewrite_scanner_test.go::TestRewriteModuleScannerGuesses`, `piglets/pig-bolt/extensions/boltruntime/rewrite_test.go::TestRewriteModuleChangesCodeNeverTextOrComments` and 6 more in docs/bug-ledger.json
+- **Release note:** A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new URL("./x", meta.url))`) was not refused and compiled to a silently wrong result. It is refused, and the set runs on Bun.
+
 ### BF-91e912a
 
 **Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer…**
@@ -17301,6 +17333,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/openrouter_cost_test.go::TestAnthropicMessagesUsesOpenRouterReportedCost`, `ai/openrouter_cost_test.go::TestApplyOpenRouterReportedCost`, `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/openrouter_cost_test.go::TestOpenAICompletionsUsesOpenRouterReportedCost`, `internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets`
 - **Release note:** OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's reported total as `usage.cost.total` for OpenAI Completions and Anthropic Messages streams, plus the upstream inference cost for a BYOK request, instead of the catalog estimate, and mark it provider-reported. The export HTML header uses the recorded total. Replaces PiG's earlier D124 form of this fix with Pi's.
 
+### BF-a921aa3
+
+**Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.
+- **Root cause:** Pi-Bolt bolt-v1.1.2 (commit) replaces 0.7.4. The runtime archive layout (bun, LICENSE, LICENSE.pi, THIRD_PARTY_NOTICES.md) is unchanged; linux-x64 archive..., compiler...; darwin-arm64 archive..., compiler....
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a921aa3352` (2026-11-06)
+- **Tests:** `coding/cli/extensions_runtime_command_test.go::TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets`, `piglets/pig-bolt/extensions/boltruntime/images_test.go::TestEnsureManifestDropsImagesOfAnotherCompilerRelease`, `piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestInstallRemovesTheCompilerOfAnEarlierRelease`, `piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestPinnedReleaseKeyVerifiesTheRealSignedChecksums`
+- **Release note:** Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image. Pi-Bolt 1.1.2 builds the same input; the Piglet pins it.
+
 ### BF-a9264aa
 
 **A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the…**
@@ -18447,6 +18493,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `b8b83db5e7` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-b8b9af5
+
+**A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe.
+- **Root cause:** Measured on xd670 with Pi-Bolt 0.7.4's bun running the runtime's cli.mjs as the training host (one registerCommand, and 3000 of them): trainRun 339 ms and 398 ms before, 150 ms and 197 ms after (6 runs each), host exit status 0 and empty stderr in every run. The compiled host could not be built here (Pi-Bolt's compiler segfaults in the bundle step in the CI container), so the order file a compiled training host writes was not compared.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b8b9af5e63` (2026-11-06)
+- **Tests:** `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainHostHelper`, `piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration`
+- **Release note:** A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe. It now ends on the registration frame (339 and 398 ms before, 150 and 197 ms after).
 
 ### BF-b8c5de6
 

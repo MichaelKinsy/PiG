@@ -1287,6 +1287,30 @@
       ]
     },
     {
+      "id": "BF-0a0d27d",
+      "title": "The training run's socket was in the build's work directory, whose path under a deep agent directory can…",
+      "symptom": "The training run's socket was in the build's work directory, whose path under a deep agent directory can exceed what a Unix socket address holds (108 bytes); every training run of such a build failed to listen, was logged and skipped, and the build's function order lacked each extension's startup.",
+      "rootCause": "TestGateUXNodeOnlyExtensionRunsOnNode failed on the base commit too: its extension called the Node-only API inside the factory, and the host (isStartFailure) retries on the next runtime only for a module that failed to evaluate, because a factory that threw has run. The API call moves to the module's top level.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The training run's socket was in the build's work directory, whose path under a deep agent directory can exceed what a Unix socket address holds (108 bytes); every training run of such a build failed to listen, was logged and skipped, and the build's function order lacked each extension's startup. The socket is in a short directory of its own.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0a0d27d74a",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "piglets/pig-bolt/extensions/boltruntime/e2e_test.go::TestGateUXNodeOnlyExtensionRunsOnNode",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunWorksUnderAWorkDirectoryTooLongForASocket"
+      ]
+    },
+    {
       "id": "BF-0a3094a",
       "title": "fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function",
       "symptom": "fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function",
@@ -26132,6 +26156,41 @@
       ]
     },
     {
+      "id": "BF-91e6a24",
+      "title": "A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new…",
+      "symptom": "A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new URL(\"./x\", meta.url))`) was not refused and compiled to a silently wrong result.",
+      "rootCause": "A compiled executable has no directory of its own, so the bundler resolves import.meta.url (and import.meta.dir, __dirname, ...) to /$bunfs/root for every module it holds. The Piglet refused any set in which a file both named its location and read files, which left @juicesharp/rpiv-todo and pi-mcp-adapter on Bun. Its scan was also a regexp over the text: `const m = import.meta; readFileSync(new URL(\"./x\", m.url))` named a location, read a file and was not refused, so such a set compiled in and read /$bunfs.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new URL(\"./x\", meta.url))`) was not refused and compiled to a silently wrong result. It is refused, and the set runs on Bun.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "91e6a2498b",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "piglets/pig-bolt/extensions/boltruntime/fileurl_test.go::TestFileURLEncodesAsNodeDoes",
+        "piglets/pig-bolt/extensions/boltruntime/mirror_test.go::TestWriteMirrorBoundsTheLinksOfAHugeDirectory",
+        "piglets/pig-bolt/extensions/boltruntime/mirror_test.go::TestWriteMirrorLaysOutCopiesAndLinksTheRest",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_cast_test.go::TestRewriteModuleReadsATypeScriptCastOfImportMeta",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_integration_test.go::TestBuildCompilesAnExtensionThatLocatesItselfAndItFindsItsFiles",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_integration_test.go::TestBuildRefusesWhatTheRewriteCannotPin",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_scanner_test.go::TestRewriteModuleScannerGuesses",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_test.go::TestRewriteModuleChangesCodeNeverTextOrComments",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_test.go::TestRewriteModuleKeepsWhatTheModuleDeclares",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_test.go::TestRewriteModulePinsTheModulesOwnLocation",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_test.go::TestRewriteModuleReadsJSXAsText",
+        "piglets/pig-bolt/extensions/boltruntime/rewrite_test.go::TestRewriteModuleReportsWhatItCannotPin",
+        "piglets/pig-bolt/extensions/boltruntime/scan_test.go::TestScanPathSensitiveRefusesWhatTheRewriteCannotPin",
+        "piglets/pig-bolt/extensions/boltruntime/scan_test.go::TestScanPathSensitiveRewritesFilesThatReadBesideThemselves"
+      ]
+    },
+    {
       "id": "BF-91e912a",
       "title": "Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer…",
       "symptom": "Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer restage each other's extension SDKs at every start or delete each other's extension builds.",
@@ -31912,6 +31971,31 @@
       ]
     },
     {
+      "id": "BF-a921aa3",
+      "title": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on…",
+      "symptom": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.",
+      "rootCause": "Pi-Bolt bolt-v1.1.2 (commit) replaces 0.7.4. The runtime archive layout (bun, LICENSE, LICENSE.pi, THIRD_PARTY_NOTICES.md) is unchanged; linux-x64 archive..., compiler...; darwin-arm64 archive..., compiler....",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image. Pi-Bolt 1.1.2 builds the same input; the Piglet pins it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a921aa3352",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/cli/extensions_runtime_command_test.go::TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets",
+        "piglets/pig-bolt/extensions/boltruntime/images_test.go::TestEnsureManifestDropsImagesOfAnotherCompilerRelease",
+        "piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestInstallRemovesTheCompilerOfAnEarlierRelease",
+        "piglets/pig-bolt/extensions/boltruntime/toolchain_test.go::TestPinnedReleaseKeyVerifiesTheRealSignedChecksums"
+      ]
+    },
+    {
       "id": "BF-a9264aa",
       "title": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the…",
       "symptom": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the Harness clock (`HarnessOptions.now`, the wall clock when none is given), which throws once the tool call's invocation has ended, as Pi 1.4's `ToolExecutionApi.now` does.",
@@ -34339,6 +34423,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-b8b9af5",
+      "title": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a…",
+      "symptom": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe.",
+      "rootCause": "Measured on xd670 with Pi-Bolt 0.7.4's bun running the runtime's cli.mjs as the training host (one registerCommand, and 3000 of them): trainRun 339 ms and 398 ms before, 150 ms and 197 ms after (6 runs each), host exit status 0 and empty stderr in every run. The compiled host could not be built here (Pi-Bolt's compiler segfaults in the bundle step in the CI container), so the order file a compiled training host writes was not compared.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a registration larger than one read was cut and its runtime's next write failed with a broken pipe. It now ends on the registration frame (339 and 398 ms before, 150 and 197 ms after).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b8b9af5e63",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainHostHelper",
+        "piglets/pig-bolt/extensions/boltruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration"
+      ]
     },
     {
       "id": "BF-b8c5de6",
