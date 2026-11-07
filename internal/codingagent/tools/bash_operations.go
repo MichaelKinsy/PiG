@@ -314,15 +314,17 @@ func startTrackedShell(cmd *exec.Cmd) error {
 var (
 	testHookBeforeStdioRead   func()
 	testHookStdioGraceExpired func()
-	testHookAfterShellStart   func()
+	// testHookStdioGraceTimer replaces the wall-clock grace; it runs once the shell has exited, as Wait begins.
+	testHookStdioGraceTimer func() childwait.IdleTimer
+	testHookAfterShellStart func()
 )
 
 // testStdioHooks is nil outside tests, so a command's pipes carry no hooks.
 func testStdioHooks() *childwait.Hooks {
-	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil {
+	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil && testHookStdioGraceTimer == nil {
 		return nil
 	}
-	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired}
+	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired, GraceTimer: testHookStdioGraceTimer}
 }
 
 // testHookTimeoutTimer replaces the wall-clock timer that arms a command's timeout, so a test can fire the timeout once the command has done

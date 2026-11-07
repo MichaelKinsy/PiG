@@ -103,3 +103,31 @@ func TestPollReadableOnASynchronousPipe(t *testing.T) {
 		t.Fatalf("pollReadable = %v, %v with a byte waiting", readable, closed)
 	}
 }
+
+// PeekNamedPipe answers only for pipes. A regular file (what a caller hands Start to read to its end) has nothing to ask, so the reader must go straight to its
+// read, as it does where no poll answers; reading it as a closed handle delivered nothing.
+func TestPollReadableOnARegularFileLetsTheReaderRead(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if _, err := file.WriteString("abc"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		t.Fatal(err)
+	}
+	if readable, closed := pollReadable(file, 5); !readable || closed {
+		t.Fatalf("pollReadable = %v, %v on a regular file", readable, closed)
+	}
+	if pollPending(file) {
+		t.Fatal("pollPending reports pipe bytes in a regular file")
+	}
+	var got []byte
+	pipes := Start([]*os.File{file}, func(_ int, chunk []byte) { got = append(got, chunk...) }, nil)
+	pipes.Wait(func() bool { return false })
+	if string(got) != "abc" {
+		t.Fatalf("Start read %q from a regular file, want abc", got)
+	}
+}
