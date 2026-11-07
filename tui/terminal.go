@@ -836,6 +836,7 @@ func writeString(out io.Writer, data string) (int, error) {
 	buf := terminalWriteBuffers.Get().(*[]byte)
 	*buf = append((*buf)[:0], data...)
 	n, err := out.Write(*buf)
+	//perf:ok the buffers hold single small writes (the cursor's hide and show, a frame's chunk) and the garbage collector empties the pool, so no cap is needed
 	terminalWriteBuffers.Put(buf)
 	return n, err
 }
