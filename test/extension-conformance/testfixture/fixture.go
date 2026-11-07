@@ -1385,6 +1385,22 @@ func Extension() *sdk.Extension {
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
 		return nil
 	})
+	// event_keys_probe subscribes to the event named by the argument with a handler that reports, as JSON, the keys of its payload member and of that
+	// object's zeta member in the order Object.keys gives them (TestConformance_ObjectKeysAreReadInInsertionOrder).
+	ext.Command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			payload, _ := data["payload"].(map[string]any)
+			zeta, _ := payload["zeta"].(map[string]any)
+			wire, err := json.Marshal([][]string{hctx.ObjectKeys(payload), hctx.ObjectKeys(zeta)})
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify("event_keys:"+name+":"+string(wire), "info")
+			return nil, nil
+		})
+		return nil
+	})
 	// event_echo_probe subscribes to the event named by the argument with a handler that hands back, unchanged, the objects it was sent: the entries of a
 	// turn boundary, the context's messages but the first, the provider request's payload, a tool result's content and details, a message_end message
 	// (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder).

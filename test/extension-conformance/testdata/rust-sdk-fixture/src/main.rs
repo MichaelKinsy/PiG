@@ -3968,6 +3968,28 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_keys_subscriber = ext.event_subscriber();
+    let event_keys_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_keys_probe",
+        "Subscribe to the event named by the argument with a handler that reports the key order of its payload",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let reported = name.clone();
+            let subscription = subscribe(&event_keys_subscriber, &name, move |ctx, data| {
+                let keys = |value: &Value| -> Vec<String> {
+                    value.as_object().map(|o| o.keys().cloned().collect()).unwrap_or_default()
+                };
+                let payload = &data["payload"];
+                let wire = serde_json::json!([keys(payload), keys(&payload["zeta"])]);
+                ctx.notify(&format!("event_keys:{reported}:{wire}"), "info");
+                Ok(None)
+            });
+            event_keys_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     let event_echo_subscriber = ext.event_subscriber();
     let event_echo_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));

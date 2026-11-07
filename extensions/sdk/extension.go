@@ -1583,6 +1583,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				_ = json.Unmarshal(req.Args, &data)
 			}
 		}
+		ctx.req, req.eventData = req, data
 		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
 			boundaryData = data
 		}

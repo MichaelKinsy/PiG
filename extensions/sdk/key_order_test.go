@@ -168,3 +168,23 @@ func TestHandedBackEventMembersKeepTheirMemberOrder(t *testing.T) {
 		t.Errorf("message_end\n got %s\nwant %s", got, want)
 	}
 }
+
+// A handler reads the keys of an object of its event in the order the host wrote them, as Object.keys gives them in Pi; a map it built, or a member it added,
+// has no host order.
+func TestObjectKeysAreReadInTheOrderTheHostWroteThem(t *testing.T) {
+	ext := New("key-order-read")
+	ext.OnEvent(EventBeforeProviderRequest, func(ctx Context, data map[string]any) (any, error) {
+		payload := data["payload"].(map[string]any)
+		zeta := payload["zeta"].(map[string]any)
+		before := ctx.ObjectKeys(payload)
+		payload["extra"] = 1
+		delete(payload, "stream")
+		return map[string]any{"before": before, "after": ctx.ObjectKeys(payload), "zeta": ctx.ObjectKeys(zeta), "built": ctx.ObjectKeys(map[string]any{"b": 1, "a": 2}), "nil": ctx.ObjectKeys(nil)}, nil
+	})
+	dispatch := keyOrderFixture(t, ext)
+	got := dispatch(1, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":{"model":"m","messages":[],"stream":true,"zeta":{"z":1,"a":2}}}`)
+	const want = `{"after":["model","messages","zeta","extra"],"before":["model","messages","stream","zeta"],"built":["a","b"],"nil":[],"zeta":["z","a"]}`
+	if got != want {
+		t.Errorf("keys\n got %s\nwant %s", got, want)
+	}
+}

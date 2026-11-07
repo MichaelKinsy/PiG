@@ -205,6 +205,9 @@ type requestMsg struct {
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any
 	streamErr  error
+	// eventData is the payload an event handler was given and keyOrder the member order of its objects, read from Args the first time a handler asks (Context.ObjectKeys).
+	eventData map[string]any
+	keyOrder  *sourceOrder
 }
 
 type responseMsg struct {

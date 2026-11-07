@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -71,6 +72,26 @@ func TestConformance_HandedBackEventObjectsKeepTheirMemberOrder(t *testing.T) {
 					t.Errorf("after the round trip through the extension\n got %s\nwant %s", got, want)
 				}
 			}
+
+			// A handler reads an object's keys in the order Object.keys gives them: the order the host wrote them, which no sorted read produces.
+			t.Run("object_keys", func(t *testing.T) {
+				runConformanceCommandArgs(t, h, "event_keys_probe", "before_provider_request")
+				if _, err := h.runner.EmitBeforeProviderRequest(ctx, json.RawMessage(payload)); err != nil {
+					t.Fatal(err)
+				}
+				const prefix = "event_keys:before_provider_request:"
+				report := func() (string, bool) {
+					for _, n := range *h.notify {
+						if rest, ok := strings.CutPrefix(n, prefix); ok {
+							return strings.TrimSuffix(rest, ":info"), true
+						}
+					}
+					return "", false
+				}
+				pollUntilConformance(t, "the keys probe never reported", func() bool { _, ok := report(); return ok })
+				got, _ := report()
+				check(t, got, `[["model","messages","stream","zeta"],["z","a"]]`)
+			})
 
 			t.Run("turn_end", func(t *testing.T) {
 				boundary := func() string {

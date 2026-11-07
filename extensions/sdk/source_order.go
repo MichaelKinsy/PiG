@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"reflect"
 	"slices"
+	"sync"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -372,4 +373,43 @@ func decodeKey(literal []byte) (string, bool) {
 		return "", false
 	}
 	return key, true
+}
+
+// keyOrderMu serializes the first read of an event's key order: handlers of one request may run on goroutines of their own.
+var keyOrderMu sync.Mutex
+
+// ObjectKeys returns the keys of object in the order Object.keys gives them in Pi. For an object of the event this handler is serving that is the order the
+// host wrote its members in, for the members the object still holds, and then the members the handler added, in byte order. A Go map has no order of its own,
+// so this is how a Go handler reads the order the host sent; Rust, Python, Lisp and Node objects keep it and need no call. A map the handler built, or any
+// object of an event whose payload arrived in pieces, has its keys in byte order. A handler that never calls it pays nothing: the order is read from the
+// event bytes at the first call.
+// pig additive (D273)
+func (c Context) ObjectKeys(object map[string]any) []string {
+	var known []string
+	if c.req != nil && c.req.eventData != nil && len(c.req.Args) > 0 && object != nil {
+		keyOrderMu.Lock()
+		if c.req.keyOrder == nil {
+			c.req.keyOrder = &sourceOrder{src: c.req.Args, pending: []pendingRoot{{c.req.eventData, skipSpace(c.req.Args, 0)}}}
+		}
+		known, _ = c.req.keyOrder.Keys(mapPointer(object))
+		known = slices.Clone(known)
+		keyOrderMu.Unlock()
+	}
+	keys := make([]string, 0, len(object))
+	for _, key := range known {
+		if _, ok := object[key]; ok {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) < len(object) {
+		var rest []string
+		for key := range object {
+			if !slices.Contains(known, key) {
+				rest = append(rest, key)
+			}
+		}
+		slices.Sort(rest)
+		keys = append(keys, rest...)
+	}
+	return keys
 }

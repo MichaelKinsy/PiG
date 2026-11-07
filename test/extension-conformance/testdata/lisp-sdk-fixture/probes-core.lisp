@@ -620,6 +620,15 @@
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)
                        (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      (pig:command ext "event_keys_probe" "Subscribe to the event named by the argument with a handler that reports the key order of its payload"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (flet ((keys (object) (let (ks) (maphash (lambda (k v) (declare (ignore v)) (push k ks)) object) (coerce (nreverse ks) 'vector))))
+                         (pig:on ext name
+                                 (lambda (hctx data)
+                                   (let ((payload (pig:jget data "payload")))
+                                     (core-info hctx (format nil "event_keys:~A:~A" name (pig:to-json (vector (keys payload) (keys (pig:jget payload "zeta")))))))
+                                   nil))))))
       (pig:command ext "event_echo_probe" "Subscribe to the event named by the argument with a handler that hands back the objects it was sent"
                    (lambda (ctx args) (declare (ignore ctx))
                      (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))

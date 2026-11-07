@@ -2392,6 +2392,13 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", event_ordered_result_probe)
 
+    def event_keys_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that reports the key order of its payload (dict keeps the order the host wrote).
+        name = args.strip()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_keys:%s:%s" % (name, json.dumps([list(data["payload"]), list(data["payload"]["zeta"])], separators=(",", ":"))), "info"))
+
+    ext.command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", event_keys_probe)
+
     def event_echo_probe(ctx, args):
         # Subscribe to the event named by the argument with a handler that hands back, unchanged, the objects it was sent.
         name = args.strip()
