@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -31,9 +32,15 @@ const (
 	sessionGraphProjectSettings = `{"defaultModel":"sonnet","skills":["./s"],"compaction":{"reserveTokens":99}}`
 )
 
-// testdataString returns a file of testdata, a data-only module that go:embed cannot reach.
+// testdataString returns a file of testdata, a data-only module that go:embed cannot reach. It reads from the source directory of this file, not the
+// working directory: the package's variables are initialized in every process that runs the test binary, and the exec rows run it as a child in
+// another directory.
 func testdataString(name string) string {
-	data, err := os.ReadFile("testdata/" + name)
+	_, source, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("testdata: the source directory is unknown")
+	}
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(source), "testdata", name))
 	if err != nil {
 		panic(err)
 	}
