@@ -177,7 +177,7 @@ func TestExtensionCtxModeIsTUIInInteractiveMode(t *testing.T) {
 	}
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = t.TempDir()
-	cmd.Env = append(modeProbeEnv(t, report, "PIG_CODING_AGENT_DIR="+seededAgentDir(t), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "TERM=xterm-256color"))
+	cmd.Env = modeProbeEnv(t, report, "PIG_CODING_AGENT_DIR="+seededAgentDir(t), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "TERM=xterm-256color")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {

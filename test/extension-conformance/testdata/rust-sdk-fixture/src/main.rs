@@ -4200,7 +4200,7 @@ fn main() {
                     "before_provider_request" => Ok(Some(member("payload"))),
                     "tool_result" => Ok(Some(serde_json::json!({ "content": member("content"), "details": member("details") }))),
                     "message_end" => Ok(Some(serde_json::json!({ "message": member("message") }))),
-                    other => Err(format!("event_echo_probe has no echo for {other}").into()),
+                    other => Err(format!("event_echo_probe has no echo for {other}")),
                 }
             });
             event_echo_subscriptions.lock().unwrap().push(subscription);
