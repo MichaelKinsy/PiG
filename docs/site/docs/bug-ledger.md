@@ -776,6 +776,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-73a09eb](#bf-73a09eb) | fix: the ANSI renderer that replaces a frontend surface draws on the options terminal, not the surface's… | PiG's own defect | All platforms | Unreleased |
 | [BF-73a6c8c](#bf-73a6c8c) | OpenAI-compatible chat completions requests keep the tool-call ids of the same model's earlier calls as they… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-73ef1ea](#bf-73ef1ea) | Reduced context-limit request failures by estimating input at 3.5 characters per token instead of 4 when… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7434ca9](#bf-7434ca9) | fix(cli): pig --version prints Pi's bare version; remove D63 | PiG's own defect | All platforms | Unreleased |
 | [BF-7472171](#bf-7472171) | An extension dialog (`select`, `confirm`, `input`, `editor`) that opens while another is shown now replaces… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7475a64](#bf-7475a64) | A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7489735](#bf-7489735) | `pig -e <directory>` now loads a Node extension whose entry file is `index.mjs` and that has no… | PiG's own defect | All platforms | 0.5.0 |
@@ -12219,6 +12220,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `73ef1ea5d7` (2026-10-08)
 - **Tests:** `ai/estimate_content_test.go::TestEstimateTextAndImageContentTokensLikeUpstream`, `coding/session_tool_modifiers_port_test.go::TestInvalidToolModifierOptionsPort`, `coding/session_tool_modifiers_port_test.go::TestToolModifierOptionsChangeTheDefaultSelectionPort`, `coding/session_tool_modifiers_port_test.go::TestToolModifierOptionsSurviveReloadPort`, `internal/codingagent/tool_modifiers_test.go::TestApplyToolModifiersMatchesUpstream`, `internal/codingagent/tool_modifiers_test.go::TestGetToolListErrorMatchesUpstream`
 - **Release note:** Reduced context-limit request failures by estimating input at 3.5 characters per token instead of 4 when calculating output limits.
+
+### BF-7434ca9
+
+**fix(cli): pig --version prints Pi's bare version; remove D63**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(cli): pig --version prints Pi's bare version; remove D63
+- **Root cause:** pig --version and -v print coding.UpstreamPackageVersion, as pi --version does. The composite version stays in the help banner, the startup line and the separate fields of pig version. Self-update, the installer, the npm e2e and the bench arm check read the PiG release from pig version. PIG_VERSION_FORMAT, the D63 entry, its docs and its call-site markers are removed.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7434ca91ae` (2026-11-06)
+- **Tests:** `automation/release/set-version/main_test.go::TestSetVersionRejectsAREADMEWithoutTheVersionExample`, `automation/release/set-version/main_test.go::TestSetVersionWritesTheREADMEVersionExample`, `test/parity/runner/asserts_version_test.go::TestDivergeTokensAreEvaluatedAgainstOutput`, `test/parity/runner/asserts_version_test.go::TestExpandVersionTokensUsesThePins`
 
 ### BF-7472171
 
