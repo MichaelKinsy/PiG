@@ -2393,7 +2393,7 @@ func (c Context) CompactWithOptions(opts CompactOptions) {
 		// must not take the extension down with it.
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				fmt.Fprintf(os.Stderr, "extension: recovered from panic in compact callback: %v\n%s\n", recovered, debug.Stack())
+				diagnosticf("extension: recovered from panic in compact callback: %v\n%s\n", recovered, debug.Stack())
 			}
 		}()
 		result, err := conn.call("compact", args)

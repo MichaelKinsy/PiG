@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import pathlib
 import re
 import struct
@@ -1868,6 +1869,20 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "mutated " + params["tag"]}
 
     ext.tool("mutation_order_probe", "Take the file mutation queue and append a tag to the file", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}, mutation_order_probe)
+    # mutation_order_ctx_probe makes `calls` getter calls, then takes the queue through its context (TestFileMutationOrderOfTheContextFormAcrossSDKs).
+    def mutation_order_ctx_probe(ctx, params):
+        for _ in range(int(params.get("calls", 0))):
+            ctx.get_context_usage()
+
+        def body():
+            path = pathlib.Path(params["file"])
+            before = path.read_bytes() if path.exists() else b""
+            path.write_bytes(before + (params["tag"] + "\n").encode())
+
+        ctx.with_file_mutation_queue(params["file"], body)
+        return {"content": "mutated " + params["tag"]}
+
+    ext.tool("mutation_order_ctx_probe", "Make getter calls, take the queue through the context and append a tag", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}, "calls": {"type": "number"}}}, mutation_order_ctx_probe)
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
 
     def dialog_order(ctx, params):
@@ -2602,6 +2617,27 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("sprite-probe", "Exercise sprite registration and host errors", sprite_probe)
     ext.command("scoped-models-probe", "Report the model scope", lambda ctx, _args: ctx.notify(json.dumps(ctx.scoped_models()), "info"))
     ext.command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", context_probe)
+
+    def console_probe(ctx: pig_sdk.Context, args: str) -> None:
+        for n in (1, 2):
+            if args != "stderr":
+                print(f"probe-out-{n}", flush=True)
+            print(f"probe-err-{n}", file=sys.stderr, flush=True)
+
+    ext.command("console-probe", "Write console lines to stdout and stderr", console_probe)
+
+    # panic-probe and the on_loaded handler fail after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+    def loaded_panic_probe(ctx: pig_sdk.Context) -> None:
+        if os.environ.get("PIG_FIXTURE_PANIC_PROBE"):
+            print("probe-err-loaded", file=sys.stderr, flush=True)
+            raise RuntimeError("probe-panic-boom")
+
+    def panic_probe(ctx: pig_sdk.Context, args: str) -> None:
+        print("probe-err-command", file=sys.stderr, flush=True)
+        raise RuntimeError("probe-panic-boom")
+
+    ext.on_loaded(loaded_panic_probe)
+    ext.command("panic-probe", "Fail after an stderr line of the extension's own", panic_probe)
 
     def dialog_probe(ctx: pig_sdk.Context, args: str) -> None:
         selected = dialog_text(ctx.select("Pick", ["first", "second"])[0])
