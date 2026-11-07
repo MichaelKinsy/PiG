@@ -2603,6 +2603,14 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("scoped-models-probe", "Report the model scope", lambda ctx, _args: ctx.notify(json.dumps(ctx.scoped_models()), "info"))
     ext.command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", context_probe)
 
+    def console_probe(ctx: pig_sdk.Context, args: str) -> None:
+        for n in (1, 2):
+            if args != "stderr":
+                print(f"probe-out-{n}", flush=True)
+            print(f"probe-err-{n}", file=sys.stderr, flush=True)
+
+    ext.command("console-probe", "Write console lines to stdout and stderr", console_probe)
+
     def dialog_probe(ctx: pig_sdk.Context, args: str) -> None:
         selected = dialog_text(ctx.select("Pick", ["first", "second"])[0])
         input_value = dialog_text(ctx.input("Input", "placeholder")[0])

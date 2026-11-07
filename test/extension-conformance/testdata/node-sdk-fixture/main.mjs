@@ -1467,6 +1467,15 @@ export default function (pi) {
   pi.registerCommand("usage-probe", {
     handler: (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.getContextUsage() ?? null), "info"),
   });
+  pi.registerCommand("console-probe", {
+    description: "Write console lines to stdout and stderr",
+    handler: async (args) => {
+      for (const n of [1, 2]) {
+        if (args !== "stderr") console.log(`probe-out-${n}`);
+        console.error(`probe-err-${n}`);
+      }
+    },
+  });
   pi.registerCommand("context-probe", {
     description: "Report ctx.mode + ctx.getSystemPromptOptions()",
     handler: async (_args, ctx) => {

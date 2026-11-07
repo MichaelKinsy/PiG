@@ -1624,6 +1624,18 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// console-probe writes four lines a console would: stdout (Pi's console.log) and stderr (console.error) alternately, so the row sees where the host puts each and
+	// in which order (TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK). A fused extension shares PiG's own stdout, which it must not write, so the
+	// argument "stderr" writes only the error lines.
+	ext.Command("console-probe", "Write console lines to stdout and stderr", func(ctx sdk.Context, args string) error {
+		for n := 1; n <= 2; n++ {
+			if args != "stderr" {
+				_, _ = fmt.Fprintf(os.Stdout, "probe-out-%d\n", n)
+			}
+			_, _ = fmt.Fprintf(os.Stderr, "probe-err-%d\n", n)
+		}
+		return nil
+	})
 	ext.Command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", func(ctx sdk.Context, args string) error {
 		opts, err := ctx.GetSystemPromptOptions()
 		if err != nil {

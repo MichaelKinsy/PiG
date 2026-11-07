@@ -3206,14 +3206,13 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	if cmd == nil {
 		cmd = buildExtCommandSelected(extCtx, binPath, me.config.RuntimeLanguage, runtime.GOOS, exec.LookPath, tsSelection)
 	}
-	nodeOutput := usesNodeRuntime(binPath, me.config.RuntimeLanguage)
 	cmd.Env = append(append(os.Environ(), harnessEnv...),
 		fmt.Sprintf("PIG_EXT_SOCKET=%s", address),
 		fmt.Sprintf("PIG_EXT_NAME=%s", me.config.Name),
 	)
 	cmd.Env = append(cmd.Env, h.hostInfoEnv()...)
 	cmd.Env = append(cmd.Env, typeScriptRuntimeEnv(tsSelection, tsSet)...)
-	if nodeOutput {
+	if me.nodeRuntime {
 		me.nodeRealm = true
 		busRouted := h.busRoutedForSpawn()
 		if busRouted {
@@ -3231,7 +3230,6 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		}
 	}
 	cmd.Dir = h.cwd
-	cmd.Stdout = nil // Extensions shouldn't write to stdout
 	// pig divergence (D56): after the host stops an extension, its output
 	// pipes get this long to drain before they are closed; it never bounds
 	// extension work.
@@ -3263,12 +3261,9 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	if stderrFile != nil {
 		me.stderrLogPath = stderrFile.Name()
 		me.stderrLog = &processStderrLog{path: stderrFile.Name(), writer: stderrFile}
-		cmd.Stderr = me.stderrLog
 		stderrSink = me.stderrLog
 	}
-	if nodeOutput {
-		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrSink)
-	}
+	cmd.Stdout, cmd.Stderr = h.extensionOutput(stderrSink)
 	processTree, err := startProcessTree(cmd)
 	if err != nil {
 		// No Cmd.Wait runs to close the writer the host-side copy owns.
@@ -5098,16 +5093,19 @@ func resolveSocketDir() string {
 	)
 }
 
-// nodeExtensionOutput is where a Node extension process writes. Pi runs its
-// extensions in its own process, so their console output reaches Pi's
-// terminal: stdout in interactive mode, and stderr otherwise, where Pi has
-// taken stdout over for its own output (main.ts takeOverStdout). Stderr also
-// goes to the extension's log, which load and crash diagnostics read.
+// extensionOutput is where an extension process writes, whatever its runtime.
+// Pi runs its extensions in its own process, so their console output reaches
+// Pi's terminal: stdout in interactive mode, and stderr otherwise, where Pi has
+// taken stdout over for its own output (main.ts takeOverStdout; print, json
+// and rpc). Pi writes interactive-mode stderr to the same terminal as the UI
+// and does not intercept it, so neither does PiG. Stderr also goes to the
+// extension's log, which load and crash diagnostics read.
 //
 // Both are writers rather than PiG's own files, so the process gets pipes
 // the host copies from: Node makes its stdio pipes non-blocking, which on a
-// descriptor shared with PiG would turn PiG's own writes into EAGAIN errors.
-func (h *Host) nodeExtensionOutput(log io.Writer) (stdout, stderr io.Writer) {
+// descriptor shared with PiG would turn PiG's own writes into EAGAIN errors,
+// and the host's copy is where the log's head and tail bounds apply.
+func (h *Host) extensionOutput(log io.Writer) (stdout, stderr io.Writer) {
 	terminal := os.Stderr
 	if h.mode == "tui" {
 		terminal = os.Stdout

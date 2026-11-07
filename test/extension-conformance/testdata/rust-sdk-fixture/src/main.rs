@@ -4375,6 +4375,21 @@ fn main() {
         CommandResult::Ok
     });
     ext.command(
+        "console-probe",
+        "Write console lines to stdout and stderr",
+        |_ctx, args| {
+            use std::io::Write;
+            for n in 1..=2 {
+                if args != "stderr" {
+                    println!("probe-out-{n}");
+                    let _ = std::io::stdout().flush();
+                }
+                eprintln!("probe-err-{n}");
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "context-probe",
         "Report ctx.mode + ctx.getSystemPromptOptions()",
         |ctx, _args| {

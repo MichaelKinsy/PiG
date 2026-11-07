@@ -767,6 +767,16 @@
                                (core-info hctx (format nil "rw_idle_in_settled=~A" (if (pig:ctx-is-idle-p hctx) "true" "false"))))
                              nil))))))
 
+(def-fixture "core-console" (ext)
+  (pig:command ext "console-probe" "Write console lines to stdout and stderr"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (dolist (n '(1 2))
+                   (unless (equal args "stderr")
+                     (format *standard-output* "probe-out-~D~%" n)
+                     (finish-output *standard-output*))
+                   (format *error-output* "probe-err-~D~%" n)
+                   (finish-output *error-output*)))))
+
 (def-fixture "core-context" (ext)
   (pig:command ext "context-probe" "Report ctx.mode + ctx.getSystemPromptOptions()"
                (lambda (ctx args) (declare (ignore args))
