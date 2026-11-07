@@ -566,6 +566,9 @@ def cmd_run(args):
     runs_path = os.path.join(args.out, "runs.jsonl")
     if args.build:
         cmd_build(argparse.Namespace(slot=args.slot, bun=args.bun, exts=args.exts, sets=",".join(args.sets.split(",") + [s + "+probe" for s in args.sets.split(",")]), pig=args.pig, piglet_dir=args.piglet_dir))
+    elif args.bun:  # no image build (no aot arm): only install stock Bun, SHA-256 checked, into the slot and into the slot of every bun arm that names its own
+        for s in {slot} | {os.path.abspath(a["slot"]) for a in arms if a["kind"] == "bun" and "slot" in a}:
+            install_bun(s, args.bun)
     hdr = header(args, arms, slot)
     hdr["pairs"] = [p.split("=", 1) for p in args.pair]
     with open(runs_path, "a") as f:
