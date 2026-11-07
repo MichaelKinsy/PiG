@@ -767,6 +767,29 @@
                                (core-info hctx (format nil "rw_idle_in_settled=~A" (if (pig:ctx-is-idle-p hctx) "true" "false"))))
                              nil))))))
 
+(def-fixture "core-console" (ext)
+  (pig:command ext "console-probe" "Write console lines to stdout and stderr"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (dolist (n '(1 2))
+                   (unless (equal args "stderr")
+                     (format *standard-output* "probe-out-~D~%" n)
+                     (finish-output *standard-output*))
+                   (format *error-output* "probe-err-~D~%" n)
+                   (finish-output *error-output*)))))
+
+;; panic-probe and the on-loaded handler signal after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+(def-fixture "core-panic" (ext)
+  (pig:on-loaded ext (lambda (ctx) (declare (ignore ctx))
+                       (when (plusp (length (sb-posix:getenv "PIG_FIXTURE_PANIC_PROBE")))
+                         (format *error-output* "probe-err-loaded~%")
+                         (finish-output *error-output*)
+                         (error "probe-panic-boom"))))
+  (pig:command ext "panic-probe" "Signal after an stderr line of the extension's own"
+               (lambda (ctx args) (declare (ignore ctx args))
+                 (format *error-output* "probe-err-command~%")
+                 (finish-output *error-output*)
+                 (error "probe-panic-boom"))))
+
 (def-fixture "core-context" (ext)
   (pig:command ext "context-probe" "Report ctx.mode + ctx.getSystemPromptOptions()"
                (lambda (ctx args) (declare (ignore args))
@@ -828,6 +851,21 @@
               (let ((tag (pig:jget params "tag")))
                 (pig:with-file-mutation-queue
                  (pig:jget params "file")
+                 (lambda ()
+                   (with-open-file (out (pig:jget params "file") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
+                     (write-string tag out) (write-char #\Newline out))))
+                (pig:obj "content" (concatenate 'string "mutated " tag))))))
+
+(def-fixture "core-mutation-order-ctx" (ext)
+  ;; makes CALLS getter calls, then takes the queue through its context and appends its tag (TestFileMutationOrderOfTheContextFormAcrossSDKs)
+  (pig:tool ext "mutation_order_ctx_probe" "Make getter calls, take the queue through the context and append a tag"
+            (core-schema "properties" (pig:obj "file" (pig:obj "type" "string") "tag" (pig:obj "type" "string") "calls" (pig:obj "type" "number")))
+            (lambda (ctx params)
+              (let ((tag (pig:jget params "tag"))
+                    (calls (pig:jget params "calls")))
+                (dotimes (i (if (integerp calls) calls 0)) (pig:ctx-get-context-usage ctx))
+                (pig:ctx-with-file-mutation-queue
+                 ctx (pig:jget params "file")
                  (lambda ()
                    (with-open-file (out (pig:jget params "file") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
                      (write-string tag out) (write-char #\Newline out))))

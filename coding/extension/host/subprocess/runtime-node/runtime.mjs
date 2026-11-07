@@ -1,4 +1,5 @@
 import { modelFetchCallbacks } from "./model-fetch.mjs";
+import { withFileMutationQueue } from "./shims/file-mutation-queue-bridge.mjs";
 import { AutocompleteRuntime } from "./autocomplete.mjs";
 import { dispatchFacet, dispatchFacetSync, hasFacetBridge } from "./facet-bridge.mjs";
 import { syncTerminalGeometry } from "./terminal-geometry.mjs";
@@ -7,6 +8,7 @@ import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
 import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
+import { diagnose } from "./diagnostic.mjs";
 import { constants as bufferConstants } from "node:buffer";
 import { MessageChannel } from "node:worker_threads";
 import net from "node:net";
@@ -1649,6 +1651,13 @@ class RuntimeContext {
     this.runtime.extensionRuntime.assertActive();
     return this.runtime.promptWritten ? this.runtime.callSync("getSystemPrompt")?.prompt ?? "" : this.runtime.state.systemPrompt;
   }
+  // PiG-only (D187): withFileMutationQueue for a handler that has its context. The Node runtime is Pi's one thread, so the registration order of Pi's own export
+  // (core/tools/file-mutation-queue.ts) is the order Pi gives a batch's tools, and the runtime holds a tool's enter behind the edit and write calls that precede it
+  // (tool_window_settled): the context form is that function, so the Node SDK offers the same call as the other SDKs with the same order.
+  withFileMutationQueue(filePath, fn) {
+    this.runtime.extensionRuntime.assertActive();
+    return withFileMutationQueue(filePath, fn);
+  }
   getSystemPromptOptions() {
     this.runtime.extensionRuntime.assertActive();
     return this.runtime.promptWritten ? this.runtime.callSync("getSystemPromptOptions") ?? {} : this.runtime.state.systemPromptOptions ?? {};
@@ -2325,7 +2334,7 @@ export class Runtime {
           try { this.writeSync("sendMessage", { message, options, yield_token: token }); }
           catch (err) {
             if (!isHostCancellation(err)) {
-              try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
+              try { diagnose(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
             }
             return;
           }
@@ -2339,7 +2348,7 @@ export class Runtime {
         try { this.writeSync("sendMessage", { message, options }); }
         catch (err) {
           if (!isHostCancellation(err)) {
-            try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
+            try { diagnose(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
           }
           return;
         }
@@ -3500,7 +3509,7 @@ export class Runtime {
     const owner = this.activeRequest();
     let operation;
     operation = this.syncSessionLog(entries.length, this.sessionLogGeneration).catch((error) => {
-      try { process.stderr.write(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
+      try { diagnose(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
     }).finally(() => {
       owner?.pendingHostCalls.delete(operation);
     });
@@ -5211,7 +5220,7 @@ export class Runtime {
             try {
               result = handler(current);
             } catch (error) {
-              try { process.stderr.write(`pig: terminal input handler failed: ${error?.stack || String(error)}\n`); } catch {}
+              try { diagnose(`pig: terminal input handler failed: ${error?.stack || String(error)}\n`); } catch {}
               continue;
             }
             if (result?.consume) {
@@ -5510,7 +5519,7 @@ export class Runtime {
       try {
         await handler(this.ctx);
       } catch (error) {
-        process.stderr.write(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
+        diagnose(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
       }
     }
   }
@@ -5625,7 +5634,7 @@ export class Runtime {
       if (isHostCancellation(err) || conn.closed) return;
       const reason = err && err.message ? err.message : String(err);
       try {
-        process.stderr.write(`pig: host call ${method} failed: ${reason}\n`);
+        diagnose(`pig: host call ${method} failed: ${reason}\n`);
       } catch {
         // A closed stderr during shutdown must not escalate into an unhandled
         // rejection in a path the caller never awaits.

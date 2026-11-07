@@ -2804,6 +2804,27 @@ fn main() {
             }
         },
     );
+    // mutation_order_ctx_probe makes `calls` getter calls, then takes the queue through its context (TestFileMutationOrderOfTheContextFormAcrossSDKs).
+    ext.tool(
+        "mutation_order_ctx_probe",
+        "Make getter calls, take the queue through the context and append a tag",
+        json!({"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}, "calls": {"type": "number"}}}),
+        |ctx, params: Value| {
+            let file = params["file"].as_str().unwrap_or_default().to_string();
+            let tag = params["tag"].as_str().unwrap_or_default().to_string();
+            for _ in 0..params["calls"].as_u64().unwrap_or(0) {
+                let _ = ctx.get_context_usage();
+            }
+            let result = ctx.with_file_mutation_queue(&file, || {
+                let before = std::fs::read_to_string(&file).unwrap_or_default();
+                std::fs::write(&file, format!("{before}{tag}\n"))
+            });
+            match result {
+                Ok(Ok(())) => ToolResult::text(format!("mutated {tag}")),
+                Ok(Err(err)) | Err(err) => ToolResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.tool(
         "dialog_order",
         "Open a select dialog titled by the call and report the answer",
@@ -4374,6 +4395,36 @@ fn main() {
         ctx.notify(&serde_json::to_string(&usage).unwrap(), "info");
         CommandResult::Ok
     });
+    ext.command(
+        "console-probe",
+        "Write console lines to stdout and stderr",
+        |_ctx, args| {
+            use std::io::Write;
+            for n in 1..=2 {
+                if args != "stderr" {
+                    println!("probe-out-{n}");
+                    let _ = std::io::stdout().flush();
+                }
+                eprintln!("probe-err-{n}");
+            }
+            CommandResult::Ok
+        },
+    );
+    // panic-probe and the on_loaded handler panic after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+    ext.on_loaded(|_ctx| {
+        if std::env::var_os("PIG_FIXTURE_PANIC_PROBE").is_some() {
+            eprintln!("probe-err-loaded");
+            panic!("probe-panic-boom");
+        }
+    });
+    ext.command(
+        "panic-probe",
+        "Panic after an stderr line of the extension's own",
+        |_ctx, _args| {
+            eprintln!("probe-err-command");
+            panic!("probe-panic-boom");
+        },
+    );
     ext.command(
         "context-probe",
         "Report ctx.mode + ctx.getSystemPromptOptions()",

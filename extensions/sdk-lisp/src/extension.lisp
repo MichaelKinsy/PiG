@@ -254,7 +254,7 @@ Returns an idempotent function that unsubscribes."
                                    nil)))))
             (when connected
               (handler-case (host-call ext "event.unsubscribe" (obj "event" event "handlerId" id))
-                (error (e) (format *error-output* "extension: event.unsubscribe ~S: ~A~%" event e))))))))))
+                (error (e) (diagnose "extension: event.unsubscribe ~S: ~A~%" event e))))))))))
 
 (defun on-loaded (ext handler)
   "Run HANDLER, (lambda (ctx)), once the extension has registered and received its state, before it serves any request."
