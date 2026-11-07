@@ -111,7 +111,11 @@ func runAnalysisDriver(ctx context.Context, configRoot, sdkRoot, command string,
 			// A cancelled analysis is cut short: its plan would lack what the driver had not read.
 			return nil, ctx.Err()
 		}
-		var reply upgrade.Reply
+		// The driver's reply is upgrade.Reply of the SDK module, which the SDK release this module requires does not have yet: the JSON shape is declared here.
+		var reply struct {
+			Result *upgrade.Result
+			Error  string
+		}
 		if decodeErr := json.Unmarshal(stdout.Bytes(), &reply); decodeErr != nil {
 			if runErr != nil {
 				return nil, fmt.Errorf("go run %s: %w: %s", analysisDriver, runErr, strings.TrimSpace(stderr.String()))

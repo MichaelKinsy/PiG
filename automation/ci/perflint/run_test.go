@@ -17,7 +17,7 @@ func sampleFindings(t *testing.T) []finding {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkgs, err := load(root, []string{"./..."})
+	pkgs, err := load(root, []string{"./..."}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,15 +77,21 @@ func TestSortInstanceCountsOnlyLinkedPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkgs, err := load(root, []string{"./..."})
+	found, err := findAll(root, []string{"./..."})
 	if err != nil {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, f := range scan(root, pkgs) {
+	for _, f := range found {
 		got = append(got, f.File+"|"+f.Pattern+"|"+f.Detail)
 	}
-	want := []string{"a/a.go|sort-instance|slices.SortFunc"}
+	// a/a.go: a function; a/a_vars.go: package-level var initializers (a func literal run at init and a plain call); a/a_windows.go: linked on windows only.
+	want := []string{
+		"a/a.go|sort-instance|slices.SortFunc",
+		"a/a_vars.go|sort-instance|slices.SortFunc",
+		"a/a_vars.go|sort-instance|slices.SortStableFunc",
+		"a/a_windows.go|sort-instance|slices.SortFunc",
+	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("findings\n got %q\nwant %q", got, want)
 	}

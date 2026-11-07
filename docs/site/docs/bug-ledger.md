@@ -398,6 +398,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-488a47a](#bf-488a47a) | `chord/host`: `ProcessLock` no longer fails with `invalid argument` on macOS and the BSDs when the temporary… | PiG's own defect | macOS | 0.5.0 |
 | [BF-48a28fe](#bf-48a28fe) | Models an extension's provider object returns keep the member order the extension wrote them in, as Pi keeps… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4916f14](#bf-4916f14) | A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-4924f3a](#bf-4924f3a) | `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more… | PiG's own defect | All platforms | Unreleased |
 | [BF-495e25b](#bf-495e25b) | Accepting an autocomplete popup of awaited command-argument completions after the cursor moved applies the… | PiG's own defect | All platforms | Unreleased |
 | [BF-495e25b-2](#bf-495e25b-2) | A compaction that completes with an empty summary, such as one an extension answers `session_before_compact`… | PiG's own defect | All platforms | Unreleased |
 | [BF-495f017](#bf-495f017) | A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an… | PiG's own defect | All platforms | 0.5.0 |
@@ -6957,6 +6958,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4916f14005` (2026-11-03)
 - **Tests:** `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage`, `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode`, `durable/harness/partial_object_test.go::TestPartialObjectEqualsTheEncodedPartial`, `durable/harness/streamed_partials_memory_test.go::TestStreamedPartialsCommitAtACostThatFollowsTheNewText`
 - **Release note:** A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi (`harness-view-run.test.ts` "commits a growing text and tool call at a cost that follows the new text"). A commit of `pi.live`'s partial no longer encodes and decodes the whole message: it takes the text and thinking of the partial as they are, and the check that a committed value decodes as its type decodes only the members and content blocks an operation touched, and not at all an append to a text, thinking or argument string. Streaming a 400 KB answer allocates about as much per commit as a 40 KB one. The stored format is unchanged.
+
+### BF-4924f3a
+
+**`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases.
+- **Root cause:** Schema.IsMinLength, IsMaximum, IsMultipleOf, IsMinItems, IsEnum, IsPattern and the other guards of typebox 1.3.27 (build/schema/types) accept a keyword only when it has its type: a finite number (minLength, maxLength, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, minProperties, maxProperties), a string (pattern, format), an array (enum) or a boolean (uniqueItems). CheckSchema and ErrorSchema skip any other keyword, so {"minLength":"3"} passes "", enum 3 passes everything, and an Infinity limit (null once it is JSON) is skipped. checkKeyword failed the check for such a keyword, as the comment above it said a NaN comparison does, so a schema with a…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4924f3a174` (2026-11-06), `62f99dccb6` (2026-11-06), `7071ef14e3` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases. A schema keyword that has the wrong type (`{"minLength": "3"}`, `enum: 3`, `pattern: 5`, `multipleOf: "2"`, `maximum: null`) is skipped, so it accepts every value, as in Pi; it rejected values before, and `Errors` reported a limit that was empty. `const` and `enum` accept an object for an array that has the same indices and `length` (`{"0": "a", "length": 1}` equals `["a"]`). `uniqueItems` ignores an object's `constructor` member, so `{}` and `{"constructor": 2}` count as duplicates.
 
 ### BF-495e25b
 

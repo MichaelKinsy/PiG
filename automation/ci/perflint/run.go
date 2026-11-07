@@ -9,6 +9,7 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -446,8 +447,15 @@ func scan(root string, pkgs []*packages.Package) []finding {
 				s.hot = true
 			}
 			for _, decl := range file.Decls {
-				if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
-					s.scanFunc(fn)
+				switch d := decl.(type) {
+				case *ast.FuncDecl:
+					if d.Body != nil {
+						s.scanFunc(d)
+					}
+				case *ast.GenDecl:
+					if d.Tok == token.VAR {
+						s.scanPackageVars(d)
+					}
 				}
 			}
 		}
@@ -464,9 +472,85 @@ func scan(root string, pkgs []*packages.Package) []finding {
 // sampleHot makes every package hot; the tests set it for their sample module.
 var sampleHot bool
 
-func load(root string, patterns []string) ([]*packages.Package, error) {
+// scanPackageVars finds sort-instance sites in package-level var initializers (a call or func literal there runs at init and is linked like a function body).
+func (s *scanner) scanPackageVars(d *ast.GenDecl) {
+	if !s.linked {
+		return
+	}
+	for _, spec := range d.Specs {
+		vs, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		owner := "var " + vs.Names[0].Name
+		for _, v := range vs.Values {
+			ast.Inspect(v, func(n ast.Node) bool {
+				if call, ok := n.(*ast.CallExpr); ok {
+					if p, name := s.callee(call); p == "slices" && (name == "SortFunc" || name == "SortStableFunc") {
+						s.add(owner, "sort-instance", "slices."+name, call.Pos())
+					}
+				}
+				return true
+			})
+		}
+	}
+}
+
+// releaseGOOS are the operating systems the release binaries are built for.
+var releaseGOOS = []string{"linux", "darwin", "windows"}
+
+// findAll scans the host build in full, then loads the other release GOOS and adds the sort-instance sites only they link (a package or file linked on one OS must be covered), deduplicating by file and line.
+func findAll(root string, patterns []string) ([]finding, error) {
+	pkgs, err := load(root, patterns, nil)
+	if err != nil {
+		return nil, err
+	}
+	found := scan(root, pkgs)
+	for _, goos := range releaseGOOS {
+		if goos == runtime.GOOS {
+			continue
+		}
+		other, err := load(root, patterns, []string{"GOOS=" + goos, "CGO_ENABLED=0"})
+		if err != nil {
+			return nil, err
+		}
+		for _, f := range scan(root, other) {
+			if f.Pattern != "sort-instance" {
+				continue
+			}
+			i := slices.IndexFunc(found, func(g finding) bool { return g.key() == f.key() })
+			if i < 0 {
+				found = append(found, f)
+				continue
+			}
+			g := &found[i]
+			for _, l := range slices.Compact(slices.Clone(f.Lines)) {
+				for extra := countOf(f.Lines, l) - countOf(g.Lines, l); extra > 0; extra-- {
+					g.Lines = append(g.Lines, l)
+					g.Count++
+				}
+			}
+			slices.Sort(g.Lines)
+		}
+	}
+	slices.SortFunc(found, func(a, b finding) int { return strings.Compare(a.key(), b.key()) })
+	return found, nil
+}
+
+func countOf(lines []int, l int) int {
+	n := 0
+	for _, m := range lines {
+		if m == l {
+			n++
+		}
+	}
+	return n
+}
+
+func load(root string, patterns []string, env []string) ([]*packages.Package, error) {
 	cfg := &packages.Config{
 		Dir:  root,
+		Env:  append(os.Environ(), env...),
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports | packages.NeedDeps,
 	}
 	pkgs, err := packages.Load(cfg, patterns...)
@@ -530,12 +614,11 @@ func compare(found []finding, baseline []finding) (grew, stale []string) {
 }
 
 func run(root, baselinePath string, patterns []string, report, printBaseline bool) int {
-	pkgs, err := load(root, patterns)
+	found, err := findAll(root, patterns)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "perf-lint:", err)
 		return 2
 	}
-	found := scan(root, pkgs)
 	if printBaseline {
 		var previous baselineFile
 		_, _ = toml.DecodeFile(baselinePath, &previous)
