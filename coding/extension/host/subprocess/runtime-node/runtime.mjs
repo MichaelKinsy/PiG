@@ -4663,7 +4663,7 @@ export class Runtime {
     this.refreshCurrentModelFromRegistry();
   }
 
-  // agent-session.ts _refreshCurrentModelFromRegistry: registerProvider and unregisterProvider replace the Session's model with the registry's object for the same provider and id before they return. The write is held over this process's registry view, which the Host's answer and its state push confirm later.
+  // agent-session.ts _refreshCurrentModelFromRegistry: registerProvider, registerNativeProvider and unregisterProvider replace the Session's model with the registry's object for the same provider and id before they return. The write is held over this process's registry view, which the Host's answer and its state push confirm later.
   refreshCurrentModelFromRegistry() {
     const current = this.state.model;
     if (!current) return;
@@ -4707,11 +4707,12 @@ export class Runtime {
     }
     if (this.providersSent) {
       this.holdRegistryWrite(provider.id, this.fireAndForget("registerProvider", { name: provider.id, config: {}, native: declaration }));
-      return;
+    } else {
+      const models = this.allModels();
+      for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
+      for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
     }
-    const models = this.allModels();
-    for(const [key,model] of models) if(model.provider===provider.id)models.delete(key);
-    for(const model of declaration.models) models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
+    this.refreshCurrentModelFromRegistry();
   }
 
   unregisterProvider(name) {
