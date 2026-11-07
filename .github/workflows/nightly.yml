@@ -80,10 +80,26 @@ jobs:
           echo "$bin" >> "$GITHUB_PATH"
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$npm_version"
-          # The oracle comes from the pin as in ci.yml (automation/pin/oracle.py), so a commit pin gets its own build, not a published release.
-          python3 automation/pin/pin.py install-oracle
-          ./automation/gen/mirror-upstream.sh
-          python3 automation/pin/pin.py check-oracle
+          # The step ci.yml's Linux job runs ("Prepare pinned Pi oracle"): make upstream-mirror is parity-deps (the oracle from the pin, the locked npm trees of the oracle
+          # tests in internal/typebox/testdata/npm and ai/testdata/sdk, durable/interop's, the TypeScript compiler of the interface extractor, then check-oracle) and the
+          # mirror of the pin's source. The nightly once listed these by hand, left out the npm trees, and every Pi-oracle test that imports a package from them failed with
+          # ERR_MODULE_NOT_FOUND (test/ci-images/nightly_oracle_install_test.go).
+          make upstream-mirror
+      # The Lisp SDK realization of cmd/pig's TestReplacedSession2860AcrossSDKs (cli shard 4/4) and the Lisp conformance rows fail without the pinned SBCL, as in ci.yml's Linux and macOS jobs: the same cache and install step.
+      - name: Restore the pinned SBCL
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Install the pinned SBCL
+        # SBCL publishes no binary of the pinned release for arm64 macOS: the script builds the checksummed release source with the arm64 macOS binary row of automation/dev/toolchains.lock.
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="$(automation/ci/install-sbcl.sh)"
+          echo "PIG_SBCL=$prefix/bin/sbcl" >> "$GITHUB_ENV"
+          echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
+          echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Race and goroutine-leak gate
         env:
           CI: '1'
@@ -187,9 +203,7 @@ jobs:
           automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           test "$(npm --version)" = "$npm_version"
-          python3 automation/pin/pin.py install-oracle
-          ./automation/gen/mirror-upstream.sh
-          python3 automation/pin/pin.py check-oracle
+          make upstream-mirror
       - name: Compare allocs/op with the committed baseline
         env:
           CI: '1'
