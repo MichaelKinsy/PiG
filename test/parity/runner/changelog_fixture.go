@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
-// prepareChangelogFixture changes data only: Go embeds the pinned document, gzipped, through a build overlay,
+// prepareChangelogFixture changes data only: Go embeds the pinned document, as a zstd frame, through a build overlay,
 // while Pi reads a private package view through its own PI_PACKAGE_DIR override (config.ts:389-394,455-456).
 // Builds finish before terminal timing starts. Neither checkout nor installed Pi files are modified.
 func prepareChangelogFixture(ctx context.Context, t *testing.T, sc *Scenario, pig, pi BinaryRef) (BinaryRef, BinaryRef, error) {

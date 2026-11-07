@@ -9,6 +9,7 @@ its block, so a lookup adds at most 15 bytes and the index carries a quarter byt
 per word would carry four.
 """
 import gzip
+import io
 import struct
 
 BLOCK = 16
@@ -71,7 +72,7 @@ def decode(encoded, weighted):
 #   word beyond it
 #   inner edges: sorted by label, each a label and a 3-byte little-endian offset of the child record
 # A word is a leaf edge's label, an inner node's terminal flag, or both ends of a path. The counts, offsets and widths are
-# the whole format; lookup in dictionary_trie.go reads exactly this.
+# the whole format; lookup in word_trie.go reads exactly this.
 
 POINTER = 3
 
@@ -186,4 +187,8 @@ def encode_trie(entries, width, weighted):
 def write_flat(path, words, weights=None):
     """Write the flat sorted-array index of the words (the test oracle) gzipped, byte-for-byte reproducible."""
     path.parent.mkdir(exist_ok=True)
-    path.write_bytes(gzip.compress(encode(words, weights), 9, mtime=0))
+    # GzipFile writes the OS byte 0xff on every Python version; gzip.compress writes 0x03 through zlib on 3.12.
+    buffer = io.BytesIO()
+    with gzip.GzipFile(fileobj=buffer, mode="wb", compresslevel=9, mtime=0) as stream:
+        stream.write(encode(words, weights))
+    path.write_bytes(buffer.getvalue())
