@@ -171069,7 +171069,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "105 normalized-name Pig candidates are ambiguous."
+        "106 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -171118,6 +171118,7 @@
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#graphCallbackRegistry.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#setupRegistry.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#withSessionRegistry.add",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#alignmentScore.add",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#keyIDCacheCount.Add",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.Add",
@@ -344710,23 +344711,21 @@
     {
       "id": "pkg:env/.#Reply",
       "upstreamShapeHash": "sha256:05c954053a8411f87133cf2e275a1e1c657e56e975853cb156413969cabf3ef6",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "No normalized-name candidate exists in the scanned Pig production packages."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#echoRoots.reply"
-      ],
+      "pigCandidates": [],
       "missingClosure": [
-        "shape-translation-review",
+        "pig-go-shape",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
