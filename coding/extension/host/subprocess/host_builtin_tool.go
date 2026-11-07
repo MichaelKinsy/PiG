@@ -293,7 +293,7 @@ type writeArgs struct {
 
 // The operations builders turn the members the extension announced into the tool's operations. Pi's `operations` objects are complete (each required member is
 // a required property of the TypeScript interface), so the SDKs refuse a partial one before the call; an optional member the extension left out is Pi's
-// undefined: read treats every file as text and grep streams the file.
+// undefined: read treats every file as text.
 
 func (c *builtinCallbacks) readFile(path string) ([]byte, error) {
 	encoded, err := callString(c.call("operations.readFile", pathArgs{path}))
@@ -341,16 +341,12 @@ func (c *builtinCallbacks) editOperations() *tools.EditOperations {
 	return &tools.EditOperations{ReadFile: c.readFile, WriteFile: c.writeFile, Access: c.access}
 }
 
-func (c *builtinCallbacks) grepOperations(members []string) *tools.GrepOperations {
-	ops := &tools.GrepOperations{IsDirectory: func(path string) (bool, error) {
+// grepOperations is the isDirectory callback only: Pi main (8da141c2a) takes grep's context lines from ripgrep and no longer reads a
+// matched file, so a readFile member an extension still passes is accepted and ignored, as in Pi.
+func (c *builtinCallbacks) grepOperations() *tools.GrepOperations {
+	return &tools.GrepOperations{IsDirectory: func(path string) (bool, error) {
 		return callBool(c.call("operations.isDirectory", pathArgs{path}))
 	}}
-	if slices.Contains(members, "readFile") {
-		ops.ReadFile = func(path string) (string, error) {
-			return callString(c.call("operations.readFile", pathArgs{path}))
-		}
-	}
-	return ops
 }
 
 type findGlobArgs struct {
@@ -455,7 +451,7 @@ func newBuiltinTool(name, cwd string, options *BuiltinToolOptions, binDir string
 		}
 	case "grep":
 		if supplied != nil && callbacks != nil {
-			set.Grep = &tools.GrepToolOptions{Operations: callbacks.grepOperations(supplied)}
+			set.Grep = &tools.GrepToolOptions{Operations: callbacks.grepOperations()}
 		}
 	case "find":
 		if supplied != nil && callbacks != nil {
