@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // clipboard-command.test.ts "runs clipboard commands from /" (Pi 6454d07e, #11592): WSL cannot start Windows executables from a deep working directory, so clipboard helpers run from the root.

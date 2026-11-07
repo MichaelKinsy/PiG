@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // D228 tests: the queued-message row and the copy tip name the configured dequeue key (Pi interactive-mode.ts:4696

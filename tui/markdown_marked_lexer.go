@@ -11,7 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // The block rules marked builds with edit() that markdown_marked_block.go does not hold (rules.ts:60-110, 164-176).

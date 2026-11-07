@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi starts the TUI before it awaits waitForTerminalColors (interactive-mode.ts init(): ui.start(), applyFromSettings(), await

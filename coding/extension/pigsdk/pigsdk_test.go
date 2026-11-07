@@ -110,7 +110,7 @@ func TestSyncExpandsTheCompressedFiles(t *testing.T) {
 		files        func() []string
 		compressed   string
 	}{
-		{"go", "../../../extensions/sdk", sdk.BundledFiles, ".gz/tui/widthx/unicode_tables.go.gz"},
+		{"go", "../../../extensions/sdk", sdk.BundledFiles, ".gz/tui/internal/widthx/unicode_tables.go.gz"},
 		{"python", "../../../extensions/sdk-py", pysdk.BundledFiles, ".gz/pig_sdk/tui/_tables.py.gz"},
 		{"rust", "../../../extensions/sdk-rs", rssdk.BundledFiles, ".gz/src/tui/tables.rs.gz"},
 	} {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // login-dialog.ts showAuth: a spacer, the URL, and, when instructions are given, another spacer and the instructions in the warning color

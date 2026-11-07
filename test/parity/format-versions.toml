@@ -1385,8 +1385,8 @@ classification = "upstream"
 rationale = "Pi's CURRENT_SESSION_VERSION (packages/coding-agent session-manager.ts): the version a Pi session file header carries."
 
 [[fields]]
-id = "extensions/sdk/tui/widthx/unicode_tables.go#const.unicodeTablesVersion:go:-"
-path = "extensions/sdk/tui/widthx/unicode_tables.go"
+id = "extensions/sdk/tui/internal/widthx/unicode_tables.go#const.unicodeTablesVersion:go:-"
+path = "extensions/sdk/tui/internal/widthx/unicode_tables.go"
 owner = "<package>"
 field = "unicodeTablesVersion"
 wire_name = "-"

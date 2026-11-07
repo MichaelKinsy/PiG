@@ -11,7 +11,6 @@ package widthx
 
 import (
 	"sort"
-	"strings"
 	"sync"
 	"unicode/utf8"
 
@@ -105,8 +104,8 @@ var (
 
 	// rgiSet holds the multi-code-point RGI emoji sequences. Only a segment of several code points reads it, so it is built on first use rather than at process start.
 	rgiSet = sync.OnceValue(func() map[string]struct{} {
-		set := make(map[string]struct{}, strings.Count(rgiSequences, "\n")+1)
-		for s := range strings.SplitSeq(rgiSequences, "\n") {
+		set := make(map[string]struct{}, len(rgiSequences))
+		for _, s := range &rgiSequences {
 			set[s] = struct{}{}
 		}
 		return set

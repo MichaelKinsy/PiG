@@ -8,9 +8,9 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ActiveToolNames returns the names of the tools active for the next agent turn. Mirrors upstream AgentSession.getActiveToolNames.

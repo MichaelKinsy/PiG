@@ -10,7 +10,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi-oracle contract tests for the Markdown renderers of packages/tui/src/components/markdown.ts (render, renderBlock, renderToken, renderInlineTokens,

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // pig additive (D91): a frontend session that draws an extension's view

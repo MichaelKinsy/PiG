@@ -14,13 +14,9 @@ import (
 // Pi-faithful engines that live here. This file is the one place that defines the copies: sdkTuiCopies lists them, sdkTuiTransform
 // derives each from its source, and TestSDKTuiCopiesAreCurrent fails when a copy differs from what the source produces.
 //
-// The width engine is the one copy the application links instead of its source: extensions/sdk/tui/widthx is public and every
-// application package imports it, so the binary carries the Unicode tables once. This package stays the tested source: it holds the
-// Pi oracle tests, the table generator and the Node differential tests, which need the application's test helpers.
-//
 //	PIG_UPDATE_SDK_TUI=1 go test ./tui -run TestSDKTuiCopiesAreCurrent
 //
-// rewrites the copies. Nothing in extensions/sdk/tui/widthx or extensions/sdk/tui/internal/{engine,jsstring} is edited by hand; the vectors in
+// rewrites the copies. Nothing in extensions/sdk/tui/internal/engine, widthx or jsstring is edited by hand; the vectors in
 // extensions/sdk-vectors (generated from Pi's own functions) judge every copy through the SDK's own tests.
 type sdkTuiCopy struct{ src, dst string }
 
@@ -39,7 +35,7 @@ func sdkTuiCopies(t *testing.T) []sdkTuiCopy {
 		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
 			continue
 		}
-		copies = append(copies, sdkTuiCopy{"tui/widthx/" + name, "extensions/sdk/tui/widthx/" + name})
+		copies = append(copies, sdkTuiCopy{"tui/widthx/" + name, "extensions/sdk/tui/internal/widthx/" + name})
 	}
 	for _, name := range []string{"case", "codepoint", "slice", "utf16"} {
 		copies = append(copies, sdkTuiCopy{"internal/jsstring/" + name + ".go", "extensions/sdk/tui/internal/jsstring/" + name + ".go"})
@@ -60,6 +56,7 @@ func sdkTuiTransform(src string, text string) string {
 		"github.com/MichaelKinsy/PiG/internal/jsstring", sdkTuiModule+"jsstring",
 		"github.com/MichaelKinsy/PiG/internal/lazyregexp", sdkTuiModule+"lazyregexp",
 		"github.com/MichaelKinsy/PiG/internal/jsnumber", sdkTuiModule+"jsnumber",
+		"github.com/MichaelKinsy/PiG/tui/widthx", sdkTuiModule+"widthx",
 		"cases.Lower(language.Und).String(", "jsstring.ToLower(",
 		"JSNumberString(", "jsnumber.String(",
 	).Replace(text)

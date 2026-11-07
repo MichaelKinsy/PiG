@@ -7,8 +7,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // tui-alt-screen.ts:1175-1210 getWordSelection against pinned pi-tui: a double-click selects the Intl.Segmenter word (getWordSegmenter, utils.ts) under the clicked column, measured with visibleWidth and joined across "/" and "-". Thai, Lao, Khmer and Burmese need ICU's dictionary words, Devanagari conjuncts are one grapheme, and emoji ZWJ sequences are one cluster; every column of every line must select Pi's range.

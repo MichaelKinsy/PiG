@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // thinking-selector.ts:50-53 and session-selector.ts:733-740 `set focused`: the selector propagates the TUI focus to its search

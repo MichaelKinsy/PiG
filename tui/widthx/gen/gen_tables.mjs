@@ -145,14 +145,12 @@ for (let cp = 1; cp <= 0x110000; cp++) {
 if (row.length) out.push("\t" + row.join(" "));
 out.push("}");
 out.push("");
-out.push("// rgiSequences: multi-code-point strings matching /^\\p{RGI_Emoji}$/v, sorted, one per line without a final newline.");
-out.push("// They are one string constant: a [...]string would add a 16-byte header to each of the sequences in every binary that links this package.");
-out.push("const rgiSequences = \"\" +");
-const seqs = [...rgi].sort();
-seqs.forEach((s, i) => {
-	const body = [...s].map((c) => { const cp = c.codePointAt(0); return cp < 0x10000 ? "\\u" + cp.toString(16).padStart(4, "0") : "\\U" + cp.toString(16).padStart(8, "0"); }).join("");
-	out.push("\t\"" + body + (i + 1 < seqs.length ? "\\n\" +" : "\""));
-});
+out.push("// rgiSequences: multi-code-point strings matching /^\\p{RGI_Emoji}$/v.");
+out.push("var rgiSequences = [...]string{");
+for (const s of [...rgi].sort()) {
+	out.push("\t\"" + [...s].map((c) => { const cp = c.codePointAt(0); return cp < 0x10000 ? "\\u" + cp.toString(16).padStart(4, "0") : "\\U" + cp.toString(16).padStart(8, "0"); }).join("") + "\",");
+}
+out.push("}");
 const text = out.join("\n") + "\n";
 fs.writeFileSync(path.join(here, "output.sha256"), `${sha256(text)}  unicode_tables.go\n`);
 process.stdout.write(text);

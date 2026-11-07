@@ -12,7 +12,7 @@ import (
 	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
 	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Ports packages/coding-agent/src/modes/interactive/components/mermaid.ts (Marked heading ownership before top-level code-token selection).

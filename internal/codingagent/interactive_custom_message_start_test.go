@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // interactive-mode.ts handleEvent message_start renders every displayed custom message, whichever path delivered it. A message a

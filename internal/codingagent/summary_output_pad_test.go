@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Pi 1.1.0 interactive-mode.ts (addMessageToChat / rebuildChatFromMessages) constructs CompactionSummaryMessageComponent with

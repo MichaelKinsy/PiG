@@ -15,8 +15,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 var pasteMarkerRegex = lazyregexp.New(`\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]`)

@@ -12,8 +12,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts

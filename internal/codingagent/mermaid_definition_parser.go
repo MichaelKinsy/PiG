@@ -11,7 +11,7 @@ import (
 	gmparser "github.com/MichaelKinsy/PiG/third_party/goldmark/parser"
 	gmtext "github.com/MichaelKinsy/PiG/third_party/goldmark/text"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // A Marked definition owns its entire multiline title before contained HTML or fences are parsed. Post-parse masking cannot recover the blocks those contained openers would otherwise swallow.

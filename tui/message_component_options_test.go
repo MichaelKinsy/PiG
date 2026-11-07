@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/markdowntransform"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // upstream: user-message.ts:19-31 (constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [])) and rebuild() 38-59, which hand the three to the Markdown child. Each injected value reaches the rendered card, and the default stays the active theme, pad 1 and no transform.

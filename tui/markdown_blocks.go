@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // renderBlocks renders the blocks of content, a text whose line endings and tabs are normalized. A top-level render passes rec to record the points a later render of a longer text resumes from, and from to start at one: content is then the text from that point's line (its line number is from.line), and the output so far is the point's.
