@@ -34,6 +34,8 @@ The ext10 overhead workload (ten TypeScript extensions, RPC chat, openai-complet
 
 The three runtimes differ by less than 3% in per-turn CPU, which is inside the A/A floor: the extension host, not the runtime, sets the per-turn cost. Node starts the extensions about 65 ms sooner; Bun and the compiled host use 90 to 110 MiB less memory. Bun also needs a 3 to 4 s download, and the compiled host needs a first-run compile of about 30 s. Select `bun` when memory matters more than start time.
 
+The `aot` runtime is provided by the experimental `pig-bolt` Piglet (`piglets/pig-bolt`, formerly `pig-aot`), which compiles your extensions with the [Pi-Bolt](https://github.com/opensec-git/Pi-Bolt) compiler on your machine. It is not an official Pi-Bolt project. Its README lists what it compiles, what it verifies and its measured costs.
+
 ## Check which runtime runs
 
 ```bash
