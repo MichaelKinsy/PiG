@@ -96,9 +96,8 @@ func observeCrashBlame(t *testing.T, language, isolation string) map[string]bool
 			crash = ext
 		}
 	}
-	if err := crash.Commands["crash"].Handler(ctx, ""); err != nil {
-		t.Fatal(err)
-	}
+	// The crash can end the process before the command's reply, so the call's error says nothing.
+	_ = crash.Commands["crash"].Handler(ctx, "")
 
 	// The culprit is reported stopped, and the sibling answers again once the process it shared has been started anew.
 	observed := map[string]bool{}

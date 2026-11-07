@@ -184,9 +184,8 @@ func TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt(t *testing.T) {
 		t.Fatal("the healthy member's handler panic was not reported as an error")
 	}
 	c.ping("healthy")
-	if err := c.run("culprit", "crash"); err != nil {
-		t.Fatal(err)
-	}
+	// The crash can end the process before the command's reply, so the call's error says nothing.
+	_ = c.run("culprit", "crash")
 
 	// The healthy member comes back in a process of a cell of its own; the culprit does not.
 	c.waitFor("the healthy member's restart and the culprit's stop", func() bool {
