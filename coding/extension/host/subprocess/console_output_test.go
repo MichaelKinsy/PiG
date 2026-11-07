@@ -229,3 +229,51 @@ func TestConsolePipeFlushAfterFinishReturns(t *testing.T) {
 	nilPipe.flush()
 	nilPipe.finish(0)
 }
+
+// A sink that stalls fills the pipe, and the marker write then blocks: flush still returns within consoleFlushWait, holds no lock a finish needs, and no marker reaches the sink.
+type stalledSink struct {
+	release chan struct{}
+	buf     lockedBuffer
+}
+
+func (s *stalledSink) Write(p []byte) (int, error) {
+	<-s.release
+	return s.buf.Write(p)
+}
+
+func TestConsolePipeFlushIsBoundedWhileTheSinkStalls(t *testing.T) {
+	sink := &stalledSink{release: make(chan struct{})}
+	pipe, err := newConsolePipe(sink)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The process floods the pipe: the copy stalls in the sink, so the pipe fills and a further write blocks.
+	flooded := make(chan struct{})
+	go func() {
+		defer close(flooded)
+		chunk := bytes.Repeat([]byte("x"), 32<<10)
+		for range 128 {
+			if _, err := pipe.write.Write(chunk); err != nil {
+				return
+			}
+		}
+	}()
+	time.Sleep(200 * time.Millisecond)
+	start := time.Now()
+	pipe.flush()
+	if took := time.Since(start); took > consoleFlushWait+time.Second {
+		t.Fatalf("flush took %v with a stalled sink, want at most %v", took, consoleFlushWait+time.Second)
+	}
+	finished := make(chan struct{})
+	go func() { pipe.finish(time.Second); close(finished) }()
+	close(sink.release)
+	select {
+	case <-finished:
+	case <-time.After(10 * time.Second):
+		t.Fatal("finish was held behind the stalled flush")
+	}
+	<-flooded
+	if strings.Contains(sink.buf.String(), "pig-console-flush") {
+		t.Fatal("a flush marker reached the sink")
+	}
+}

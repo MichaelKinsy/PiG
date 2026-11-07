@@ -30,7 +30,7 @@ type consolePipe struct {
 const (
 	consoleMarkerSeqDigits = 16
 	// consoleFlushWait bounds how long flush waits for the copy: the log it protects is read for a failure diagnostic, never for extension work.
-	consoleFlushWait  = stderrDrainWait
+	consoleFlushWait = stderrDrainWait
 	// pig divergence (D56): the host-side copy of an extension's output pipe reads into one fixed buffer, so a stalled terminal slows only the extension that writes.
 	consoleBufferSize = 32 << 10
 )
@@ -154,21 +154,22 @@ func (c *consolePipe) flush() {
 	seq := c.seq
 	ack := make(chan struct{})
 	c.acks[seq] = ack
-	_ = c.write.SetWriteDeadline(time.Now().Add(consoleFlushWait))
-	_, err := c.write.Write(c.marker(seq))
+	write := c.write
 	c.mu.Unlock()
-	if err != nil {
-		c.mu.Lock()
-		delete(c.acks, seq)
-		c.mu.Unlock()
-		return
-	}
+	// Handing the marker to the pipe can block: the write end is a blocking descriptor (os/exec's Fd makes it one), so a full pipe, which a stalled sink leaves behind, holds the write
+	// and no deadline interrupts it. The write runs off this call, outside c.mu, so the wait below is bounded by consoleFlushWait and finish is never held up behind it. finish closes the
+	// write end, which ends the write.
+	//portlint:allow golifetime the write ends when the pipe drains or finish closes the write end, and flush does not wait for it
+	go func() { _, _ = write.Write(c.marker(seq)) }()
 	timer := time.NewTimer(consoleFlushWait)
 	defer timer.Stop()
 	select {
 	case <-ack:
 	case <-c.done:
 	case <-timer.C:
+		c.mu.Lock()
+		delete(c.acks, seq)
+		c.mu.Unlock()
 	}
 }
 
@@ -178,13 +179,23 @@ func (c *consolePipe) finish(grace time.Duration) {
 		return
 	}
 	c.mu.Lock()
-	if !c.closed {
-		c.closed = true
-		_ = c.write.Close()
-	}
+	first := !c.closed
+	c.closed = true
 	c.mu.Unlock()
 	timer := time.NewTimer(grace)
 	defer timer.Stop()
+	if first {
+		// Closing a descriptor that a blocked marker write still uses waits for that write, so it runs beside the drain and the grace bounds both.
+		closed := make(chan struct{})
+		//portlint:allow golifetime the close returns once the pipe drains or the read end closes below
+		go func() { _ = c.write.Close(); close(closed) }()
+		defer func() {
+			select {
+			case <-closed:
+			case <-timer.C:
+			}
+		}()
+	}
 	select {
 	case <-c.done:
 	case <-timer.C:
