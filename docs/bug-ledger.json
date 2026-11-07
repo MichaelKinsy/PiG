@@ -6322,7 +6322,6 @@
       "tests": [
         "extensions/sdk-py/tests/test_report_load_failure.py",
         "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
-        "extensions/sdk/callback_guard_test.go::TestEditorComponentPanicIsReportedAndTheSessionGoesOn",
         "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
         "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
         "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
@@ -6351,7 +6350,6 @@
       "tests": [
         "extensions/sdk-py/tests/test_report_load_failure.py",
         "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
-        "extensions/sdk/callback_guard_test.go::TestEditorComponentPanicIsReportedAndTheSessionGoesOn",
         "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
         "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
         "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
@@ -6361,15 +6359,49 @@
     },
     {
       "id": "BF-2cef1bf-3",
-      "title": "A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings…",
-      "symptom": "A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings storage's `WithLock`, and a failing `onError` callback of `ctx.compact` in a Lisp extension, no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.",
+      "title": "A panic in a Go editor component call is reported as `editor \u003ccall\u003e failed: \u003cmessage\u003e`, as the other SDKs…",
+      "symptom": "A panic in a Go editor component call is reported as `editor \u003ccall\u003e failed: \u003cmessage\u003e`, as the other SDKs report theirs, instead of ending the extension's process, and a `handleInput` that fails still finishes its key, so the editor does not stall on the next one; the Rust SDK reports a panic's value in that notice rather than a fixed text.",
+      "rootCause": "A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A panic in a Go editor component call is reported as `editor \u003ccall\u003e failed: \u003cmessage\u003e`, as the other SDKs report theirs, instead of ending the extension's process, and a `handleInput` that fails still finishes its key, so the editor does not stall on the next one; the Rust SDK reports a panic's value in that notice rather than a fixed text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2cef1bf5e0",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "0a9002fb19",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_report_load_failure.py",
+        "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestEditorHandleInputPanicStillSendsInputDone",
+        "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled",
+        "test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished",
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
+      "id": "BF-2cef1bf-4",
+      "title": "A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing…",
+      "symptom": "A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing `onError` callback of `ctx.compact` (Lisp), no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.",
       "rootCause": "A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…",
       "rootCauseSource": "commit",
       "userImpact": "Credential or permission exposure",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings storage's `WithLock`, and a failing `onError` callback of `ctx.compact` in a Lisp extension, no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.",
+      "releaseNote": "A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing `onError` callback of `ctx.compact` (Lisp), no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.",
       "origin": "release note",
       "commits": [
         {
@@ -6380,7 +6412,6 @@
       "tests": [
         "extensions/sdk-py/tests/test_report_load_failure.py",
         "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
-        "extensions/sdk/callback_guard_test.go::TestEditorComponentPanicIsReportedAndTheSessionGoesOn",
         "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
         "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
         "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
@@ -7790,20 +7821,26 @@
       "divergence": "D274",
       "removeWhen": "an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.",
       "fixedIn": "Unreleased",
-      "releaseNote": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). A crash whose trace names no one extension still stops the whole cell.",
+      "releaseNote": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.",
       "origin": "release note",
       "commits": [
         {
           "hash": "34f110f09d",
           "date": "2026-11-06"
+        },
+        {
+          "hash": "28042f4fa6",
+          "date": "2026-11-07"
         }
       ],
       "tests": [
         "coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt",
+        "coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessExitStopsTheWholeCell",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestTraceCulpritReadsOnlyGoAndLisp",
+        "test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished",
         "test/extension-conformance/packed_crash_blame_test.go::TestPackedCrashBlameAcrossSDKs"
       ]
     },
