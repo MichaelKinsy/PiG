@@ -1,4 +1,5 @@
 # Behavior family: extensions-runtime
+# Upstream evidence: real Pi 1.5.0 (extensions/sdk-ts/node_modules) run side by side with PiG in tmux at 100x60 over the same session fixture, three pairs, byte-equal captures; the base PiG binary fails the first wait step (a click on the custom card does nothing).
 # Surface: a left click on a transcript message toggles that message's expansion (Pi: `MouseRegion` in the compaction, branch-summary and skill
 # components, and in a custom message renderer's own component, whose state the extension keeps in a `WeakMap` keyed by the message object).
 #
