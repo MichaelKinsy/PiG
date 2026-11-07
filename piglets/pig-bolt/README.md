@@ -4,7 +4,7 @@
 
 **It is built on Pi-Bolt and is not an official Pi-Bolt project.** The compiler is [Pi-Bolt](https://github.com/opensec-git/Pi-Bolt) (MIT, © 2025 Mario Zechner, © 2026 OpenSec): Pi compiled ahead of time with a patched Bun and JavaScriptCore. PiG's authors wrote this Piglet; Pi-Bolt's maintainers did not write, review or endorse it. Report a problem with this Piglet to PiG, and a problem in the compiler to Pi-Bolt. The Piglet uses the compiler's runtime release and its own build recipe (`extensions/boltruntime/build.go`); it does not run `pi-bolt` itself.
 
-It was called `pig-aot` in 0.5.0 and 0.7.0. `pig-aot` still works: `piglets/pig-bolt/pig-aot.yaml` is a one-file Piglet named `pig-aot` that extends `pig-bolt` (a compatibility alias the owner approved for 0.7.1). The command `/aot-runtime` is now `/bolt-runtime`. The TypeScript runtime slot is still called `aot`: the setting, `PIG_TS_RUNTIME=aot`, the slot directory and the `PIG_AOT_*` variables below did not change.
+It was called `pig-aot` in 0.5.0 and 0.7.0. `pig-aot` still works: `piglets/pig-bolt/pig-aot.yaml` is a one-file Piglet named `pig-aot` that extends `pig-bolt` (a compatibility alias the owner approved for 0.7.1). The command that was called `aot-runtime` is now `/bolt-runtime`. The TypeScript runtime slot is still called `aot`: the setting, `PIG_TS_RUNTIME=aot`, the slot directory and the `PIG_AOT_*` variables below did not change.
 
 It is a Piglet with one Go extension, `boltruntime` (its command is `/bolt-runtime`). It selects the `aot` TypeScript runtime in PiG's runtime slot (`docs/site/docs/typescript-runtimes.md`). The compiler is the Pi-Bolt 1.1.2 release of its Bun runtime. This Piglet does not redistribute the compiler or any compiled executable: the first build downloads it from the Pi-Bolt release on your machine, and every executable is compiled on your machine.
 
@@ -59,7 +59,7 @@ Measured on one shared linux-x64 host (Xeon Platinum 8468, 16-CPU container quot
 | Extension host RSS after 20 turns, `ten` (MB) | 194 | 146 | 128 |
 | Extension host RSS after 20 turns, `rewrite` (MB) | 202 | 172 | 126 |
 | Private dirty after 20 turns, `five` (MB) | 127 | 102 | 45 |
-| `/words` hot loop on 16.8 MB (ms) | 145 | 104 | 114 |
+| Word-count hot loop on a 16.8 MB file (ms) | 145 | 104 | 114 |
 | JS heap allocated per turn, `ten` (MB; Node's and JSC's counters differ) | 7.2 | 11.2 | 9.5 |
 | Executable (MB) | 150 | 80 | 245 |
 
