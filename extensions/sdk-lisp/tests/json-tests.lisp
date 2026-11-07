@@ -105,6 +105,21 @@
   (check (vectorp (dec (nested pig::*max-json-depth*))))
   (check-error pig:json-error (dec (nested (1+ pig::*max-json-depth*)))))
 
+;; The reader and the writer keep the containers on a stack of their own: a value nested to the bound round-trips on the image's default control stack.
+(defun nested-objects (depth)
+  (concatenate 'string (apply #'concatenate 'string (loop repeat depth collect "{\"a\":")) "1" (make-string depth :initial-element #\})))
+
+(deftest deep-values-round-trip-on-the-default-control-stack
+  (check-equal (nested 10000) (enc (dec (nested 10000))))
+  (check-equal (nested-objects 10000) (enc (dec (nested-objects 10000))))
+  (check-equal "[[],{},[1,[2]]]" (enc (dec "[[],{},[1,[2]]]")))
+  ;; Around the depth where the recursive reader and writer hand over to the walk with a stack of its own.
+  (dolist (depth '(254 255 256 257 258 600))
+    (check-equal (nested depth) (enc (dec (nested depth))))
+    (check-equal (nested-objects depth) (enc (dec (nested-objects depth))))
+    (let ((mixed (format nil "{\"k\":[~A,{\"z\":~A}],\"n\":2}" (nested depth) (nested-objects depth))))
+      (check-equal mixed (enc (dec mixed))))))
+
 (defun frame-body (text) (sb-ext:string-to-octets text :external-format :utf-8))
 
 (deftest a-frame-nested-too-deep-stands-for-an-error-answer
