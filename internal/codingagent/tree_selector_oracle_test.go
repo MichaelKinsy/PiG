@@ -35,6 +35,8 @@ type treeOracleProbe struct {
 	//portlint:allow emptydrop the oracle input treats an absent map and an empty map alike, so nothing observable depends on the difference
 	Bindings map[string][]string `json:"bindings,omitempty"`
 	Keys     []string            `json:"keys"`
+	// afterBuild runs in replayTreeContract between building the selector and the first frame; no oracle input carries it.
+	afterBuild func()
 }
 
 type treeOracleResult struct {

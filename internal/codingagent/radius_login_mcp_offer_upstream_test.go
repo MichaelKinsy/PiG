@@ -19,8 +19,9 @@ import (
 // .upstream/v1.0.0/packages/coding-agent/src/core/radius.ts:5-6 RADIUS_MCP_URL, from DEFAULT_RADIUS_GATEWAY.
 const upstreamRadiusMCPURL = "https://radius.pi.dev/mcp"
 
-// pumpUntilRendered runs queued UI tasks until component renders every wanted string.
-func pumpUntilRendered(t *testing.T, m *InteractiveMode, component tui.Component, want ...string) {
+// waitUntilRendered waits until component renders every wanted string. The test goroutine only reads renders here (a Container renders under
+// its own lock): the login goroutine is the UI loop (see startRadiusLogin) and the only goroutine that runs a posted task.
+func waitUntilRendered(t *testing.T, component tui.Component, want ...string) {
 	t.Helper()
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
@@ -35,8 +36,6 @@ func pumpUntilRendered(t *testing.T, m *InteractiveMode, component tui.Component
 	}
 	for !rendered() {
 		select {
-		case task := <-m.uiTaskCh:
-			task()
 		case <-time.After(5 * time.Millisecond):
 		case <-deadline.C:
 			t.Fatalf("never rendered %q; last render:\n%s", want, plainRender(component))
@@ -44,28 +43,23 @@ func pumpUntilRendered(t *testing.T, m *InteractiveMode, component tui.Component
 	}
 }
 
-// pumpUntilLoginReturns runs queued UI tasks until the login flow returns. offerRadiusMcpServer writes mcp.json
-// (os.WriteFile truncates, then writes) before the flow returns, so a read after this sees the finished file; polling
-// the file while the write is in flight can read it empty.
-func pumpUntilLoginReturns(t *testing.T, m *InteractiveMode, done <-chan error) {
+// waitUntilLoginReturns waits for the login flow to return. offerRadiusMcpServer writes mcp.json (os.WriteFile truncates, then writes)
+// before the flow returns, so a read after this sees the finished file; polling the file while the write is in flight can read it empty.
+func waitUntilLoginReturns(t *testing.T, done <-chan error) {
 	t.Helper()
-	deadline := time.NewTimer(5 * time.Second)
-	defer deadline.Stop()
-	for {
-		select {
-		case err := <-done:
-			if err != nil {
-				t.Fatalf("Radius login: %v", err)
-			}
-			return
-		case task := <-m.uiTaskCh:
-			task()
-		case <-deadline.C:
-			t.Fatal("Radius login did not return")
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Radius login: %v", err)
 		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Radius login did not return")
 	}
 }
 
+// startRadiusLogin runs the Radius login as /login runs it: on the goroutine that is the UI loop, with every UI task the flow posts (the
+// post-login model selection and status, the reload) run by the flow's own modal loops. A second goroutine that ran those tasks, as the
+// test's own did, would run them concurrently with the flow's direct UI calls (the reload's status line) with nothing ordering the two.
 func startRadiusLogin(t *testing.T, m *InteractiveMode) <-chan error {
 	t.Helper()
 	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
@@ -74,6 +68,7 @@ func startRadiusLogin(t *testing.T, m *InteractiveMode) <-chan error {
 	exited := make(chan struct{})
 	go func() {
 		defer close(exited)
+		defer m.enterOwnerLoop()()
 		done <- m.runLoginRegisteredOAuth(t.Context(), provider, testOAuthLoginName(provider), "")
 	}()
 	t.Cleanup(func() {
@@ -96,9 +91,9 @@ func TestRadiusLoginOffersTheRadiusMCPServerUpstream(t *testing.T) {
 		m := newPostLoginTestMode(t)
 		mcpPath := filepath.Join(m.opts.AgentDir, "mcp.json")
 		done := startRadiusLogin(t, m)
-		pumpUntilRendered(t, m, m.editorContainer, "Configure Radius MCP in "+mcpPath+"?", "Yes", "No")
+		waitUntilRendered(t, m.editorContainer, "Configure Radius MCP in "+mcpPath+"?", "Yes", "No")
 		deliverModalInput(t, m, []byte("\r"))
-		pumpUntilLoginReturns(t, m, done)
+		waitUntilLoginReturns(t, done)
 
 		data, err := os.ReadFile(mcpPath)
 		if err != nil {
@@ -123,9 +118,9 @@ func TestRadiusLoginOffersTheRadiusMCPServerUpstream(t *testing.T) {
 			t.Fatal(err)
 		}
 		done := startRadiusLogin(t, m)
-		pumpUntilRendered(t, m, m.editorContainer, "Configure Radius MCP in "+mcpPath+"?")
+		waitUntilRendered(t, m.editorContainer, "Configure Radius MCP in "+mcpPath+"?")
 		deliverModalInput(t, m, []byte("\r"))
-		pumpUntilLoginReturns(t, m, done)
+		waitUntilLoginReturns(t, done)
 
 		data, err := os.ReadFile(mcpPath)
 		if err != nil {
@@ -146,7 +141,7 @@ func TestRadiusLoginOffersTheRadiusMCPServerUpstream(t *testing.T) {
 		t.Cleanup(pigstrip.Strip(pigstrip.ListExtensions, "mcp"))
 		m := newPostLoginTestMode(t)
 		mcpPath := filepath.Join(m.opts.AgentDir, "mcp.json")
-		pumpUntilLoginReturns(t, m, startRadiusLogin(t, m))
+		waitUntilLoginReturns(t, startRadiusLogin(t, m))
 		if got := plainRender(m.editorContainer); strings.Contains(got, "Configure Radius MCP") {
 			t.Fatalf("the Radius MCP offer is shown under strip.extensions mcp:\n%s", got)
 		}
