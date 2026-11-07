@@ -154,10 +154,7 @@ func (t *Theme) WithColorMode(mode TerminalColorMode) *Theme {
 // currentColorMode mirrors createTheme's default mode:
 // getCapabilities().trueColor ? "truecolor" : "256color".
 func currentColorMode() TerminalColorMode {
-	if GetCapabilities().TrueColor {
-		return TerminalColorModeTrueColor
-	}
-	return TerminalColorMode256
+	return GetTerminalColorMode()
 }
 
 // storeActiveTheme activates t in the color mode the terminal supports now,
