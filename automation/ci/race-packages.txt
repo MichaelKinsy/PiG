@@ -67,7 +67,7 @@ libs  ./internal/entered
 libs  ./internal/requestvalidity
 libs  ./internal/testenv
 libs  ./mcp/mcptest
-libs  ./piglets/aot
+libs  ./piglets/pig-bolt
 libs  ./piglets/porter/extensions/pig-porter
 libs  ./piglets/standard
 libs  ./durable/images

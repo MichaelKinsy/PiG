@@ -65,7 +65,7 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/gen/vendor-typebox.sh", "1.3.27", "the typebox release the script vendors; its integrity hash is the next line"},
 	{"automation/gen/vendor-typebox.sh", "0.25.10", "the esbuild release the script bundles with"},
 	{".github/workflows/npm-publish.yml", "11.5.1", "the npm release that added trusted publishing, a registry feature floor and not a pin"},
-	{"Makefile", "0.7.4", "the version of Pi-Bolt, a different product from Pi"},
+	{"Makefile", "1.1.2", "the version of Pi-Bolt, a different product from Pi"},
 
 	// Versions of PiG's own releases and benchmark labels.
 	{".github/workflows/startup-performance.yml", "0.2.0", "the PiG release the startup benchmark measures against; the job name and the checked-out tag name the same release"},

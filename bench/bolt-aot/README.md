@@ -1,6 +1,6 @@
 # bench/bolt-aot: TypeScript extension runtimes, Node vs Bun vs the compiled aot host
 
-Full-path measurement of PiG's three TypeScript extension runtimes on one set of five extensions: `@tintinweb/pi-subagents` (pinned in `exts/package-lock.json`), Pi's `todo.ts` and `permission-gate.ts` examples (from `.upstream/current`), a heavy `tool_call` handler (`exts/heavy-toolcall.ts`) and Pi-Bolt's `word-count` example (`exts/word-count.ts`, copied unchanged under its MIT notice). The spike's set (`@juicesharp/rpiv-todo`, `pi-mcp-adapter`) is not here because the Piglet refuses it: those packages read files next to `import.meta.url`, which a compiled executable cannot reproduce, so they run on Bun. `bench.py` starts `pig --mode rpc` with the set and a scripted local model (`fake_model.py`), interleaves the arms and rotates their order each round, and reports medians with ranges (`summarize.py`): launch to ready, extension memory at ready and after 5 prompts, the `/words` hot loop on a 16 MB file, the tool turn gap and the prompt wall time. Each run checks that the extension process is the tier the arm names, so an arm that fell back cannot report a number.
+Full-path measurement of PiG's three TypeScript extension runtimes on one set of five extensions: `@tintinweb/pi-subagents` (pinned in `exts/package-lock.json`), Pi's `todo.ts` and `permission-gate.ts` examples (from `.upstream/current`), a heavy `tool_call` handler (`exts/heavy-toolcall.ts`) and Pi-Bolt's `word-count` example (`exts/word-count.ts`, copied unchanged under its MIT notice). The spike's set (`@juicesharp/rpiv-todo`, `pi-mcp-adapter`) is in `rewrite-exts/` (pinned in its `package-lock.json`): the Piglet compiles those packages in, rewriting the expressions by which they find files next to their own module, and `equivalence_pkgs.py` checks them across Node, Bun and the compiled host. `bench.py` starts `pig --mode rpc` with the set and a scripted local model (`fake_model.py`), interleaves the arms and rotates their order each round, and reports medians with ranges (`summarize.py`): launch to ready, extension memory at ready and after 5 prompts, the `/words` hot loop on a 16 MB file, the tool turn gap and the prompt wall time. Each run checks that the extension process is the tier the arm names, so an arm that fell back cannot report a number.
 
 The harness derives from the Pi-Bolt hosting spike's harness (its `bench/bolt-host/` directory), reduced to the tiers PiG ships. Every number it produces comes from a loaded shared host: report the host load beside it and do not publish one.
 
@@ -12,7 +12,7 @@ go build -o /tmp/pig ./cmd/pig
 mkdir -p /tmp/slot/bun && cp "$BUN_1_4_2" /tmp/slot/bun/bun   # stock Bun 1.4.2 and its runtime.json, as /bun-runtime install writes them
 python3 bench/bolt-aot/bench.py --out /tmp/bench --rounds 7 --arms node,bun,aot \
   --pig /tmp/pig --slot /tmp/slot --exts bench/bolt-aot/exts \
-  --build-cmd 'cd piglets/aot && GOWORK=off PIG_AOT_BUILD_SLOT=/tmp/slot go test ./extensions/aotruntime -run TestBuildSlotRequests -count=1'
+  --build-cmd 'cd piglets/pig-bolt && GOWORK=off PIG_AOT_BUILD_SLOT=/tmp/slot go test ./extensions/boltruntime -run TestBuildSlotRequests -count=1'
 python3 bench/bolt-aot/summarize.py /tmp/bench/runs.jsonl
 ```
 
@@ -30,7 +30,7 @@ It runs the Piglet's worker (installs the manifest, downloads and verifies the P
 
 ### One Piglet Binary with Go-fused and compiled TypeScript extensions
 
-A Piglet Binary can carry Go-fused members, TypeScript extensions (Node members whose sources the Binary embeds and extracts under its `PIG_HOME`) and the aot-runtime extension together. List the TypeScript extensions as directories (`dir/index.ts`; a single-file origin fails `pig piglet build` at the lock step, coding/pigletbuild/records.go `localGoReplacementDirs`), and give every fused member one name for its yaml entry, its `sdk.New` registration and its directory. Then:
+A Piglet Binary can carry Go-fused members, TypeScript extensions (Node members whose sources the Binary embeds and extracts under its `PIG_HOME`) and the bolt-runtime extension together. List the TypeScript extensions as directories (`dir/index.ts`; a single-file origin fails `pig piglet build` at the lock step, coding/pigletbuild/records.go `localGoReplacementDirs`), and give every fused member one name for its yaml entry, its `sdk.New` registration and its directory. Then:
 
 ```sh
 PIG_SOURCE_ROOT=<PiG checkout> pig piglet build combo.yaml --format binary --out ./pig-combo
@@ -50,4 +50,17 @@ export PIG_TS_RUNTIME=aot PIG_TS_RUNTIMES_DIR=/tmp/slot   # a slot built as abov
 make bench-compare                                        # or the pig-evals command of bench/evals/README.md
 ```
 
-Compiled images are per extension set, so an arm that loads another set first launches on Bun and records a build request; run the Piglet's worker over the slot (`--build-cmd` above) and launch again. An arm whose set the Piglet refuses (files read next to `import.meta.url`) runs on Bun, and `pig extensions runtime status` names the reason. Check `ext_exes` in a run's memory snapshot, as `bench.py` does, before reading a number as an aot number.
+Compiled images are per extension set, so an arm that loads another set first launches on Bun and records a build request; run the Piglet's worker over the slot (`--build-cmd` above) and launch again. An arm whose set the Piglet refuses (a file that reads files or starts processes and uses `import.meta` as a value) runs on Bun, and `pig extensions runtime status` names the reason. Check `ext_exes` in a run's memory snapshot, as `bench.py` does, before reading a number as an aot number.
+
+## Perf basket and the rewritten packages
+
+`basket.py` is the before/after basket of the 0.7.1 pig-bolt work (startup, first turn, steady turns, RSS/PSS and the smaps kinds, CPU of the Go host and the extension host, allocations as page faults, memory syscalls under strace and the JS heap through `exts/basket-probe.ts`) on the sets `five`, `ten` and `rewrite`, with A/A repeats, a cold-start pass (the digest cache's record removed) and `--pair BEFORE=AFTER` delta tables; its header documents the invocation, and `results/2026-11-06-basket-before.md` and `...-after.md` are its reports. Run it inside the CI container (`~/cf3-work/run-mem.sh`), never on a quiet-host assumption.
+
+`equivalence_pkgs.py` runs `rpiv-todo`, `pi-mcp-adapter` and a fixture that reads data and skills files beside its own modules on Node, Bun and the compiled host with the same scripted RPC steps and compares commands, tool schemas, calls and tool messages:
+
+```sh
+(cd bench/bolt-aot/rewrite-exts && npm ci --ignore-scripts)
+python3 bench/bolt-aot/equivalence_pkgs.py --out DIR --pig PIG --slot SLOT --bun BUN1_4_2
+```
+
+`--mutate-arm bun` must make the comparison fail, and `--hide-locale` shows that the compiled arm reads a file from the installed path.

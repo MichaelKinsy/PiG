@@ -151535,7 +151535,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "6 normalized-name Pig candidates are ambiguous."
+        "7 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -151549,6 +151549,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#FileModelsStore.Path",
         "go:github.com/MichaelKinsy/PiG/coding#Session.Path",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin#Extension.Path",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.Path",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.Path",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.Path"
       ],

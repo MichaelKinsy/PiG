@@ -1,0 +1,11 @@
+# Compatibility alias, approved by the owner on 2026-11-06 for 0.7.1: the Piglet was named pig-aot in 0.5.0 and 0.7.0. This one-file Piglet is named
+# pig-aot and extends pig-bolt, so `pig --piglet piglets/pig-bolt/pig-aot.yaml` and `pig piglet build piglets/pig-bolt/pig-aot.yaml` select and build what
+# pig-bolt does, under the old name. That is all it does. The bare name `pig --piglet pig-aot` does not resolve to it (a name searches only the Piglet
+# directories, and `pig piglet add` refuses a Piglet with relative origins or an extends, as it refused pig-aot in 0.7.0), the 0.7.0 path piglets/aot
+# is gone, and `pig piglet pull` and `update` have nothing to alias because no pig-aot Piglet Binary release exists. It has no release block, so it is
+# not a shipped Piglet of its own. Remove it when no 0.5 or 0.7 setup can still name pig-aot.
+name: pig-aot
+description: "Renamed: pig-aot is now pig-bolt. This source path still builds and runs; use piglets/pig-bolt/pig-bolt.yaml."
+
+extends:
+  source: local:pig-bolt.yaml

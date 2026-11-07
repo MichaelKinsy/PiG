@@ -3181,6 +3181,8 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 			return nil, newLoadError(me.config.Name, "spawn", "node_runtime_unsupported", err)
 		}
 	}
+	// pig additive (D19): the selection holds the verified executable open; every return releases it, whether or not a process was started.
+	defer releaseVerified(tsSelection)
 
 	// Create the socket path inside this Host's private runtime directory, so a
 	// parallel Pig instance running the same extension cannot collide on it.
@@ -3289,6 +3291,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrSink)
 	}
 	processTree, err := startProcessTree(cmd)
+	releaseVerified(tsSelection)
 	if err != nil {
 		// No Cmd.Wait runs to close the writer the host-side copy owns.
 		me.stderrLog.closeWriter()

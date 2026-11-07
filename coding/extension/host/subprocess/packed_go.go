@@ -373,6 +373,8 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			return nil, nil, newLoadError(cell.Key, "spawn", "runtime_unavailable", err)
 		}
 	}
+	// pig additive (D19): the selection holds the verified executable open; every return releases it, whether or not a process was started.
+	defer releaseVerified(tsSelection)
 	pendingExts := make([]packedPendingExt, 0, len(cell.Extensions))
 	harnessEnv, err := h.harnessEnv()
 	if err != nil {
@@ -655,6 +657,7 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		h.markExtension(pending.me.config.Name, "spawn-start")
 	}
 	processTree, err := startProcessTree(cmd)
+	releaseVerified(tsSelection)
 	if !nodeRuntime || err != nil {
 		// A direct child inherited the log file; Node's host-side copy owns the writer until Cmd.Wait drains it, and no Cmd.Wait runs after a failed start.
 		processState.stderrLog.closeWriter()
