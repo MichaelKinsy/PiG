@@ -232,6 +232,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2c5d240](#bf-2c5d240) | fix(extension): take a Node client whose pipe connect event has not been set | PiG's own defect | All platforms | Unreleased |
 | [BF-2c5db8b](#bf-2c5db8b) | A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2c88c5f](#bf-2c88c5f) | Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2cef1bf](#bf-2cef1bf) | A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a… | PiG's own defect | All platforms | Unreleased |
+| [BF-2cef1bf-2](#bf-2cef1bf-2) | When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one… | PiG's own defect | All platforms | Unreleased |
+| [BF-2cef1bf-3](#bf-2cef1bf-3) | A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings… | PiG's own defect | All platforms | Unreleased |
 | [BF-2d05dc8](#bf-2d05dc8) | A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2d23c91](#bf-2d23c91) | A redundant system prompt update (tools, rules) no longer follows an extension setting the same active tools… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2d31c33](#bf-2d31c33) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -279,6 +282,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-34bcd58](#bf-34bcd58) | OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34c4d8e](#bf-34c4d8e) | MCP tools declare the `CallToolResult` scripts receive as Pi 1.2.0 does: content blocks with their `type`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34c4d8e-2](#bf-34c4d8e-2) | The MCP extension decides which tools reach MCP tools by their `ReachesTools`, as Pi 1.2.0 does: another… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-34f110f](#bf-34f110f) | When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-34f7594](#bf-34f7594) | An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-2](#bf-34f7594-2) | Fixed the interactive bash block stripping escape sequences with the wrong rule… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-3](#bf-34f7594-3) | Fixed the `re:` mode of the session selector search to read its pattern as JavaScript does (`new… | PiG's own defect | All platforms | 0.5.0 |
@@ -4670,6 +4674,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering`, `ai/openai_codex_websocket_frame_oracle_test.go::TestCodexWebSocketFramesMatchPi`, `ai/provider_ecmascript_whitespace_test.go::TestMistralAssistantBlankUsesECMAScriptTrim`, `ai/provider_wire_defaults_test.go::TestMistralAssistantReplayPrefixAndToolIndex`, `ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem` and 15 more in docs/bug-ledger.json
 - **Release note:** Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode keys, Bedrock and Google request members) is written as `JSON.stringify` writes the decoded text: one literal U+FFFD for each ill-formed sequence, instead of one `\ufffd` escape per byte.
 
+### BF-2cef1bf
+
+**A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestEditorComponentPanicIsReportedAndTheSessionGoesOn`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.
+
+### BF-2cef1bf-2
+
+**When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one…**
+
+- **Source:** PiG's own defect
+- **Symptom:** When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one the shared process wrote to its log.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestEditorComponentPanicIsReportedAndTheSessionGoesOn`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one the shared process wrote to its log.
+
+### BF-2cef1bf-3
+
+**A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings storage's `WithLock`, and a failing `onError` callback of `ctx.compact` in a Lisp extension, no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestEditorComponentPanicIsReportedAndTheSessionGoesOn`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** A panic in a Go editor component call, in an MCP credential store's `WithRefreshLock` or in a settings storage's `WithLock`, and a failing `onError` callback of `ctx.compact` in a Lisp extension, no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.
+
 ### BF-2d05dc8
 
 **A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps…**
@@ -5316,6 +5362,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34c4d8e058` (2026-10-12), `8217a5923f` (2026-10-12)
 - **Tests:** `coding/mcpext/regression_test.go::TestCreateMcpToolDefinitionMatchesUpstreamProbes`, `coding/mcpext/tools_test.go::TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheServersOutputSchema`
 - **Release note:** The MCP extension decides which tools reach MCP tools by their `ReachesTools`, as Pi 1.2.0 does: another extension's `codemode` or `tool_search` that declares `reachesTools` is activated for MCP servers and waits for the servers its call may reach. Before, only the built-in tools of those names were recognized, by their source path (Pi 1.2.0 `mcp/index.ts`).
+
+### BF-34f110f
+
+**When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D274)
+- **Symptom:** When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated.
+- **Root cause:** A member's connection that closes because the shared process is ending no longer disables that member before the process's watcher has read the trace: the handler waits for the process, within the heartbeat bound D56 gives a process that outlives a closed connection, and leaves the report to the watcher.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.
+- **Fix commits:** `34f110f09d` (2026-11-06)
+- **Tests:** `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestTraceCulpritReadsOnlyGoAndLisp`, `test/extension-conformance/packed_crash_blame_test.go::TestPackedCrashBlameAcrossSDKs`
+- **Release note:** When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). A crash whose trace names no one extension still stops the whole cell.
 
 ### BF-34f7594
 
@@ -23259,7 +23321,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `eda66dd663` (2026-11-06)
 - **Tests:** `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
-- **Release note:** A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell. The packed runner now reports the panic as that extension's own load error, as an isolated process does, with the stack in its stderr log, and every sibling keeps running; `/reload` lists only the failing extension. A factory that returns no extension fails the same way in a Go, Python or Lisp cell (`factory returned nil`, `factory returned None`), and a Lisp cell no longer waits out the load deadline when a factory returns nothing.
+- **Release note:** A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell. The packed runner now reports the panic as that extension's own load error, as an isolated process does, with the stack in its stderr log, and every sibling keeps running; `/reload` lists only the failing extension. A factory that returns no extension fails the same way in a Go, Python or Lisp cell (`factory returned nil`, `factory returned None`), and a Lisp cell no longer hangs the load until the caller cancels it when a factory returns nothing.
 
 ### BF-edb73db
 
@@ -25422,6 +25484,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
+| D274 | A packed Go or Lisp member whose own code ends the shared process stops alone, and the members that shared… | [BF-34f110f](#bf-34f110f) |
 
 ## Fix-titled commits that are not bugs in a release
 

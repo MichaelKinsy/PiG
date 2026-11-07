@@ -1,0 +1,3 @@
+### Fixed
+
+- When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). A crash whose trace names no one extension still stops the whole cell. <!-- fix: 34f110f09d -->
