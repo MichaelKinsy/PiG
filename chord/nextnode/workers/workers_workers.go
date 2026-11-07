@@ -193,6 +193,8 @@ type child struct {
 	ended *ended
 	// grace is the timer of a stop or of a lost link.
 	grace host.Timer
+	// lock is the lock its start message named; cleared after its exit when it was killed holding it.
+	lock string
 }
 
 // routed is one address: its operations in a queue, its child, its failure. Kept while it has any of them.
@@ -360,6 +362,7 @@ func (c *Workers) Close(ctx context.Context) error {
 
 func (c *Workers) close(ctx context.Context) error {
 	var stops []*outcome[struct{}]
+	var records []*routed
 	c.loop.Run(func() {
 		if !c.isClosing() {
 			c.closing(closed())
@@ -370,12 +373,21 @@ func (c *Workers) close(ctx context.Context) error {
 		}
 		for _, key := range slices.Clone(c.order) {
 			record := c.addresses[key]
+			records = append(records, record)
 			stops = append(stops, c.enqueue(record, func() (struct{}, error) { return struct{}{}, c.stop(record) }))
 		}
 	})
-	for _, stop := range stops {
+	// Each stop, then what its exit queued (the clear of a killed child's lock file).
+	for index, stop := range stops {
 		if _, err := stop.await(ctx); err != nil {
 			return err
+		}
+		var queue chan struct{}
+		c.loop.Run(func() { queue = records[index].queue })
+		select {
+		case <-queue:
+		case <-ctx.Done():
+			return context.Cause(ctx)
 		}
 	}
 	return nil
@@ -552,8 +564,16 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 	if err != nil {
 		return host.ResolvedLink{}, err
 	}
+	// A worker killed without its exit hooks (SIGKILL), maybe by an earlier server, left its socket file, which fails its
+	// successors closed. The component is the one clearer of its addresses' locks, in the address's queue: one clear at a
+	// time (decision "Stale lock files are cleared by the starter"). A live holder (an old worker still exiting) is kept and
+	// waited for.
+	if _, err := ClearStaleLock(lock, ctx); err != nil {
+		return host.ResolvedLink{}, err
+	}
 	c.loop.Run(func() {
 		spawned.shipped = keyOf(scripts)
+		spawned.lock = lock
 		spawned.process.Send(ToWorker{Kind: ToWorkerStart, Address: address, Start: data, Scripts: scripts, Lock: lock})
 	})
 	if _, err := spawned.started.await(c.closingCtx); err != nil {
@@ -682,6 +702,14 @@ func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	child.started.reject(uncrossed(public))
 	child.ready.reject(uncrossed(public))
 	c.ended(child)
+	// A child a signal ended (SIGKILL) ran no exit hooks: its socket file would stay until the address's next start. Cleared
+	// in the queue, like a start's clear; a failure here is the next start's to report (it clears again).
+	if lock := child.lock; lock != "" && exit.Signal != nil {
+		c.enqueue(record, func() (struct{}, error) {
+			_, _ = ClearStaleLock(lock, chordctx.Background())
+			return struct{}{}, nil
+		})
+	}
 	if record.child != child {
 		return
 	}
