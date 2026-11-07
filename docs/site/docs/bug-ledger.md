@@ -1369,6 +1369,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d1cbde3](#bf-d1cbde3) | The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d1f258f](#bf-d1f258f) | The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d212cdf](#bf-d212cdf) | `pig --piglet piglets/standard/pig-standard.yaml` no longer warns on every start that its `piglogin`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d22ad24](#bf-d22ad24) | A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now… | PiG's own defect | All platforms | Unreleased |
 | [BF-d249c70](#bf-d249c70) | SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d26d494](#bf-d26d494) | fix(tui): Editor.SetText resets the scroll offset | PiG's own defect | All platforms | Unreleased |
 | [BF-d276c00](#bf-d276c00) | `pig piglet schema` lists the `apis` strip list | PiG's own defect | All platforms | 0.5.0 |
@@ -5390,9 +5391,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.
-- **Fix commits:** `34f110f09d` (2026-11-06), `28042f4fa6` (2026-11-07)
-- **Tests:** `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt`, `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessExitStopsTheWholeCell`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestTraceCulpritReadsOnlyGoAndLisp`, `test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished`, `test/extension-conformance/packed_crash_blame_test.go::TestPackedCrashBlameAcrossSDKs`
-- **Release note:** When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.
+- **Fix commits:** `34f110f09d` (2026-11-06), `28042f4fa6` (2026-11-07), `6c9d6559f6` (2026-11-07)
+- **Tests:** `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt`, `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessExitStopsTheWholeCell`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritReadsOnlyWhatEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritReadsOnlyWhatEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestProcessExitCode`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine` and 4 more in docs/bug-ledger.json
+- **Release note:** When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier or text an extension logged in the form of a panic or a backtrace: the host reads the Go trace only when the process exited with status 2 and no fatal error follows the panic, and the Lisp backtrace only when SBCL's unhandled-condition quit line follows it. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.
 
 ### BF-34f7594
 
@@ -20473,6 +20474,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `d212cdf056` (2026-10-13)
 - **Tests:** `coding/cli/standard_piglet_startup_test.go::TestStandardPigletStartsWithoutReplacedBuiltinWarning`
 - **Release note:** `pig --piglet piglets/standard/pig-standard.yaml` no longer warns on every start that its `piglogin` extension registers `/sprite`, so the built-in `pig-login` extension was not loaded. PiG Standard now strips the built-in `pig-login` (`strip.extensions: [pig-login]`), and its own `piglogin` extension owns `/sprite`.
+
+### BF-d22ad24
+
+**A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: <message>`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: <message>`.
+- **Root cause:** The Node editor host reported every failing component call as "editor failed: <message>". The Go, Rust, Python and Lisp SDKs name the method ("editor handleInput failed: bad key"). Pi has no text for this: an exception in a component's handleInput propagates out of the TUI, so the text is PiG's own and the SDKs now agree. The row that checks the text for the native SDKs does not run Node, whose editor is Pi's own CustomEditor in the extension process and has its own harness; a test of that harness covers the text, the finished key and the key after it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d22ad24247` (2026-11-07)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_editor_component_test.go::TestNodeEditorComponentFailureIsReportedLikeTheOtherSDKs`
+- **Release note:** A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: <message>`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: <message>`.
 
 ### BF-d249c70
 

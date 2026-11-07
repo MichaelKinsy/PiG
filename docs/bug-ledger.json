@@ -7821,7 +7821,7 @@
       "divergence": "D274",
       "removeWhen": "an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.",
       "fixedIn": "Unreleased",
-      "releaseNote": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.",
+      "releaseNote": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier or text an extension logged in the form of a panic or a backtrace: the host reads the Go trace only when the process exited with status 2 and no fatal error follows the panic, and the Lisp backtrace only when SBCL's unhandled-condition quit line follows it. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.",
       "origin": "release note",
       "commits": [
         {
@@ -7831,17 +7831,25 @@
         {
           "hash": "28042f4fa6",
           "date": "2026-11-07"
+        },
+        {
+          "hash": "6c9d6559f6",
+          "date": "2026-11-07"
         }
       ],
       "tests": [
         "coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt",
         "coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessExitStopsTheWholeCell",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritReadsOnlyWhatEndedTheProcess",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritReadsOnlyWhatEndedTheProcess",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestProcessExitCode",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine",
         "coding/extension/host/subprocess/packed_native_recovery_test.go::TestTraceCulpritReadsOnlyGoAndLisp",
         "test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished",
-        "test/extension-conformance/packed_crash_blame_test.go::TestPackedCrashBlameAcrossSDKs"
+        "test/extension-conformance/packed_crash_blame_test.go::TestPackedCrashBlameAcrossSDKs",
+        "test/extension-conformance/packed_crash_blame_test.go::TestPackedLispProcessEndedWithoutAnUnhandledConditionStopsTheWholeCell"
       ]
     },
     {
@@ -38622,6 +38630,28 @@
       "commitsFrom": "release note",
       "tests": [
         "coding/cli/standard_piglet_startup_test.go::TestStandardPigletStartsWithoutReplacedBuiltinWarning"
+      ]
+    },
+    {
+      "id": "BF-d22ad24",
+      "title": "A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now…",
+      "symptom": "A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: \u003cmessage\u003e`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: \u003cmessage\u003e`.",
+      "rootCause": "The Node editor host reported every failing component call as \"editor failed: \u003cmessage\u003e\". The Go, Rust, Python and Lisp SDKs name the method (\"editor handleInput failed: bad key\"). Pi has no text for this: an exception in a component's handleInput propagates out of the TUI, so the text is PiG's own and the SDKs now agree. The row that checks the text for the native SDKs does not run Node, whose editor is Pi's own CustomEditor in the extension process and has its own harness; a test of that harness covers the text, the finished key and the key after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: \u003cmessage\u003e`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: \u003cmessage\u003e`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d22ad24247",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_editor_component_test.go::TestNodeEditorComponentFailureIsReportedLikeTheOtherSDKs"
       ]
     },
     {
