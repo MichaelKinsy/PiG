@@ -32,7 +32,7 @@ Port to Go, not to another language. A Go extension on PiG's public SDK can be f
   export PATH="$PWD/dist/bin:$PATH"
   ```
 
-  `npm run build:pigeq` and `npm run build:piglet` check `PIG_BIN` against the PiG version that Pigpen requires, which `scripts/pig-requirement.json` in the checkout names. Use a `pig` that meets it.
+  `npm run build:pigeq` and `npm run build:piglet` refuse a `PIG_BIN` whose major and minor version differ from the version in `scripts/pig-requirement.json` in the checkout, or whose patch version is lower. Use a `pig` with that major and minor version.
 
 - A Git checkout of the PiG source that your `pig` was built from. The binary build in step 8 compiles the extension against it. `pigeq source` makes one:
 
@@ -55,7 +55,7 @@ The `pig-extension-porter` Piglet selects the Skill and the equivalence tools. P
 pig piglet pull 'github:MichaelKinsy/pigpen/pig-extension-porter@0.1.1'
 ```
 
-The command prints a `binary:` line. Run the file on that line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. [Add a Piglet from Pigpen](/docs/latest/piglets#add-a-piglet-from-pigpen) explains the pull and the signature checks.
+The command prints a `binary:` line. Run the file on that line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. It carries the PiG version it was built with, which `--version` prints. Version 0.1.1 of the porter is PiG 0.5.3, which can be older than your `pig`. [Add a Piglet from Pigpen](/docs/latest/piglets#add-a-piglet-from-pigpen) explains the pull. [Piglet Binaries](/docs/latest/piglet-binaries#pull-a-published-binary) explains the signature checks.
 
 The proof steps need `pigeq` and the Pigpen checkout in any case. To use the Skill text of Pigpen's main branch, which can be newer than a release, run the Piglet from the checkout:
 
