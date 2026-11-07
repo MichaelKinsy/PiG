@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -15,12 +14,9 @@ func init() {
 }
 
 func createPackedLispUIConfigs() ([]subprocess.ExtConfig, error) {
-	peer := filepath.Join(fixtureRoot, "packed-ui-lisp", "ui-peer")
-	if err := os.MkdirAll(peer, 0o700); err != nil {
-		return nil, err
-	}
+	peer := filepath.Join(sharedSources, "packed-ui-lisp", "ui-peer")
 	body := "(defpackage \"ui-peer\" (:use \"COMMON-LISP\"))\n(in-package \"ui-peer\")\n(defun new-extension () (pig:make-extension \"ui-peer\"))\n"
-	if err := os.WriteFile(filepath.Join(peer, "ui-peer.lisp"), []byte(body), 0o600); err != nil {
+	if err := writeSharedSource(filepath.Join(peer, "ui-peer.lisp"), body); err != nil {
 		return nil, err
 	}
 	configs := []subprocess.ExtConfig{
@@ -30,7 +26,7 @@ func createPackedLispUIConfigs() ([]subprocess.ExtConfig, error) {
 	for i := range configs {
 		cfg := &configs[i]
 		cfg.Enabled, cfg.RuntimeKind, cfg.RuntimeLanguage, cfg.Isolation, cfg.EntrypointKind = true, "subprocess", "lisp", "shared-ok", "factory"
-		cfg.Factory, cfg.SDKName, cfg.ContentHash = "new-extension", "pig-sdk-lisp", "packed-ui-lisp-"+cfg.Name
+		cfg.Factory, cfg.SDKName, cfg.ContentHash = "new-extension", "pig-sdk-lisp", "packed-ui-lisp-"+cfg.Name+"-"+sourceHash(body)
 	}
 	return configs, nil
 }

@@ -193,7 +193,7 @@ func (c *objCompiler) compileDraft4(s *Schema) error {
 			} else {
 				s.Format = c.c.formats[*f]
 				if s.Format == nil {
-					s.Format = formats[*f]
+					s.Format = builtinFormat(*f)
 				}
 			}
 		}
@@ -240,13 +240,13 @@ func (c *objCompiler) compileDraft7(s *Schema) error {
 		if ce := c.strVal("contentEncoding"); ce != nil {
 			s.ContentEncoding = c.c.decoders[*ce]
 			if s.ContentEncoding == nil {
-				s.ContentEncoding = decoders[*ce]
+				s.ContentEncoding = builtinDecoder(*ce)
 			}
 		}
 		if cm := c.strVal("contentMediaType"); cm != nil {
 			s.ContentMediaType = c.c.mediaTypes[*cm]
 			if s.ContentMediaType == nil {
-				s.ContentMediaType = mediaTypes[*cm]
+				s.ContentMediaType = builtinMediaType(*cm)
 			}
 		}
 	}

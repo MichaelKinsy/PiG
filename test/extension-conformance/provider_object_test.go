@@ -240,14 +240,10 @@ func providerPeer(t *testing.T, root string, native subprocess.ExtConfig) subpro
 	peer := native
 	peer.Name = "provider-peer"
 	// Owner and reader roles use the same peer source and artifact, but start fresh cells.
-	peer.Source = filepath.Join(fixtureRoot, "provider-peer-"+native.RuntimeLanguage)
+	peer.Source = filepath.Join(sharedSources, "provider-peer-"+native.RuntimeLanguage)
 	write := func(path, content string) {
 		t.Helper()
-		target := filepath.Join(peer.Source, path)
-		if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(target, []byte(content), 0600); err != nil {
+		if err := writeSharedSource(filepath.Join(peer.Source, path), content); err != nil {
 			t.Fatal(err)
 		}
 	}

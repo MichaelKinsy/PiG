@@ -118267,6 +118267,17 @@
       "shapeHash": "sha256:30d202c37121eba0366f3f0891e1f1ee959b08a88a7981ab931ed2473fd90e7a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#stockManifest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
+      "name": "stockManifest",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#untarNodeSources",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
       "name": "untarNodeSources",
@@ -293517,6 +293528,28 @@
         "type": "func(id string, config providerConfig) ProviderConfigInput"
       },
       "shapeHash": "sha256:c98c3b8087d1924337c1271e252be9da7c314ee2d1ebcfe98c952b133a18568d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#providerOrderCache",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "providerOrderCache",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{mu sync.Mutex; valid bool; data string; order []string}"
+      },
+      "shapeHash": "sha256:8fdace308dd995d7846c9bf088156ad9f6416df92d54df350e5dc0ab3e6deffa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#providerOrderOf",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "providerOrderOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) []string"
+      },
+      "shapeHash": "sha256:16b3f80e8b708dd877fa5349ef16d4fe5eead1c2d3eba1bef58b7cea77391361"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#quarantineDirName",

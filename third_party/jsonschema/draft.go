@@ -9,16 +9,17 @@ import (
 
 // A Draft represents json-schema specification.
 type Draft struct {
-	version       int
-	url           string
-	sch           *Schema             // metaschema, compiled on first use by compileMeta
-	id            string              // property name used to represent id
-	subschemas    []SchemaPath        // locations of subschemas
-	vocabPrefix   string              // prefix used for vocabulary
-	allVocabs     map[string]struct{} // names of supported vocabs
-	vocabSchemas  map[string]*Schema  // schemas of allVocabs, compiled with sch
-	defaultVocabs []string            // names of default vocabs
-	metaOnce      sync.Once
+	version        int
+	url            string
+	sch            *Schema            // metaschema, compiled on first use by compileMeta
+	id             string             // property name used to represent id
+	subschemas     []SchemaPath       // locations of subschemas
+	vocabPrefix    string             // prefix used for vocabulary
+	allVocabs      []string           // names of supported vocabs
+	vocabSchemas   map[string]*Schema // schemas of allVocabs, compiled with sch
+	defaultVocabs  []string           // names of default vocabs
+	metaOnce       sync.Once
+	subschemasOnce sync.Once
 }
 
 // String returns the specification url.
@@ -26,12 +27,61 @@ func (d *Draft) String() string {
 	return d.url
 }
 
+// The Draft values hold only constants, so the linker lays them out statically and no package initializer allocates for them: the locations of
+// subschemas, which schemaPath builds, are computed on a draft's first use (subschemaPaths). PiG fork: v6.0.2 built all of them in a package init().
 var (
 	Draft4 = &Draft{
-		version: 4,
-		url:     "http://json-schema.org/draft-04/schema",
-		id:      "id",
-		subschemas: []SchemaPath{
+		version:       4,
+		url:           "http://json-schema.org/draft-04/schema",
+		id:            "id",
+		vocabPrefix:   "",
+		allVocabs:     nil,
+		defaultVocabs: []string{},
+	}
+
+	Draft6 = &Draft{
+		version:       6,
+		url:           "http://json-schema.org/draft-06/schema",
+		id:            "$id",
+		vocabPrefix:   "",
+		allVocabs:     nil,
+		defaultVocabs: []string{},
+	}
+
+	Draft7 = &Draft{
+		version:       7,
+		url:           "http://json-schema.org/draft-07/schema",
+		id:            "$id",
+		vocabPrefix:   "",
+		allVocabs:     nil,
+		defaultVocabs: []string{},
+	}
+
+	Draft2019 = &Draft{
+		version:       2019,
+		url:           "https://json-schema.org/draft/2019-09/schema",
+		id:            "$id",
+		vocabPrefix:   "https://json-schema.org/draft/2019-09/vocab/",
+		allVocabs:     []string{"core", "applicator", "validation", "meta-data", "format", "content"},
+		defaultVocabs: []string{"core", "applicator", "validation"},
+	}
+
+	Draft2020 = &Draft{
+		version:       2020,
+		url:           "https://json-schema.org/draft/2020-12/schema",
+		id:            "$id",
+		vocabPrefix:   "https://json-schema.org/draft/2020-12/vocab/",
+		allVocabs:     []string{"core", "applicator", "unevaluated", "validation", "meta-data", "format-annotation", "format-assertion", "content"},
+		defaultVocabs: []string{"core", "applicator", "unevaluated", "validation"},
+	}
+
+	draftLatest = Draft2020
+)
+
+// subschemaPaths returns where the draft's keywords hold subschemas, built on the first call: each draft's list is the earlier draft's with its own additions.
+func (d *Draft) subschemaPaths() []SchemaPath {
+	d.subschemasOnce.Do(func() {
+		paths := []SchemaPath{
 			// type agonistic
 			schemaPath("definitions/*"),
 			schemaPath("not"),
@@ -47,85 +97,29 @@ var (
 			schemaPath("items/[]"),
 			schemaPath("additionalItems"),
 			schemaPath("dependencies/*"),
-		},
-		vocabPrefix:   "",
-		allVocabs:     map[string]struct{}{},
-		defaultVocabs: []string{},
-	}
-
-	Draft6 = &Draft{
-		version: 6,
-		url:     "http://json-schema.org/draft-06/schema",
-		id:      "$id",
-		subschemas: joinSubschemas(Draft4.subschemas,
-			schemaPath("propertyNames"),
-			schemaPath("contains"),
-		),
-		vocabPrefix:   "",
-		allVocabs:     map[string]struct{}{},
-		defaultVocabs: []string{},
-	}
-
-	Draft7 = &Draft{
-		version: 7,
-		url:     "http://json-schema.org/draft-07/schema",
-		id:      "$id",
-		subschemas: joinSubschemas(Draft6.subschemas,
-			schemaPath("if"),
-			schemaPath("then"),
-			schemaPath("else"),
-		),
-		vocabPrefix:   "",
-		allVocabs:     map[string]struct{}{},
-		defaultVocabs: []string{},
-	}
-
-	Draft2019 = &Draft{
-		version: 2019,
-		url:     "https://json-schema.org/draft/2019-09/schema",
-		id:      "$id",
-		subschemas: joinSubschemas(Draft7.subschemas,
-			schemaPath("$defs/*"),
-			schemaPath("dependentSchemas/*"),
-			schemaPath("unevaluatedProperties"),
-			schemaPath("unevaluatedItems"),
-			schemaPath("contentSchema"),
-		),
-		vocabPrefix: "https://json-schema.org/draft/2019-09/vocab/",
-		allVocabs: map[string]struct{}{
-			"core":       {},
-			"applicator": {},
-			"validation": {},
-			"meta-data":  {},
-			"format":     {},
-			"content":    {},
-		},
-		defaultVocabs: []string{"core", "applicator", "validation"},
-	}
-
-	Draft2020 = &Draft{
-		version: 2020,
-		url:     "https://json-schema.org/draft/2020-12/schema",
-		id:      "$id",
-		subschemas: joinSubschemas(Draft2019.subschemas,
-			schemaPath("prefixItems/[]"),
-		),
-		vocabPrefix: "https://json-schema.org/draft/2020-12/vocab/",
-		allVocabs: map[string]struct{}{
-			"core":              {},
-			"applicator":        {},
-			"unevaluated":       {},
-			"validation":        {},
-			"meta-data":         {},
-			"format-annotation": {},
-			"format-assertion":  {},
-			"content":           {},
-		},
-		defaultVocabs: []string{"core", "applicator", "unevaluated", "validation"},
-	}
-
-	draftLatest = Draft2020
-)
+		}
+		if d.version >= 6 {
+			paths = append(paths, schemaPath("propertyNames"), schemaPath("contains"))
+		}
+		if d.version >= 7 {
+			paths = append(paths, schemaPath("if"), schemaPath("then"), schemaPath("else"))
+		}
+		if d.version >= 2019 {
+			paths = append(paths,
+				schemaPath("$defs/*"),
+				schemaPath("dependentSchemas/*"),
+				schemaPath("unevaluatedProperties"),
+				schemaPath("unevaluatedItems"),
+				schemaPath("contentSchema"),
+			)
+		}
+		if d.version >= 2020 {
+			paths = append(paths, schemaPath("prefixItems/[]"))
+		}
+		d.subschemas = paths
+	})
+	return d.subschemas
+}
 
 // compileMeta compiles the draft's metaschema and vocabulary schemas, once, on the draft's first use. PiG fork: v6.0.2 compiled every draft's in a package init().
 func (d *Draft) compileMeta() {
@@ -134,7 +128,7 @@ func (d *Draft) compileMeta() {
 		c.AssertFormat()
 		d.sch = c.MustCompile(d.url)
 		vocabSchemas := make(map[string]*Schema, len(d.allVocabs))
-		for name := range d.allVocabs {
+		for _, name := range d.allVocabs {
 			vocabSchemas[name] = c.MustCompile(strings.TrimSuffix(d.url, "schema") + "meta/" + name)
 		}
 		d.vocabSchemas = vocabSchemas
@@ -208,7 +202,7 @@ func (d *Draft) getVocabs(url url, doc any, vocabularies map[string]*Vocabulary)
 		}
 		name, ok := strings.CutPrefix(vocab, d.vocabPrefix)
 		if ok {
-			if _, ok := d.allVocabs[name]; ok {
+			if slices.Contains(d.allVocabs, name) {
 				if !slices.Contains(vocabs, name) {
 					vocabs = append(vocabs, name)
 					continue
@@ -358,10 +352,3 @@ func (e *DuplicateAnchorError) Error() string {
 }
 
 // --
-
-func joinSubschemas(a1 []SchemaPath, a2 ...SchemaPath) []SchemaPath {
-	var a []SchemaPath
-	a = append(a, a1...)
-	a = append(a, a2...)
-	return a
-}

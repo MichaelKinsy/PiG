@@ -4,13 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/third_party/jsonschema/kind"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
 
-var defaultPrinter = message.NewPrinter(language.English)
+var (
+	defaultPrinterOnce sync.Once
+	defaultPrinterVal  *message.Printer
+)
+
+// defaultPrinter is the English printer of Error, GoString and the outputs, made on the first message. PiG fork: v6.0.2 made it in a package init().
+func defaultPrinter() *message.Printer {
+	defaultPrinterOnce.Do(func() { defaultPrinterVal = message.NewPrinter(language.English) })
+	return defaultPrinterVal
+}
 
 // format ---
 
@@ -81,7 +91,7 @@ func (e *ValidationError) display(sb *strings.Builder, verbose bool, indent int,
 }
 
 func (e *ValidationError) Error() string {
-	return e.LocalizedError(defaultPrinter)
+	return e.LocalizedError(defaultPrinter())
 }
 
 func (e *ValidationError) LocalizedError(p *message.Printer) string {
@@ -91,7 +101,7 @@ func (e *ValidationError) LocalizedError(p *message.Printer) string {
 }
 
 func (e *ValidationError) GoString() string {
-	return e.LocalizedGoString(defaultPrinter)
+	return e.LocalizedGoString(defaultPrinter())
 }
 
 func (e *ValidationError) LocalizedGoString(p *message.Printer) string {
@@ -147,7 +157,7 @@ func (k OutputError) MarshalJSON() ([]byte, error) {
 
 // The `Basic` structure, a flat list of output units.
 func (e *ValidationError) BasicOutput() *OutputUnit {
-	return e.LocalizedBasicOutput(defaultPrinter)
+	return e.LocalizedBasicOutput(defaultPrinter())
 }
 
 func (e *ValidationError) LocalizedBasicOutput(p *message.Printer) *OutputUnit {
@@ -157,7 +167,7 @@ func (e *ValidationError) LocalizedBasicOutput(p *message.Printer) *OutputUnit {
 
 // The `Detailed` structure, based on the schema.
 func (e *ValidationError) DetailedOutput() *OutputUnit {
-	return e.LocalizedDetailedOutput(defaultPrinter)
+	return e.LocalizedDetailedOutput(defaultPrinter())
 }
 
 func (e *ValidationError) LocalizedDetailedOutput(p *message.Printer) *OutputUnit {
