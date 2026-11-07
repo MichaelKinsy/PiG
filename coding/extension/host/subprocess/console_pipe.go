@@ -31,6 +31,7 @@ const (
 	consoleMarkerSeqDigits = 16
 	// consoleFlushWait bounds how long flush waits for the copy: the log it protects is read for a failure diagnostic, never for extension work.
 	consoleFlushWait  = stderrDrainWait
+	// pig divergence (D56): the host-side copy of an extension's output pipe reads into one fixed buffer, so a stalled terminal slows only the extension that writes.
 	consoleBufferSize = 32 << 10
 )
 
