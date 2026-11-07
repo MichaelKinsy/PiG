@@ -58,7 +58,7 @@ Add a table to `harnesses.toml`. Pin the npm version, give the print-mode argv
 with `{prompt}`, and say which protocol it speaks (`api`) and how it learns the
 mock's base URL (`config`, `env`, or argv placeholders such as `{base_url}`).
 Unknown keys are rejected. Harnesses without a custom-endpoint mechanism set
-`mock = false` and run only in live evals. Set `own_version` when the harness's release version differs from its `--version` output. The argv's first output line must end with the release version. The report shows both. PiG uses `pig version` to record its release separately from the composite `<PiG release>+<Pi release>` printed by `pig --version` (D63).
+`mock = false` and run only in live evals. Set `own_version` when the harness's release version differs from its `--version` output. The argv's first output line must end with the release version. The report shows both. PiG uses `pig version` to record its release separately from the Pi version that `pig --version` prints.
 
 ## Adding a task
 

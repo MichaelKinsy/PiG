@@ -123,13 +123,10 @@ func selfUpdateVersion() string {
 	return PigVersion
 }
 
-// cliVersionString is the `pig --version` output.
+// cliVersionString is the `pig --version` output: what `pi --version` prints, the package version of the pinned Pi build.
+// PiG's own release is in `pig version`, the help and diagnostics banner and the interactive startup line.
 func cliVersionString() string {
-	// pig divergence (D63): --version defaults to PiG's composite version; the product-neutral PIG_VERSION_FORMAT=pi opt-in exposes the pinned Pi package version, which is what `pi --version` prints, for Pi-compatible launchers.
-	if os.Getenv("PIG_VERSION_FORMAT") == "pi" { //perf:ok --version runs once at process start
-		return UpstreamPackageVersion
-	}
-	return Version
+	return UpstreamPackageVersion
 }
 
 // versionString returns pig's self-identification string for help

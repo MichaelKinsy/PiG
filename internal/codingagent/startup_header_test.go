@@ -116,7 +116,7 @@ func BenchmarkBuiltInHeaderRender(b *testing.B) {
 }
 
 // Pi's built-in header is expandable startup help, not a cwd/config/bin report.
-// Upstream shows the pi logo beside the version (interactive-mode.ts:998-1006); D2 replaces the logo with the PiG pig head, changes the onboarding text, and D63 the composite version. At 120 columns every line fits beside the head.
+// Upstream shows the pi logo beside the version (interactive-mode.ts:998-1006); D2 replaces the logo with the PiG pig head, changes the onboarding text and shows the composite version. At 120 columns every line fits beside the head.
 func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 	isolatePigHome(t)
 	km := &KeybindingsManager{definitions: appKeybindingDefinitions, ordered: appKeybindingOrder, platform: tui.HostKeybindingPlatform()}

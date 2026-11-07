@@ -29,7 +29,7 @@ The build exits 0 without output. The version command prints this captured resul
 0.2.0+0.87.1
 ```
 
-This is an observed build identity, not a version to hard-code into scripts. PiG prints its own release followed by the Pi pin as build metadata ([D63](../parity/DIVERGENCES.md#d63---version-prints-pigs-composite-version)). The pin comes from [`internal/coding/pigversion/pigversion.go`](../../internal/coding/pigversion/pigversion.go).
+This is an observed build identity, not a version to hard-code into scripts. The captured result is PiG's composite version, its own release followed by the Pi pin as build metadata, which `pig --version` printed when this was recorded. It now prints only the pinned Pi version, as `pi --version` does; `pig version` names both. The pin comes from [`internal/coding/pigversion/pigversion.go`](../../internal/coding/pigversion/pigversion.go).
 
 ### Public installation paths: unavailable in this verification
 

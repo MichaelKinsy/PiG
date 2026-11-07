@@ -13,7 +13,7 @@ PiG targets one Pi build. `.upstream/pin` names it, and every other statement of
 | `package_version` | What Pi's `package.json` files and `pi --version` report (`1.1.0`). |
 | `version` | The display and ledger version: the package version for a tag, `<package_version>+<commit[:8]>` for a commit. Ledgers and inventories are named by it (`mapping-v1.1.0+42a3497d.json`), and so is the mirror (`.upstream/v1.1.0+42a3497d`). |
 
-In Go, `coding.UpstreamVersion` is the display version, `coding.UpstreamPackageVersion` the package version, `coding.UpstreamCommit` the commit and `coding.UpstreamRef` the ref. A parity comparison against `pi --version`, an npm dependency or a `package.json` uses the package version. A file name, ledger field or the coverage label uses the display version. [D63](DIVERGENCES.md#d63---version-prints-pigs-composite-version) states the composite `--version`.
+In Go, `coding.UpstreamVersion` is the display version, `coding.UpstreamPackageVersion` the package version, `coding.UpstreamCommit` the commit and `coding.UpstreamRef` the ref. A parity comparison against `pi --version`, an npm dependency or a `package.json` uses the package version. A file name, ledger field or the coverage label uses the display version. `pig --version` prints the package version, as `pi --version` does.
 
 ## Reading and overriding the pin
 

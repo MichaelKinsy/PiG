@@ -159,7 +159,7 @@ done
 {
 	echo "date: $(date -u +%Y-%m-%dT%H:%MZ)"
 	echo "host: $(uname -srm), $(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu) cpus, load $(load1)"
-	echo "pig: $PIG_SHA ($("$PIG" --version 2>/dev/null | head -1))"
+	echo "pig: $PIG_SHA ($("$PIG" version 2>/dev/null | head -1))"
 	echo "pi-bolt: $BOLT_TAG $BOLT_COMMIT, release sha256 $(bolt_sha256 "$PLATFORM") ($("$BOLT" --version 2>/dev/null | head -1))"
 	echo "rounds: $ROUNDS, rows: $ROWS, quick: $QUICK"
 } >>"$OUT/environment.txt"

@@ -13,7 +13,7 @@
 # resources." and listed the skill.
 # Crop from the first hint through the editor's top border, so the crop holds
 # the whole region where the listing would follow the header; the logo and
-# version are D2/D63 and are covered by 00-startup-banner.
+# version are D2 and are covered by 00-startup-banner.
 name = "14-startup-quiet-header"
 description = "quietStartup \"header\" keeps the compact startup header, drops the loaded-resources hint and hides the resource listing."
 covers = [

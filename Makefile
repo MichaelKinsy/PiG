@@ -176,7 +176,7 @@ install: node-runtime ## Install a stripped pig to PIG_BIN (default ~/.local/bin
 	@mkdir -p $(dir $(PIG_BIN))
 	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X github.com/MichaelKinsy/PiG/coding/cli.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PIG_BIN) ./cmd/pig
 	@[ "$$(uname -s)" = "Darwin" ] && command -v codesign >/dev/null 2>&1 && codesign --force --sign - $(PIG_BIN) >/dev/null 2>&1 || true
-	@echo "installed: $$($(PIG_BIN) --version) → $(PIG_BIN)"
+	@echo "installed: $$($(PIG_BIN) version | sed -n 1p) → $(PIG_BIN)"
 
 # build-env-daemons: one static pi-env daemon per remote system the SSH bootstrap supports, laid out as the bootstrap
 # looks for them: $(ENV_DAEMON_DIR)/pi-env-<platform>-<arch>/pi-env[.exe]. Go links GOOS=android only with cgo, except on

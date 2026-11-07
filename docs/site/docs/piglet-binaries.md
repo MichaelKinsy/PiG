@@ -89,7 +89,7 @@ pig piglet list
 ```
 
 ```text
-0.5.0+1.2.0
+1.2.0
 ```
 
 ```text

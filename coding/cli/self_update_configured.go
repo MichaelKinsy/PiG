@@ -63,7 +63,7 @@ func runConfiguredSelfUpdate(argv []string, force bool) int {
 	if reported == "" {
 		reported = "no version"
 	}
-	fmt.Println(chalkYellow(fmt.Sprintf("Ran %s, but `%s --version` reports %s, not %s.", command.Display, codingagent.AppName, reported, manifest.Version)))
+	fmt.Println(chalkYellow(fmt.Sprintf("Ran %s, but `%s version` reports %s, not %s.", command.Display, codingagent.AppName, reported, manifest.Version)))
 	return 0
 }
 
@@ -73,7 +73,7 @@ func sameRelease(installed, want string) bool {
 }
 
 // installedVersionAfterUpdate is the release version when the command replaced this executable in place and the
-// replaced executable reports it, else the version `pig --version` prints from PATH, the pig the user runs next. Empty
+// replaced executable reports it, else the version `pig version` prints from PATH, the pig the user runs next. Empty
 // when neither answers. Ports package-manager-cli.ts runConfiguredSelfUpdate: the in-place result counts only when it
 // equals the release.
 func installedVersionAfterUpdate(want string) string {
@@ -89,14 +89,14 @@ func installedVersionAfterUpdate(want string) string {
 	return readVersionOf(path)
 }
 
-// readVersionOf runs `path --version`. The package directory overrides name this installation and would make the new
-// pig report the old version; PIG_VERSION_FORMAT (D63) would make it print the pinned Pi version, which never equals a
-// PiG release, while self-update comparisons use PiG's own version.
+// readVersionOf runs `path version` and returns the PiG release in its `pig:` line. `--version` prints Pi's version, which
+// never equals a PiG release, while self-update comparisons use PiG's own version. The package directory overrides name
+// this installation and would make the new pig report the old version.
 func readVersionOf(path string) string {
 	var env []string
 	for _, kv := range os.Environ() {
 		switch {
-		case strings.HasPrefix(kv, "PIG_PACKAGE_DIR="), strings.HasPrefix(kv, "PI_PACKAGE_DIR="), strings.HasPrefix(kv, "PIG_VERSION_FORMAT="):
+		case strings.HasPrefix(kv, "PIG_PACKAGE_DIR="), strings.HasPrefix(kv, "PI_PACKAGE_DIR="):
 		default:
 			env = append(env, kv)
 		}
@@ -104,11 +104,11 @@ func readVersionOf(path string) string {
 	//portlint:allow ctxbackground Pi's readVersionOnPath (package-manager-cli.ts:775) is a synchronous spawn with no AbortSignal; the timeout is pig's bound on it
 	ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)
 	defer cancel()
-	cmd := crossspawn.Command(ctx, "", filepath.Clean(path), "--version")
+	cmd := crossspawn.Command(ctx, "", filepath.Clean(path), "version")
 	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return versionCommandField(string(out), "pig")
 }

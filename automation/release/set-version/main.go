@@ -184,12 +184,12 @@ func prepare(root string, opt options) (*plan, error) {
 	return p, nil
 }
 
-// readmeVersionExample is the README sentence that shows the composite `pig --version` value. Its Pi half is the pin's, which
+// readmeVersionExample is the README sentence that shows the composite version of the help banner and the startup line. Its Pi half is the pin's, which
 // automation/pin/pin.py rewrites (readme in pin.py matches the same sentence); its PiG half is the release, which this command writes.
 // test/docs-drift TestProseNamesTheCurrentPin fails the sentence when either half disagrees with internal/coding/pigversion.
-var readmeVersionExample = regexp.MustCompile("(prints PiG's version as `<PiG release>\\+<Pi release>`, for example `)\\d+\\.\\d+\\.\\d+(\\+[^`]+`)")
+var readmeVersionExample = regexp.MustCompile("(print PiG's version as `<PiG release>\\+<Pi release>`, for example `)\\d+\\.\\d+\\.\\d+(\\+[^`]+`)")
 
-// updateReadmeExample writes version into the README's `pig --version` example. An absent README is skipped, so a checkout that does not
+// updateReadmeExample writes version into the README's composite version example. An absent README is skipped, so a checkout that does not
 // carry one is unaffected; a README without the sentence is an error, because the drift check would then fail the release.
 func (p *plan) updateReadmeExample(version string) error {
 	const readme = "README.md"
@@ -201,7 +201,7 @@ func (p *plan) updateReadmeExample(version string) error {
 		return err
 	}
 	if len(readmeVersionExample.FindAll(data, -1)) != 1 {
-		return fmt.Errorf("%s: expected one `pig --version` example to update", readme)
+		return fmt.Errorf("%s: expected one composite version example to update", readme)
 	}
 	p.after[readme] = readmeVersionExample.ReplaceAll(data, []byte("${1}"+version+"${2}"))
 	return nil

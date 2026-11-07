@@ -9,7 +9,7 @@ The lock is JSON. Each arm has an exact version, a source, and checksums:
             size (bytes of that tarball); optional install_lock (Pi: the package.json and package-lock.json pair its release publishes,
             checked against the release's SHA256SUMS) and vendor_manifest (Claude Code: the vendor's per-platform checksum and size)
   release   a GitHub release: release (base URL, asset name per platform, checksum source, executable name), assets (name, sha256, size per platform), version
-  checkout  built from this repository: version prefix `pig --version` must print
+  checkout  built from this repository: version prefix `pig version` must print
 
 Nothing in this file names a person, host or private path. Pinned CLIs are installed only into a throwaway directory
 that is deleted after the run (see arms.Workspace); they are never committed.
