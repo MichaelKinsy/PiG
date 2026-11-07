@@ -76,7 +76,7 @@ func TestFindInitialModelUsesAvailableSnapshotAndSavedIdentity(t *testing.T) {
 		},
 		{
 			name:      "provider declaration order precedes snapshot order",
-			available: []RuntimeModel{{Provider: "openai", ID: "gpt-6.1-sol"}, {Provider: "anthropic", ID: "claude-opus-4-8"}},
+			available: []RuntimeModel{{Provider: "openai", ID: "gpt-6.1-sol"}, {Provider: "anthropic", ID: "claude-opus-5-5"}},
 			want:      "anthropic/claude-opus-5-5", thinking: DefaultThinkingLevel, calls: []string{"available"},
 		},
 	} {
