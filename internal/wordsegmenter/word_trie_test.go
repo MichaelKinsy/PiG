@@ -71,7 +71,7 @@ func loadFlat(t *testing.T, c dictionaryCase) flatIndex {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	zr, err := gzip.NewReader(file)
 	if err != nil {
 		t.Fatal(err)
@@ -192,8 +192,8 @@ func TestEmbeddedTriesMatchTheFlatIndexes(t *testing.T) {
 				labels := labelsOf(word, c.runes)
 				cursor := c.trie.root()
 				var step trieStep
-				ok := true
 				for _, l := range labels {
+					var ok bool
 					if step, ok = c.trie.step(&cursor, l); !ok {
 						t.Fatalf("word %d %q is not found", i, word)
 					}

@@ -2101,14 +2101,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/pigsdk/pigsdk.go"
-func = "sdkBundle.computeHash"
-pattern = "pool-uncapped"
-detail = "sync.Pool.Put"
-count = 1
-class = "cold: once per SDK bundle hash"
-
-[[hit]]
-file = "coding/extension/pigsdk/pigsdk.go"
 func = "settleStaging"
 pattern = "env-stat"
 detail = "os.Lstat"

@@ -32,7 +32,7 @@ func decodeChangelog() string {
 		panic("pig: embedded CHANGELOG.md.zst: " + err.Error())
 	}
 	// The decoded buffer is this call's own and is never written again, so the string takes it without a second copy of the whole changelog.
-	return unsafe.String(unsafe.SliceData(text), len(text))
+	return unsafe.String(unsafe.SliceData(text), len(text)) //nolint:gosec // G103: text is this call's own buffer and is never written again, so the string aliases it without a second 1 MB copy; nothing else holds the slice
 }
 
 // Changelog returns the bundled CHANGELOG.md, decoded on each call and not cached. Read by internal/codingagent's
