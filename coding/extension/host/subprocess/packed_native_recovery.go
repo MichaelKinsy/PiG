@@ -60,19 +60,35 @@ func traceCulprit(trace []byte, members []nativeMember) string {
 	return ""
 }
 
-// goTraceCulprit reads the goroutine that was running when the process died ("goroutine N [running]:") from the innermost frame out, the goroutine's
-// creator last ("created by pkg.fn in goroutine M"), and returns the member that owns the first frame it can attribute. A frame belongs to the member whose
-// import path is its package's, else to the one member whose module holds the package. The SDK's and the runner's frames name nobody.
+// goTraceCulprit reads the trace of the panic that ended the process: the section the Go runtime writes for an unrecovered panic, which starts at the last line
+// that begins "panic: " and holds the goroutine that was running ("goroutine N [running]:"). The goroutine's frames, innermost first, and the goroutine's creator
+// ("created by pkg.fn in goroutine M") name the member whose package is a frame's: its import path, else the one member whose module holds the package. The
+// SDK's and the runner's frames name nobody. Nothing before that section decides: the blocks the SDK writes for the panics it recovered ("goroutine N [running]:"
+// after "extension: recovered from panic ...") are handled failures, and a process that ended by os.Exit, a runtime fatal error or a kill wrote no such section
+// and names no one. A trace that names two members names no one.
 func goTraceCulprit(trace []byte, members []nativeMember) string {
-	inRunning := false
+	var lines []string
 	for rawLine := range bytes.Lines(trace) {
-		line := strings.TrimRight(string(rawLine), "\r\n")
+		lines = append(lines, strings.TrimRight(string(rawLine), "\r\n"))
+	}
+	section := -1
+	for i, line := range lines {
+		if strings.HasPrefix(line, "panic: ") {
+			section = i
+		}
+	}
+	if section < 0 {
+		return ""
+	}
+	owners := map[string]bool{}
+	seen, inRunning := false, false
+	for _, line := range lines[section+1:] {
 		switch {
 		case strings.HasPrefix(line, "goroutine ") && strings.HasSuffix(line, ":"):
-			if inRunning {
-				return ""
+			if seen {
+				return soleOwner(owners)
 			}
-			inRunning = strings.Contains(line, "[running")
+			seen, inRunning = true, strings.Contains(line, "[running")
 			continue
 		case !inRunning, line == "", line[0] == '\t', line[0] == ' ':
 			continue
@@ -82,10 +98,10 @@ func goTraceCulprit(trace []byte, members []nativeMember) string {
 			continue
 		}
 		if name := goFramePackageOwner(function, members); name != "" {
-			return name
+			owners[name] = true
 		}
 	}
-	return ""
+	return soleOwner(owners)
 }
 
 // goFramePackageOwner returns the member that owns the package of a stack frame's function name ("example.com/ext.(*T).Method(0xc0)" has package
@@ -115,28 +131,82 @@ func goFramePackageOwner(function string, members []nativeMember) string {
 	return ""
 }
 
-// lispTraceCulprit reads the backtrace SBCL prints for the thread an unhandled condition ended ("Backtrace for: ..."), innermost frame first, and returns
-// the member whose package qualifies the first symbol it can attribute.
+// lispTraceCulprit reads the backtrace SBCL prints for the thread an unhandled condition ended (the last "Backtrace for: ..." section), and returns the one
+// member whose package qualifies the function of one of its frames. Only a frame's function counts: the arguments SBCL prints after it include the condition's
+// text ("3: (ERROR \"sibling: connection lost\")"), which names nobody. Frames that name two members, or none, name no one.
 func lispTraceCulprit(trace []byte, members []nativeMember) string {
+	var frames []string
 	inBacktrace := false
 	for rawLine := range bytes.Lines(trace) {
 		line := strings.TrimRight(string(rawLine), "\r\n")
 		if strings.HasPrefix(line, "Backtrace for:") {
-			inBacktrace = true
+			frames, inBacktrace = frames[:0], true
 			continue
 		}
-		if !inBacktrace {
-			continue
+		if frame, ok := lispFrameFunction(line); ok && inBacktrace {
+			frames = append(frames, frame)
 		}
+	}
+	owners := map[string]bool{}
+	for _, frame := range frames {
 		// SBCL prints a package whose name is not upper case between bars (|alpha|::NEW-EXTENSION); the reader folds the name to upper case.
-		upper := strings.ToUpper(strings.ReplaceAll(line, "|", ""))
+		upper := strings.ToUpper(strings.ReplaceAll(frame, "|", ""))
 		for _, member := range members {
 			if member.lispPkg != "" && lispSymbolIn(upper, member.lispPkg) {
-				return member.name
+				owners[member.name] = true
 			}
 		}
 	}
+	return soleOwner(owners)
+}
+
+// soleOwner is the one member of owners, or "" when it holds none or several: a trace that names two members stops the whole cell.
+func soleOwner(owners map[string]bool) string {
+	if len(owners) != 1 {
+		return ""
+	}
+	for name := range owners {
+		return name
+	}
 	return ""
+}
+
+// lispFrameFunction returns the function of a backtrace frame line "N: (FUNCTION args...)" or "N: ((LAMBDA ... :IN PKG::FN) args...)", without the string
+// literals SBCL prints in it, and whether the line is a frame.
+func lispFrameFunction(line string) (string, bool) {
+	number, rest, ok := strings.Cut(line, ": ")
+	if !ok || number == "" || strings.Trim(number, "0123456789") != "" || !strings.HasPrefix(rest, "(") {
+		return "", false
+	}
+	var stripped strings.Builder
+	inString := false
+	for i := 0; i < len(rest); i++ {
+		switch c := rest[i]; {
+		case inString && c == '\\':
+			i++
+		case c == '"':
+			inString = !inString
+		case !inString:
+			stripped.WriteByte(c)
+		}
+	}
+	rest = stripped.String()
+	if strings.HasPrefix(rest, "((") {
+		depth := 0
+		for i := 1; i < len(rest); i++ {
+			switch rest[i] {
+			case '(':
+				depth++
+			case ')':
+				if depth--; depth == 0 {
+					return rest[1 : i+1], true
+				}
+			}
+		}
+		return rest[1:], true
+	}
+	function, _, _ := strings.Cut(rest[1:], " ")
+	return strings.TrimRight(function, ")"), true
 }
 
 // lispSymbolIn reports whether line holds a symbol qualified by package pkg (upper case): "PKG:" or "PKG::" not preceded by a character of a longer name.

@@ -48,6 +48,24 @@ func TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess(t *testing.T) {
 			"",
 		},
 		"no trace": {"exit status 2\n", ""},
+		// The probes of the review: the shared log holds the blocks the SDK writes for the panics it recovers, and a process can end without a panic.
+		"an earlier recovered panic does not decide": {
+			"extension: recovered from panic in tool_call \"boom\": reach exploded\ngoroutine 247 [running]:\nruntime/debug.Stack()\n\t/go/src/runtime/debug/stack.go:26 +0x5e\nexample.test/beta/ext.Handler(0xc0)\n\texample.test/beta/ext/h.go:9 +0x1\n" +
+				"panic: crash of alpha\n\ngoroutine 23 [running]:\nexample.test/alpha.Extension.func1.1()\n\texample.test/alpha/ext.go:9 +0x25\ncreated by example.test/alpha.Extension.func1 in goroutine 22\n\texample.test/alpha/ext.go:8 +0x1\n",
+			"alpha",
+		},
+		"os.Exit after a recovered panic names no one": {
+			"extension: recovered from panic in tool_call \"boom\": reach exploded\ngoroutine 247 [running]:\nruntime/debug.Stack()\n\t/go/src/runtime/debug/stack.go:26 +0x5e\nexample.test/beta/ext.Handler(0xc0)\n\texample.test/beta/ext/h.go:9 +0x1\nexit status 3\n",
+			"",
+		},
+		"a runtime fatal error names no one": {
+			"fatal error: all goroutines are asleep - deadlock!\n\ngoroutine 1 [running]:\nexample.test/alpha.Wait()\n\t/x.go:1\n",
+			"",
+		},
+		"a trace that names two members names no one": {
+			"panic: boom\n\ngoroutine 5 [running]:\nexample.test/alpha.Run()\n\t/x.go:1\nexample.test/beta/ext.Call(0xc0)\n\t/y.go:2\n",
+			"",
+		},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -83,6 +101,22 @@ func TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame(t *testing.T)
 		"lines before the backtrace do not count": {
 			"extension ALPHA:X failed\nBacktrace for: #<SB-THREAD:THREAD>\n3: (PIG::LOOP)\n",
 			"",
+		},
+		"frames before the backtrace do not count": {
+			"4: ((LAMBDA NIL :IN ALPHA::NEW-EXTENSION))\nBacktrace for: #<SB-THREAD:THREAD>\n3: (PIG::LOOP)\n",
+			"",
+		},
+		"the condition's text names no one": {
+			"Backtrace for: #<SB-THREAD:THREAD>\n3: (ERROR \"alpha: connection lost\")\n4: (PIG::WIDTH-WORKER-LOOP #<PIG::EXTENSION {1}>)\n",
+			"",
+		},
+		"a trace that names two members names no one": {
+			"Backtrace for: #<SB-THREAD:THREAD>\n3: (ALPHA::RUN)\n4: ((LAMBDA NIL :IN MY-ALPHA::NEW-EXTENSION))\n",
+			"",
+		},
+		"only the last backtrace decides": {
+			"Backtrace for: #<SB-THREAD:THREAD>\n3: (MY-ALPHA::RUN)\nBacktrace for: #<SB-THREAD:THREAD>\n3: (ALPHA::RUN)\n",
+			"alpha",
 		},
 	}
 	for name, tc := range cases {
