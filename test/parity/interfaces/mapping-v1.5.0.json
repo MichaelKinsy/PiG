@@ -145809,8 +145809,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
       ]
     },
     {
@@ -154259,9 +154259,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
-        "test:coding/extension/host/subprocess/packed_go_test.go#TestHost_MixedFusedPackedAndIsolatedExtensions",
-        "test:coding/extension/host/subprocess/packed_go_test.go#TestPackedSDKFocusedComponentAndSessionActionsMatch"
+        "test:coding/extension/host/subprocess/packed_go_test.go#TestHost_MixedFusedPackedAndIsolatedExtensions"
       ]
     },
     {
@@ -154282,8 +154282,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
       ]
     },
     {
@@ -154304,8 +154304,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
       ]
     },
     {
@@ -154325,9 +154325,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.appendJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs",
-        "test:coding/extension/host/subprocess/turn_boundary_packed_test.go#TestTurnBoundaryPackedFactoriesMatchIsolated"
+        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
       ]
     },
     {
@@ -154348,8 +154348,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes",
-        "test:test/extension-conformance/turn_boundary_test.go#TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
+        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
       ]
     },
     {
@@ -174425,7 +174425,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnBeforeProviderRequestChainsThePayload",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174448,7 +174448,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnBeforeProviderRequestChainsThePayload",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174471,7 +174471,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174494,7 +174494,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174563,7 +174563,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174586,7 +174586,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174697,7 +174697,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174720,7 +174720,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174835,7 +174835,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerToolResult",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolResultChainsModifications",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -174858,7 +174858,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerToolResult",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolResultChainsModifications",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -187150,7 +187150,7 @@
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
         "test:test/extension-conformance/event_coverage_test.go#TestConformance_EventDelivery",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -222403,9 +222403,9 @@
         "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -222489,9 +222489,9 @@
         "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
         "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -222513,7 +222513,7 @@
       "evidence": [
         "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",
         "test:test/extension-conformance/api_on_results_test.go#TestConformanceAPIOnSessionStartAndTurnEndReachTheTypedHandlers",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
