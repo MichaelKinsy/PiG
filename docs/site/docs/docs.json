@@ -8,6 +8,7 @@
     "cli.md": "adapted-pi",
     "codemode.md": "adapted-pi",
     "compaction.md": "adapted-pi",
+    "coming-from-pi.md": "pig-authored",
     "concepts.md": "pig-authored",
     "configuration.md": "adapted-pi",
     "containerization.md": "pig-authored",
@@ -35,6 +36,7 @@
     "piglet-binaries.md": "pig-authored",
     "piglet-lifecycle.md": "pig-authored",
     "piglets.md": "pig-authored",
+    "port-your-extension.md": "pig-authored",
     "publishing.md": "pig-authored",
     "prompt-templates.md": "adapted-pi",
     "providers.md": "adapted-pi",
@@ -65,9 +67,19 @@
     "usecase-summarise-pdfs.md": "pig-authored",
     "usecase-weekly-report.md": "pig-authored",
     "virtual-models.md": "adapted-pi",
+    "what-is-a-piglet.md": "pig-authored",
     "windows.md": "adapted-pi"
   },
   "navigation": [
+    {
+      "title": "Coming from Pi",
+      "items": [
+        {
+          "title": "Coming from Pi",
+          "path": "coming-from-pi.md"
+        }
+      ]
+    },
     {
       "title": "Get Started",
       "items": [
@@ -86,6 +98,10 @@
         {
           "title": "How PiG Works",
           "path": "how-pig-works.md"
+        },
+        {
+          "title": "What Is a Piglet",
+          "path": "what-is-a-piglet.md"
         }
       ]
     },
@@ -225,6 +241,10 @@
             {
               "title": "Your First Extension",
               "path": "first-extension.md"
+            },
+            {
+              "title": "Port Your Extension",
+              "path": "port-your-extension.md"
             },
             {
               "title": "Build Extensions",
