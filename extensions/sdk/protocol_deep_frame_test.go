@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -83,7 +84,11 @@ func TestReadLoopAnswersARequestNestedPastTheReaderAndGoesOn(t *testing.T) {
 	<-written
 	// An empty frame is no JSON: it ends the connection, as any frame the reader cannot decode does.
 	<-sendFrame(host, []byte("\x00\x00\x00\x00"))
-	<-c.done
+	select {
+	case <-c.done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the connection is still open after an empty frame")
+	}
 }
 
 func TestFrameHeadReadsTypeAndIDWithoutDecodingWhatNests(t *testing.T) {
