@@ -9,7 +9,6 @@ import inspect
 import json
 import sys
 import tempfile
-import threading
 import time
 
 import pig_sdk
@@ -186,3 +185,105 @@ def test_a_session_log_line_nested_deep_is_read_and_one_too_deep_is_not_a_log():
             log.write('{"type":"message","id":"2","message":' + deep_text(10200) + "}\n")
         assert pig_sdk.Extension._read_session_entries(path) == []
 
+
+
+def deep_array(depth, leaf=1):
+    value = leaf
+    for _ in range(depth):
+        value = [value]
+    return value
+
+
+def _reference_stringify_length(value):
+    """The recursive walk ``_json_stringify_length`` replaced, as the reference for values it can take."""
+    from collections.abc import Mapping
+
+    from pig_sdk.compaction_estimate import _js_number_string, _json_quoted_length
+
+    if value is None:
+        return 4
+    if isinstance(value, bool):
+        return 4 if value else 5
+    if isinstance(value, (int, float)):
+        return len(_js_number_string(value))
+    if isinstance(value, str):
+        return _json_quoted_length(value)
+    if isinstance(value, (list, tuple)):
+        return 2 + sum(_reference_stringify_length(element) for element in value) + max(len(value) - 1, 0)
+    if isinstance(value, Mapping):
+        return 2 + sum(_json_quoted_length(str(key)) + 1 + _reference_stringify_length(element) for key, element in value.items()) + max(len(value) - 1, 0)
+    return 0
+
+
+def _reference_js_value_string(value):
+    """The recursive walk ``_js_value_string`` replaced."""
+    from pig_sdk.llm_convert import _js_number_to_string
+
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (int, float)):
+        return _js_number_to_string(value)
+    if isinstance(value, (list, tuple)):
+        return ",".join("" if element is None else _reference_js_value_string(element) for element in value)
+    return "[object Object]"
+
+
+def _samples():
+    import random
+
+    rng = random.Random(7)
+    scalars = [None, True, False, 0, 1, -2, 1.5, 1e21, float("nan"), float("inf"), "", "a", 'q"\n\u2028', "\ud800", "\U0001F600", [], {}]
+
+    def build(depth):
+        kind = rng.randrange(4) if depth < 5 else 0
+        if kind == 0:
+            return rng.choice(scalars)
+        if kind == 1:
+            return [build(depth + 1) for _ in range(rng.randrange(4))]
+        if kind == 2:
+            return {rng.choice(["a", "b", "0", "é", '"']): build(depth + 1) for _ in range(rng.randrange(4))}
+        return (build(depth + 1), build(depth + 1))
+
+    return [build(0) for _ in range(3000)]
+
+
+def test_the_iterative_walks_equal_the_recursive_ones_they_replaced():
+    from pig_sdk.compaction_estimate import _json_stringify_length
+    from pig_sdk.llm_convert import _js_value_string
+
+    for value in _samples():
+        assert _json_stringify_length(value) == _reference_stringify_length(value), value
+        assert _js_value_string(value) == _reference_js_value_string(value), value
+    assert _js_value_string([1, [2, None, [3, []]], None]) == "1,2,,3,,"
+
+
+@pytest.mark.parametrize("depth", (2000, 10000, 12000))
+def test_a_tool_calls_arguments_nested_deep_are_measured_for_compaction(depth):
+    from pig_sdk.compaction_cutpoint import find_cut_point
+    from pig_sdk.compaction_estimate import _json_stringify_length
+
+    with low_recursion_limit():
+        assert _json_stringify_length(deep_array(depth)) == 2 * depth + 1
+        assert _json_stringify_length(deep(depth)) == 6 * depth + 1  # {"a":...}
+        message = {"role": "assistant", "content": [{"type": "toolCall", "name": "read", "arguments": {"meta": deep_array(depth)}}]}
+        chars = len("read") + len('{"meta":') + 2 * depth + 1 + 1
+        assert pig_sdk.estimate_tokens(message) == -(-chars // 4)
+        entries = [{"type": "message", "id": str(index), "parentId": str(index - 1) if index else None, "message": message if index % 2 else {"role": "user", "content": "x"}} for index in range(6)]
+        assert find_cut_point(entries, 0, len(entries), 1)  # estimates every message, the deep ones too
+
+
+@pytest.mark.parametrize("depth", (2000, 10000, 12000))
+def test_the_string_of_a_nested_array_is_taken_at_any_depth(depth):
+    from pig_sdk.llm_convert import _js_value_string
+    from pig_sdk.serialize_conversation import serialize_conversation
+
+    with low_recursion_limit():
+        assert _js_value_string(deep_array(depth)) == "1"
+        assert _js_value_string(deep_array(depth, leaf=[1, None, [2]])) == "1,,2"
+        assert _js_value_string(deep(depth)) == "[object Object]"
+        text = serialize_conversation([{"role": "assistant", "content": [{"type": "toolCall", "id": "c", "name": deep_array(depth, "tool"), "arguments": {}}]}])
+        assert "tool" in text
