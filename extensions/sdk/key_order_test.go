@@ -274,10 +274,8 @@ func TestObjectKeysDoNotLeakTheOrderOfAFreedObject(t *testing.T) {
 	ext := New("key-order-reuse")
 	var failed string
 	ext.OnEvent(EventBeforeProviderRequest, func(ctx Context, data map[string]any) (any, error) {
-		payload := data["payload"].(map[string]any)
-		ctx.ObjectKeys(payload)
+		ctx.ObjectKeys(data["payload"].(map[string]any))
 		delete(data, "payload")
-		payload = nil
 		runtime.GC()
 		for range 2000 {
 			fresh := map[string]any{"y": 1, "z": 2}
