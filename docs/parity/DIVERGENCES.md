@@ -3872,3 +3872,25 @@ Call-site markers: `internal/codingagent/interactive_turn.go` (`handleBashComman
 Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea`, `TestNewUserBashOutputStartsInTheCurrentExpandState`, `TestSettlingTheRunMovesUserBashOutputToTheChat`, `TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles` (`internal/codingagent/interactive_pending_bash_test.go`, port Pi's `interactive-mode-status.test.ts` "InteractiveMode pending user bash output").
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D312 The model selector and the Hugging Face search keep the row the user browsed to
+
+What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep the model selector selection when results refresh`, #11810, #9109), which is not in Pi 1.5.0. When the catalog refreshes behind the model selector, or a Hugging Face search lands while the user has moved the cursor, the selector keeps the browsed model selected if it is still listed. Otherwise the best match (top row) is highlighted. Pi 1.5.0 reset the selection to the first row on every refresh.
+
+Why: the cursor jumped away from the row the user was about to pick whenever results arrived.
+
+Pi bug: 1.5.0 moves the model selector selection when results refresh (#11810, #9109).
+
+Scope: `ModelSelectorComponent` (`tui/model_select.go` `applyFilterPreferring`) and the llama model browser (`internal/codingagent/llama/ui.go` search result handling).
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
+
+Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results applied).
+
+Evidence: `TestModelSelectorUpdateModels`, `TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive` (`tui/model_select_refresh_test.go`, port Pi's `model-selector.test.ts` "when the catalog refresh lands"); `TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands`, `TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse`, `TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults` (`internal/codingagent/llama/ui_selection_test.go`, port Pi's `llama-ui.test.ts`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
