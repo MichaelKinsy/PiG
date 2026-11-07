@@ -20,8 +20,14 @@ const warmGrace = 10 * time.Second
 // programs (unless the grouped run prebuilt them: PIG_TEST_CONFORMANCE_SDK_FIXTURE_BIN, PIG_TEST_RUST_SDK_FIXTURE_BIN), the packed UI cells of the four
 // native SDKs and the Lisp harness cell. A cold cache (a fresh checkout, a Cargo target that still compiles the SDK, a Lisp image to save) takes minutes,
 // which a test's own wait budget (internal/testbudget) cannot know, so a test that came first on a cold machine failed with its wait spent on a build. The
-// setup has its own bound, the go test deadline, and fails the run with what it was building. With the caches warm (the second process of a run, shared
-// through shareCellCaches) it takes seconds.
+// setup has its own bound, the go test deadline less warmGrace, and names what it was building when that ends or a build fails. With the caches warm (the
+// second process of a run, shared through shareCellCaches) it takes seconds.
+//
+// The setup is deliberately not selective. Every shard of the suite spans the SDKs (a shard holds about 25 tests, spread over all of them), and a developer's single
+// test on a cold machine is exactly the case that failed, so the cost is a cold machine's one build of each cell, which every SDK's tests need and nothing but
+// a cache hit avoids. It is also not fatal when a build fails (TestMain reports it and goes on): the tests of the SDK that failed to build fail with that
+// build's own error, and the tests of the other SDKs still run. The toolchains of all SDKs are required by the suite, so a machine that lacks one fails its
+// tests with a message that says so (a test cannot be skipped for a missing tool: TestRequiredSDKToolsFailWhenMissing).
 func warmFixtures() error {
 	if flagValue("test.list") != "" {
 		return nil // go test -list only names the tests.

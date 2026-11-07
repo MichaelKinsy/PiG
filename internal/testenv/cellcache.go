@@ -9,20 +9,29 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofrs/flock"
 )
 
 const (
-	// cellCacheRetention is how long a directory of another hash survives without a process using it.
-	cellCacheRetention = 14 * 24 * time.Hour
-	// cellCacheKeep is how many directories of other hashes survive however old they are: the branches a developer moves between.
-	cellCacheKeep = 4
-	// cellCacheUsed is the file whose modification time says when a process last used the directory.
+	// cellCacheKeep is how many directories of other hashes survive beside the current one: the branches a developer moves between. A full suite builds
+	// 2 to 3 GB of cells into a directory, so the number bounds the disk the cache takes.
+	cellCacheKeep = 2
+	// cellCacheUsed is the file every process using a directory holds a shared lock on for its lifetime, and whose modification time says when one last
+	// started on it.
 	cellCacheUsed = ".used"
+)
+
+// cellCacheClaims holds the locks of the directories this process uses until it exits (the kernel releases a lock with its process, so a killed process
+// never leaves a directory claimed).
+var (
+	cellCacheClaimsMu sync.Mutex
+	cellCacheClaims   []*flock.Flock
 )
 
 // SharedCellCacheDir returns a persistent directory for what the extension cells of a test package need to be shared between its go test processes: the
@@ -31,12 +40,14 @@ const (
 // temporary directory differs in every process.
 //
 // The directory lives under $PIG_TEST_CELL_CACHE, else the user cache directory (pig-dev/cell-cache), and is named for the package and a hash of the absolute
-// path and the contents of every file under the given roots: the sources a cell's build reads beyond its own content address (the host's cell builders, the
-// SDKs, the fixtures) and the test files that write fixture sources under a fixed content hash. A change to any of them selects a new directory, so no cell
-// built by older code is reused. The cell cache's own publisher (runtimecell.PublishArtifact) is content-addressed, builds under a per-entry file lock and
-// publishes with one rename, so processes that run at once and processes that start after one another share it safely. The absolute path is part of the key
-// for the reason SharedCargoTargetDir's is: a build bakes in the paths of its sources. Directories of other hashes that no process has used for 14 days are
-// removed (pruneCellCaches), except the four most recently used.
+// path and the contents of every file under the given roots (test files included, if a root holds them): the sources a cell's build reads beyond its own
+// content address, such as the host's cell builders and the SDKs. A change to any of them selects a new directory, so no cell built by older code is reused.
+// The cell cache's own publisher (runtimecell.PublishArtifact) is content-addressed, builds under a per-entry file lock and publishes with one rename, so
+// processes that run at once and processes that start after one another share it safely. The absolute path is part of the key for the reason
+// SharedCargoTargetDir's is: a build bakes in the paths of its sources.
+//
+// The calling process holds a shared lock on <dir>/.used until it exits. Of the directories of other hashes of the same package only the two most recently
+// used survive (pruneCellCaches), and one that any process holds is never removed, however old.
 func SharedCellCacheDir(pkg string, roots ...string) (string, error) {
 	base := os.Getenv("PIG_TEST_CELL_CACHE")
 	if base == "" {
@@ -84,27 +95,50 @@ func SharedCellCacheDir(pkg string, roots ...string) (string, error) {
 		}
 	}
 	dir := filepath.Join(base, pkg+"-"+hex.EncodeToString(sum.Sum(nil))[:16])
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(base, 0o755); err != nil {
 		return "", fmt.Errorf("create the shared cell cache: %w", err)
 	}
-	now := time.Now()
-	used := filepath.Join(dir, cellCacheUsed)
-	if err := os.WriteFile(used, nil, 0o644); err != nil {
-		return "", fmt.Errorf("mark the shared cell cache used: %w", err)
+	if err := claimCellCache(dir); err != nil {
+		return "", err
 	}
-	if err := os.Chtimes(used, now, now); err != nil {
-		return "", fmt.Errorf("mark the shared cell cache used: %w", err)
-	}
-	pruneCellCaches(base, pkg+"-", dir, now)
+	pruneCellCaches(base, pkg, dir)
 	return dir, nil
 }
 
-// pruneCellCaches removes the directories of other hashes of the same package that no process has used for cellCacheRetention, keeping the cellCacheKeep
-// most recently used whatever their age and never touching current. A change to a hashed file selects a new directory and leaves the old one behind;
-// without this they pile up, each holding every cell the suite builds. The scan holds a file lock, so processes that start together prune once, and a
-// scan that finds the lock held leaves the work to the holder. Pruning is housekeeping: a directory that cannot be removed stays for the next scan.
-func pruneCellCaches(base, prefix, current string, now time.Time) {
-	lock := flock.New(filepath.Join(base, prefix+"prune.lock"))
+// claimCellCache creates dir and takes a shared lock on its .used file for the life of the process. A pruner that holds the file exclusively is removing the
+// directory, so the claim waits for it and, once the directory is gone or replaced, starts again on the new one.
+func claimCellCache(dir string) error {
+	used := filepath.Join(dir, cellCacheUsed)
+	for range 8 {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create the shared cell cache: %w", err)
+		}
+		lock := flock.New(used)
+		if err := lock.RLock(); err != nil {
+			return fmt.Errorf("claim the shared cell cache: %w", err)
+		}
+		held, err := lock.Stat()
+		current, statErr := os.Stat(used)
+		if err == nil && statErr == nil && os.SameFile(held, current) {
+			now := time.Now()
+			_ = os.Chtimes(used, now, now)
+			cellCacheClaimsMu.Lock()
+			cellCacheClaims = append(cellCacheClaims, lock)
+			cellCacheClaimsMu.Unlock()
+			return nil
+		}
+		_ = lock.Close() // the lock is on a file a pruner has removed
+	}
+	return fmt.Errorf("claim the shared cell cache %s: it was removed under the claim eight times", dir)
+}
+
+// pruneCellCaches removes the directories of other hashes of package pkg beyond the cellCacheKeep most recently used, never current and never one that a
+// process holds: each removal first takes the directory's .used exclusively and without waiting, which a running process's shared lock refuses. A change to a
+// hashed file selects a new directory and leaves the old one behind; without this they pile up, each holding every cell the suite builds. The scan holds a
+// file lock, so processes that start together prune once, and a scan that finds it held leaves the work to the holder. Pruning is housekeeping: a
+// directory that cannot be removed stays for the next scan.
+func pruneCellCaches(base, pkg, current string) {
+	lock := flock.New(filepath.Join(base, pkg+"-prune.lock"))
 	if locked, err := lock.TryLock(); err != nil || !locked {
 		return
 	}
@@ -113,6 +147,7 @@ func pruneCellCaches(base, prefix, current string, now time.Time) {
 	if err != nil {
 		return
 	}
+	named := regexp.MustCompile("^" + regexp.QuoteMeta(pkg) + "-[0-9a-f]{16}$")
 	type candidate struct {
 		path string
 		used time.Time
@@ -120,7 +155,7 @@ func pruneCellCaches(base, prefix, current string, now time.Time) {
 	var others []candidate
 	for _, entry := range entries {
 		path := filepath.Join(base, entry.Name())
-		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) || path == current {
+		if !entry.IsDir() || !named.MatchString(entry.Name()) || path == current {
 			continue
 		}
 		info, err := os.Stat(filepath.Join(path, cellCacheUsed))
@@ -133,9 +168,15 @@ func pruneCellCaches(base, prefix, current string, now time.Time) {
 	}
 	slices.SortFunc(others, func(a, b candidate) int { return b.used.Compare(a.used) })
 	for i, c := range others {
-		if i >= cellCacheKeep && now.Sub(c.used) > cellCacheRetention {
-			_ = os.RemoveAll(c.path)
+		if i < cellCacheKeep {
+			continue
 		}
+		claim := flock.New(filepath.Join(c.path, cellCacheUsed))
+		if locked, err := claim.TryLock(); err != nil || !locked {
+			continue // a process is using it
+		}
+		_ = os.RemoveAll(c.path)
+		_ = claim.Unlock()
 	}
 }
 
