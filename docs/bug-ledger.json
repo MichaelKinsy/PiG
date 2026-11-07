@@ -29673,6 +29673,26 @@
       ]
     },
     {
+      "id": "BF-9cf54d7",
+      "title": "A Node extension's `message_end` event now carries the same message object that…",
+      "symptom": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, where the extensions see the event first and the entry then holds `event.message` itself.",
+      "rootCause": "Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, where the extensions see the event first and the entry then holds `event.message` itself. This holds when no `message_end` handler returns a replacement message; Pi's overwrite of the original object in place when one does is not reproduced (D420 draft). An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9cf54d7b97",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9d02a48",
       "title": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…",
       "symptom": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where it ignores `const`; literal data such as `default` and `examples` is left as written.",
