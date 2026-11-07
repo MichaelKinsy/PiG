@@ -581,7 +581,7 @@ func (h *Host) replyToCall(me *managedExt, conn *Conn, callID string, call *Call
 		// Pi's model changes and dialogs expose current state before their Promise settles, including cancellation and dialog errors returned in the payload.
 		// upstream: agent-session.ts:3406-3411 (appendEntry): the entry is in the session log when appendEntry returns, so the caller's subscribed session mirror receives it before the call result.
 		err = h.pushStateTo(callCtx, me, conn)
-	} else if call.Method != "watchSessionLog" && me.pushedStateEpoch.Load() < h.hostStateEpoch.Load() {
+	} else if me != nil && call.Method != "watchSessionLog" && me.pushedStateEpoch.Load() < h.hostStateEpoch.Load() {
 		// A host-side change this extension has not been pushed yet (hostStateChanged only queues the push): a reply must not carry newer host state than the replica it precedes, or a reader that learned a change from a call reads an older replica afterwards. watchSessionLog holds the cursor lock the push takes.
 		_ = h.pushStateTo(callCtx, me, conn)
 	}
