@@ -2226,17 +2226,17 @@ allocs = 222
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAutocompleteCommandOrder/0"
-allocs = 190
+allocs = 85
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAutocompleteCommandOrder/512"
-allocs = 4685
+allocs = 4580
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkAutocompleteCommandOrder/8"
-allocs = 276
+allocs = 171
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2501,7 +2501,7 @@ allocs = 0
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkKeystrokeToPaint"
-allocs = 128
+allocs = 34
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3121,7 +3121,7 @@ allocs = 101
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkEditorEditUndo/chars-0"
-allocs = 115
+allocs = 80
 
 [[benchmark]]
 package = "./tui"
@@ -3131,7 +3131,7 @@ allocs = 1171
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkEditorEditUndo/chars-32"
-allocs = 126
+allocs = 120
 
 [[benchmark]]
 package = "./tui"
