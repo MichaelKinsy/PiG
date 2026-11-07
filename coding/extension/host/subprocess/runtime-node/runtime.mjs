@@ -2121,6 +2121,8 @@ export class Runtime {
     this.loadingUnsubscribers = [];
     this.extensionRuntime = createExtensionRuntime();
     this.hostReady = false;
+    // readyStateApplied is set once the ready frame's state is applied: a state the host pushed after it is newer, and one applied before it would be overwritten by it.
+    this.readyStateApplied = false;
     this.markdownTransformer = undefined;
     // PiG-only: whether this extension owns the thinking runs of assistant messages. Recorded during load, carried by the register frame; later calls go to the host.
     this.ownsThinkingRuns = false;
@@ -2954,6 +2956,8 @@ export class Runtime {
       return true;
     };
     conn.applyQueuedStateUpdates = () => {
+      // A synchronous call made while the ready frame is handled settles before the ready state is applied: leave the queued states to the loop, which applies them after it, in frame order.
+      if (!this.readyStateApplied) return;
       for (let i = 0; i < conn.queue.length; i++) {
         const queued = conn.queue[i];
         if (queued.type !== "notify" || queued.notify?.method !== "state_update") continue;
@@ -3122,6 +3126,7 @@ export class Runtime {
             this.setFrontend(env.ready.state.frontend === true);
             this.applyState(env.ready.state);
           }
+          this.readyStateApplied = true;
           // Pi's interactive mode loads every highlight.js language once startup has emitted session_start and resources_discover
           // (interactive-mode.ts:1100-1122); print, JSON and RPC mode keep the eager set. The load evaluates every grammar on this thread,
           // so it starts when this extension's handling of those startup events ends, not while its handlers wait behind it.
@@ -3155,6 +3160,7 @@ export class Runtime {
       sharedBus.disposeRuntime(this);
       this.extensionRuntime.invalidate();
       this.hostReady = false;
+      this.readyStateApplied = false;
       liveRuntimes.delete(this);
       this.providerTransport.abort(new Error("Provider connection closed"));
       this.autocomplete.dispose();
