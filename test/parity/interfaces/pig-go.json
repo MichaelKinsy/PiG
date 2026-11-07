@@ -315684,6 +315684,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookStdioGraceTimer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
+      "name": "testHookStdioGraceTimer",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() github.com/MichaelKinsy/PiG/internal/childwait.IdleTimer"
+      },
+      "shapeHash": "sha256:49b9df809dda982d7c290128bd579b3a412353257cdfcadea1fa2d6cd86f1b5e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#testHookTimeoutTimer",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools",
       "name": "testHookTimeoutTimer",
