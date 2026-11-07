@@ -727,6 +727,17 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 // hostStateNotifier is what the extension host's UI bridge offers the owner of state its runtimes replicate: a report that the state changed with no extension call to announce it.
 type hostStateNotifier interface{ HostStateChanged() }
 
+// hostStateScopeNotifier is a bridge that also takes the bracket around a change of the Session's identity state (UIBridge.HostStateChanging, HostStateSettled).
+type hostStateScopeNotifier interface {
+	HostStateChanging()
+	HostStateSettled()
+}
+
+// replicatedStateScopeSession is a Session that brackets the changes of its identity state (ObserveReplicatedStateScope).
+type replicatedStateScopeSession interface {
+	ObserveReplicatedStateScope(begin, end func()) func()
+}
+
 // replicatedStateSession is a Session that reports the changes of the state an extension runtime replicates (model, thinking level, session name, settings).
 type replicatedStateSession interface {
 	ObserveReplicatedState(observe func()) func()
@@ -749,6 +760,11 @@ func (m *InteractiveMode) watchReplicatedState(bridge SubprocessUIBridge) func()
 	})
 	if session, ok := m.opts.SessionHandle.(replicatedStateSession); ok {
 		stops = append(stops, session.ObserveReplicatedState(notifier.HostStateChanged))
+	}
+	if session, ok := m.opts.SessionHandle.(replicatedStateScopeSession); ok {
+		if scope, ok := bridge.(hostStateScopeNotifier); ok {
+			stops = append(stops, session.ObserveReplicatedStateScope(scope.HostStateChanging, scope.HostStateSettled))
+		}
 	}
 	if m.statusLine != nil {
 		stops = append(stops, m.statusLine.ObserveChange(notifier.HostStateChanged))

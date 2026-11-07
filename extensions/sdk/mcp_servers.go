@@ -169,7 +169,7 @@ func (e *Extension) unregisterMcpServer(c *Context, name string) {
 
 // mcpServersCall makes one MCP registration call and installs the server list of its reply as the replicated list, so the caller's next GetMcpServers sees the change.
 func (e *Extension) mcpServersCall(c *Context, conn *conn, method string, args any) error {
-	result, err := hostCallFor(c, conn, method, args)
+	result, err := e.hostCallFor(c, conn, method, args)
 	if err := callResultError(result, err); err != nil {
 		return err
 	}
@@ -195,10 +195,14 @@ func (e *Extension) mcpServersCall(c *Context, conn *conn, method string, args a
 	return nil
 }
 
-// hostCallFor makes one host call for a registration API. A call from a handler goes through its Context, so the host sees the request as blocked on the call; a call made outside a handler goes straight to the connection.
-func hostCallFor(c *Context, conn *conn, method string, args any) (*callResultMsg, error) {
+// hostCallFor makes one host call for a registration API. A call from a handler goes through its Context, so the host sees the request as blocked on the call; a call made outside a handler goes straight to the connection and waits, as callHost does, for the state the host pushed before the result (a registry write refreshes the Session's model before it returns).
+func (e *Extension) hostCallFor(c *Context, conn *conn, method string, args any) (*callResultMsg, error) {
 	if c != nil {
 		return c.callHost(method, args)
 	}
-	return conn.call(method, args)
+	result, err := conn.call(method, args)
+	if err == nil && result != nil && conn == e.conn {
+		e.waitNotifications(result.notifySeq, nil)
+	}
+	return result, err
 }

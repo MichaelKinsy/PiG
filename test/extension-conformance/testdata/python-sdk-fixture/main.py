@@ -1664,6 +1664,12 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # provider_probe_register and provider_probe_unregister register and unregister a plain provider after the extension connected.
+    # registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+    def registry_model_probe(ctx, name):
+        ext.register_provider("replica-reg", {"baseUrl": "https://probe.invalid/v1", "api": "openai-completions", "apiKey": "probe-key", "models": [{"id": "m", "name": name, "reasoning": False, "input": ["text"], "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 1000, "maxTokens": 100}]})
+        ctx.notify("regname=" + ((ctx.get_model_info() or {}).get("name") or ""), "info")
+
+    ext.command("registry-model-probe", "Register the active model's provider with a new name, then read the model", registry_model_probe)
     ext.command("provider_probe_register", "Register a provider with one model", lambda ctx, _args: ext.register_provider("conformance-probe", json.loads(r'''{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}''')))
     ext.command("provider_probe_unregister", "Unregister the provider", lambda ctx, _args: ext.unregister_provider("conformance-probe"))
     ext.command("commands-probe", "Read the host's slash commands", lambda ctx, _args: ctx.notify(json.dumps([[c["name"], c["source"], c.get("description", "")] for c in ctx.get_commands() if c["name"] == "conformance-listed"], separators=(",", ":")), "info"))
@@ -2605,6 +2611,48 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 
+    def replica_model(info):
+        """The model info as Go's ModelInfo.UnmarshalJSON normalizes the wire model object."""
+        if info is None:
+            return None
+        provider = info.get("provider")
+        if isinstance(provider, dict):
+            provider = provider.get("id")
+        cost = info.get("cost") if isinstance(info.get("cost"), dict) else {}
+
+        def per_million(flat, nested):
+            return float(info.get(flat) or cost.get(nested) or 0)
+
+        return {
+            "id": info.get("id") or info.get("modelId") or "",
+            "name": info.get("name") or info.get("displayName") or "",
+            "provider": provider if isinstance(provider, str) else "",
+            "contextWindow": int(info.get("contextWindow") or 0),
+            "maxOutputTokens": int(info.get("maxOutputTokens") or info.get("maxTokens") or 0),
+            "reasoning": info.get("reasoning") is True,
+            "inputCostPer1M": per_million("inputCostPer1M", "input"),
+            "outputCostPer1M": per_million("outputCostPer1M", "output"),
+            "cacheReadCostPer1M": per_million("cacheReadCostPer1M", "cacheRead"),
+            "cacheWriteCostPer1M": per_million("cacheWriteCostPer1M", "cacheWrite"),
+        }
+
+    def replica_probe(ctx: pig_sdk.Context, args: str) -> None:
+        if args.startswith("set-model:"):
+            ctx.set_model(args[len("set-model:"):])
+        report = {
+            "model": replica_model(ctx.get_model_info()),
+            "sessionId": ctx.get_session_id(),
+            "managerSessionId": ctx.session_manager.get_session_id(),
+            "sessionName": ctx.get_session_name(),
+            "sessionFile": ctx.get_session_file(),
+            "managerSessionName": ctx.session_manager.get_session_name(),
+            "managerSessionFile": ctx.session_manager.get_session_file(),
+            "usage": ctx.get_context_usage(),
+        }
+        ctx.notify(json.dumps(report, separators=(",", ":")), "info")
+
+    ext.command("replica-probe", "Report the model info, the session id read both ways and the context usage", replica_probe)
+
     def context_probe(ctx: pig_sdk.Context, args: str) -> None:
         opts = ctx.get_system_prompt_options()
 
@@ -3278,12 +3326,38 @@ def _register_conformance_oauth(ext: pig_sdk.Extension) -> None:
 STATE_PUSH_WINDOW = 5.0
 
 
+def _context_usage_report(usage):
+    """"none" for no usage, else "tokens=<n>" with "" for null tokens."""
+    if usage is None:
+        return "none"
+    tokens = usage.get("tokens")
+    return "tokens=" + ("" if tokens is None else str(tokens))
+
+
+def _usage_then_id(ctx):
+    """A host call, then the replicated id: the id must not be older than the host's answer."""
+    usage = ctx.get_context_usage()
+    if usage is None or usage.get("tokens") is None:
+        return "none"
+    if usage["tokens"] != 250:
+        return "tokens=%d" % usage["tokens"]
+    return "tokens=250,id=" + ctx.get_session_id()
+
+
 def _state_push_reader(ctx, kind):
     """The read of one replicated accessor, as a string that fails soft: a read that raises reports its error."""
     if kind == "model":
         read = lambda: ctx.model
+    elif kind == "model-name":
+        read = lambda: (ctx.get_model_info() or {}).get("name") or ""
+    elif kind == "usage-then-id":
+        read = lambda: _usage_then_id(ctx)
+    elif kind == "context-usage":
+        read = lambda: _context_usage_report(ctx.get_context_usage())
     elif kind == "session-name":
         read = lambda: ctx.session_name
+    elif kind == "session-id":
+        read = lambda: ctx.get_session_id()
     elif kind == "theme":
         read = lambda: ctx.theme.name or ""
     elif kind.startswith("settings:"):
@@ -3304,7 +3378,7 @@ def _state_push_reader(ctx, kind):
 
 
 def _register_state_push_probe(ext: pig_sdk.Extension) -> None:
-    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
+    """Register the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name. The arguments are {"kind": "model" | "model-name" | "session-name" | "session-id" | "context-usage" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>"."""
 
     def probe(ctx, args):
         request = json.loads(args)
