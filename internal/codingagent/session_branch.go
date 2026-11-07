@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // branchedRecord is one retained entry of a branched session: the slot it comes from, its id, and the entry the new file chains it to.
@@ -73,14 +74,18 @@ func (s *Session) planBranchedSession(leafID string) (branchedPlan, bool) {
 // record with its parentId chained to the entry before it (and a compaction's firstKeptEntryId moved past the labels removed), then one
 // fresh label entry for each labeled target on the path. A record that is not resident is read from its line alone, so no more than one record
 // is held. The members the rewrite leaves alone keep the bytes the source has for them.
-func (s *Session) writeBranchedSession(plan branchedPlan, emit func(parts ...[]byte) error) error {
+//
+// emit also gets the entry the record is rewritten from when the source holds it decoded (nil for a record read from the file and for a fresh label) and the parent the record was
+// given, so a caller that keeps the records in memory builds the clone's entries from the source's with rebasedMessage and decodes the others.
+func (s *Session) writeBranchedSession(plan branchedPlan, emit func(entry SessionEntry, parent *string, parts ...[]byte) error) error {
 	records := recordSource{s: s}
 	defer records.close()
 	var reader recordReader
 	retained := make(map[string]struct{}, len(plan.records))
 	var parent *string
 	for _, record := range plan.records {
-		line, err := replaceJSONFieldParts(s.branchedRecord(record.slot, &records, &reader), "parentId", record.parent)
+		raw, resident := s.branchedRecord(record.slot, &records, &reader)
+		line, err := replaceJSONFieldParts(raw, "parentId", record.parent)
 		if err != nil {
 			return err
 		}
@@ -89,7 +94,7 @@ func (s *Session) writeBranchedSession(plan branchedPlan, emit func(parts ...[]b
 				return err
 			}
 		}
-		if err := emit(line...); err != nil {
+		if err := emit(resident, record.parent, line...); err != nil {
 			return err
 		}
 		retained[record.id] = struct{}{}
@@ -127,7 +132,7 @@ func (s *Session) writeBranchedSession(plan branchedPlan, emit func(parts ...[]b
 		if err != nil {
 			return err
 		}
-		if err := emit(raw); err != nil {
+		if err := emit(nil, label.ParentID, raw); err != nil {
 			return err
 		}
 		retained[id] = struct{}{}
@@ -136,19 +141,38 @@ func (s *Session) writeBranchedSession(plan branchedPlan, emit func(parts ...[]b
 	return nil
 }
 
-// branchedRecord is the record of slot idx: the resident entry's, or the line read back when its hash is the one the index holds, else what a
+// branchedRecord is the record of slot idx and the entry the source holds decoded for it, nil when it is not resident: the resident entry's record, or the line read back when its hash is the one the index holds, else what a
 // read of the entry decodes to (a line that no longer holds the entry is counted in staleReads). The bytes are valid until the next call.
-func (s *Session) branchedRecord(idx int32, records *recordSource, reader *recordReader) []byte {
+func (s *Session) branchedRecord(idx int32, records *recordSource, reader *recordReader) ([]byte, SessionEntry) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	slot := &s.slots[idx]
 	if slot.entry != nil {
-		return slot.entry.Raw()
+		return slot.entry.Raw(), slot.entry
 	}
 	cold := s.coldPart(slot)
 	reader.blocks, reader.file = s.blockList, records.get()
 	if record, ok := reader.record(cold); ok && recordHash(record) == uint64(cold.hash) {
-		return record
+		return record, nil
 	}
-	return s.readSlotsLocked([]int32{idx})[0].Raw()
+	return s.readSlotsLocked([]int32{idx})[0].Raw(), nil
+}
+
+// rebasedMessage is the decode of raw, entry's record with its parentId set to parent, when entry is a decoded message entry whose parent
+// raw names as a string: the same entry with that parent and raw as its record, since the rewrite changes no other member. It is nil for
+// any other entry, which the caller decodes from raw. An in-memory clone decodes only the records this does not cover (an entry read back from the file, labels, model changes and so on).
+func rebasedMessage(entry SessionEntry, parent *string, raw json.RawMessage) FileEntry {
+	if entry == nil {
+		return nil
+	}
+	message, ok := asMessage(entry)
+	if !ok || (parent != nil && sessionentry.IsJSValue(*parent)) {
+		return nil
+	}
+	if parent != nil {
+		id := *parent
+		parent = &id
+	}
+	message.ParentID = parent
+	return sessionentry.WithRecord(message, raw)
 }
