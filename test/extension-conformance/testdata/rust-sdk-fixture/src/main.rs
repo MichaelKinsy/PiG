@@ -13,6 +13,8 @@ use pig_sdk::{
 };
 use pig_sdk::{EditorBase, EditorComponent, JsString};
 use serde_json::{Value, json};
+use std::io::{BufRead, BufReader, Write};
+use std::net::TcpStream;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -141,6 +143,14 @@ impl RemoteComponent for TimerFocused {
         }
         self.disposed.store(true, Ordering::Release);
     }
+}
+
+/// Dials `addr` ("host:port"), writes "waiting\n" and returns when the peer writes a line.
+fn io_wait(addr: &str) -> std::io::Result<()> {
+    let mut peer = TcpStream::connect(addr)?;
+    peer.write_all(b"waiting\n")?;
+    BufReader::new(peer).read_line(&mut String::new())?;
+    Ok(())
 }
 
 /// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
@@ -3292,6 +3302,27 @@ fn main() {
         |ctx, _args| match ctx.wait_for_idle() {
             Ok(_) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    // io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
+    ext.command("io_wait", "Wait on a socket read", |_ctx, args| match io_wait(args) {
+        Ok(()) => CommandResult::Ok,
+        Err(err) => CommandResult::Error(err.to_string()),
+    });
+    let io_wait_subscriber = ext.event_subscriber();
+    let io_wait_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "io_wait_settled",
+        "Make agent_settled wait on a socket read",
+        move |_ctx, args| {
+            let addr = args.to_string();
+            let subscription = io_wait_subscriber.on_event("agent_settled", move |_ctx, _data| {
+                io_wait(&addr).map_err(|err| err.to_string())?;
+                Ok(None)
+            });
+            io_wait_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
         },
     );
     ext.command(

@@ -21283,6 +21283,32 @@
       ]
     },
     {
+      "id": "BF-7087527",
+      "title": "fix(extensions): the handler wait quantum applies to input handlers only, not to every event whose caller…",
+      "symptom": "fix(extensions): the handler wait quantum applies to input handlers only, not to every event whose caller holds an acknowledgment",
+      "rootCause": "A Go session_info_changed handler that computed for 700 ms had its notify ordered after the response, where Pi and the base notify first: the branch for a caller that waits for the first suspension matched every bound request. Limit it to event input (D86's approval covers settle tail, commands and input). Add an input-handler RPC row across Pi, Go, Rust, Python and Lisp, make the no-timer test deterministic (it answers the request before it reads the timer count), and record the Node input-handler gap in D86 and extension-api-parity.md.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7087527a5b",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_settle_latency_probe_test.go::TestRPCSettleHandlerLatencyProbe",
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandAfterAgentEndAnswersAfterFastSettleHandlerAcrossSDKs",
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringCommandNetworkWaitAnswersAcrossSDKs",
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs",
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringSettleHandlerNetworkWaitAnswersAcrossSDKs",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer"
+      ]
+    },
+    {
       "id": "BF-70d51e5",
       "title": "Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including…",
       "symptom": "Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including wall-clock steps; both now show the recorded execution time.",
@@ -32936,6 +32962,31 @@
         "durable/codemode/models_test.go::TestCodeModeModels",
         "durable/codemode/output_test.go::TestFormatResultMatchesPi",
         "durable/harness/tool_nested_records_test.go::TestNestedErrorResultsAndStructuredOutput"
+      ]
+    },
+    {
+      "id": "BF-a94c58f",
+      "title": "RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or…",
+      "symptom": "RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns.",
+      "rootCause": "An agent_settled handler or command of a Go, Rust, Python or Lisp extension blocks in the language's own call; the host could not tell a socket read from computing, so rpcSettleGate and rpcAwaitHandler held stdin for the whole wait, where Pi answers get_state while the handler awaits (rpc-mode.ts:808-810, agent-session.ts:1094-1105). Conn acknowledges such a request as suspended after HandlerWaitQuantum (250 ms, measured fast handlers answer in under 9 ms) and counts a settle-tail handler as waiting. D86 records the option survey and the rejected options.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns. The host takes such a handler to be waiting once it has run for 250 ms, as Pi's event loop serves stdin while a handler awaits; handlers that answer sooner keep their order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a94c58f227",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/command_window_test.go::TestSettleTailCountsNativeHandlerSuspendedByTheQuantum",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerAnsweringWithinTheQuantumIsNotSuspended",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerOutlivingTheQuantumIsSuspended",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer"
       ]
     },
     {

@@ -31,6 +31,14 @@
   (loop with deadline = (+ (get-internal-real-time) (* seconds internal-time-units-per-second))
         until (or (funcall predicate) (> (get-internal-real-time) deadline)) do (sleep 0.005)))
 (defun core-nan () (sb-kernel:make-double-float #x7ff80000 0))
+(defun core-io-wait (addr)
+  "Dial ADDR (host:port), write \"waiting\" and return when the peer writes a line."
+  (let* ((colon (position #\: addr :from-end t))
+         (socket (make-instance 'sb-bsd-sockets:inet-socket :type :stream :protocol :tcp)))
+    (sb-bsd-sockets:socket-connect socket (sb-bsd-sockets:make-inet-address (subseq addr 0 colon)) (parse-integer addr :start (1+ colon)))
+    (let ((stream (sb-bsd-sockets:socket-make-stream socket :input t :output t :buffering :none :external-format :utf-8)))
+      (unwind-protect (progn (write-line "waiting" stream) (finish-output stream) (read-line stream nil nil))
+        (close stream)))))
 
 ;;; ---------------------------------------------------------------- tools
 
@@ -295,6 +303,11 @@
   (pig:command ext "liveness_host_call" "Exercise an awaited host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-wait-for-idle ctx)))
   (pig:command ext "liveness_user_call" "Exercise an interactive host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-input ctx "Question" :placeholder "Answer")))
   (pig:command ext "liveness_fire_call" "Exercise a no-result UI host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-title ctx "Conformance title")))
+  ;; io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line
+  (pig:command ext "io_wait" "Wait on a socket read" (lambda (ctx args) (declare (ignore ctx)) (core-io-wait args)))
+  (pig:command ext "io_wait_settled" "Make agent_settled wait on a socket read"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (pig:on ext "agent_settled" (lambda (hctx data) (declare (ignore hctx data)) (core-io-wait args) nil))))
   (pig:command ext "usage-probe" "Report context usage" (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (or (pig:ctx-get-context-usage ctx) :null)))))
   (pig:command ext "replica-probe" "Report the replicated model, session id, name, file and context usage"
                (lambda (ctx args)
