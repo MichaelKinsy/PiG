@@ -13353,6 +13353,36 @@
       "tests": []
     },
     {
+      "id": "BF-54eb030",
+      "title": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal",
+      "symptom": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal.",
+      "rootCause": "Since the host forwards an extension's stderr as Pi's console does, the Go SDK's recovered-panic report with its goroutine stack, Rust's default panic message for a caught handler panic and the Python, Lisp and Node reports of a failed handler or host call overprinted the interactive frame, where Pi reports a throwing handler as one line and writes no stack.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal. Since the host forwards an extension's stderr as Pi's console does, the Go SDK's recovered-panic report with its goroutine stack, Rust's default panic message for a caught handler panic and the Python, Lisp and Node reports of a failed handler or host call overprinted the interactive frame, where Pi reports a throwing handler as one line and writes no stack. Every SDK now appends them to the extension's log (`PIG_EXT_LOG`, the file the host's load and crash diagnostics read), bounded at 1 MiB per process, and writes to stderr only when no host started it. What the extension's own code writes to stdout and stderr still reaches the terminal.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "54eb0309c7",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/ext_log_test.go::TestExtLogHostWritesDoNotOverwriteAnSDKAppend",
+        "coding/extension/host/subprocess/ext_log_test.go::TestFusedExtLogIsExportedAndRemoved",
+        "coding/extension/host/subprocess/ext_log_test.go::TestNodeRuntimeDiagnosticsGoToTheExtensionLog",
+        "coding/extension/host/subprocess/ext_log_test.go::TestWithExtLogReplacesAnInheritedEntry",
+        "extensions/sdk-py/tests/test_diagnostic.py",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticLogIsBounded",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticsFallBackToStderr",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticsGoToTheExtensionLogAndNotStderr",
+        "test/extension-conformance/sdk_diagnostics_test.go::TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog"
+      ]
+    },
+    {
       "id": "BF-55573f4",
       "title": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
       "symptom": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
@@ -22149,6 +22179,28 @@
       ],
       "tests": [
         "internal/codingagent/session_context_oracle_test.go::TestBuildSessionContextMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-760ab0d",
+      "title": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls…",
+      "symptom": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls (a write and an append of one note) could register in the other order in a Go, Rust, Python or Lisp extension, where Pi registers them in call order.",
+      "rootCause": "Two tool calls of one parallel batch that reach withFileMutationQueue after different numbers of host round trips (a write and an append of one note) registered in the order the calls reached the host. In Pi both prefixes run to the queue in call order, a getter being no await. The host and SDK delivered the order they were given, so the divergence is the one D187 records for a native handler's host calls: a native SDK's scheduler decides who arrives first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls (a write and an append of one note) could register in the other order in a Go, Rust, Python or Lisp extension, where Pi registers them in call order. Each SDK's context now has the ordered form, `Context.WithFileMutationQueue` (Go), `ctx.with_file_mutation_queue` (Rust, Python), `pig:ctx-with-file-mutation-queue` (Lisp) and `ctx.withFileMutationQueue` (Node): the host registers the call after the extension tools before it in its batch (D187). The free `withFileMutationQueue` is unchanged and registers in the order the calls reach the host.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "760ab0dcf4",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/mutation_order_test.go::TestFileMutationOrderOfTheContextFormAcrossSDKs"
       ]
     },
     {
@@ -35254,6 +35306,34 @@
       ]
     },
     {
+      "id": "BF-bb1c920",
+      "title": "A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and…",
+      "symptom": "A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and `console.error` do, in print, JSON, RPC and interactive mode: stderr always on stderr, stdout on stderr in the headless modes (in one pipe, so the two keep the order the extension wrote them) and on stdout in interactive mode.",
+      "rootCause": "Pi runs an extension in its own process: console.error writes stderr, and console.log writes stdout in interactive mode and stderr in print, json and rpc mode (main.ts takeOverStdout); Pi intercepts neither stream in interactive mode. Only Node extensions got that: a Go, Rust, Python or Lisp extension's stderr went to a log file removed unless a load failure named it, and its stdout to /dev/null, so a console.error-style notice (Posthorse's automatic-rollover failure report) never reached the user.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and `console.error` do, in print, JSON, RPC and interactive mode: stderr always on stderr, stdout on stderr in the headless modes (in one pipe, so the two keep the order the extension wrote them) and on stdout in interactive mode. Only Node extensions did before: the others' stderr went to a log file removed unless a load failure named it, so a notice such as Posthorse's automatic-rollover failure report never reached the user. A packed runner's failure cause is still read from the log: the host flushes the output pipe before it reads.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb1c920e97",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/console_output_test.go::TestConsolePipeFlushAfterFinishReturns",
+        "coding/extension/host/subprocess/console_output_test.go::TestConsolePipeFlushReachesWhatTheProcessWrote",
+        "coding/extension/host/subprocess/console_output_test.go::TestConsolePipeForwardsEveryByteAroundMarkers",
+        "coding/extension/host/subprocess/console_output_test.go::TestExtensionConsoleSurvivesAnUnwritableTerminal",
+        "coding/extension/host/subprocess/console_output_test.go::TestExtensionHeadlessConsoleUsesOneOrderedPipe",
+        "coding/extension/host/subprocess/console_output_test.go::TestExtensionOutputReachesTheTerminalInPiOrder",
+        "test/extension-conformance/console_output_test.go::TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK"
+      ]
+    },
+    {
       "id": "BF-bb324f7",
       "title": "A JavaScript or TypeScript extension loads when its `registerCommand` options carry a member Pi does not…",
       "symptom": "A JavaScript or TypeScript extension loads when its `registerCommand` options carry a member Pi does not define, such as `args`.",
@@ -42862,6 +42942,32 @@
         "internal/codingagent/startup_changelog_init_test.go::TestChangelogForDisplayFollowsTheSessionMessages",
         "test/parity/scenarios/startup/20-startup-changelog-version-recorded-before-session-start.toml",
         "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml"
+      ]
+    },
+    {
+      "id": "BF-dd2f4cb",
+      "title": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does…",
+      "symptom": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does, and as the six-character escape inside a tool call's arguments.",
+      "rootCause": "The Go SDK holds an unpaired surrogate as WTF-8, which utf8 decoding read as three invalid bytes: eight unpaired surrogates sized 6 tokens where Pi's estimateTokens gives 2, and a tool call argument holding one counted 3 characters where JSON.stringify writes its six-character escape. utf16Length and jsonQuotedLength now read the three bytes as the one unit (six characters in JSON).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does, and as the six-character escape inside a tool call's arguments. A message with eight unpaired surrogates sized 6 tokens where Pi gives 2, and one inside a tool call argument sized less than Pi's `JSON.stringify` length. The Python and Lisp SDKs were right and now have the same table of Pi's numbers; the Rust SDK cannot receive such a string.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dd2f4cb404",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/compaction_estimate_test.go::TestEstimateTokensMatchesPiOnLoneSurrogatesAstralAndCombiningMarks",
+        "extensions/sdk/compaction_estimate_test.go::TestEstimateTokensOfADecodedMessageWithLoneSurrogates",
+        "extensions/sdk/compaction_utf16_test.go::TestUTF16LengthIsTheUTF16LengthOfTheUnits",
+        "extensions/sdk/compaction_utf16_test.go::TestUTF16LengthOfRandomTextsMatchesTheUTF16LengthOfTheUnits",
+        "test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs"
       ]
     },
     {

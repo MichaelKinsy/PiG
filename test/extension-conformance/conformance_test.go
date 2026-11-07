@@ -1558,6 +1558,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"mutation_order_ctx_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "mutation_order_ctx_probe",
+					Description: "Make getter calls, take the file mutation queue through the context and append a tag to the file",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{"file":{"type":"string"},"tag":{"type":"string"},"calls":{"type":"number"}}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "mutation-done"}}}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"timer_defer": {
 				Definition: extension.ToolDefinition{
 					Name:        "timer_defer",

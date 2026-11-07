@@ -1,8 +1,6 @@
 package sdk
 
 import (
-	"fmt"
-	"os"
 	"runtime/debug"
 	"slices"
 	"sync"
@@ -83,7 +81,7 @@ func (f *stateFeed[T]) run(e *Extension) {
 func (f *stateFeed[T]) call(ctx Context, handler func(Context, T), value T) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "extension: recovered from panic in a %s change handler: %v\n%s\n", f.what, r, debug.Stack())
+			diagnosticf("extension: recovered from panic in a %s change handler: %v\n%s\n", f.what, r, debug.Stack())
 		}
 	}()
 	handler(ctx, value)

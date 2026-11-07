@@ -9,7 +9,6 @@ use crate::theme::{Theme, UiState};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
-use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, SyncSender, TrySendError, sync_channel};
 use std::sync::{Arc, Condvar, Mutex};
@@ -549,12 +548,12 @@ fn render_remote_component_frame(
         .as_ref()
         .map_or(width, |layout| resolve_overlay_width(layout, width));
     let frame = match &state.component {
-        OverlayComponent::Lines(component) => catch_unwind(AssertUnwindSafe(|| {
+        OverlayComponent::Lines(component) => crate::diagnostic::recover(|| {
             crate::kit::Rendered::Lines(component.render(render_width))
-        })),
-        OverlayComponent::View(component) => catch_unwind(AssertUnwindSafe(|| {
-            crate::kit::Rendered::view(component.view(width))
-        })),
+        }),
+        OverlayComponent::View(component) => {
+            crate::diagnostic::recover(|| crate::kit::Rendered::view(component.view(width)))
+        }
     }
     .map_err(|_| io::Error::other("focused render panicked"))?;
     state.last_render = Some(Instant::now());
@@ -659,18 +658,18 @@ fn run_remote_component_worker(worker: RemoteComponentWorker) {
                     let mut state = overlay.state.lock().unwrap();
                     match (&mut state.component, event) {
                         (component, RemoteComponentEvent::Input(data)) => Some(
-                            catch_unwind(AssertUnwindSafe(|| component.handle_input(&data)))
+                            crate::diagnostic::recover(|| component.handle_input(&data))
                                 .map_err(|_| "focused input panicked".to_string()),
                         ),
                         (
                             OverlayComponent::View(component),
                             RemoteComponentEvent::ViewEvent(event),
                         ) => Some(
-                            catch_unwind(AssertUnwindSafe(|| component.handle_view_event(*event)))
+                            crate::diagnostic::recover(|| component.handle_view_event(*event))
                                 .map_err(|_| "focused view event panicked".to_string()),
                         ),
                         (component, RemoteComponentEvent::Mouse(event)) => Some(
-                            catch_unwind(AssertUnwindSafe(|| component.handle_mouse(&event)))
+                            crate::diagnostic::recover(|| component.handle_mouse(&event))
                                 .map_err(|_| "focused mouse panicked".to_string()),
                         ),
                         // A line component has no view, so it ignores view events.
@@ -709,7 +708,7 @@ fn run_remote_component_worker(worker: RemoteComponentWorker) {
                         request_parent: request_parent.clone(),
                         request_id: request_id.clone(),
                     };
-                    catch_unwind(AssertUnwindSafe(|| on_handle(handle)))
+                    crate::diagnostic::recover(|| on_handle(handle))
                         .map_err(|_| io::Error::other("onHandle panicked"))
                 } else {
                     Ok(())
@@ -740,8 +739,8 @@ fn dispose_remote_component(overlay: &RemoteOverlay) {
         .state
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let _ = catch_unwind(AssertUnwindSafe(|| state.component.set_invalidate(None)));
-    let _ = catch_unwind(AssertUnwindSafe(|| state.component.dispose()));
+    let _ = crate::diagnostic::recover(|| state.component.set_invalidate(None));
+    let _ = crate::diagnostic::recover(|| state.component.dispose());
 }
 
 /// A raw terminal-input handler's verdict on one chunk, mirroring upstream's
@@ -3062,6 +3061,17 @@ impl Context {
         crate::host_helpers::decode_resized(self.call_host(method, Some(args))?)
     }
 
+    /// Pi's `withFileMutationQueue` for a handler that has its context: run `f` in the host's file mutation queue for `file_path` and return its result. A tool
+    /// that takes the queue through its context registers in the order Pi's one thread runs the batch's tools (D187); the free
+    /// [`crate::with_file_mutation_queue`] registers in the order the calls reach the host. See `file_mutation_queue::with_context`.
+    pub fn with_file_mutation_queue<T>(
+        &self,
+        file_path: impl AsRef<std::path::Path>,
+        f: impl FnOnce() -> T,
+    ) -> io::Result<T> {
+        crate::file_mutation_queue::with_context(self, file_path.as_ref(), f)
+    }
+
     /// Low-level host call escape hatch. Prefer typed methods when available.
     pub fn call_host(
         &self,
@@ -3760,7 +3770,7 @@ impl Context {
             args.insert("hasHandle".to_string(), serde_json::Value::Bool(true));
         }
         let weak_overlay = Arc::downgrade(&overlay);
-        let attach_result = catch_unwind(AssertUnwindSafe(|| {
+        let attach_result = crate::diagnostic::recover(|| {
             overlay
                 .state
                 .lock()
@@ -3771,7 +3781,7 @@ impl Context {
                         overlay.request_render();
                     }
                 })));
-        }));
+        });
         if attach_result.is_err() {
             overlay.active.store(false, Ordering::Release);
             dispose_remote_component(&overlay);
@@ -4080,10 +4090,9 @@ impl Context {
             let callback = callback.clone();
             std::thread::spawn(move || {
                 for (update, answer) in receiver {
-                    let failure =
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback(update)))
-                            .err()
-                            .map(|payload| panic_message(payload.as_ref()));
+                    let failure = crate::diagnostic::recover(|| callback(update))
+                        .err()
+                        .map(|payload| panic_message(payload.as_ref()));
                     let _ = answer.send(failure);
                 }
             })
@@ -5732,7 +5741,7 @@ impl SurfaceRenderer {
             return Ok(());
         }
         let width = ctx.width();
-        let lines = match catch_unwind(AssertUnwindSafe(|| (self.render)(width))) {
+        let lines = match crate::diagnostic::recover(|| (self.render)(width)) {
             Ok(lines) => lines,
             Err(payload) => {
                 ctx.notify(

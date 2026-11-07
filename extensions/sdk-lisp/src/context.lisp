@@ -632,7 +632,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   "Call HANDLER, with the new terminal width, after each resize. Rows sent with the footer or header carry the width they were
 laid out for, so after a resize they stay hidden until the extension sends rows for the new width: this is that trigger.
 Handlers run one at a time, in the order the widths arrived, on a worker thread (never the thread that reads the host); a handler
-that signals is reported on stderr and does not stop the others. Returns the unsubscribe function."
+that signals is reported in the extension's log and does not stop the others. Returns the unsubscribe function."
   (let* ((ext (ctx-extension ctx))
          (id (sb-thread:with-mutex ((extension-state-lock ext))
                (let ((id (incf (extension-width-subscriber-id ext))))
@@ -652,7 +652,7 @@ that signals is reported on stderr and does not stop the others. Returns the uns
                  (pop (extension-width-jobs ext)))))
       (dolist (handler (cdr job))
         (handler-case (funcall handler (car job))
-          (error (e) (format *error-output* "~A: width change handler failed: ~A~%" (extension-name ext) e)))))))
+          (error (e) (diagnose "~A: width change handler failed: ~A~%" (extension-name ext) e)))))))
 
 (defun dispatch-width-change (ext width)
   "Queue WIDTH for the handlers subscribed now."

@@ -1429,7 +1429,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if name == "" {
 				name = req.Event
 			}
-			fmt.Fprintf(os.Stderr, "extension: recovered from panic in %s %q: %v\n%s\n", req.Method, name, r, debug.Stack())
+			diagnosticf("extension: recovered from panic in %s %q: %v\n%s\n", req.Method, name, r, debug.Stack())
 			var result any
 			if boundaryData != nil {
 				result = map[string]any{"_pigBoundaryEntries": boundaryData["entries"], "_pigBoundaryResult": nil}
@@ -1772,18 +1772,18 @@ func (e *Extension) transformMarkdown(args json.RawMessage) (result any) {
 }
 
 // reportRecoveredPanic writes a panic that an isolation boundary recovered to
-// stderr, which the host captures in the extension's log.
+// the extension's log (diagnostic.go).
 func reportRecoveredPanic(where string, recovered any) {
-	fmt.Fprintf(os.Stderr, "extension: recovered from panic in %s: %v\n%s\n", where, recovered, debug.Stack())
+	diagnosticf("extension: recovered from panic in %s: %v\n%s\n", where, recovered, debug.Stack())
 }
 
 // reportHostCallFailure writes a failed host call the caller cannot return to
-// stderr, which the host captures in the extension's log.
+// the extension's log (diagnostic.go).
 func reportHostCallFailure(method string, err error, result *callResultMsg) {
 	if err == nil && result != nil && result.Error != nil {
 		err = errors.New(result.Error.Message)
 	}
-	fmt.Fprintf(os.Stderr, "pig: host call %s failed: %v\n", method, err)
+	diagnosticf("pig: host call %s failed: %v\n", method, err)
 }
 
 // markNotifyHandled records that the main loop applied one queued notify frame.
@@ -2492,7 +2492,7 @@ func (e *Extension) runWidthDeliveries() {
 func (e *Extension) callWidthHandler(ctx Context, handler WidthChangeHandler, width int) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "extension: recovered from panic in a width change handler: %v\n%s\n", r, debug.Stack())
+			diagnosticf("extension: recovered from panic in a width change handler: %v\n%s\n", r, debug.Stack())
 		}
 	}()
 	handler(ctx, width)

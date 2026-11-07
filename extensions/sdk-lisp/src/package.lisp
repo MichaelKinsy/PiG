@@ -114,7 +114,7 @@
    #:resized-image-data #:resized-image-mime-type #:format-dimension-note #:parsed-frontmatter #:parsed-frontmatter-frontmatter
    #:parsed-frontmatter-body #:parse-frontmatter #:strip-frontmatter #:parse-date #:diff-string #:diff-string-diff #:diff-string-first-changed-line
    #:generate-diff-string #:generate-unified-patch #:copy-to-clipboard #:converted-image #:converted-image-data #:converted-image-mime-type
-   #:convert-to-png #:image-resize-options #:make-image-resize-options #:resize-image #:read-stored-credential #:with-file-mutation-queue
+   #:convert-to-png #:image-resize-options #:make-image-resize-options #:resize-image #:read-stored-credential #:with-file-mutation-queue #:ctx-with-file-mutation-queue
    ;; model calls and streams, model types
    #:ctx-complete #:registry-stream #:registry-stream-simple #:registry-complete #:registry-classify #:registry-generate-images
    #:registry-get-all #:registry-get-available #:registry-get-error #:registry-get-models-of-type #:registry-get-model-of-type

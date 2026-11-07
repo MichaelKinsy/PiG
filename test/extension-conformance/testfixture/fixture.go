@@ -849,6 +849,26 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": "mutated " + tag}, nil
 	})
 
+	// mutation_order_ctx_probe makes `calls` getter calls (a host round trip each in the native SDKs, none that returns a Promise in Pi), then takes the file mutation
+	// queue through its Context and appends its tag to the file (TestFileMutationOrderOfTheContextFormAcrossSDKs): the shape of two tools of one batch that reach the
+	// queue after different numbers of round trips.
+	ext.Tool("mutation_order_ctx_probe", "Make getter calls, take the file mutation queue through the context and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}, "calls": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		calls, _ := params["calls"].(float64)
+		for range int(calls) {
+			_, _ = ctx.GetContextUsage()
+		}
+		err := ctx.WithFileMutationQueue(file, func() error {
+			before, _ := os.ReadFile(file)
+			return os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
+	})
+
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		switch params["kind"] {
 		case "unicode":
@@ -1640,6 +1660,30 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// console-probe writes four lines a console would: stdout (Pi's console.log) and stderr (console.error) alternately, so the row sees where the host puts each and
+	// in which order (TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK). A fused extension shares PiG's own stdout, which it must not write, so the
+	// argument "stderr" writes only the error lines.
+	ext.Command("console-probe", "Write console lines to stdout and stderr", func(ctx sdk.Context, args string) error {
+		for n := 1; n <= 2; n++ {
+			if args != "stderr" {
+				_, _ = fmt.Fprintf(os.Stdout, "probe-out-%d\n", n)
+			}
+			_, _ = fmt.Fprintf(os.Stderr, "probe-err-%d\n", n)
+		}
+		return nil
+	})
+	// panic-probe and the OnLoaded handler panic after a deliberate stderr line the extension itself writes
+	// (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog). The OnLoaded handler panics only when the row asks for it, so no other row meets it.
+	ext.OnLoaded(func(ctx sdk.Context) {
+		if os.Getenv("PIG_FIXTURE_PANIC_PROBE") != "" {
+			_, _ = fmt.Fprintln(os.Stderr, "probe-err-loaded")
+			panic("probe-panic-boom")
+		}
+	})
+	ext.Command("panic-probe", "Panic after an stderr line of the extension's own", func(ctx sdk.Context, args string) error {
+		_, _ = fmt.Fprintln(os.Stderr, "probe-err-command")
+		panic("probe-panic-boom")
+	})
 	ext.Command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", func(ctx sdk.Context, args string) error {
 		opts, err := ctx.GetSystemPromptOptions()
 		if err != nil {
@@ -2509,7 +2553,7 @@ func Extension() *sdk.Extension {
 			Window   int                    `json:"window"`
 			Settings sdk.CompactionSettings `json:"settings"`
 			Entries  []map[string]any       `json:"entries"`
-			Message  map[string]any         `json:"message"`
+			Message  json.RawMessage        `json:"message"`
 			Start    int                    `json:"start"`
 			End      int                    `json:"end"`
 			Keep     int                    `json:"keep"`
@@ -2535,7 +2579,12 @@ func Extension() *sdk.Extension {
 		case "turn":
 			result = map[string]any{"index": sdk.FindTurnStartIndex(c.Entries, c.Index, c.Start)}
 		case "estimate":
-			result = map[string]any{"tokens": sdk.EstimateTokens(c.Message)}
+			// The message is decoded the way an extension decodes wire text: with the SDK's decoder, which keeps an unpaired surrogate (WTF-8).
+			var message map[string]any
+			if err := jsjson.Unmarshal(c.Message, &message); err != nil {
+				return err
+			}
+			result = map[string]any{"tokens": sdk.EstimateTokens(message)}
 		case "defaults":
 			result = sdk.DefaultCompactionSettings
 		default:

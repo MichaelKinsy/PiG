@@ -451,6 +451,20 @@ export default function (pi) {
       return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
     },
   });
+  // mutation_order_ctx_probe makes `calls` getter calls, then takes the queue through its context (TestFileMutationOrderOfTheContextFormAcrossSDKs).
+  pi.registerTool({
+    name: "mutation_order_ctx_probe",
+    description: "Make getter calls, take the queue through the context and append a tag",
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, calls: { type: "number" } } },
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      for (let i = 0; i < (params.calls ?? 0); i++) ctx.getContextUsage();
+      await ctx.withFileMutationQueue(params.file, async () => {
+        const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
+        fs.writeFileSync(params.file, `${before}${params.tag}\n`);
+      });
+      return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
+    },
+  });
   pi.registerTool({
     name: "dialog_order",
     description: "Open a select dialog titled by the call and report the answer",
@@ -1466,6 +1480,29 @@ export default function (pi) {
   });
   pi.registerCommand("usage-probe", {
     handler: (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.getContextUsage() ?? null), "info"),
+  });
+  pi.registerCommand("console-probe", {
+    description: "Write console lines to stdout and stderr",
+    handler: async (args) => {
+      for (const n of [1, 2]) {
+        if (args !== "stderr") console.log(`probe-out-${n}`);
+        console.error(`probe-err-${n}`);
+      }
+    },
+  });
+  // panic-probe and the onLoaded handler throw after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+  pi.onLoaded(() => {
+    if (process.env.PIG_FIXTURE_PANIC_PROBE) {
+      console.error("probe-err-loaded");
+      throw new Error("probe-panic-boom");
+    }
+  });
+  pi.registerCommand("panic-probe", {
+    description: "Throw after an stderr line of the extension's own",
+    handler: async () => {
+      console.error("probe-err-command");
+      throw new Error("probe-panic-boom");
+    },
   });
   pi.registerCommand("context-probe", {
     description: "Report ctx.mode + ctx.getSystemPromptOptions()",
