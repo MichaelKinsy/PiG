@@ -12321,6 +12321,28 @@
       ]
     },
     {
+      "id": "BF-4feaeb9",
+      "title": "Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of…",
+      "symptom": "Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of giving up after go-winio's default 2 s dial deadline.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of giving up after go-winio's default 2 s dial deadline. A parent that started many workers at once, or a loaded machine, could accept later than that; the worker then had no parent, exited, and its start failed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4feaeb9e8e",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_channel_windows_test.go::TestOpenProcessChannelWaitsForAParentThatAcceptsLate"
+      ]
+    },
+    {
       "id": "BF-4ff1a44",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
