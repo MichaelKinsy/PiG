@@ -1153,7 +1153,8 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 		}
 		cwd = resolved
 	}
-	if requestContext.Err() != nil {
+	// Pi reads controller.signal.aborted here; a caller's context that ended is forwarded to requestContext by its AfterFunc, which may not have run yet.
+	if requestContext.Err() != nil || ctx.Err() != nil {
 		return durableenv.ShellExecResult{}, stopped()
 	}
 	request["cwd"] = cwd
