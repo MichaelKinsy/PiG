@@ -236,10 +236,7 @@ func runPiOracle(t *testing.T, c piCorpus) piResult {
 		t.Fatal(err)
 	}
 	testenv.RequireDirectoryLink(t, filepath.Join(abs, "get-east-asian-width"), filepath.Join(dir, "node_modules", "get-east-asian-width"))
-	src, err := os.ReadFile(filepath.Join(abs, "utils.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	src := piUtilsSource(t, abs)
 	utils := filepath.Join(dir, "utils.ts")
 	_ = os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"type":"module"}`), 0o644)
 	if err := os.WriteFile(utils, src, 0o644); err != nil {
