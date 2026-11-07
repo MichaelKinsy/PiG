@@ -28,7 +28,7 @@ func newSettleWaitPeer(t *testing.T) *settleWaitPeer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { ln.Close() })
+	t.Cleanup(func() { _ = ln.Close() })
 	return &settleWaitPeer{t: t, ln: ln}
 }
 
@@ -41,7 +41,7 @@ func (p *settleWaitPeer) accept() net.Conn {
 	if err != nil {
 		p.t.Fatalf("no handler dialed the peer: %v", err)
 	}
-	p.t.Cleanup(func() { conn.Close() })
+	p.t.Cleanup(func() { _ = conn.Close() })
 	_ = conn.SetReadDeadline(deadline)
 	if line, err := bufio.NewReader(conn).ReadString('\n'); err != nil || line != "waiting\n" {
 		p.t.Fatalf("handler announced %q, %v; want \"waiting\"", line, err)

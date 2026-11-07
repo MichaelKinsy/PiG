@@ -46,7 +46,7 @@ func ioWait(addr string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	if _, err := fmt.Fprintln(conn, "waiting"); err != nil {
 		return err
 	}
