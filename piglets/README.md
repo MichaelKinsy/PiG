@@ -3,6 +3,8 @@
 `standard/` contains the explicit PiG Standard Piglet and its selected product
 Resources. Bare Stock PiG does not import or activate them.
 
+`pig-bolt/` is the experimental Piglet that compiles a session's TypeScript extensions with the Pi-Bolt compiler (not an official Pi-Bolt project); see its README. Its one-file `pig-aot.yaml` keeps the Piglet's earlier name working.
+
 `porter/pig-porter.yaml` is the authored Piglet for local Pi-to-PiG parity
 work. It is a focused workbench for interactive family loops and bounded
 headless tasks.
