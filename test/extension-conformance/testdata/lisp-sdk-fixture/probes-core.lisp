@@ -296,13 +296,19 @@
   (pig:command ext "liveness_user_call" "Exercise an interactive host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-input ctx "Question" :placeholder "Answer")))
   (pig:command ext "liveness_fire_call" "Exercise a no-result UI host call" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-title ctx "Conformance title")))
   (pig:command ext "usage-probe" "Report context usage" (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (or (pig:ctx-get-context-usage ctx) :null)))))
-  (pig:command ext "replica-probe" "Report the replicated model, session id and context usage"
+  (pig:command ext "replica-probe" "Report the replicated model, session id, name, file and context usage"
                (lambda (ctx args)
                  (when (and (> (length args) 10) (string= "set-model:" args :end2 10)) (pig:ctx-set-model ctx (subseq args 10)))
-                 (core-info ctx (pig:to-json (pig:obj "model" (core-normalized-model (pig:ctx-get-model-info ctx))
-                                                      "sessionId" (pig:ctx-get-session-id ctx)
-                                                      "managerSessionId" (pig:session-get-session-id (pig:ctx-session-manager ctx))
-                                                      "usage" (or (pig:ctx-get-context-usage ctx) :null))))))
+                 (let ((manager (pig:ctx-session-manager ctx)))
+                   (flet ((text-or-null (value) (if (and (stringp value) (plusp (length value))) value :null)))
+                     (core-info ctx (pig:to-json (pig:obj "model" (core-normalized-model (pig:ctx-get-model-info ctx))
+                                                          "sessionId" (pig:ctx-get-session-id ctx)
+                                                          "managerSessionId" (pig:session-get-session-id manager)
+                                                          "sessionName" (text-or-null (pig:ctx-get-session-name ctx))
+                                                          "sessionFile" (text-or-null (pig:ctx-get-session-file ctx))
+                                                          "managerSessionName" (text-or-null (pig:session-get-session-name manager))
+                                                          "managerSessionFile" (text-or-null (pig:session-get-session-file manager))
+                                                          "usage" (or (pig:ctx-get-context-usage ctx) :null))))))))
   (pig:command ext "scoped-models-probe" "Report the model scope"
                (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (pig:ctx-get-scoped-models ctx)))))
   (pig:command ext "session-log-probe" "Read a paged session log"

@@ -2116,13 +2116,15 @@ impl ModelRegistry {
 }
 
 /// The Session's identity as the host's state snapshots replicate it: Pi's `ctx.model` (the id and provider every read of the model takes, and the
-/// model object `get_model_info` decodes per call), `ctx.sessionManager.getSessionId()` and `ctx.sessionManager.getSessionName()`. The ready state and every
+/// model object `get_model_info` decodes per call) and `ctx.sessionManager`'s `getSessionId()`, `getSessionName()` and `getSessionFile()`. The ready state and every
 /// `state_update` pass through [`SessionIdentity::apply_state`].
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SessionIdentity {
     pub(crate) model: String,
     pub(crate) model_provider: String,
+    /// The session object's members, `""` for none. They are known once `session_id` is.
     pub(crate) session_name: String,
+    pub(crate) session_file: String,
     /// The snapshot's model object, `null` for a Session without a model; `None` until a snapshot carried the `model` key.
     pub(crate) model_wire: Option<serde_json::Value>,
     /// The snapshot's session id, `""` for none; `None` until a snapshot carried the `session` object.
@@ -2131,7 +2133,8 @@ pub(crate) struct SessionIdentity {
 
 impl SessionIdentity {
     /// Applies a state snapshot. An absent `model` keeps the replica and an explicit null clears it (the Session holds no model); the model object is copied and its
-    /// identity derived only when it differs from the held one. Every session snapshot carries the name, `""` for a session with no name, and the id (omitted when empty).
+    /// identity derived only when it differs from the held one. Every session object replaces the name, the file (`""` for a session with no name or no file, an in-memory
+    /// session) and the id (omitted when empty).
     pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, serde_json::Value>) {
         if let Some(model) = state.get("model")
             && self.model_wire.as_ref() != Some(model)
@@ -2140,18 +2143,16 @@ impl SessionIdentity {
             self.model_wire = Some(model.clone());
         }
         if let Some(session) = state.get("session").and_then(serde_json::Value::as_object) {
-            self.session_name = session
-                .get("sessionName")
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or_default()
-                .to_string();
-            self.session_id = Some(
+            let member = |key: &str| {
                 session
-                    .get("sessionId")
+                    .get(key)
                     .and_then(serde_json::Value::as_str)
                     .unwrap_or_default()
-                    .to_string(),
-            );
+                    .to_string()
+            };
+            self.session_name = member("sessionName");
+            self.session_file = member("sessionFile");
+            self.session_id = Some(member("sessionId"));
         }
     }
 }
@@ -3354,8 +3355,12 @@ impl Context {
 
     // ─── Session state ───────────────────────────────────────────────────
 
-    /// Get the session name, fetched live from the host. Pi's `getSessionName` is `string | undefined`: `None` means the session has no name.
+    /// Get the session name. Pi's `getSessionName` is `string | undefined`: `None` means the session has no name. The state snapshots replicate it, so the read
+    /// costs no host call once one arrived; a replacement context asks the host.
     pub fn get_session_name(&self) -> io::Result<Option<String>> {
+        if let Some(name) = self.replicated_session(|identity| &identity.session_name)? {
+            return Ok(Some(name).filter(|name| !name.is_empty()));
+        }
         self.optional_string_field("getSessionName", "name")
     }
 
@@ -4481,9 +4486,18 @@ impl Context {
     /// The replicated session id, or `None` when the host must answer: a replacement context (this process replicates only the requesting Session) or before the
     /// first snapshot carried the session.
     pub(crate) fn replicated_session_id(&self) -> io::Result<Option<String>> {
+        self.replicated_session(|identity| identity.session_id.as_deref().unwrap_or_default())
+    }
+
+    /// One member of the replicated session object (`""` for none), or `None` when the host must answer, as for [`Context::replicated_session_id`].
+    pub(crate) fn replicated_session(
+        &self,
+        member: impl FnOnce(&SessionIdentity) -> &str,
+    ) -> io::Result<Option<String>> {
         Ok(self
             .replica()?
-            .and_then(|identity| identity.session_id.clone()))
+            .filter(|identity| identity.session_id.is_some())
+            .map(|identity| member(&identity).to_string()))
     }
 
     /// The replicated state, or `None` for a replacement context. A stale context fails as the host answers every call of a replaced runtime.
@@ -4499,8 +4513,11 @@ impl Context {
         Ok(Some(self.shared_identity.lock().unwrap()))
     }
 
-    /// The current session file path. Pi's `getSessionFile` is `string | undefined`: `None` means an in-memory session.
+    /// The current session file path. Pi's `getSessionFile` is `string | undefined`: `None` means an in-memory session. Replicated like [`Context::get_session_name`].
     pub fn get_session_file(&self) -> io::Result<Option<String>> {
+        if let Some(file) = self.replicated_session(|identity| &identity.session_file)? {
+            return Ok(Some(file).filter(|file| !file.is_empty()));
+        }
         self.optional_string_field("getSessionFile", "sessionFile")
     }
 
@@ -7584,6 +7601,220 @@ mod sdk_surface_call_tests {
             let (local, reply) = (local.unwrap_err(), reply.unwrap_err());
             assert_eq!(local.to_string(), reply.to_string(), "{model}");
             assert_eq!(local.kind(), io::ErrorKind::InvalidData);
+        }
+    }
+
+    // ─── Replicated session name and file reads ──────────────────────────
+
+    type NameAndFile = (
+        io::Result<Option<String>>,
+        io::Result<Option<String>>,
+        io::Result<serde_json::Value>,
+        io::Result<serde_json::Value>,
+    );
+
+    fn name_and_file(ctx: &Context) -> NameAndFile {
+        (
+            ctx.get_session_name(),
+            ctx.get_session_file(),
+            ctx.session_manager().get_session_name(),
+            ctx.session_manager().get_session_file(),
+        )
+    }
+
+    #[test]
+    fn session_name_and_file_answer_from_the_state_snapshot_without_a_host_call() {
+        let (ctx, host) = bench();
+        snapshot(
+            &ctx,
+            json!({"session": {"sessionId": "s", "sessionName": "named", "sessionFile": "/s/f.jsonl"}}),
+        );
+        let (name, file, manager_name, manager_file) =
+            without_a_host_call(&ctx, &host, name_and_file);
+        assert_eq!(name.unwrap().as_deref(), Some("named"));
+        assert_eq!(file.unwrap().as_deref(), Some("/s/f.jsonl"));
+        assert_eq!(manager_name.unwrap(), json!("named"));
+        assert_eq!(manager_file.unwrap(), json!("/s/f.jsonl"));
+    }
+
+    // Both members of a session object replace the held ones: "" is none and clears, as the host's own "" reply read as none.
+    #[test]
+    fn later_snapshots_replace_the_name_and_the_file_and_empty_clears_them() {
+        let (ctx, host) = bench();
+        snapshot(
+            &ctx,
+            json!({"session": {"sessionId": "s", "sessionName": "named", "sessionFile": "/s/f.jsonl"}}),
+        );
+        snapshot(&ctx, json!({"isIdle": true}));
+        let (name, file, _, _) = without_a_host_call(&ctx, &host, name_and_file);
+        assert_eq!(name.unwrap().as_deref(), Some("named"));
+        assert_eq!(file.unwrap().as_deref(), Some("/s/f.jsonl"));
+
+        snapshot(
+            &ctx,
+            json!({"session": {"sessionId": "s", "sessionName": "renamed", "sessionFile": "/s/g.jsonl"}}),
+        );
+        let (name, file, manager_name, manager_file) =
+            without_a_host_call(&ctx, &host, name_and_file);
+        assert_eq!(name.unwrap().as_deref(), Some("renamed"));
+        assert_eq!(file.unwrap().as_deref(), Some("/s/g.jsonl"));
+        assert_eq!(manager_name.unwrap(), json!("renamed"));
+        assert_eq!(manager_file.unwrap(), json!("/s/g.jsonl"));
+
+        // The name cleared, the file kept by the snapshot that names it.
+        snapshot(
+            &ctx,
+            json!({"session": {"sessionId": "s", "sessionName": "", "sessionFile": "/s/g.jsonl"}}),
+        );
+        let (name, file, manager_name, manager_file) =
+            without_a_host_call(&ctx, &host, name_and_file);
+        assert_eq!(name.unwrap(), None);
+        assert_eq!(file.unwrap().as_deref(), Some("/s/g.jsonl"));
+        assert_eq!(manager_name.unwrap(), serde_json::Value::Null);
+        assert_eq!(manager_file.unwrap(), json!("/s/g.jsonl"));
+
+        // An in-memory session: the empty file clears the held one and a missing key is the empty value.
+        snapshot(
+            &ctx,
+            json!({"session": {"sessionId": "s", "sessionName": "again", "sessionFile": ""}}),
+        );
+        let (name, file, manager_name, manager_file) =
+            without_a_host_call(&ctx, &host, name_and_file);
+        assert_eq!(name.unwrap().as_deref(), Some("again"));
+        assert_eq!(file.unwrap(), None);
+        assert_eq!(manager_name.unwrap(), json!("again"));
+        assert_eq!(manager_file.unwrap(), serde_json::Value::Null);
+        snapshot(&ctx, json!({"session": {"sessionId": "s"}}));
+        let (name, file, manager_name, manager_file) =
+            without_a_host_call(&ctx, &host, name_and_file);
+        assert_eq!((name.unwrap(), file.unwrap()), (None, None));
+        assert_eq!(
+            (manager_name.unwrap(), manager_file.unwrap()),
+            (serde_json::Value::Null, serde_json::Value::Null)
+        );
+    }
+
+    #[test]
+    fn session_name_and_file_ask_the_host_until_a_snapshot_carried_the_session() {
+        // A snapshot without a session object leaves every session read to the host.
+        let reads: [(
+            &str,
+            fn(&Context) -> io::Result<serde_json::Value>,
+            &str,
+            serde_json::Value,
+        ); 4] = [
+            (
+                "getSessionName",
+                |c| Ok(json!(c.get_session_name()?)),
+                "getSessionName",
+                json!({"name": "host-name"}),
+            ),
+            (
+                "getSessionFile",
+                |c| Ok(json!(c.get_session_file()?)),
+                "getSessionFile",
+                json!({"sessionFile": "/host/f"}),
+            ),
+            (
+                "sessionRead",
+                |c| c.session_manager().get_session_name(),
+                "getSessionName",
+                json!("host-name"),
+            ),
+            (
+                "sessionRead",
+                |c| c.session_manager().get_session_file(),
+                "getSessionFile",
+                json!("/host/f"),
+            ),
+        ];
+        for (method, read, manager_method, answer) in reads {
+            let (ctx, host) = bench();
+            snapshot(&ctx, json!({"model": model_object()}));
+            let (call, value) = one_call(&ctx, host, read, ok(Some(answer)));
+            assert_eq!(call.method, method);
+            if method == "sessionRead" {
+                assert_eq!(call.args.unwrap()["method"], manager_method);
+            }
+            assert!(value.unwrap().is_string());
+        }
+        // The host's empty reply reads as none.
+        let (ctx, host) = bench();
+        let (_, name) = one_call(
+            &ctx,
+            host,
+            |c| c.get_session_name(),
+            ok(Some(json!({"name": ""}))),
+        );
+        assert_eq!(name.unwrap(), None);
+    }
+
+    #[test]
+    fn a_replacement_context_asks_the_host_for_the_session_name_and_file() {
+        let (ctx, host) = bench();
+        snapshot(
+            &ctx,
+            json!({"session": {"sessionId": "s", "sessionName": "named", "sessionFile": "/s/f.jsonl"}}),
+        );
+        let replacement = replacement_of(&ctx);
+        let (call, name) = one_call(
+            &replacement,
+            host.try_clone().unwrap(),
+            |c| c.get_session_name(),
+            ok(Some(json!({"name": "other"}))),
+        );
+        assert_eq!(call.method, "getSessionName");
+        assert_eq!(name.unwrap().as_deref(), Some("other"));
+        let (call, file) = one_call(
+            &replacement,
+            host.try_clone().unwrap(),
+            |c| c.get_session_file(),
+            ok(Some(json!({"sessionFile": "/other"}))),
+        );
+        assert_eq!(call.method, "getSessionFile");
+        assert_eq!(file.unwrap().as_deref(), Some("/other"));
+        let (call, name) = one_call(
+            &replacement,
+            host.try_clone().unwrap(),
+            |c| c.session_manager().get_session_name(),
+            ok(Some(json!("other"))),
+        );
+        assert_eq!(call.method, "sessionRead");
+        assert_eq!(call.args.unwrap()["method"], "getSessionName");
+        assert_eq!(name.unwrap(), json!("other"));
+        let (call, file) = one_call(
+            &replacement,
+            host,
+            |c| c.session_manager().get_session_file(),
+            ok(Some(json!("/other"))),
+        );
+        assert_eq!(call.method, "sessionRead");
+        assert_eq!(call.args.unwrap()["method"], "getSessionFile");
+        assert_eq!(file.unwrap(), json!("/other"));
+    }
+
+    #[test]
+    fn a_stale_context_fails_the_session_name_and_file_reads_with_the_stale_message() {
+        const STALE: &str = "This extension ctx is stale after session replacement or reload.";
+        for snapshotted in [true, false] {
+            let (ctx, host) = bench();
+            if snapshotted {
+                snapshot(
+                    &ctx,
+                    json!({"session": {"sessionId": "s", "sessionName": "named", "sessionFile": "/s/f.jsonl"}}),
+                );
+            }
+            ctx.conn.apply_invalidate(&json!({"message": STALE}));
+            let (name, file, manager_name, manager_file) =
+                without_a_host_call(&ctx, &host, name_and_file);
+            for message in [
+                name.unwrap_err().to_string(),
+                file.unwrap_err().to_string(),
+                manager_name.unwrap_err().to_string(),
+                manager_file.unwrap_err().to_string(),
+            ] {
+                assert_eq!(message, STALE, "snapshotted: {snapshotted}");
+            }
         }
     }
 }

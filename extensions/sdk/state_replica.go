@@ -25,9 +25,16 @@ type replicatedIdentity struct {
 	modelErr    error
 	modelParsed bool
 
-	// sessionIDKnown is set once a snapshot carried the `session` object.
-	sessionIDKnown bool
-	sessionID      string
+	session replicatedSession
+}
+
+// replicatedSession is the Session identity a snapshot carries. The name and the file are read where the leaf is not: the host pushes them at the points it pushes the model and the id (a name write publishes before its reply, /name and a replaced Session report through hostStateChanged), while the leaf moves with every committed entry, which no push announces.
+type replicatedSession struct {
+	// known is set once a snapshot carried the `session` object.
+	known bool
+	id    string
+	name  string
+	file  string
 }
 
 // withModel is the replicated state after a snapshot carrying the `model` key (an absent key never reaches it), and whether the model changed. A model that repeats the held bytes leaves the state as it is.
@@ -41,9 +48,9 @@ func (r replicatedIdentity) withModel(raw []byte) (replicatedIdentity, bool) {
 	return r, true
 }
 
-// withSessionID is the replicated state after a snapshot carrying the `session` object. The host omits `sessionId` only when it is empty.
-func (r replicatedIdentity) withSessionID(id string) replicatedIdentity {
-	r.sessionIDKnown, r.sessionID = true, id
+// withSession is the replicated state after a snapshot carrying the `session` object. The host omits `sessionId` only when it is empty, and always sends the name and the file, "" for none, so each replaces the held one.
+func (r replicatedIdentity) withSession(id, name, file string) replicatedIdentity {
+	r.session = replicatedSession{known: true, id: id, name: name, file: file}
 	return r
 }
 
@@ -95,11 +102,11 @@ func decodeReplicatedModel(raw []byte) (*ModelInfo, error) {
 	return &info, nil
 }
 
-// replicatedSessionID is the replicated session id; known is false while no snapshot carried the Session.
-func (e *Extension) replicatedSessionID() (id string, known bool) {
+// replicatedSession is the replicated Session; known is false while no snapshot carried it.
+func (e *Extension) replicatedSession() replicatedSession {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.identity.sessionID, e.identity.sessionIDKnown
+	return e.identity.session
 }
 
 // staleError is the error a read of a replaced or reloaded runtime's context returns: the host answered every call of such a runtime with the stale message.
@@ -113,14 +120,22 @@ func (c Context) staleError() error {
 	return nil
 }
 
-// localSessionID is the replicated session id of c's Session, for the reads that answer it locally: known is false for a replacement context, which belongs to another Session, and before the first snapshot.
-func (c Context) localSessionID() (id string, known bool, err error) {
+// localSession is the replicated Session of c, for the reads that answer it locally: known is false for a replacement context, which belongs to another Session, and before the first snapshot.
+func (c Context) localSession() (s replicatedSession, known bool, err error) {
 	if c.replacement != nil || c.ext == nil {
-		return "", false, nil
+		return replicatedSession{}, false, nil
 	}
 	if err := c.staleError(); err != nil {
-		return "", true, err
+		return replicatedSession{}, true, err
 	}
-	id, known = c.ext.replicatedSessionID()
-	return id, known, nil
+	s = c.ext.replicatedSession()
+	return s, s.known, nil
+}
+
+// optionalString is Pi's `string | undefined` for the wire's empty string.
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }

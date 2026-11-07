@@ -2574,6 +2574,10 @@ def new_extension() -> pig_sdk.Extension:
             "model": replica_model(ctx.get_model_info()),
             "sessionId": ctx.get_session_id(),
             "managerSessionId": ctx.session_manager.get_session_id(),
+            "sessionName": ctx.get_session_name(),
+            "sessionFile": ctx.get_session_file(),
+            "managerSessionName": ctx.session_manager.get_session_name(),
+            "managerSessionFile": ctx.session_manager.get_session_file(),
             "usage": ctx.get_context_usage(),
         }
         ctx.notify(json.dumps(report, separators=(",", ":")), "info")

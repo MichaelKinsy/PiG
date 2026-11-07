@@ -59,7 +59,8 @@ func TestReplicatedReadsAreLocalAcrossSDKs(t *testing.T) {
 			}
 			check := func(step string, got replicaReport, calls []string, model string, session string) {
 				t.Helper()
-				want := replicaReport{Model: replicaWant[model], SessionID: session, ManagerSessionID: session, Usage: state.usage()}
+				want := replicaReport{Model: replicaWant[model], SessionID: session, ManagerSessionID: session, Usage: state.usage(),
+					SessionName: replicaOptional(replicaNameOf(session)), SessionFile: replicaOptional(replicaFileOf(session)), ManagerSessionName: replicaOptional(replicaNameOf(session)), ManagerSessionFile: replicaOptional(replicaFileOf(session))}
 				if !reflect.DeepEqual(got, want) {
 					t.Errorf("%s: report\n got  %+v\n want %+v", step, got, want)
 				}
@@ -90,16 +91,44 @@ func TestReplicatedReadsAreLocalAcrossSDKs(t *testing.T) {
 			state.set(replicaModels["a"], "replica-session-three", 99)
 			report, calls = probe("")
 			check("model restored", report, calls, "a", "replica-session-three")
+
+			// An in-memory Session has no file and no name: Pi's undefined, not an empty string.
+			state.set(replicaModels["a"], "replica-session-memory", 99)
+			report, calls = probe("")
+			check("in-memory Session", report, calls, "a", "replica-session-memory")
 		})
 	}
 }
 
 // replicaReport is the replica-probe fixtures' JSON report.
 type replicaReport struct {
-	Model            *replicaModelReport     `json:"model"`
-	SessionID        string                  `json:"sessionId"`
-	ManagerSessionID string                  `json:"managerSessionId"`
-	Usage            *extension.ContextUsage `json:"usage"`
+	Model                                                            *replicaModelReport `json:"model"`
+	SessionID                                                        string              `json:"sessionId"`
+	ManagerSessionID                                                 string              `json:"managerSessionId"`
+	SessionName, SessionFile, ManagerSessionName, ManagerSessionFile *string
+	Usage                                                            *extension.ContextUsage `json:"usage"`
+}
+
+// replicaNameOf and replicaFileOf are the name and file the host holds for a session id: an id ending in "-memory" is an in-memory Session with neither (Pi's undefined).
+func replicaNameOf(session string) string {
+	if strings.HasSuffix(session, "-memory") {
+		return ""
+	}
+	return "name of " + session
+}
+
+func replicaFileOf(session string) string {
+	if strings.HasSuffix(session, "-memory") {
+		return ""
+	}
+	return "/replica/" + session + ".jsonl"
+}
+
+func replicaOptional(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
 
 type replicaModelReport struct {
@@ -167,15 +196,30 @@ func (s *replicaHostState) bind(h *harness) {
 		defer s.mu.Unlock()
 		return s.session
 	})
+	h.bridge.SetHostAction("getSessionName", func() string {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return replicaNameOf(s.session)
+	})
+	h.bridge.SetHostAction("getSessionFile", func() string {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return replicaFileOf(s.session)
+	})
 	h.bridge.SetHostAction("getContextUsage", s.usage)
 	// A read of the session manager asks the host for the id through sessionRead.
 	h.bridge.SetHostAction("sessionRead", func(method string, _ json.RawMessage) (any, error) {
-		if method != "getSessionId" {
-			return nil, fmt.Errorf("replica row: unexpected sessionRead %s", method)
-		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		return s.session, nil
+		switch method {
+		case "getSessionId":
+			return s.session, nil
+		case "getSessionName":
+			return replicaOptional(replicaNameOf(s.session)), nil
+		case "getSessionFile":
+			return replicaOptional(replicaFileOf(s.session)), nil
+		}
+		return nil, fmt.Errorf("replica row: unexpected sessionRead %s", method)
 	})
 	h.bridge.SetHostAction("setModel", func(_ context.Context, model string) (bool, error) {
 		for _, candidate := range replicaModels {
@@ -205,14 +249,14 @@ func replicaReadCalls(calls []wireCall) []string {
 	var out []string
 	for _, call := range calls {
 		switch call.method {
-		case "getModelInfo", "getSessionID":
+		case "getModelInfo", "getSessionID", "getSessionName", "getSessionFile":
 			out = append(out, call.method)
 		case "sessionRead":
 			var args struct {
 				Method string `json:"method"`
 			}
-			if json.Unmarshal(call.args, &args) == nil && args.Method == "getSessionId" {
-				out = append(out, "sessionRead:getSessionId")
+			if json.Unmarshal(call.args, &args) == nil && (args.Method == "getSessionId" || args.Method == "getSessionName" || args.Method == "getSessionFile") {
+				out = append(out, "sessionRead:"+args.Method)
 			}
 		}
 	}

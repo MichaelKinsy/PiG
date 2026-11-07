@@ -1626,7 +1626,8 @@ class RuntimeContext {
   // produced is painted (it drains input first), so a shutdown requested
   // from an editor's handleInput reaches the host after that frame.
   shutdown() { this.runtime.extensionRuntime.assertActive(); queueMicrotask(() => this.runtime.fireAndForget("shutdown", {})); }
-  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.contextUsage; }
+  // Pi computes the usage live from the branch (agent-session.ts getContextUsage) and it moves with every message the Session commits, which no state push announces, so a read asks the host: a snapshot would be stale after waitForIdle, compact or navigateTree and for a timer between requests.
+  getContextUsage() { this.runtime.extensionRuntime.assertActive(); return this.runtime.callSync("getContextUsage") ?? undefined; }
   // The host reads the options flat. Upstream starts compaction without
   // awaiting it and reports the outcome through onComplete/onError, so a call
   // with callbacks carries no parent request and outlives its handler
@@ -2250,7 +2251,6 @@ export class Runtime {
       editorText: "",
       toolsExpanded: false,
       allThemes: [],
-      contextUsage: undefined,
       systemPrompt: "",
       systemPromptOptions: {},
       flags: {},
@@ -3408,9 +3408,6 @@ export class Runtime {
       this.state.toolsExpanded = snapshot.toolsExpanded;
       this.toolsExpandedKnown = true;
       if (changed) this.fireChangeHandlers(this.toolsExpandedChangeHandlers, snapshot.toolsExpanded);
-    }
-    if (Object.hasOwn(snapshot, "contextUsage")) {
-      this.state.contextUsage = snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage };
     }
     if (snapshot.systemPromptOptions && typeof snapshot.systemPromptOptions === "object") {
       this.state.systemPromptOptions = snapshot.systemPromptOptions;
@@ -5327,7 +5324,7 @@ export class Runtime {
     // notify and LoginOptions.getDeviceId are synchronous in Pi (auth/types.ts:160, 208).
     const providerCallback = method === "provider.callback" && (args.method === "notify" || args.method === "getDeviceId");
     const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
-    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+    if (!facetMethod && !themeMethod && !["registerTool", "registerDeclaration", "registerMcpServer", "unregisterMcpServer", "registerVirtualModel", "unregisterVirtualModel", "mcpServers.check", "getMcpServers", "getCallableTools", "getAllTools", "getActiveTools", "getCommands", "hasPendingMessages", "getContextUsage", "getSystemPrompt", "getSystemPromptOptions", "isIdle", "tool.reachesTools", "setLabel", "setSessionName", "sendMessage", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle", "ui.custom.control", "ui.custom.showOverlay", "ui.custom.hideOverlay", "ui.custom.setFocus"].includes(method) && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
       throw new Error(`Host method ${method} is not a synchronous bridge operation`);
     }
     if (!this.conn) throw new Error("runtime not connected");
@@ -5430,7 +5427,6 @@ export class Runtime {
       isIdle: snapshot.isIdle !== false,
       projectTrusted: snapshot.projectTrusted === true,
       hasPendingMessages: snapshot.hasPendingMessages === true,
-      contextUsage: snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage },
       systemPrompt: typeof snapshot.systemPrompt === "string" ? snapshot.systemPrompt : "",
       systemPromptOptions: snapshot.systemPromptOptions ?? this.state.systemPromptOptions,
       flags: { ...(snapshot.flags ?? {}) },

@@ -492,7 +492,7 @@ type ReadyPayload struct {
 
 // StatePayload is the host's view of state visible to extensions through
 // the upstream-faithful synchronous getters (pi.getThinkingLevel(),
-// ctx.isIdle(), ctx.getContextUsage(), etc.). The tool registry is not state:
+// ctx.isIdle(), etc.). The context usage is not state: Pi computes it live from the branch, so ctx.getContextUsage() is a host call. The tool registry is not state:
 // pi.getAllTools() and pi.getActiveTools() are host calls, so a registration
 // costs the SDK nothing in the size of the registry. It is
 // sent with [ReadyPayload] at startup and re-sent via "state_update"
@@ -509,7 +509,6 @@ type StatePayload struct {
 	IsIdle              bool                       `json:"isIdle"`
 	ProjectTrusted      bool                       `json:"projectTrusted"`
 	HasPendingMessages  bool                       `json:"hasPendingMessages"`
-	ContextUsage        *extensionContextUsageDTO  `json:"contextUsage"`
 	SystemPrompt        string                     `json:"systemPrompt"`
 	SystemPromptOptions json.RawMessage            `json:"systemPromptOptions,omitempty"`
 	Flags               map[string]json.RawMessage `json:"flags"`
@@ -589,15 +588,6 @@ type SessionStatePayload struct {
 	// (upstream getHeader, getCwd, getSessionDir, isPersisted,
 	// usesDefaultSessionDir).
 	Info json.RawMessage `json:"info,omitempty"`
-}
-
-// extensionContextUsageDTO mirrors extension.ContextUsage on the wire. We
-// duplicate it here to avoid importing the public extension package from
-// the protocol layer.
-type extensionContextUsageDTO struct {
-	Tokens        *int     `json:"tokens"`
-	ContextWindow int      `json:"contextWindow"`
-	Percent       *float64 `json:"percent"`
 }
 
 // ── Request (host→ext) ───────────────────────────────────────────────────────

@@ -208,7 +208,7 @@ func (r *statePushRig) kinds(language string) []statePushKind {
 		armed:  equal("dark"), read: equal("light"),
 	}
 	if language == "node" {
-		return []statePushKind{model, modelName, sessionID, settings, sessionName, thinking, mcp, theme}
+		return []statePushKind{model, modelName, sessionID, contextUsage, settings, sessionName, thinking, mcp, theme}
 	}
 	return []statePushKind{model, modelName, sessionID, contextUsage, settings, sessionName, mcp, theme}
 }

@@ -63,7 +63,7 @@
           (when (hash-table-p session)
             (let ((id (jget session "sessionId"))) (setf (cs-replica-session-id cs) (if (stringp id) id "") (cs-replica-session-known cs) t))
             (let ((name (jget session "sessionName"))) (setf (cs-session-name cs) (if (stringp name) name "")))
-            (let ((file (jget session "sessionFile"))) (when (and (stringp file) (plusp (length file))) (setf (cs-session-file cs) file)))
+            (let ((file (jget session "sessionFile"))) (setf (cs-session-file cs) (if (stringp file) file "")))
             (cs-apply-session cs session)))
         (let ((settings (jget state "settings"))) (when (hash-table-p settings) (setf (cs-settings cs) settings)))))))
 
@@ -82,8 +82,8 @@
   (assert-active ctx)
   (with-core-state (cs ctx) (cs-model cs)))
 
-;;; The model object and session id of the latest snapshot answer these reads without a host call. A context made before the first
-;;; snapshot, and a withSession context (this process replicates only the requesting Session), ask the host.
+;;; The model object, session id, name and file of the latest snapshot answer these reads without a host call. A context made before
+;;; the first snapshot, and a withSession context (this process replicates only the requesting Session), ask the host.
 
 (defun ctx-get-model-info (ctx)
   "The active model's info object (a fresh copy per call), or NIL while the session has no model."
@@ -94,20 +94,37 @@
         (multiple-value-bind (known info) (with-core-state (cs ctx) (values (cs-model-known cs) (cs-model-info cs)))
           (if known (model-info-result (clone-stream-value info)) (host-model-info ctx))))))
 
-(defun replicated-session-id (ctx)
-  "(values id known): the replicated session id of an ordinary context; known is NIL for a replacement context and before the first snapshot."
+(defun replicated-session-member (ctx reader)
+  "(values value known): READER, (lambda (core-state)), of the replicated session members of an ordinary context; known is NIL for a replacement context and before the first session snapshot."
   (cond ((ctx-replacement ctx) (values nil nil))
         (t (assert-active ctx)
-           (with-core-state (cs ctx) (values (cs-replica-session-id cs) (cs-replica-session-known cs))))))
+           (with-core-state (cs ctx) (if (cs-replica-session-known cs) (values (funcall reader cs) t) (values nil nil))))))
+
+(defun non-empty-or-nil (text) (and (plusp (length text)) text))
 
 (defun ctx-get-session-id (ctx)
-  (multiple-value-bind (id known) (replicated-session-id ctx)
+  (multiple-value-bind (id known) (replicated-session-member ctx #'cs-replica-session-id)
     (if known id (host-session-id ctx))))
 
-(defun session-get-session-id (manager)
-  "The session id of the context's Session. A setup manager reads the Session being created, so it asks the host."
-  (multiple-value-bind (id known) (if (session-manager-replicated manager) (replicated-session-id (session-manager-ctx manager)) (values nil nil))
-    (if known id (session-read manager "getSessionId"))))
+(defun ctx-get-session-name (ctx)
+  "The session's name, or NIL while it has none."
+  (multiple-value-bind (name known) (replicated-session-member ctx #'cs-session-name)
+    (if known (non-empty-or-nil name) (optional-string-field ctx "getSessionName" "name"))))
+
+(defun ctx-get-session-file (ctx)
+  "The session file's path, or NIL for an in-memory session."
+  (multiple-value-bind (file known) (replicated-session-member ctx #'cs-session-file)
+    (if known (non-empty-or-nil file) (optional-string-field ctx "getSessionFile" "sessionFile"))))
+
+(defun replicated-manager-member (manager reader method &optional (transform #'identity))
+  "The replicated session member READER names for the context's own Session, through TRANSFORM; a setup manager reads the Session being created, so it asks the host."
+  (multiple-value-bind (value known)
+      (if (session-manager-replicated manager) (replicated-session-member (session-manager-ctx manager) reader) (values nil nil))
+    (if known (funcall transform value) (session-read manager method))))
+
+(defun session-get-session-id (manager) (replicated-manager-member manager #'cs-replica-session-id "getSessionId"))
+(defun session-get-session-name (manager) (replicated-manager-member manager #'cs-session-name "getSessionName" #'non-empty-or-nil))
+(defun session-get-session-file (manager) (replicated-manager-member manager #'cs-session-file "getSessionFile" #'non-empty-or-nil))
 
 (defun ctx-model-provider (ctx)
   "The active model's provider id (Pi's ctx.model.provider), \"\" while the session has no model."
@@ -124,9 +141,6 @@
   "The session's name (\"\" while it has none), replicated from the host's state pushes."
   (assert-active ctx)
   (with-core-state (cs ctx) (cs-session-name cs)))
-
-(defun ctx-get-session-name (ctx) (optional-string-field ctx "getSessionName" "name"))
-(defun ctx-get-session-file (ctx) (optional-string-field ctx "getSessionFile" "sessionFile"))
 
 (defun ctx-extension-source-info (ctx)
   "The provenance the host stamped on this extension (path, source, scope, origin, baseDir, and changelogPath when the package has a changelog), as the host sent it, or NIL."

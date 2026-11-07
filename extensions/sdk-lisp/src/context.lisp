@@ -459,8 +459,6 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 
 (defun session-get-cwd (m) (session-read m "getCwd"))
 (defun session-get-session-dir (m) (session-read m "getSessionDir"))
-(defun session-get-session-file (m) (session-read m "getSessionFile"))
-(defun session-get-session-name (m) (session-read m "getSessionName"))
 (defun session-get-leaf-id (m) (session-read m "getLeafId"))
 (defun session-get-header (m) (session-read m "getHeader"))
 (defun session-get-leaf-entry (m) (session-read m "getLeafEntry"))

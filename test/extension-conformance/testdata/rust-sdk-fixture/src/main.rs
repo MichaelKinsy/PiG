@@ -4399,6 +4399,10 @@ fn main() {
                 "model": model,
                 "sessionId": ctx.get_session_id().unwrap(),
                 "managerSessionId": ctx.session_manager().get_session_id().unwrap(),
+                "sessionName": ctx.get_session_name().unwrap(),
+                "sessionFile": ctx.get_session_file().unwrap(),
+                "managerSessionName": ctx.session_manager().get_session_name().unwrap(),
+                "managerSessionFile": ctx.session_manager().get_session_file().unwrap(),
                 "usage": usage,
             });
             ctx.notify(&report.to_string(), "info");

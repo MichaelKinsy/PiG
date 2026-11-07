@@ -163,6 +163,68 @@ def test_a_stale_context_raises_the_stale_message_from_the_local_reads():
     assert host.calls == []
 
 
+def named_session(ext: pig_sdk.Extension, name: str, file: str, session_id: str = "s-1") -> None:
+    apply(ext, {"session": {"sessionId": session_id, "sessionName": name, "sessionFile": file}})
+
+
+def read_name_and_file(ctx: pig_sdk.Context) -> tuple[Any, Any, Any, Any]:
+    manager = ctx.session_manager
+    return ctx.get_session_name(), ctx.get_session_file(), manager.get_session_name(), manager.get_session_file()
+
+
+def test_snapshot_answers_the_session_name_and_file_without_a_host_call():
+    ext, ctx, host = make()
+    named_session(ext, "my session", "/s/a.jsonl")
+    assert read_name_and_file(ctx) == ("my session", "/s/a.jsonl", "my session", "/s/a.jsonl")
+    assert ctx.session_name == "my session"
+    assert host.calls == []
+
+
+def test_later_snapshots_replace_the_name_and_file_and_empty_values_clear_them():
+    ext, ctx, host = make()
+    named_session(ext, "one", "/s/a.jsonl")
+    apply(ext, {"isIdle": True})
+    assert read_name_and_file(ctx) == ("one", "/s/a.jsonl", "one", "/s/a.jsonl")
+    named_session(ext, "two", "/s/b.jsonl", "s-2")
+    assert read_name_and_file(ctx) == ("two", "/s/b.jsonl", "two", "/s/b.jsonl")
+    named_session(ext, "", "")
+    assert read_name_and_file(ctx) == (None, None, None, None)
+    assert (ctx.session_name, ext._session_file) == ("", "")
+    apply(ext, {"session": {"sessionId": "s-3"}})
+    assert read_name_and_file(ctx) == (None, None, None, None)
+    assert host.calls == []
+
+
+def test_before_the_first_snapshot_the_name_and_file_ask_the_host():
+    ext, ctx, host = make({"getSessionName": {"name": "host-name"}, "getSessionFile": {"sessionFile": ""}, "sessionRead": "host-manager"})
+    assert (ctx.get_session_name(), ctx.get_session_file()) == ("host-name", None)
+    assert ctx.session_manager.get_session_name() == "host-manager"
+    assert ctx.session_manager.get_session_file() == "host-manager"
+    assert [call[0] for call in host.calls] == ["getSessionName", "getSessionFile", "sessionRead", "sessionRead"]
+    assert [call[1]["method"] for call in host.calls[2:]] == ["getSessionName", "getSessionFile"]
+
+
+def test_a_replacement_context_asks_the_host_for_the_name_and_file():
+    ext, ctx, host = make({"getSessionName": {"name": "host-name"}, "getSessionFile": {"sessionFile": "/h/f.jsonl"}, "sessionRead": "host-manager"})
+    named_session(ext, "mine", "/s/a.jsonl")
+    replaced = replacement_of(ctx)
+    assert (replaced.get_session_name(), replaced.get_session_file()) == ("host-name", "/h/f.jsonl")
+    assert replaced.session_manager.get_session_name() == "host-manager"
+    assert replaced.session_manager.get_session_file() == "host-manager"
+    assert [call[0] for call in host.calls] == ["getSessionName", "getSessionFile", "sessionRead", "sessionRead"]
+
+
+def test_a_stale_context_raises_the_stale_message_from_the_name_and_file_reads():
+    ext, ctx, host = make()
+    named_session(ext, "mine", "/s/a.jsonl")
+    ext._stale_message = STALE
+    manager = ctx.session_manager
+    for read in (ctx.get_session_name, ctx.get_session_file, manager.get_session_name, manager.get_session_file):
+        with pytest.raises(RuntimeError, match="stale after session replacement or reload"):
+            read()
+    assert host.calls == []
+
+
 def test_get_context_usage_stays_a_host_call():
     ext, ctx, host = make({"getContextUsage": {"tokens": 5}})
     apply(ext, {"model": MODEL_A, "session": {"sessionId": "s-1"}})

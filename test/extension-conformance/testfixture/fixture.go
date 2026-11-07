@@ -1624,7 +1624,7 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
-	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, the session manager's id and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
+	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, name and file (from the context and from the session manager) and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
 	ext.Command("replica-probe", "Report the replicated model object, session ids and context usage", func(ctx sdk.Context, args string) error {
 		if model, ok := strings.CutPrefix(args, "set-model:"); ok {
 			if _, err := ctx.SetModel(model); err != nil {
@@ -1654,7 +1654,23 @@ func Extension() *sdk.Extension {
 				"inputCostPer1M": info.InputCostPer1M, "outputCostPer1M": info.OutputCostPer1M, "cacheReadCostPer1M": info.CacheReadCostPer1M, "cacheWriteCostPer1M": info.CacheWriteCostPer1M,
 			}
 		}
-		data, err := json.Marshal(map[string]any{"model": model, "sessionId": sessionID, "managerSessionId": managerID, "usage": usage})
+		name, err := ctx.GetSessionName()
+		if err != nil {
+			return err
+		}
+		file, err := ctx.GetSessionFile()
+		if err != nil {
+			return err
+		}
+		managerName, err := ctx.SessionManager().GetSessionName()
+		if err != nil {
+			return err
+		}
+		managerFile, err := ctx.SessionManager().GetSessionFile()
+		if err != nil {
+			return err
+		}
+		data, err := json.Marshal(map[string]any{"model": model, "sessionId": sessionID, "managerSessionId": managerID, "usage": usage, "sessionName": name, "sessionFile": file, "managerSessionName": managerName, "managerSessionFile": managerFile})
 		if err != nil {
 			return err
 		}

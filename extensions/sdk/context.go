@@ -737,8 +737,11 @@ func (c Context) PasteToEditor(text string) {
 
 // ── Session State ────────────────────────────────────────────────────────────
 
-// GetSessionName returns the current session name. Pi's getSessionName is `string | undefined`: nil means the session has no name, and a host or transport failure is returned as an error.
+// GetSessionName returns the current session name. Pi's getSessionName is `string | undefined`: nil means the session has no name, and a host or transport failure is returned as an error. Like [Context.GetSessionID] it is replicated, and a [Context.SetSessionName] is visible to the next read.
 func (c Context) GetSessionName() (*string, error) {
+	if s, known, err := c.localSession(); known {
+		return optionalString(s.name), err
+	}
 	return hostOptionalString(c, "getSessionName", "name")
 }
 
@@ -1340,14 +1343,17 @@ func (c Context) GetEntries() ([]json.RawMessage, error) {
 
 // GetSessionID returns the current session ID, including for in-memory sessions. The host's state snapshots replicate it, so the read costs no host round trip; a replacement context, or one made before the first snapshot, asks the host. A context of a replaced or reloaded runtime returns the stale message, as the host answered it.
 func (c Context) GetSessionID() (string, error) {
-	if id, known, err := c.localSessionID(); known {
-		return id, err
+	if s, known, err := c.localSession(); known {
+		return s.id, err
 	}
 	return hostRequired[string](c, "getSessionID", nil, "sessionId")
 }
 
-// GetSessionFile returns the current session file path. Pi's getSessionFile is `string | undefined`: nil means an in-memory session.
+// GetSessionFile returns the current session file path. Pi's getSessionFile is `string | undefined`: nil means an in-memory session. Like [Context.GetSessionID] it is replicated: the host pushes it when a Session is replaced.
 func (c Context) GetSessionFile() (*string, error) {
+	if s, known, err := c.localSession(); known {
+		return optionalString(s.file), err
+	}
 	return hostOptionalString(c, "getSessionFile", "sessionFile")
 }
 

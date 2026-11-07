@@ -542,7 +542,7 @@ type CommandInfo struct {
 }
 
 // Snapshot returns the current host-side state visible to the extension via
-// upstream-faithful synchronous getters. Missing usage stays absent; unknown token and percentage counts stay null.
+// upstream-faithful synchronous getters.
 //
 // The result is suitable for the protocol's [StatePayload]: callers send it
 // at handshake time (embedded in [ReadyPayload]) and on host-side state
@@ -675,11 +675,6 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	}
 	if actions.HasPendingMessages != nil {
 		state.HasPendingMessages = actions.HasPendingMessages()
-	}
-	if actions.GetContextUsage != nil {
-		if cu := actions.GetContextUsage(); cu != nil {
-			state.ContextUsage = &extensionContextUsageDTO{Tokens: cu.Tokens, ContextWindow: cu.ContextWindow, Percent: cu.Percent}
-		}
 	}
 	if actions.GetSystemPrompt != nil {
 		state.SystemPrompt = actions.GetSystemPrompt()

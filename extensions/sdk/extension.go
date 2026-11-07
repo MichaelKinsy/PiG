@@ -1928,7 +1928,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		if len(payload.State.Session) > 0 {
 			e.sessionName = sessionState.SessionName
 			// The host omits the id only when it is empty, so a snapshot's Session always replaces the replicated id.
-			e.identity = e.identity.withSessionID(sessionState.SessionID)
+			e.identity = e.identity.withSession(sessionState.SessionID, sessionState.SessionName, sessionState.SessionFile)
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.setUITheme(theme)

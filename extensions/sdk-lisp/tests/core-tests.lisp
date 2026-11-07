@@ -293,7 +293,7 @@
                    (incf calls)
                    (answer-call host frame (if (equal (pig:jget (pig:jget frame "call") "method") "sessionRead")
                                                "host-session"
-                                               (pig:obj "id" "host-model" "sessionId" "host-session"))))
+                                               (pig:obj "id" "host-model" "sessionId" "host-session" "name" "host-name" "sessionFile" "host-file"))))
                   ((equal (pig:jget frame "type") "response") (return)))))
     (values *core-result* calls)))
 
@@ -366,4 +366,50 @@
                                         (list (message (lambda () (pig:ctx-get-model-info ctx)))
                                               (message (lambda () (pig:ctx-get-session-id ctx)))
                                               (message (lambda () (pig:session-get-session-id (pig:ctx-session-manager ctx)))))))
+                               "r2")))))
+
+(defun replica-name-file-reads (ctx)
+  (let ((manager (pig:ctx-session-manager ctx)))
+    (list (pig:ctx-get-session-name ctx) (pig:ctx-get-session-file ctx)
+          (pig:session-get-session-name manager) (pig:session-get-session-file manager))))
+
+(deftest replicated-session-name-and-file-answer-locally-from-state-snapshots
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"session\":{\"sessionId\":\"s1\",\"sessionName\":\"n1\",\"sessionFile\":\"/f1\"}}"))
+    (check-equal '(("n1" "/f1" "n1" "/f1") 0) (multiple-value-list (replica-run host #'replica-name-file-reads)))
+    ;; a snapshot without a session keeps both
+    (replica-push host (pig:obj "hasUI" t))
+    (check-equal '(("n1" "/f1" "n1" "/f1") 0) (multiple-value-list (replica-run host #'replica-name-file-reads "r2")))
+    ;; a later session replaces both, and an empty name or file clears it
+    (replica-push host (pig:from-json "{\"session\":{\"sessionId\":\"s2\",\"sessionName\":\"\",\"sessionFile\":\"\"}}"))
+    (check-equal '((nil nil nil nil) 0) (multiple-value-list (replica-run host #'replica-name-file-reads "r3")))
+    (replica-push host (pig:from-json "{\"session\":{\"sessionName\":\"n3\"}}"))
+    (check-equal '(("n3" nil "n3" nil) 0) (multiple-value-list (replica-run host #'replica-name-file-reads "r4")))))
+
+(deftest replicated-session-name-and-file-ask-the-host-before-the-first-session-snapshot
+  (with-host (host (core-extension))
+    (check-equal '(("host-name" "host-file" "host-session" "host-session") 4) (multiple-value-list (replica-run host #'replica-name-file-reads)))
+    (replica-push host (pig:from-json "{\"model\":{\"id\":\"m1\"}}"))
+    (check-equal '(("host-name" "host-file" "host-session" "host-session") 4) (multiple-value-list (replica-run host #'replica-name-file-reads "r2")))))
+
+(deftest replicated-session-name-and-file-keep-the-stale-error-and-replacement-contexts-ask-the-host
+  (with-host (host (core-extension))
+    (replica-push host (pig:from-json "{\"session\":{\"sessionName\":\"n1\",\"sessionFile\":\"/f1\"}}"))
+    (check-equal '(("host-name" "host-file" "host-session" "host-session") 4)
+                 (multiple-value-list
+                  (replica-run host (lambda (ctx)
+                                      (let ((replaced (pig::copy-ctx ctx)))
+                                        (setf (pig::ctx-replacement replaced) (list :cwd "/r" :mode "rpc" :has-ui nil))
+                                        (replica-name-file-reads replaced)))
+                               "r1")))
+    (hsend host "type" "notify" "notify" (pig:obj "method" "invalidate" "args" (pig:obj "message" "session replaced")))
+    (check-equal '(("session replaced" "session replaced" "session replaced" "session replaced") 0)
+                 (multiple-value-list
+                  (replica-run host (lambda (ctx)
+                                      (let ((manager (pig:ctx-session-manager ctx)))
+                                        (flet ((message (thunk) (handler-case (progn (funcall thunk) "no error") (error (e) (princ-to-string e)))))
+                                          (list (message (lambda () (pig:ctx-get-session-name ctx)))
+                                                (message (lambda () (pig:ctx-get-session-file ctx)))
+                                                (message (lambda () (pig:session-get-session-name manager)))
+                                                (message (lambda () (pig:session-get-session-file manager)))))))
                                "r2")))))
