@@ -2642,7 +2642,7 @@ snippet = "args, err := json.Marshal(map[string]any{\"kind\": kind, \"api\": api
 check = "mapkeyorder"
 file = "coding/extension/host/subprocess/render_proxy.go"
 func = "renderProxyComponent.request"
-snippet = "args, err := json.Marshal(map[string]any{"
+snippet = "args, err := json.Marshal(fields)"
 
 [[hit]]
 check = "mapkeyorder"

@@ -119,7 +119,7 @@ func (v *Verifier) checkDigest(exe *Executable, want string) error {
 	if exe.identErr != nil {
 		return nil
 	}
-	info, err := file.Stat()
+	info, err := file.Stat() //perf:ok cold: once per extension launch, on the handle being verified
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func readDigestRecord(path string) (digestRecord, bool) {
 		return digestRecord{}, false
 	}
 	defer func() { _ = file.Close() }() // Read-only: close cannot lose data.
-	info, err := file.Stat()
+	info, err := file.Stat() //perf:ok cold: once per extension launch, on the handle being read
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxDigestRecordBytes || !ownedByCurrentUser(info) {
 		return digestRecord{}, false
 	}

@@ -25,7 +25,7 @@ func descriptorPath(file *os.File, info os.FileInfo) string {
 		return ""
 	}
 	path := "/proc/self/fd/" + strconv.FormatUint(uint64(fd), 10)
-	shown, err := os.Stat(path)
+	shown, err := os.Stat(path) //perf:ok cold: once per extension launch, to prove the descriptor path names the verified file
 	if err != nil || !os.SameFile(shown, info) {
 		return ""
 	}
