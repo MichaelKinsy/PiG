@@ -3,7 +3,6 @@ package sdk
 import (
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -164,7 +163,7 @@ func (e *Extension) unregisterMcpServer(c *Context, name string) {
 	if err := e.mcpServersCall(c, conn, "unregisterMcpServer", struct {
 		Name string `json:"name"`
 	}{name}); err != nil {
-		fmt.Fprintf(os.Stderr, "pig: host call unregisterMcpServer failed: %v\n", err)
+		diagnosticf("pig: host call unregisterMcpServer failed: %v\n", err)
 	}
 }
 

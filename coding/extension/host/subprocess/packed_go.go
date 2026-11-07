@@ -58,6 +58,8 @@ type packedProcessState struct {
 	releaseLease    sync.Once
 	releaseRecovery sync.Once
 	stderrLog       *processStderrLog
+	// console is the pipe of a Go, Rust or Python runner's output; a Node runner's output is copied by exec.
+	console *consolePipe
 }
 
 // processShare counts the packed-process states that host factories in one OS process. Pi re-invokes an extension's factory inside the process that already holds its module, so a reload or a session replacement admits a new generation to a live process instead of starting another one. The process is killed when its last state stops.
@@ -226,6 +228,7 @@ func (p *packedProcessState) startWait() <-chan struct{} {
 		p.waitDone = make(chan struct{})
 		go func() {
 			p.waitErr = p.cmd.Wait()
+			p.console.finish(p.cmd.WaitDelay)
 			p.stderrLog.closeWriter()
 			_ = p.processTree.Close()
 			// The lease protects the artifact the process runs from, so it ends with the process, however the process ended and whichever states still reference it.
@@ -635,21 +638,36 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		processState.releaseUsageLease()
 		return err
 	}
-	cmd.Env = env
 	cmd.Dir = h.cwd
 	// pig additive (D20): packed-process diagnostics live only until teardown unless a reported failure retains them.
-	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
+	stderrFile, _ := createExtLog(fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
+	var stderrLog io.Writer
+	extLogPath := ""
 	if stderrFile != nil {
-		processState.stderrLog = &processStderrLog{path: stderrFile.Name(), writer: stderrFile}
-		// A Go, Rust or Python runner writes a failed member's cause to stderr and then closes the member's socket while the process serves its siblings. The process writes the log file itself, so the cause is in the file when the host reads it on that close; a host-side copy would race the read.
-		cmd.Stderr = stderrFile
+		extLogPath = stderrFile.Name()
+		processState.stderrLog = &processStderrLog{path: extLogPath, writer: stderrFile}
+		stderrLog = processState.stderrLog
 	}
+	cmd.Env = withExtLog(env, extLogPath)
 	if nodeRuntime {
-		var stderrLog io.Writer
-		if processState.stderrLog != nil {
-			stderrLog = processState.stderrLog
+		cmd.Stdout, cmd.Stderr = h.extensionOutput(stderrLog)
+	} else {
+		// A Go, Rust or Python runner writes a failed member's cause to stderr and then closes the member's socket while the process serves its siblings. The host reads the cause from the log on that close, so the host keeps the pipe's write end and flushes it first (consolePipe).
+		stdout, stderr := h.extensionOutput(stderrLog)
+		console, err := newConsolePipe(stderr)
+		if err != nil {
+			_ = admissionWriter.Close()
+			processState.releaseUsageLease()
+			processState.stderrLog.closeWriter()
+			processState.stderrLog.remove()
+			return newLoadError(cell.Key, "spawn", "spawn_failed", fmt.Errorf("pipe packed runner output: %w", err))
 		}
-		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrLog)
+		processState.console = console
+		cmd.Stderr = console.write
+		cmd.Stdout = console.write
+		if stdout != stderr {
+			cmd.Stdout = stdout
+		}
 	}
 	// pig divergence (D56): after the host stops the process, its output pipe gets this long to drain before it is closed; it never bounds extension work.
 	cmd.WaitDelay = 5 * time.Second
@@ -658,11 +676,10 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 	}
 	processTree, err := startProcessTree(cmd)
 	releaseVerified(tsSelection)
-	if !nodeRuntime || err != nil {
-		// A direct child inherited the log file; Node's host-side copy owns the writer until Cmd.Wait drains it, and no Cmd.Wait runs after a failed start.
-		processState.stderrLog.closeWriter()
-	}
 	if err != nil {
+		// No Cmd.Wait runs after a failed start, so nothing else ends the host-side copies that own the log's writer.
+		processState.console.finish(0)
+		processState.stderrLog.closeWriter()
 		_ = admissionWriter.Close()
 		processState.releaseUsageLease()
 		cancel()
@@ -849,6 +866,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		// Upstream reports the loader's own error; lead with the cause the
 		// process wrote to stderr (matches host.go's isolated-mode
 		// "extension process exited before connecting" case).
+		me.syncStderr()
 		if cause := stderrCause(me.stderrLogPath, me.config.Name); cause != "" {
 			exitErr = fmt.Errorf("%s (%w)", cause, exitErr)
 		}
@@ -888,6 +906,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		// A packed Go, Rust or Python member that fails to load sends no
 		// error over the wire (a Node member's cell.mjs reports it above),
 		// so lead with the cause the process wrote to its stderr log.
+		me.syncStderr()
 		if cause := stderrCause(me.stderrLogPath, me.config.Name); cause != "" {
 			regErr = fmt.Errorf("%s (%w)", cause, regErr)
 		}
@@ -1010,4 +1029,11 @@ func fileNameComponent(value string) string {
 		}
 		return r
 	}, value)
+}
+
+// syncStderr returns once the stderr log holds what the member's packed process wrote so far, so a failure diagnostic reads the cause the runner wrote before it closed the member's socket. Another runtime's output is copied by exec, whose copy ends with the process.
+func (me *managedExt) syncStderr() {
+	if me.packedProcess != nil {
+		me.packedProcess.spawner().console.flush()
+	}
 }

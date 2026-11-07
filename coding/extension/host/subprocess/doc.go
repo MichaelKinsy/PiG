@@ -14,6 +14,14 @@
 // later. A Node extension answers getAgentDir() and CONFIG_DIR_NAME from its environment (shims/pig-config.mjs) and VERSION from the bundled Pi package
 // (shims/pi-dist/pi-coding-agent/config.js).
 //
+// PIG_EXT_LOG names the log the process's SDK writes its own diagnostics to: the stack of a handler panic it recovered, a host call it could not make, a frame it
+// dropped. It is the path of the process's stderr log, which the host's load and crash diagnostics read and which also holds a copy of everything the process writes to
+// stderr, so an SDK appends one whole diagnostic per write and the host's handle appends too. The host forwards what an extension's own code writes to PiG's terminal
+// (Host.extensionOutput) and Pi writes no stack for a throwing handler, so an SDK's diagnostics must not go there; the SDK writes them to stderr only when the variable is
+// unset or the log cannot be written, and bounds what it writes to the log. An isolated process gets its own log, a packed cell process its cell's, and the fused extensions
+// of a Piglet Binary, which run in the host's process and share its environment, one log for the Host. What the Go runtime writes for a fatal error is not an SDK diagnostic
+// and stays on stderr.
+//
 // # Architecture
 //
 // The subprocess host spawns extension binaries, connects via those sockets,

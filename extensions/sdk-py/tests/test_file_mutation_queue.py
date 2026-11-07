@@ -85,3 +85,50 @@ class FileMutationQueueTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ContextFileMutationQueueTest(unittest.TestCase):
+    """Context.with_file_mutation_queue (D187): the enter is detached from the request and names the tool call it serves."""
+
+    def _context(self, host: ScriptedHost, tool_call_id: str | None, request_id: str):
+        from types import SimpleNamespace
+
+        states: list[str] = []
+        extension = SimpleNamespace(_call=lambda method, args, *rest, **kw: {"result": host(method, args)})
+        ctx = SimpleNamespace(
+            tool_call_id=tool_call_id, request_id=request_id, _parent=None, extension=extension,
+            _report_request_state=lambda state, reason=None: states.append(state),
+        )
+        return ctx, states
+
+    def test_a_tool_call_names_its_request_and_the_turn_is_given_back(self) -> None:
+        from pig_sdk.file_mutation_queue import with_context_file_mutation_queue
+
+        host = ScriptedHost({"ticket": "fm-1"})
+        ctx, states = self._context(host, "call-1", "r7")
+        exits: list[tuple[str, Any]] = []
+        with mock.patch.object(host_helpers, "_helper_call", lambda method, args: exits.append((method, args)) or {}):
+            result = with_context_file_mutation_queue(ctx, os.path.join("x", "..", "a.txt"), lambda: 9)
+        self.assertEqual(result, 9)
+        self.assertEqual(host.calls, [("fileMutation.enter", {"path": os.path.abspath("a.txt"), "request": "r7"})])
+        self.assertEqual(exits, [("fileMutation.exit", {"ticket": "fm-1"})])
+        self.assertEqual(states, ["blocked", "progress"])
+
+    def test_a_context_that_serves_no_tool_call_names_no_request(self) -> None:
+        from pig_sdk.file_mutation_queue import with_context_file_mutation_queue
+
+        host = ScriptedHost({"ticket": "fm-2"})
+        ctx, _ = self._context(host, None, "r8")
+        with mock.patch.object(host_helpers, "_helper_call", lambda method, args: {}):
+            with_context_file_mutation_queue(ctx, "a.txt", lambda: None)
+        self.assertEqual(host.calls, [("fileMutation.enter", {"path": os.path.abspath("a.txt"), "request": ""})])
+
+    def test_an_enter_without_a_ticket_is_an_error_and_the_task_does_not_run(self) -> None:
+        from pig_sdk.file_mutation_queue import with_context_file_mutation_queue
+
+        host = ScriptedHost({})
+        ctx, _ = self._context(host, "call-1", "r7")
+        ran: list[bool] = []
+        with self.assertRaises(RuntimeError):
+            with_context_file_mutation_queue(ctx, "a.txt", lambda: ran.append(True))
+        self.assertEqual(ran, [])

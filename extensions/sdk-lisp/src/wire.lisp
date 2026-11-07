@@ -222,5 +222,4 @@
 
 (defun note-dropped-frame ()
   "The diagnostic for a frame READ-FRAME could not decode and that nothing waits for (a notification): it is dropped, and the connection goes on."
-  (format *error-output* "pig-sdk: dropped a frame nested deeper than the reader takes~%")
-  (finish-output *error-output*))
+  (diagnose "pig-sdk: dropped a frame nested deeper than the reader takes~%"))

@@ -118,7 +118,7 @@
       (t (let ((handler (gethash method *notify-handlers*)))
            (when handler
              (handler-case (funcall handler ext args)
-               (error (e) (format *error-output* "~A: notify ~A failed: ~A~%" (extension-name ext) method e)))))))))
+               (error (e) (diagnose "~A: notify ~A failed: ~A~%" (extension-name ext) method e)))))))))
 
 ;;; ---------------------------------------------------------------- event stream replicas
 
@@ -435,7 +435,7 @@
                       (dolist (handler handlers)
                         (handler-case (funcall handler (make-ctx ext))
                           (serious-condition (c)
-                            (format *error-output* "pig: on-loaded handler failed: ~A~%" (condition-message c)))))
+                            (diagnose "pig: on-loaded handler failed: ~A~%" (condition-message c)))))
                    (sb-thread:with-mutex ((extension-loaded-lock ext))
                      (setf (extension-loaded ext) t)
                      (sb-thread:condition-broadcast (extension-loaded-queue ext)))

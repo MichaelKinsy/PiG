@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -157,7 +156,7 @@ func (e *Extension) unsubscribe(sub *busSub) func() {
 			return
 		}
 		if err := (EventBus{ext: e}).call(callEventsOff, busCallArgs{HandlerID: sub.id}); err != nil {
-			fmt.Fprintf(os.Stderr, "extension: pi.events unsubscribe %q: %v\n", sub.channel, err)
+			diagnosticf("extension: pi.events unsubscribe %q: %v\n", sub.channel, err)
 		}
 	})
 }
