@@ -8,6 +8,7 @@
 package testfixture
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -20,6 +21,7 @@ import (
 	"io"
 	"maps"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -37,6 +39,20 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/kit"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui"
 )
+
+// ioWait dials addr ("host:port"), writes "waiting\n" and returns when the peer writes a line.
+func ioWait(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := fmt.Fprintln(conn, "waiting"); err != nil {
+		return err
+	}
+	_, err = bufio.NewReader(conn).ReadString('\n')
+	return err
+}
 
 // kitProbe is the component kit's conformance view (D107,
 // docs/plan/extension-component-kit.md §10). It logs every HandleInput and
@@ -960,6 +976,14 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("liveness_fire_call", "Exercise a no-result UI host call", func(ctx sdk.Context, _ string) error {
 		ctx.SetTitle("Conformance title")
+		return nil
+	})
+	// io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
+	ext.Command("io_wait", "Wait on a socket read", func(_ sdk.Context, addr string) error {
+		return ioWait(addr)
+	})
+	ext.Command("io_wait_settled", "Make agent_settled wait on a socket read", func(_ sdk.Context, addr string) error {
+		ext.OnEvent("agent_settled", func(sdk.Context, map[string]any) (any, error) { return nil, ioWait(addr) })
 		return nil
 	})
 

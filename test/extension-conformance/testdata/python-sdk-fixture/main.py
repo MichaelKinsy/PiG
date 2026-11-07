@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import re
+import socket
 import struct
 import sys
 import threading
@@ -546,6 +547,15 @@ def conformance_sprite_definition() -> pig_sdk.SpriteDefinition:
 def dialog_text(value) -> str:
     """A dialog's string answer: select, input and editor results are whatever JSON the client sent, and undefined is None."""
     return value if isinstance(value, str) else ""
+
+
+def io_wait(addr: str) -> None:
+    """Dial addr ("host:port"), write "waiting\n" and return when the peer writes a line."""
+    host, port = addr.rsplit(":", 1)
+    with socket.create_connection((host, int(port))) as peer:
+        peer.sendall(b"waiting\n")
+        with peer.makefile("rb") as lines:
+            lines.readline()
 
 
 def new_extension() -> pig_sdk.Extension:
@@ -2175,6 +2185,14 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("liveness_host_call", "Exercise an awaited host call", lambda ctx, args: ctx.wait_for_idle())
     ext.command("liveness_user_call", "Exercise an interactive host call", lambda ctx, args: ctx.input("Question", "Answer"))
     ext.command("liveness_fire_call", "Exercise a no-result UI host call", lambda ctx, args: ctx.set_title("Conformance title"))
+
+    # io_wait and io_wait_settled wait on a plain TCP read: they dial the address they get, announce themselves with a "waiting" line and return when the peer writes a line.
+    ext.command("io_wait", "Wait on a socket read", lambda ctx, args: io_wait(args))
+
+    def io_wait_settled(ctx: pig_sdk.Context, args: str) -> None:
+        ext.on_event("agent_settled", lambda hctx, data: io_wait(args))
+
+    ext.command("io_wait_settled", "Make agent_settled wait on a socket read", io_wait_settled)
 
     ext.command("command_error", "Return a command error", command_error)
 
