@@ -158516,6 +158516,39 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.execPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.execPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(named bool) (string, error)"
+      },
+      "shapeHash": "sha256:c0875b71f799d8d9ed0f47adb48fa1123b9b4f7d5617ed3b1b2a2e5b53101aa0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.makeLink",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.makeLink",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.probePath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.probePath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.settle",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "Executable.settle",
@@ -159218,6 +159251,17 @@
         "type": "func(executable string) string"
       },
       "shapeHash": "sha256:a2898e742f8e1140df45c83b4bd38695efeadcd26d6d8553b73966950a216048"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#execDirPrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "execDirPrefix",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#fileIdentity",
@@ -159957,6 +160001,138 @@
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleInput",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "staleInput",
@@ -159977,6 +160153,50 @@
         "type": "func(r io.Reader) (string, error)"
       },
       "shapeHash": "sha256:7e43a8ec8952a80f7f99a689ccaef2bd723bdb6e05222cfd55e1e9bdf4fb510b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirs",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tmp string, now time.Time)"
+      },
+      "shapeHash": "sha256:bc4ff14d699b1526360c1fa2eabe13e4484dbfd66b92ce2d8fdcfd186244c726"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirsOnce",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirsOnce",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync.Once"
+      },
+      "shapeHash": "sha256:642d4e6801bec47f76a7435030bd6999c7a240f9dbe32973afd2fc646d25a826"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirsOnce.Do",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirsOnce.Do",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(f func())"
+      },
+      "shapeHash": "sha256:68e289131fd5e3f508eafc4a9635216800cdaae21d75faad62aa0496c8a28e80"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirsOnce.doSlow",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirsOnce.doSlow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(f func())"
+      },
+      "shapeHash": "sha256:68e289131fd5e3f508eafc4a9635216800cdaae21d75faad62aa0496c8a28e80"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#touchUsed",
