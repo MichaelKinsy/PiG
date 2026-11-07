@@ -307740,6 +307740,7 @@
         "call:coding/cli/args.go#parseArgs"
       ],
       "evidence": [
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/args_test.go#TestParseFlags",
         "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
@@ -307927,7 +307928,7 @@
       "evidence": [
         "test:coding/cli/args_diagnostics_test.go#TestHelpListsOnlyOptionsPiGParses",
         "test:coding/cli/args_diagnostics_test.go#TestParseFlagsDiagnosticsMatchPi",
-        "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
         "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
@@ -308187,8 +308188,8 @@
       ],
       "evidence": [
         "test:coding/cli/args_end_options_upstream_test.go#TestCLIEndOfOptionsUpstream",
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/args_name_upstream_test.go#TestCLIRejectsEmptySessionNameUpstream",
-        "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
         "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
@@ -308422,9 +308423,9 @@
         "call:coding/cli/args.go#parseArgs"
       ],
       "evidence": [
+        "test:coding/cli/args_listen_test.go#TestParseArgsListen",
         "test:coding/cli/args_name_upstream_test.go#TestCLISelectsSessionBeforeNameValidation",
         "test:coding/cli/args_test.go#TestParseFlags_UpstreamParity",
-        "test:coding/cli/args_upstream_test.go#TestArgsUpstream",
         "test:coding/cli/help_oracle_test.go#TestHelpCarriesPi2a46c420SessionFlagWording",
         "test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"
       ]
