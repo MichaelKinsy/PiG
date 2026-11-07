@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"context"
 	"encoding/json"
 	"net"
 	"sync/atomic"

@@ -743,6 +743,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7056d2d](#bf-7056d2d) | Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent… | PiG's own defect | All platforms | Unreleased |
+| [BF-7087527](#bf-7087527) | fix(extensions): the handler wait quantum applies to input handlers only, not to every event whose caller… | PiG's own defect | All platforms | Unreleased |
 | [BF-70d51e5](#bf-70d51e5) | Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including… | A fix Pi shipped that PiG ported | Windows | 0.5.0 |
 | [BF-70d51e5-2](#bf-70d51e5-2) | Fixed the message-format page: it said PiG does not carry the `nestedCalls` record on tool result messages… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-70d8a41](#bf-70d8a41) | Keybinding conflict detection ignores user bindings for actions the table does not define, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
@@ -11749,6 +11750,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7056d2d9e1` (2026-11-05)
 - **Tests:** `coding/session_queue_images_test.go::TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery`, `coding/session_queue_images_test.go::TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages`, `coding/session_queue_order_test.go::TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery`, `internal/codingagent/tree_selector_oracle_test.go::TestTreeSelectorInputMatchesPi`
 - **Release note:** Images in steering and follow-up messages queued while the agent is busy (`steer`, `followUp`, a prompt sent while streaming, RPC `steer` and `follow_up`) are now resized when the message is delivered, like images in idle prompts, instead of being sent and saved at full size; an image-only queued message now leaves the pending queue display after delivery (Pi #11738, #8581, D249, D250).
+
+### BF-7087527
+
+**fix(extensions): the handler wait quantum applies to input handlers only, not to every event whose caller…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): the handler wait quantum applies to input handlers only, not to every event whose caller holds an acknowledgment
+- **Root cause:** A Go session_info_changed handler that computed for 700 ms had its notify ordered after the response, where Pi and the base notify first: the branch for a caller that waits for the first suspension matched every bound request. Limit it to event input (D86's approval covers settle tail, commands and input). Add an input-handler RPC row across Pi, Go, Rust, Python and Lisp, make the no-timer test deterministic (it answers the request before it reads the timer count), and record the Node input-handler gap in D86 and extension-api-parity.md.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7087527a5b` (2026-11-07)
+- **Tests:** `coding/cli/rpc_settle_latency_probe_test.go::TestRPCSettleHandlerLatencyProbe`, `coding/cli/rpc_settle_wait_test.go::TestRPCCommandAfterAgentEndAnswersAfterFastSettleHandlerAcrossSDKs`, `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringCommandNetworkWaitAnswersAcrossSDKs`, `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs`, `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringSettleHandlerNetworkWaitAnswersAcrossSDKs`, `coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer`
 
 ### BF-70d51e5
 
