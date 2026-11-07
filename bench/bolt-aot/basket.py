@@ -17,6 +17,9 @@ Passes per set and round (arms interleaved round-robin, order rotated each round
           after a forced GC: cumulative JS allocation (Node: v8 total_allocated_bytes; Bun and aot: the GC log), live heap, JSC object counts.
 An arm that runs another tier than it names is an error, not a number: each run records the extension host's /proc exe path, and aot must be <slot>/aot/images/*/pig-ts-host.
 Arm names ending in 2 are A/A repeats of the arm without the 2 and get an A/A column. An arm that cannot run (e.g. no image) is reported n/a with its error.
+Set `rewrite` is the three extensions the Piglet's import.meta rewrite compiles in (rpiv-todo, pi-mcp-adapter, the locating fixture of rewrite-exts/; npm ci --ignore-scripts there first).
+A `cold` pass per set (--cold-rounds) removes the digest cache's records beside the Bun and aot executables before each start (ready only), so a first start is its own cell; --pair BEFORE=AFTER
+adds a before/after delta table. Arms may use different pig binaries and slots (pig=, slot=), so one session interleaves BEFORE and AFTER arms.
 one command, run inside the CI container (node, go and strace on PATH; strace may be bind-mounted from the host):
   basket.py run --out DIR --pig PIG --slot SLOT --bun STOCK_BUN --build [--piglet-dir DIR] [--arm ...] [--label K=V ...]     (--build installs Bun, the compiler and the images first)
   basket.py report DIR/runs.jsonl                                                                                       (regenerates DIR/report.md)
@@ -45,6 +48,10 @@ def set_exts(name):
     elif base == "ten":
         exts = sorted(glob.glob(os.path.join(os.path.abspath(equivalence.DEFAULT_EXTS), "bench-ext-*.ts")))
         assert len(exts) == 10, "the ten bench extensions are missing"
+    elif base == "rewrite":
+        # the three extensions the Piglet's import.meta rewrite compiles in (equivalence_pkgs.py): rpiv-todo, pi-mcp-adapter and the locating fixture (npm ci --ignore-scripts in rewrite-exts first)
+        rw = os.path.join(HERE, "rewrite-exts")
+        exts = [f"{rw}/node_modules/@juicesharp/rpiv-todo", f"{rw}/node_modules/pi-mcp-adapter", f"{rw}/locating/index.ts"]
     else:
         raise SystemExit(f"unknown set {name}")
     return exts + ([PROBE] if probe == "probe" else [])
@@ -130,7 +137,10 @@ class Model:
                     return ("data: " + json.dumps({"id": "c", "object": "chat.completion.chunk", "created": 0, "model": "fake-model", "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}) + "\n\n").encode()
                 call = None
                 if last["role"] == "user":
-                    if text.startswith("call ") and f"bench_tool_{text.split()[1]}" in tools:
+                    if text.startswith("call ") and len(text.split()) > 2 and text.split()[1] in tools:
+                        # "call <tool> <json arguments>": that tool call, as equivalence_pkgs.py scripts it
+                        call = (text.split()[1], json.loads(text.split(None, 2)[2]))
+                    elif text.startswith("call ") and f"bench_tool_{text.split()[1]}" in tools:
                         call = (f"bench_tool_{text.split()[1]}", {"value": "v" + text.split()[1]})
                     elif "word_count" in tools and not text.startswith("/"):
                         call = ("word_count", {"path": outer.fixture})
@@ -175,7 +185,12 @@ class Rpc(bench.Rpc):
         self.errf.close()
 
 
+REWRITE_CALLS = ['call todo {"action":"list"}', "call locating_read {}", 'call locating_read {"name":"legacy.txt"}', "call mcp {}"]
+
+
 def turn_prompt(set_name, i):
+    if set_name.startswith("rewrite"):
+        return REWRITE_CALLS[i % len(REWRITE_CALLS)]
     return f"call {i % 10 + 1:02d}" if set_name.startswith("ten") else f"prompt {i}"
 
 
@@ -206,8 +221,17 @@ def expect_tier(arm, slot, snap):
     return paths
 
 
+def drop_digest_records(slot, kind):
+    """Remove the digest cache's records beside the slot executables of kind (bun: <slot>/bun/.verified-bun; aot: every image's .verified-pig-ts-host), so the next start hashes: the cold start."""
+    pat = os.path.join(slot, "bun", ".verified-*") if kind == "bun" else os.path.join(slot, "aot", "images", "*", ".verified-*") if kind == "aot" else None
+    gone = glob.glob(pat) if pat else []
+    for f in gone:
+        os.remove(f)
+    return len(gone)
+
+
 def run_once(ctx, arm, set_name, mode="timing"):
-    """mode: timing, strace or heap (see the module docstring). Returns the run record."""
+    """mode: timing, strace, heap or cold (a start with the digest records removed: ready only; see the module docstring). Returns the run record."""
     slot = ctx["slot"]
     home = f"{ctx['base']}/{arm['name']}"
     agent = f"{home}/agent"
@@ -226,6 +250,8 @@ def run_once(ctx, arm, set_name, mode="timing"):
         argv = ["strace", "-f", "-q", "--seccomp-bpf", "-ttt", "-e", "trace=memory,process", "-o", trace] + argv
     out = {"type": "run", "pass": mode, "set": set_name, "arm": arm["name"], "kind": arm["kind"], "loadavg": open("/proc/loadavg").read().split()[:3]}
     turns = ctx["turns"]
+    if mode == "cold":
+        out["records_dropped"] = drop_digest_records(arm.get("slot", slot), arm["kind"])
     t0 = time.time()
     rpc = Rpc(argv, env, ctx["work"], f"{home}/stderr.log")
     try:
@@ -240,7 +266,7 @@ def run_once(ctx, arm, set_name, mode="timing"):
         ready = snapshot(pig_pid, False)
         out["ready_ms"] = (t_ready - t0) * 1000
         names = [c.get("name") for c in (ev.get("data") or {}).get("commands", [])]
-        want = "basket-probe" if mode == "heap" else ("words" if set_name.startswith("five") else "bench-10")
+        want = "basket-probe" if mode == "heap" else {"five": "words", "ten": "bench-10", "rewrite": "locating"}[set_name.split("+")[0]]
         if want not in names:
             raise RuntimeError(f"command /{want} missing: the extension set did not load")
         out["commands"] = len(names)
@@ -249,6 +275,11 @@ def run_once(ctx, arm, set_name, mode="timing"):
         out["ext_exe"] = expect_tier(arm, slot, s0)
         out["ext_n"] = len(s0["ext_procs"])
         out["ext_exe_bytes"] = os.path.getsize(out["ext_exe"][0])
+        if arm["kind"] != "node":  # the digest cache's record beside the executable (written by a pig that has it, once the file is 2 s old)
+            out["digest_record"] = os.path.exists(os.path.join(os.path.dirname(out["ext_exe"][0]), ".verified-" + os.path.basename(out["ext_exe"][0])))
+        if mode == "cold":
+            out["ready_snap"] = ready
+            return out
         if mode == "heap":
             out["probe_ready"] = do_probe(rpc, "gc ready")
         t_t1 = time.time()
@@ -536,6 +567,7 @@ def cmd_run(args):
     if args.build:
         cmd_build(argparse.Namespace(slot=args.slot, bun=args.bun, exts=args.exts, sets=",".join(args.sets.split(",") + [s + "+probe" for s in args.sets.split(",")]), pig=args.pig, piglet_dir=args.piglet_dir))
     hdr = header(args, arms, slot)
+    hdr["pairs"] = [p.split("=", 1) for p in args.pair]
     with open(runs_path, "a") as f:
         f.write(json.dumps(hdr) + "\n")
     base = tempfile.mkdtemp(prefix="basket-", dir=os.environ.get("TMPDIR", "/tmp"))
@@ -567,8 +599,13 @@ def cmd_run(args):
                 res = one(arm, set_name, "timing", -1)
                 if res and "error" in res:
                     dead[(arm["name"], set_name, "timing")] = res["error"]
-                    for m in ("strace", "heap"):
+                    for m in ("strace", "heap", "cold"):
                         dead[(arm["name"], set_name, m)] = res["error"]
+            cold = [a for a in arms if a["kind"] != "node"]
+            for r in range(args.cold_rounds):  # cold starts: the digest records are removed before each, so the Go host hashes the executable (and records it again)
+                k = r % max(len(cold), 1)
+                for arm in cold[k:] + cold[:k]:
+                    one(arm, set_name, "cold", r)
             for r in range(args.rounds):
                 k = r % len(arms)
                 for arm in arms[k:] + arms[:k]:
@@ -645,6 +682,7 @@ def timing_rows(N):
     A(("Extension host CPU to ready, user+sys (ms)", lambda r: ms(r["ready_snap"]["ext"]["utime"] + r["ready_snap"]["ext"]["stime"]), 0))
     A(("  extension host user (ms)", lambda r: ms(r["ready_snap"]["ext"]["utime"]), 0))
     A(("  extension host sys (ms)", lambda r: ms(r["ready_snap"]["ext"]["stime"]), 0))
+    A(("Digest record present beside the executable after ready (1 = yes; Node: n/a)", lambda r: None if "digest_record" not in r else int(r["digest_record"]), 0))
     A(("Extension host CPU of reaped children by ready (e.g. aot's `node -p process.execPath`) (ms)", lambda r: ms(r["ready_snap"]["ext"]["cutime"] + r["ready_snap"]["ext"]["cstime"]), 0))
     A(("Extension host CPU, ready to 0.5 s later (idle after ready) (ms)", lambda r: ms(r["s0"]["ext"]["utime"] + r["s0"]["ext"]["stime"] - r["ready_snap"]["ext"]["utime"] - r["ready_snap"]["ext"]["stime"]), 0))
     A(("#", f"Turns (a prompt, one model tool call, the tool, a final answer; {N} per run)"))
@@ -726,6 +764,46 @@ def heap_rows(N):
         A(("JSC live objects (Node: n/a, V8 does not expose a count)", lambda r, k=key: r[k]["jsc"]["heapStats"]["objectCount"] if r["kind"] != "node" and "heapStats" in (r[k].get("jsc") or {}) else None, 0))
         A(("JSC heapSize (MB; Node: n/a)", lambda r, k=key: r[k]["jsc"]["heapStats"]["heapSize"] / 2**20 if r["kind"] != "node" and "heapStats" in (r[k].get("jsc") or {}) else None, 1))
     return R
+
+
+DELTA_ROWS = ("Launch to ready", "Go host CPU to ready", "Extension host CPU to ready", "Extension host CPU of reaped", "Digest record present", "Turn 1 wall", "Turn 2 wall", "Steady wall", "Turn 1 / steady", "Go host CPU, turn 1", "Extension host CPU, turn 1",
+              "Go host CPU per turn", "Extension host CPU per turn", "Extension host RSS", "Extension host PSS", "  Pss_Anon", "  Pss_File", "  Private_Dirty", "  Private_Clean", "Go host RSS", "Extension host minor faults", "Extension host executable size")
+
+
+def delta_table(runs, pairs, rows):
+    """Median before, median after and the change in percent, per pair of arms, for the headline rows (memory rows are tagged with the moment they were read)."""
+    ok = lambda a: [r for r in runs if r["arm"] == a and "error" not in r]
+    head = ["Metric"]
+    for b, a in pairs:
+        head += [b, a, "delta %"]
+    lines = ["| " + " | ".join(head) + " |", "|---|" + "---:|" * (len(head) - 1)]
+    tag = ""
+    for row in rows:
+        if row[0] == "#":
+            tag = " @" + row[1].split("Memory ")[1].split(" (")[0] if row[1].startswith("Memory") else ""
+            continue
+        label, fn, nd = row
+        if not label.startswith(DELTA_ROWS):
+            continue
+        cells = []
+        for b, a in pairs:
+            med = {}
+            for arm in (b, a):
+                vals = []
+                for r in ok(arm):
+                    try:
+                        v = fn(r)
+                    except Exception:
+                        v = None
+                    if v is not None:
+                        vals.append(v)
+                med[arm] = pct(vals, .5) if vals else None
+            if med[b] is None or med[a] is None:
+                cells += [f"{med[b]:.{nd}f}" if med[b] is not None else "n/a", f"{med[a]:.{nd}f}" if med[a] is not None else "n/a", "-"]
+            else:
+                cells += [f"{med[b]:.{nd}f}", f"{med[a]:.{nd}f}", f"{(med[a] - med[b]) / med[b] * 100:+.0f}" if med[b] else "-"]
+        lines.append(f"| {label.strip()}{tag} | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
 
 
 def table(runs, arm_names, rows, notes):
@@ -820,6 +898,15 @@ def report(path):
         out += [f"Timing pass: {rounds} interleaved rounds (order rotated each round, one recorded warm-up run per arm before them), cells are median [p10-p90] over rounds (fewer than 7 runs: median [min-max]), A/A columns are |median(a)-median(b)| / their mean.", "",
                 "Proof each arm ran its tier: every run's extension-host `/proc/<pid>/exe` is checked (node: a node binary; bun: the slot's bun; aot: `<slot>/aot/images/<key>/pig-ts-host`) and a run that differs is an error, not a number. Executables seen: " + "; ".join(f"{a}: " + ", ".join(sorted({e for r in rr if r['arm'] == a and 'ext_exe' in r for e in r['ext_exe']})) for a in arm_names), ""]
         out.append(table(rr, arm_names, timing_rows(N), []))
+        cr = [r for r in runs if r["set"] == s and r["pass"] == "cold"]
+        if cr:
+            carms = [a for a in arm_names if any(r["arm"] == a for r in cr)]
+            out += ["", f"**Cold starts** ({len({r['round'] for r in cr if r['round'] >= 0})} rounds per arm): the digest cache's record beside the executable is removed before the start, so the Go host hashes the Bun or aot executable (and, with the cache, records it). The timing table above is the warm start (record present). An arm whose Go host has no digest cache hashes every time, so its cold and warm cells agree.", "",
+                    table(cr, carms, [("Launch to ready, cold (ms)", lambda r: r["ready_ms"], 0), ("Go host CPU to ready, cold, user+sys (ms)", lambda r: cpu(r["ready_snap"]["pig"]), 0),
+                                      ("Digest records removed before the start", lambda r: r["records_dropped"], 0), ("Digest record present after the start (1 = yes)", lambda r: int(r["digest_record"]), 0)], [])]
+        pairs = hdr.get("pairs") or []
+        if pairs:
+            out += ["", "**Before / after** (medians of the timing pass; delta = after against before)", "", delta_table(rr, pairs, timing_rows(N))]
         words = [r for r in rr if "words_ext_ms" in r]
         if words:
             out += ["", "**/words hot loop (the word-count extension, 16.8 MB file, once per run after the turns)**", "", table(words, arm_names, [("/words in the extension (ms)", lambda r: r["words_ext_ms"], 0), ("/words wall from prompt (ms)", lambda r: r["words_wall_ms"], 0)], [])]
@@ -858,6 +945,8 @@ def main():
     r.add_argument("--alloc-arms", help="arms of the strace and heap passes (default: every arm not named *2)")
     r.add_argument("--arm", action="append", help="NAME:KIND[:pig=PATH][:slot=PATH][:path=DIR]; repeatable; default node,node2,node24,bun,aot,aot2")
     r.add_argument("--label", action="append", default=[], help="K=V recorded in the header (e.g. pin=pi-bolt-1.1.2, tree=...)")
+    r.add_argument("--cold-rounds", type=int, default=5, help="cold starts per bun and aot arm: the digest records beside the slot executables are removed before each start")
+    r.add_argument("--pair", action="append", default=[], help="BEFORE_ARM=AFTER_ARM: a column triple (before, after, delta %%) in the report's delta table; repeatable")
     r.add_argument("--build", action="store_true", help="build the aot images (all sets and their +probe variants) before measuring")
     rep = sub.add_parser("report")
     rep.add_argument("runs")
