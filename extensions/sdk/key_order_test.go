@@ -1,11 +1,13 @@
 package sdk
 
 import (
+	"fmt"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // keyOrderFixture runs ext against a mock host and returns a function that sends one event request and reports the result text of its response.
@@ -269,26 +271,78 @@ func TestObjectKeysPutArrayIndexKeysFirst(t *testing.T) {
 	}
 }
 
-// The order of an object that was read is not handed to a map that later takes the address the object had.
+// The order of an object that was read is not handed to a map that later takes the address the object had. The objects here are nested ones the handler drops
+// from the payload and nothing else holds, which the order must keep alive: a freed address cannot be taken while the order names it.
 func TestObjectKeysDoNotLeakTheOrderOfAFreedObject(t *testing.T) {
+	const nested = 500
+	var payload strings.Builder
+	payload.WriteString(`{"keep":1`)
+	for i := range nested {
+		fmt.Fprintf(&payload, `,"n%d":{"z":1,"y":2}`, i)
+	}
+	payload.WriteString(`}`)
+
 	ext := New("key-order-reuse")
 	var failed string
 	ext.OnEvent(EventBeforeProviderRequest, func(ctx Context, data map[string]any) (any, error) {
-		ctx.ObjectKeys(data["payload"].(map[string]any))
-		delete(data, "payload")
+		object := data["payload"].(map[string]any)
+		for i := range nested {
+			key := fmt.Sprintf("n%d", i)
+			if keys := ctx.ObjectKeys(object[key].(map[string]any)); keys[0] != "z" {
+				failed = "a nested object is not read in the host's order: " + strings.Join(keys, ",")
+			}
+			delete(object, key)
+		}
 		runtime.GC()
-		for range 2000 {
-			fresh := map[string]any{"y": 1, "z": 2}
-			if keys := ctx.ObjectKeys(fresh); keys[0] != "y" {
-				failed = strings.Join(keys, ",")
+		runtime.GC()
+		fresh := make([]map[string]any, 0, 4*nested)
+		for range 4 * nested {
+			fresh = append(fresh, map[string]any{"y": 1, "z": 2})
+		}
+		for _, m := range fresh {
+			if keys := ctx.ObjectKeys(m); keys[0] != "y" {
+				failed = "a new map got the order of a freed object: " + strings.Join(keys, ",")
 				break
 			}
 		}
 		return nil, nil
 	})
 	dispatch := keyOrderFixture(t, ext)
-	dispatch(1, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":{"z":1,"y":2,"a":3}}`)
+	dispatch(1, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":`+payload.String()+`}`)
 	if failed != "" {
-		t.Errorf("a new map got the order of the freed payload: %s", failed)
+		t.Error(failed)
+	}
+}
+
+// A Context a handler kept holds neither the payload nor its order once the reply is sent: it reads byte order from then on.
+func TestAKeptContextReadsByteOrderAfterTheReply(t *testing.T) {
+	ext := New("key-order-kept")
+	var kept Context
+	var object map[string]any
+	ext.OnEvent(EventBeforeProviderRequest, func(ctx Context, data map[string]any) (any, error) {
+		kept, object = ctx, data["payload"].(map[string]any)
+		if got := ctx.ObjectKeys(object); got[0] != "z" {
+			t.Errorf("during the request: %v", got)
+		}
+		return nil, nil
+	})
+	dispatch := keyOrderFixture(t, ext)
+	dispatch(1, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":{"z":1,"a":2}}`)
+	// The request releases its payload after it has answered.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		kept.req.keyMu.Lock()
+		released := kept.req.keyOrder == nil && kept.req.Args == nil
+		kept.req.keyMu.Unlock()
+		if released {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the request still holds its payload and the order of its objects after the reply")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if got := kept.ObjectKeys(object); !slices.Equal(got, []string{"a", "z"}) {
+		t.Errorf("after the reply ObjectKeys = %v, want byte order", got)
 	}
 }

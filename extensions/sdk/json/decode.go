@@ -271,6 +271,8 @@ type decodeState struct {
 	aliasRaw bool
 	// names interns the short strings of interface values (see internedString); it outlives the decode with the pooled state.
 	names *nameCache
+	// order, when not nil, records the member order of every map[string]any the decode builds (UnmarshalObject).
+	order *ObjectOrder
 }
 
 // readIndex returns the position of the last byte read.
@@ -1170,6 +1172,12 @@ func (d *decodeState) arrayInterface() []any {
 // objectInterface is like object but returns map[string]any.
 func (d *decodeState) objectInterface() map[string]any {
 	m := make(map[string]any)
+	// pig additive (key-order): the keys of this object are the top of order.scratch from base on; the objects below it stack theirs above.
+	order := d.order
+	base := 0
+	if order != nil {
+		base = len(order.scratch)
+	}
 	for {
 		// Read opening " of string key or closing }.
 		d.scanWhile(scanSkipSpace)
@@ -1200,6 +1208,9 @@ func (d *decodeState) objectInterface() map[string]any {
 		d.scanWhile(scanSkipSpace)
 
 		// Read value.
+		if order != nil {
+			order.scratch = append(order.scratch, key)
+		}
 		m[key] = d.valueInterface()
 
 		// Next token must be , or }.
@@ -1212,6 +1223,9 @@ func (d *decodeState) objectInterface() map[string]any {
 		if d.opcode != scanObjectValue {
 			panic(phasePanicMsg)
 		}
+	}
+	if order != nil {
+		order.finish(m, base)
 	}
 	return m
 }

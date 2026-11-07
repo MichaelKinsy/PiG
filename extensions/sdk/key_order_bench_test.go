@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // contextArgs is a context event with count messages: a user message, an assistant message with a tool call and a text block, and the tool's result, in turn.
@@ -29,105 +27,34 @@ func contextArgs(count int) string {
 	return b.String()
 }
 
-// BenchmarkHandedBackReply compares the reply a handler that drops a context message, or hands back a provider payload, gets: written from the decoded maps in
-// byte order (what the SDK did) and written in the member order the host sent.
-func BenchmarkHandedBackReply(b *testing.B) {
-	for _, count := range []int{30, 300, 3000} {
-		args := []byte(contextArgs(count))
-		decode := func() map[string]any {
-			var data map[string]any
-			if err := json.Unmarshal(args, &data); err != nil {
-				b.Fatal(err)
+// BenchmarkContextEvent is a context event of count messages through decode, handler, result and reply: a handler that returns nothing, one that hands back
+// the list without its first message, and one that sets the content of every message in place.
+func BenchmarkContextEvent(b *testing.B) {
+	handlers := []struct {
+		name string
+		run  func(data map[string]any) any
+	}{
+		{"nil-return", func(map[string]any) any { return nil }},
+		{"handed-back", func(data map[string]any) any { return map[string]any{"messages": data["messages"].([]any)[1:]} }},
+		{"redact-all", func(data map[string]any) any {
+			for _, message := range data["messages"].([]any) {
+				message.(map[string]any)["content"] = "[redacted]"
 			}
-			return data
-		}
-		data := decode()
-		snapshot := append([]any{}, data["messages"].([]any)...)
-		reply := map[string]any{"messages": data["messages"].([]any)[1:], "_pigContextUnchanged": false}
-		roots := captureEchoRoots("context", data, snapshot)
-		b.Run(fmt.Sprintf("context-%d/byte-order", count), func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetBytes(int64(len(args)))
-			for b.Loop() {
-				if _, err := json.MarshalJS(reply); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-		b.Run(fmt.Sprintf("context-%d/member-order", count), func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetBytes(int64(len(args)))
-			for b.Loop() {
-				out := roots.reply(reply, args).(orderedReply)
-				if _, err := json.MarshalJSOrdered(out.value, out.order); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
+			return nil
+		}},
 	}
-	// The payload of a provider request holds the same messages in a request.
-	for _, count := range []int{300} {
-		args := []byte(`{"type":"before_provider_request","payload":{"model":"m","messages":` + strings.TrimSuffix(strings.TrimPrefix(contextArgs(count), `{"type":"context","messages":`), `}`) + `,"stream":true}}`)
-		var data map[string]any
-		if err := json.Unmarshal(args, &data); err != nil {
-			b.Fatal(err)
-		}
-		roots := captureEchoRoots("before_provider_request", data, nil)
-		b.Run(fmt.Sprintf("payload-%d/byte-order", count), func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetBytes(int64(len(args)))
-			for b.Loop() {
-				if _, err := json.MarshalJS(data["payload"]); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-		b.Run(fmt.Sprintf("payload-%d/member-order", count), func(b *testing.B) {
-			b.ReportAllocs()
-			b.SetBytes(int64(len(args)))
-			for b.Loop() {
-				out := roots.reply(data["payload"], args).(orderedReply)
-				if _, err := json.MarshalJSOrdered(out.value, out.order); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-	}
-}
-
-// BenchmarkHandedNothingBack is the reply of a handler that returns nothing: the context unchanged, a tool result or a message_end left alone. It writes the
-// SDK's own reply, which holds no object of the event, so no order is read.
-func BenchmarkHandedNothingBack(b *testing.B) {
-	for _, count := range []int{30, 300, 3000} {
+	for _, count := range []int{300, 3000, 10000} {
 		args := []byte(contextArgs(count))
-		var data map[string]any
-		if err := json.Unmarshal(args, &data); err != nil {
-			b.Fatal(err)
-		}
-		snapshot := append([]any{}, data["messages"].([]any)...)
-		reply := map[string]any{"_pigContextUnchanged": true}
-		b.Run(fmt.Sprintf("context-%d", count), func(b *testing.B) {
-			b.ReportAllocs()
-			for b.Loop() {
-				roots := captureEchoRoots("context", data, snapshot)
-				out := roots.reply(reply, args)
-				if reply, ok := out.(orderedReply); ok {
-					if _, err := json.MarshalJSOrdered(reply.value, reply.order); err != nil {
+		for _, handler := range handlers {
+			b.Run(fmt.Sprintf("context-%d/%s", count, handler.name), func(b *testing.B) {
+				b.ReportAllocs()
+				b.SetBytes(int64(len(args)))
+				for b.Loop() {
+					if _, err := runContextEvent(args, handler.run); err != nil {
 						b.Fatal(err)
 					}
 				}
-			}
-		})
-	}
-	toolResult := []byte(`{"type":"tool_result","toolCallId":"c","toolName":"read","input":{},"content":[{"type":"text","text":"ok"}],"details":{"z":1,"a":2},"isError":false}`)
-	var data map[string]any
-	if err := json.Unmarshal(toolResult, &data); err != nil {
-		b.Fatal(err)
-	}
-	b.Run("tool_result-nil", func(b *testing.B) {
-		b.ReportAllocs()
-		for b.Loop() {
-			_ = captureEchoRoots("tool_result", data, nil).reply(nil, toolResult)
+			})
 		}
-	})
+	}
 }

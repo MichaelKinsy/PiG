@@ -1408,8 +1408,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	// mirrors upstream's per-request error isolation (a thrown handler error in
 	// the TS runtime rejects one call, it does not tear down the runtime).
 	var boundaryData map[string]any
-	// echo holds the objects of an event as the host sent them, to write the ones a handler hands back in their member order.
-	var echo *echoRoots
+	// order is the member order of the objects of an event as the host sent them; the objects a handler hands back are written in it.
+	var order *json.ObjectOrder
 	var promptOptions map[string]any
 	var toolCall *toolCallInput
 	defer func() {
@@ -1433,7 +1433,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if promptOptions != nil {
 				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": nil}
 			}
-			_ = e.conn.respond(id, echo.reply(result, req.Args), fmt.Errorf("handler panicked: %v", r))
+			_ = e.conn.respond(id, handedBack(req.Event, result, order), fmt.Errorf("handler panicked: %v", r))
 		}
 	}()
 
@@ -1577,13 +1577,13 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if e.conn.fused {
 				// Fused extensions share one decode of a payload; each handler gets its own copy.
 				var release func()
-				data, master, release = fusedEventArgs.decodeWithMaster(req.Args)
+				data, master, order, release = fusedEventArgs.decodeWithMaster(req.Args)
 				defer release()
 			} else {
-				_ = unmarshalFrameMember(req.Args, &data)
+				data, order, _ = unmarshalFrameObject(req.Args)
 			}
 		}
-		ctx.req, req.eventData = req, data
+		ctx.req, req.keyOrder = req, order
 		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
 			boundaryData = data
 		}
@@ -1607,7 +1607,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			data["systemPrompt"] = ctx.systemPrompt
 		}
 		snapshot := snapshotContextMessages(req.Event, data)
-		echo = captureEchoRoots(req.Event, data, snapshot)
+		// The member order of the objects of the event came with the decode, so no object has to be captured before the handler runs.
 		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
 		ctx.place.Pass()
 		result, err := handler(ctx, data)
@@ -1644,10 +1644,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 			result = map[string]any{"_pigBoundaryEntries": data["entries"], "_pigBoundaryResult": result}
 		}
-		_ = e.conn.respond(id, echo.reply(result, req.Args), err)
+		_ = e.conn.respond(id, handedBack(req.Event, result, order), err)
 		// A Context a handler kept must not hold the event's payload: ObjectKeys reads byte order from here on.
 		req.keyMu.Lock()
-		req.eventData, req.keyOrder, req.Args = nil, nil, nil
+		req.keyOrder, req.Args = nil, nil
 		req.keyMu.Unlock()
 
 	case "shortcut":

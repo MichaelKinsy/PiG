@@ -205,10 +205,9 @@ type requestMsg struct {
 	// streamData and streamErr are the payload a stream request produced, or why it could not be produced (applyEventStream).
 	streamData map[string]any
 	streamErr  error
-	// eventData is the payload an event handler was given and keyOrder the member order of its objects, read from Args the first time a handler asks (Context.ObjectKeys).
-	eventData map[string]any
-	keyOrder  *sourceOrder
-	keyMu     sync.Mutex
+	// keyOrder is the member order of the objects of the payload an event handler was given, recorded when it was decoded (Context.ObjectKeys), until the reply.
+	keyOrder *json.ObjectOrder
+	keyMu    sync.Mutex
 }
 
 type responseMsg struct {
@@ -798,7 +797,7 @@ func (c *conn) respond(id string, result any, respErr error) error {
 	return c.writeFrameLocked(response)
 }
 
-// orderedReply is a result whose objects the host sent, written with the member order it sent them in (sourceOrder).
+// orderedReply is a result whose objects the host sent, written with the member order it sent them in (json.ObjectOrder).
 type orderedReply struct {
 	value any
 	order json.KeyOrder
