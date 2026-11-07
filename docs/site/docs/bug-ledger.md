@@ -1018,7 +1018,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-93f8b7c](#bf-93f8b7c) | fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api | PiG's own defect | All platforms | Unreleased |
 | [BF-94284ac](#bf-94284ac) | `pig -e git:<repo>@<branch>` no longer stays on its first checkout | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-942bc6c](#bf-942bc6c) | fix(coding-agent): preserve pi.exec spawn errors (Pi) | PiG's own defect | All platforms | Unreleased |
-| [BF-94a26eb](#bf-94a26eb) | `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more… | PiG's own defect | All platforms | Unreleased |
 | [BF-94e3498](#bf-94e3498) | On Windows, PiG no longer searches `C:\etc\pig\piglets` or `C:\opt\pig\piglet.yaml` for a Piglet | PiG's own defect | Windows | 0.5.0 |
 | [BF-94e6796](#bf-94e6796) | A Durable Harness task that went to sleep for a short time, such as the 1 ms backoff before a generation… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-94f1e6f](#bf-94f1e6f) | fix(coding): a provider of only virtual models is configured with source virtual | PiG's own defect | All platforms | Unreleased |
@@ -15569,20 +15568,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `942bc6c05b` (2026-10-22)
 - **Tests:** `coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty`, `coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne`
-
-### BF-94a26eb
-
-**`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more…**
-
-- **Source:** PiG's own defect
-- **Symptom:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases.
-- **Root cause:** Schema.IsMinLength, IsMaximum, IsMultipleOf, IsMinItems, IsEnum, IsPattern and the other guards of typebox 1.3.27 (build/schema/types) accept a keyword only when it has its type: a finite number (minLength, maxLength, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, minProperties, maxProperties), a string (pattern, format), an array (enum) or a boolean (uniqueItems). CheckSchema and ErrorSchema skip any other keyword, so {"minLength":"3"} passes "", enum 3 passes everything, and an Infinity limit (null once it is JSON) is skipped. checkKeyword failed the check for such a keyword, as the comment above it said a NaN comparison does, so a schema with a…
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `849567c3d5` (2026-11-06), `94a26eb9a1` (2026-11-06), `eb456c0946` (2026-11-06)
-- **Tests:** None recorded.
-- **Release note:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases. A schema keyword that has the wrong type (`{"minLength": "3"}`, `enum: 3`, `pattern: 5`, `multipleOf: "2"`, `maximum: null`) is skipped, so it accepts every value, as in Pi; it rejected values before, and `Errors` reported a limit that was empty. `const` and `enum` accept an object for an array that has the same indices and `length` (`{"0": "a", "length": 1}` equals `["a"]`). `uniqueItems` ignores an object's `constructor` member, so `{}` and `{"constructor": 2}` count as duplicates.
 
 ### BF-94e3498
 
