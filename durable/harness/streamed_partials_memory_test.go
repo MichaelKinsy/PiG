@@ -17,6 +17,15 @@
 // and the memory is measured while the stream waits at the point where the watcher's view holds the most. Pi's 500 frames become what
 // they stand for: the text the frames showed, in all, is more than the bound by half again, so that what a watcher retains of every
 // frame (a copy of the text it showed, or a slice of the array that holds it) would break the bound.
+//
+// The cost case streams its answer itself too, and counts from before its submission, as Pi's allocatedBytes does: its bound measured
+// the machine. The bytes were read after the submission started, behind a collection, so a slow collection (the race detector, a large
+// heap, a loaded runner) let the stream run unmeasured meanwhile: a nightly on macOS read 5.6 MB for the 40 KB stream, which allocates
+// 15 to 17 MB, and failed the bound at 4.9x; with a 1.5 GB heap on Linux the same reading was 2 KB. And Pi's faux chunks, a millisecond
+// apart, share a commit when a commit lasts longer than a chunk, as it does under the race detector. The bytes of a commit are mostly
+// those of the chunks it carries, so the ratio between two streams run seconds apart followed the load between them (970 commits for the
+// 400 KB stream in that nightly, 1377 in a run on Linux) and not the length of the strings. Here a chunk is pushed only after a commit
+// showed the chunk before it, so every commit carries one chunk however slowly the process runs.
 
 package harness
 
@@ -56,37 +65,74 @@ func streamedTextAndCall(t testing.TB, size int, tokens int, tokensPerSecond int
 	return setup
 }
 
+// costChunk is the bytes each of the cost case's two blocks gains in a chunk.
+const costChunk = 1_024
+
+// costText is the text of a cost-case stream of size bytes.
+func costText(size int) string {
+	return strings.Repeat("streamed text with \"quotes\" and \\ escapes\n", size/40)
+}
+
+// allocatedBytes is the bytes the process allocates while run runs, counted from a settled process before run starts anything
+// (harness-view-run.test.ts allocatedBytes). Collections do not reduce the count: the collection keeps the setup's garbage from being
+// collected during the first chunks of the stream.
+func allocatedBytes(harness Harness, run func()) uint64 {
+	drained(harness)
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	run()
+	runtime.ReadMemStats(&after)
+	return after.TotalAlloc - before.TotalAlloc
+}
+
 // harness-view-run.test.ts:547 "commits a growing text and tool call at a cost that follows the new text, not the string lengths".
 func TestStreamedPartialsCommitAtACostThatFollowsTheNewText(t *testing.T) {
-	// stream returns the bytes allocated while streaming one answer of size characters of text and as much tool-call content, and the
-	// commits made.
-	stream := func(size int) (allocated uint64, commits int) {
-		setup := streamedTextAndCall(t, size, 64, 64_000)
+	// stream returns what streaming one answer of size characters of text and as much tool-call content allocated, and how many commits
+	// and chunks it made.
+	type streamed struct {
+		bytes           uint64
+		commits, chunks int
+	}
+	stream := func(size int) streamed {
+		setup := chatSetup(t)
+		setup.SetSettings(func(settings *HarnessSettings) {
+			settings.Progress = &ProgressPolicyPatch{PartialIntervalMs: new(1.0), OutputIntervalMs: new(100.0)}
+			// Keep pi.live cached between commits, as the default retention does: evicted after each use, every commit replays the
+			// document's delta chain, a cost of eviction, not of appending.
+			settings.DocumentRetentionMs = new(60_000.0)
+		})
+		shown := newShownGate()
+		answer := &chunkedAnswer{text: costText(size), shown: shown, chunkSize: costChunk, ended: make(chan struct{})}
+		answersFirst(setup, answer)
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		var mu sync.Mutex
-		followCommits(harness, func(context.Context, session.ObservedCommit) {
+		var (
+			mu      sync.Mutex
+			commits int
+		)
+		followCommits(harness, func(_ context.Context, commit session.ObservedCommit) {
 			mu.Lock()
 			commits++
 			mu.Unlock()
+			for _, change := range commit.Changes {
+				if document, ok := change.(durable.DocumentChange); ok && document.Record.Kind == "pi.live" {
+					shown.show(shownLengths(document.Value))
+				}
+			}
 		})
-		submission := submit(t, root, inputDraft("go"))
-		runtime.GC()
-		var before, after runtime.MemStats
-		runtime.ReadMemStats(&before)
-		must(submission.Wait(testContext))
-		runtime.ReadMemStats(&after)
+		allocated := allocatedBytes(harness, func() { must(submit(t, root, inputDraft("go")).Wait(testContext)) })
 		closeHarness(t, harness)
 		mu.Lock()
 		defer mu.Unlock()
-		return after.TotalAlloc - before.TotalAlloc, commits
+		return streamed{allocated, commits, int(answer.chunks.Load())}
 	}
-	var small, large struct {
-		bytes   uint64
-		commits int
+	small, large := stream(40_000), stream(400_000)
+	t.Logf("small: %d bytes over %d commits for %d chunks; large: %d bytes over %d commits for %d chunks", small.bytes, small.commits, small.chunks, large.bytes, large.commits, large.chunks)
+	for _, run := range []streamed{small, large} {
+		if run.commits < run.chunks {
+			t.Fatalf("%d commits for %d chunks, want a commit for every chunk", run.commits, run.chunks)
+		}
 	}
-	small.bytes, small.commits = stream(40_000)
-	large.bytes, large.commits = stream(400_000)
-	t.Logf("small: %d bytes over %d commits; large: %d bytes over %d commits", small.bytes, small.commits, large.bytes, large.commits)
 	// harness-view-run.test.ts:576.
 	if large.commits <= small.commits*5 {
 		t.Fatalf("%d commits for the large stream, %d for the small one: want more than 5x", large.commits, small.commits)
@@ -108,50 +154,34 @@ func heapInUse(harness Harness) uint64 {
 	return stats.HeapAlloc
 }
 
-// opsWatcher is a started watch of a conversation that keeps the operations of its frames, not their values, and the longest text and
-// tool-call content its frames showed.
-type opsWatcher struct {
-	mu     sync.Mutex
-	frames int
-	ops    [][]durable.Op
-	// shown is the longest text of the block at content index 0, and the longest content argument of the block at index 1, a frame showed.
+// shownGate is what the frames or commits of a stream showed so far of its two blocks: the longest text of the block at content index 0,
+// and the longest content argument of the block at index 1.
+type shownGate struct {
+	mu    sync.Mutex
 	shown [2]int
-	// viewed is the bytes of text and tool-call content the frames showed, in all.
-	viewed int
-	// changed is closed by the next frame.
+	// changed is closed by the next show.
 	changed chan struct{}
 }
 
-func newOpsWatcher() *opsWatcher { return &opsWatcher{changed: make(chan struct{})} }
+func newShownGate() *shownGate { return &shownGate{changed: make(chan struct{})} }
 
-// advance is the watch's listener.
-func (watcher *opsWatcher) advance(_ context.Context, change chord.WatchCall[ConversationView]) error {
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	watcher.frames++
-	watcher.ops = append(watcher.ops, change.Ops)
-	for index := range watcher.shown {
-		here := shownIn(change.Value, index)
-		watcher.viewed += here
-		watcher.shown[index] = max(watcher.shown[index], here)
+// show records the lengths a frame or commit showed.
+func (gate *shownGate) show(lengths [2]int) {
+	gate.mu.Lock()
+	defer gate.mu.Unlock()
+	for index, length := range lengths {
+		gate.shown[index] = max(gate.shown[index], length)
 	}
-	close(watcher.changed)
-	watcher.changed = make(chan struct{})
-	return nil
+	close(gate.changed)
+	gate.changed = make(chan struct{})
 }
 
-func (watcher *opsWatcher) count() (frames, viewed int) {
-	watcher.mu.Lock()
-	defer watcher.mu.Unlock()
-	return watcher.frames, watcher.viewed
-}
-
-// awaitShown waits until a frame showed at least length bytes at content index, and reports false when ctx ends first.
-func (watcher *opsWatcher) awaitShown(ctx context.Context, index, length int) bool {
+// awaitShown waits until a frame or commit showed at least length bytes at content index, and reports false when ctx ends first.
+func (gate *shownGate) awaitShown(ctx context.Context, index, length int) bool {
 	for {
-		watcher.mu.Lock()
-		reached, changed := watcher.shown[index] >= length, watcher.changed
-		watcher.mu.Unlock()
+		gate.mu.Lock()
+		reached, changed := gate.shown[index] >= length, gate.changed
+		gate.mu.Unlock()
 		if reached {
 			return true
 		}
@@ -163,6 +193,38 @@ func (watcher *opsWatcher) awaitShown(ctx context.Context, index, length int) bo
 	}
 }
 
+// opsWatcher is a started watch of a conversation that keeps the operations of its frames, not their values, and the longest text and
+// tool-call content its frames showed.
+type opsWatcher struct {
+	*shownGate
+	mu     sync.Mutex
+	frames int
+	ops    [][]durable.Op
+	// viewed is the bytes of text and tool-call content the frames showed, in all.
+	viewed int
+}
+
+func newOpsWatcher() *opsWatcher { return &opsWatcher{shownGate: newShownGate()} }
+
+// advance is the watch's listener.
+func (watcher *opsWatcher) advance(_ context.Context, change chord.WatchCall[ConversationView]) error {
+	watcher.mu.Lock()
+	defer watcher.mu.Unlock()
+	watcher.frames++
+	watcher.ops = append(watcher.ops, change.Ops)
+	live, _ := change.Value.Docs.Get("pi.live")
+	lengths := shownLengths(live)
+	watcher.viewed += lengths[0] + lengths[1]
+	watcher.show(lengths)
+	return nil
+}
+
+func (watcher *opsWatcher) count() (frames, viewed int) {
+	watcher.mu.Lock()
+	defer watcher.mu.Unlock()
+	return watcher.frames, watcher.viewed
+}
+
 func memberOf(object durable.JsonObject, key string) any {
 	if object == nil {
 		return nil
@@ -170,23 +232,27 @@ func memberOf(object durable.JsonObject, key string) any {
 	return object.Value(key)
 }
 
-// shownIn is the length of the text at content index of the partial message that view's pi.live holds, or of that tool call's content
-// argument; 0 when the view shows none.
-func shownIn(view ConversationView, index int) int {
-	live, _ := view.Docs.Get("pi.live")
+// shownLengths is the length of the text at content index 0 of the partial message that live, a pi.live value, holds, and of the content
+// argument of the tool call at content index 1; 0 for a block it does not show.
+func shownLengths(live durable.JsonObject) [2]int {
 	generation, _ := memberOf(live, "generation").(durable.JsonObject)
 	message, _ := memberOf(generation, "message").(durable.JsonObject)
 	content, _ := memberOf(message, "content").([]any)
-	if index >= len(content) {
-		return 0
+	var lengths [2]int
+	for index := range lengths {
+		if index >= len(content) {
+			break
+		}
+		block, _ := content[index].(durable.JsonObject)
+		if text, ok := memberOf(block, "text").(string); ok {
+			lengths[index] = len(text)
+			continue
+		}
+		arguments, _ := memberOf(block, "arguments").(durable.JsonObject)
+		argument, _ := memberOf(arguments, "content").(string)
+		lengths[index] = len(argument)
 	}
-	block, _ := content[index].(durable.JsonObject)
-	if text, ok := memberOf(block, "text").(string); ok {
-		return len(text)
-	}
-	arguments, _ := memberOf(block, "arguments").(durable.JsonObject)
-	argument, _ := memberOf(arguments, "content").(string)
-	return len(argument)
+	return lengths
 }
 
 // retainedLimit is the bytes a watcher may retain of the stream, as Pi's case bounds it.
@@ -198,15 +264,35 @@ const retainedLimit = 20_000_000
 const answerChunks = 130
 
 // chunkedAnswer is a response of a text and a tool call whose content argument is the same text, streamed as a provider streams it: a
-// delta event with the partial message it leaves for each chunk of each block. A chunk is pushed only after a frame of the watcher showed
-// the chunk before it, so the stream is as fast as its commits and no chunk shares a commit.
+// delta event with the partial message it leaves for each chunk of each block. A chunk is pushed only after a frame or commit of the
+// shown gate showed the chunk before it, so the stream is as fast as its commits and no chunk shares a commit.
 type chunkedAnswer struct {
-	text    string
-	watcher *opsWatcher
-	// nearlyComplete receives once for each block when the watcher showed 95% of the block's text, and the stream waits there until
-	// proceed is sent to. ended is closed when the stream stops pushing.
+	text  string
+	shown *shownGate
+	// chunkSize is the bytes of a block's text in a chunk; zero is answerChunks chunks to a block.
+	chunkSize int
+	// nearlyComplete, if not nil, receives once for each block when the gate showed 95% of the block's text, and the stream waits there
+	// until proceed is sent to. ended is closed when the stream stops pushing.
 	nearlyComplete, proceed, ended chan struct{}
 	chunks                         atomic.Int32
+}
+
+// answersFirst makes the request of setup's provider that comes first answer with answer, and the faux provider answer the ones after it
+// (the request after the tool call's round) with "done".
+func answersFirst(setup *chatState, answer *chunkedAnswer) {
+	setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("done")})
+	withProvider(setup, func(provider *ai.ModelsProvider) {
+		faux := provider.StreamSimple
+		var streamed sync.Once
+		provider.StreamSimple = func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			var stream *ai.AssistantMessageEventStream
+			streamed.Do(func() { stream = answer.stream(ctx) })
+			if stream != nil {
+				return stream, nil
+			}
+			return faux(ctx, model, transcript, options)
+		}
+	})
 }
 
 // stream starts streaming the answer for a request that ctx covers.
@@ -227,19 +313,22 @@ func (answer *chunkedAnswer) run(ctx context.Context, stream *ai.AssistantMessag
 	call := func(content string) ai.ToolCall {
 		return ai.ToolCall{ID: "c1", Name: "missing", Arguments: ai.JsonObject{"path": "a.ts", "content": content}}
 	}
-	// block pushes the chunks of the text at content index, with push called for each, after the previous chunk's frame; it reports false
-	// when the request ended meanwhile.
+	// block pushes the chunks of the text at content index, with push called for each, after the previous chunk's frame or commit; it
+	// reports false when the request ended meanwhile.
 	block := func(index int, push func(start, end int)) bool {
-		size := (len(text) + answerChunks - 1) / answerChunks
+		size := answer.chunkSize
+		if size == 0 {
+			size = (len(text) + answerChunks - 1) / answerChunks
+		}
 		nearly := false
 		for start := 0; start < len(text); start += size {
 			end := min(start+size, len(text))
 			push(start, end)
 			answer.chunks.Add(1)
-			if !answer.watcher.awaitShown(ctx, index, end) {
+			if !answer.shown.awaitShown(ctx, index, end) {
 				return false
 			}
-			if nearly || end*100 < len(text)*95 {
+			if answer.nearlyComplete == nil || nearly || end*100 < len(text)*95 {
 				continue
 			}
 			nearly = true
@@ -296,21 +385,8 @@ func TestStreamedPartialsKeepAWatchersMemoryProportionalToTheText(t *testing.T) 
 		builder.WriteString("line " + strconv.Itoa(index) + ": some streamed source text with \"quotes\" and \\ escapes\n")
 	}
 	watcher := newOpsWatcher()
-	answer := &chunkedAnswer{text: builder.String(), watcher: watcher, nearlyComplete: make(chan struct{}), proceed: make(chan struct{}), ended: make(chan struct{})}
-	// The faux provider answers the request after the tool call's round.
-	setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer("done")})
-	withProvider(setup, func(provider *ai.ModelsProvider) {
-		faux := provider.StreamSimple
-		var streamed sync.Once
-		provider.StreamSimple = func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-			var stream *ai.AssistantMessageEventStream
-			streamed.Do(func() { stream = answer.stream(ctx) })
-			if stream != nil {
-				return stream, nil
-			}
-			return faux(ctx, model, transcript, options)
-		}
-	})
+	answer := &chunkedAnswer{text: builder.String(), shown: watcher.shownGate, nearlyComplete: make(chan struct{}), proceed: make(chan struct{}), ended: make(chan struct{})}
+	answersFirst(setup, answer)
 	harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 	watch := must(root.Watch(testContext, nil))
 	watch.Start(onValue(watcher.advance))
