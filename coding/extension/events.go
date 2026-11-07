@@ -411,10 +411,10 @@ type CustomMessageRef struct {
 	Details    any    `json:"details,omitempty"`
 }
 
-// UnmarshalJSON keeps the member order of the `details` object the extension wrote.
-func (m *CustomMessageRef) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON keeps the member order of the `content` blocks and `details` object the extension wrote: Pi appends the objects themselves.
+func (r *CustomMessageRef) UnmarshalJSON(data []byte) error {
 	type plain CustomMessageRef
-	return orderedjson.UnmarshalFields(data, (*plain)(m), "details")
+	return orderedjson.UnmarshalFields(data, (*plain)(r), "content", "details")
 }
 
 // AgentStartEvent: upstream types.ts AgentStartEvent.

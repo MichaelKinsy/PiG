@@ -47,6 +47,11 @@ func (m *AgentMessage) decodeLax(data []byte) (bool, error) {
 		if details, ok := object.Get("details"); ok {
 			custom["details"] = orderedjson.Value(details)
 		}
+		if content, ok := object.Get("content"); ok {
+			if ordered := orderedjson.Value(content); ordered != nil {
+				custom["content"] = ordered
+			}
+		}
 		*m = AgentMessage{Custom: custom}
 		return nullContent, nil
 	}
