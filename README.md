@@ -85,6 +85,8 @@ The [documentation](https://pi-in-go.dev/docs/latest) covers everything else, st
 - `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`. The server runs until a termination signal and then exits with 128 plus the signal number.
 - On Windows the server listens on an `AF_UNIX` socket (Windows 10 version 1803 or later), not a named pipe, and its access follows the permissions of the socket's directory. The Windows tests have not been run yet.
 
+See [serving many sessions](docs/site/docs/rpc.md#serve-many-sessions) for the protocol details.
+
 ## Upstream Pi
 
 Pi is the reference implementation. PiG follows Pi's behavior and design unless a Go constraint or an approved product-neutral requirement makes a difference necessary.
