@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// index.ts:getTextContent joins only text blocks with newlines, including empty blocks.
+// index.ts:getTextContent joins text and thinking blocks with newlines, including empty blocks.
 func TestAssistantTextPreservesBlockBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -14,10 +14,11 @@ func TestAssistantTextPreservesBlockBoundaries(t *testing.T) {
 		text    string
 		ok      bool
 	}{
-		{"plan", assistantBlocks("Plan:", "1. Inspect the implementation"), "Plan:\n1. Inspect the implementation", true},
-		{"split marker", assistantBlocks("[DONE:", "1]"), "[DONE:\n1]", true},
-		{"empty block", assistantBlocks("first", "", "last"), "first\n\nlast", true},
-		{"no text", map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "thinking", "text": "ignored"}}}, "", true},
+		{"plan", assistantBlocks("Plan:", "1. Inspect the implementation"), "ignored\nPlan:\n1. Inspect the implementation", true},
+		{"split marker", assistantBlocks("[DONE:", "1]"), "ignored\n[DONE:\n1]", true},
+		{"empty block", assistantBlocks("first", "", "last"), "ignored\nfirst\n\nlast", true},
+		{"thinking only", map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "thinking", "thinking": "[DONE:2]"}}}, "[DONE:2]", true},
+		{"unknown block", map[string]any{"role": "assistant", "content": []any{map[string]any{"type": "toolCall", "name": "x"}}}, "", true},
 		{"string content", map[string]any{"role": "assistant", "content": "[DONE:1]"}, "", false},
 		{"user", map[string]any{"role": "user", "content": []any{}}, "", false},
 	} {
@@ -51,13 +52,14 @@ func TestPlanModeExtractsPlanAcrossTextBlocks(t *testing.T) {
 	}
 }
 
-func TestPlanModeDoesNotCompleteSplitDoneMarker(t *testing.T) {
+func TestPlanModeCompletesOnlyWholeOrWhitespaceSplitDoneMarkers(t *testing.T) {
 	host := startExtensionHost(t, []string{"read", "edit"})
 	host.selectValue = "Execute the plan (track progress)"
 	host.invokeCommand("plan")
 	host.invokeEvent("agent_end", map[string]any{"messages": []any{assistantMessage("Plan:\n1. Inspect the implementation")}})
 	host.clearEffects()
-	host.invokeEvent("turn_end", map[string]any{"message": assistantBlocks("[DONE:", "1]")})
+	// A marker broken inside its keyword never matches.
+	host.invokeEvent("turn_end", map[string]any{"message": assistantBlocks("[DO", "NE:1]")})
 	if state := lastSavedState(t, host); len(state.Todos) != 1 || state.Todos[0].Completed {
 		t.Fatalf("split marker changed completion: %+v", state)
 	}
@@ -65,7 +67,7 @@ func TestPlanModeDoesNotCompleteSplitDoneMarker(t *testing.T) {
 	if calls := host.callsFor("sendMessage"); len(calls) != 0 {
 		t.Fatalf("split marker emitted completion: %v", calls)
 	}
-	// A whole marker in a later text block must still complete the plan.
+	// A whole marker in a later text block completes the plan; so does one whose number sits on the next block (Pi's [DONE\s*:?\s*n] tolerance).
 	host.invokeEvent("turn_end", map[string]any{"message": assistantBlocks("Finished.", "[DONE:1]")})
 	if state := lastSavedState(t, host); !state.Todos[0].Completed {
 		t.Fatalf("whole marker did not complete step: %+v", state)
@@ -77,7 +79,7 @@ func TestPlanModeResumePreservesTextBlockBoundaries(t *testing.T) {
 	host.entries = []json.RawMessage{
 		json.RawMessage(`{"type":"message","message":{"role":"assistant","content":[{"type":"text","text":"[DONE:1]"}]}}`),
 		json.RawMessage(`{"type":"custom_message","customType":"plan-mode-execute"}`),
-		json.RawMessage(`{"type":"message","message":{"role":"assistant","content":[{"type":"text","text":"[DONE:"},{"type":"text","text":"1]"},{"type":"text","text":"[DONE:2]"}]}}`),
+		json.RawMessage(`{"type":"message","message":{"role":"assistant","content":[{"type":"text","text":"[DO"},{"type":"text","text":"NE:1]"},{"type":"text","text":"[DONE:2]"}]}}`),
 		json.RawMessage(`{"type":"custom","customType":"plan-mode","data":{"enabled":false,"executing":true,"todos":[{"step":1,"text":"Inspect the implementation","completed":false},{"step":2,"text":"Verify the result","completed":false}]}}`),
 	}
 	host.invokeEvent("session_start", map[string]any{})

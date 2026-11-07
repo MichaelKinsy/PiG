@@ -3,6 +3,7 @@ package planmode
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -104,6 +105,46 @@ func TestExtractTodoItemsUnicodeCorpusAgainstUpstream(t *testing.T) {
 		}
 		if got := ExtractTodoItems(probe.Input); !reflect.DeepEqual(got, want) {
 			t.Fatalf("ExtractTodoItems(%q) = %+v; pinned upstream = %+v", probe.Input, got, want)
+		}
+	}
+}
+
+func TestDoneMarkerAndWholePlanPhrasingsAgainstUpstream(t *testing.T) {
+	var inputs []string
+	for _, space := range []string{" ", "\n", "\t", "\u00a0", "\ufeff", "\u2028", ""} {
+		for _, text := range []string{
+			"[DONE:1]", "[DONE" + space + "2]", "[Done" + space + ":" + space + "3]", "Done" + space + ":" + space + "4", "Step" + space + "5 done",
+			"Step" + space + "6" + space + "is" + space + "complete", "Step 7 finished", "Step 8 is not done", "Step 9 incomplete", "[DONE:1] [DONE: 1]",
+			"[DONE:" + strings.Repeat("9", 309) + "]", "[DONE:abc] [DONE:]", "Undone: 3", "Step 10 completed",
+			"All" + space + "steps" + space + "complete", "Every" + space + "step is finished", "all steps are done", "The plan is done", "plan completed", "Replan is done", "Step 1 complete, moving on",
+		} {
+			inputs = append(inputs, text)
+		}
+	}
+	var doneProbes, allProbes []utilityProbe
+	for _, input := range inputs {
+		doneProbes = append(doneProbes, utilityProbe{"extractDoneSteps", input})
+		allProbes = append(allProbes, utilityProbe{"allStepsComplete", input})
+	}
+	for i, raw := range probeUpstreamUtilities(t, doneProbes) {
+		// JSON has no Infinity: upstream's JSON.stringify renders it as null.
+		got := ExtractDoneSteps(inputs[i])
+		var want []*float64
+		if err := json.Unmarshal(raw, &want); err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != len(want) {
+			t.Fatalf("ExtractDoneSteps(%q) = %v; pinned upstream = %s", inputs[i], got, raw)
+		}
+		for j := range got {
+			if want[j] == nil && !math.IsInf(got[j], 1) || want[j] != nil && *want[j] != got[j] {
+				t.Fatalf("ExtractDoneSteps(%q) = %v; pinned upstream = %s", inputs[i], got, raw)
+			}
+		}
+	}
+	for i, raw := range probeUpstreamUtilities(t, allProbes) {
+		if want := string(raw) == "true"; AllStepsComplete(inputs[i]) != want {
+			t.Fatalf("AllStepsComplete(%q) = %v; pinned upstream = %s", inputs[i], !want, raw)
 		}
 	}
 }
