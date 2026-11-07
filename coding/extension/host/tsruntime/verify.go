@@ -102,7 +102,7 @@ func (v *Verifier) verify(ctx context.Context, m Manifest, exe *Executable, dige
 		return ReasonVerifyFailed, err
 	}
 	// The probe starts the verified file too, so the file that answers --version is the file that was hashed.
-	probePath, err := exe.ExecPath()
+	probePath, err := exe.probePath()
 	if err != nil {
 		return ReasonVerifyFailed, err
 	}

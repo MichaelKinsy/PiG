@@ -35,7 +35,9 @@ import (
 //     a manifest may name, but a forged record bypasses the comparison of the bytes with it.
 //   - A file system that does not keep the inode and ctime truthful (some network and FUSE file systems), or a superuser who writes
 //     the device or sets the clock back. The hash is a start-time check, not a defence against them, as it was before.
-//   - The time between the check and the exec. The executable is started by path after Verify returns, with or without the cache.
+//   - On every platform but Linux, and on Linux for a script, on Android and where /proc does not show the file, the time between the
+//     check and the exec: the executable is started by path after Verify returns, with or without the cache. Elsewhere on Linux the
+//     launch runs the file that was hashed (executable.go).
 //
 // A file is recorded only when, at the moment its hash begins, its newest modification time or ctime is at least settleWindow old
 // (settleWindow is far more than any timestamp granularity). A write that completed before then is in the identity and in the bytes
