@@ -36,13 +36,13 @@ Platforms: linux-x64 (AVX2 or baseline) and darwin-arm64. Elsewhere the Piglet r
 - `status` shows the compiler, the images, the cache size and the last failures.
 - `install` downloads and verifies the compiler without waiting for a request. `verify` re-checks it; `remove` deletes it and every image.
 - `prune` deletes the least recently used images down to the budget.
-- `budget 2GB` sets the total cache budget. The default is 1 GB, which holds three or four images (one image is 240 to 270 MB). `PIG_AOT_CACHE_MAX` overrides it.
+- `budget 4GB` sets the total cache budget. The default is 2 GB, which holds about eight images (one image is 240 to 270 MB); 0.7.0 kept 1 GB. `PIG_AOT_CACHE_MAX` overrides it.
 
 `PIG_AOT_RELEASE_URL` points downloads at a mirror. Every download is still checked against the signature key and digests pinned in this Piglet.
 
 A new Piglet release that pins another compiler installs it on the first start, removes the earlier compiler and drops the images that compiler built: their extension sets run on Bun once and are compiled again in the background.
 
-## Costs and gains
+## Costs and gains (PROVISIONAL: one shared host, read the ratios, not the milliseconds)
 
 Measured on one shared linux-x64 host (Xeon Platinum 8468, 16-CPU container quota, load median 25), Node 26.12.1, stock Bun 1.4.2, Pi-Bolt 1.1.2, 12 interleaved rounds, 20 turns per run against a fake model, after the 0.7.1 changes (`bench/bolt-aot/results/2026-11-06-basket-after.md`, with the before/after deltas and the A/A noise floor; `...-before.md` for the earlier code). A shared host is not a quiet one: read the ratios, not the milliseconds. The `five` set is five extensions with a hot loop, `ten` is ten trivial extensions, `rewrite` is `@juicesharp/rpiv-todo`, `pi-mcp-adapter` and a fixture that reads files beside its own module.
 
@@ -87,7 +87,7 @@ A set is refused, and runs on Bun or Node, when a file that reads files or start
 
 - In a compiled CommonJS module `module.filename`, `module.paths`, `module.id`, `require.main` and `process.argv[1]` do not name the installed file; only `__dirname`, `__filename`, `import.meta.*`, `require.resolve` and computed `require()`/`import()` are pinned to it.
 - The compiled host runs a tight loop slower than Bun's JIT (about 1.1x in the measurement above).
-- The image is 240 to 270 MB, so the default 1 GB budget keeps three or four sets; the least recently used image goes first and its set is built again at its next request.
+- The image is 240 to 270 MB, so the default 2 GB budget keeps about eight sets; the least recently used image goes first and its set is built again at its next request.
 - Pi-Bolt 0.7.4's compiler segfaulted ("Segmentation fault at address 0x30") in the ahead-of-time step on the current runtime tree, on the CI image and on the host, whenever the build's function order held any record; 1.1.2 builds the same input. A Piglet release that is pinned to 0.7.4 cannot build an image on this tree.
 - Pi-Bolt 1.x publishes other platforms (linux-arm64, win32-x64) that this Piglet does not build for yet.
 
