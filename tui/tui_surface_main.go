@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // pig additive (D91): a TuiSurface retains the main region per component,
@@ -406,7 +407,7 @@ func (t *TuiSurface) applyChanges(ops []frontend.Op, width int) ([]frontend.Op, 
 	t.edits = edits
 	if sc == nil && !moved {
 		// Every node keeps its id and position: send the changed ones.
-		slices.SortFunc(edits, func(a, b surfaceEdit) int { return a.lo - b.lo })
+		sortx.Func(edits, func(a, b surfaceEdit) int { return a.lo - b.lo })
 		for _, edit := range edits {
 			for i, entry := range edit.entries {
 				at := edit.lo + i
@@ -502,7 +503,7 @@ func (t *TuiSurface) applyChanges(ops []frontend.Op, width int) ([]frontend.Op, 
 // sortEdits orders edits by position and reports false when two insert at
 // one index, an order only the tree knows.
 func sortEdits(edits []surfaceEdit) bool {
-	slices.SortFunc(edits, func(a, b surfaceEdit) int {
+	sortx.Func(edits, func(a, b surfaceEdit) int {
 		if a.lo != b.lo {
 			return a.lo - b.lo
 		}

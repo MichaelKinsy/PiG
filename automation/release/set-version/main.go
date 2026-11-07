@@ -5,7 +5,6 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"flag"
 	"fmt"
@@ -27,6 +26,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/MichaelKinsy/PiG/automation/release/modulehash"
+	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
 
 type options struct {
@@ -83,7 +83,7 @@ func run(root string, opt options, output io.Writer, check func(string, io.Write
 		if bytes.Equal(p.before[path], p.after[path]) {
 			continue
 		}
-		if strings.HasSuffix(path, ".gz") {
+		if strings.HasSuffix(path, ".zst") {
 			if _, err := fmt.Fprintf(output, "%s changed (regenerated from CHANGELOG.md)\n", path); err != nil {
 				return err
 			}
@@ -173,14 +173,11 @@ func prepare(root string, opt options) (*plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	if old, err := os.ReadFile(filepath.Join(p.root, "CHANGELOG.md.gz")); err == nil {
-		p.before["CHANGELOG.md.gz"] = old
+	old, err := os.ReadFile(filepath.Join(p.root, "CHANGELOG.md.zst"))
+	if err == nil {
+		p.before["CHANGELOG.md.zst"] = old
 	}
-	var gz bytes.Buffer
-	w, _ := gzip.NewWriterLevel(&gz, gzip.BestCompression)
-	_, _ = w.Write(p.after["CHANGELOG.md"])
-	_ = w.Close()
-	p.after["CHANGELOG.md.gz"] = gz.Bytes() // embed.go embeds the compressed changelog
+	p.after["CHANGELOG.md.zst"] = zstdblob.Reuse(old, p.after["CHANGELOG.md"]) // embed.go embeds the compressed changelog
 	return p, nil
 }
 

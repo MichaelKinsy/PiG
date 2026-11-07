@@ -60,10 +60,7 @@ func TestEnsureSyncedLeavesAnotherBuildsDocsUntouched(t *testing.T) {
 			t.Errorf("%s changed:\nbefore %q\nafter  %q", name, value, after[name])
 		}
 	}
-	digest, err := contentDigest()
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := contentDigest
 	if !current(DocsDir(root), digest) {
 		t.Fatalf("this build's bundle %s was not written", DocsDir(root))
 	}
@@ -105,10 +102,7 @@ func TestSyncEvictsTheLeastRecentlyUsedBundlesOfOtherBuilds(t *testing.T) {
 
 // Concurrent first starts of one build on a fresh config root each find this build's bundle. A sync that wins the staging lock sweeps stranded staging trees and may replace the bundle directory; neither may remove a tree another live sync is still writing or leave that sync without a bundle. Before the staging lock was held shared for each sync, about one sync in forty failed here with a missing staging file or a failed replace.
 func TestConcurrentSyncsOfOneBuildAllSucceed(t *testing.T) {
-	digest, err := contentDigest()
-	if err != nil {
-		t.Fatal(err)
-	}
+	digest := contentDigest
 	const syncs = 8
 	for range 50 {
 		root := t.TempDir()

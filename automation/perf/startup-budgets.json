@@ -1,6 +1,6 @@
 {
   "runtime_archive_max_bytes": 4750000,
-  "word_dictionaries_max_bytes": 6320964,
+  "word_dictionaries_max_bytes": 2775644,
   "no_extensions_over_baseline": 1.05,
   "extension_over_pi": 1.15
 }

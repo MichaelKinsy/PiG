@@ -4,11 +4,12 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/MichaelKinsy/PiG/third_party/jsonschema"
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // pigletSchemaJSON is the published closed Piglet JSON Schema v1. It mirrors
@@ -19,7 +20,7 @@ import (
 var pigletSchemaJSON []byte
 
 var (
-	compiledSchema *jsonschema.Schema
+	compiledSchema *schema.Validator
 	compileOnce    sync.Once
 	compileErr     error
 )
@@ -27,19 +28,16 @@ var (
 // SchemaJSON returns the published Piglet JSON Schema v1 bytes.
 func SchemaJSON() []byte { return pigletSchemaJSON }
 
-func pigletSchema() (*jsonschema.Schema, error) {
+func pigletSchema() (*schema.Validator, error) {
 	compileOnce.Do(func() {
 		var document any
 		if err := json.Unmarshal(pigletSchemaJSON, &document); err != nil {
 			compileErr = fmt.Errorf("decode Piglet schema: %w", err)
 			return
 		}
-		compiler := jsonschema.NewCompiler()
-		if err := compiler.AddResource("piglet.schema.json", document); err != nil {
-			compileErr = fmt.Errorf("add Piglet schema: %w", err)
-			return
+		if compiledSchema, compileErr = schema.Compile(document, schema.CompileOptions{}); compileErr != nil {
+			compileErr = fmt.Errorf("compile Piglet schema: %w", compileErr)
 		}
-		compiledSchema, compileErr = compiler.Compile("piglet.schema.json")
 	})
 	return compiledSchema, compileErr
 }
@@ -49,7 +47,7 @@ func pigletSchema() (*jsonschema.Schema, error) {
 // parsing (ParseBytes) adds the semantic checks the vocabulary schema cannot
 // express.
 func ValidateAgainstSchema(yamlBytes []byte) error {
-	schema, err := pigletSchema()
+	validator, err := pigletSchema()
 	if err != nil {
 		return err
 	}
@@ -57,7 +55,20 @@ func ValidateAgainstSchema(yamlBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	return schema.Validate(value)
+	problems, err := validator.Errors(value)
+	if err != nil || len(problems) == 0 {
+		return err
+	}
+	messages := make([]string, len(problems))
+	for i, problem := range problems {
+		// The root of the document has the empty JSON pointer; "/" names it in the message.
+		path := problem.Path
+		if path == "" {
+			path = "/"
+		}
+		messages[i] = path + ": " + problem.Message
+	}
+	return fmt.Errorf("piglet does not match its schema: %s", strings.Join(messages, "; "))
 }
 
 // schemaInstance decodes YAML and normalizes it to JSON-native types

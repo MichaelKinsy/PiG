@@ -14,6 +14,7 @@
 //	timer-per-call     time.NewTimer/After/NewTicker/Tick or context.WithTimeout/WithDeadline in a hot function, or in a loop of the hot packages
 //	chan-hop           a channel send or receive, range over a channel, make(chan), a go statement, time.AfterFunc or context.AfterFunc in a hot function: a goroutine hand-off per event
 //	open-per-call      os.Open/OpenFile/Create/ReadFile/WriteFile/OpenInRoot in a hot function: a descriptor per event instead of one kept open
+//	sort-instance      slices.SortFunc or slices.SortStableFunc in a package that cmd/pig links: package slices compiles a 6 to 27 KB copy of the sort for each element shape that calls it, and internal/sortx runs one copy for all shapes. Sort with sortx.Func or sortx.Stable; keep slices only where n can be large on a timed path (a keystroke, a frame, a listing, a request body) or where the shape (strings, pointers, ints) is already linked, and say so in the baseline class
 //
 // A hot function runs once per streamed event, frame, keystroke or chunk. Mark it with a `//perf:hot` directive in its doc comment (an optional reason may follow); portlint's `//pig:hotpath` counts as hot too. Use `//perf:hot` for new marks: `//pig:hotpath` also enables portlint's hotpath passes and their baseline. A hot function's closures count as hot; the body of its `go` statements does not.
 //

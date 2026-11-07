@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/bytesize"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // defaultPruneKeep is how many built Piglet Binaries of each Piglet and target
@@ -36,7 +37,7 @@ type pruneItem struct {
 // including installs that are never removed.
 func selectPrunable(items []pruneItem, keep int, limit *int64, storeBytes int64) []pruneItem {
 	newest := slices.Clone(items)
-	slices.SortStableFunc(newest, func(a, b pruneItem) int { return b.when.Compare(a.when) })
+	sortx.Stable(newest, func(a, b pruneItem) int { return b.when.Compare(a.when) })
 	type lineage struct{ piglet, target string }
 	kept := map[lineage]int{}
 	var candidates []pruneItem

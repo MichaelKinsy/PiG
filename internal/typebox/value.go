@@ -11,15 +11,11 @@ package typebox
 // *chordjson.Object.
 
 import (
-	"encoding/json"
 	"maps"
 	"regexp"
 	"slices"
-	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/third_party/jsonschema"
 )
 
 // ValueError is one error of Errors, as TypeBox reports it: the keyword that failed, the schema path of the failing schema, the instance path of the failing value ("" for the root; member names appended unescaped, as TypeBox does) and the en_US message.
@@ -75,80 +71,12 @@ func (e ValueError) ParamsObject() *chordjson.Object {
 	return chordjson.NewObject(0)
 }
 
-// compiledCacheLimit bounds the compiled-schema cache; a full cache starts over.
-const compiledCacheLimit = 512
-
-// compiled caches compiled schemas by their JSON text. compile makes the map on first use, so package initialization allocates nothing for it.
-var compiled struct {
-	sync.Mutex
-	byText map[string]*compiledSchema
-}
-
-type compiledSchema struct {
-	schema *jsonschema.Schema
-	err    error
-}
-
-func compile(schema any) (*jsonschema.Schema, error) {
-	if schema == nil {
-		schema = map[string]any{}
-	}
-	text, err := jsstring.MarshalJSON(Plain(schema))
-	if err != nil {
-		return nil, err
-	}
-	key := string(text)
-	compiled.Lock()
-	defer compiled.Unlock()
-	if entry, ok := compiled.byText[key]; ok {
-		return entry.schema, entry.err
-	}
-	var document any
-	//portlint:allow jsonclone chord schema.ts:39 Value.Check(schema, value) compiles TypeBox's schema; the text is the cache key anyway, the decode runs only on a cache miss (once per distinct schema), and it gives the cached validator strict JSON data (json.Number, RawMessage and struct members decoded) that no caller can mutate later
-	if err := json.Unmarshal(text, &document); err != nil { //perf:ok the compile cache fill: once per distinct schema text, which is also the cache key
-		return nil, err
-	}
-	compiler := jsonschema.NewCompiler()
-	RegisterFormats(compiler)
-	entry := &compiledSchema{}
-	if entry.err = compiler.AddResource("schema.json", CompilerSchema(document)); entry.err == nil {
-		entry.schema, entry.err = compiler.Compile("schema.json")
-	}
-	if compiled.byText == nil {
-		compiled.byText = map[string]*compiledSchema{}
-	} else if len(compiled.byText) >= compiledCacheLimit {
-		clear(compiled.byText)
-	}
-	compiled.byText[key] = entry
-	return entry.schema, entry.err
-}
-
-// Check is Value.Check: whether value matches schema. A schema the validator cannot compile matches nothing.
-func Check(schema, value any) bool {
-	validator, err := compile(schema)
-	return err == nil && validator.Validate(Plain(value)) == nil
-}
-
-// Checker is Check for one schema compiled once: Value.Check on a schema a caller holds does not serialize it again for every
-// value. A schema the validator cannot compile matches nothing.
-type Checker struct {
-	validator *jsonschema.Schema
-	err       error
-}
-
-// NewChecker compiles schema (through the compiled-schema cache) for repeated checks.
-func NewChecker(schema any) *Checker {
-	validator, err := compile(schema)
-	return &Checker{validator: validator, err: err}
-}
-
-// Check is Value.Check against the compiled schema.
-func (checker *Checker) Check(value any) bool {
-	return checker.err == nil && checker.validator.Validate(Plain(value)) == nil
-}
+// Check is Value.Check: whether value matches schema (the walk of RefineCheck, with no refinements to run). A walk of a schema that
+// refers to itself panics with a *StackOverflowError, as TypeBox ends in a RangeError.
+func Check(schema, value any) bool { return RefineCheck(schema, value, nil) }
 
 // Plain returns value with every *chordjson.Object as a map[string]any and every Go number as float64, the form the
-// validator reads. Other values are returned as they are.
+// walkers read. Other values are returned as they are.
 func Plain(value any) any {
 	switch typed := value.(type) {
 	case *Ordered:
@@ -200,7 +128,8 @@ func Plain(value any) any {
 	}
 }
 
-// Clone is Value.Clone: a deep copy of a JSON value; objects keep their kind (map or ordered object).
+// Clone is Value.Clone: a deep copy of a JSON value; objects keep their kind (map or ordered object). As system/memory/clone.mjs does for a prototype-pollution
+// defence, the copy of an object leaves out the members named "__proto__", "constructor" and "prototype".
 func Clone(value any) any {
 	switch typed := value.(type) {
 	case *chordjson.Object:
@@ -209,13 +138,17 @@ func Clone(value any) any {
 		}
 		out := chordjson.NewObject(typed.Len())
 		for key, item := range typed.All() {
-			out.Set(key, Clone(item))
+			if !isUnsafeKey(key) {
+				out.Set(key, Clone(item))
+			}
 		}
 		return out
 	case map[string]any:
 		out := make(map[string]any, len(typed))
 		for key, item := range typed {
-			out[key] = Clone(item)
+			if !isUnsafeKey(key) {
+				out[key] = Clone(item)
+			}
 		}
 		return out
 	case []any:
@@ -227,6 +160,11 @@ func Clone(value any) any {
 	default:
 		return value
 	}
+}
+
+// isUnsafeKey is Guard.IsUnsafePropertyKey.
+func isUnsafeKey(key string) bool {
+	return key == "__proto__" || key == "constructor" || key == "prototype"
 }
 
 // object is a mutable view of a JSON object value of either Go kind.

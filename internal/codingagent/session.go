@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // CurrentSessionVersion mirrors upstream `CURRENT_SESSION_VERSION = 3`.
@@ -1466,7 +1467,7 @@ func (s *Session) treeOfLocked(entries []SessionEntry) []*SessionTreeNode {
 			continue
 		}
 		// getTree sorts each node's children oldest first by Date.parse of their timestamps, keeping the order of unparsable ones.
-		slices.SortStableFunc(kids, func(a, b int32) int { return cmpDates(s.slots[a].ts, s.slots[b].ts) })
+		sortx.Stable(kids, func(a, b int32) int { return cmpDates(s.slots[a].ts, s.slots[b].ts) })
 		out := pointers[start[p]:start[p+1]:start[p+1]]
 		for k, c := range kids {
 			out[k] = &all[c]

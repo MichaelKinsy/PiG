@@ -4,15 +4,18 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
+	"github.com/MichaelKinsy/PiG/third_party/collate"
 )
 
 // Collator compares strings as `a.localeCompare(b)` does under the root locale (see Compare). Like the collate.Collator it wraps it keeps scratch buffers, so one Collator must not be shared by goroutines.
 type Collator struct{ c *collate.Collator }
 
 // NewCollator returns a Collator that orders strings as Node's root-locale localeCompare does.
-func NewCollator() *Collator { return &Collator{c: collate.New(language.Und)} }
+func NewCollator() *Collator { return &Collator{c: collate.New()} }
+
+// AppendKey appends to dst the collation key of s: bytes.Compare of two keys orders strings as CompareString does, and equal keys are strings CompareString does not tell apart. It does not weigh U+FFFD
+// as CompareString does, so callers use CompareString for strings that hold it.
+func (c *Collator) AppendKey(dst []byte, s string) []byte { return c.c.AppendKey(dst, s) }
 
 // CompareString returns -1, 0 or 1.
 func (c *Collator) CompareString(a, b string) int {
@@ -36,8 +39,8 @@ var replacementTokens = strings.NewReplacer("\uFFFD", "\uFFFF\t", "\uFFFF", "\uF
 var collators = sync.Pool{New: func() any { return NewCollator() }}
 
 // Compare is `a.localeCompare(b)` under the root locale: punctuation and case are weighed as Node weighs them, `a`
-// before `A`, accents after base letters, U+FFFD last. The collation tables are golang.org/x/text's (collate.CLDRVersion,
-// collate.UnicodeVersion), older than Node's ICU. It is safe for concurrent use and returns -1, 0 or 1.
+// before `A`, accents after base letters, U+FFFD last. The collation tables are golang.org/x/text's (CLDR 23, Unicode 6.2, the root part of
+// them in third_party/collate), older than Node's ICU. It is safe for concurrent use and returns -1, 0 or 1.
 func Compare(a, b string) int {
 	collator := collators.Get().(*Collator)
 	defer collators.Put(collator)

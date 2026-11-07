@@ -72,6 +72,13 @@ type Result struct {
 // Changed reports whether the plan rewrites any file.
 func (r *Result) Changed() bool { return len(r.Files) > 0 }
 
+// Reply is what the analysis driver (command driver in this module) writes for one [LoadOptions]: the plan, or the error that stopped it. The pig command reads it in place of calling [Open], so it does not link the type checker.
+type Reply struct {
+	Result *Result
+	// Error is the text of the error [Open] or [Session.Plan] returned.
+	Error string
+}
+
 // Session is a loaded extension: its packages and the importer that checks
 // them again after a rewrite.
 type Session struct {

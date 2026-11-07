@@ -17,6 +17,8 @@ The module compiled the metaschemas of every draft (22,326 allocations, 1.7 MB, 
 
 Every path that reads a metaschema goes through `dialect.getSchema`, which compiles the draft's first, so no code observes an uncompiled metaschema. `compileMeta`'s Compiler loads only json-schema.org documents, which `addRoot` does not validate, so it never reaches `getSchema` for the draft it compiles (in v6.0.2 that would have dereferenced the nil metaschema in `init()`).
 
+9. No package of the product imports the fork any more. `coding/piglet` (`ValidateAgainstSchema`) checks the Piglet schema with `schema`, PiG's port of Pi's JSON Schema package, and `internal/typebox` walks TypeBox schemas with its own checker, so neither the validator nor `golang.org/x/text/message` (the printer of `kind`'s messages) is part of any binary; only the fork's own tests build it.
+
 ## Updating
 
 Copy the new upstream release over this directory, then repeat the differences above. Rewrite the import paths as in 3, run `go test ./third_party/...` (also with `-race -run 'ConcurrentFirstUse'`) and the root `ai` and `coding/piglet` validation tests. Offer nothing upstream without the owner.

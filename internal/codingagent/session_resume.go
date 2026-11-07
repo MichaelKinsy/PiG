@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +37,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/noderealpath"
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // SessionInfo is the picker-display summary of a session JSONL.
@@ -801,7 +801,7 @@ func (sm *SessionManager) findMostRecent(filterCwd bool) string {
 		//portlint:allow fusedmuladd tv_sec*1000 is exact, so fusing it into the sum cannot change mtimeMs
 		candidates = append(candidates, candidate{path, float64(mod.Unix())*1000 + float64(mod.Nanosecond())/1e6})
 	}
-	slices.SortStableFunc(candidates, func(a, b candidate) int { return cmp.Compare(b.mtimeMs, a.mtimeMs) })
+	sortx.Stable(candidates, func(a, b candidate) int { return cmp.Compare(b.mtimeMs, a.mtimeMs) })
 	for _, c := range candidates {
 		header := readSessionHeaderForDiscovery(c.path)
 		if header != nil && (!filterCwd || sessionCwdMatches(header.CWD, sm.cwd)) {

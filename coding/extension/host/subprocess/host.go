@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/timings"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/handleryield"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/boundarywire"
@@ -1590,7 +1591,7 @@ func (h *Host) sortExtensionsByLoadOrder(extensions []extension.Extension) {
 }
 
 func (h *Host) sortExtensionsByLoadOrderLocked(extensions []extension.Extension) {
-	slices.SortStableFunc(extensions, func(a, b extension.Extension) int {
+	sortx.Stable(extensions, func(a, b extension.Extension) int {
 		orderA, knownA := h.loadOrder[a.Name]
 		orderB, knownB := h.loadOrder[b.Name]
 		switch {

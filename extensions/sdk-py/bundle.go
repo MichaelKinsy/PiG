@@ -9,32 +9,16 @@
 // (findPythonSDKRoot's staged-source strategy).
 package pysdk
 
-import (
-	"io/fs"
-	"slices"
-)
+import "slices"
 
-// bundle_embed.go lists the package's modules, its license and pyproject.toml. Every source file is embedded as its gzip, .gz/<name>.gz, which go generate writes in the package's .gz directory, not beside the source (a walk of the source tree skips that directory as hidden, where a copy beside each file doubled the entries every build reading the tree lists), and staging writes back under <name> (coding/extension/pigsdk): the sources are most of the weight the bundle adds to every binary that stages it. go:embed cannot compress, so the list is generated. The unicode property tables (pig_sdk/tui/_tables.py) are the largest of them. TestEveryPackageSourceIsBundled fails when it and the source tree disagree.
+// The bundle is one file, sdk.zst: the package's modules, its license and pyproject.toml as one zstd frame, in the layout internal/sdkpack documents. bundle_pack.go (go generate, automation/gen/packsdk) embeds it as Source and lists its files and their staging hash; coding/extension/pigsdk decodes it only when it stages the SDK. pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package. TestEveryPackageSourceIsBundled fails when the list and the source tree disagree.
 //
-//go:generate go run ../../automation/gen/embed-bundle.go -pkg pysdk -out bundle_embed.go -gzip-over 1 LICENSE pyproject.toml pig_sdk/*.py pig_sdk/tui/*.py
+//go:generate go run ../../automation/gen/packsdk -pkg pysdk LICENSE pyproject.toml pig_sdk/*.py pig_sdk/tui/*.py
 
-// BundledFiles lists the embedded files, relative to the SDK root, in a stable
-// order. Paths use forward slashes; a stager recreates subdirectories. A name
-// under .gz/ is the gzip of the file the stager writes under the rest of the
-// name, without .gz.
-//
-// pig_sdk/__init__.py imports pig_sdk.tui at load, so the subpackage is staged with the package.
-func BundledFiles() []string {
-	var files []string
-	err := fs.WalkDir(Source, ".", func(path string, entry fs.DirEntry, err error) error {
-		if err == nil && !entry.IsDir() {
-			files = append(files, path)
-		}
-		return err
-	})
-	if err != nil {
-		panic(err)
-	}
-	slices.Sort(files)
-	return files
-}
+// BundledFiles lists the bundled files, relative to the SDK root, in a stable
+// order. Paths use forward slashes; a stager recreates subdirectories. The
+// returned slice is the caller's to modify.
+func BundledFiles() []string { return slices.Clone(bundledFiles) }
+
+// StagedHash is the hash a staged copy is named and marked by: what coding/extension/pigsdk computes from the bundled files' names, sizes and contents.
+func StagedHash() string { return stagedHash }

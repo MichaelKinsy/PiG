@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"golang.org/x/mod/modfile"
+
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 const fusedProcessHazardDiagnostic = "PIGLET_FUSED_PROCESS_HAZARD"
@@ -48,7 +50,7 @@ func vetFusedPackages(ctx context.Context, fused []fusedEntry) error {
 	if len(hazards) == 0 {
 		return nil
 	}
-	slices.SortFunc(hazards, func(a, b fusedHazard) int {
+	sortx.Func(hazards, func(a, b fusedHazard) int {
 		return strings.Compare(a.extension+"\x00"+a.position.String()+"\x00"+a.symbol, b.extension+"\x00"+b.position.String()+"\x00"+b.symbol)
 	})
 	messages := make([]string, len(hazards))
@@ -112,7 +114,7 @@ func fusedModules(entry fusedEntry) ([]fusedModule, error) {
 			return nil, fmt.Errorf("module path and root are required")
 		}
 	}
-	slices.SortFunc(modules, func(a, b fusedModule) int {
+	sortx.Func(modules, func(a, b fusedModule) int {
 		return len(b.path) - len(a.path)
 	})
 	return modules, nil

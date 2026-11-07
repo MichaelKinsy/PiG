@@ -17,7 +17,7 @@ func sampleFindings(t *testing.T) []finding {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pkgs, err := load(root, []string{"./..."})
+	pkgs, err := load(root, []string{"./..."}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,6 +35,8 @@ func TestScanFindsEachPattern(t *testing.T) {
 	want := []string{
 		"compile-in-func|Compile|regexp.MustCompile",
 		"env-stat|Env|os.Getenv",
+		"sort-instance|Sorts|slices.SortFunc",
+		"sort-instance|Sorts|slices.SortStableFunc",
 		"env-stat|Env|os.Stat",
 		"history-clone|History|append(nil,x...)",
 		"history-clone|History|slices.Clone",
@@ -68,9 +70,36 @@ func TestScanFindsEachPattern(t *testing.T) {
 	}
 }
 
+// A slices sort counts only in a package that cmd/pig links.
+func TestSortInstanceCountsOnlyLinkedPackages(t *testing.T) {
+	t.Setenv("GOWORK", "off")
+	root, err := filepath.Abs(filepath.Join("testdata", "linked"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := findAll(root, []string{"./..."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, f := range found {
+		got = append(got, f.File+"|"+f.Pattern+"|"+f.Detail)
+	}
+	// a/a.go: a function; a/a_vars.go: package-level var initializers (a func literal run at init and a plain call); a/a_windows.go: linked on windows only.
+	want := []string{
+		"a/a.go|sort-instance|slices.SortFunc",
+		"a/a_vars.go|sort-instance|slices.SortFunc",
+		"a/a_vars.go|sort-instance|slices.SortStableFunc",
+		"a/a_windows.go|sort-instance|slices.SortFunc",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("findings\n got %q\nwant %q", got, want)
+	}
+}
+
 // Baseline entries of the classed patterns must say how hot the site is.
 func TestNeedsClassCoversTheNewPatterns(t *testing.T) {
-	for _, pattern := range []string{"json-roundtrip", "history-clone", "chan-hop", "decode-own-encode", "nested-marshal", "open-per-call", "pool-uncapped", "timer-per-call"} {
+	for _, pattern := range []string{"json-roundtrip", "history-clone", "chan-hop", "decode-own-encode", "nested-marshal", "open-per-call", "pool-uncapped", "timer-per-call", "sort-instance"} {
 		if !needsClass(pattern) {
 			t.Errorf("%s entries need a class", pattern)
 		}

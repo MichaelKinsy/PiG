@@ -12,7 +12,10 @@
 // through pigsdklock.StagedSDKDir.
 //
 // The SDK bytes are embedded in the pig binary, so a staged copy always matches
-// the running binary. Each build stages each language into its own directory
+// the running binary. Each SDK is one zstd frame of its files (internal/sdkpack)
+// next to the list of them and their staging hash, both generated with the frame:
+// staging decodes the frame once and writes every file from that one buffer, and a
+// start that stages nothing decodes and hashes nothing. Each build stages each language into its own directory
 // named for the SDK's content hash, so PiG builds that share a config root (two
 // installed versions, or stock PiG beside a Piglet Binary) never restage each
 // other's SDKs or strand each other's extension builds. A warm start does a
@@ -39,29 +42,24 @@
 package pigsdk
 
 import (
-	"bytes"
 	"cmp"
 	"context"
 	"errors"
 	"slices"
 
-	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
-	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/contentdirs"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
+	"github.com/MichaelKinsy/PiG/internal/sdkpack"
 )
 
 // markerFile records a staged SDK's content hash so warm starts skip work and
@@ -70,22 +68,13 @@ const markerFile = ".pig-sdk-version"
 
 // sdkBundle describes one language's embedded SDK.
 type sdkBundle struct {
-	lang  string // "go" | "python" | "lisp" | "rust"
-	files []string
-	fsys  fs.FS
+	lang string // "go" | "python" | "lisp" | "rust"
 
-	// stagedHash, when set, is the staging hash of files, computed when the bundle was generated: a compressed bundle needs no decoding to be named.
+	// stagedHash is the staging hash of the SDK's files (sdkpack.Hash), generated with the bundle: a start that stages nothing hashes and decodes nothing.
 	stagedHash string
-}
 
-type bundleHashCache struct {
-	once sync.Once
-	hash string
-	err  error
-}
-
-var bundleHashes = map[string]*bundleHashCache{
-	"go": {}, "python": {}, "lisp": {}, "rust": {},
+	// unpack decodes the bundle's one zstd frame into the blob sdkpack.Walk reads. Only staging calls it, and nothing keeps the blob afterwards.
+	unpack func() ([]byte, error)
 }
 
 // sdkBases names each language's staged directories under <config-root>/state/pigsdk: a build stages into <base>-<hash16>, and a PiG that predates per-build directories stages into <base> itself. It covers every language, embedded by this build or not, because another build sharing the config root may embed one this build strips.
@@ -108,7 +97,7 @@ func registerBundle(lang string, bundle func() (sdkBundle, bool)) {
 		if !ok {
 			return "", unknownLanguage("", lang)
 		}
-		return b.hash()
+		return b.stagedHash, nil
 	})
 }
 
@@ -157,74 +146,23 @@ func (b sdkBundle) stagedDir(configRoot string) (string, error) {
 	return pigsdklock.StagedSDKDir(configRoot, b.lang)
 }
 
-func (b sdkBundle) hash() (string, error) {
-	cache := bundleHashes[b.lang]
-	cache.once.Do(func() {
-		cache.hash, cache.err = b.computeHash()
-	})
-	return cache.hash, cache.err
-}
-
-// hashBuffers shares the copy buffer of the bundle hashes: the three bundles are hashed one after another at startup. Reads from the embedded files are memory copies, so a larger buffer would only add to every start's allocations.
-var hashBuffers = sync.Pool{New: func() any { buffer := make([]byte, 8<<10); return &buffer }}
-
-func (b sdkBundle) computeHash() (string, error) {
-	if b.stagedHash != "" {
-		return b.stagedHash, nil
-	}
-	h := sha256.New()
-	_, _ = h.Write([]byte("staging-v2\x00"))
-	buffer := hashBuffers.Get().(*[]byte)
-	defer hashBuffers.Put(buffer)
-	for _, name := range b.files {
-		if err := hashEmbeddedFile(h, b, name, *buffer); err != nil {
-			return "", fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, name, err)
-		}
-	}
-	return hex.EncodeToString(h.Sum(nil))[:16], nil
-}
-
-// hashEmbeddedFile feeds "name\x00size\x00contents" to h, streaming the contents so the warm-start check does not copy every embedded SDK file into memory.
-func hashEmbeddedFile(h io.Writer, b sdkBundle, name string, buffer []byte) error {
-	f, err := b.fsys.Open(name)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	info, err := f.Stat()
-	if err != nil {
-		return err
-	}
-	if _, err := fmt.Fprintf(h, "%s\x00%d\x00", name, info.Size()); err != nil {
-		return err
-	}
-	n, err := io.CopyBuffer(h, struct{ io.Reader }{f}, buffer)
-	if err != nil {
-		return err
-	}
-	if n != info.Size() {
-		return fmt.Errorf("read %d bytes, size is %d", n, info.Size())
-	}
-	return nil
-}
-
-// sync replaces this build's staged directory with the embedded SDK. It builds the new tree beside the old one and swaps it in by renames that keep the previous tree until the new one is in place, so the marker only ever appears with every file it vouches for and a failed swap leaves the previous SDK. Callers hold the SDK stage lock, which excludes builds reading the tree.
-func (b sdkBundle) sync(configRoot string) ([]string, error) {
+// sync replaces this build's staged directory with the embedded SDK. It decodes the bundle once, builds the new tree beside the old one from that one buffer, and swaps it in by renames that keep the previous tree until the new one is in place, so the marker only ever appears with every file it vouches for and a failed swap leaves the previous SDK. Callers hold the SDK stage lock, which excludes builds reading the tree. The decoded SDK is a local of this call: it is garbage once the tree is written.
+func (b sdkBundle) sync(configRoot string) (int, error) {
 	dir, err := b.stagedDir(configRoot)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	hash, err := b.hash()
+	blob, err := b.unpack()
 	if err != nil {
-		return nil, err
+		return 0, fmt.Errorf("pig reload: decode embedded %s SDK: %w", b.lang, err)
 	}
 	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
-		return nil, fmt.Errorf("pig reload: mkdir %s: %w", filepath.Dir(dir), err)
+		return 0, fmt.Errorf("pig reload: mkdir %s: %w", filepath.Dir(dir), err)
 	}
 	settleStaging(dir)
 	staging, err := os.MkdirTemp(filepath.Dir(dir), stagePrefix(dir))
 	if err != nil {
-		return nil, fmt.Errorf("pig reload: stage %s SDK: %w", b.lang, err)
+		return 0, fmt.Errorf("pig reload: stage %s SDK: %w", b.lang, err)
 	}
 	renamed := false
 	defer func() {
@@ -233,62 +171,32 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 		}
 	}()
 	if err := os.Chmod(staging, 0o755); err != nil {
-		return nil, fmt.Errorf("pig reload: chmod %s: %w", staging, err)
+		return 0, fmt.Errorf("pig reload: chmod %s: %w", staging, err)
 	}
-	written := make([]string, 0, len(b.files))
+	written := 0
 	made := map[string]bool{staging: true}
-	for _, embedded := range b.files {
-		data, err := fs.ReadFile(b.fsys, embedded)
-		if err != nil {
-			return nil, fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, embedded, err)
-		}
-		name := stagedName(embedded)
-		if name != embedded {
-			if data, err = gunzip(data); err != nil {
-				return nil, fmt.Errorf("pig reload: decompress embedded %s/%s: %w", b.lang, embedded, err)
-			}
-		}
+	err = sdkpack.Walk(blob, func(name string, data []byte) error {
 		target := filepath.Join(staging, filepath.FromSlash(name))
 		if parent := filepath.Dir(target); !made[parent] {
 			if err := os.MkdirAll(parent, 0o755); err != nil {
-				return nil, fmt.Errorf("pig reload: mkdir %s: %w", parent, err)
+				return fmt.Errorf("pig reload: mkdir %s: %w", parent, err)
 			}
 			made[parent] = true
 		}
-		if err := writeFile(target, data, 0o644); err != nil {
-			return nil, err
-		}
-		written = append(written, name)
+		written++
+		return writeFile(target, data, 0o644)
+	})
+	if err != nil {
+		return 0, fmt.Errorf("pig reload: stage embedded %s SDK: %w", b.lang, err)
 	}
-	if err := writeFile(filepath.Join(staging, markerFile), []byte(hash+"\n"), 0o644); err != nil {
-		return nil, err
+	if err := writeFile(filepath.Join(staging, markerFile), []byte(b.stagedHash+"\n"), 0o644); err != nil {
+		return 0, err
 	}
 	if err := replaceDir(dir, staging); err != nil {
-		return nil, fmt.Errorf("pig reload: replace staged %s SDK: %w", b.lang, err)
+		return 0, fmt.Errorf("pig reload: replace staged %s SDK: %w", b.lang, err)
 	}
 	renamed = true
-	sort.Strings(written)
 	return written, nil
-}
-
-// compressedDir is the directory of a bundle that holds the gzip of each file it embeds compressed, under the file's own path (automation/gen/embed-bundle.go): .gz/<name>.gz is the gzip of <name>. A walk of a source tree skips it as hidden.
-const compressedDir = ".gz/"
-
-// stagedName is the name a file of the bundle is staged under: an embedded name under compressedDir holds the gzip of the file under the rest of its name, without .gz.
-func stagedName(embedded string) string {
-	if rest, compressed := strings.CutPrefix(embedded, compressedDir); compressed {
-		return strings.TrimSuffix(rest, ".gz")
-	}
-	return embedded
-}
-
-// gunzip expands an embedded file that is stored compressed. The bundles compress every source file; staging is the one place that reads the text, and the hash of the bundle covers the compressed bytes, so a start that stages nothing does not expand them.
-func gunzip(data []byte) ([]byte, error) {
-	reader, err := gzip.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	return io.ReadAll(reader)
 }
 
 // stagePrefix names the private trees syncs build beside the staged directory dir, and the aside copies of the tree they replace. It names dir itself, so a sync never touches another build's trees.
@@ -360,16 +268,9 @@ func replaceDir(dir, staging string) error {
 }
 
 // current reports whether the staged directory dir holds b's embedded SDK.
-func (b sdkBundle) current(dir string) (bool, error) {
-	hash, err := b.hash()
-	if err != nil {
-		return false, err
-	}
+func (b sdkBundle) current(dir string) bool {
 	data, err := os.ReadFile(filepath.Join(dir, markerFile))
-	if err != nil {
-		return false, nil
-	}
-	return strings.TrimSpace(string(data)) == hash, nil
+	return err == nil && strings.TrimSpace(string(data)) == b.stagedHash
 }
 
 // ensure stages the bundle into this build's directory when its marker is missing or stale, and otherwise records the directory's use. It reports whether a stage actually happened. Other builds' directories are never touched.
@@ -378,10 +279,7 @@ func (b sdkBundle) ensure(configRoot string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	current, err := b.current(dir)
-	if err != nil {
-		return false, err
-	}
+	current := b.current(dir)
 	if current {
 		contentdirs.Touch(dir)
 		settleStaging(dir)
@@ -411,10 +309,7 @@ type StageStatus struct {
 func Status(configRoot string) ([]StageStatus, error) {
 	out := make([]StageStatus, 0, 3)
 	for _, b := range bundles() {
-		embedded, err := b.hash()
-		if err != nil {
-			return nil, err
-		}
+		embedded := b.stagedHash
 		dir, err := b.stagedDir(configRoot)
 		if err != nil {
 			return nil, err
@@ -449,10 +344,7 @@ func VerifyStaged(configRoot string) func(stagedDir, buildType string) error {
 		if !ok {
 			return nil
 		}
-		embedded, err := b.hash()
-		if err != nil {
-			return err
-		}
+		embedded := b.stagedHash
 		data, err := os.ReadFile(filepath.Join(stagedDir, markerFile))
 		if err != nil {
 			return fmt.Errorf("staged %s SDK at %s has no version marker; run `pig reload`", lang, stagedDir)
@@ -586,10 +478,7 @@ func EnsureSyncedContext(ctx context.Context, configRoot string) error {
 		if err != nil {
 			return err
 		}
-		bundleCurrent, err := b.current(dir)
-		if err != nil {
-			return err
-		}
+		bundleCurrent := b.current(dir)
 		current = current && bundleCurrent && !ownsStaging(dir, leftovers)
 		dirs = append(dirs, dir)
 	}
@@ -629,10 +518,7 @@ func EnsureSyncedLang(configRoot, lang string) error {
 	if err != nil {
 		return err
 	}
-	current, err := b.current(dir)
-	if err != nil {
-		return err
-	}
+	current := b.current(dir)
 	if current && !ownsStaging(dir, stagingNames(configRoot)) {
 		contentdirs.Touch(dir)
 		return nil
@@ -655,7 +541,7 @@ func Sync(configRoot string, _ bool) (map[string]int, runtimecell.CacheReport, e
 			if err != nil {
 				return err
 			}
-			counts[b.lang] = len(written)
+			counts[b.lang] = written
 		}
 		var err error
 		report, err = evictAndPrune(configRoot, true)
@@ -733,7 +619,7 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 			if !ok {
 				return "", unknownLanguage("", lang)
 			}
-			return b.hash()
+			return b.stagedHash, nil
 		}},
 	} {
 		lang, ok := flagValue(rest, flag.name)

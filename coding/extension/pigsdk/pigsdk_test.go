@@ -3,20 +3,16 @@
 package pigsdk
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
 	"golang.org/x/mod/modfile"
 
-	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
-	pysdk "github.com/MichaelKinsy/PiG/extensions/sdk-py"
-	rssdk "github.com/MichaelKinsy/PiG/extensions/sdk-rs"
+	"github.com/MichaelKinsy/PiG/internal/gosdkbundle"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
 
@@ -74,12 +70,12 @@ func TestSyncStagesAllLanguages(t *testing.T) {
 		dirs[lang] = dir
 	}
 	// Go: flat module files.
-	if counts["go"] != len(sdk.BundledFiles()) {
-		t.Fatalf("go staged %d files, want %d", counts["go"], len(sdk.BundledFiles()))
+	if counts["go"] != len(gosdkbundle.BundledFiles()) {
+		t.Fatalf("go staged %d files, want %d", counts["go"], len(gosdkbundle.BundledFiles()))
 	}
-	for _, name := range sdk.BundledFiles() {
-		if _, err := os.Stat(filepath.Join(dirs["go"], stagedName(name))); err != nil {
-			t.Fatalf("missing staged go/%s: %v", stagedName(name), err)
+	for _, name := range gosdkbundle.BundledFiles() {
+		if _, err := os.Stat(filepath.Join(dirs["go"], filepath.FromSlash(name))); err != nil {
+			t.Fatalf("missing staged go/%s: %v", name, err)
 		}
 	}
 	// Python: subdir package must be recreated on disk.
@@ -95,55 +91,6 @@ func TestSyncStagesAllLanguages(t *testing.T) {
 	for lang, dir := range dirs {
 		if _, err := os.Stat(filepath.Join(dir, markerFile)); err != nil {
 			t.Fatalf("missing %s marker: %v", lang, err)
-		}
-	}
-}
-
-// Each bundle embeds its source files gzipped under .gz/ (the generator's -gzip-over); the staged SDK holds the text the Go toolchain, the interpreter and cargo read, under the file's own name.
-func TestSyncExpandsTheCompressedFiles(t *testing.T) {
-	root := t.TempDir()
-	if _, _, err := Sync(root, false); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-	for _, bundle := range []struct {
-		lang, source string
-		files        func() []string
-		compressed   string
-	}{
-		{"go", "../../../extensions/sdk", sdk.BundledFiles, ".gz/tui/internal/widthx/unicode_tables.go.gz"},
-		{"python", "../../../extensions/sdk-py", pysdk.BundledFiles, ".gz/pig_sdk/tui/_tables.py.gz"},
-		{"rust", "../../../extensions/sdk-rs", rssdk.BundledFiles, ".gz/src/tui/tables.rs.gz"},
-	} {
-		dir, err := SDKDirFor(root, bundle.lang)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !slices.Contains(bundle.files(), bundle.compressed) {
-			t.Errorf("the %s bundle does not embed %s", bundle.lang, bundle.compressed)
-		}
-		expanded := 0
-		for _, name := range bundle.files() {
-			if name == stagedName(name) {
-				continue
-			}
-			expanded++
-			staged, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(stagedName(name))))
-			if err != nil {
-				t.Fatalf("staged %s/%s: %v", bundle.lang, stagedName(name), err)
-			}
-			want, err := os.ReadFile(filepath.Join(filepath.FromSlash(bundle.source), filepath.FromSlash(stagedName(name))))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !bytes.Equal(staged, want) {
-				t.Errorf("staged %s/%s (%d bytes) is not the source file (%d bytes)", bundle.lang, stagedName(name), len(staged), len(want))
-			}
-			if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(name))); err == nil {
-				t.Errorf("%s/%s was staged beside its expansion", bundle.lang, name)
-			}
-		}
-		if expanded == 0 {
-			t.Errorf("the %s bundle embeds no compressed file", bundle.lang)
 		}
 	}
 }

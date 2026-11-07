@@ -13,6 +13,7 @@
 *.pdf binary
 *.png binary
 *.webp binary
+*.zst binary
 *.zip binary
 
 # Vendored package trees and their compiler outputs retain the pinned bytes,

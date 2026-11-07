@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
+
+	"github.com/MichaelKinsy/PiG/internal/sdkpack"
 )
 
 // Staging builds the new tree beside the old one and swaps it in: the marker only ever appears with every file it vouches for, files and directories get the documented modes, and no staging tree survives.
@@ -95,8 +97,15 @@ func TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := []string{markerFile}
-			for _, name := range bundle.files {
-				want = append(want, stagedName(name))
+			blob, err := bundle.unpack()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := sdkpack.Walk(blob, func(name string, _ []byte) error {
+				want = append(want, name)
+				return nil
+			}); err != nil {
+				t.Fatal(err)
 			}
 			slices.Sort(got)
 			slices.Sort(want)
@@ -132,9 +141,9 @@ func TestSyncFailureKeepsPreviousTreeAndCleansStaging(t *testing.T) {
 		t.Fatal(err)
 	}
 	broken := bundle
-	broken.files = append(slices.Clone(bundle.files), "missing-from-embedded-fs.py")
+	broken.unpack = damagedBlob(bundle)
 	if _, err := broken.sync(root); err == nil {
-		t.Fatal("sync of a missing embedded file succeeded")
+		t.Fatal("sync of a damaged embedded SDK succeeded")
 	}
 	after, err := os.ReadFile(filepath.Join(dir, markerFile))
 	if err != nil || !bytes.Equal(after, before) {
@@ -311,9 +320,9 @@ func TestSyncRestoresPreviousTreeStrandedByFailedRollback(t *testing.T) {
 	}
 
 	broken := bundle
-	broken.files = append(slices.Clone(bundle.files), "missing-from-embedded-fs.py")
+	broken.unpack = damagedBlob(bundle)
 	if _, err := broken.sync(root); err == nil {
-		t.Fatal("sync of a missing embedded file succeeded")
+		t.Fatal("sync of a damaged embedded SDK succeeded")
 	}
 	after, err := os.ReadFile(filepath.Join(dir, markerFile))
 	if err != nil || string(after) != "older\n" {
@@ -442,5 +451,13 @@ func TestPruneAfterAStartupStageDoesNotSizeCachedBuilds(t *testing.T) {
 	}
 	if report.TotalBytes < 8*added {
 		t.Errorf("Prune report = %d bytes, want the cached build's %d bytes counted", report.TotalBytes, 8*added)
+	}
+}
+
+// damagedBlob is bundle's blob with a truncated file entry after the last file: staging writes every real file and fails on the entry, as a failure in the middle of a tree does.
+func damagedBlob(bundle sdkBundle) func() ([]byte, error) {
+	return func() ([]byte, error) {
+		blob, err := bundle.unpack()
+		return append(blob, "truncated\x0099\x00"...), err
 	}
 }

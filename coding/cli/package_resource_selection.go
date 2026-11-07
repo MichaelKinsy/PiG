@@ -3,6 +3,7 @@ package cli
 import (
 	"slices"
 
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -28,7 +29,7 @@ func resourcePrecedenceRank(item tui.ResourceItem) int {
 
 // canonicalResourceItems applies toResolvedPaths: stable precedence sorting precedes canonical-path deduplication, retaining the winning spelling and metadata.
 func canonicalResourceItems(items []tui.ResourceItem) []tui.ResourceItem {
-	slices.SortStableFunc(items, func(a, b tui.ResourceItem) int {
+	sortx.Stable(items, func(a, b tui.ResourceItem) int {
 		return resourcePrecedenceRank(a) - resourcePrecedenceRank(b)
 	})
 	seen := make(map[string]bool, len(items))

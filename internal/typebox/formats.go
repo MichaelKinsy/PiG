@@ -1,18 +1,16 @@
 package typebox
 
 // Ports typebox 1.3.27 build/format/*.mjs: the format registry that Value.Check asserts for the "format" keyword. The expressions are the sources of the JavaScript literals, which RE2 accepts. A JavaScript expression with the
-// i flag matches ASCII letters only, so a non-ASCII value fails before the matcher can fold U+017F or U+212A into a letter. hostname, idn-hostname, idn-email and regex keep the JSON Schema library's checks.
+// i flag matches ASCII letters only, so a non-ASCII value fails before the matcher can fold U+017F or U+212A into a letter. hostname, idn-hostname, idn-email and regex are the checks of schema/formats, which port the same registry.
 
 import (
 	"strconv"
-	"strings"
 	"sync"
-
-	"github.com/MichaelKinsy/PiG/third_party/jsonschema"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	schemaformats "github.com/MichaelKinsy/PiG/schema/formats"
 )
 
 // The expressions of the format checks. Formats creates them with the format table on first use, so package initialization allocates
@@ -71,6 +69,10 @@ func Formats() map[string]func(string) bool {
 			"uri-template":              formatURITemplateRE.MatchString,
 			"url":                       func(v string) bool { _, err := nodeurl.ParseURL(v); return err == nil },
 			"uuid":                      func(v string) bool { return isASCII(v) && formatUUIDRE.MatchString(v) },
+			"hostname":                  schemaformats.IsHostname,
+			"idn-hostname":              schemaformats.IsIdnHostname,
+			"idn-email":                 schemaformats.IsIdnEmail,
+			"regex":                     schemaformats.IsRegex,
 		}
 	})
 	return formats.table
@@ -173,27 +175,3 @@ func formatIsIRIReference(value string) bool {
 	_, err := nodeurl.ResolveURL(value, "http://example.com")
 	return err == nil
 }
-
-// unregisteredTypeboxFormats are the JSON Schema library's built-in formats that typebox's registry lacks. Format.Test returns true for a format it does not have (format/_registry.mjs Test), so asserting the format turns these
-// into no-ops instead of the library's checks.
-var unregisteredTypeboxFormats = []string{"period", "semver"}
-
-// RegisterFormats makes the compiler assert the typebox formats.
-func RegisterFormats(compiler *jsonschema.Compiler) {
-	compiler.AssertFormat()
-	for _, name := range unregisteredTypeboxFormats {
-		compiler.RegisterFormat(&jsonschema.Format{Name: name, Validate: func(any) error { return nil }})
-	}
-	for name, check := range Formats() {
-		compiler.RegisterFormat(&jsonschema.Format{Name: name, Validate: func(value any) error {
-			if text, ok := value.(string); ok && !check(text) {
-				return &formatError{name}
-			}
-			return nil
-		}})
-	}
-}
-
-type formatError struct{ name string }
-
-func (e *formatError) Error() string { return "invalid " + strings.TrimSpace(e.name) }

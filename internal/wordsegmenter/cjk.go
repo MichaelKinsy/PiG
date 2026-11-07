@@ -10,9 +10,7 @@ package wordsegmenter
 
 import (
 	_ "embed"
-	"encoding/binary"
 	"slices"
-	"sort"
 	"strings"
 
 	"golang.org/x/text/unicode/norm"
@@ -21,33 +19,32 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
-// The immutable index is generated from ICU release-78.3 cjdict.txt. Lookup borrows its embedded bytes; it does not build a dictionary map on the input loop.
+// The immutable trie is generated from ICU release-78.3 cjdict.txt (dictionary_format.py documents its layout). Lookup borrows its embedded bytes; it does not build a dictionary map or decode anything on the input loop. Its labels are UTF-16 units: every dictionary word is BMP text without U+FFFD, so no supplementary or invalid text can match, as no dictionary word contains one.
 //
 //go:embed cjk_dictionary.bin
 var cjkDictionary string
 
-func dictionaryUint32(offset int) int {
-	//portlint:allow utf16units offset indexes the embedded little-endian ICU dictionary bytes, not a JS string; Pi's Intl.Segmenter (utils.ts:getWordSegmenter) has no such table
-	return int(binary.LittleEndian.Uint32([]byte(cjkDictionary[offset : offset+4])))
-}
-func dictionaryWord(index int) string {
-	count := dictionaryUint32(0)
-	start := 4 + (count+1)*4 + count
-	return cjkDictionary[start+dictionaryUint32(4+index*4) : start+dictionaryUint32(8+index*4)]
-}
-func dictionaryMatches(text string, offsets []int, start int, visit func(length int, cost uint32)) {
-	count := dictionaryUint32(0)
-	low, high := 0, count
-	for length := 1; length <= 20 && start+length < len(offsets); length++ {
-		//portlint:allow utf16units offsets are byte positions of Go's own UTF-8 text built by the segmenter; Intl.Segmenter (utils.ts:getWordSegmenter) reports UTF-16 indexes that segments.go converts at its boundary
-		prefix := text[offsets[start]:offsets[start+length]]
-		low += sort.Search(high-low, func(i int) bool { return dictionaryWord(low+i) >= prefix })
-		high = low + sort.Search(high-low, func(i int) bool { return !strings.HasPrefix(dictionaryWord(low+i), prefix) })
-		if low == high {
+// cjkTrie is a function, not a package variable: a variable initialised from the embedded string would run at init and link the dictionary into every program that imports the package, including the headless embed that must not carry it.
+func cjkTrie() wordTrie { return wordTrie{data: cjkDictionary, width: 2, weighted: true} }
+
+// dictionaryMatches calls visit(length, cost) for each dictionary word that is a prefix of chars[start:], shortest first, as far as the 20-code-point candidate limit allows.
+func dictionaryMatches(chars []rune, start int, visit func(length int, cost uint32)) {
+	trie := cjkTrie()
+	cursor := trie.root()
+	for length := 1; length <= 20 && start+length <= len(chars); length++ {
+		r := chars[start+length-1]
+		if r > 0xffff {
 			return
 		}
-		if dictionaryWord(low) == prefix {
-			visit(length, uint32(cjkDictionary[4+(count+1)*4+low]))
+		step, ok := trie.step(&cursor, int(r))
+		if !ok {
+			return
+		}
+		if step.terminal {
+			visit(length, step.weight)
+		}
+		if !step.more {
+			return
 		}
 	}
 }
@@ -112,7 +109,7 @@ func cjkBoundaries(text string) []int {
 				previous[next] = i
 			}
 		}
-		dictionaryMatches(normalized, offsets, i, consider)
+		dictionaryMatches(chars, i, consider)
 		if !single && (r < 0xac00 || r > 0xd7a3) {
 			consider(1, 255)
 		}

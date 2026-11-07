@@ -1,6 +1,6 @@
 package jsstring
 
-import "slices"
+import "github.com/MichaelKinsy/PiG/internal/sortx"
 
 // ArrayIndex reports whether key is a canonical array index (0 to 2^32-2, no sign or leading zero) and returns it. ECMAScript enumerates such keys of an object first, in ascending order.
 func ArrayIndex(key string) (uint32, bool) {
@@ -24,7 +24,7 @@ func ArrayIndex(key string) (uint32, bool) {
 
 // SortOwnKeys orders items as an ECMAScript object enumerates its own string keys: array-index keys first in ascending order, then the others in their existing (insertion) order.
 func SortOwnKeys[T any](items []T, key func(T) string) {
-	slices.SortStableFunc(items, func(a, b T) int {
+	sortx.Stable(items, func(a, b T) int {
 		x, xIndex := ArrayIndex(key(a))
 		y, yIndex := ArrayIndex(key(b))
 		switch {
