@@ -138,7 +138,7 @@ func (a *analysis) position(i int) namePosition {
 		return posValue
 	}
 	brace := a.encl[i]
-	if brace < 0 || !a.isPunct(brace, "{") || a.toks[brace].jsxBrace || !(a.isPunct(i+1, ",") || a.isPunct(i+1, "}")) {
+	if brace < 0 || !a.isPunct(brace, "{") || a.toks[brace].jsxBrace || !a.isPunct(i+1, ",") && !a.isPunct(i+1, "}") {
 		return posValue
 	}
 	return posShorthand
@@ -177,15 +177,17 @@ func (a *analysis) bodyOf(brace int) bodyKind {
 				j = a.match[j]
 			case ">":
 				depth := 0
+			generic:
 				for ; j >= 0; j-- {
-					if a.isPunct(j, ">") {
+					switch {
+					case a.isPunct(j, ">"):
 						depth++
-					} else if a.isPunct(j, "<") {
+					case a.isPunct(j, "<"):
 						depth--
 						if depth == 0 {
-							break
+							break generic
 						}
-					} else if a.isPunct(j, ";") || a.isPunct(j, "{") || a.isPunct(j, "}") {
+					case a.isPunct(j, ";") || a.isPunct(j, "{") || a.isPunct(j, "}"):
 						return bodyOther
 					}
 				}
@@ -285,11 +287,15 @@ func (a *analysis) declaresAt(i int) bool {
 	if a.isMemberName(i) {
 		return false
 	}
+	// `x: typeof __dirname = "a"`: the name is in a type, which no assignment or declaration of it can be.
+	if a.isWord(i-1, "typeof") && !toks[i-1].property {
+		return false
+	}
 	if i > 0 && toks[i-1].kind == tkWord && declarationKeywords[toks[i-1].text] {
 		return true
 	}
 	// An assignment, `name = value`, but not `==`, `===` or `=>`.
-	if a.isPunct(i+1, "=") && !(a.isPunct(i+2, "=") && toks[i+2].start == toks[i+1].end) {
+	if a.isPunct(i+1, "=") && (!a.isPunct(i+2, "=") || toks[i+2].start != toks[i+1].end) {
 		return true
 	}
 	// A parameter property, `constructor(private name: string)`, binds the name as a parameter.
@@ -355,7 +361,7 @@ func (a *analysis) bindingPattern(open int) bool {
 		return true
 	}
 	if closeIdx := a.match[open]; closeIdx >= 0 {
-		if a.isPunct(closeIdx+1, "=") && !(a.isPunct(closeIdx+2, "=") && a.toks[closeIdx+2].start == a.toks[closeIdx+1].end) || a.isWord(closeIdx+1, "of") || a.isWord(closeIdx+1, "in") {
+		if a.isPunct(closeIdx+1, "=") && (!a.isPunct(closeIdx+2, "=") || a.toks[closeIdx+2].start != a.toks[closeIdx+1].end) || a.isWord(closeIdx+1, "of") || a.isWord(closeIdx+1, "in") {
 			return true
 		}
 	}

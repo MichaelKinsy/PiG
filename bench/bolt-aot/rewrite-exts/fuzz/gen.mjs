@@ -215,6 +215,16 @@ function positionFragment(ext, n) {
     [`export { a${n}, ${other}, b${n} as ${name} } from "./m${n}.js";\n`],
     [`export * as ${name} from "./m${n}.js";\n`],
     [`export type { ${name} as t${n} } from "./m${n}.js";\n`],
+    // A type annotation with typeof is a type position, not an assignment to or a declaration of the name: the use after it is still a free use.
+    [`const x${n}: typeof ${name} = "a";\nuse(`, T(name), `);\n`],
+    [`let x${n}: typeof ${name} = "a", y${n}: typeof ${other} = "b";\nuse(`, T(name), `, `, T(other), `);\n`],
+    [`var x${n}: typeof ${name} = "a";\nuse(`, T(name), `);\n`],
+    [`export const x${n}: typeof ${name} = "a";\nexport const y${n} = `, T(name), `;\n`],
+    [`function f${n}(a: typeof ${name} = "x") { return a; }\nuse(`, T(name), `);\n`],
+    [`const g${n} = (a: typeof ${name} = "x") => a;\nuse(`, T(name), `);\n`],
+    [`class C${n} { x: typeof ${name} = "a"; static y: typeof ${other} = "b" }\nuse(`, T(name), `, `, T(other), `);\n`],
+    [`const o${n}: Record<string, typeof ${name}> = {};\nuse(`, T(name), `);\n`],
+    [`let r${n}: (typeof ${name})[] = [];\nuse(`, T(name), `);\n`],
   ];
   const any = [
     [`class C${n} { ${name}; }\n`],

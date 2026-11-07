@@ -153,8 +153,7 @@ func spaceWidth(s string, i int) int {
 		return 0
 	}
 	r, n := utf8.DecodeRuneInString(s[i:])
-	switch {
-	case r == 0xa0 || r == 0x1680 || r >= 0x2000 && r <= 0x200a || r == 0x2028 || r == 0x2029 || r == 0x202f || r == 0x205f || r == 0x3000 || r == 0xfeff:
+	if r == 0xa0 || r == 0x1680 || r >= 0x2000 && r <= 0x200a || r == 0x2028 || r == 0x2029 || r == 0x202f || r == 0x205f || r == 0x3000 || r == 0xfeff {
 		return n
 	}
 	return 0
@@ -219,15 +218,15 @@ func (l *lexer) expressionMayBegin() bool {
 // a line terminator continues the string over the line (CR LF counts as one terminator there).
 func (l *lexer) skipQuoted(quote byte) {
 	for l.i++; l.i < len(l.src); l.i++ {
-		switch c := l.src[l.i]; {
-		case c == '\\':
+		switch l.src[l.i] {
+		case '\\':
 			l.i++
 			if l.i+1 < len(l.src) && l.src[l.i] == '\r' && l.src[l.i+1] == '\n' {
 				l.i++
 			}
-		case c == '\n' || c == '\r':
+		case '\n', '\r':
 			return
-		case c == quote:
+		case quote:
 			l.i++
 			return
 		}
@@ -262,19 +261,22 @@ func (l *lexer) skipRegExp() bool {
 	src := l.src
 	j := l.i + 1
 	inClass := false
+scan:
 	for ; j < len(src); j++ {
-		c := src[j]
 		if lineTerminatorWidth(src, j) > 0 {
 			return false
 		}
-		if c == '\\' {
+		switch src[j] {
+		case '\\':
 			j++
-		} else if c == '[' {
+		case '[':
 			inClass = true
-		} else if c == ']' {
+		case ']':
 			inClass = false
-		} else if c == '/' && !inClass {
-			break
+		case '/':
+			if !inClass {
+				break scan
+			}
 		}
 	}
 	if j >= len(src) {
@@ -305,7 +307,7 @@ func (l *lexer) jsxBegins() bool {
 	if j < len(src) && src[j] == ',' {
 		return false
 	}
-	return !(strings.HasPrefix(src[j:], "extends") && (j+7 >= len(src) || !isWordByte(src[j+7])))
+	return !strings.HasPrefix(src[j:], "extends") || j+7 < len(src) && isWordByte(src[j+7])
 }
 
 // scanJSX reads JSX from l.i for el (how many tags are open, whether the one being read closes) in mode: inside a tag, or between tags (children). It stops when the

@@ -40,7 +40,7 @@ for (const name of Object.keys(impls)) {
   console.log(`${name.padEnd(8)} wrong output: ${wrong[name].length} (${kinds.map((k) => `${count(wrong[name], k)} ${k}`).join(", ")}); expected parses but the output does not: ${invalid[name].length}`);
 }
 const oldAndUpstreamIdentical = wrong.old.filter((i) => outputs.old[i] === outputs.upstream[i]);
-console.log(`old (before the second review) wrong: ${wrong.old.length}; of them byte-identical in Pi-Bolt's output: ${oldAndUpstreamIdentical.length}`);
+console.log(`old (the OLD_TREE rewrite) wrong: ${wrong.old.length}; of them byte-identical in Pi-Bolt's output: ${oldAndUpstreamIdentical.length}`);
 const oursOnlyWrongNewly = wrong.ours.filter((i) => !wrong.old.includes(i));
 console.log(`ours wrong now but right before: ${oursOnlyWrongNewly.length}`);
 
