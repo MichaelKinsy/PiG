@@ -13056,6 +13056,36 @@
       "tests": []
     },
     {
+      "id": "BF-54eb030",
+      "title": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal",
+      "symptom": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal.",
+      "rootCause": "Since the host forwards an extension's stderr as Pi's console does, the Go SDK's recovered-panic report with its goroutine stack, Rust's default panic message for a caught handler panic and the Python, Lisp and Node reports of a failed handler or host call overprinted the interactive frame, where Pi reports a throwing handler as one line and writes no stack.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal. Since the host forwards an extension's stderr as Pi's console does, the Go SDK's recovered-panic report with its goroutine stack, Rust's default panic message for a caught handler panic and the Python, Lisp and Node reports of a failed handler or host call overprinted the interactive frame, where Pi reports a throwing handler as one line and writes no stack. Every SDK now appends them to the extension's log (`PIG_EXT_LOG`, the file the host's load and crash diagnostics read), bounded at 1 MiB per process, and writes to stderr only when no host started it. What the extension's own code writes to stdout and stderr still reaches the terminal.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "54eb0309c7",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/ext_log_test.go::TestExtLogHostWritesDoNotOverwriteAnSDKAppend",
+        "coding/extension/host/subprocess/ext_log_test.go::TestFusedExtLogIsExportedAndRemoved",
+        "coding/extension/host/subprocess/ext_log_test.go::TestNodeRuntimeDiagnosticsGoToTheExtensionLog",
+        "coding/extension/host/subprocess/ext_log_test.go::TestWithExtLogReplacesAnInheritedEntry",
+        "extensions/sdk-py/tests/test_diagnostic.py",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticLogIsBounded",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticsFallBackToStderr",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticsGoToTheExtensionLogAndNotStderr",
+        "test/extension-conformance/sdk_diagnostics_test.go::TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog"
+      ]
+    },
+    {
       "id": "BF-55573f4",
       "title": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
       "symptom": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
