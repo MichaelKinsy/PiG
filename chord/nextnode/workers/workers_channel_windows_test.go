@@ -3,6 +3,9 @@
 package workers
 
 import (
+	"crypto/rand"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -18,7 +21,7 @@ import (
 // worker exits and whose start fails).
 func TestOpenProcessChannelWaitsForAParentThatAcceptsLate(t *testing.T) {
 	const late = 3 * time.Second // longer than go-winio's default dial deadline (2 s)
-	name := `\\.\pipe\chord-workers-late-accept-` + t.Name()
+	name := `\\.\pipe\chord-workers-late-accept-` + strconv.Itoa(os.Getpid()) + "-" + rand.Text()
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
 		t.Fatal(err)
