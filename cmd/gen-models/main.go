@@ -75,6 +75,7 @@ type ModelCompat struct {
 	MaxTokensField                              string                     `json:"maxTokensField,omitempty"`
 	RequiresToolResultName                      *bool                      `json:"requiresToolResultName,omitempty"`
 	RequiresAssistantAfterToolResult            *bool                      `json:"requiresAssistantAfterToolResult,omitempty"`
+	RequiresNonNullAssistantContent             *bool                      `json:"requiresNonNullAssistantContent,omitempty"`
 	RequiresThinkingAsText                      *bool                      `json:"requiresThinkingAsText,omitempty"`
 	RequiresReasoningContentOnAssistantMessages *bool                      `json:"requiresReasoningContentOnAssistantMessages,omitempty"`
 	ThinkingFormat                              string                     `json:"thinkingFormat,omitempty"`
@@ -1119,6 +1120,9 @@ func compatLiteral(jsonText string) string {
 	}
 	if compat.RequiresAssistantAfterToolResult != nil {
 		fields = append(fields, fmt.Sprintf("RequiresAssistantAfterToolResult:%s", boolPtrLit(*compat.RequiresAssistantAfterToolResult)))
+	}
+	if compat.RequiresNonNullAssistantContent != nil {
+		fields = append(fields, fmt.Sprintf("RequiresNonNullAssistantContent:%s", boolPtrLit(*compat.RequiresNonNullAssistantContent)))
 	}
 	if compat.RequiresThinkingAsText != nil {
 		fields = append(fields, fmt.Sprintf("RequiresThinkingAsText:%s", boolPtrLit(*compat.RequiresThinkingAsText)))
