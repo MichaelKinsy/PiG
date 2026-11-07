@@ -711,4 +711,18 @@ mod tests {
             assert_eq!(parse_iso_date(text), None, "{text:?}");
         }
     }
+
+    // A packed runner reports a member whose factory panicked with `report_load_failure`. A factory that called a host helper first left the connection that
+    // call dialled open, and the host reads the registration of the connection it accepted first: that one is closed.
+    #[test]
+    fn report_load_failure_closes_the_connection_a_helper_dialled() {
+        use std::io::Read;
+        let (client, mut host) = UnixStream::pair().unwrap();
+        let path = "/s/report-load-failure.sock".to_string();
+        locked(&DIALLED).push((path.clone(), Arc::new(Connection::new(client))));
+        crate::report_load_failure(&path).unwrap();
+        let mut byte = [0u8; 1];
+        assert_eq!(host.read(&mut byte).unwrap(), 0, "the helper's connection was not closed");
+        assert!(take_dialled(&path).is_none(), "the connection is still held for run");
+    }
 }

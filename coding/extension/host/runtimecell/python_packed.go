@@ -529,18 +529,20 @@ def _reload_edited(reload):
 `
 
 // pythonRunnerFailureReport tells the host that one member failed while the
-// shared process lives on: it prints the error and connects to the member's
-// socket and closes it, so the host's wait for that member ends with a
-// visible load error instead of waiting for a connection that never comes.
-// It connects as the SDK does: CPython on Windows has no socket.AF_UNIX, and
-// the SDK reaches the host's AF_UNIX socket through Winsock there.
+// shared process lives on: it prints the error and ends the host's wait for the
+// member (pig_sdk.host_helpers.report_load_failure closes the connection the
+// factory's host helpers dialled, else connects to the member's socket and
+// closes it), so the wait ends with a visible load error instead of waiting for
+// a registration that never comes. It connects as the SDK does: CPython on
+// Windows has no socket.AF_UNIX, and the SDK reaches the host's AF_UNIX socket
+// through Winsock there.
 const pythonRunnerFailureReport = `def _report_member_failure(item, exc, sock):
-    print(f'{item[0]}: {exc}', file=sys.stderr, flush=True)
+    print(f'extension "{item[0]}" load failed: {exc}', file=sys.stderr, flush=True)
     if not sock:
         return
-    from pig_sdk import _connect_unix
+    from pig_sdk.host_helpers import report_load_failure
     try:
-        _connect_unix(sock).close()
+        report_load_failure(sock)
     except OSError:
         pass
 

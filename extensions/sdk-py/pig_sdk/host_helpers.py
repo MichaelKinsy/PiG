@@ -364,3 +364,18 @@ def take_helper_socket(path: str) -> Any:
     with _State.lock:
         _State.owners.pop(path, None)
         return _State.dialled.pop(path, None)
+
+
+def report_load_failure(sock_path: str) -> None:
+    """End the host's wait for the extension that serves ``sock_path`` after its factory failed. A packed cell's runner calls it when a member's factory raises or
+    returns no extension, so the shared process lives on for the other members. A factory that called a host helper (``parse_frontmatter``, ``parse_date``, a
+    ``pi.events`` call) before it failed left the connection that call dialled open, and the host reads the registration of the connection it accepted first: that
+    one is closed. With no such connection a connection to the socket is made and closed, as the failure of an extension that never connected.
+
+    Raises ``OSError`` when there is no connection to close and the socket cannot be reached."""
+    sock = take_helper_socket(sock_path)
+    if sock is None:
+        from . import _connect_unix
+
+        sock = _connect_unix(sock_path)
+    sock.close()

@@ -719,6 +719,12 @@ func renderGoRunner(extensions []GoExtension) string {
 	var b strings.Builder
 	b.WriteString("package main\n\nimport (\n")
 	b.WriteString("\t\"bufio\"\n\t\"errors\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"runtime/debug\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
+	// The SDK's ReportLoadFailure closes the connection a failed factory's host helpers dialled. An extension that imports the legacy SDK path runs the legacy copy, whose helper state is its own.
+	legacySDK := requiresLegacyGoSDK(extensions)
+	fmt.Fprintf(&b, "\tsdk %q\n", extsource.GoSDKModulePath)
+	if legacySDK {
+		fmt.Fprintf(&b, "\tlegacysdk %q\n", extsource.LegacyGoSDKModulePath)
+	}
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
 		fmt.Fprintf(&b, "\t%s %q\n", pkgName, ext.Package)
@@ -727,6 +733,11 @@ func renderGoRunner(extensions []GoExtension) string {
 	b.WriteString("func main() {\n")
 	b.WriteString("\ttype item struct { name string; env string; run func(string, func()) error }\n")
 	b.WriteString(goRunnerFactoryScope)
+	b.WriteString("\treportFailure := func(sock string) {\n\t\t_ = sdk.ReportLoadFailure(sock)\n")
+	if legacySDK {
+		b.WriteString("\t\t_ = legacysdk.ReportLoadFailure(sock)\n")
+	}
+	b.WriteString("\t}\n")
 	b.WriteString("\titems := []item{\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
@@ -769,7 +780,7 @@ const goRunnerBody = `	var mu sync.Mutex
 	runMember := func(it item, sock string, built func()) (err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				fmt.Fprintf(os.Stderr, "%s: panic stack:\n\t%s\n", it.name, strings.ReplaceAll(strings.TrimSpace(string(debug.Stack())), "\n", "\n\t"))
+				fmt.Fprintf(os.Stderr, "panic stack of %s:\n\t%s\n", it.name, strings.ReplaceAll(strings.TrimSpace(string(debug.Stack())), "\n", "\n\t"))
 				err = fmt.Errorf("panic: %v", recovered)
 			}
 		}()
@@ -786,8 +797,8 @@ const goRunnerBody = `	var mu sync.Mutex
 			defer built()
 			err := runMember(it, sock, built)
 			if err != nil && !errors.Is(err, net.ErrClosed) {
-				fmt.Fprintf(os.Stderr, "%s: %v\n", it.name, err)
-				if c, dialErr := net.Dial("unix", sock); dialErr == nil { _ = c.Close() }
+				fmt.Fprintf(os.Stderr, "extension \"%s\" load failed: %v\n", it.name, err)
+				reportFailure(sock)
 				mu.Lock()
 				failures = append(failures, fmt.Errorf("%s: %w", it.name, err))
 				mu.Unlock()

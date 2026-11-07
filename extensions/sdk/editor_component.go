@@ -2,6 +2,8 @@ package sdk
 
 import (
 	"fmt"
+	"os"
+	"runtime/debug"
 	"slices"
 	"sync"
 
@@ -238,8 +240,20 @@ func (s *editorSession) run() {
 			return
 		default:
 		}
-		task()
+		s.runTask(task)
 	}
+}
+
+// runTask runs one queued call of the component. A panic in it is that call's failure, reported as an error the component returned is, and does not end the
+// goroutine or the process, which in a packed cell serves other extensions.
+func (s *editorSession) runTask(task func()) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			fmt.Fprintf(os.Stderr, "extension: recovered from panic in an editor component call: %v\n%s\n", recovered, debug.Stack())
+			s.fail("call", fmt.Errorf("panicked: %v", recovered))
+		}
+	}()
+	task()
 }
 
 func (s *editorSession) fail(what string, err error) {

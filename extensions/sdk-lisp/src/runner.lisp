@@ -54,7 +54,7 @@ The standalone entry point: (pig:run-extension (new-extension)) in an executable
         (if previous (sb-posix:setenv "PIG_EXT_SOCKET" previous 1) (sb-posix:unsetenv "PIG_EXT_SOCKET"))))))
 
 (defun report-member-failure (member condition socket)
-  (format *error-output* "~A: ~A~%" (car member) (condition-message condition))
+  (format *error-output* "extension \"~A\" load failed: ~A~%" (car member) (condition-message condition))
   (finish-output *error-output*)
   (when (and socket (plusp (length socket)))
     (unless (helper-drop-conn socket) (ignore-errors (conn-close (connect-unix socket))))))
