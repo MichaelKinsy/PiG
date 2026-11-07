@@ -254,15 +254,21 @@ func TestVerifyToolchainChecksDigestAndRecord(t *testing.T) {
 }
 
 // An install of the pinned release removes the compiler of a release the Piglet pinned before (a 106 MB executable that nothing would use), and leaves
-// another platform's toolchain and unrelated entries alone.
+// another platform's toolchain, a directory without the install's record and unrelated entries alone.
 func TestInstallRemovesTheCompilerOfAnEarlierRelease(t *testing.T) {
 	dir := t.TempDir()
 	parent := filepath.Join(dir, "toolchain")
 	old := filepath.Join(parent, "pi-bolt-0.7.4-linux-x64")
 	otherPlatform := filepath.Join(parent, "pi-bolt-0.7.4-darwin-arm64")
 	unrelated := filepath.Join(parent, "notes")
-	for _, d := range []string{old, otherPlatform, unrelated} {
+	noRecord := filepath.Join(parent, "pi-bolt-0.6.0-linux-x64") // matches the name but holds no toolchain.json: not ours to delete
+	for _, d := range []string{old, otherPlatform, unrelated, noRecord} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, d := range []string{old, otherPlatform} {
+		if err := os.WriteFile(filepath.Join(d, "toolchain.json"), []byte("{}\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -273,7 +279,7 @@ func TestInstallRemovesTheCompilerOfAnEarlierRelease(t *testing.T) {
 	if _, err := os.Stat(old); !os.IsNotExist(err) {
 		t.Errorf("the 0.7.4 compiler stayed after the %s install: %v", toolchainVersion, err)
 	}
-	for _, d := range []string{otherPlatform, unrelated, toolchainDir(dir, "linux-x64")} {
+	for _, d := range []string{otherPlatform, unrelated, noRecord, toolchainDir(dir, "linux-x64")} {
 		if _, err := os.Stat(d); err != nil {
 			t.Errorf("%s was removed: %v", d, err)
 		}

@@ -215,3 +215,27 @@ func TestEnsureManifestDropsImagesOfAnotherCompilerRelease(t *testing.T) {
 		t.Errorf("the image of the earlier compiler stayed on disk: %v", err)
 	}
 }
+
+// publish, prune and ensureManifest remove an image's directory named by runtime.json, so a manifest whose executable leaves images/<id>/ is refused
+// before any of them can delete the provider directory or a parent.
+func TestReadManifestRefusesAnImagePathOutsideImages(t *testing.T) {
+	for _, executable := range []string{"", "pig-ts-host", "images/pig-ts-host", "../x/pig-ts-host", "images/../../x", "images/./pig-ts-host", "images//pig-ts-host", "/images/a/pig-ts-host", "images/a/b/pig-ts-host", `images\a\pig-ts-host`} {
+		st := newStore(t.TempDir(), "linux-x64")
+		if err := os.MkdirAll(st.dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		data := `{"id":"aot","kind":"executable","version":"` + toolchainVersion + `","platform":"linux-x64","provider":"` + providerName + `","sets":{"` + key("a") + `":{"executable":"` + strings.ReplaceAll(executable, `\`, `\\`) + `","sha256":"` + key("b") + `"}},"fallback":"bun"}`
+		if err := os.WriteFile(st.manifestPath(), []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := st.readManifest(); err == nil || !strings.Contains(err.Error(), "images/<id>/<file>") {
+			t.Errorf("executable %q: readManifest error = %v, want a refusal", executable, err)
+		}
+		if err := st.ensureManifest(); err == nil {
+			t.Errorf("executable %q: ensureManifest accepted the manifest", executable)
+		}
+		if _, err := os.Stat(st.dir); err != nil {
+			t.Errorf("executable %q: the provider directory is gone: %v", executable, err)
+		}
+	}
+}

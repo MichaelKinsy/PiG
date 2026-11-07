@@ -155,8 +155,9 @@ func (in installer) install(ctx context.Context) (string, error) {
 	return filepath.Join(target, exe), nil
 }
 
-// removeOtherToolchains deletes the compilers of platform that this Piglet no longer pins (a release it pinned before), each over 100 MB. A directory
-// that is not an installed toolchain of that platform, or that a process is executing, stays; failures are not reported, the next install tries again.
+// removeOtherToolchains deletes the compilers of platform that this Piglet no longer pins (a release it pinned before), each over 100 MB. Only a real
+// directory named pi-bolt-<version>-<platform> that holds the toolchain.json an install writes last is an installed toolchain; any other entry, a
+// symlink, and a directory a process is executing stay. Failures are not reported, the next install tries again.
 func removeOtherToolchains(providerDir, platform string) {
 	keep := filepath.Base(toolchainDir(providerDir, platform))
 	entries, err := os.ReadDir(filepath.Join(providerDir, "toolchain"))
@@ -165,9 +166,14 @@ func removeOtherToolchains(providerDir, platform string) {
 	}
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() && name != keep && strings.HasPrefix(name, "pi-bolt-") && strings.HasSuffix(name, "-"+platform) && !inUse(filepath.Join(providerDir, "toolchain", name)) {
-			_ = os.RemoveAll(filepath.Join(providerDir, "toolchain", name))
+		dir := filepath.Join(providerDir, "toolchain", name)
+		if !entry.IsDir() || name == keep || !strings.HasPrefix(name, "pi-bolt-") || !strings.HasSuffix(name, "-"+platform) {
+			continue
 		}
+		if record, err := os.Lstat(filepath.Join(dir, "toolchain.json")); err != nil || !record.Mode().IsRegular() || inUse(dir) {
+			continue
+		}
+		_ = os.RemoveAll(dir)
 	}
 }
 

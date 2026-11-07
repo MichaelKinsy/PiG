@@ -122,7 +122,27 @@ func (s *store) readManifest() (manifest, error) {
 	if err := decoder.Decode(&m); err != nil {
 		return manifest{}, fmt.Errorf("runtime.json: %w", err)
 	}
+	// publish, prune and ensureManifest delete the directory of an image from its executable path, so a path that leaves images/<id>/ is refused here.
+	for _, key := range sortedKeys(m.Sets) {
+		if !imageExecutablePath(m.Sets[key].Executable) {
+			return manifest{}, fmt.Errorf("runtime.json: set %s: executable %q is not images/<id>/<file>", short(key), m.Sets[key].Executable)
+		}
+	}
 	return m, nil
+}
+
+// imageExecutablePath reports whether rel is a slash path of exactly the form images/<id>/<file>, the shape publish writes.
+func imageExecutablePath(rel string) bool {
+	parts := strings.Split(rel, "/")
+	if len(parts) != 3 || parts[0] != "images" {
+		return false
+	}
+	for _, part := range parts[1:] {
+		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\:`) {
+			return false
+		}
+	}
+	return true
 }
 
 // ensureManifest creates the manifest of an installed provider with no images. PiG records a build request for a set only once the manifest exists.
