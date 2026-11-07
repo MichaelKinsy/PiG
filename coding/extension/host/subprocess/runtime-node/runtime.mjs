@@ -3547,7 +3547,7 @@ export class Runtime {
     }
   }
 
-  // Pi's extensions and its session log share one message object: agent-session.ts emits message_end to the extensions and then calls sessionManager.appendMessage(event.message), whose entry keeps that object, and every handler of the event gets the one event. The host sends this process the event and the log as separate payloads, so a message from the event and the entry that holds it arrive as two equal objects. This process makes them one again, matching by role, timestamp and tool call id and then by value, so an extension that finds an entry by `entry.message === message` (Paseo's Pi integration does) finds it here as it does in Pi. A message no entry holds stays as it came, and so does an entry no event carried.
+  // Pi's extensions and its session log share one message object: agent-session.ts emits message_end to the extensions and then calls sessionManager.appendMessage(event.message), whose entry keeps that object, and every handler of the message_end shares that message (runner.ts emitMessageEnd gives each its own event object around it). The host sends this process the event and the log as separate payloads, so a message from the event and the entry that holds it arrive as two equal objects. This process makes them one again, matching by role, timestamp and tool call id and then by value, so an extension that finds an entry by `entry.message === message` (Paseo's Pi integration does) finds it here as it does in Pi. A message no entry holds stays as it came, and so does an entry no event carried.
   shareEventMessage(message) {
     if (!message || typeof message !== "object") return message;
     const key = eventMessageKey(message);
