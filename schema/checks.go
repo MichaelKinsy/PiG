@@ -22,7 +22,8 @@ func isString(v any) bool {
 	return ok
 }
 
-// isNumber is Number.isFinite: a `number` is finite, as in TypeBox (pig divergence D303, Pi main 55a5c6914). JSON has no NaN or Infinity, so only a value built in code can be one.
+// isNumber is Number.isFinite.
+// pig divergence (D303): a `number` is finite, as in TypeBox (Pi main 55a5c6914). JSON has no NaN or Infinity, so only a value built in code can be one.
 func isNumber(v any) bool {
 	n, ok := asNumber(v)
 	return ok && isFinite(n)

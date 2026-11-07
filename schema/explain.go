@@ -558,7 +558,7 @@ func (e *explainer) walkUnevaluated(node jsonObject, b string, v any, path strin
 	if !ok {
 		rest = &Object{}
 		for _, k := range node.keys() {
-			// b already applies the node's `$id`; the copy must not apply it again (pig divergence D302, Pi main 2bd2c2d0a).
+			// pig divergence (D302): b already applies the node's `$id`; the copy must not apply it again (Pi main 2bd2c2d0a).
 			if k != "unevaluatedProperties" && k != "unevaluatedItems" && k != "$id" {
 				rest.Set(k, node.value(k))
 			}
