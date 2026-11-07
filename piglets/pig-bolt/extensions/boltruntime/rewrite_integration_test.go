@@ -74,8 +74,14 @@ export default function (pi: { registerCommand(name: string, command: unknown): 
 // registrationOf starts the compiled host on entry as PiG does and returns the first frame it sends on its socket.
 func registrationOf(t *testing.T, executable, entry, work, tree string) string {
 	t.Helper()
-	sock := filepath.Join(work, "reg.sock")
-	_ = os.Remove(sock)
+	// A Unix socket address holds about 104 bytes of path (sun_path: 108 on Linux, 104 on macOS) and a test's temporary directory under a long TMPDIR is longer, so the
+	// socket lives in a short directory of its own, as trainRun's does.
+	socketDir, err := os.MkdirTemp("", "pbt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(socketDir) })
+	sock := filepath.Join(socketDir, "s")
 	listener, err := net.Listen("unix", sock)
 	if err != nil {
 		t.Fatal(err)

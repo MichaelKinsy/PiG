@@ -19,10 +19,13 @@ The release archive's own `LICENSE`, `LICENSE.pi` and `THIRD_PARTY_NOTICES.md` a
 
 ## Pi-Bolt `rewriteCopy`, ported to Go
 
-`extensions/boltruntime/rewrite.go` ports the scanner `rewriteCopy` and the code it substitutes (`requireFrom`, `resolveFrom`, `metaResolveFrom`, the `import.meta` table) from
-`packages/coding-agent/src/gen-plugin-manifest.mjs` of Pi-Bolt (<https://github.com/opensec-git/Pi-Bolt/blob/1098b1ce19cf67daf8ab0995d7ef7e2a2bea8681/packages/coding-agent/src/gen-plugin-manifest.mjs>), so that an
-extension compiled in by this Piglet reads its own location as one compiled in by `pi-bolt compile` does. The Go port decides what a module declares from tokens
-instead of text and adds the TypeScript cast `(import.meta as T).member`; it leaves out Pi-Bolt's renaming of Pi's module names, which the build's tsconfig covers.
+`extensions/boltruntime/rewrite.go` and `rewrite_analysis.go` are a Go token lexer and a set of decisions ported from the rules of the scanner `rewriteCopy`, and from the code it substitutes
+(`requireFrom`, `resolveFrom`, `metaResolveFrom`, the `import.meta` table), in `packages/coding-agent/src/gen-plugin-manifest.mjs` of Pi-Bolt
+(<https://github.com/opensec-git/Pi-Bolt/blob/1098b1ce19cf67daf8ab0995d7ef7e2a2bea8681/packages/coding-agent/src/gen-plugin-manifest.mjs>), so that an extension compiled in by this
+Piglet reads its own location as one compiled in by `pi-bolt compile` does. It is not a line-by-line port and does not give the same output in every case: it decides what a module
+declares from tokens, not from a regular expression over the text; it lexes `++`, `--` and member names as `rewriteCopy` does not; it ends a line at CR, U+2028 and U+2029; it scans
+.js files for JSX; it leaves TypeScript-only positions alone (the name after `typeof`, enum, class, interface and parameter-property names, export lists); and it reads the cast
+`(import.meta as T).member`. It leaves out Pi-Bolt's renaming of Pi's module names, which the build's tsconfig covers. The list of differences is at the head of `rewrite.go`.
 
 ```
 MIT License

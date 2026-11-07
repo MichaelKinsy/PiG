@@ -8,13 +8,25 @@ import (
 	"unicode/utf8"
 )
 
-// Ports rewriteCopy of Pi-Bolt (packages/coding-agent/src/gen-plugin-manifest.mjs, MIT; see THIRD_PARTY_NOTICES.md): the same scanner rules and the same code for
-// each replacement, so that an extension compiled in here behaves as one that `pi-bolt compile` compiles. Where the port differs, the comment says so.
-//
 // A compiled executable has no directory of its own for the modules it holds: the bundler resolves `import.meta.url` once, to the executable, and so `import.meta.dir`,
 // `__dirname` and the rest. An extension that finds its skills, prompts, locales or a data file beside its own module would look for them under /$bunfs. The build
 // therefore compiles each file that names its location from a copy in which those expressions say what they are in the file the copy was made from: the extension as
 // installed. A compiled-in extension runs only while its installed files are unchanged (the image's inputs), so those files are there.
+//
+// This is a token lexer and a set of decisions over its tokens, ported from the rules of Pi-Bolt's rewriteCopy (packages/coding-agent/src/gen-plugin-manifest.mjs, MIT; see
+// THIRD_PARTY_NOTICES.md) and from the code it substitutes (requireFrom, resolveFrom, metaResolveFrom, the import.meta table), so that an extension compiled in here reads its
+// own location as one that `pi-bolt compile` compiles does. It is not a line-by-line port and it does not give the same output in every case. The differences:
+//   - A module's declarations of __dirname, __filename and require are decided from tokens, not from a regular expression over the text: a comment or a string that spells a
+//     declaration is none, an argument is no parameter, an object literal's shorthand is no binding, a member of a class, an enum or an interface is no variable, and an
+//     import binds the name after `as`, not the one before it.
+//   - A `{ __dirname }` shorthand keeps its property name.
+//   - `++` and `--` are one token, and after one that follows a value (`i++ / 2`) a `/` divides; a word after `.` or `?.` (`o.return / 2`) is a value, not a keyword.
+//   - A line ends at LF, CR, U+2028 and U+2029 (comments, regular expressions, strings), and a backslash before CR LF in a string continues it.
+//   - .js, .mjs and .cjs files are scanned for JSX as .jsx and .tsx files are; a `<` where an expression may begin is not valid JavaScript otherwise.
+//   - TypeScript-only positions are left alone: the name after `typeof`, enum members, class fields and parameter properties, interface members, export names and the
+//     names a re-export mentions. `(import.meta as T).dirname` is read like `import.meta.dirname`.
+//   - A static require("fs") with a comment before the string stays the bundler's. Pi-Bolt's renaming of Pi's own module names (@mariozechner/...) is not ported: the build's
+//     tsconfig covers it.
 //
 // The rewrite is a scanner, not a parser: it decides what is code from the tokens it reads, as the tools that bundle JavaScript commonly do, and it changes code only,
 // never a comment, a string, the text of a template literal, a regular expression or JSX text.
@@ -129,6 +141,9 @@ func isWordByte(c byte) bool { return isASCIIWordByte(c) || c >= 0x80 }
 
 func isWordStartByte(c byte) bool { return isWordByte(c) && (c < '0' || c > '9') }
 
+// isWordAt is whether s[i] continues a word: a word byte that is no white space (a no-break space or U+2028 is two or three bytes of 0x80 or more, and ends the word).
+func isWordAt(s string, i int) bool { return isWordByte(s[i]) && spaceWidth(s, i) == 0 }
+
 // spaceWidth returns the byte length of the JavaScript white space at s[i] (`\s`), or 0.
 func spaceWidth(s string, i int) int {
 	switch c := s[i]; {
@@ -143,6 +158,27 @@ func spaceWidth(s string, i int) int {
 		return n
 	}
 	return 0
+}
+
+// lineTerminatorWidth returns the byte length of the line terminator at s[i] (LF, CR, U+2028, U+2029), or 0. CR LF is two terminators here, which ends a line all the same.
+func lineTerminatorWidth(s string, i int) int {
+	switch c := s[i]; {
+	case c == '\n' || c == '\r':
+		return 1
+	case c == 0xe2 && i+2 < len(s) && s[i+1] == 0x80 && (s[i+2] == 0xa8 || s[i+2] == 0xa9):
+		return 3
+	}
+	return 0
+}
+
+// lineEnd returns the index of the first line terminator of s at or after i, or len(s).
+func lineEnd(s string, i int) int {
+	for ; i < len(s); i++ {
+		if lineTerminatorWidth(s, i) > 0 {
+			return i
+		}
+	}
+	return len(s)
 }
 
 type lexer struct {
@@ -179,13 +215,17 @@ func (l *lexer) expressionMayBegin() bool {
 	return false
 }
 
-// skipQuoted reads a string from the quote at l.i. A string ends at the end of its line at the latest, so a wrong guess cannot hide the rest of the file.
+// skipQuoted reads a string from the quote at l.i. A string ends at the end of its line at the latest, so a wrong guess cannot hide the rest of the file. A backslash before
+// a line terminator continues the string over the line (CR LF counts as one terminator there).
 func (l *lexer) skipQuoted(quote byte) {
 	for l.i++; l.i < len(l.src); l.i++ {
 		switch c := l.src[l.i]; {
 		case c == '\\':
 			l.i++
-		case c == '\n':
+			if l.i+1 < len(l.src) && l.src[l.i] == '\r' && l.src[l.i+1] == '\n' {
+				l.i++
+			}
+		case c == '\n' || c == '\r':
 			return
 		case c == quote:
 			l.i++
@@ -224,7 +264,7 @@ func (l *lexer) skipRegExp() bool {
 	inClass := false
 	for ; j < len(src); j++ {
 		c := src[j]
-		if c == '\n' {
+		if lineTerminatorWidth(src, j) > 0 {
 			return false
 		}
 		if c == '\\' {
@@ -240,7 +280,7 @@ func (l *lexer) skipRegExp() bool {
 	if j >= len(src) {
 		return false
 	}
-	for j++; j < len(src) && isWordByte(src[j]); j++ {
+	for j++; j < len(src) && isWordAt(src, j); j++ {
 	}
 	l.i = j
 	return true
@@ -256,7 +296,7 @@ func (l *lexer) jsxBegins() bool {
 		return false
 	}
 	j := l.i + 2
-	for j < len(src) && isWordByte(src[j]) {
+	for j < len(src) && isWordAt(src, j) {
 		j++
 	}
 	for j < len(src) && spaceWidth(src, j) > 0 {
@@ -336,11 +376,7 @@ func (l *lexer) run() {
 	src := l.src
 	n := len(src)
 	if strings.HasPrefix(src, "#!") {
-		if end := strings.IndexByte(src, '\n'); end >= 0 {
-			l.i = end
-		} else {
-			l.i = n
-		}
+		l.i = lineEnd(src, 0)
 	}
 	for l.i < n {
 		c := src[l.i]
@@ -350,11 +386,7 @@ func (l *lexer) run() {
 		}
 		switch {
 		case c == '/' && next == '/':
-			if end := strings.IndexByte(src[l.i:], '\n'); end >= 0 {
-				l.i += end
-			} else {
-				l.i = n
-			}
+			l.i = lineEnd(src, l.i)
 		case c == '/' && next == '*':
 			if end := strings.Index(src[l.i+2:], "*/"); end >= 0 {
 				l.i += 2 + end + 2
@@ -444,14 +476,34 @@ func (l *lexer) run() {
 			l.i += 2
 			l.emit(tkPunct, l.i-2, "=>")
 			l.prev = prevToken{kind: pvPunct, text: "=>"}
+		case (c == '+' || c == '-') && next == c:
+			// `++` and `--` are one token. After a value they are postfix (`i++ / 2`: the `/` divides); where an expression may begin they are prefix (`++i`).
+			postfix := !l.expressionMayBegin()
+			l.i += 2
+			l.emit(tkPunct, l.i-2, src[l.i-2:l.i])
+			if postfix {
+				l.prev = prevToken{kind: pvValue}
+			} else {
+				l.prev = prevToken{kind: pvPunct, text: src[l.i-2 : l.i]}
+			}
+		case c == '!' && !l.expressionMayBegin():
+			// TypeScript's non-null assertion, `x! / 2`: a postfix operator, so the value goes on.
+			l.i++
+			l.emit(tkPunct, l.i-1, "!")
+			l.prev = prevToken{kind: pvValue}
 		case isWordStartByte(c):
 			start := l.i
-			for l.i++; l.i < n && isWordByte(src[l.i]); l.i++ {
+			for l.i++; l.i < n && isWordAt(src, l.i); l.i++ {
 			}
 			word := src[start:l.i]
 			t := l.emit(tkWord, start, word)
 			t.property = l.afterDot(len(l.toks) - 1)
-			l.prev = prevToken{kind: pvWord, text: word}
+			if t.property {
+				// `o.return / 2`: a member's name is a value whatever it spells.
+				l.prev = prevToken{kind: pvValue}
+			} else {
+				l.prev = prevToken{kind: pvWord, text: word}
+			}
 		case c >= '0' && c <= '9':
 			start := l.i
 			for l.i++; l.i < n && (isASCIIWordByte(src[l.i]) && src[l.i] != '$' || src[l.i] == '.'); l.i++ {
@@ -584,20 +636,30 @@ type edit struct {
 	breaks     int
 }
 
+// isTypeScriptFile is whether file is TypeScript without JSX: there a `<` where an expression may begin is a type assertion, not an element.
+func isTypeScriptFile(file string) bool {
+	switch filepath.Ext(file) {
+	case ".ts", ".mts", ".cts":
+		return true
+	}
+	return false
+}
+
 // rewriteModule returns source, the module at file, as the build is to have it: each `import.meta.<property>` that the bundler would resolve to the output file replaced
 // by its value for the module at file, as a string literal; `__dirname`, `__filename`, `require.resolve`, `import.meta.resolve` and each require() or import() of an
 // expression replaced by code for what they are at file. A module that declares __dirname, __filename or require itself keeps its own. Line numbers do not change.
 //
 // It is a scanner, not a parser, and guesses where a parser would know:
 //   - A `/` begins a regular expression or divides, by the token before it. After `)` it divides, unless the `(` came after `if`, `while`, `for` or `with`; after `}` it divides
-//     when the `{` began an object literal (after `=`, `(`, `,`, `:`, `return` and the like), and otherwise begins a regular expression.
-//   - In a .jsx or .tsx file, a `<` where an expression may begin, followed by a name or `>`, begins JSX, unless it reads `<T,` or `<T extends`, a generic arrow function.
-//     A .js file is not scanned for JSX: a `<` there is a comparison more often than a tag.
+//     when the `{` began an object literal (after `=`, `(`, `,`, `:`, `return` and the like), and otherwise begins a regular expression; after a postfix `++`, `--` or `!`
+//     and after a member's name it divides.
+//   - Outside .ts, .mts and .cts files a `<` where an expression may begin, followed by a name or `>`, begins JSX, unless it reads `<T,` or `<T extends`, a generic arrow
+//     function.
 //   - A string or regular expression ends at the end of its line at the latest, so a wrong guess cannot hide the rest of the file.
 //
 // A wrong guess either leaves an `import.meta.url` in code as it was, which is what bundling gave it before, or changes one in text.
 func rewriteModule(source, file string) rewriteResult {
-	toks := lex(source, strings.HasSuffix(file, ".jsx") || strings.HasSuffix(file, ".tsx"))
+	toks := lex(source, !isTypeScriptFile(file))
 	a := analyze(source, toks)
 	var edits []edit
 	unpinned := ""
@@ -608,6 +670,10 @@ func rewriteModule(source, file string) rewriteResult {
 	for i := 0; i < n; i++ {
 		t := toks[i]
 		if t.kind != tkWord || t.property {
+			continue
+		}
+		// `typeof __dirname` is a string whatever the name stands for, and in a type (`x: typeof __dirname`) it is no expression to replace.
+		if i > 0 && a.isWord(i-1, "typeof") && !toks[i-1].property {
 			continue
 		}
 		switch t.text {
@@ -645,7 +711,7 @@ func rewriteModule(source, file string) rewriteResult {
 				replace(t.start, toks[open].end, "((s, o) => import("+resolveFrom(file)+"(s), o))(")
 			}
 		case "__dirname", "__filename":
-			if a.declares(t.text) || a.isPunct(i+1, "(") {
+			if a.declares(t.text) || a.isPunct(i+1, "(") || a.isMemberName(i) {
 				continue
 			}
 			value := jsLiteral(file, false)
@@ -653,7 +719,7 @@ func rewriteModule(source, file string) rewriteResult {
 				value = jsLiteral(filepath.Dir(file), false)
 			}
 			switch a.position(i) {
-			case posObjectKey, posExported:
+			case posExported:
 				continue
 			case posShorthand:
 				// `{ __dirname }` in an object literal: the property keeps its name.
@@ -696,286 +762,4 @@ func rewriteModule(source, file string) rewriteResult {
 	out.WriteString(source[at:])
 	res.Source, res.Changed = out.String(), true
 	return res
-}
-
-// analysis is a module's tokens with what the decisions look up in them.
-type analysis struct {
-	src  string
-	toks []token
-	// match is the index of the bracket token that pairs with the one at i, or -1; encl is the index of the innermost bracket token that is open at i, or -1.
-	match, encl []int
-	declared    map[string]bool
-}
-
-func analyze(src string, toks []token) *analysis {
-	a := &analysis{src: src, toks: toks, match: make([]int, len(toks)), encl: make([]int, len(toks))}
-	var stack []int
-	pop := func(i int) {
-		if k := len(stack); k > 0 {
-			a.match[i], a.match[stack[k-1]] = stack[k-1], i
-			stack = stack[:k-1]
-		}
-	}
-	for i := range toks {
-		a.match[i] = -1
-	}
-	for i, t := range toks {
-		a.encl[i] = -1
-		if k := len(stack); k > 0 {
-			a.encl[i] = stack[k-1]
-		}
-		switch {
-		case t.kind == tkPunct && (t.text == "(" || t.text == "[" || t.text == "{"):
-			stack = append(stack, i)
-		case t.kind == tkPunct && (t.text == ")" || t.text == "]" || t.text == "}"):
-			pop(i)
-			a.encl[i] = -1
-			if k := len(stack); k > 0 {
-				a.encl[i] = stack[k-1]
-			}
-		case t.kind == tkTemplate:
-			if t.closes {
-				pop(i)
-				a.encl[i] = -1
-				if k := len(stack); k > 0 {
-					a.encl[i] = stack[k-1]
-				}
-			}
-			if t.opens {
-				stack = append(stack, i)
-			}
-		}
-	}
-	return a
-}
-
-func (a *analysis) isPunct(i int, text string) bool {
-	return i >= 0 && i < len(a.toks) && a.toks[i].kind == tkPunct && a.toks[i].text == text
-}
-
-func (a *analysis) isWord(i int, text string) bool {
-	return i >= 0 && i < len(a.toks) && a.toks[i].kind == tkWord && a.toks[i].text == text
-}
-
-// callOfExpression returns the index of the `(` of the call of `import` or `require` at word i when the bundler leaves its specifier as it is: anything but one string
-// literal (or a template literal without `${}`) followed by the end of the arguments, or by `,` and an import's options. -1 for a call of a string, which the bundler
-// resolves, for `()`, and when no `(` follows.
-//
-// A specifier built from a string, `"./" + id + ".js"` or a template with a substitution, is an expression too: the bundler bundles neither, nor any file it may name,
-// and leaves it to resolve as the program runs from the executable's own file system, where there is no such file.
-func (a *analysis) callOfExpression(i int) int {
-	open := i + 1
-	if !a.isPunct(open, "(") || open+1 >= len(a.toks) || a.isPunct(open+1, ")") {
-		return -1
-	}
-	if a.toks[open+1].kind != tkString {
-		return open
-	}
-	if a.isPunct(open+2, ")") || a.isPunct(open+2, ",") {
-		return -1
-	}
-	return open
-}
-
-var methodModifiers = setOf("async get set static public private protected override readonly")
-
-// isMethod is whether the `(` at open, after the word at i, begins a method's parameters rather than a call's arguments (`async import(url) {`, `require(id): Module {`):
-// after a modifier or a `*`, or followed by a body (`{`) or, where a member begins, a return type (`:`). Undecided (a `(` without its `)`) counts as a method.
-func (a *analysis) isMethod(i, open int) bool {
-	if i > 0 {
-		p := a.toks[i-1]
-		if p.kind == tkWord && methodModifiers[p.text] || a.isPunct(i-1, "*") {
-			return true
-		}
-	}
-	closeIdx := a.match[open]
-	if closeIdx < 0 {
-		return true
-	}
-	member := i > 0 && (a.isPunct(i-1, "{") || a.isPunct(i-1, "}") || a.isPunct(i-1, ";") || a.isPunct(i-1, ","))
-	return a.isPunct(closeIdx+1, "{") || a.isPunct(closeIdx+1, ":") && member
-}
-
-type namePosition uint8
-
-const (
-	posValue namePosition = iota
-	// posObjectKey is `{ __dirname: x }`.
-	posObjectKey
-	// posShorthand is `{ __dirname }` in an object literal.
-	posShorthand
-	// posExported is `export { __dirname }`.
-	posExported
-)
-
-// position is where the free name at word i stands in an object literal, if it does.
-func (a *analysis) position(i int) namePosition {
-	inObject := a.isPunct(i-1, "{") || a.isPunct(i-1, ",")
-	if !inObject {
-		return posValue
-	}
-	if a.isPunct(i+1, ":") {
-		return posObjectKey
-	}
-	brace := a.encl[i]
-	if brace < 0 || !a.isPunct(brace, "{") || a.toks[brace].jsxBrace || !(a.isPunct(i+1, ",") || a.isPunct(i+1, "}")) {
-		return posValue
-	}
-	if a.isWord(brace-1, "export") {
-		return posExported
-	}
-	return posShorthand
-}
-
-var declarationKeywords = setOf("const let var function class")
-
-// declares is whether the module declares name itself, so that its own is left alone: a binding by const, let, var, function or class, an import, an assignment, a
-// parameter (an arrow function's or a function's) and a destructuring pattern. The decisions are made on tokens, so a comment or a string that spells a declaration is
-// not one, and a use that merely looks like one (an argument, a condition, an object literal's shorthand property) is not.
-func (a *analysis) declares(name string) bool {
-	if a.declared == nil {
-		a.declared = map[string]bool{}
-		a.findDeclarations()
-	}
-	return a.declared[name]
-}
-
-var locationNames = setOf("__dirname __filename require")
-
-func (a *analysis) findDeclarations() {
-	toks := a.toks
-	for i, t := range toks {
-		if t.kind != tkWord {
-			continue
-		}
-		if t.text == "import" && !t.property && !a.isPunct(i+1, "(") && !a.isPunct(i+1, ".") {
-			a.importBindings(i)
-			continue
-		}
-		if t.property || !locationNames[t.text] || a.declared[t.text] {
-			continue
-		}
-		if a.declaresAt(i) {
-			a.declared[t.text] = true
-		}
-	}
-}
-
-// importBindings marks each of the three names that an import statement binds.
-func (a *analysis) importBindings(i int) {
-	for j := i + 1; j < len(a.toks); j++ {
-		t := a.toks[j]
-		if t.kind == tkString || a.isPunct(j, ";") || a.isWord(j, "from") && j+1 < len(a.toks) && a.toks[j+1].kind == tkString {
-			return
-		}
-		if t.kind == tkWord && !t.property && locationNames[t.text] {
-			a.declared[t.text] = true
-		}
-	}
-}
-
-// declaresAt is whether the word at i is where a binding of its name is made.
-func (a *analysis) declaresAt(i int) bool {
-	toks := a.toks
-	if i > 0 && toks[i-1].kind == tkWord && declarationKeywords[toks[i-1].text] {
-		return true
-	}
-	// An assignment, `name = value`, but not `==`, `===` or `=>`.
-	if a.isPunct(i+1, "=") && !(a.isPunct(i+2, "=") && toks[i+2].start == toks[i+1].end) {
-		return true
-	}
-	prevIsSeparator := a.isPunct(i-1, "(") || a.isPunct(i-1, ",")
-	enclosing := a.encl[i]
-	if enclosing < 0 {
-		return false
-	}
-	switch {
-	case a.isPunct(enclosing, "("):
-		// A parameter: `(a, name)`, `(name = 1)`, `(name: string)`.
-		next := i + 1
-		return prevIsSeparator && (a.isPunct(next, ")") || a.isPunct(next, ",") || a.isPunct(next, "=") || a.isPunct(next, ":") || a.isPunct(next, "?")) && a.parameterList(enclosing)
-	case a.isPunct(enclosing, "{") || a.isPunct(enclosing, "["):
-		// An element of a destructuring pattern: `{ name }`, `{ a, name }`, `{ a: name }`, `[a, name]`.
-		element := a.isPunct(i-1, "{") || a.isPunct(i-1, "[") || a.isPunct(i-1, ",") || a.isPunct(i-1, ":") && a.isPunct(enclosing, "{")
-		next := i + 1
-		return element && (a.isPunct(next, ",") || a.isPunct(next, "}") || a.isPunct(next, "]") || a.isPunct(next, "=")) && a.bindingPattern(enclosing)
-	}
-	return false
-}
-
-var conditionKeywords = setOf("if while for switch with")
-
-// parameterList is whether the `(` at open begins a function's parameters: its `)` is followed by `=>` or a body, or by a return type of a function declaration or
-// expression, and it does not belong to a condition.
-func (a *analysis) parameterList(open int) bool {
-	if open > 0 && a.toks[open-1].kind == tkWord && !a.toks[open-1].property && conditionKeywords[a.toks[open-1].text] {
-		return false
-	}
-	closeIdx := a.match[open]
-	if closeIdx < 0 {
-		return false
-	}
-	switch {
-	case a.isPunct(closeIdx+1, "=>"), a.isPunct(closeIdx+1, "{"):
-		return true
-	case a.isPunct(closeIdx+1, ":"):
-		// `function f(a): T {` and `function (a): T {`: a typed return of a function, which a conditional expression's `:` is not.
-		isFunction := a.isWord(open-1, "function") || a.isWord(open-2, "function") || a.isPunct(open-2, "*") && a.isWord(open-3, "function")
-		if !isFunction {
-			return false
-		}
-		for j := closeIdx + 2; j < len(a.toks); j++ {
-			switch {
-			case a.isPunct(j, "{"):
-				return true
-			case a.isPunct(j, ";") || a.isPunct(j, "="):
-				return false
-			}
-		}
-	}
-	return false
-}
-
-// bindingPattern is whether the bracket at open begins a destructuring pattern rather than an object or array literal.
-func (a *analysis) bindingPattern(open int) bool {
-	if open > 0 && a.toks[open-1].kind == tkWord && (a.toks[open-1].text == "const" || a.toks[open-1].text == "let" || a.toks[open-1].text == "var") {
-		return true
-	}
-	if closeIdx := a.match[open]; closeIdx >= 0 {
-		if a.isPunct(closeIdx+1, "=") && !(a.isPunct(closeIdx+2, "=") && a.toks[closeIdx+2].start == a.toks[closeIdx+1].end) || a.isWord(closeIdx+1, "of") || a.isWord(closeIdx+1, "in") {
-			return true
-		}
-	}
-	parent := a.encl[open]
-	if parent < 0 {
-		return false
-	}
-	switch {
-	case a.isPunct(parent, "("):
-		return (a.isPunct(open-1, "(") || a.isPunct(open-1, ",")) && a.parameterList(parent)
-	case a.isPunct(parent, "{") || a.isPunct(parent, "["):
-		nested := a.isPunct(open-1, ",") || a.isPunct(open-1, "[") || a.isPunct(open-1, "{") || a.isPunct(open-1, ":") && a.isPunct(parent, "{")
-		return nested && a.bindingPattern(parent)
-	}
-	return false
-}
-
-var fileAccessNames = setOf("readFileSync readFile readdirSync readdir existsSync statSync lstatSync accessSync createReadStream openSync opendirSync cpSync spawn spawnSync execFile execFileSync fork")
-
-// readsFiles is whether the module reads the file system, or starts a process or a worker by path.
-func (a *analysis) readsFiles() bool {
-	for i, t := range a.toks {
-		if t.kind != tkWord || !a.isPunct(i+1, "(") {
-			continue
-		}
-		switch {
-		case fileAccessNames[t.text]:
-			return true
-		case t.text == "Worker" && a.isWord(i-1, "new"):
-			return true
-		case t.text == "file" && t.property && a.isWord(i-2, "Bun"):
-			return true
-		}
-	}
-	return false
 }
