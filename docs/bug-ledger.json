@@ -10769,6 +10769,27 @@
       ]
     },
     {
+      "id": "BF-4d7e227",
+      "title": "fix(chord/workers): a worker waits for its parent to accept on the IPC pipe instead of giving up after 2 s",
+      "symptom": "fix(chord/workers): a worker waits for its parent to accept on the IPC pipe instead of giving up after 2 s",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4d7e2275c8",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_channel_windows_test.go::TestOpenProcessChannelWaitsForAParentThatAcceptsLate"
+      ]
+    },
+    {
       "id": "BF-4d965e3",
       "title": "The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `\u003c`, `\u003e`…",
       "symptom": "It used to sort the members and could cut a multi-byte character.",
