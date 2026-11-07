@@ -110,7 +110,7 @@ func newEntryRenderProxyComponent(
 		inactivity: inactivity,
 		invalidate: invalidate,
 		fallback:   []string{fmt.Sprintf("[%s]", customType)},
-		options:    extension.MessageRenderOptions{Expanded: options.Expanded},
+		options:    extension.MessageRenderOptions{Expanded: options.Expanded, Identity: options.Identity},
 		key:        renderKeys.key(conn, options.Identity),
 		rerender:   true,
 	}

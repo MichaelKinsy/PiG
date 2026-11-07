@@ -262,7 +262,6 @@ func TestRenderKeysNameIdentitiesAndReleaseThemWhenCollected(t *testing.T) {
 	}
 
 	runtime.KeepAlive(second)
-	first = nil
 	released := make(chan string, 1)
 	go func() {
 		for {
