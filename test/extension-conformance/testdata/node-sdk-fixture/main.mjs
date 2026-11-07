@@ -144,15 +144,20 @@ export default function (pi) {
     const ok = await pi.setModel({ provider: "probe", id: "model" });
     ctx.ui.notify(JSON.stringify([pi.getThinkingLevel(), ok]), "info");
   }});
-  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (_args, ctx) => {
+  // replicated-accessors reads after each write straight from the handler's first synchronous run. With the argument "after-await" (TestNodeReplicatedWritesReadBackAfterAwait) it is the product shape beside that: the same writes and reads after one real wait, as an extension's handler makes them once it has awaited a timer or a host call. The host's session pushes then reach the receive loop's waiter, which cannot read them until the handler's synchronous run ends, not the calls the handler makes in that run. This fixture registers pi.onLoaded as well (below), so every request also first awaits the loaded handlers' promise. The other SDK fixtures ignore the argument.
+  pi.registerCommand("replicated-accessors", { description: "Read the replicated accessors after each write", handler: async (args, ctx) => {
+    const wait = args === "after-await" ? () => new Promise((resolve) => setTimeout(resolve, 5)) : undefined;
     const lastType = () => { const entries = ctx.sessionManager.getEntries(); return entries[entries.length - 1]?.type ?? ""; };
     const out = { name0: ctx.sessionManager.getSessionName() ?? "", model0: ctx.model?.id ?? "", provider0: ctx.model?.provider ?? "" };
+    if (wait) await wait();
     pi.setSessionName("renamed");
     out.name1 = ctx.sessionManager.getSessionName() ?? "";
+    out.entryAfterName = lastType();
     pi.setLabel("one", "lab");
     out.entryAfterLabel = lastType();
     pi.sendMessage({ customType: "probe", content: "hi", display: true });
     out.entryAfterMessage = lastType();
+    out.entryCount = ctx.sessionManager.getEntries().length;
     await pi.setModel({ provider: "prov-after", id: "id-after" });
     out.model1 = ctx.model?.id ?? "";
     out.provider1 = ctx.model?.provider ?? "";
