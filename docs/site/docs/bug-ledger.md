@@ -238,6 +238,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2d71556](#bf-2d71556) | fix(codingagent): queued-message lines use the dim foreground; hint separator closes only the foreground | PiG's own defect | All platforms | Unreleased |
 | [BF-2d99958](#bf-2d99958) | A terminal's reply to the startup color query now applies the colors and ends the startup wait before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2deefc0](#bf-2deefc0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-2e8dcc1](#bf-2e8dcc1) | A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)… | PiG's own defect | All platforms | Unreleased |
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2f881ba](#bf-2f881ba) | "Your first extension" now says that `pig install --validate-only` exits 1 when the extension does not build | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2fb2917](#bf-2fb2917) | fix(interactive): label skill diagnostics [Skill warnings] and show the model scope in the fullscreen header | PiG's own defect | All platforms | Unreleased |
@@ -341,6 +342,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-40b5a89](#bf-40b5a89) | Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40bc651](#bf-40bc651) | The Anthropic event reader decides message_start and message_stop from the parsed event type as Pi does (not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-410d733](#bf-410d733) | `settings.json`, `trust.json` and `auth.json` are written as Pi's `JSON.stringify` writes them: `<`, `>` and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4117a5a](#bf-4117a5a) | fix(extensions): skip the pending-state flush for a reply with no managed extension | PiG's own defect | All platforms | Unreleased |
 | [BF-411a8cb](#bf-411a8cb) | Background runs of pi-subagents (and other helpers an extension starts as a detached Node process) complete… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4163646](#bf-4163646) | `AuthStorage` file semantics: new live-Pi oracle `TestAuthStorageFileMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-41b305d](#bf-41b305d) | Codemode rejects a `// @options:` line that is not the first line of the script with an error before the… | PiG's own defect | All platforms | 0.5.0 |
@@ -736,6 +738,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6e789bb](#bf-6e789bb) | A host call that read a change of the model, session id or name between the change and its report to the… | PiG's own defect | All platforms | Unreleased |
 | [BF-6ea3ba8](#bf-6ea3ba8) | `pig status` now gives a skill without a `description` the health `not loaded: description is required`, and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f165a2](#bf-6f165a2) | After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted… | PiG's own defect | All platforms | 0.7.0 |
@@ -1272,6 +1275,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c1162b4](#bf-c1162b4) | `Shift+Enter` inserts a newline instead of queueing a follow-up in Apple Terminal setups that send `ESC` +… | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c129008](#bf-c129008) | Registering a native provider did not refresh the Session's active model from the registry, as Pi does after… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1524ce](#bf-c1524ce) | fix(durable/core): a registry change tells the task graph its blocked reasons may have changed | PiG's own defect | All platforms | Unreleased |
 | [BF-c15309d](#bf-c15309d) | fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
@@ -1561,6 +1565,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ebbdfe7](#bf-ebbdfe7) | fix(extensions): load highlight.js grammars after the startup session_start, as Pi does | PiG's own defect | All platforms | Unreleased |
 | [BF-ebec8e2](#bf-ebec8e2) | A URL host with an `xn--` label that is empty after IDNA mapping (`ws://xn--。`, `https://..\ufeffxn--`) or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ebfeed0](#bf-ebfeed0) | `getSystemPromptOptions().hiddenTools` lists hidden tools in the order the `prepareLoadout` hooks hid them… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ec1e0b6](#bf-ec1e0b6) | A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ec2080a](#bf-ec2080a) | A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ecc7b76](#bf-ecc7b76) | fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop | PiG's own defect | All platforms | Unreleased |
 | [BF-ed01bf6](#bf-ed01bf6) | Resuming a very long session no longer reads and decodes every entry of the branch to restore the tool loadout | PiG's own defect | All platforms | 0.7.0 |
@@ -4754,6 +4759,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2deefc0db2` (2026-10-31)
 - **Tests:** `internal/codingagent/config_upstream_test.go::TestConfiguredSelfUpdateParityProbe`, `internal/codingagent/prompts/system_prompt_upstream_test.go::TestUpstreamSystemPrompt`
 
+### BF-2e8dcc1
+
+**A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it.
+- **Root cause:** A synchronous host call that settles while the runtime is still handling the ready frame (the xref hello that follows it) applied the state_update the host had pushed after the ready frame at once (applyQueuedStateUpdates), and the ready frame's own, older state then replaced it. The state the host pushed when a TUI frontend bound its UI (hasUI) was lost, ctx.ui was the no-op UI, and a widget set by a tool never reached the host: TestSetWidgetRendererAcrossSDKs timed out for the isolated and packed Node cells.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2e8dcc1eea` (2026-11-07)
+- **Tests:** `test/extension-conformance/host_surface_test.go::TestSetWidgetRendererAcrossSDKs`
+- **Release note:** A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it. The queued update is now applied only after the ready state.
+
 ### BF-2ea8ad2
 
 **The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK…**
@@ -6181,6 +6200,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `410d7332a8` (2026-10-06), `8d23cfcee3` (2026-10-06), `a223fe3ff9` (2026-10-06), `fbd3640da9` (2026-10-06)
 - **Tests:** `ai/auth_credential_payload_test.go::TestCredentialCustomJSONRetainsUTF16Payload`, `ai/auth_stringify_test.go::TestAuthStorageWritesJSONStringifyText`, `automation/ci/portlint/checks/checks_test.go::TestAllowMarkerNeedsAReason`, `automation/ci/portlint/checks/checks_test.go::TestAnalyzers`, `automation/ci/portlint/checks/checks_test.go::TestEveryCheckIsDocumented`, `automation/ci/portlint/checks/testdata/src/rawsymlink/a_test.go::TestBad`, `automation/ci/portlint/checks/testdata/src/rawsymlink/b_unix_test.go::TestUnixOnly`, `automation/ci/portlint/checks/testdata/src/testisolation/a_test.go::TestBad` and 14 more in docs/bug-ledger.json
 - **Release note:** `settings.json`, `trust.json` and `auth.json` are written as Pi's `JSON.stringify` writes them: `<`, `>` and `&` stay literal instead of `\u0026`-style escapes, so a command-backed key or a `shellCommandPrefix` such as `source x && ` keeps its text. Saving a setting also rewrites numbers and strings in Pi's form, and `trust.json` sorts its paths by UTF-16 code units as Pi does.
+
+### BF-4117a5a
+
+**fix(extensions): skip the pending-state flush for a reply with no managed extension**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): skip the pending-state flush for a reply with no managed extension
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4117a5ac52` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-411a8cb
 
@@ -11654,6 +11686,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6e6a0dd1cc` (2026-10-10)
 - **Tests:** `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain`, `internal/codingagent/session_undecodable_test.go::TestUndecodableEntriesAreCountedAndOmitted`, `internal/sessionentry/union_test.go::TestDecodeSessionEntryKeepsRecordsNoMemberDescribes`, `test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi`
 - **Release note:** A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it. Examples are a string `timestamp`, numeric `content`, a text block whose `text` is a number, a usage count written as a string, `isError: "no"`, a numeric or missing `role`, and a message that is a number, a string or an array rather than an object. Before, PiG dropped the message from the session context, the projection and RPC `get_messages`. The message is written exactly as it was read. PiG reads a wrong-typed member as absent. An object or array member keeps the parts that have the right types. A content block with an unknown or wrong-typed `type` is left out of the provider request, as Pi's provider conversions skip it.
+
+### BF-6e789bb
+
+**A host call that read a change of the model, session id or name between the change and its report to the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A host call that read a change of the model, session id or name between the change and its report to the extensions, and the first `watchSessionLog` read of a replaced Session, could reply ahead of the state that names it.
+- **Root cause:** A change of the model, session id or name is visible to a host call before its owner reports it (Host.hostStateChanged raises the epoch after the change), so a call that read the change could reply ahead of the state that names it. The Session now brackets each such change (ObserveReplicatedStateScope: before the change is visible, and after the report), the extension host counts the open brackets (hostStateInflight, bound through UIBridge.HostStateChanging and HostStateSettled in both modes), and a reply flushes the state first while one is open, as one does when an epoch is pending.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6e789bbd91` (2026-11-07)
+- **Tests:** `coding/extension/host/subprocess/host_state_push_test.go::TestAReplyFlushesTheStateWhileAChangeIsInFlight`, `coding/extension/host/subprocess/host_state_push_test.go::TestAWatchSessionLogReplyFlushesUnderItsCursorLock`, `coding/session_replicated_state_test.go::TestSessionBracketsEveryChangeOfIdentityState`, `test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanAChangeInFlightAcrossSDKs`
+- **Release note:** A host call that read a change of the model, session id or name between the change and its report to the extensions, and the first `watchSessionLog` read of a replaced Session, could reply ahead of the state that names it. The Session now brackets each such change, and the host flushes its state before every reply while one is in flight, and under the cursor lock for `watchSessionLog`.
 
 ### BF-6ea3ba8
 
@@ -19122,6 +19168,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/validate_arguments_order_test.go::TestValidateToolArgumentsReportsTheArgumentsInTheCallsOrder`, `durable/codemode/codemode_test.go::TestDurableCodeMode`, `durable/codemode/models_test.go::TestCodeModeModels`, `durable/core/driver/harness_nested_slots_core_test.go::TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith`, `durable/harness/harness_tasks_scheduling_test.go::TestTaskClose`, `durable/harness/tool_nested_test.go::TestANestedCallKeepsTheCallersArgumentOrder`, `durable/harness/tool_nested_test.go::TestANestedCallSlotShowsTheArgumentsItRunsWith`
 - **Release note:** A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored call and execute intent, the `pi.live` nested slot, tool events, validation messages, and code mode's "took a different path" message (`tools.name({...})`) no longer sort them. Code mode's `models.*` calls no longer store an extra `order` argument.
 
+### BF-c129008
+
+**Registering a native provider did not refresh the Session's active model from the registry, as Pi does after…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.
+- **Root cause:** Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c1290084cb` (2026-11-07)
+- **Tests:** `internal/codingagent/native_provider_observers_test.go::TestRegisterNativeProviderReportsToTheRegistryObservers`
+- **Release note:** Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.
+
 ### BF-c1524ce
 
 **fix(durable/core): a registry change tells the task graph its blocked reasons may have changed**
@@ -23125,6 +23185,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ebfeed0965` (2026-10-05)
 - **Tests:** `coding/session_hidden_tools_order_test.go::TestSystemPromptOptionsListHiddenToolsInTheOrderTheHooksHidThem`
 - **Release note:** `getSystemPromptOptions().hiddenTools` lists hidden tools in the order the `prepareLoadout` hooks hid them, as Pi does, instead of sorted.
+
+### BF-ec1e0b6
+
+**A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update.
+- **Root cause:** A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ec1e0b68ca` (2026-11-07)
+- **Tests:** `extensions/sdk/footer_branch_worker_test.go::TestFooterBranchCallbackMayMakeHostCalls`, `extensions/sdk/footer_branch_worker_test.go::TestFooterBranchCallbacksRunInOrder`
+- **Release note:** A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update. The callbacks now run on a worker, one change at a time in the order the branch changed, so a callback can call the host as it can in Pi.
 
 ### BF-ec2080a
 
