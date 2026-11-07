@@ -296,13 +296,14 @@ export class EditorComponentHost {
     runtime.notify("ui.editor.render", { key: session.key, lines: out, width, seq: session.frameSeq, wantsKeyRelease, ...(capturesViewportInput ? { capturesViewportInput: true } : {}) });
   }
 
-  // run calls one editor method for the host and renders the result, as Pi's
-  // TUI renders after input. An exception is the extension's error.
-  run(session, fn) {
+  // run calls one editor method (what) for the host and renders the result, as Pi's
+  // TUI renders after input. An exception is the extension's error, reported as the
+  // other SDKs report it: "editor <method> failed: <message>".
+  run(session, what, fn) {
     try {
       fn(session.component);
     } catch (err) {
-      this.runtime.fireAndForget("ui.notify", { message: `editor failed: ${err?.message || String(err)}`, level: "error" });
+      this.runtime.fireAndForget("ui.notify", { message: `editor ${what} failed: ${err?.message || String(err)}`, level: "error" });
     }
     this.renderNow(session);
   }
@@ -314,29 +315,29 @@ export class EditorComponentHost {
       case "ui.editor.input": {
         const session = this.current(args?.key);
         if (session) {
-          this.run(session, (editor) => editor.handleInput(String(args.data ?? "")));
+          this.run(session, "handleInput", (editor) => editor.handleInput(String(args.data ?? "")));
           this.runtime.notify("ui.editor.inputDone", { key: session.key });
         }
         return true;
       }
       case "ui.editor.mouse": {
         const session = this.current(args?.key);
-        if (session) this.run(session, (editor) => editor.handleMouse?.(args.event ?? {}));
+        if (session) this.run(session, "handleMouse", (editor) => editor.handleMouse?.(args.event ?? {}));
         return true;
       }
       case "ui.editor.setText": {
         const session = this.current(args?.key);
-        if (session) this.run(session, (editor) => editor.setText(String(args.text ?? "")));
+        if (session) this.run(session, "setText", (editor) => editor.setText(String(args.text ?? "")));
         return true;
       }
       case "ui.editor.insertText": {
         const session = this.current(args?.key);
-        if (session) this.run(session, (editor) => editor.insertTextAtCursor?.(String(args.text ?? "")));
+        if (session) this.run(session, "insertTextAtCursor", (editor) => editor.insertTextAtCursor?.(String(args.text ?? "")));
         return true;
       }
       case "ui.editor.addToHistory": {
         const session = this.current(args?.key);
-        if (session) this.run(session, (editor) => editor.addToHistory?.(String(args.text ?? "")));
+        if (session) this.run(session, "addToHistory", (editor) => editor.addToHistory?.(String(args.text ?? "")));
         return true;
       }
       case "ui.editor.configure": {
@@ -349,7 +350,7 @@ export class EditorComponentHost {
         session.thinkingLevel = thinkingLevel;
         session.showHardwareCursor = args.showHardwareCursor === true;
         session.configured = true;
-        this.run(session, (editor) => {
+        this.run(session, "configure", (editor) => {
           if (editor.setPaddingX !== undefined) editor.setPaddingX(Number(args.paddingX || 0));
           if (editor.setAutocompleteMaxVisible !== undefined) editor.setAutocompleteMaxVisible(Number(args.autocompleteMaxVisible || 5));
           if (runtimeRequire("./shims/pi-dist/pi-tui/tui.js").isFocusable(editor)) editor.focused = args.focused !== false;
@@ -386,7 +387,7 @@ export class EditorComponentHost {
       case "ui.editor.invalidate": {
         // The theme changed: Pi's TUI calls invalidate() on every component it holds, and the editor drops what it cached.
         const session = this.current(args?.key);
-        if (session) this.run(session, (editor) => editor.invalidate?.());
+        if (session) this.run(session, "invalidate", (editor) => editor.invalidate?.());
         return true;
       }
       case "ui.editor.submitted": {
