@@ -3243,6 +3243,46 @@
       "tests": []
     },
     {
+      "id": "BF-1724c9e",
+      "title": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose…",
+      "symptom": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`.",
+      "rootCause": "Pi main's rule, ahead of the pin. An agent directory whose `auth.json` is a symlink to a shared file locked a different directory than the real file, so two processes entered the credential section together and refreshed one single-use OAuth refresh token twice (`invalid_grant`).",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D236",
+      "removeWhen": "the pin reaches a Pi release containing 081a6e87f. Then the two call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose `auth.json` is a symlink to a shared file, now take one lock instead of two, so they no longer refresh the same single-use OAuth token at the same time and fail with `invalid_grant`. The lock of `auth.json`, `models.json` and `mcp-auth.json` now follows symlinks to the real file, as Pi main does (D236).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1724c9e834",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "79461e0ddf",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "800dd85f35",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "a018d069d8",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "ai/auth_dangling_link_test.go::TestAuthStorageCreatesTheTargetOfADanglingSymlinkedAuthFile",
+        "ai/auth_dangling_link_test.go::TestFileModelsStoreCreatesTheTargetOfADanglingSymlinkedFile",
+        "internal/pilock/symlink_alias_test.go::TestAuthLockOfASymlinkedFileInAnotherDirectoryIsTheRealFilesLock",
+        "internal/pilock/symlink_alias_test.go::TestAuthLocksShareOneLockAcrossSymlinkedPaths",
+        "internal/pilock/symlink_alias_test.go::TestSettingsLockStaysOnTheGivenPath"
+      ]
+    },
+    {
       "id": "BF-173060b",
       "title": "fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3…",
       "symptom": "fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3 test and async rows",
@@ -8458,8 +8498,7 @@
       ],
       "tests": [
         "coding/cli/extension_upgrade_analyze_off_test.go::TestUpgradeInAGoSDKStrippedBinaryNamesTheStrip",
-        "coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK",
-        "coding/cli/strip_upgrade_link_test.go::TestStripExtensionSDKGoBuildOmitsTheUpgradeAnalysis"
+        "coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK"
       ]
     },
     {
@@ -10323,6 +10362,28 @@
       ]
     },
     {
+      "id": "BF-4625b4c",
+      "title": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength`…",
+      "symptom": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength` and `maxLength` in grapheme clusters, `multipleOf` with a tolerance of 1e-10, `uniqueItems` by TypeBox's hash (0 and -0 differ), and the `hostname`, `idn-hostname`, `idn-email` and `regex` formats with TypeBox's own checks, as TypeBox does in Pi.",
+      "rootCause": "D226 made `internal/typebox` reachable from `cmd/pig`, and its `Value.Check` compiled every schema with the vendored JSON Schema validator, so the whole validator (and `golang.org/x/text/message`, through its localized error kinds) came into the binary: +622,592 bytes on linux_amd64.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength` and `maxLength` in grapheme clusters, `multipleOf` with a tolerance of 1e-10, `uniqueItems` by TypeBox's hash (0 and -0 differ), and the `hostname`, `idn-hostname`, `idn-email` and `regex` formats with TypeBox's own checks, as TypeBox does in Pi. They counted code points, compared exactly and followed a JSON Schema library's format rules.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4625b4cc3d",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases"
+      ]
+    },
+    {
       "id": "BF-462b96e",
       "title": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between…",
       "symptom": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`).",
@@ -10975,6 +11036,34 @@
         "durable/harness/partial_object_test.go::TestPartialObjectEqualsTheEncodedPartial",
         "durable/harness/streamed_partials_memory_test.go::TestStreamedPartialsCommitAtACostThatFollowsTheNewText"
       ]
+    },
+    {
+      "id": "BF-4924f3a",
+      "title": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more…",
+      "symptom": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases.",
+      "rootCause": "Schema.IsMinLength, IsMaximum, IsMultipleOf, IsMinItems, IsEnum, IsPattern and the other guards of typebox 1.3.27 (build/schema/types) accept a keyword only when it has its type: a finite number (minLength, maxLength, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, minProperties, maxProperties), a string (pattern, format), an array (enum) or a boolean (uniqueItems). CheckSchema and ErrorSchema skip any other keyword, so {\"minLength\":\"3\"} passes \"\", enum 3 passes everything, and an Infinity limit (null once it is JSON) is skipped. checkKeyword failed the check for such a keyword, as the comment above it said a NaN comparison does, so a schema with a…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases. A schema keyword that has the wrong type (`{\"minLength\": \"3\"}`, `enum: 3`, `pattern: 5`, `multipleOf: \"2\"`, `maximum: null`) is skipped, so it accepts every value, as in Pi; it rejected values before, and `Errors` reported a limit that was empty. `const` and `enum` accept an object for an array that has the same indices and `length` (`{\"0\": \"a\", \"length\": 1}` equals `[\"a\"]`). `uniqueItems` ignores an object's `constructor` member, so `{}` and `{\"constructor\": 2}` count as duplicates.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4924f3a174",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "62f99dccb6",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "7071ef14e3",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-495e25b",
@@ -22977,6 +23066,82 @@
       "tests": []
     },
     {
+      "id": "BF-7febcec",
+      "title": "Quitting while an OAuth token refresh is in flight no longer loses the new token",
+      "symptom": "Quitting while an OAuth token refresh is in flight no longer loses the new token.",
+      "rootCause": "Pi main's rule, ahead of the pin. If the process exits after the token request went out but before the new token is written, the provider has spent the old single-use refresh token and auth.json keeps only that one; the next request fails with `invalid_grant`.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D237",
+      "removeWhen": "the pin reaches a Pi release containing b2cb62923. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quitting while an OAuth token refresh is in flight no longer loses the new token. If pig exited after the token request went out but before the new token was written, `auth.json` kept the refresh token the provider had already spent and the next request failed with `invalid_grant`; an RPC client that stopped pig right after startup, while the background catalog refresh refreshed an expired login, hit this. Interactive, print, JSON and RPC mode now wait for a refresh that has started to be saved before the process exits, with no timeout beyond the 15 s refresh and the 30 s auth lock wait; a second signal exits at once in RPC and print mode. The wait comes before pig stops its extensions, and a refresh that has started (a subprocess extension provider's, in the catalog refresh or at request time, or the Radius gateway's) is no longer cut or discarded when its caller is cancelled, as Pi main does (D237).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "22b37bfeb9",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "353168f26b",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "79461e0ddf",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "7febcec6be",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "800dd85f35",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "a018d069d8",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "d104187663",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "e64124fffb",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledIgnoresLaterModificationsAndHonoursCancellation",
+        "ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledResolvesAfterAPendingModificationFails",
+        "ai/runtime_credentials_settled_test.go::TestRuntimeCredentialsSettledWaitsUntilPendingModificationsAreWritten",
+        "coding/cli/interactive_oauth_refresh_exit_test.go::TestInteractiveExitWaitsForAnExtensionOAuthRefreshToBeSaved",
+        "coding/cli/print_mode_credential_writes_test.go::TestPrintModeWaitsForAStartedOAuthRefreshToBeSavedBeforeReturning",
+        "coding/cli/rpc_oauth_refresh_exit_test.go::TestPrintModeExitWaitsForAnExtensionOAuthRefreshToBeSaved",
+        "coding/cli/rpc_oauth_refresh_exit_test.go::TestRPCExitWaitsForAStartedOAuthRefreshToBeSaved",
+        "coding/extension/host/subprocess/native_provider_oauth_abort_test.go::TestNativeProviderAuthSavesAnExtensionsRefreshAbortedMidRequest",
+        "coding/extension/host/subprocess/native_provider_oauth_abort_test.go::TestNativeProviderAuthStartsNoRefreshForACallerThatWasAlreadyCancelled",
+        "coding/extension/host/subprocess/native_provider_test.go::TestNativeProviderHostLifecycle",
+        "coding/native_provider_auth_exit_test.go::TestNativeProviderAuthGivesTheCallersCancellationToTheResolver",
+        "coding/native_provider_auth_exit_test.go::TestNativeProviderAuthNeverStartsARefreshTheAbortBeatInsideTheTransaction",
+        "coding/native_provider_auth_exit_test.go::TestNativeProviderAuthSavesARefreshedCredentialWhenToAuthFailsWithTheAbort",
+        "coding/native_provider_auth_exit_test.go::TestNativeProviderAuthSavesTheRotatedTokenAfterTheCallerWasCancelled",
+        "coding/native_provider_auth_exit_test.go::TestRuntimeCloseDoesNotWaitForARuntimeKeyResolverWithAStoredOAuthCredential",
+        "coding/native_provider_auth_exit_test.go::TestRuntimeCloseDoesNotWaitForAnAPIKeyResolverOfANativeProvider",
+        "coding/native_provider_auth_exit_test.go::TestRuntimeCloseDoesNotWaitForTheResolutionOfAValidOAuthCredential",
+        "coding/native_provider_auth_exit_test.go::TestRuntimeCloseDoesNotWaitForToAuthAfterARefresh",
+        "coding/runtime_close_credential_writes_test.go::TestNativeProviderCatalogRefreshSavesTheRotatedTokenAfterItsContextEnded",
+        "coding/runtime_close_credential_writes_test.go::TestRuntimeCloseSettlesCredentialWritesBeforeItRetiresTheFactoryResources",
+        "coding/runtime_close_credential_writes_test.go::TestRuntimeCloseWaitsForARefreshWhoseCallerWasCancelled",
+        "coding/runtime_close_credential_writes_test.go::TestRuntimeCloseWaitsForTheCatalogRefreshOfAnExpiredCredentialAfterItsContextEnded",
+        "coding/runtime_close_credential_writes_test.go::TestRuntimeCloseWaitsUntilTheRotatedTokenOfAStartedRefreshIsSaved",
+        "coding/runtime_close_credential_writes_test.go::TestRuntimeSettleCredentialWritesReturnsTheCancellationCause",
+        "internal/codingagent/radius_models_test.go::TestRadiusRefreshSurvivesCancellationOnceTheTokenRequestWasSentAndExitWaitsForIt"
+      ]
+    },
+    {
       "id": "BF-8001cc5",
       "title": "`SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths…",
       "symptom": "`SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths, getThemePaths, getAllModelThinkingLevels, getThinkingBudgets, getTerminalCapabilityOverrides, getWarnings, getHttpIdleTimeoutMs, getWebSocketConnectTimeoutMs, getExternalEditorCommand): new live-Pi oracle `TestSettingsManagerCollectionGettersMatchPi` (2,500 layered global/project file pairs; throws compared by message).",
@@ -30421,6 +30586,27 @@
       "tests": [
         "chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
       ]
+    },
+    {
+      "id": "BF-D272",
+      "title": "The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the…",
+      "symptom": "none.",
+      "rootCause": "the type checker was 1.4 MB of a binary every user downloads, and only the upgrade path runs it. The go command is already required by that path, because it lists and builds the extension. The driver is compiled by the user's own toolchain, so the compiler export data and `go/types` match.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D272",
+      "removeWhen": "the owner prefers the type checker in the binary again, or Go ships `go/types` in a form that the binary can link at no size cost.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "93734af470",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-a076a50",
@@ -50091,6 +50277,16 @@
       "entry": "BF-D235"
     },
     {
+      "id": "D236",
+      "title": "The auth lock follows the symlinks of auth.json to the real file",
+      "entry": "BF-1724c9e"
+    },
+    {
+      "id": "D237",
+      "title": "Exit waits for a started OAuth refresh to be saved",
+      "entry": "BF-7febcec"
+    },
+    {
       "id": "D238",
       "title": "The output limit leaves 15% of the estimated input unused",
       "entry": "BF-D238"
@@ -50224,6 +50420,11 @@
       "id": "D267",
       "title": "The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes",
       "entry": "BF-D267"
+    },
+    {
+      "id": "D272",
+      "title": "The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the…",
+      "entry": "BF-D272"
     }
   ],
   "exemptCommits": {
