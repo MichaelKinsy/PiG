@@ -349,7 +349,7 @@ its state under it and drops it on `render_release`) and says whether the host
 built the component (`rerender`). The Node runtime keeps the first decoded
 message object and the component its renderer last returned per key, so Pi's
 `WeakMap` keyed by message and a `MouseRegion` work unchanged; its components
-take the click only (D277). Cost: a click does no IPC and no transcript
+take the click only where their `MouseRegion`s are: the runtime finds the regions' rectangles with Pi's own dispatch and the host hit-tests them, so a click on a card's padding falls through to selection as in Pi (a hand-written `handleMouse` is the residue, D277). Cost: a click does no IPC and no transcript
 replay on the loop; it marks the dispatch path dirty (`Container.handleMouse`) so
 the cached rows above the handler are drawn again, and one request follows.
 

@@ -170,3 +170,55 @@ func TestRendererClickAcrossSDKs(t *testing.T) {
 		})
 	}
 }
+
+// TestRendererClickOutsideTheRegionFallsThrough: a Node renderer's card in a padded Box answers a click only where its MouseRegion is (Pi's
+// Box.handleMouse leaves the padding unhandled, and the unhandled click falls through to text selection). The host hit-tests the rectangles the runtime
+// found with Pi's own dispatch, so a click on the padding is left unhandled and does not count, and a click inside is handled and counted.
+func TestRendererClickOutsideTheRegionFallsThrough(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+	for _, tc := range []harnessCase{{name: "subprocess-node", make: makeSubprocessNodeHarness, extName: "node-sdk-fixture"}, {name: "subprocess-node-packed", make: makeSubprocessNodePackedHarness, extName: "node-sdk-fixture"}} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			renderer := h.runner.MessageRenderer("conformance-click-padded")
+			if renderer == nil {
+				t.Fatal("conformance-click-padded has no renderer")
+			}
+			card, ok := renderer(extension.CustomMessage{CustomType: "conformance-click-padded", Content: "body", Display: true}, extension.MessageRenderOptions{Identity: extension.NewRenderIdentity()}, nil).(interface {
+				Render(int) []string
+				HandleMouse(tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
+			})
+			if !ok {
+				t.Fatal("the renderer's component takes no mouse")
+			}
+			draws := func(line string) func() bool {
+				return func() bool {
+					lines := card.Render(72)
+					return len(lines) == 1 && strings.TrimSpace(lines[0]) == line
+				}
+			}
+			waitFor(t, draws("clickpadded:body:clicks=0:last=none:expanded=false"))
+			if result := card.HandleMouse(mouseEvent(tui.MouseClick, 1, 0)); result != nil {
+				t.Fatalf("click on the padding handled: %+v", result)
+			}
+			if result := card.HandleMouse(mouseEvent(tui.MouseClick, 70, 0)); result != nil {
+				t.Fatalf("click on the right padding handled: %+v", result)
+			}
+			if result := card.HandleMouse(mouseEvent(tui.MouseClick, 10, 0)); result == nil || !result.Handled {
+				t.Fatalf("click inside the region = %+v, want handled", result)
+			}
+			// The count is 1: the padding clicks reached nothing, and the region saw the click in its own coordinates (the Box shifts them by its padding).
+			waitFor(t, draws("clickpadded:body:clicks=1:last=7,0:expanded=false"))
+		})
+	}
+}

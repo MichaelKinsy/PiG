@@ -32,7 +32,7 @@ import { createExtensionRuntime } from "./shims/pi-dist/pi-coding-agent/core/ext
 import { installCloneHooks, installTestCollect, Realm } from "./xref.mjs";
 import { SharedBus } from "./event-bus.mjs";
 import { deriveView, surfaceTheme, VIEW_THEME_TOKENS } from "./view-walk.mjs";
-import { dispatchComponentMouse, dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
+import { dispatchComponentMouse, dispatchOverlayMouse, mouseRegions, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
 
 installTimerOrigin();
@@ -3342,8 +3342,16 @@ export class Runtime {
     return this.withSurfaceTheme(component, () => {
       const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
       const result = this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
-      // pig divergence (D277): the host answers the terminal before this runtime can, so it hands a component that takes the mouse the clicks inside it and no other event.
-      if (key && takesMouse(component)) result.mouse = true;
+      if (key && takesMouse(component)) {
+        // The host hit-tests the rectangles of the component's MouseRegions as Pi's dispatch would; the click outside them is left to selection.
+        const regions = mouseRegions(component, Number(payload.width) || 0, Array.isArray(lines) ? lines.length : 0);
+        if (regions === undefined) {
+          // pig divergence (D277): a component that handles the mouse itself answers for itself, which the host cannot ask before it answers the terminal, so it gets the clicks inside it and no other event.
+          result.mouse = true;
+        } else if (regions.length > 0) {
+          result.regions = regions;
+        }
+      }
       return result;
     });
   }

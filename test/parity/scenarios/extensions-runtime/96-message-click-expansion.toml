@@ -6,7 +6,7 @@
 # the same object on every rebuild), a MouseRegion over the card flips it on a left click, and a new global expansion resets it. The session fixture
 # (testdata/click-cwd) holds a compaction summary, a skill block, a branch summary and two `click-card` messages, all collapsed on resume.
 #
-# Clicks go bottom to top so an expansion never moves a row still to be clicked (height 60: nothing scrolls; both hosts lay the transcript out from row 3 with
+# The first click is on the second card's padding, outside its MouseRegion (the card sits in a padded Box), which Pi leaves unhandled. The rest go bottom to top so an expansion never moves a row still to be clicked (height 60: nothing scrolls; both hosts lay the transcript out from row 3 with
 # the quiet startup header): the second card, the first card, the
 # branch summary, the skill block, the compaction summary, then the first card again, which the expansions above it moved to row 33 (it collapses; the second stays open). The crop starts at the
 # compaction heading and ends with the second card's details.
@@ -47,6 +47,14 @@ ready_pattern_pi = "card:second card:closed"
 ready_timeout_seconds = 30
 capture_start = "[compaction]"
 capture_end = "details of second card"
+
+# A click on the card's padding (column 2) is outside its MouseRegion: Pi leaves it unhandled and it falls through to text selection, so the card
+# stays closed and the next click on the region opens it.
+[[tmux.steps]]
+keys = ["hex:1b 5b 3c 30 3b 32 3b 32 36 4d 1b 5b 3c 30 3b 32 3b 32 36 6d"]
+wait_visible_contains = ["card:second card:closed"]
+wait_stable_milliseconds = 400
+wait_timeout_seconds = 10
 
 [[tmux.steps]]
 keys = ["hex:1b 5b 3c 30 3b 35 3b 32 36 4d 1b 5b 3c 30 3b 35 3b 32 36 6d"]

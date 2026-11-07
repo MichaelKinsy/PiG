@@ -1552,6 +1552,18 @@ type RenderResult struct {
 	// Mouse is set by an extension whose component lives in its process (Node) and takes the mouse; the host then hands it the clicks inside the
 	// component (a kit view needs no flag: its mouse regions are in the view).
 	Mouse bool `json:"mouse,omitempty"`
+	// Regions are the rectangles, local to the component's first cell, in which the MouseRegions of a Node component's tree answer a click, as Pi's
+	// hit test finds them; the host hit-tests them itself and leaves a click outside them to text selection. Absent for a component without a
+	// MouseRegion, and for one that handles the mouse itself (Mouse).
+	Regions []RenderMouseRegion `json:"regions,omitempty"`
+}
+
+// RenderMouseRegion is one rectangle of RenderResult.Regions.
+type RenderMouseRegion struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
 }
 
 // RenderComponentPayload is the argument of RequestRenderMessage and RequestRenderEntry: the message (PayloadKey "message") or entry ("entry") and

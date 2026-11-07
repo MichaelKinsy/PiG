@@ -121,8 +121,33 @@ func TestRenderProxyViewMouseRegionClickReachesTheExtensionInTheNextRequest(t *t
 	}
 }
 
-// A component that lives in the extension (Node) takes the click only; the host answers at once and the extension gets the event local to the
-// component. Its other events stay with the host's selection and scrolling.
+// A Node component whose tree has MouseRegions is hit-tested by the host from the rectangles the runtime found with Pi's own dispatch: a click inside
+// one is handled and reaches the extension, a click outside every one (the padding of the card) is left unhandled so it falls through to text
+// selection as in Pi, and the other events are never handled.
+func TestRenderProxyNodeMouseRegionsAreHitTestedLikePi(t *testing.T) {
+	rig := newMouseRig(t, extension.NewRenderIdentity())
+	rig.shown(t, RenderResult{Lines: []string{"drawn by node", "second row"}, Regions: []RenderMouseRegion{{X: 3, Y: 0, Width: 20, Height: 2}}})
+	for _, outside := range [][2]int{{1, 0}, {2, 1}, {23, 0}, {5, 2}} {
+		if result := rig.component.HandleMouse(clickAt(outside[0], outside[1])); result != nil {
+			t.Fatalf("click at %v outside every region handled: %+v", outside, result)
+		}
+	}
+	for _, kind := range []tui.TuiMouseEventType{tui.MousePress, tui.MouseRelease, tui.MouseDrag, tui.MouseMove, tui.MouseWheel} {
+		if result := rig.component.HandleMouse(tui.TuiMouseEvent{Type: kind, Button: tui.MouseButtonLeft, X: 5, Y: 0, Width: 80, Height: 2}); result != nil {
+			t.Fatalf("%s handled: %+v", kind, result)
+		}
+	}
+	if result := rig.component.HandleMouse(clickAt(22, 1)); result == nil || !result.Handled {
+		t.Fatalf("click inside the region = %+v, want handled", result)
+	}
+	_, next := rig.request(t)
+	if len(next.Events) != 1 || next.Events[0].Mouse == nil || next.Events[0].Mouse.X != 22 || next.Events[0].Mouse.Y != 1 {
+		t.Fatalf("events = %+v, want the one click at 22,1", next.Events)
+	}
+}
+
+// A Node component that handles the mouse itself (not a MouseRegion) is the residue (D277): it takes the click only, answered as handled for the whole
+// component, and gets the event local to the component. Its other events stay with the host's selection and scrolling.
 func TestRenderProxyNodeComponentTakesClickOnly(t *testing.T) {
 	rig := newMouseRig(t, extension.NewRenderIdentity())
 	rig.shown(t, RenderResult{Lines: []string{"drawn by node"}, Mouse: true})

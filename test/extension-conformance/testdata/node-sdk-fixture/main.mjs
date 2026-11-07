@@ -1974,6 +1974,13 @@ export default function (pi) {
     };
   };
   pi.registerMessageRenderer("conformance-click-message", clickCard("clickcard", (message) => message.content));
+  // A card in a padded Box, as Pi's own cards are: the MouseRegion answers inside the padding only, so Box.handleMouse leaves a click on the padding unhandled.
+  const paddedClick = clickCard("clickpadded", (message) => message.content);
+  pi.registerMessageRenderer("conformance-click-padded", (message, options, theme) => {
+    const box = new piTui.Box(3, 0);
+    box.addChild(paddedClick(message, options, theme));
+    return box;
+  });
   pi.registerEntryRenderer("conformance-click-entry", clickCard("clickentry", (entry) => entry.data));
   pi.registerMessageRenderer("kit-message", (_message, _options, theme) => new KitProbe(theme));
   pi.registerEntryRenderer("kit-entry", (_entry, _options, theme) => new KitProbe(theme));

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,6 +39,8 @@ type renderProxyComponent struct {
 	key string
 	// takesMouse is the extension's report that the component it returned takes the mouse (RenderResult.Mouse).
 	takesMouse atomic.Bool
+	// regions are the rectangles of the Node component's MouseRegions (RenderResult.Regions), which HandleMouse hit-tests.
+	regions atomic.Pointer[[]RenderMouseRegion]
 
 	mu         sync.Mutex
 	lines      []string
@@ -320,6 +323,7 @@ func (c *renderProxyComponent) request(width int, options extension.MessageRende
 		return nil, false, nil
 	}
 	c.takesMouse.Store(result.Mouse)
+	c.regions.Store(&result.Regions)
 	lines, ok = c.view.apply(c.conn, c.invalidate, c.key, c.enqueueEvent, result, width)
 	return lines, ok, nil
 }
@@ -353,8 +357,22 @@ func (c *renderProxyComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMous
 	}
 	result := c.view.handleMouse(*remoteMouse(event))
 	if !result.Handled && !result.Capture && !result.Focus {
-		// pig divergence (D277): the extension's answer cannot arrive in time, so a component in its process is answered handled for every click inside it and gets no other event.
-		if !c.takesMouse.Load() || event.Type != tui.MouseClick {
+		if event.Type != tui.MouseClick {
+			return nil
+		}
+		var regions []RenderMouseRegion
+		if p := c.regions.Load(); p != nil {
+			regions = *p
+		}
+		if len(regions) > 0 {
+			// The component's MouseRegions answer where Pi's hit test finds them; a click outside them is left unhandled, as in Pi.
+			if !slices.ContainsFunc(regions, func(r RenderMouseRegion) bool {
+				return event.X >= r.X && event.X < r.X+r.Width && event.Y >= r.Y && event.Y < r.Y+r.Height
+			}) {
+				return nil
+			}
+		} else if !c.takesMouse.Load() {
+			// pig divergence (D277): a component that handles the mouse itself answers for itself, which the host cannot ask before it answers the terminal, so it gets the clicks inside it and no other event.
 			return nil
 		}
 		c.enqueueEvent(ViewEventPayload{Key: c.key, Type: ViewEventMouse, ViewEventExtras: ViewEventExtras{Mouse: remoteMouse(event)}})

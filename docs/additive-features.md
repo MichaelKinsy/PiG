@@ -2072,4 +2072,5 @@ Locked by: `TestRendererClickAcrossSDKs` (`test/extension-conformance/renderer_c
 
 Remove when: Pi runs extensions outside its process with a renderer that can hold state and a pointer handler, or the SDKs gain closures that cross the wire.
 
-Approval: requested by the lead of lane fix/071-renderer-click; owner decision pending.
+Approval: approved by owner Michael Kinsy on 2026-11-07.
+SCRUTINIZED:approved
