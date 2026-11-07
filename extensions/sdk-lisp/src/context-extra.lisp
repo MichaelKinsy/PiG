@@ -154,17 +154,30 @@
            (char/= (char key 0) #\0) (<= (parse-integer key) 4294967294))))
 
 (defun core-js-ordered (value)
-  "VALUE with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order."
-  (cond ((hash-table-p value)
-         (let ((keys '()) (copy (make-hash-table :test 'equal)))
-           (maphash (lambda (k v) (declare (ignore v)) (push k keys)) value)
-           (setf keys (nreverse keys))
-           (let ((indexes (sort (remove-if-not #'core-array-index-p keys) #'< :key #'parse-integer)))
-             (dolist (k (append indexes (remove-if #'core-array-index-p keys)))
-               (setf (gethash k copy) (core-js-ordered (gethash k value)))))
-           copy))
-        ((and (vectorp value) (not (stringp value))) (map 'simple-vector #'core-js-ordered value))
-        (t value)))
+  "VALUE with every object's members in the order JavaScript's Object.keys gives: array-index keys ascending, then the others in insertion order.
+The containers are walked with a stack of the function's own: a value nested thousands of levels deep (the host sends up to 10000) does not depend on the thread's control stack."
+  (flet ((shell (v)
+           (cond ((hash-table-p v) (make-hash-table :test 'equal))
+                 ((and (vectorp v) (not (stringp v))) (make-array (length v)))
+                 (t v))))
+    (declare (inline shell))
+    (let* ((root (shell value)) (stack (if (eq root value) '() (list (cons value root)))))
+      (loop while stack
+            do (destructuring-bind (source . target) (pop stack)
+                 (if (hash-table-p source)
+                     (let ((keys '()))
+                       (maphash (lambda (k v) (declare (ignore v)) (push k keys)) source)
+                       (setf keys (nreverse keys))
+                       (let ((indexes (sort (remove-if-not #'core-array-index-p keys) #'< :key #'parse-integer)))
+                         (dolist (k (append indexes (remove-if #'core-array-index-p keys)))
+                           (let* ((v (gethash k source)) (child (shell v)))
+                             (setf (gethash k target) child)
+                             (unless (eq child v) (push (cons v child) stack))))))
+                     (dotimes (i (length source))
+                       (let* ((v (aref source i)) (child (shell v)))
+                         (setf (svref target i) child)
+                         (unless (eq child v) (push (cons v child) stack)))))))
+      root)))
 
 (defun ctx-tool-call-index (ctx)
   "The running tool call's position among the tool calls of the assistant message that issued it, or NIL (outside a tool handler,

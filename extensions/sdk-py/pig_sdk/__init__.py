@@ -1313,6 +1313,14 @@ def _json_text(value: Any) -> str:
         return _dumps_deep(value)
 
 
+def _json_loads(text: str) -> Any:
+    """json.loads of ``text``, read with a stack of its own when it nests past the interpreter's limit (the host's values nest up to 10000 levels). A value nested past MAX_FRAME_DEPTH raises RecursionError; malformed JSON raises ValueError."""
+    try:
+        return json.loads(text)
+    except RecursionError:
+        return _loads_deep(text.encode("utf-8", "surrogatepass"))
+
+
 def _ensure_jsonable(value: Any, what: str) -> None:
     try:
         _json_text(value)
@@ -2704,12 +2712,12 @@ class _SystemPrompt:
     def __init__(self, ctx: "Context", options: dict[str, Any], prompt: Any) -> None:
         self._ctx = ctx
         self._options = options
-        self._key = json.dumps(options)
+        self._key = _json_text(options)
         self._prompt = prompt if isinstance(prompt, str) else ""
         self._lock = threading.Lock()
 
     def get(self) -> str:
-        key = json.dumps(self._options)
+        key = _json_text(self._options)
         with self._lock:
             if key != self._key:
                 self._prompt = self._ctx._reply_field("renderSystemPrompt", "prompt", {"options": self._options})
@@ -5694,8 +5702,8 @@ class Extension:
                 palette = notify.get("args")
                 if isinstance(palette, str):
                     try:
-                        palette = json.loads(palette)
-                    except ValueError:
+                        palette = _json_loads(palette)
+                    except (ValueError, RecursionError):
                         palette = {}
                 self._set_theme_palette(palette if isinstance(palette, dict) and palette else {})
                 _tui_state.set_host_theme(palette)
@@ -5807,7 +5815,7 @@ class Extension:
 
     def _set_theme_palette(self, palette: dict[str, Any]) -> None:
         """Install the host's palette and deliver a snapshot of the theme to the on_theme_change handlers when it differs from the one before. The caller holds the state lock."""
-        changed = self._theme_known and self._theme_palette != palette
+        changed = self._theme_known and not _tui_state.json_equal(self._theme_palette, palette)
         self._theme._set_palette(palette)
         self._theme_palette = palette
         self._theme_known = True
@@ -6022,7 +6030,7 @@ class Extension:
                 # runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
                 if ctx._request_start is not None:
                     ctx._request_start.begin()
-                self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
+                self._command_handlers[name](ctx, args if isinstance(args, str) else _json_text(args))
                 self._respond(req_id, None, None)
             elif method == "command_argument_completions":
                 name = req.get("tool", "")
@@ -6250,10 +6258,10 @@ class Extension:
                 for line in session_file:
                     if len(line.encode("utf-8")) > MAX_FRAME_SIZE:
                         return []
-                    entry = json.loads(line)
+                    entry = _json_loads(line)
                     if entry.get("type") != "session":
                         entries.append(entry)
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, RecursionError):
             return []
         return entries
 
