@@ -201,6 +201,21 @@
         (loop repeat 200 until completed do (sleep 0.01))
         (check-equal 9 (pig:jget completed "tokensBefore"))))))
 
+;;; A callback of the extension's own that fails on a thread the SDK started ends the process if nothing handles it, and a packed cell's process serves other extensions.
+(deftest a-failing-compact-callback-does-not-end-the-process
+  (let ((reported nil))
+    (with-host (host (core-extension))
+      (run-command host (lambda (ctx) (pig:ctx-compact ctx
+                                                       :on-complete (lambda (r) (declare (ignore r)) (error "complete boom"))
+                                                       :on-error (lambda (c) (setf reported (princ-to-string c)) (error "error callback boom")))))
+      (answer-call host (hread-type host "call") (pig:obj "tokensBefore" 9))
+      (loop repeat 200 until reported do (sleep 0.01))
+      (check-equal "complete boom" reported)
+      (sleep 0.1)
+      ;; The extension still serves requests.
+      (run-command host (lambda (ctx) (declare (ignore ctx)) (setf *core-result* 7)) "q")
+      (check-equal 7 *core-result*))))
+
 (deftest user-bash-operations-are-kept-and-run-by-handle
   (let ((ext (pig:make-extension "bash")))
     (pig:on ext "user_bash" (lambda (ctx data) (declare (ignore ctx data))

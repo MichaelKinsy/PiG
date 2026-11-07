@@ -420,8 +420,10 @@ type Host struct {
 	recoveryContext context.Context
 	recoveryCancel  context.CancelFunc
 	nodeFaults      map[string]string
-	nodeGroups      map[string]string
-	nodeCrashes     map[string]int
+	// nativeFaults names the packed Go or Lisp members whose own code ended a shared process, with the reason: they run isolated from then on. transitionMu owns it.
+	nativeFaults map[string]string
+	nodeGroups   map[string]string
+	nodeCrashes  map[string]int
 
 	// quarantinedCells records packed cells that crashed; PlanCells fissions a
 	// quarantined key back to isolated subprocesses.
@@ -4922,6 +4924,11 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 
 	if me.packedCellKey != "" {
 		if me.packedProcess != nil {
+			// A native process that ends is its watcher's to report (watchPackedProcess): it blames the one member its trace names and restarts the others, or stops
+			// the whole cell, and says so once for each member. Detaching the member here first would tell a member that is about to restart to run /reload.
+			if h.sharedProcessEnded(me.packedProcess) {
+				return
+			}
 			// A closed connection proves only that this one member stopped
 			// talking to us. It does not prove the shared process is still
 			// running: if the process itself exited, watchPackedProcess
@@ -4989,6 +4996,29 @@ func (h *Host) awaitClosedProcess(me *managedExt) {
 			_ = proc.Kill()
 		}
 		<-exited
+	}
+}
+
+// sharedProcessEnded reports whether the native process a packed member shares ended within the heartbeat deadline that bounds how long a process may outlive a
+// closed connection (D56), after one of its members' connections closed. It never stops the process, which serves the other members: one that is still running
+// after the deadline closed this member's connection alone. A state that spawned no process of its own has nothing to wait for.
+func (h *Host) sharedProcessEnded(p *packedProcessState) bool {
+	if p.node || p.spawner().cmd == nil {
+		return false
+	}
+	exited := p.startWait()
+	select {
+	case <-exited:
+		return true
+	default:
+	}
+	timer := time.NewTimer(defaultHeartbeatTimeout)
+	defer timer.Stop()
+	select {
+	case <-exited:
+		return true
+	case <-timer.C:
+		return false
 	}
 }
 

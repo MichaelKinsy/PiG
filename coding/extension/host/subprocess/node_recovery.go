@@ -57,11 +57,15 @@ func (h *Host) acceptsNodeGeneration(me *managedExt) bool {
 	return !p.stopping.Load() && h.packedCellGeneration[p.key] == p.generation
 }
 
-// planCells preserves explicit isolation and applies host-owned crash partitions only to shareable Node factories. transitionMu owns the diagnostic maps.
+// planCells preserves explicit isolation and applies host-owned crash partitions: Node factories are grouped around a culprit, and a native member whose own code
+// ended a shared process runs isolated. transitionMu owns the diagnostic maps.
 func (h *Host) planCells(configs []ExtConfig) []CellSpec {
 	configs = slices.Clone(configs)
 	for i, cfg := range configs {
 		cfg = normalizeUnresolvedNodeConfig(cfg)
+		if isPackableFactory(cfg) && h.nativeFaults[cfg.Name] != "" {
+			cfg.Isolation = "quarantined"
+		}
 		if isPackableNode(cfg) {
 			cfg.nodeRecoveryGroup = h.nodeGroups[cfg.Name]
 			if h.nodeFaults[cfg.Name] != "" {

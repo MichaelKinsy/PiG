@@ -5944,6 +5944,9 @@ impl EditorComponent for ConformanceEditor {
         &self.base
     }
     fn handle_input(&mut self, data: &JsString) -> Result<(), String> {
+        if data == "!" {
+            panic!("bad key");
+        }
         if data == "q" {
             return Ok(());
         }

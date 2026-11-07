@@ -64,16 +64,18 @@ func storageCallback(storage SettingsStorage) graphCallback {
 			}
 			lock := &pendingLock{current: make(chan *string, 1), finish: make(chan storageFinish, 1), done: make(chan error, 1)}
 			go func() {
-				lock.done <- storage.WithLock(scope, func(current *string) (*string, error) {
-					lock.current <- current
-					result := <-lock.finish
-					if result.Error != "" {
-						return nil, errors.New(result.Error)
-					}
-					if result.Write {
-						return &result.Text, nil
-					}
-					return nil, nil
+				lock.done <- callbackError("the settings storage's WithLock", func() error {
+					return storage.WithLock(scope, func(current *string) (*string, error) {
+						lock.current <- current
+						result := <-lock.finish
+						if result.Error != "" {
+							return nil, errors.New(result.Error)
+						}
+						if result.Write {
+							return &result.Text, nil
+						}
+						return nil, nil
+					})
 				})
 			}()
 			select {
