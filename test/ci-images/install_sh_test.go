@@ -88,10 +88,10 @@ func writeFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 	}
 }
 
-// releaseArchive builds <name>/pig, a script printing the release version.
+// releaseArchive builds <name>/pig, a script that answers as PiG does: `--version` prints Pi's package version and `version` names the release and the pin.
 func releaseArchive(t *testing.T, name string) []byte {
 	t.Helper()
-	pig := []byte("#!/bin/sh\necho \"" + installVersion + "+" + coding.UpstreamVersion + "\"\n")
+	pig := []byte("#!/bin/sh\nif [ \"$1\" = version ]; then printf 'pig: " + installVersion + "\\nupstream pi: " + coding.UpstreamVersion + "\\n'; else echo \"" + coding.UpstreamPackageVersion + "\"; fi\n")
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
@@ -221,16 +221,28 @@ func TestInstallShInstallsTheLatestReleaseAfterVerifyingItsSHA256(t *testing.T) 
 	if !strings.Contains(got.stdout, "Verified SHA-256 "+f.archiveSHA) {
 		t.Fatalf("stdout does not report the verified digest:\n%s", got.stdout)
 	}
-	want := installVersion + "+" + coding.UpstreamVersion
-	if !regexp.MustCompile(`Installed ` + regexp.QuoteMeta(want) + ` to `).MatchString(got.stdout) {
-		t.Fatalf("stdout does not report the installed version %s:\n%s", want, got.stdout)
+	if !regexp.MustCompile(`Installed pig ` + regexp.QuoteMeta(installVersion) + ` to `).MatchString(got.stdout) {
+		t.Fatalf("stdout does not report the installed release %s:\n%s", installVersion, got.stdout)
 	}
-	out, err := exec.Command(filepath.Join(f.installDir, "pig"), "--version").Output()
+	assertInstalledVersions(t, filepath.Join(f.installDir, "pig"))
+}
+
+// assertInstalledVersions checks an installed pig the way users read it: `--version` is Pi's package version and the `pig:` line of `pig version` is the release.
+func assertInstalledVersions(t *testing.T, pig string) {
+	t.Helper()
+	out, err := exec.Command(pig, "--version").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.TrimSpace(string(out)) != want {
-		t.Fatalf("installed pig --version = %q, want %q", out, want)
+	if got := strings.TrimSpace(string(out)); got != coding.UpstreamPackageVersion {
+		t.Fatalf("installed pig --version = %q, want %q", got, coding.UpstreamPackageVersion)
+	}
+	out, err = exec.Command(pig, "version").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first, _, _ := strings.Cut(string(out), "\n"); first != "pig: "+installVersion {
+		t.Fatalf("installed pig version starts with %q, want %q", first, "pig: "+installVersion)
 	}
 }
 
@@ -383,9 +395,7 @@ func TestInstallShInstallsTheAndroidReleaseIntoTermuxPrefixBin(t *testing.T) {
 		t.Fatalf("install.sh did not request %s:\n%s", archive, f.requested(t))
 	}
 	installed := filepath.Join(prefix, "bin", "pig")
-	if out, err := exec.Command(installed, "--version").Output(); err != nil || !strings.Contains(string(out), installVersion) {
-		t.Fatalf("%s --version = %q, %v", installed, out, err)
-	}
+	assertInstalledVersions(t, installed)
 	if strings.Contains(got.stdout, "Add ") {
 		t.Fatalf("install.sh asks to add a directory to PATH although $PREFIX/bin is on it:\n%s", got.stdout)
 	}

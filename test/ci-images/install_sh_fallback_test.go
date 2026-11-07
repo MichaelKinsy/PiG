@@ -93,7 +93,7 @@ func TestInstallShFallsBackToLatestRedirect(t *testing.T) {
 				}
 				f.writeRedirect(t, installLatest, "https://github.com/MichaelKinsy/PiG/releases/tag/v"+installVersion)
 				got := f.run(t, f.downloaderEnv(t, downloader)...)
-				if got.status != 0 || !strings.Contains(got.stdout, "Verified SHA-256 "+f.archiveSHA) || !strings.Contains(got.stdout, "Installed "+installVersion+"+") {
+				if got.status != 0 || !strings.Contains(got.stdout, "Verified SHA-256 "+f.archiveSHA) || !strings.Contains(got.stdout, "Installed pig "+installVersion+" to ") {
 					t.Fatalf("fallback install = %+v", got)
 				}
 				if !strings.Contains(got.stderr, "using the latest on GitHub (v"+installVersion+")") {
