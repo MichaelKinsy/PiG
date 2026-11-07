@@ -614,7 +614,7 @@ func isolatedPlacementPlan(reports []extensionValidationReport) extensionValidat
 	for key := range groupIndex {
 		keys = append(keys, key)
 	}
-	sortx.Func(keys, func(a, b string) int { return groupIndex[a] - groupIndex[b] })
+	slices.SortFunc(keys, func(a, b string) int { return groupIndex[a] - groupIndex[b] })
 	for _, key := range keys {
 		group := groupMeta[key]
 		slices.Sort(groupNames[key])

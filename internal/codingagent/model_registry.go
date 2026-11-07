@@ -24,7 +24,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -1277,7 +1276,7 @@ func (r *ModelRegistry) GetAll() []ModelEntry {
 }
 
 func sortModelEntries(entries []ModelEntry) {
-	sortx.Func(entries, func(a, b ModelEntry) int {
+	slices.SortFunc(entries, func(a, b ModelEntry) int {
 		if a.ProviderID != b.ProviderID {
 			return strings.Compare(a.ProviderID, b.ProviderID)
 		}

@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
-
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // TreeNode is one Piglet in the extends tree. Installed means a built Piglet
@@ -137,9 +136,9 @@ func BuildTree(inventory []PigletInfo, currentName, currentPath string) ([]*Tree
 		}
 	}
 	byName := func(a, b *TreeNode) int { return strings.Compare(a.Name, b.Name) }
-	sortx.Func(roots, byName)
+	slices.SortFunc(roots, byName)
 	for _, node := range nodes {
-		sortx.Func(node.Children, byName)
+		slices.SortFunc(node.Children, byName)
 	}
 	return roots, nil
 }

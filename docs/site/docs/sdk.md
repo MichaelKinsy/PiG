@@ -379,7 +379,7 @@ Every feature that can be left out of a build has a Go build tag, `pig_strip_<id
 | `pig_strip_google_vertex` | The Google Vertex API and its OAuth code | 0.46 MB |
 | `pig_strip_mistral_conversations` | The Mistral conversations API | 0.10 MB |
 | `pig_strip_mermaid` | Mermaid diagram drawing | 0.07 MB |
-| `pig_strip_word_dictionaries` | The CJK, Thai, Lao, Khmer and Burmese word dictionaries | 0, already absent (6.3 MB in the `pig` command) |
+| `pig_strip_word_dictionaries` | The CJK, Thai, Lao, Khmer and Burmese word dictionaries | 0, already absent (2.8 MB in the `pig` command) |
 
 The remaining tags (`pig_strip_llama_cpp`, `pig_strip_codemode`, `pig_strip_tool_search`, `pig_strip_pig_login`, `pig_strip_docs`, `pig_strip_changelog`, `pig_strip_export_html`, `pig_strip_self_update`, `pig_strip_piglet_builder`, `pig_strip_extension_sdk_go`, `pig_strip_extension_sdk_python` and `pig_strip_extension_sdk_rust`) remove features the session API does not link by itself. They matter when your program also links the `pig` command's packages, and they do no harm here. Passing all of them except `pig_strip_mcp` takes `examples/headless` to 30.2 MB on linux/amd64, 28.8 MB on darwin/arm64 and 31.5 MB on windows/amd64.
 

@@ -8,7 +8,7 @@ import (
 )
 
 // tuiAltServer is what serves the `tui.alt` calls once EnableTuiAltScreens ran. The bridge reaches the renderer (tui.TuiAltScreen, its input
-// components and the word-segmentation dictionaries behind them: 6.3 MB) only through this variable, so a program that never enables TuiAltScreens does not link
+// components and the word-segmentation dictionaries behind them: 2.8 MB) only through this variable, so a program that never enables TuiAltScreens does not link
 // them: the linker keeps a function only when something refers to it.
 type tuiAltServer struct {
 	handle func(b *UIBridge, owner *Conn, parent string, args json.RawMessage) (*CallResultPayload, error)

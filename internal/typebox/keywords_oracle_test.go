@@ -3,6 +3,7 @@ package typebox
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // The leaf keywords (keywords.go) against typebox 1.3.27: every case runs through TestValueMatchesTypeboxOnCases, which compares Value.Check and
@@ -24,6 +25,11 @@ func init() {
 		add(`Type.String({ maxLength: `+limit+` })`, texts...)
 		add(`Type.String({ minLength: `+limit+`, maxLength: `+limit+` })`, texts...)
 	}
+	// Limits that are negative, fractional or large, against ASCII, non-ASCII and empty texts (textMinLength and textMaxLength decide ASCII texts by their byte length).
+	for _, limit := range []string{"-1", "0.5", "1.5", "2.5", "3.0000001", "1000"} {
+		add(`Type.String({ minLength: `+limit+` })`, append([]any{"abcd", "ab\u00e9", "\u00e9\u00e9\u00e9", "x" + strings.Repeat("y", 1000)}, texts...)...)
+		add(`Type.String({ maxLength: `+limit+` })`, append([]any{"abcd", "ab\u00e9", "\u00e9\u00e9\u00e9", "x" + strings.Repeat("y", 1000)}, texts...)...)
+	}
 	// multipleOf uses a tolerance of 1e-10 and takes an integer for a multiple of any 1/n.
 	numbers := []any{0.0, 1.0, 3.0, 0.3, 0.7, 0.1, 0.15, 7.5, 1e-11, 1e-9, 0.30000000000000004, 1e21, math.Copysign(0, -1), -3.0, -0.3, 2.5}
 	for _, divisor := range []string{"0.1", "0.01", "3", "0.5", "2", "1e-9", "7"} {
@@ -43,12 +49,48 @@ func init() {
 			map[string]any{"a": 1.0}, []any{1.0, "1", true, nil}, []any{1.0, 1.0, true, nil}, []any{}, map[string]any{}, 1.0, "1", "a", nil, false, true, 0.0, math.Copysign(0, -1),
 			map[string]any{"x": []any{1.0}}, []any{2.0, 3.0}, []any{3.0, 2.0})
 	}
+	// Guard.IsDeepEqual: an object on the left equals an array on the right when they have the same own property names, the indices and "length".
+	for _, schema := range []string{
+		`Type.Unsafe({ const: ["a"] })`, `Type.Unsafe({ enum: [["a"], true] })`, `Type.Unsafe({ const: [] })`, `Type.Unsafe({ const: ["a", "b"] })`, `Type.Unsafe({ const: { k: ["a"] } })`,
+		`Type.Unsafe({ const: [[1], {}] })`, `Type.Unsafe({ const: { "0": "a", length: 1 } })`, `Type.Unsafe({ const: [["a"]] })`,
+	} {
+		add(schema,
+			map[string]any{"0": "a", "length": 1.0}, map[string]any{"0": "a", "length": 2.0}, map[string]any{"0": "a", "length": "1"}, map[string]any{"0": "a", "1": "b"}, map[string]any{"0": "a"},
+			map[string]any{"length": 0.0}, map[string]any{"length": 0.0, "x": 1.0}, map[string]any{"0": "a", "1": "b", "length": 2.0}, map[string]any{"1": "a", "length": 1.0},
+			map[string]any{"00": "a", "length": 1.0}, map[string]any{"0": "b", "length": 1.0}, map[string]any{"k": map[string]any{"0": "a", "length": 1.0}},
+			map[string]any{"0": map[string]any{"0": 1.0, "length": 1.0}, "1": map[string]any{}, "length": 2.0}, map[string]any{"0": map[string]any{"0": "a", "length": 1.0}, "length": 1.0},
+			[]any{"a"}, []any{}, []any{"a", "b"}, map[string]any{})
+	}
+	// A keyword whose value has the wrong type is skipped (Schema.IsMinLength and the others need a finite number, a string, an array or a boolean), whatever the value is.
+	wrong := []string{`"3"`, `"abc"`, `""`, `null`, `true`, `false`, `[1]`, `{ a: 1 }`, `Infinity`, `NaN`, `-Infinity`, `[]`}
+	everyValue := []any{
+		"", "ab", "abcdef", "a@b.c", 0.0, 5.0, -1.0, 2.5, []any{}, []any{1.0}, []any{1.0, 2.0, 3.0}, []any{1.0, 1.0}, map[string]any{}, map[string]any{"a": 1.0}, nil, true,
+	}
+	for _, keyword := range []string{
+		"minLength", "maxLength", "pattern", "format", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "const", "enum", "minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties",
+	} {
+		for _, bad := range wrong {
+			if keyword == "const" && (bad == `Infinity` || bad == `NaN` || bad == `-Infinity`) {
+				// const has no guard and the schema reaches this package as JSON, which has no Infinity or NaN.
+				continue
+			}
+			add(`Type.Unsafe({ `+keyword+`: `+bad+` })`, everyValue...)
+		}
+	}
+	add(`Type.Unsafe({ minLength: "3", maxLength: 1, minimum: "1", maximum: 2, minItems: "5", maxItems: 2, pattern: 5, enum: 3, const: "x" })`, everyValue...)
 	// uniqueItems hashes the values: an object's members in the order of their names, 0 and -0 apart.
 	add(`Type.Array(Type.Any(), { uniqueItems: true })`,
 		[]any{1.0, 1.0}, []any{0.0, math.Copysign(0, -1)}, []any{1.0, "1"}, []any{map[string]any{"a": 1.0, "b": 2.0}, map[string]any{"b": 2.0, "a": 1.0}},
 		[]any{[]any{1.0}, []any{1.0}}, []any{nil, nil}, []any{true, 1.0}, []any{map[string]any{}, []any{}}, []any{"a", "a", "b"}, []any{}, []any{"é", "e\u0301"},
 		[]any{[]any{1.0, 2.0}, []any{1.0}, []any{2.0}}, []any{"𝒜", "\uff5e", "\uff5e"}, []any{map[string]any{"\U0001d49c": 1.0, "\uff5e": 2.0}, map[string]any{"\uff5e": 2.0, "\U0001d49c": 1.0}},
 		[]any{1.0, 2.0, 3.0, 1.0, 2.0})
+	// hash.mjs InstanceKeys leaves out the key "constructor", so these objects hash alike.
+	add(`Type.Array(Type.Any(), { uniqueItems: true })`,
+		[]any{map[string]any{}, map[string]any{"constructor": 2.0}, "é"}, []any{map[string]any{"constructor": 1.0}, map[string]any{"constructor": 2.0}},
+		[]any{map[string]any{"a": 1.0, "constructor": 5.0}, map[string]any{"a": 1.0}}, []any{map[string]any{"constructor": map[string]any{"constructor": 1.0}}, map[string]any{}},
+		[]any{map[string]any{"a": 1.0, "constructor": 5.0}, map[string]any{"a": 2.0}})
+	// Value.Clone (system/memory/clone.mjs) leaves out the prototype-pollution keys "__proto__", "constructor" and "prototype", and Clean and Default clone their input.
+	add(`Type.Any()`, map[string]any{"__proto__": 1.0, "constructor": 2.0, "prototype": 3.0, "a": 4.0}, []any{map[string]any{"constructor": map[string]any{"prototype": 1.0, "b": 2.0}}})
 	add(`Type.Array(Type.Any(), { uniqueItems: false })`, []any{1.0, 1.0})
 	// minItems, maxItems, minProperties and maxProperties.
 	add(`Type.Array(Type.Any(), { minItems: 2, maxItems: 3 })`, []any{}, []any{1.0}, []any{1.0, 2.0}, []any{1.0, 2.0, 3.0}, []any{1.0, 2.0, 3.0, 4.0})

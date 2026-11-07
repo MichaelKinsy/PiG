@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"slices"
 	"strconv"
-
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // MarshalInSourceOrder encodes value with the object member order of the JSON text source, as a JavaScript object holds the members its handlers edited: a member the source lists keeps its place, a member it does not list follows in sorted order, a removed member is gone, and integer-like keys come first in ascending order, as in every JavaScript object. A map has no insertion order, so two members added after the source was taken are sorted. An array matches its source element by element. A source that is not the same shape as value orders nothing, and the members are sorted.
@@ -34,7 +32,7 @@ func MarshalInSourceOrder(value any, source []byte) ([]byte, error) {
 		}
 		slices.Sort(added)
 		keys = append(keys, added...)
-		sortx.Stable(keys, func(a, b string) int { return cmp.Compare(arrayIndex(a), arrayIndex(b)) })
+		slices.SortStableFunc(keys, func(a, b string) int { return cmp.Compare(arrayIndex(a), arrayIndex(b)) })
 		var out bytes.Buffer
 		out.WriteByte('{')
 		for i, key := range keys {

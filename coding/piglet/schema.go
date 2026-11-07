@@ -55,17 +55,18 @@ func ValidateAgainstSchema(yamlBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	valid, err := validator.Check(value)
-	if err != nil || valid {
-		return err
-	}
 	problems, err := validator.Errors(value)
-	if err != nil {
+	if err != nil || len(problems) == 0 {
 		return err
 	}
 	messages := make([]string, len(problems))
 	for i, problem := range problems {
-		messages[i] = problem.Path + ": " + problem.Message
+		// The root of the document has the empty JSON pointer; "/" names it in the message.
+		path := problem.Path
+		if path == "" {
+			path = "/"
+		}
+		messages[i] = path + ": " + problem.Message
 	}
 	return fmt.Errorf("piglet does not match its schema: %s", strings.Join(messages, "; "))
 }

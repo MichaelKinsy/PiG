@@ -11,7 +11,6 @@ import (
 	"github.com/dlclark/regexp2"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -588,7 +587,7 @@ func buildSessionTree(sessions []SessionInfo) []*sessionTreeNode {
 	}
 	var sortNodes func([]*sessionTreeNode)
 	sortNodes = func(nodes []*sessionTreeNode) {
-		sortx.Stable(nodes, func(a, b *sessionTreeNode) int {
+		slices.SortStableFunc(nodes, func(a, b *sessionTreeNode) int {
 			return cmp.Compare(b.LatestActivity, a.LatestActivity)
 		})
 		for _, n := range nodes {
@@ -777,7 +776,7 @@ func filterAndSortSessionsWith(sessions []SessionInfo, query string, sortMode se
 		}
 		return out
 	}
-	sortx.Stable(matches, func(a, b scored) int {
+	slices.SortStableFunc(matches, func(a, b scored) int {
 		if a.Score < b.Score {
 			return -1
 		}

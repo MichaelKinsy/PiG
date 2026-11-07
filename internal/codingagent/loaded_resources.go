@@ -94,7 +94,7 @@ func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bo
 			}
 		}
 		if sorted {
-			sortx.Stable(labels, collator.CompareString)
+			slices.SortStableFunc(labels, collator.CompareString)
 		}
 		return theme.Fg("dim", "  "+strings.Join(labels, ", "))
 	}
@@ -549,7 +549,7 @@ func formatScopeGroups(theme *tui.Theme, collator *localecompare.Collator, group
 		for source := range group.packages {
 			sources = append(sources, source)
 		}
-		sortx.Stable(sources, collator.CompareString)
+		slices.SortStableFunc(sources, collator.CompareString)
 		for _, source := range sources {
 			lines = append(lines, "    "+theme.Fg("mdLink", source))
 			items := slices.Clone(group.packages[source])

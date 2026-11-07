@@ -7,8 +7,8 @@ package typebox
 // that has none yet. The walk is deterministic, so a call is made once, in the order TypeBox makes it.
 //
 // RefineCheck ports build/schema/engine/schema.mjs CheckSchema (typebox 1.3.27) for Value.Check: keywords run in the engine's order and stop at the first failure (an && chain), the
-// operands of allOf, anyOf and oneOf all run, and a node's `~refine` list runs last and only when every other keyword of the node passed. The keyword checks that TypeBox delegates to its
-// checker with no walk of their own (const, enum, format, pattern, lengths, numeric bounds, item and property counts, uniqueItems) run on the keyword alone through Check, as the Errors walker does.
+// operands of allOf, anyOf and oneOf all run, and a node's `~refine` list runs last and only when every other keyword of the node passed. The leaf keywords (const, enum, format, pattern, lengths,
+// numeric bounds, item and property counts, uniqueItems) call checkKeyword (keywords.go), as the Errors walker does.
 // `$ref` resolves a "#" fragment pointer, an `$id` or an `$anchor` of the root schema; $recursiveRef, $dynamicRef and refs into other documents resolve to nothing.
 
 import (
@@ -460,7 +460,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 		}
 	}
 	if hasContains && n.has("maxContains") {
-		limit, _ := Plain(n.keyword("maxContains")["maxContains"]).(float64)
+		limit, _ := Plain(n.declared("maxContains")).(float64)
 		count := 0
 		for _, item := range items {
 			if w.check(context, contains, item) {
@@ -475,7 +475,7 @@ func (w errorWalker) checkArray(context *checkContext, n node, items []any) bool
 		return false
 	}
 	if hasContains && n.has("minContains") {
-		limit, _ := Plain(n.keyword("minContains")["minContains"]).(float64)
+		limit, _ := Plain(n.declared("minContains")).(float64)
 		count := 0
 		for index, item := range items {
 			if w.check(context, contains, item) && context.addIndex(index) {

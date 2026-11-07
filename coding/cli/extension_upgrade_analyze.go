@@ -49,13 +49,13 @@ func (u *extensionUpgrader) withGoCompile(ctx context.Context, config subprocess
 	})
 }
 
-// analysisDriver is the package of the staged SDK that type checks an extension and plans the rewrites. This binary does not link the type checker (go/types and the importers are about 1 MiB of code that only the analysis runs): the go command builds the driver from the SDK this binary stages, with the toolchain the extension's own build uses, and runs it. The build cache keeps the driver, so only the first analysis after a Go or SDK change compiles it.
+// pig divergence (D272): the type check of an upgrade runs in a driver program that the go command builds from the staged SDK, not in this binary. analysisDriver is the package of the staged SDK that type checks an extension and plans the rewrites. This binary does not link the type checker (go/types and the importers are about 1 MiB of code that only the analysis runs): the go command builds the driver from the SDK this binary stages, with the toolchain the extension's own build uses, and runs it. The build cache keeps the driver, so only the first analysis after a Go or SDK change compiles it.
 const analysisDriver = "./upgrade/driver"
 
-// analysisKillDelay bounds how long the cancel of an analysis waits for the driver and its go command to let go of the output pipes.
+// pig divergence (D272): analysisKillDelay bounds how long the cancel of an analysis waits for the driver and its go command to let go of the output pipes.
 const analysisKillDelay = 5 * time.Second
 
-// analyzeExtension type checks the extension the way its build sees it and plans the rewrites.
+// pig divergence (D272): the analysis runs only here, in the driver, and needs the staged SDK. analyzeExtension type checks the extension the way its build sees it and plans the rewrites.
 func (u *extensionUpgrader) analyzeExtension(ctx context.Context, config subprocess.ExtConfig) (*upgrade.Result, error) {
 	// The stage lock is exclusive and the build lease below is shared, so the SDK is staged before the lease is taken.
 	if err := pigsdk.EnsureSyncedLang(u.configRoot, "go"); err != nil {
@@ -75,7 +75,7 @@ func (u *extensionUpgrader) analyzeExtension(ctx context.Context, config subproc
 	return result, err
 }
 
-// runAnalysisDriver runs the analysis driver of the staged SDK at sdkRoot for options and returns its plan. The go command and its environment are the ones that list the extension, with the working directory moved to the SDK, so the driver builds as the extension does, offline, because the SDK module requires nothing.
+// pig divergence (D272): runAnalysisDriver runs the analysis driver of the staged SDK at sdkRoot for options and returns its plan. The go command and its environment are the ones that list the extension, with the working directory moved to the SDK, so the driver builds as the extension does, offline, because the SDK module requires nothing.
 //
 // The request goes in through the driver's standard input, which stays open while the driver works: the driver cancels its own go command when it closes, and a cancelled analysis closes it. The go command that runs the driver does not pass a kill on to the driver.
 func runAnalysisDriver(ctx context.Context, configRoot, sdkRoot, command string, env []string, options upgrade.LoadOptions) (*upgrade.Result, error) {

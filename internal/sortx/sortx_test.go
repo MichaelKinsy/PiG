@@ -92,17 +92,41 @@ func TestNamedSliceTypeSorts(t *testing.T) {
 	}
 }
 
+// Every length around the two insertion limits sorts as package slices does, ties included.
+func TestEveryShortLengthMatchesSlices(t *testing.T) {
+	rng := rand.New(rand.NewPCG(7, 8))
+	for n := range 50 {
+		for _, keys := range []int{1, 3, 1 << 30} {
+			input := data(rng, n, keys)
+			want, got := slices.Clone(input), slices.Clone(input)
+			slices.SortFunc(want, compareKey)
+			Func(got, compareKey)
+			if !slices.Equal(got, want) {
+				t.Fatalf("Func n=%d keys=%d differs from slices.SortFunc", n, keys)
+			}
+			want, got = slices.Clone(input), slices.Clone(input)
+			slices.SortStableFunc(want, compareKey)
+			Stable(got, compareKey)
+			if !slices.Equal(got, want) {
+				t.Fatalf("Stable n=%d keys=%d differs from slices.SortStableFunc", n, keys)
+			}
+		}
+	}
+}
+
 // A sort must allocate nothing, as slices.SortFunc does: callers sort on paths that tests hold to an allocation budget.
 func TestSortsDoNotAllocate(t *testing.T) {
 	rng := rand.New(rand.NewPCG(5, 6))
-	input := data(rng, 500, 20)
-	work := make([]tied, len(input))
 	limit := 3 // captured, so the comparison is a closure and not a plain function
 	capturing := func(a, b tied) int { return limit*a.key - limit*b.key }
-	if got := testing.AllocsPerRun(20, func() { copy(work, input); Func(work, capturing) }); got != 0 {
-		t.Errorf("Func allocates %v times", got)
-	}
-	if got := testing.AllocsPerRun(20, func() { copy(work, input); Stable(work, capturing) }); got != 0 {
-		t.Errorf("Stable allocates %v times", got)
+	for _, n := range []int{5, 12, 13, 20, 21, 500} {
+		input := data(rng, n, 20)
+		work := make([]tied, len(input))
+		if got := testing.AllocsPerRun(20, func() { copy(work, input); Func(work, capturing) }); got != 0 {
+			t.Errorf("Func of %d elements allocates %v times", n, got)
+		}
+		if got := testing.AllocsPerRun(20, func() { copy(work, input); Stable(work, capturing) }); got != 0 {
+			t.Errorf("Stable of %d elements allocates %v times", n, got)
+		}
 	}
 }

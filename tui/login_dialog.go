@@ -12,7 +12,6 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // webURL is login-dialog.ts webUrl: the normalized href of the http: or https: URL value names, and false for anything else. The shared launcher also opens
@@ -393,7 +392,7 @@ func (d *LoginDialogComponent) redactLocked(text string) string {
 	if d.inputActive && d.inputMasked && d.input != nil {
 		values = append(values, d.input.Text())
 	}
-	sortx.Func(values, func(a, b string) int { return len(b) - len(a) })
+	slices.SortFunc(values, func(a, b string) int { return len(b) - len(a) })
 	for _, value := range values {
 		text = RedactSecretInput(text, value)
 	}

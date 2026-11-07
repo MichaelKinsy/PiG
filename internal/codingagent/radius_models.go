@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
@@ -215,7 +214,7 @@ func (r *ModelRegistry) RadiusOAuthFlows() []*ai.RadiusOAuth {
 			flows = append(flows, provider.OAuth())
 		}
 	}
-	sortx.Func(flows, func(a, b *ai.RadiusOAuth) int { return strings.Compare(a.ID(), b.ID()) })
+	slices.SortFunc(flows, func(a, b *ai.RadiusOAuth) int { return strings.Compare(a.ID(), b.ID()) })
 	return flows
 }
 
