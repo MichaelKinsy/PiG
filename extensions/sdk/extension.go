@@ -1500,7 +1500,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		ctx.toolInput = &req.Args
 		var params map[string]any
 		if len(req.Args) > 0 {
-			if err := json.Unmarshal(req.Args, &params); err != nil {
+			if err := unmarshalFrameMember(req.Args, &params); err != nil {
 				_ = e.conn.respond(id, nil, fmt.Errorf("decode tool arguments: %w", err))
 				return
 			}
@@ -1521,7 +1521,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		var params map[string]any
 		if len(req.Args) > 0 {
-			if err := json.Unmarshal(req.Args, &params); err != nil {
+			if err := unmarshalFrameMember(req.Args, &params); err != nil {
 				_ = e.conn.respond(id, nil, fmt.Errorf("decode tool arguments: %w", err))
 				return
 			}
@@ -1549,7 +1549,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		var args string
 		if len(req.Args) > 0 {
-			_ = json.Unmarshal(req.Args, &args)
+			_ = unmarshalFrameMember(req.Args, &args)
 		}
 		// runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
 		ctx.place.Pass()
@@ -1578,7 +1578,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				data, master, release = fusedEventArgs.decodeWithMaster(req.Args)
 				defer release()
 			} else {
-				_ = json.Unmarshal(req.Args, &data)
+				_ = unmarshalFrameMember(req.Args, &data)
 			}
 		}
 		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
@@ -1588,7 +1588,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			var source struct {
 				Input json.RawMessage `json:"input"`
 			}
-			_ = json.Unmarshal(req.Args, &source)
+			_ = unmarshalFrameMember(req.Args, &source)
 			toolCall = newToolCallInput(data["input"], source.Input)
 		}
 		if req.Event == "before_agent_start" {
@@ -1614,7 +1614,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			result = contextEventResult(data, snapshot, result, func() []any {
 				if master == nil {
 					// The handler may have edited its copy: decode the payload again.
-					if json.Unmarshal(req.Args, &master) != nil {
+					if unmarshalFrameMember(req.Args, &master) != nil {
 						return nil
 					}
 				}
@@ -1668,7 +1668,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			Width   int                  `json:"width"`
 		}
 		if len(req.Args) > 0 {
-			_ = json.Unmarshal(req.Args, &payload)
+			_ = unmarshalFrameMember(req.Args, &payload)
 		}
 		if viewOK {
 			view, err := viewHandler(ctx, payload.Message, payload.Options, payload.Width)
@@ -1693,7 +1693,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			Width   int                `json:"width"`
 		}
 		if len(req.Args) > 0 {
-			_ = json.Unmarshal(req.Args, &payload)
+			_ = unmarshalFrameMember(req.Args, &payload)
 		}
 		if viewOK {
 			view, err := viewHandler(ctx, payload.Entry, payload.Options, payload.Width)
@@ -1823,7 +1823,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		var payload struct {
 			Message string `json:"message"`
 		}
-		if json.Unmarshal(env.Notify.Args, &payload) == nil && payload.Message != "" {
+		if unmarshalFrameMember(env.Notify.Args, &payload) == nil && payload.Message != "" {
 			e.stale.CompareAndSwap(nil, &payload.Message)
 		}
 	case notifyEventsRelease:
@@ -1834,7 +1834,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		var release struct {
 			Handle string `json:"handle"`
 		}
-		if json.Unmarshal(env.Notify.Args, &release) == nil {
+		if unmarshalFrameMember(env.Notify.Args, &release) == nil {
 			e.bashOperationsMu.Lock()
 			delete(e.bashOperations, release.Handle)
 			e.bashOperationsMu.Unlock()
@@ -1845,7 +1845,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		var release struct {
 			Key string `json:"key"`
 		}
-		if json.Unmarshal(env.Notify.Args, &release) == nil {
+		if unmarshalFrameMember(env.Notify.Args, &release) == nil {
 			e.providerMu.Lock()
 			delete(e.nativeProviders, release.Key)
 			e.providerMu.Unlock()
@@ -1854,7 +1854,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		var released struct {
 			ID string `json:"id"`
 		}
-		if json.Unmarshal(env.Notify.Args, &released) == nil {
+		if unmarshalFrameMember(env.Notify.Args, &released) == nil {
 			e.autocomplete.mu.Lock()
 			delete(e.autocomplete.providers, released.ID)
 			e.autocomplete.mu.Unlock()
@@ -1865,7 +1865,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			Event    map[string]any `json:"event"`
 			Started  bool           `json:"started"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {
 			return
 		}
 		e.modelStreamsMu.RLock()
@@ -1899,7 +1899,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 				FooterData    *footerDataWire `json:"footerData"`
 			} `json:"state"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {
 			return
 		}
 		// Session replication: apply incremental entries before any handler
@@ -1968,7 +1968,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		var payload struct {
 			Width int `json:"width"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {
 			return
 		}
 		if payload.Width > 0 {
@@ -1990,7 +1990,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		var payload struct {
 			Height int `json:"height"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil {
 			return
 		}
 		if payload.Height > 0 {
@@ -2005,7 +2005,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			Key string `json:"key"`
 			overlayHandleState
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil || payload.Key == "" {
 			return
 		}
 		e.overlaysMu.RLock()
@@ -2019,7 +2019,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			Key     string `json:"key"`
 			Focused bool   `json:"focused"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil || payload.Key == "" {
 			return
 		}
 		e.overlaysMu.RLock()
@@ -2034,7 +2034,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			Data  string              `json:"data"`
 			State *overlayHandleState `json:"state"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil || payload.Key == "" {
 			return
 		}
 		e.overlaysMu.RLock()
@@ -2051,7 +2051,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 			Key   string     `json:"key"`
 			Event MouseEvent `json:"event"`
 		}
-		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil || payload.Key == "" {
+		if err := unmarshalFrameMember(env.Notify.Args, &payload); err != nil || payload.Key == "" {
 			return
 		}
 		e.overlaysMu.RLock()
@@ -2236,7 +2236,7 @@ func (e *Extension) dispatchTerminalInput(id string, req *requestMsg) {
 		Data string `json:"data"`
 	}
 	if len(req.Args) > 0 {
-		_ = json.Unmarshal(req.Args, &args)
+		_ = unmarshalFrameMember(req.Args, &args)
 	}
 
 	e.terminalInputMu.RLock()
