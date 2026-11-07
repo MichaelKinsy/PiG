@@ -1645,6 +1645,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			result = map[string]any{"_pigBoundaryEntries": data["entries"], "_pigBoundaryResult": result}
 		}
 		_ = e.conn.respond(id, echo.reply(result, req.Args), err)
+		// A Context a handler kept must not hold the event's payload: ObjectKeys reads byte order from here on.
+		req.keyMu.Lock()
+		req.eventData, req.keyOrder, req.Args = nil, nil, nil
+		req.keyMu.Unlock()
 
 	case "shortcut":
 		e.toolMu.RLock()

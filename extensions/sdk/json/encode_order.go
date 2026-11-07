@@ -35,7 +35,7 @@ var mapStringAnyType = reflect.TypeFor[map[string]any]()
 
 // orderedMapOf returns v as a map[string]any with its member order when opts carries an order that knows it.
 func orderedMapOf(v reflect.Value, opts encOpts) (map[string]any, []string, bool) {
-	if opts.order == nil || v.Type() != mapStringAnyType {
+	if opts.order == nil || v.Type() != mapStringAnyType || v.Len() < 2 {
 		return nil, nil, false
 	}
 	keys, ok := opts.order.Keys(v.Pointer())

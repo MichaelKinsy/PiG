@@ -94,3 +94,40 @@ func BenchmarkHandedBackReply(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkHandedNothingBack is the reply of a handler that returns nothing: the context unchanged, a tool result or a message_end left alone. It writes the
+// SDK's own reply, which holds no object of the event, so no order is read.
+func BenchmarkHandedNothingBack(b *testing.B) {
+	for _, count := range []int{30, 300, 3000} {
+		args := []byte(contextArgs(count))
+		var data map[string]any
+		if err := json.Unmarshal(args, &data); err != nil {
+			b.Fatal(err)
+		}
+		snapshot := append([]any{}, data["messages"].([]any)...)
+		reply := map[string]any{"_pigContextUnchanged": true}
+		b.Run(fmt.Sprintf("context-%d", count), func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				roots := captureEchoRoots("context", data, snapshot)
+				out := roots.reply(reply, args)
+				if reply, ok := out.(orderedReply); ok {
+					if _, err := json.MarshalJSOrdered(reply.value, reply.order); err != nil {
+						b.Fatal(err)
+					}
+				}
+			}
+		})
+	}
+	toolResult := []byte(`{"type":"tool_result","toolCallId":"c","toolName":"read","input":{},"content":[{"type":"text","text":"ok"}],"details":{"z":1,"a":2},"isError":false}`)
+	var data map[string]any
+	if err := json.Unmarshal(toolResult, &data); err != nil {
+		b.Fatal(err)
+	}
+	b.Run("tool_result-nil", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			_ = captureEchoRoots("tool_result", data, nil).reply(nil, toolResult)
+		}
+	})
+}

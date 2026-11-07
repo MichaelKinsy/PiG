@@ -2,9 +2,11 @@ package sdk
 
 import (
 	"bytes"
+	"cmp"
+	"math"
 	"reflect"
 	"slices"
-	"sync"
+	"strconv"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -31,9 +33,10 @@ var echoMembers = map[string][]string{
 	"message_end":             {"message"},
 }
 
-// echoRoots are the lists and objects of one event that are written in their member order when a handler hands them back.
+// echoRoots are the lists and objects of one event that are written in their member order when a handler hands them back. No event has more than three.
 type echoRoots struct {
-	roots []echoRoot
+	list [3]echoRoot
+	n    int
 }
 
 // echoRoot is one member of the event: the list or the object it held.
@@ -50,25 +53,28 @@ func captureEchoRoots(event string, data map[string]any, contextMessages []any) 
 		return nil
 	}
 	var roots *echoRoots
-	add := func(root echoRoot) {
+	for _, member := range members {
+		var value any
+		switch held := data[member].(type) {
+		case []any:
+			if member == "messages" && contextMessages != nil {
+				value = contextMessages
+			} else {
+				value = slices.Clone(held)
+			}
+		case map[string]any:
+			if held == nil {
+				continue
+			}
+			value = held
+		default:
+			continue
+		}
 		if roots == nil {
 			roots = &echoRoots{}
 		}
-		roots.roots = append(roots.roots, root)
-	}
-	for _, member := range members {
-		switch value := data[member].(type) {
-		case []any:
-			if member == "messages" && contextMessages != nil {
-				add(echoRoot{member, contextMessages})
-			} else {
-				add(echoRoot{member, slices.Clone(value)})
-			}
-		case map[string]any:
-			if value != nil {
-				add(echoRoot{member, value})
-			}
-		}
+		roots.list[roots.n] = echoRoot{member, value}
+		roots.n++
 	}
 	return roots
 }
@@ -78,14 +84,17 @@ func (r *echoRoots) reply(result any, src []byte) any {
 	if r == nil || result == nil || len(src) == 0 {
 		return result
 	}
-	return orderedReply{result, newSourceOrder(src, r.roots)}
+	return orderedReply{result, &sourceOrder{src: src, roots: r.list[:r.n]}}
 }
 
-// sourceOrder holds the bytes of an event payload and the roots of its objects.
+// sourceOrder holds the bytes of an event payload and the roots of its objects. It reads nothing until it is asked the order of an object: a reply that holds
+// no object of the event, or no object with two members, never asks.
 type sourceOrder struct {
-	src []byte
-	// pending are the roots no walk has read yet.
+	src   []byte
+	roots []echoRoot
+	// pending are the roots no walk has read yet, set when the first question is asked.
 	pending []pendingRoot
+	started bool
 	// ranges are the objects whose order is known, as ranges of arena.
 	ranges map[uintptr]keyRange
 	arena  []string
@@ -99,20 +108,13 @@ type pendingRoot struct {
 	at    int
 }
 
-type keyRange struct{ lo, hi int }
+// keyRange is the order of one object: a range of the arena. It holds the object so its address is not reused while the order is in use.
+type keyRange struct {
+	lo, hi int
+	object map[string]any
+}
 
 type member struct{ key string }
-
-// newSourceOrder returns the order of the objects of roots, which the payload src holds.
-func newSourceOrder(src []byte, roots []echoRoot) *sourceOrder {
-	order := &sourceOrder{src: src}
-	for i, at := range memberStarts(src, roots) {
-		if at >= 0 {
-			order.pending = append(order.pending, pendingRoot{roots[i].value, at})
-		}
-	}
-	return order
-}
 
 func mapPointer(m map[string]any) uintptr { return reflect.ValueOf(m).Pointer() }
 
@@ -120,6 +122,14 @@ func mapPointer(m map[string]any) uintptr { return reflect.ValueOf(m).Pointer() 
 func (o *sourceOrder) Keys(m uintptr) ([]string, bool) {
 	// An object the reply holds may sit inside an element that is not itself in the reply (a rebuilt message around its old content), so the first question
 	// reads every element, and the walk costs no more than the reply's own encoding of them.
+	if !o.started {
+		o.started = true
+		for i, at := range memberStarts(o.src, o.roots) {
+			if at >= 0 {
+				o.pending = append(o.pending, pendingRoot{o.roots[i].value, at})
+			}
+		}
+	}
 	if len(o.pending) > 0 {
 		pending := o.pending
 		o.pending = nil
@@ -137,7 +147,7 @@ func (o *sourceOrder) Keys(m uintptr) ([]string, bool) {
 // walk follows value, which was decoded from the JSON text at src[at], through the objects below it, and returns the offset after that text. It records the
 // member order of every object it meets (an object is a *map[string]any); a value the handler replaced with another kind of value is skipped over as text.
 // The handler may have changed the objects since: a member that is gone is not followed, a member the text does not hold is written after the others, and an
-// array the handler shortened or reordered in place is matched to the text by position.
+// array the handler shortened or reordered in place is matched to the text by the string members of its elements.
 func (o *sourceOrder) walk(value any, at int) int {
 	if at >= len(o.src) {
 		return at
@@ -217,7 +227,7 @@ func (o *sourceOrder) walkObject(object map[string]any, at int) int {
 		for _, m := range o.members[base:] {
 			o.arena = append(o.arena, m.key)
 		}
-		o.ranges[pointer] = keyRange{lo, len(o.arena)}
+		o.ranges[pointer] = keyRange{lo, len(o.arena), object}
 	}
 	return min(i+1, len(o.src))
 }
@@ -227,20 +237,116 @@ const repeatedKeyScan = 16
 
 func (o *sourceOrder) walkArray(array []any, at int) int {
 	i := skipSpace(o.src, at+1)
-	for n := 0; i < len(o.src) && o.src[i] != ']'; n++ {
-		if n < len(array) {
-			i = o.walk(array[n], i)
-		} else if end, ok := scanValue(o.src, i); ok {
-			i = end
-		} else {
-			return len(o.src)
+	n := 0
+	for ; n < len(array) && i < len(o.src) && o.src[i] != ']'; n++ {
+		if !o.agrees(array[n], i) {
+			// The handler moved or removed elements of the array in place: match the rest by what they are, not by where they stand.
+			return o.walkMovedElements(array, n, at)
 		}
+		i = o.walk(array[n], i)
 		i = skipSpace(o.src, i)
 		if i < len(o.src) && o.src[i] == ',' {
 			i = skipSpace(o.src, i+1)
 		}
 	}
+	// Elements the text holds and the array no longer does are skipped.
+	for i < len(o.src) && o.src[i] != ']' {
+		end, ok := scanValue(o.src, i)
+		if !ok {
+			return len(o.src)
+		}
+		i = skipSpace(o.src, end)
+		if i < len(o.src) && o.src[i] == ',' {
+			i = skipSpace(o.src, i+1)
+		}
+	}
 	return min(i+1, len(o.src))
+}
+
+// walkMovedElements walks the elements array[from:] of the array whose text starts at src[at], the first from of which stood in their places: each element
+// is matched to the first element of the text that no walk has used and that agrees with it.
+func (o *sourceOrder) walkMovedElements(array []any, from, at int) int {
+	end, ok := scanValue(o.src, at)
+	if !ok {
+		return len(o.src)
+	}
+	starts := elementStarts(o.src, at)
+	claimed := make([]bool, len(starts))
+	for n := 0; n < from && n < len(claimed); n++ {
+		claimed[n] = true
+	}
+	for n := from; n < len(array); n++ {
+		for j, start := range starts {
+			if !claimed[j] && o.agrees(array[n], start) {
+				claimed[j] = true
+				o.walk(array[n], start)
+				break
+			}
+		}
+	}
+	return end
+}
+
+// agreesMembers is how many leading string members of an object decide whether it is the object of the text.
+const agreesMembers = 4
+
+// agrees reports whether value, an element of an array, can be the one the text at src[at] holds: no string member among the first few of the text differs
+// from the same member of value. A value that is not an object, or a text that is not, agrees.
+func (o *sourceOrder) agrees(value any, at int) bool {
+	object, ok := value.(map[string]any)
+	if !ok || at >= len(o.src) || o.src[at] != '{' {
+		return true
+	}
+	i := skipSpace(o.src, at+1)
+	for checked := 0; i < len(o.src) && o.src[i] != '}' && checked < agreesMembers; {
+		keyEnd, ok := scanString(o.src, i)
+		if !ok {
+			return true
+		}
+		key, ok := decodeKey(o.src[i:keyEnd])
+		if !ok {
+			return true
+		}
+		i = skipSpace(o.src, keyEnd)
+		if i >= len(o.src) || o.src[i] != ':' {
+			return true
+		}
+		i = skipSpace(o.src, i+1)
+		end, ok := scanValue(o.src, i)
+		if !ok {
+			return true
+		}
+		if o.src[i] == '"' {
+			checked++
+			literal := o.src[i+1 : end-1]
+			if got, present := object[key].(string); present && bytes.IndexByte(literal, '\\') < 0 && got != string(literal) {
+				return false
+			}
+		}
+		i = skipSpace(o.src, end)
+		if i < len(o.src) && o.src[i] == ',' {
+			i = skipSpace(o.src, i+1)
+		}
+	}
+	return true
+}
+
+// elementStarts returns the offset of each element of the JSON array that starts at src[at].
+func elementStarts(src []byte, at int) []int {
+	var starts []int
+	i := skipSpace(src, at+1)
+	for i < len(src) && src[i] != ']' {
+		end, ok := scanValue(src, i)
+		if !ok {
+			return starts
+		}
+		starts = append(starts, i)
+		i = skipSpace(src, end)
+		if i < len(src) && src[i] == ',' {
+			i = skipSpace(src, i+1)
+		}
+	}
+	return starts
 }
 
 // memberStarts returns, for each root, the offset of the value of its member in the JSON object src, or -1 when src has none.
@@ -271,6 +377,9 @@ func memberStarts(src []byte, roots []echoRoot) []int {
 				starts[n] = i
 				found++
 			}
+		}
+		if found == len(roots) {
+			return starts
 		}
 		end, ok := scanValue(src, i)
 		if !ok {
@@ -366,6 +475,7 @@ func decodeKey(literal []byte) (string, bool) {
 		if len(body) == 0 {
 			return "", true
 		}
+		//nolint:gosec // G103: an event payload's bytes are never written after the frame is read (socket frames are fresh, fused Args are never written again)
 		return unsafe.String(&body[0], len(body)), true
 	}
 	var key string
@@ -375,25 +485,23 @@ func decodeKey(literal []byte) (string, bool) {
 	return key, true
 }
 
-// keyOrderMu serializes the first read of an event's key order: handlers of one request may run on goroutines of their own.
-var keyOrderMu sync.Mutex
-
 // ObjectKeys returns the keys of object in the order Object.keys gives them in Pi. For an object of the event this handler is serving that is the order the
 // host wrote its members in, for the members the object still holds, and then the members the handler added, in byte order. A Go map has no order of its own,
-// so this is how a Go handler reads the order the host sent; Rust, Python, Lisp and Node objects keep it and need no call. A map the handler built, or any
-// object of an event whose payload arrived in pieces, has its keys in byte order. A handler that never calls it pays nothing: the order is read from the
+// so this is how a Go handler reads the order the host sent; Rust, Python, Lisp and Node objects keep it and need no call. Array-index keys ("0", "1", ...) come first, ascending, as JavaScript
+// enumerates them. A map the handler built, or any object of an event whose payload arrived in pieces or whose request has completed, has its keys in
+// byte order. A handler that never calls it pays nothing: the order is read from the
 // event bytes at the first call.
 // pig additive (D273)
 func (c Context) ObjectKeys(object map[string]any) []string {
 	var known []string
 	if c.req != nil && c.req.eventData != nil && len(c.req.Args) > 0 && object != nil {
-		keyOrderMu.Lock()
+		c.req.keyMu.Lock()
 		if c.req.keyOrder == nil {
-			c.req.keyOrder = &sourceOrder{src: c.req.Args, pending: []pendingRoot{{c.req.eventData, skipSpace(c.req.Args, 0)}}}
+			c.req.keyOrder = &sourceOrder{src: c.req.Args, started: true, pending: []pendingRoot{{c.req.eventData, skipSpace(c.req.Args, 0)}}}
 		}
 		known, _ = c.req.keyOrder.Keys(mapPointer(object))
 		known = slices.Clone(known)
-		keyOrderMu.Unlock()
+		c.req.keyMu.Unlock()
 	}
 	keys := make([]string, 0, len(object))
 	for _, key := range known {
@@ -411,5 +519,47 @@ func (c Context) ObjectKeys(object map[string]any) []string {
 		slices.Sort(rest)
 		keys = append(keys, rest...)
 	}
-	return keys
+	return arrayIndexKeysFirst(keys)
+}
+
+// arrayIndexKeysFirst orders keys as a JavaScript object enumerates them: the array-index keys first, ascending, then the others in the order given.
+func arrayIndexKeysFirst(keys []string) []string {
+	indexes := 0
+	for _, key := range keys {
+		if _, ok := arrayIndex(key); ok {
+			indexes++
+		}
+	}
+	if indexes == 0 {
+		return keys
+	}
+	ordered := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if _, ok := arrayIndex(key); ok {
+			ordered = append(ordered, key)
+		}
+	}
+	slices.SortStableFunc(ordered, func(a, b string) int {
+		x, _ := arrayIndex(a)
+		y, _ := arrayIndex(b)
+		return cmp.Compare(x, y)
+	})
+	for _, key := range keys {
+		if _, ok := arrayIndex(key); !ok {
+			ordered = append(ordered, key)
+		}
+	}
+	return ordered
+}
+
+// arrayIndex returns the value of key when it is an array index: a canonical decimal integer below 2^32-1.
+func arrayIndex(key string) (uint32, bool) {
+	if key == "" || len(key) > 10 || (key[0] == '0' && len(key) > 1) {
+		return 0, false
+	}
+	value, err := strconv.ParseUint(key, 10, 32)
+	if err != nil || value == math.MaxUint32 {
+		return 0, false
+	}
+	return uint32(value), true
 }

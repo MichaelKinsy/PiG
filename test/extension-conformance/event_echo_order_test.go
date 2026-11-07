@@ -11,16 +11,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// compactJSON is the JSON text without insignificant whitespace.
-func compactJSON(t *testing.T, text string) string {
-	t.Helper()
-	var out bytes.Buffer
-	if err := json.Compact(&out, []byte(text)); err != nil {
-		t.Fatal(err)
-	}
-	return out.String()
-}
-
 // TestConformance_HandedBackEventObjectsKeepTheirMemberOrder pins that an object an event hands an extension, and the extension hands back unchanged, is written
 // with the member order it was sent in, as Pi's JavaScript object keeps it: the draft entries another extension proposed at a turn boundary (their data, content blocks and details), the context's
 // messages with their tool-call arguments, the provider request's payload, a tool result's details and a message_end message. Each row is the bytes the host

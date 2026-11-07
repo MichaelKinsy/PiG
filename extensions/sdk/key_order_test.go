@@ -1,6 +1,8 @@
 package sdk
 
 import (
+	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -186,5 +188,109 @@ func TestObjectKeysAreReadInTheOrderTheHostWroteThem(t *testing.T) {
 	const want = `{"after":["model","messages","zeta","extra"],"before":["model","messages","stream","zeta"],"built":["a","b"],"nil":[],"zeta":["z","a"]}`
 	if got != want {
 		t.Errorf("keys\n got %s\nwant %s", got, want)
+	}
+}
+
+// An array a handler reorders in place keeps the member order of the objects in it: the blocks of a message (a tool call's arguments), the tools of a
+// request (their schemas), the messages of a list, the entries of a boundary.
+func TestObjectsMovedInPlaceKeepTheirMemberOrder(t *testing.T) {
+	const call = `{"type":"toolCall","id":"c1","name":"read","arguments":{"path":"p","offset":1}}`
+	const text = `{"type":"text","text":"t"}`
+	const user = `{"role":"user","content":"u","timestamp":1}`
+	const assistant = `{"role":"assistant","content":[` + call + `,` + text + `],"stopReason":"toolUse","timestamp":2}`
+	const swapped = `{"role":"assistant","content":[` + text + `,` + call + `],"stopReason":"toolUse","timestamp":2}`
+	const result = `{"role":"toolResult","toolCallId":"c1","toolName":"read","content":[{"type":"text","text":"ok"}],"isError":false,"timestamp":3}`
+	const tools = `[{"name":"zeta","input_schema":{"type":"object","properties":{"yy":{"type":"string"},"bb":{"type":"string"}}}},{"name":"alpha","input_schema":{"type":"object","properties":{"zz":{},"aa":{}}}}]`
+	const sorted = `[{"name":"alpha","input_schema":{"type":"object","properties":{"zz":{},"aa":{}}}},{"name":"zeta","input_schema":{"type":"object","properties":{"yy":{"type":"string"},"bb":{"type":"string"}}}}]`
+	const entryA = `{"type":"custom","customType":"a","data":{"z":1,"a":2}}`
+	const entryB = `{"type":"custom","customType":"b","data":{"y":1,"b":2}}`
+
+	ext := New("key-order-moved")
+	ext.OnEvent(EventContext, func(_ Context, data map[string]any) (any, error) {
+		content := data["messages"].([]any)[1].(map[string]any)["content"].([]any)
+		content[0], content[1] = content[1], content[0]
+		return nil, nil
+	})
+	ext.OnEvent(EventContext, func(_ Context, data map[string]any) (any, error) {
+		m := data["messages"].([]any)
+		m[0], m[2] = m[2], m[0]
+		return nil, nil
+	})
+	ext.OnEvent(EventBeforeProviderRequest, func(_ Context, data map[string]any) (any, error) {
+		list := data["payload"].(map[string]any)["tools"].([]any)
+		slices.SortFunc(list, func(a, b any) int {
+			return strings.Compare(a.(map[string]any)["name"].(string), b.(map[string]any)["name"].(string))
+		})
+		return data["payload"], nil
+	})
+	ext.OnEvent(EventTurnEnd, func(_ Context, data map[string]any) (any, error) {
+		entries := data["entries"].([]any)
+		entries[0], entries[1] = entries[1], entries[0]
+		return nil, nil
+	})
+	ext.OnEvent("context_with_system", func(_ Context, data map[string]any) (any, error) {
+		return map[string]any{"messages": data["messages"].([]any)[1:]}, nil
+	})
+	ext.OnEvent("agent_before_settle", func(Context, map[string]any) (any, error) { return nil, nil })
+	dispatch := keyOrderFixture(t, ext)
+
+	contextArgs := `{"type":"context","messages":[` + user + `,` + assistant + `,` + result + `]}`
+	for _, test := range []struct {
+		name, got, want string
+	}{
+		{"blocks of a message", dispatch(1, EventContext, contextArgs), `{"_pigContextUnchanged":true,"messages":[` + user + `,` + swapped + `,` + result + `]}`},
+		{"messages of the list", dispatch(2, EventContext, contextArgs), `{"_pigContextUnchanged":false,"messages":[` + result + `,` + assistant + `,` + user + `]}`},
+		{"tools of a request", dispatch(3, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":{"model":"m","tools":`+tools+`}}`), `{"model":"m","tools":` + sorted + `}`},
+		{"entries of a boundary", dispatch(4, EventTurnEnd, `{"type":"turn_end","entries":[`+entryA+`,`+entryB+`],"continue":false}`), `{"_pigBoundaryEntries":[` + entryB + `,` + entryA + `],"_pigBoundaryResult":null}`},
+		{"context with system", dispatch(5, "context_with_system", `{"type":"context_with_system","messages":[`+user+`,`+assistant+`]}`), `{"_pigContextUnchanged":false,"messages":[` + assistant + `]}`},
+		{"agent before settle", dispatch(6, "agent_before_settle", `{"type":"agent_before_settle","entries":[`+entryA+`,`+entryB+`],"continue":false}`), `{"_pigBoundaryEntries":[` + entryA + `,` + entryB + `],"_pigBoundaryResult":null}`},
+	} {
+		if test.got != test.want {
+			t.Errorf("%s\n got %s\nwant %s", test.name, test.got, test.want)
+		}
+	}
+}
+
+// Array-index keys come first, ascending, as Object.keys gives them, whether the host wrote them so or the handler added them.
+func TestObjectKeysPutArrayIndexKeysFirst(t *testing.T) {
+	ext := New("key-order-index")
+	ext.OnEvent(EventBeforeProviderRequest, func(ctx Context, data map[string]any) (any, error) {
+		payload := data["payload"].(map[string]any)
+		before := ctx.ObjectKeys(payload)
+		payload["0"] = 1
+		payload["01"] = 1
+		return map[string]any{"before": before, "after": ctx.ObjectKeys(payload), "built": ctx.ObjectKeys(map[string]any{"10": 1, "9": 1, "a": 1, "4294967295": 1, "4294967294": 1})}, nil
+	})
+	dispatch := keyOrderFixture(t, ext)
+	got := dispatch(1, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":{"10":1,"b":2,"9":3,"a":4}}`)
+	const want = `{"after":["0","9","10","b","a","01"],"before":["9","10","b","a"],"built":["9","10","4294967294","4294967295","a"]}`
+	if got != want {
+		t.Errorf("keys\n got %s\nwant %s", got, want)
+	}
+}
+
+// The order of an object that was read is not handed to a map that later takes the address the object had.
+func TestObjectKeysDoNotLeakTheOrderOfAFreedObject(t *testing.T) {
+	ext := New("key-order-reuse")
+	var failed string
+	ext.OnEvent(EventBeforeProviderRequest, func(ctx Context, data map[string]any) (any, error) {
+		payload := data["payload"].(map[string]any)
+		ctx.ObjectKeys(payload)
+		delete(data, "payload")
+		payload = nil
+		runtime.GC()
+		for range 2000 {
+			fresh := map[string]any{"y": 1, "z": 2}
+			if keys := ctx.ObjectKeys(fresh); keys[0] != "y" {
+				failed = strings.Join(keys, ",")
+				break
+			}
+		}
+		return nil, nil
+	})
+	dispatch := keyOrderFixture(t, ext)
+	dispatch(1, EventBeforeProviderRequest, `{"type":"before_provider_request","payload":{"z":1,"y":2,"a":3}}`)
+	if failed != "" {
+		t.Errorf("a new map got the order of the freed payload: %s", failed)
 	}
 }

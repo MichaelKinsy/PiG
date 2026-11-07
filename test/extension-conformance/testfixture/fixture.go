@@ -1386,7 +1386,7 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	// event_keys_probe subscribes to the event named by the argument with a handler that reports, as JSON, the keys of its payload member and of that
-	// object's zeta member in the order Object.keys gives them (TestConformance_ObjectKeysAreReadInInsertionOrder).
+	// object's zeta member in the order Object.keys gives them (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys).
 	ext.Command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", func(ctx sdk.Context, args string) error {
 		name := strings.TrimSpace(args)
 		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
