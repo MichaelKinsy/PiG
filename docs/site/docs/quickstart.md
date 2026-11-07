@@ -25,7 +25,7 @@ The complete verification suite also uses:
 
 - Git;
 - Node.js 24.22.1 and npm 12.2.1;
-- Python 3.12;
+- Python 3.12, and CPython 3.11 for `make test-sdk-py-311`, which `make check` runs (`PIG_SDK_PY_311` names the interpreter; the default is `python3.11`);
 - Rust 1.97.1;
 - tmux on Unix.
 

@@ -244,7 +244,7 @@ Requirements:
 - Git
 - macOS 13 or later for native macOS builds
 - Node.js 24.22.1 and npm 12.2.1 for parity tooling
-- Python 3.12 for Python SDK tests
+- Python 3.12 for Python SDK tests, and CPython 3.11 for `make test-sdk-py-311`, which `make check` runs (`PIG_SDK_PY_311` names the interpreter; the default is `python3.11`)
 - Rust 1.97.1 for Rust SDK tests
 - tmux for terminal parity tests on Unix
 

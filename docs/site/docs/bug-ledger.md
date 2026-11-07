@@ -277,6 +277,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-348a3a8](#bf-348a3a8) | Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-349684c](#bf-349684c) | A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued… | PiG's own defect | All platforms | Unreleased |
 | [BF-34aa421](#bf-34aa421) | fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path | PiG's own defect | All platforms | Unreleased |
 | [BF-34b8e92](#bf-34b8e92) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-34bcd58](#bf-34bcd58) | OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
@@ -5299,6 +5300,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `348a3a8859` (2026-11-05), `fe8b5e3ab8` (2026-11-05)
 - **Tests:** `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsDifferFromPinnedPi`, `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsMatchPiMain`, `tui/markdown_html_comments_upstream_test.go::TestMarkdownHTMLCommentsStreamLikeAFreshRender`, `tui/markdown_html_comments_upstream_test.go::TestUpstreamMarkdownHTMLComments`
 - **Release note:** Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New, `/changelog` and messages. A comment-only block disappears with one of its blank lines, so no extra gap remains; an inline comment is skipped, so `See <!-- c --> the docs.` renders `See the docs.`; an unclosed comment stays hidden while it streams. Follows Pi main 54280c4ff ahead of the pin (D265).
+
+### BF-349684c
+
+**A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued messages were still being handed over ahead of them: a hold could reach a relay worker before its hello and end the link with `handshake: hold before hello`.
+- **Root cause:** LinkEnd.OnMessage drained the queue outside the guard while deliver() already saw the listener and called it directly, so a message arriving during the hand-over reached the listener ahead of the queued ones. In the relay worker the reader goroutine delivered a hold before the queued hello (worker error: protocol_error handshake: hold before hello, a third worker forked), flaky under load (TestExample13Relay, portmap-5). Messages arriving during the hand-over now queue behind it and the goroutine that set the listener delivers them in order.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `349684cecf` (2026-11-06)
+- **Tests:** `chord/next/host/host_example_13_test.go::TestExample13Relay`, `chord/next/link/ipc_test.go::TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver`
+- **Release note:** A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued messages were still being handed over ahead of them: a hold could reach a relay worker before its hello and end the link with `handshake: hold before hello`.
 
 ### BF-34aa421
 
