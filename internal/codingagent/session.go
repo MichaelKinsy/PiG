@@ -226,6 +226,10 @@ type Session struct {
 	// name is the name of the newest session_info entry that parses, maintained as entries are appended or loaded, so getSessionName, which every extension event's state carries, does not scan the log.
 	name string
 
+	// renderIdentities holds the identity each custom entry an extension renders is handed, so its renderer's state survives the transcript's
+	// rebuilds as it does in Pi; replaceSessionLog drops them with the entries.
+	renderIdentities entryRenderIdentities
+
 	// revision changes, under mu, whenever the entries or the leaf change, so a caller can reuse a value derived from the branch until the log moves.
 	revision uint64
 }

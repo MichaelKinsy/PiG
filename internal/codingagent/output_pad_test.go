@@ -91,7 +91,7 @@ func TestOutputPad(t *testing.T) {
 		{"custom entry", func(outputPad int) outputPaddedComponent {
 			return NewCustomEntryComponent(CustomEntry{CustomType: "entry"}, func(extension.CustomEntry, extension.EntryRenderOptions, extension.Theme) extension.Component {
 				panic("renderer failed")
-			}, outputPad)
+			}, nil, outputPad)
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

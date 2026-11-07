@@ -125,10 +125,10 @@ func TestCustomEntryComponentHandsTheRendererOneIdentityAcrossRebuilds(t *testin
 		seen = append(seen, options.Identity)
 		return tui.NewText("entry")
 	}
-	first := NewCustomEntryComponent(CustomEntry{CustomType: "note", Data: "a"}, renderer, 1)
+	first := NewCustomEntryComponent(CustomEntry{CustomType: "note", Data: "a"}, renderer, nil, 1)
 	first.SetExpanded(true)
 	first.Invalidate()
-	second := NewCustomEntryComponent(CustomEntry{CustomType: "note", Data: "b"}, renderer, 1)
+	second := NewCustomEntryComponent(CustomEntry{CustomType: "note", Data: "b"}, renderer, nil, 1)
 	if len(seen) != 4 {
 		t.Fatalf("renderer ran %d times, want 4", len(seen))
 	}

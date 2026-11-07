@@ -526,7 +526,13 @@ func (m *InteractiveMode) addCustomEntryToChat(entry CustomEntry) {
 	if renderer == nil {
 		return
 	}
-	component := NewCustomEntryComponent(entry, renderer, m.outputPad)
+	// Pi renders the same session-manager entry object on every rebuild, so the renderer's per-entry state survives compaction, /tree and the
+	// resume paint; the session's identity for the entry id is that object.
+	var identity *extension.RenderIdentity
+	if session := m.currentSession(); session != nil && entry.ID != "" {
+		identity = session.EntryRenderIdentity(entry.ID)
+	}
+	component := NewCustomEntryComponent(entry, renderer, identity, m.outputPad)
 	component.SetExpanded(m.toolsExpanded)
 	if !component.HasContent() {
 		return
