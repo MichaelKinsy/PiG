@@ -6,9 +6,9 @@ import (
 )
 
 // cygwinKillNoise is the line the MSYS runtime prints on stderr when the process that was starting a child dies under it: Windows native-4 (CI run
-// 42384052028) read `sh -c "trap '' TERM; exec sleep 60"` with a 1000 ms timeout as
+// 42384052028) read scenario 23 (a shell that ignores TERM, then execs sleep 60) with a 1000 ms timeout as
 //
-//	      0 [main] sleep (10964) child_copy: cygheap read copy failed, 0x800000000..0x80000CE30, done 0, windows pid 10964, Win32 error 299
+//	0 [main] sleep (10964) child_copy: cygheap read copy failed, 0x800000000..0x80000CE30, done 0, windows pid 10964, Win32 error 299
 //
 // from Pig against no stderr from Pi.
 var cygwinKillNoise = regexp.MustCompile(`(?m)^ *\d+ \[main\] \S+ \(\d+\) child_copy: [^\n]*\n`)
