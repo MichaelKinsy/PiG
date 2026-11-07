@@ -9,10 +9,10 @@ import (
 	"slices"
 	"testing"
 
-	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 	lispsdk "github.com/MichaelKinsy/PiG/extensions/sdk-lisp"
 	pysdk "github.com/MichaelKinsy/PiG/extensions/sdk-py"
 	rssdk "github.com/MichaelKinsy/PiG/extensions/sdk-rs"
+	"github.com/MichaelKinsy/PiG/internal/gosdkbundle"
 	"github.com/MichaelKinsy/PiG/internal/sdkpack"
 )
 
@@ -22,7 +22,7 @@ var bundleSources = []struct {
 	files     func() []string
 	hash      func() string
 }{
-	{"go", "../../../extensions/sdk", sdk.BundledFiles, sdk.StagedHash},
+	{"go", "../../../extensions/sdk", gosdkbundle.BundledFiles, gosdkbundle.StagedHash},
 	{"python", "../../../extensions/sdk-py", pysdk.BundledFiles, pysdk.StagedHash},
 	{"rust", "../../../extensions/sdk-rs", rssdk.BundledFiles, rssdk.StagedHash},
 	{"lisp", "../../../extensions/sdk-lisp", lispsdk.BundledFiles, lispsdk.StagedHash},

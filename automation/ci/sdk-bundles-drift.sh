@@ -1,11 +1,12 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Fail when a packed SDK bundle (each SDK's sdk.zst and bundle_pack.go) differs from what `make sdk-bundles` writes from the SDK
-# sources. The generator keeps a frame that already decodes to the sources' files, so the comparison is of the files the frame
-# holds as well as of the bytes. It writes in place, so this runs it, compares against a copy of the four SDK directories taken
-# first, and puts the committed bytes back.
+# Fail when a packed SDK bundle (the sdk.zst and bundle_pack.go of internal/gosdkbundle, extensions/sdk-lisp, sdk-py and sdk-rs, and
+# the nested extensions/sdk module's .gz copies and bundle_embed.go) differs from what `make sdk-bundles` writes from the SDK
+# sources. The generators keep a frame or copy that already holds the sources' text, so the comparison is of the text as well as of
+# the bytes. They write in place, so this runs them, compares against a copy of the five directories taken first, and puts the
+# committed bytes back.
 set -eu
-dirs="extensions/sdk extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs"
+dirs="extensions/sdk internal/gosdkbundle extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 # shellcheck disable=SC2086
