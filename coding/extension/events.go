@@ -575,10 +575,11 @@ func (d SessionBoundaryDraft) MarshalJSON() ([]byte, error) {
 	}
 }
 
-// UnmarshalJSON keeps the member order of the `data` and `details` objects the extension wrote.
+// UnmarshalJSON keeps the member order of the `data` and `details` objects and of the `content` blocks the extension wrote: Pi appends the objects themselves and
+// writes their members in insertion order.
 func (d *SessionBoundaryDraft) UnmarshalJSON(data []byte) error {
 	type plain SessionBoundaryDraft
-	return orderedjson.UnmarshalFields(data, (*plain)(d), "data", "details")
+	return orderedjson.UnmarshalFields(data, (*plain)(d), "data", "details", "content")
 }
 
 // ProjectedSessionEntry is one boundary preview entry and its model-visible messages.
