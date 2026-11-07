@@ -22,6 +22,39 @@ import pig_sdk  # noqa: E402
 from pig_sdk import kit  # noqa: E402
 
 
+def dumps_deep(value: Any, separators: tuple[str, str] = (", ", ": ")) -> str:
+    """json.dumps of a payload, written with a stack of its own when its nesting passes what the interpreter's JSON writer takes (its recursion limit: about 990 levels on 3.11, and a lower C limit than Linux's on Windows)."""
+    try:
+        return json.dumps(value, separators=separators)
+    except RecursionError:
+        pass
+    comma, colon = separators
+    out: list[str] = []
+    stack: list[Any] = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, tuple):  # a literal to write: a bracket, a comma, or an object key and its colon
+            out.append(item[0])
+        elif isinstance(item, dict):
+            out.append("{")
+            stack.append(("}",))
+            for index, (key, member) in enumerate(reversed(list(item.items()))):
+                stack.append(member)
+                stack.append((json.dumps(key) + colon,))
+                if index < len(item) - 1:
+                    stack.append((comma,))
+        elif isinstance(item, list):
+            out.append("[")
+            stack.append(("]",))
+            for index in range(len(item) - 1, -1, -1):
+                stack.append(item[index])
+                if index:
+                    stack.append((comma,))
+        else:
+            out.append(json.dumps(item))
+    return "".join(out)
+
+
 def kit_probe_view() -> kit.View:
     """The component kit's conformance view (D107,
     docs/plan/extension-component-kit.md §10)."""
@@ -2357,7 +2390,7 @@ def new_extension() -> pig_sdk.Extension:
 
         def probe(hctx, data):
             hctx.notify("event_probe_on:%s" % name, "info")
-            hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info")
+            hctx.notify("event_payload:%s:%s" % (name, dumps_deep(data)), "info")
             # The event as the host sent it, for the tests that compare a payload field with the Go reference's.
             hctx.notify("event_probe_data:%s:%s" % (name, json.dumps(data, separators=(",", ":"))), "info")
             # mcp_servers_change carries every registered server (types.ts:699-709): report their names, which only the host's registry knows.
@@ -2386,7 +2419,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()
-        ext.on_event(name, lambda hctx, data: hctx.notify("event_payload:%s:%s" % (name, json.dumps(data)), "info"))
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_payload:%s:%s" % (name, dumps_deep(data)), "info"))
 
     ext.command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", event_payload_probe)
     def event_isolation_probe(ctx, args):
@@ -2873,7 +2906,7 @@ def new_extension() -> pig_sdk.Extension:
             return
         ctx.notify(
             "tool-update=%s:%s:%s:%s"
-            % (data.get("toolName"), json.dumps(data.get("args"), separators=(",", ":")), data.get("partialResult", {}).get("content", [{}])[0].get("text"), data.get("partialResult", {}).get("details", {}).get("progress")),
+            % (data.get("toolName"), dumps_deep(data.get("args"), (",", ":")), data.get("partialResult", {}).get("content", [{}])[0].get("text"), data.get("partialResult", {}).get("details", {}).get("progress")),
             "info",
         )
 
