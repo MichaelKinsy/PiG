@@ -1005,12 +1005,12 @@ allocs = 37
 
 [[benchmark]]
 package = "./ai"
-benchmark = "BenchmarkThinkingSignatureJSON/,"thinkingSignature":"""
+benchmark = "BenchmarkThinkingSignatureJSON/,\"thinkingSignature\":\"\""
 allocs = 15
 
 [[benchmark]]
 package = "./ai"
-benchmark = "BenchmarkThinkingSignatureJSON/,"thinkingSignature":"signed""
+benchmark = "BenchmarkThinkingSignatureJSON/,\"thinkingSignature\":\"signed\""
 allocs = 16
 
 [[benchmark]]
