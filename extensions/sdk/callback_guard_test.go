@@ -62,31 +62,94 @@ func TestMcpRefreshLockPanicIsTheCallsError(t *testing.T) {
 	}
 }
 
-func TestEditorComponentPanicIsReportedAndTheSessionGoesOn(t *testing.T) {
+// A component whose HandleInput panics: the host waits for ui.editor.inputDone after every key and has no deadline, so the SDK sends it however the call
+// ended, and the keys after it still reach the component.
+type panickingInput struct {
+	EditorComponent
+	calls int
+}
+
+func (c *panickingInput) HandleInput(data string) error {
+	c.calls++
+	if data == "boom" {
+		panic("component boom")
+	}
+	return nil
+}
+func (*panickingInput) Render(int) ([]string, error) { return []string{"row"}, nil }
+
+// readFrames hands the method of every notify frame the extension writes to a channel.
+func readFrames(t *testing.T, peer net.Conn) <-chan string {
+	t.Helper()
+	out := make(chan string, 32)
+	go func() {
+		defer close(out)
+		for {
+			header := make([]byte, 4)
+			if _, err := io.ReadFull(peer, header); err != nil {
+				return
+			}
+			body := make([]byte, binary.BigEndian.Uint32(header))
+			if _, err := io.ReadFull(peer, body); err != nil {
+				return
+			}
+			var env struct {
+				Notify struct {
+					Method string          `json:"method"`
+					Args   json.RawMessage `json:"args"`
+				} `json:"notify"`
+			}
+			if json.Unmarshal(body, &env) == nil && env.Notify.Method != "" {
+				out <- env.Notify.Method + " " + string(env.Notify.Args)
+			}
+		}
+	}()
+	return out
+}
+
+func TestEditorHandleInputPanicStillSendsInputDone(t *testing.T) {
 	host, peer := net.Pipe()
 	defer func() { _ = host.Close(); _ = peer.Close() }()
-	s := &editorSession{ext: &Extension{conn: &conn{nc: host}}, key: "editor-1", wake: make(chan struct{}, 1), done: make(chan struct{})}
+	frames := readFrames(t, peer)
+	component := &panickingInput{}
+	ext := &Extension{conn: &conn{nc: host}}
+	s := &editorSession{ext: ext, key: "editor-1", component: component, wake: make(chan struct{}, 1), done: make(chan struct{})}
+	ext.editor = s
 	go s.run()
-	defer close(s.done)
-	s.post(func() { panic("component boom") })
-	alive := make(chan struct{})
-	s.post(func() { close(alive) })
-
-	_ = peer.SetReadDeadline(time.Now().Add(10 * time.Second))
-	header := make([]byte, 4)
-	if _, err := io.ReadFull(peer, header); err != nil {
-		t.Fatal(err)
+	defer s.close()
+	input := func(data string) {
+		args, _ := json.Marshal(map[string]any{"key": "editor-1", "data": data})
+		if !ext.handleEditorNotify("ui.editor.input", args) {
+			t.Fatal("the editor notify was not routed")
+		}
 	}
-	body := make([]byte, binary.BigEndian.Uint32(header))
-	if _, err := io.ReadFull(peer, body); err != nil {
-		t.Fatal(err)
+	awaitInputDone := func() (all []string) {
+		for {
+			select {
+			case frame := <-frames:
+				all = append(all, frame)
+				if strings.HasPrefix(frame, "ui.editor.inputDone ") {
+					return all
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatalf("no ui.editor.inputDone after the key; frames %q", all)
+			}
+		}
 	}
-	if !strings.Contains(string(body), "editor call failed: panicked: component boom") {
-		t.Fatalf("notification = %s, want the component's panic as an error notice", body)
+	input("boom")
+	got := awaitInputDone()
+	failed := false
+	for _, frame := range got {
+		if strings.HasPrefix(frame, "ui.notify ") && strings.Contains(frame, "editor handleInput failed: component boom") {
+			failed = true
+		}
 	}
-	select {
-	case <-alive:
-	case <-time.After(10 * time.Second):
-		t.Fatal("the session stopped running calls after one panicked")
+	if !failed {
+		t.Fatalf("frames %q hold no \"editor handleInput failed: component boom\" notice", got)
+	}
+	input("x")
+	awaitInputDone()
+	if component.calls != 2 {
+		t.Fatalf("HandleInput ran %d times, want 2: a later key did not reach the component", component.calls)
 	}
 }

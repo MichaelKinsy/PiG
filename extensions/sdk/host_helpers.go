@@ -390,7 +390,6 @@ func ReportLoadFailure(sockPath string) error {
 	if started := takeHelperConn(sockPath); started != nil {
 		return started.nc.Close()
 	}
-	//nolint:gosec // G704 models arbitrary network input, not a required local IPC endpoint.
 	nc, err := net.Dial("unix", sockPath)
 	if err != nil {
 		return fmt.Errorf("connect to host: %w", err)

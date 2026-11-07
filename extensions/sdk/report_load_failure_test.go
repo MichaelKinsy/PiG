@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -41,7 +42,7 @@ func listenForReport(t *testing.T) (string, <-chan net.Conn) {
 func expectEOF(t *testing.T, c net.Conn) {
 	t.Helper()
 	_ = c.SetReadDeadline(time.Now().Add(5 * time.Second))
-	if _, err := c.Read(make([]byte, 1)); err != io.EOF {
+	if _, err := c.Read(make([]byte, 1)); !errors.Is(err, io.EOF) {
 		t.Fatalf("read = %v, want EOF: the connection was not closed", err)
 	}
 }
