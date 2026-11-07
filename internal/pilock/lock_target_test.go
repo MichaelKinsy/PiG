@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -17,4 +18,17 @@ func createLockTarget(t testing.TB, path string) {
 	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil && !errors.Is(err, fs.ErrExist) {
 		t.Fatal(err)
 	}
+}
+
+// resolvedLockTarget is the path the auth locks guard for the file at path, which exists: proper-lockfile's default realpath (lib/lockfile.js resolveCanonicalPath) puts the lock directory beside fs.realpath(file), so an error from creating it names that directory, not the caller's spelling of the path (D236). A macOS temporary directory is /var/folders/..., a symlink to /private/var/folders/.... Windows keeps the case and the 8.3 short names of the path, which Go's EvalSymlinks would expand.
+func resolvedLockTarget(t testing.TB, path string) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return path
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
 }
