@@ -1370,13 +1370,21 @@ func (h *chordHost) startTicking() {
 	ping, shut := h.heartbeat.ping, h.heartbeat.close
 	//portlint:allow numbers min(ping, shut) is a time.Duration in whole nanoseconds: the /10 drops under 1 ns, below nodeDelay's whole-millisecond truncation, so the armed delay equals Pi's Math.min(ping, close) / 10 (host.ts:1319)
 	interval := min(ping, shut) / 10
+	last := h.events.Now()
 	tick := func() {
 		if ticking.stopped {
 			return
 		}
 		now := h.events.Now()
+		// A tick a whole interval late is time this process did not run (a sleeping laptop, a blocked event loop).
+		late := float64(now-last) - float64(interval)/float64(time.Millisecond)
+		var paused int64
+		if late >= float64(interval)/float64(time.Millisecond) {
+			paused = int64(late)
+		}
+		last = now
 		for _, each := range slices.Clone(h.links) {
-			each.tick(now, ping, shut)
+			each.tick(now, paused, ping, shut)
 		}
 	}
 	var arm func()
