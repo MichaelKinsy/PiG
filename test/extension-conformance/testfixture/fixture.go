@@ -1624,6 +1624,44 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 
+	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, the session manager's id and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
+	ext.Command("replica-probe", "Report the replicated model object, session ids and context usage", func(ctx sdk.Context, args string) error {
+		if model, ok := strings.CutPrefix(args, "set-model:"); ok {
+			if _, err := ctx.SetModel(model); err != nil {
+				return err
+			}
+		}
+		info, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
+		sessionID, err := ctx.GetSessionID()
+		if err != nil {
+			return err
+		}
+		managerID, err := ctx.SessionManager().GetSessionID()
+		if err != nil {
+			return err
+		}
+		usage, err := ctx.GetContextUsage()
+		if err != nil {
+			return err
+		}
+		var model any
+		if info != nil {
+			model = map[string]any{
+				"id": info.ID, "name": info.Name, "provider": info.Provider, "contextWindow": info.ContextWindow, "maxOutputTokens": info.MaxOutputTokens, "reasoning": info.Reasoning,
+				"inputCostPer1M": info.InputCostPer1M, "outputCostPer1M": info.OutputCostPer1M, "cacheReadCostPer1M": info.CacheReadCostPer1M, "cacheWriteCostPer1M": info.CacheWriteCostPer1M,
+			}
+		}
+		data, err := json.Marshal(map[string]any{"model": model, "sessionId": sessionID, "managerSessionId": managerID, "usage": usage})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(string(data), "info")
+		return nil
+	})
+
 	ext.Command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", func(ctx sdk.Context, args string) error {
 		opts, err := ctx.GetSystemPromptOptions()
 		if err != nil {

@@ -36,7 +36,12 @@ func (s ReadonlySessionManager) GetCwd() (string, error) {
 func (s ReadonlySessionManager) GetSessionDir() (string, error) {
 	return sessionValue[string](s, "getSessionDir", nil)
 }
+
+// GetSessionID is `getSessionId()`: the replicated id (see [Context.GetSessionID]) for the Session that owns the context, the host's for a replacement Session.
 func (s ReadonlySessionManager) GetSessionID() (string, error) {
+	if id, known, err := s.context.localSessionID(); known {
+		return id, err
+	}
 	return sessionValue[string](s, "getSessionId", nil)
 }
 func (s ReadonlySessionManager) GetSessionFile() (*string, error) {

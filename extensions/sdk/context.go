@@ -1101,8 +1101,16 @@ func decodeModelProvider(raw json.RawMessage) string {
 	return ""
 }
 
-// GetModelInfo returns structured metadata about the active model. Pi's model is `Model | undefined`: nil means no model is set, and a host or transport failure is returned as an error.
+// GetModelInfo returns structured metadata about the active model. Pi's model is `Model | undefined`: nil means no model is set, and a host or transport failure is returned as an error. The host's state snapshots replicate the model object, so the read costs no host round trip; a replacement context, or one made before the first snapshot, asks the host. A context of a replaced or reloaded runtime returns the stale message, as the host answered it.
 func (c Context) GetModelInfo() (*ModelInfo, error) {
+	if c.replacement == nil && c.ext != nil {
+		if err := c.staleError(); err != nil {
+			return nil, err
+		}
+		if info, known, err := c.ext.replicatedModelInfo(); known {
+			return info, err
+		}
+	}
 	info, err := hostDecoded[ModelInfo](c, "getModelInfo", nil)
 	if err != nil || info.ID == "" {
 		return nil, err
@@ -1330,8 +1338,11 @@ func (c Context) GetEntries() ([]json.RawMessage, error) {
 	return c.ext.session.getEntries(), nil
 }
 
-// GetSessionID returns the current session ID, including for in-memory sessions.
+// GetSessionID returns the current session ID, including for in-memory sessions. The host's state snapshots replicate it, so the read costs no host round trip; a replacement context, or one made before the first snapshot, asks the host. A context of a replaced or reloaded runtime returns the stale message, as the host answered it.
 func (c Context) GetSessionID() (string, error) {
+	if id, known, err := c.localSessionID(); known {
+		return id, err
+	}
 	return hostRequired[string](c, "getSessionID", nil, "sessionId")
 }
 

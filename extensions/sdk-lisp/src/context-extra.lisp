@@ -9,7 +9,7 @@
 
 (defstruct (core-state (:conc-name cs-) (:constructor make-core-state ()))
   (lock (sb-thread:make-mutex :name "pig core state"))
-  (model "") (model-provider "") (session-name "") (session-file "") (settings nil) (source-info nil)
+  (model "") (model-provider "") (model-info nil) (model-known nil) (replica-session-id "") (replica-session-known nil) (session-name "") (session-file "") (settings nil) (source-info nil)
   (nested (make-hash-table :test 'equal)) (execute-seq 0) (exec-seq 0)
   ;; the session log mirror
   (session-id "") (entries (make-array 0 :adjustable t :fill-pointer t)) (index (make-hash-table :test 'equal)) (leaf-id "")
@@ -57,9 +57,11 @@
       (sb-thread:with-mutex ((cs-lock cs))
         (when (nth-value 1 (gethash "model" state))
           (multiple-value-bind (id provider) (core-model-identity (jget state "model"))
-            (setf (cs-model cs) id (cs-model-provider cs) provider)))
+            (setf (cs-model cs) id (cs-model-provider cs) provider
+                  (cs-model-info cs) (jget state "model") (cs-model-known cs) t)))
         (let ((session (jget state "session")))
           (when (hash-table-p session)
+            (let ((id (jget session "sessionId"))) (setf (cs-replica-session-id cs) (if (stringp id) id "") (cs-replica-session-known cs) t))
             (let ((name (jget session "sessionName"))) (setf (cs-session-name cs) (if (stringp name) name "")))
             (let ((file (jget session "sessionFile"))) (when (and (stringp file) (plusp (length file))) (setf (cs-session-file cs) file)))
             (cs-apply-session cs session)))
@@ -79,6 +81,33 @@
   "The active model's id (Pi's ctx.model.id), \"\" while the session has no model."
   (assert-active ctx)
   (with-core-state (cs ctx) (cs-model cs)))
+
+;;; The model object and session id of the latest snapshot answer these reads without a host call. A context made before the first
+;;; snapshot, and a withSession context (this process replicates only the requesting Session), ask the host.
+
+(defun ctx-get-model-info (ctx)
+  "The active model's info object (a fresh copy per call), or NIL while the session has no model."
+  (if (ctx-replacement ctx)
+      (host-model-info ctx)
+      (progn
+        (assert-active ctx)
+        (multiple-value-bind (known info) (with-core-state (cs ctx) (values (cs-model-known cs) (cs-model-info cs)))
+          (if known (model-info-result (clone-stream-value info)) (host-model-info ctx))))))
+
+(defun replicated-session-id (ctx)
+  "(values id known): the replicated session id of an ordinary context; known is NIL for a replacement context and before the first snapshot."
+  (cond ((ctx-replacement ctx) (values nil nil))
+        (t (assert-active ctx)
+           (with-core-state (cs ctx) (values (cs-replica-session-id cs) (cs-replica-session-known cs))))))
+
+(defun ctx-get-session-id (ctx)
+  (multiple-value-bind (id known) (replicated-session-id ctx)
+    (if known id (host-session-id ctx))))
+
+(defun session-get-session-id (manager)
+  "The session id of the context's Session. A setup manager reads the Session being created, so it asks the host."
+  (multiple-value-bind (id known) (if (session-manager-replicated manager) (replicated-session-id (session-manager-ctx manager)) (values nil nil))
+    (if known id (session-read manager "getSessionId"))))
 
 (defun ctx-model-provider (ctx)
   "The active model's provider id (Pi's ctx.model.provider), \"\" while the session has no model."

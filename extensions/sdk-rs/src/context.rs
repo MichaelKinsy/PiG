@@ -2115,20 +2115,29 @@ impl ModelRegistry {
     }
 }
 
-/// The Session's identity as the host's state snapshots replicate it: Pi's `ctx.model.id`, `ctx.model.provider` and
-/// `ctx.sessionManager.getSessionName()`. The ready state and every `state_update` pass through [`SessionIdentity::apply_state`].
+/// The Session's identity as the host's state snapshots replicate it: Pi's `ctx.model` (the id and provider every read of the model takes, and the
+/// model object `get_model_info` decodes per call), `ctx.sessionManager.getSessionId()` and `ctx.sessionManager.getSessionName()`. The ready state and every
+/// `state_update` pass through [`SessionIdentity::apply_state`].
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SessionIdentity {
     pub(crate) model: String,
     pub(crate) model_provider: String,
     pub(crate) session_name: String,
+    /// The snapshot's model object, `null` for a Session without a model; `None` until a snapshot carried the `model` key.
+    pub(crate) model_wire: Option<serde_json::Value>,
+    /// The snapshot's session id, `""` for none; `None` until a snapshot carried the `session` object.
+    pub(crate) session_id: Option<String>,
 }
 
 impl SessionIdentity {
-    /// Applies a state snapshot. An absent `model` keeps the replica and an explicit null clears it (the Session holds no model). Every session snapshot carries the name, `""` for a session with no name.
+    /// Applies a state snapshot. An absent `model` keeps the replica and an explicit null clears it (the Session holds no model); the model object is copied and its
+    /// identity derived only when it differs from the held one. Every session snapshot carries the name, `""` for a session with no name, and the id (omitted when empty).
     pub(crate) fn apply_state(&mut self, state: &serde_json::Map<String, serde_json::Value>) {
-        if let Some(model) = state.get("model") {
+        if let Some(model) = state.get("model")
+            && self.model_wire.as_ref() != Some(model)
+        {
             (self.model, self.model_provider) = model_identity(model);
+            self.model_wire = Some(model.clone());
         }
         if let Some(session) = state.get("session").and_then(serde_json::Value::as_object) {
             self.session_name = session
@@ -2136,6 +2145,13 @@ impl SessionIdentity {
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or_default()
                 .to_string();
+            self.session_id = Some(
+                session
+                    .get("sessionId")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            );
         }
     }
 }
@@ -4223,8 +4239,14 @@ impl Context {
         self.host_reply("getSystemPromptOptions", None)
     }
 
-    /// Get structured metadata about the active model. Pi's model is `Model | undefined`: `None` means no model is set.
+    /// Get structured metadata about the active model. Pi's model is `Model | undefined`: `None` means no model is set. The state snapshots replicate the model, so
+    /// the read costs no host call once one arrived and decodes the model per call; a replacement context asks the host.
     pub fn get_model_info(&self) -> io::Result<Option<ModelInfo>> {
+        if let Some(identity) = self.replica()?
+            && let Some(model) = &identity.model_wire
+        {
+            return ModelInfo::from_wire(model);
+        }
         let Some(v) = self.call_host("getModelInfo", None)? else {
             return Ok(None);
         };
@@ -4447,9 +4469,34 @@ impl Context {
 
     // ─── Session identity ────────────────────────────────────────────────
 
-    /// The current session's id, including for in-memory sessions.
+    /// The current session's id, including for in-memory sessions. The state snapshots replicate it, so the read costs no host call once one arrived; a replacement
+    /// context asks the host.
     pub fn get_session_id(&self) -> io::Result<String> {
+        if let Some(id) = self.replicated_session_id()? {
+            return Ok(id);
+        }
         self.required_field("getSessionID", None, "sessionId")
+    }
+
+    /// The replicated session id, or `None` when the host must answer: a replacement context (this process replicates only the requesting Session) or before the
+    /// first snapshot carried the session.
+    pub(crate) fn replicated_session_id(&self) -> io::Result<Option<String>> {
+        Ok(self
+            .replica()?
+            .and_then(|identity| identity.session_id.clone()))
+    }
+
+    /// The replicated state, or `None` for a replacement context. A stale context fails as the host answers every call of a replaced runtime.
+    fn replica(&self) -> io::Result<Option<std::sync::MutexGuard<'_, SessionIdentity>>> {
+        if self.replacement {
+            return Ok(None);
+        }
+        // Copy the message out so the guard is not held while the error is built.
+        let message = self.conn.stale_message.lock().unwrap().clone();
+        if let Some(message) = message {
+            return Err(io::Error::other(message));
+        }
+        Ok(Some(self.shared_identity.lock().unwrap()))
     }
 
     /// The current session file path. Pi's `getSessionFile` is `string | undefined`: `None` means an in-memory session.
@@ -7236,6 +7283,308 @@ mod sdk_surface_call_tests {
             branch.unwrap_err().to_string().contains("boom"),
             "the second read must report the same failure without a second call"
         );
+    }
+
+    // ─── Replicated model and session id reads ───────────────────────────
+
+    fn model_object() -> serde_json::Value {
+        json!({
+            "id": "m-1", "name": "Model One", "provider": "prov-1", "contextWindow": 200000,
+            "maxTokens": 8192, "reasoning": true,
+            "cost": {"input": 1.5, "output": 2.5, "cacheRead": 0.5, "cacheWrite": 3.0},
+            "inputLimits": {"maxImageBytes": 9}
+        })
+    }
+
+    fn snapshot(ctx: &Context, state: serde_json::Value) {
+        ctx.shared_identity
+            .lock()
+            .unwrap()
+            .apply_state(state.as_object().unwrap());
+    }
+
+    fn bench() -> (Arc<Context>, UnixStream) {
+        let (ext_stream, host_stream) = UnixStream::pair().unwrap();
+        (context(ext_stream, "req-1"), host_stream)
+    }
+
+    /// A context of the replacement Session: it never answers from this process's replica.
+    fn replacement_of(ctx: &Arc<Context>) -> Arc<Context> {
+        let mut replacement = (**ctx).clone();
+        replacement.replacement = true;
+        Arc::new(replacement)
+    }
+
+    /// Runs `reads` on a thread; a host call it sends fails the test, naming the method, instead of blocking it.
+    fn without_a_host_call<T: Send + 'static>(
+        ctx: &Arc<Context>,
+        host_stream: &UnixStream,
+        reads: impl FnOnce(&Context) -> T + Send + 'static,
+    ) -> T {
+        let (tx, rx) = mpsc::channel();
+        let caller = ctx.clone();
+        std::thread::spawn(move || {
+            let _ = tx.send(reads(&caller));
+        });
+        match rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(value) => value,
+            Err(_) => {
+                let host = Connection::new(host_stream.try_clone().unwrap());
+                let (_, call) = next_call(&host);
+                panic!("a replicated read sent the host call {}", call.method);
+            }
+        }
+    }
+
+    /// Runs `f` on `ctx`, whose host answers its one call with `answer`.
+    fn one_call<T: Send + 'static>(
+        ctx: &Arc<Context>,
+        host_stream: UnixStream,
+        f: impl FnOnce(&Context) -> T + Send + 'static,
+        answer: CallResultMsg,
+    ) -> (CallMsg, T) {
+        let caller = {
+            let ctx = ctx.clone();
+            std::thread::spawn(move || f(&ctx))
+        };
+        let host = Connection::new(host_stream);
+        let (id, call) = next_call(&host);
+        reply(ctx, id, answer);
+        (call, caller.join().unwrap())
+    }
+
+    type Reads = (
+        io::Result<Option<ModelInfo>>,
+        io::Result<String>,
+        io::Result<serde_json::Value>,
+    );
+
+    fn all_three(ctx: &Context) -> Reads {
+        (
+            ctx.get_model_info(),
+            ctx.get_session_id(),
+            ctx.session_manager().get_session_id(),
+        )
+    }
+
+    #[test]
+    fn replicated_reads_answer_from_the_state_snapshot_without_a_host_call() {
+        let (ctx, host) = bench();
+        snapshot(
+            &ctx,
+            json!({"model": model_object(), "session": {"sessionId": "sess-1"}}),
+        );
+        let (info, session_id, manager_id) = without_a_host_call(&ctx, &host, all_three);
+        let info = info.unwrap().unwrap();
+        assert_eq!(
+            (info.id.as_str(), info.name.as_str(), info.provider.as_str()),
+            ("m-1", "Model One", "prov-1")
+        );
+        assert_eq!(
+            (info.context_window, info.max_output_tokens),
+            (200000, 8192)
+        );
+        assert!(info.reasoning);
+        assert_eq!(
+            (
+                info.input_cost_per_1m,
+                info.output_cost_per_1m,
+                info.cache_read_cost_per_1m,
+                info.cache_write_cost_per_1m
+            ),
+            (1.5, 2.5, 0.5, 3.0)
+        );
+        assert_eq!(info.input_limits, Some(json!({"maxImageBytes": 9})));
+        assert_eq!(session_id.unwrap(), "sess-1");
+        assert_eq!(manager_id.unwrap(), json!("sess-1"));
+    }
+
+    #[test]
+    fn later_snapshots_replace_the_replica_and_an_absent_key_keeps_it() {
+        let (ctx, host) = bench();
+        snapshot(
+            &ctx,
+            json!({"model": model_object(), "session": {"sessionId": "sess-1"}}),
+        );
+        snapshot(&ctx, json!({"isIdle": true}));
+        let (info, session_id, _) = without_a_host_call(&ctx, &host, all_three);
+        assert_eq!(info.unwrap().unwrap().id, "m-1");
+        assert_eq!(session_id.unwrap(), "sess-1");
+
+        // The same model again, a different model, and a different session.
+        snapshot(&ctx, json!({"model": model_object()}));
+        snapshot(
+            &ctx,
+            json!({"model": {"id": "m-2", "name": "Model Two", "provider": {"id": "prov-2"}}, "session": {"sessionId": "sess-2"}}),
+        );
+        let (info, session_id, manager_id) = without_a_host_call(&ctx, &host, all_three);
+        let info = info.unwrap().unwrap();
+        assert_eq!(
+            (info.id.as_str(), info.name.as_str(), info.provider.as_str()),
+            ("m-2", "Model Two", "prov-2")
+        );
+        assert_eq!(session_id.unwrap(), "sess-2");
+        assert_eq!(manager_id.unwrap(), json!("sess-2"));
+
+        // A null model clears the model only; a session object without sessionId carries the empty id.
+        snapshot(&ctx, json!({"model": null}));
+        let (info, session_id, _) = without_a_host_call(&ctx, &host, all_three);
+        assert!(info.unwrap().is_none());
+        assert_eq!(session_id.unwrap(), "sess-2");
+        snapshot(&ctx, json!({"session": {"sessionName": "named"}}));
+        let (info, session_id, manager_id) = without_a_host_call(&ctx, &host, all_three);
+        assert!(info.unwrap().is_none());
+        assert_eq!(session_id.unwrap(), "");
+        assert_eq!(manager_id.unwrap(), json!(""));
+
+        // A model object with an empty id names no model.
+        snapshot(&ctx, json!({"model": {"id": "", "name": "only a name"}}));
+        assert!(
+            without_a_host_call(&ctx, &host, |c| c.get_model_info())
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn reads_ask_the_host_until_a_snapshot_carried_them() {
+        let answer = || ok(Some(model_object()));
+        let (ctx, host) = bench();
+        let (call, info) = one_call(&ctx, host, |c| c.get_model_info(), answer());
+        assert_eq!(call.method, "getModelInfo");
+        assert_eq!(info.unwrap().unwrap().id, "m-1");
+        let (ctx, host) = bench();
+        let (call, id) = one_call(
+            &ctx,
+            host,
+            |c| c.get_session_id(),
+            ok(Some(json!({"sessionId": "host-id"}))),
+        );
+        assert_eq!(call.method, "getSessionID");
+        assert_eq!(id.unwrap(), "host-id");
+        let (ctx, host) = bench();
+        let (call, id) = one_call(
+            &ctx,
+            host,
+            |c| c.session_manager().get_session_id(),
+            ok(Some(json!("host-id"))),
+        );
+        assert_eq!(call.method, "sessionRead");
+        assert_eq!(call.args.unwrap()["method"], "getSessionId");
+        assert_eq!(id.unwrap(), json!("host-id"));
+
+        // The model and the session id are known independently: a snapshot without the other member leaves it to the host.
+        let (ctx, host) = bench();
+        snapshot(&ctx, json!({"model": model_object()}));
+        let (call, id) = one_call(
+            &ctx,
+            host,
+            |c| c.get_session_id(),
+            ok(Some(json!({"sessionId": "host-id"}))),
+        );
+        assert_eq!(
+            (call.method.as_str(), id.unwrap().as_str()),
+            ("getSessionID", "host-id")
+        );
+        let (ctx, host) = bench();
+        snapshot(&ctx, json!({"session": {"sessionId": "sess-1"}}));
+        let (call, _) = one_call(&ctx, host, |c| c.get_model_info(), ok(Some(json!(null))));
+        assert_eq!(call.method, "getModelInfo");
+    }
+
+    #[test]
+    fn a_replacement_context_keeps_asking_the_host() {
+        let (ctx, host) = bench();
+        snapshot(
+            &ctx,
+            json!({"model": model_object(), "session": {"sessionId": "sess-1"}}),
+        );
+        let replacement = replacement_of(&ctx);
+        let (call, info) = one_call(
+            &replacement,
+            host.try_clone().unwrap(),
+            |c| c.get_model_info(),
+            ok(Some(json!({"id": "other", "provider": "p"}))),
+        );
+        assert_eq!(call.method, "getModelInfo");
+        assert_eq!(info.unwrap().unwrap().id, "other");
+        let (call, id) = one_call(
+            &replacement,
+            host.try_clone().unwrap(),
+            |c| c.get_session_id(),
+            ok(Some(json!({"sessionId": "other-id"}))),
+        );
+        assert_eq!(call.method, "getSessionID");
+        assert_eq!(id.unwrap(), "other-id");
+        let (call, id) = one_call(
+            &replacement,
+            host,
+            |c| c.session_manager().get_session_id(),
+            ok(Some(json!("other-id"))),
+        );
+        assert_eq!(call.method, "sessionRead");
+        assert_eq!(id.unwrap(), json!("other-id"));
+    }
+
+    // The host answers every call of a replaced runtime with the stale error; the local read fails the same way.
+    #[test]
+    fn a_stale_context_fails_the_replicated_reads_with_the_stale_message() {
+        const STALE: &str = "This extension ctx is stale after session replacement or reload.";
+        for snapshotted in [true, false] {
+            let (ctx, host) = bench();
+            if snapshotted {
+                snapshot(
+                    &ctx,
+                    json!({"model": model_object(), "session": {"sessionId": "sess-1"}}),
+                );
+            }
+            ctx.conn.apply_invalidate(&json!({"message": STALE}));
+            let (info, session_id, manager_id) = without_a_host_call(&ctx, &host, all_three);
+            for message in [
+                info.unwrap_err().to_string(),
+                session_id.unwrap_err().to_string(),
+                manager_id.unwrap_err().to_string(),
+            ] {
+                assert_eq!(message, STALE, "snapshotted: {snapshotted}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_returned_model_is_not_an_alias_of_the_replica() {
+        let (ctx, host) = bench();
+        snapshot(&ctx, json!({"model": model_object()}));
+        let mut first = without_a_host_call(&ctx, &host, |c| c.get_model_info())
+            .unwrap()
+            .unwrap();
+        first.name.push_str(" mutated");
+        first.context_window = 1;
+        first.input_limits.as_mut().unwrap()["maxImageBytes"] = json!(1);
+        let second = without_a_host_call(&ctx, &host, |c| c.get_model_info())
+            .unwrap()
+            .unwrap();
+        assert_eq!(second.name, "Model One");
+        assert_eq!(second.context_window, 200000);
+        assert_eq!(second.input_limits, Some(json!({"maxImageBytes": 9})));
+    }
+
+    // A model the typed decode rejects fails with the message the host reply's decode gave.
+    #[test]
+    fn an_undecodable_replicated_model_fails_like_the_host_reply_did() {
+        for model in [
+            json!({"id": "m", "contextWindow": "big"}),
+            json!({"id": "m", "reasoning": "yes"}),
+            json!("not an object"),
+        ] {
+            let (ctx, host) = bench();
+            snapshot(&ctx, json!({"model": model.clone()}));
+            let local = without_a_host_call(&ctx, &host, |c| c.get_model_info());
+            let (ask, host) = bench();
+            let (_, reply) = one_call(&ask, host, |c| c.get_model_info(), ok(Some(model.clone())));
+            let (local, reply) = (local.unwrap_err(), reply.unwrap_err());
+            assert_eq!(local.to_string(), reply.to_string(), "{model}");
+            assert_eq!(local.kind(), io::ErrorKind::InvalidData);
+        }
     }
 }
 

@@ -3333,6 +3333,13 @@ class Context:
         return result
 
     def get_model_info(self) -> dict[str, Any] | None:
+        """The active model's info (name, context window, costs...), ``None`` while the Session has no model. The replicated snapshot answers it; a copy is returned per call. A replacement context, and a context that predates the first snapshot, ask the host."""
+        if self._replacement is None:
+            self._assert_active()
+            with self.extension._state_lock:
+                known, model = self.extension._model_known, self.extension._model_info
+            if known:
+                return copy.deepcopy(model) if isinstance(model, dict) and model.get("id") else None
         result = self._call("getModelInfo").get("result")
         return result if isinstance(result, dict) and result.get("id") else None
 
@@ -3703,8 +3710,19 @@ class Context:
     # Session identity -------------------------------------------------------
 
     def get_session_id(self) -> str:
-        """The current session's id, including in-memory sessions."""
+        """The current session's id, including in-memory sessions. The replicated snapshot answers it; a replacement context, and a context that predates the first snapshot, ask the host."""
+        replicated = self._replicated_session_id()
+        if replicated is not None:
+            return replicated
         return self._reply_field("getSessionID", "sessionId")
+
+    def _replicated_session_id(self) -> str | None:
+        """The session id of the last snapshot, ``None`` when this context must ask the host: a replacement context or no snapshot yet. Raises the stale message after invalidation."""
+        if self._replacement is not None:
+            return None
+        self._assert_active()
+        with self.extension._state_lock:
+            return self.extension._session_id if self.extension._session_id_known else None
 
     def get_session_file(self) -> str | None:
         """The current session file path, or None for an in-memory session (Pi's ``string | undefined``)."""
@@ -4527,6 +4545,12 @@ class Extension:
         self._width: int = 0
         self._height: int = 0
         self._model: str = ""
+        # The snapshot's model object, kept for get_model_info; _model_known is set once a snapshot carried the member (null included).
+        self._model_info: Any = None
+        self._model_known = False
+        # The snapshot's session id; _session_id_known is set once a snapshot carried the session object.
+        self._session_id: str = ""
+        self._session_id_known = False
         self._has_ui: bool = False
         self._theme = Theme()
         self._sock: socket.socket | None = None
@@ -5819,10 +5843,18 @@ class Extension:
         """Record the snapshot's replicated values: hasUI, theme, settings, MCP servers, the model and the session name. The ready state and every state_update pass through here. Caller holds _state_lock."""
         self._views.apply_state(state)
         if "model" in state:
-            # An absent key keeps the replica; an explicit null clears it (the Session holds no model).
-            self._model, self._model_provider = _model_identity(state["model"])
+            # An absent key keeps the replica; an explicit null clears it (the Session holds no model). A push that repeats the model derives nothing.
+            model = state["model"]
+            if not self._model_known or model != self._model_info:
+                self._model_info = copy.deepcopy(model)
+                self._model, self._model_provider = _model_identity(model)
+                self._model_known = True
         session = state.get("session")
         if isinstance(session, dict):
+            # sessionId is omitted only when empty.
+            session_id = session.get("sessionId")
+            self._session_id = session_id if isinstance(session_id, str) else ""
+            self._session_id_known = True
             # Every session snapshot carries the name; "" is the host's carrier for a session with no name.
             self._session_name = str(session.get("sessionName") or "")
         has_ui = state.get("hasUI")

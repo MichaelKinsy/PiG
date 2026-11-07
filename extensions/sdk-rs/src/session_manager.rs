@@ -25,7 +25,11 @@ impl ReadonlySessionManager<'_> {
     pub fn get_session_dir(&self) -> io::Result<Value> {
         self.read("getSessionDir", Value::Null)
     }
+    /// The replicated session id (see [`Context::get_session_id`]); a replacement context reads it from the host.
     pub fn get_session_id(&self) -> io::Result<Value> {
+        if let Some(id) = self.context.replicated_session_id()? {
+            return Ok(Value::String(id));
+        }
         self.read("getSessionId", Value::Null)
     }
     pub fn get_session_file(&self) -> io::Result<Value> {

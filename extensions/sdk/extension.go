@@ -253,7 +253,9 @@ type Extension struct {
 	height        int
 	model         string
 	modelProvider string
-	sessionFile   string
+	// identity is the replicated model object and session id behind GetModelInfo and GetSessionID (state_replica.go).
+	identity    replicatedIdentity
+	sessionFile string
 	// uiTheme is the host's theme palette from the state snapshot and
 	// theme_change notifies (upstream ctx.ui.theme).
 	uiTheme UITheme
@@ -1905,6 +1907,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		// Session replication: apply incremental entries before any handler
 		// runs, so GetBranch()/GetEntries() are current and local.
 		var sessionState struct {
+			SessionID   string `json:"sessionId"`
 			SessionName string `json:"sessionName"`
 			SessionFile string `json:"sessionFile"`
 		}
@@ -1924,6 +1927,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		// Every session snapshot carries the name; the empty string is the host's carrier for a session with no name, so it clears the replica.
 		if len(payload.State.Session) > 0 {
 			e.sessionName = sessionState.SessionName
+			// The host omits the id only when it is empty, so a snapshot's Session always replaces the replicated id.
+			e.identity = e.identity.withSessionID(sessionState.SessionID)
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.setUITheme(theme)
@@ -1943,9 +1948,12 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		}()
 		// An absent model key leaves the replica, an explicit null clears it (the Session has no model), and an object replaces it.
 		if len(payload.State.Model) > 0 {
-			var model map[string]any
-			if json.Unmarshal(payload.State.Model, &model) == nil {
-				e.model, e.modelProvider = modelIdentity(model)
+			var changed bool
+			if e.identity, changed = e.identity.withModel(payload.State.Model); changed {
+				var model map[string]any
+				if json.Unmarshal(payload.State.Model, &model) == nil {
+					e.model, e.modelProvider = modelIdentity(model)
+				}
 			}
 		}
 	case "theme_change":

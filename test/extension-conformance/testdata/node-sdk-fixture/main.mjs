@@ -1467,6 +1467,22 @@ export default function (pi) {
   pi.registerCommand("usage-probe", {
     handler: (_args, ctx) => ctx.ui.notify(JSON.stringify(ctx.getContextUsage() ?? null), "info"),
   });
+  // replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, the session manager's id and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call setModel before it reads. Every SDK fixture reports the same shape.
+  pi.registerCommand("replica-probe", {
+    description: "Report the replicated model object, session ids and context usage",
+    handler: async (args, ctx) => {
+      if (args.startsWith("set-model:")) {
+        const [provider, ...rest] = args.slice("set-model:".length).split("/");
+        await pi.setModel({ provider, id: rest.join("/") });
+      }
+      const m = ctx.model;
+      const model = m === undefined || !m.id ? null : {
+        id: m.id, name: m.name ?? "", provider: typeof m.provider === "string" ? m.provider : m.provider?.id ?? "", contextWindow: m.contextWindow ?? 0, maxOutputTokens: m.maxTokens ?? 0, reasoning: m.reasoning === true,
+        inputCostPer1M: m.cost?.input ?? 0, outputCostPer1M: m.cost?.output ?? 0, cacheReadCostPer1M: m.cost?.cacheRead ?? 0, cacheWriteCostPer1M: m.cost?.cacheWrite ?? 0,
+      };
+      ctx.ui.notify(JSON.stringify({ model, sessionId: ctx.sessionManager.getSessionId(), managerSessionId: ctx.sessionManager.getSessionId(), usage: ctx.getContextUsage() ?? null }), "info");
+    },
+  });
   pi.registerCommand("context-probe", {
     description: "Report ctx.mode + ctx.getSystemPromptOptions()",
     handler: async (_args, ctx) => {
@@ -2342,11 +2358,13 @@ export default function (pi) {
       ctx.ui.notify(`ui_prompt:${event.type}:${event.reason}:${event.kind}:${"title" in event ? event.title : "(none)"}`, "info");
     });
   }
-  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+  // state-push-probe (TestHostStateChangeReachesABackgroundReaderAcrossSDKs) arms a timer that reads one replicated accessor from outside every request and returns: the host then changes its own state with no call and no event to this extension, and the timer reports the first value that differs from the one it armed on, or the value it still holds after the window, to a file in the directory the arguments name. The arguments are {"kind": "model" | "model-name" | "session-id" | "session-name" | "thinking-level" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
   pi.registerCommand("state-push-probe", { description: "Read one replicated accessor from a timer between requests", handler: async (args, ctx) => {
     const { kind, dir } = JSON.parse(args);
     let read;
     if (kind === "model") read = () => ctx.model?.id ?? "";
+    else if (kind === "model-name") read = () => ctx.model?.name ?? "";
+    else if (kind === "session-id") read = () => ctx.sessionManager.getSessionId();
     else if (kind === "session-name") read = () => pi.getSessionName() ?? "";
     else if (kind === "theme") read = () => ctx.ui.theme.name ?? "";
     else if (kind === "thinking-level") read = () => pi.getThinkingLevel();

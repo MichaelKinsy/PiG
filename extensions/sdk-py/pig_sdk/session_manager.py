@@ -24,7 +24,8 @@ class ReadonlySessionManager:
         return self._read("getSessionDir")
 
     def get_session_id(self) -> str:
-        return self._read("getSessionId")
+        replicated = self._context._replicated_session_id()
+        return replicated if replicated is not None else self._read("getSessionId")
 
     def get_session_file(self) -> str | None:
         return self._read("getSessionFile")
