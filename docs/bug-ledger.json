@@ -3842,6 +3842,30 @@
       "tests": []
     },
     {
+      "id": "BF-1cfaf26",
+      "title": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…",
+      "symptom": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "rootCause": "An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1cfaf26848",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice",
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly",
+        "internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce"
+      ]
+    },
+    {
       "id": "BF-1d02c73",
       "title": "Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`…",
       "symptom": "Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model` search, minimatch `nocase`) lowercase as JavaScript does (`İ` becomes `i̇`, a final sigma `ς`), not as Go's `strings.ToLower`.",
@@ -15618,6 +15642,28 @@
         "tui/complexity_scaling_norace_test.go::TestScalingEditorKeystroke",
         "tui/complexity_scaling_norace_test.go::TestScalingMainScreenFrames",
         "tui/complexity_scaling_norace_test.go::TestScalingStreamingMessage"
+      ]
+    },
+    {
+      "id": "BF-62f0353",
+      "title": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape…",
+      "symptom": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "rootCause": "An earlier change routed the renderer's writes through WriteToTerminal, which ends in io.WriteString. fmt.Fprint copied into a pooled buffer; io.WriteString converts the string to a new byte slice for a writer that is not an io.StringWriter, and the renderer's stdout writer hands the string on to such a writer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62f0353e7c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate"
       ]
     },
     {
@@ -38417,6 +38463,28 @@
         "ai/service_urls_oracle_test.go::TestProviderServiceURLsMatchPiOnSeededProbes",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
+      ]
+    },
+    {
+      "id": "BF-d1ee883",
+      "title": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages…",
+      "symptom": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "rootCause": "An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d1ee8838e6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages"
       ]
     },
     {

@@ -827,7 +827,7 @@ func writeTerminalText(out io.Writer, data string) {
 	}
 }
 
-// writeString is io.WriteString that copies data into a pooled buffer for a writer with no WriteString, where io.WriteString allocates a new byte slice for every write: the cursor's
+// writeString is io.WriteString that copies data into a pooled buffer (which the garbage collector empties) for a writer with no WriteString, where io.WriteString allocates a new byte slice for every write: the cursor's
 // hide and show of each frame cost an allocation each (fmt.Fprint, which those writes were before they went through WriteToTerminal, copies into a pooled buffer as well).
 func writeString(out io.Writer, data string) (int, error) {
 	if sw, ok := out.(io.StringWriter); ok {
@@ -836,14 +836,9 @@ func writeString(out io.Writer, data string) (int, error) {
 	buf := terminalWriteBuffers.Get().(*[]byte)
 	*buf = append((*buf)[:0], data...)
 	n, err := out.Write(*buf)
-	if cap(*buf) <= maxPooledTerminalWrite {
-		terminalWriteBuffers.Put(buf)
-	}
+	terminalWriteBuffers.Put(buf)
 	return n, err
 }
-
-// maxPooledTerminalWrite is the largest buffer kept for the next write, as fmt keeps its own up to 64 KiB.
-const maxPooledTerminalWrite = 64 << 10
 
 // terminalWriteBuffers holds the byte copies of strings written to a writer that takes no strings.
 var terminalWriteBuffers = sync.Pool{New: func() any { return new([]byte) }}
