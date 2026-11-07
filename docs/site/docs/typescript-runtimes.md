@@ -34,6 +34,8 @@ The ext10 overhead workload (ten TypeScript extensions, RPC chat, openai-complet
 
 The three runtimes differ by less than 3% in per-turn CPU, which is inside the A/A floor: the extension host, not the runtime, sets the per-turn cost. Node starts the extensions about 65 ms sooner; Bun and the compiled host use 90 to 110 MiB less memory. Bun also needs a 3 to 4 s download, and the compiled host needs a first-run compile of about 30 s. Select `bun` when memory matters more than start time.
 
+The `aot` runtime is provided by the experimental `pig-bolt` Piglet (`piglets/pig-bolt`, formerly `pig-aot`), which compiles your extensions with the [Pi-Bolt](https://github.com/opensec-git/Pi-Bolt) compiler on your machine. It is not an official Pi-Bolt project. Its README lists what it compiles, what it verifies and its measured costs.
+
 ## Check which runtime runs
 
 ```bash
@@ -91,7 +93,9 @@ Each runtime is a directory under the slot root: `$PIG_TS_RUNTIMES_DIR` when set
 
 The shape is strict: PiG rejects unknown fields. A provider writes `runtime.json` last, after the executable is in place, so PiG never reads a manifest for a partial install.
 
-PiG hashes each executable once per process and runs `<executable> --version` before the first launch. For `kind: "bun"`, the executable's SHA-256 must also be in PiG's runtime lock (`coding/extension/host/tsruntime/lock.go`): the `bun` executables of Bun 1.4.2 for PiG's eight release targets. Other Bun builds do not run.
+PiG hashes each executable and runs `<executable> --version` before the first launch. A passing digest is recorded in `.verified-<executable name>` next to the executable (readable and writable by its owner only, best effort), and a start in another process skips the hash while the file's device, inode, size, modification time and status-change time and the manifest's digest are all unchanged. A changed file, a rename over it or a copy of it is hashed again, because the status-change time cannot be set from outside the file system; a file less than two seconds old is not recorded; Windows hashes at every start. The digest comparison, the lock check and `--version` run at every start either way.
+
+On Linux the file PiG verified is the file it runs: it keeps the verified executable open and starts it for `--version` and for every launch through that open file, so replacing or renaming over the path after the check does not change which bytes run. The process is named after the executable (`bun`, `pig-ts-host`) in `ps` and `top`, and `/proc/<pid>/exe` and the arguments show the executable's path. A launch starts the open file through a symbolic link named after the executable, in a private directory (mode 0700) under your temporary directory that PiG removes once the process has started; the directory adds nothing for anyone who cannot already write your files as you. A script, Android and a system without `/proc` start by path, as do the other platforms, where the file at the path at exec time runs. Anyone who can write your runtime slot, `runtime.json` or your extensions as you can already run code as you. For `kind: "bun"`, the executable's SHA-256 must also be in PiG's runtime lock (`coding/extension/host/tsruntime/lock.go`): the `bun` executables of Bun 1.4.2 for PiG's eight release targets. Other Bun builds do not run.
 
 ### Kind `bun`
 

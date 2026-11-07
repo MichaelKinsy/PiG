@@ -9,5 +9,6 @@ godebug winsymlink=0
 use (
 	.
 	./extensions/sdk
+	./piglets/pig-bolt
 	./piglets/porter/extensions/pig-porter
 )

@@ -85,7 +85,7 @@ func TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets(t *testing.T
 	if err := os.MkdirAll(filepath.Join(slot, "aot"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `{"id":"aot","kind":"executable","version":"0.7.4","platform":"` + tsruntime.Platform() + `","provider":"pig-aot","fallback":"bun"}`
+	manifest := `{"id":"aot","kind":"executable","version":"1.1.2","platform":"` + tsruntime.Platform() + `","provider":"pig-bolt","fallback":"bun"}`
 	if err := os.WriteFile(filepath.Join(slot, "aot", tsruntime.ManifestFile), []byte(manifest), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestExtensionsRuntimeStatusListsSkippedRuntimesAndNodeOnlySets(t *testing.T
 		"Selected:  node\n",
 		"Skipped:   aot (no_image:",
 		"Skipped:   bun (not_installed:",
-		"  aot  executable, 0.7.4, " + tsruntime.Platform() + ", from pig-aot, falls back to bun\n",
+		"  aot  executable, 1.1.2, " + tsruntime.Platform() + ", from pig-bolt, falls back to bun\n",
 		"Node-only extension sets (they run on Node until a file of the set changes):\n  inspector-ext  node:inspector is not implemented\n",
 	} {
 		if code != 0 || !strings.Contains(out, want) {

@@ -149100,6 +149100,17 @@
       "shapeHash": "sha256:2fb37755026412e519fa9617358331fe04fc5d251fa754fd39bfab2d9372ac15"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#releaseVerified",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "releaseVerified",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection)"
+      },
+      "shapeHash": "sha256:c183225ee110382e46f2182657b7e78a0375b3c6f3d42bd49a3f58c72531df6f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadBuildFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "reloadBuildFailure",
@@ -150418,6 +150429,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runVerified",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "runVerified",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cmd *os/exec.Cmd, sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection) *os/exec.Cmd"
+      },
+      "shapeHash": "sha256:ac00c4d1938b72843b071c9926df1627ffa4334b58b0535e10a732793ab2b23e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runtimeDrainKey",
@@ -158483,6 +158505,94 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "Executable"
+      },
+      "shapeHash": "sha256:ad05a1d98b7735b1b49bcb2c8c44315621c56947dfe4c807f1c6d6ed2f37c1c5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.Close",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.ExecPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.ExecPath",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.Path",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.Path",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.execPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.execPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(named bool) (string, error)"
+      },
+      "shapeHash": "sha256:c0875b71f799d8d9ed0f47adb48fa1123b9b4f7d5617ed3b1b2a2e5b53101aa0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.makeLink",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.makeLink",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.probePath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.probePath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Executable.settle",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Executable.settle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Fallback",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "Fallback",
@@ -159105,9 +159215,20 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, m Manifest, executable string, digest string) (Reason, error)"
+        "type": "func(ctx context.Context, m Manifest, executable string, digest string) (*Executable, Reason, error)"
       },
-      "shapeHash": "sha256:e9067df25b28066509893179b2476d67e38b70d3f8b9e08370454a298bfcc5c5"
+      "shapeHash": "sha256:40e66042a791cb6921e29ee0ff0ccbda25dc6ea5566008ed0106f6722b76068f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Verifier.checkDigest",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "Verifier.checkDigest",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(exe *Executable, want string) error"
+      },
+      "shapeHash": "sha256:35953c5047cd3e4e25129d7848d3fe22ec8cefa1320fb752d76fe041fe3b2dbb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#Verifier.verify",
@@ -159116,20 +159237,97 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, m Manifest, executable string, digest string) (Reason, error)"
+        "type": "func(ctx context.Context, m Manifest, exe *Executable, digest string) (Reason, error)"
       },
-      "shapeHash": "sha256:e9067df25b28066509893179b2476d67e38b70d3f8b9e08370454a298bfcc5c5"
+      "shapeHash": "sha256:abe429d103df8aba33e9d33bdac8f84796cd6e042917f76ded232deecd172391"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#fileDigest",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#descriptorPath",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
-      "name": "fileDigest",
+      "name": "descriptorPath",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(path string) (string, error)"
+        "type": "func(file *os.File, info os.FileInfo) string"
       },
-      "shapeHash": "sha256:f40d4f34dc5bbd0e74838ec92049f48e4ae39f2b85f7c153e0f98d59ea7e6036"
+      "shapeHash": "sha256:12c730d86af4549874528146ecccd2562dcd356c9402071691f9a25dad843df9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#digestRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "digestRecord",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "digestRecord"
+      },
+      "shapeHash": "sha256:e7d09e6c95e7fa3ef6f4927fae55c0ba3bbfe0ba59c39d23392f5b81261b7b15"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#digestRecord.vouches",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "digestRecord.vouches",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(identity fileIdentity, want string) bool"
+      },
+      "shapeHash": "sha256:be4e62a168488ea5a5bd8c289bcef37074815c8c3ab4c0fb142f956dfb141f59"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#digestRecordPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "digestRecordPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(executable string) string"
+      },
+      "shapeHash": "sha256:a2898e742f8e1140df45c83b4bd38695efeadcd26d6d8553b73966950a216048"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#execDirPrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "execDirPrefix",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#fileIdentity",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "fileIdentity",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "fileIdentity"
+      },
+      "shapeHash": "sha256:083647beb932fab757240b4a7d52f6cae693edd6c40e72abac831cda8bd10ac5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#fileIdentity.settledAt",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "fileIdentity.settledAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(now time.Time) bool"
+      },
+      "shapeHash": "sha256:6c32208595034c358fb6e77396782379e47622724cec2b71c81f05f3334054fe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#fileIdentity.unchangedBy",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "fileIdentity.unchangedBy",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(current fileIdentity, unlinked bool) bool"
+      },
+      "shapeHash": "sha256:39d797e1d4cc911fd24e6f39adb39633f7c418c48e645c00faaea9fbb1236443"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#hexPattern",
@@ -159154,6 +159352,17 @@
       "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#identify",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "identify",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(info os.FileInfo) (fileIdentity, error)"
+      },
+      "shapeHash": "sha256:528358518a6d531e1bbe75be7734e5ad9d93f82973c5c98d25ce2ec289f47f5e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#locked",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "locked",
@@ -159163,6 +159372,28 @@
         "type": "func(lock []LockEntry, runtime string, version string, platform string, digest string) bool"
       },
       "shapeHash": "sha256:1197457ec9850d2562f000fb4914690c6f912979c62b7bad99ed9945954edef4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#maxDigestRecordBytes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "maxDigestRecordBytes",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#newExecutable",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "newExecutable",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, file *os.File, info os.FileInfo) *Executable"
+      },
+      "shapeHash": "sha256:5b063839d756b3c0f33f637e2730be08138bab4a8e101afb908eb885a4d2a8b8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#nodeOnlyPath",
@@ -159330,6 +159561,28 @@
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#openRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "openRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) (*os.File, error)"
+      },
+      "shapeHash": "sha256:d124eb8d83b5354335aca908b77d38f620cc02e97965c8cebd572ab87f420d06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#ownedByCurrentUser",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "ownedByCurrentUser",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(info os.FileInfo) bool"
+      },
+      "shapeHash": "sha256:0aa15cef91aa57854d6e132f8ed5c4a922b4dfe1f8e374faef86be14288393f2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#packageJSONFor",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "packageJSONFor",
@@ -159495,6 +159748,17 @@
       "shapeHash": "sha256:67415eb2dd1bccd904404e2f62a30facb18549cae89e84157681590fecf1d7a8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#readDigestRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "readDigestRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) (digestRecord, bool)"
+      },
+      "shapeHash": "sha256:9e634f93b2771010cdb400474dcb0ca19cbf8f01927e6360f0d5bf531b6af833"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#recordRequest",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "recordRequest",
@@ -159638,6 +159902,270 @@
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#settleWindow.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "settleWindow.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleExecDirAge.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "staleExecDirAge.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#staleInput",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "staleInput",
@@ -159649,6 +160177,61 @@
       "shapeHash": "sha256:75de454c569998dadda5e6845b5481d097e1d39645ccc4c999397635115772fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sumSHA256",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sumSHA256",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(r io.Reader) (string, error)"
+      },
+      "shapeHash": "sha256:7e43a8ec8952a80f7f99a689ccaef2bd723bdb6e05222cfd55e1e9bdf4fb510b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirs",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tmp string, now time.Time)"
+      },
+      "shapeHash": "sha256:bc4ff14d699b1526360c1fa2eabe13e4484dbfd66b92ce2d8fdcfd186244c726"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirsOnce",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirsOnce",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync.Once"
+      },
+      "shapeHash": "sha256:642d4e6801bec47f76a7435030bd6999c7a240f9dbe32973afd2fc646d25a826"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirsOnce.Do",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirsOnce.Do",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(f func())"
+      },
+      "shapeHash": "sha256:68e289131fd5e3f508eafc4a9635216800cdaae21d75faad62aa0496c8a28e80"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#sweepExecDirsOnce.doSlow",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "sweepExecDirsOnce.doSlow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(f func())"
+      },
+      "shapeHash": "sha256:68e289131fd5e3f508eafc4a9635216800cdaae21d75faad62aa0496c8a28e80"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#touchUsed",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
       "name": "touchUsed",
@@ -159658,6 +160241,17 @@
         "type": "func(dir string)"
       },
       "shapeHash": "sha256:eab0f33befdf215288c95c5f0137a673c10b2094e399414fc885ec4184d03858"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#unlinked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "unlinked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(info os.FileInfo) bool"
+      },
+      "shapeHash": "sha256:0aa15cef91aa57854d6e132f8ed5c4a922b4dfe1f8e374faef86be14288393f2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#usedGranularity",
@@ -159823,6 +160417,17 @@
         "type": "verifyResult"
       },
       "shapeHash": "sha256:54b821dbcd3af2c80ca47c94bb821541a8e1c8b41407871f1de6054832609a5f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#writeDigestRecord",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime",
+      "name": "writeDigestRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, record digestRecord) error"
+      },
+      "shapeHash": "sha256:53f5dec69650bb50917f54a2d67449290af6a2abea5229c1af02149a93d0544e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime#writeFileAtomic",

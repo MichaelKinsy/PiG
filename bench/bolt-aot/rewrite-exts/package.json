@@ -1,0 +1,10 @@
+{
+  "name": "bolt-aot-rewrite-exts",
+  "private": true,
+  "description": "Extension packages for bench/bolt-aot/equivalence_pkgs.py: the two packages the Piglet used to refuse because they read files next to their own location, pinned.",
+  "dependencies": {
+    "@juicesharp/rpiv-i18n": "2.15.0",
+    "@juicesharp/rpiv-todo": "2.15.0",
+    "pi-mcp-adapter": "7.0.1"
+  }
+}

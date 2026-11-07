@@ -279,7 +279,7 @@ lint: ## Run golangci-lint over the repository (part of make check)
 	@echo "Running golangci-lint..."
 	go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity ./...
 	@echo "Running golangci-lint over the go.work modules the root pattern does not reach..."
-	for module in extensions/sdk piglets/porter/extensions/pig-porter; do (cd $$module && go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity --config $(CURDIR)/.golangci.yml ./...) || exit 1; done
+	for module in extensions/sdk piglets/pig-bolt piglets/porter/extensions/pig-porter; do (cd $$module && go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity --config $(CURDIR)/.golangci.yml ./...) || exit 1; done
 	@echo "Checking the Durable core import boundary (no encoding/json, reflect or template in the Wasm closure)..."
 	go test -count=1 ./durable/core/contracttest/boundary/
 
@@ -326,7 +326,7 @@ journeys: parity-deps ## Run every PTY journey against PiG and Pi (CI); timings 
 journeys-changed: parity-deps ## Run only the PTY journeys whose Touches prefixes contain a file changed since JOURNEY_BASE (default @{upstream}); lane gate
 	JOURNEY_CHANGED_BASE='$(JOURNEY_BASE)' JOURNEY_PARALLEL=$${JOURNEY_PARALLEL:-2} go test -timeout 30m -tags parity ./test/journeys -run TestJourneys -count=1
 
-.PHONY: journeys journeys-changed test-aot-conformance
+.PHONY: journeys journeys-changed test-aot-conformance test-pig-bolt-build
 
 # Every maintained nested Go module must pass without workspace assistance.
 # Fixture modules are included because they exercise the same clean-clone
@@ -340,15 +340,18 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 		coding/cli/testdata/login-preview \
 		coding/extension/host/subprocess/testdata/sdk-fixture \
 		examples/extensions/go-factory \
-		piglets/aot \
+		piglets/pig-bolt \
 		piglets/porter/extensions/pig-porter \
 		piglets/standard; do \
 		echo "testing Go module: $$module"; \
 		(cd "$$module" && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...); \
 	done
 
-test-aot-conformance: ## Run the extension conformance suite on the compiled aot host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 0.7.4 runtime executable)
-	@piglets/aot/conformance.sh
+test-pig-bolt-build: ## Build a compiled host with the pinned Pi-Bolt compiler (the Piglet's installer downloads and verifies it) and start it: the guard against a compiler release that crashes on PiG's runtime tree
+	@cd piglets/pig-bolt && GOWORK=off PIG_AOT_TEST_DOWNLOAD=1 go test ./extensions/boltruntime -run '^(TestBuildCompilesAnExtensionSetAndTheHostRegistersIt|TestBuildCompilesAnExtensionThatLocatesItselfAndItFindsItsFiles|TestBuildRefusesWhatTheRewriteCannotPin)$$' -count=1 -timeout 20m -v
+
+test-aot-conformance: ## Run the extension conformance suite on the compiled Pi-Bolt host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 1.1.2 runtime executable)
+	@piglets/pig-bolt/conformance.sh
 
 # The Rust SDK's own unit tests. `test` builds the Rust conformance fixtures,
 # which compiles the SDK library but not its test targets, so a test-only break
@@ -604,7 +607,8 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/angrypigs >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/bunruntime >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/standard/pig-standard.yaml >/dev/null
-	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/aot/pig-aot.yaml >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-bolt.yaml >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-aot.yaml >/dev/null
 
 ##@ Gates
 

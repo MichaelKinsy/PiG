@@ -137,6 +137,30 @@ jobs:
           CI: '1'
         run: make test-oracle-sweeps-nightly
 
+  pig-bolt-compiler:
+    name: Pi-Bolt compiler / build and start a compiled host
+    # make test-pig-bolt-build downloads the Pi-Bolt release the pig-bolt Piglet pins (signature and digests checked by the Piglet's own installer),
+    # builds a compiled TypeScript host from PiG's runtime tree with it and starts the host. It guards against a pin whose compiler crashes on that
+    # tree (an earlier pin segfaulted in the ahead-of-time step). The toolchain is cached by pin.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-bolt-test
+          key: pig-bolt-toolchain-${{ hashFiles('piglets/pig-bolt/extensions/boltruntime/lock.go') }}
+      - name: Build and start a compiled host with the pinned compiler
+        env:
+          CI: '1'
+        run: make test-pig-bolt-build
+
   allocations:
     name: Allocation ratchet / allocs per op
     runs-on: ubuntu-24.04

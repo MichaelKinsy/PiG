@@ -276,6 +276,9 @@ type Selection struct {
 	Version string `json:"version,omitempty"`
 	// Executable is the absolute path of the slot runtime's executable; empty for Node.
 	Executable string `json:"executable,omitempty"`
+	// Verified is the executable as Verify checked it, for a launch to run instead of the path (see Executable). The launch that
+	// started the process calls Close; nil for Node.
+	Verified *Executable `json:"-"`
 	// Fallback is set when the requested runtime does not run this set: why it does not.
 	Fallback *Fallback `json:"fallback,omitempty"`
 	// Skipped lists every runtime tried before the one that runs the set, in order: the requested one, then its manifest's fallback.
@@ -326,7 +329,7 @@ func (r *Resolver) Resolve(ctx context.Context, req Request, set Set) Selection 
 	for tier := 0; tier < 2 && id != "" && id != Node; tier++ {
 		image, next, skip := r.tryRuntime(ctx, id, set)
 		if skip == nil {
-			sel.Runtime, sel.Kind, sel.Version, sel.Executable = image.manifest.ID, image.manifest.Kind, image.manifest.Version, image.executable
+			sel.Runtime, sel.Kind, sel.Version, sel.Executable, sel.Verified = image.manifest.ID, image.manifest.Kind, image.manifest.Version, image.executable, image.handle
 			return sel
 		}
 		if sel.Fallback == nil {
@@ -341,6 +344,7 @@ func (r *Resolver) Resolve(ctx context.Context, req Request, set Set) Selection 
 type verifiedImage struct {
 	manifest   Manifest
 	executable string
+	handle     *Executable
 }
 
 // tryRuntime checks runtime id for set. It returns the verified image, or why the runtime cannot run the set with the runtime its
@@ -380,13 +384,14 @@ func (r *Resolver) tryRuntime(ctx context.Context, id string, set Set) (verified
 		return verifiedImage{}, next, skip(ReasonStale, "%s changed since %s was built%s", changed, id, recordRequest(dir, manifest, set))
 	}
 	executable := filepath.Join(dir, filepath.FromSlash(image.Executable))
-	if reason, err := r.verifier.Verify(ctx, manifest, executable, image.SHA256); err != nil {
+	handle, reason, err := r.verifier.Verify(ctx, manifest, executable, image.SHA256)
+	if err != nil {
 		return verifiedImage{}, next, skip(reason, "%s: %v", executable, err)
 	}
 	if manifest.Kind == KindExecutable {
 		touchUsed(filepath.Dir(executable))
 	}
-	return verifiedImage{manifest: manifest, executable: executable}, "", nil
+	return verifiedImage{manifest: manifest, executable: executable, handle: handle}, "", nil
 }
 
 // UsedFile is the file inside an image's directory whose modification time records when PiG last started a set from the image. A provider that
@@ -534,6 +539,6 @@ func (r *Resolver) ResolveAfter(ctx context.Context, sel Selection, set Set, det
 		next.Skipped = append(next.Skipped, *skip)
 		return next
 	}
-	next.Runtime, next.Kind, next.Version, next.Executable = image.manifest.ID, image.manifest.Kind, image.manifest.Version, image.executable
+	next.Runtime, next.Kind, next.Version, next.Executable, next.Verified = image.manifest.ID, image.manifest.Kind, image.manifest.Version, image.executable, image.handle
 	return next
 }

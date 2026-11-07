@@ -10,12 +10,12 @@ Steps, over a runtime slot that holds stock Bun (`<slot>/bun/{bun,runtime.json}`
   4. one launch checks that the extension host process is the compiled executable, and exits 1 if not.
 What runs afterwards: `PIG_TS_RUNTIME=aot PIG_TS_RUNTIMES_DIR=<slot> pig ... -e <the same files>` starts <slot>/aot/images/<key>-<id>/pig-ts-host with the set compiled in; no slot
 Bun or Node starts the extensions and no extension source is loaded or transpiled (the files are only checked for change).
-With --binary BIN the set is the TypeScript extensions built into a Piglet Binary that also carries the aot-runtime extension (and any Go-fused members): the Binary
-starts with no -e, its own fused aot-runtime worker installs the manifest and compiler and builds the recorded set while a session runs (no go test worker), and
+With --binary BIN the set is the TypeScript extensions built into a Piglet Binary that also carries the bolt-runtime extension (and any Go-fused members): the Binary
+starts with no -e, its own fused bolt-runtime worker installs the manifest and compiler and builds the recorded set while a session runs (no go test worker), and
 the set's entry paths are the Binary's extracted cell sources under --home (PIG_HOME), so measure with the same --home and the same slot. The compiler downloads
 from the network (or PIG_AOT_RELEASE_URL), so PIG_OFFLINE must not be set. The image appears at the third start of a clean slot: start 1 installs the manifest,
 start 2 records the request (the set runs on Bun), the worker builds, start 3 runs the compiled host.
-usage: build_set.py --pig PIG --slot SLOT [--piglet-dir piglets/aot] EXTENSION.ts...
+usage: build_set.py --pig PIG --slot SLOT [--piglet-dir piglets/pig-bolt] EXTENSION.ts...
        build_set.py --binary BIN --slot SLOT --home DIR"""
 import argparse, os, subprocess, sys, tempfile, shutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -42,8 +42,8 @@ def launch(pig, slot, exts, home, binary=False, hold=None):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--pig"); ap.add_argument("--slot", required=True)
-    ap.add_argument("--piglet-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "piglets", "aot")); ap.add_argument("exts", nargs="*")
-    ap.add_argument("--binary", help="a Piglet Binary that carries the TypeScript extensions and the aot-runtime extension"); ap.add_argument("--home", help="PIG_HOME root for --binary; keep it for the measurement")
+    ap.add_argument("--piglet-dir", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "piglets", "pig-bolt")); ap.add_argument("exts", nargs="*")
+    ap.add_argument("--binary", help="a Piglet Binary that carries the TypeScript extensions and the bolt-runtime extension"); ap.add_argument("--home", help="PIG_HOME root for --binary; keep it for the measurement")
     a = ap.parse_args(); slot = os.path.abspath(a.slot)
     if a.binary:
         if not a.home: sys.exit("--binary needs --home")
@@ -52,7 +52,7 @@ def main():
         for d in ("", "agent", "tmp"): os.makedirs(os.path.join(home, d), exist_ok=True)
         has = lambda path: (lambda: os.path.exists(os.path.join(slot, path)))
         def images(): d = os.path.join(slot, "aot", "images"); return os.path.isdir(d) and bool(os.listdir(d))
-        launch(binary, slot, [], home, True, (has("aot/runtime.json"), 240)); print("start 1: the aot-runtime extension installed the manifest:", has("aot/runtime.json")(), flush=True)
+        launch(binary, slot, [], home, True, (has("aot/runtime.json"), 240)); print("start 1: the bolt-runtime extension installed the manifest:", has("aot/runtime.json")(), flush=True)
         print("start 2 (records the request) ran on", launch(binary, slot, [], home, True), flush=True)
         launch(binary, slot, [], home, True, (images, 900)); print("worker built:", images(), flush=True)
         ran = launch(binary, slot, [], home, True); print("start 3 ran on", ran, flush=True)
@@ -60,7 +60,7 @@ def main():
         print("built:", os.listdir(os.path.join(slot, "aot", "images"))); return
     if not a.pig or not a.exts: sys.exit("give --pig and the extension files, or --binary")
     exts = [os.path.abspath(e) for e in a.exts]; pig = os.path.abspath(a.pig)
-    worker = f"cd {os.path.abspath(a.piglet_dir)} && GOWORK=off PIG_KEEP_COUNT1=1 PIG_AOT_BUILD_SLOT={slot} go test ./extensions/aotruntime -run '^TestBuildSlotRequests$' -count=1"
+    worker = f"cd {os.path.abspath(a.piglet_dir)} && GOWORK=off PIG_KEEP_COUNT1=1 PIG_AOT_BUILD_SLOT={slot} go test ./extensions/boltruntime -run '^TestBuildSlotRequests$' -count=1"
     home = tempfile.mkdtemp(prefix="aot-build-set-", dir=os.environ.get("TMPDIR", "/tmp"))
     try:
         subprocess.run(worker, shell=True, check=True)
