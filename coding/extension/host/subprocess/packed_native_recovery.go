@@ -292,6 +292,7 @@ func (h *Host) recoverNativeProcess(failed *packedProcessState, culprit, reason 
 	h.packedCellGeneration[failed.key]++
 	failed.stopping.Store(true)
 	members := slices.Clone(failed.members)
+	//perf:ok cold: once per crash of a packed process, over its few members
 	slices.SortFunc(members, func(a, b *managedExt) int { return h.loadOrder[a.config.Name] - h.loadOrder[b.config.Name] })
 	for _, me := range members {
 		if h.exts[me.config.Name] == me {
