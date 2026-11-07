@@ -3,6 +3,7 @@ package extensionconformance
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -115,6 +116,62 @@ func TestAHostReplyIsNeverOlderThanTheStateItFollowsAcrossSDKs(t *testing.T) {
 				},
 				armed: func(got string) bool { return got == "tokens=100" },
 				read:  func(got string) bool { return got == "tokens=250,id=reply-order-replaced" },
+			})
+		})
+	}
+}
+
+// The same, for a change the host has made and not reported yet: the Session's new id is visible to a host call before the owner's report raises the host's
+// epoch (Host.hostStateChanged), so a reply in that stretch would carry the new Session's context usage ahead of the push that names it. The Session brackets
+// the change (ObserveReplicatedStateScope), and the host flushes before every reply while one is in flight. The row holds the report back with the bridge's
+// own hook, so the stretch lasts until the reader has read.
+func TestAHostReplyIsNeverOlderThanAChangeInFlightAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	for _, tc := range replicaCausalityCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("in-flight change conformance complete")
+				}
+			})
+			if h.bridge == nil {
+				t.Skip("the in-process harness has no replicated state")
+			}
+			rig := newStatePushRig(t, h)
+			reported := h.bridge.OnHostStateChanged
+			hold := make(chan struct{})
+			var holding atomic.Bool
+			var holdOnce sync.Once
+			release := func() { holdOnce.Do(func() { close(hold) }) }
+			var changing sync.WaitGroup
+			t.Cleanup(func() {
+				release()
+				changing.Wait()
+			})
+			h.bridge.OnHostStateChanged = func() {
+				if holding.Load() {
+					<-hold
+				}
+				reported()
+			}
+			rig.run(t, h, statePushKind{
+				name: "usage-then-id",
+				change: func(*testing.T) {
+					holding.Store(true)
+					changing.Go(func() {
+						rig.session.ReplaceInner(codingagent.NewSession("in-flight-replaced", rig.session.CWD()))
+					})
+					pollUntilConformance(t, "the Session never took the replacement", func() bool { return rig.session.ID() == "in-flight-replaced" })
+					rig.usageTokens.Store(250)
+				},
+				armed: func(got string) bool { return got == "tokens=100" },
+				read:  func(got string) bool { return got == "tokens=250,id=in-flight-replaced" },
 			})
 		})
 	}

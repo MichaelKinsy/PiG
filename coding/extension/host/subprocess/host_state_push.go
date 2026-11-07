@@ -23,6 +23,16 @@ func (h *Host) hostStateChanged() {
 	h.goDrainTask(h.fanOutStatePush)
 }
 
+// hostStateChanging reports that the Session's identity state (the model, the session id, name and file) is about to change, and hostStateSettled that the change was reported through hostStateChanged (UIBridge.HostStateChanging, HostStateSettled). The change becomes visible to a host call, which can read it and reply, before the owner reports it: a reply in that stretch flushes the state first, as one after the report does (replyToCall).
+func (h *Host) hostStateChanging() { h.hostStateInflight.Add(1) }
+
+func (h *Host) hostStateSettled() { h.hostStateInflight.Add(-1) }
+
+// behindHostState reports whether a host-side change may not have reached me: one is reported and not yet pushed to it, or one is in flight.
+func (h *Host) behindHostState(me *managedExt) bool {
+	return me.pushedStateEpoch.Load() < h.hostStateEpoch.Load() || h.hostStateInflight.Load() > 0
+}
+
 // fanOutStatePush queues a state push to every connected extension. It clears the queued flag before it reads the targets, so a change that arrives while it runs queues another fan-out that pushes the newer state.
 func (h *Host) fanOutStatePush() {
 	h.hostStatePushQueued.Store(false)

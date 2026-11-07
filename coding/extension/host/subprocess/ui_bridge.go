@@ -173,6 +173,9 @@ type UIBridge struct {
 
 	// OnHostStateChanged is called when host state that runtimes replicate changed with no extension call or event to announce it. Set by the Host, which pushes the new state to every connected runtime off the caller's goroutine (see [UIBridge.HostStateChanged]).
 	OnHostStateChanged func()
+	// OnHostStateChanging and OnHostStateSettled bracket a change of the identity state (the model, the session id, name and file) that the Session makes: the first runs before the change is visible, the second after the change was reported through OnHostStateChanged. Set by the Host (see [UIBridge.HostStateChanging]).
+	OnHostStateChanging func()
+	OnHostStateSettled  func()
 
 	// invalidateTUI triggers a TUI render cycle.
 	invalidateTUI func()
@@ -1086,6 +1089,26 @@ func (b *UIBridge) HostStateChanged() {
 	b.mu.RUnlock()
 	if changed != nil {
 		changed()
+	}
+}
+
+// HostStateChanging tells the Host that the Session's model, session id, name or file is about to change, and HostStateSettled that the change was reported through [UIBridge.HostStateChanged]. A host call can read the new state before the owner reports it, and its reply must not outrun the push of that state to the runtime that made it, so the Host flushes the state before every reply while a change is in flight. Every HostStateChanging has one HostStateSettled; both return at once.
+func (b *UIBridge) HostStateChanging() {
+	b.mu.RLock()
+	changing := b.OnHostStateChanging
+	b.mu.RUnlock()
+	if changing != nil {
+		changing()
+	}
+}
+
+// HostStateSettled ends the change HostStateChanging began.
+func (b *UIBridge) HostStateSettled() {
+	b.mu.RLock()
+	settled := b.OnHostStateSettled
+	b.mu.RUnlock()
+	if settled != nil {
+		settled()
 	}
 }
 

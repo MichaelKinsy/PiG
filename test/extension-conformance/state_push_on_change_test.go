@@ -127,6 +127,8 @@ func newStatePushRig(t *testing.T, h *harness) *statePushRig {
 	// The report the binary's modes install (coding/cli watchHostState, internal/codingagent watchReplicatedState).
 	stop := session.ObserveReplicatedState(h.bridge.HostStateChanged)
 	t.Cleanup(stop)
+	stopScope := session.ObserveReplicatedStateScope(h.bridge.HostStateChanging, h.bridge.HostStateSettled)
+	t.Cleanup(stopScope)
 	// The theme the binary hands its extensions (coding/cli/extensions.go), and the report of its changes.
 	h.bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
 	stopTheme := tui.ObserveActiveTheme(h.bridge.HostStateChanged)

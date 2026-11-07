@@ -493,6 +493,8 @@ type Host struct {
 	hostStatePushQueued atomic.Bool
 	// hostStateEpoch counts the host-side state changes reported through hostStateChanged. It is raised before the change's push is queued, so a call result written after the change has an epoch no extension's pushedStateEpoch reached yet.
 	hostStateEpoch atomic.Uint64
+	// hostStateInflight counts the changes of the identity state (the model, the session id, name and file) that have begun and are not settled (hostStateChanging, hostStateSettled). A change becomes visible to a call before hostStateChanged raises the epoch, so while one is in flight every reply flushes the state, and the flush that follows its settling carries it.
+	hostStateInflight atomic.Int32
 	// stopMcpServersObserver removes the observer that reports each change of the runtime's MCP server registry to hostStateChanged. Guarded by h.mu.
 	stopMcpServersObserver func()
 	// retirements are the stops of replaced generations that a running command deferred (retireGeneration). retirementTasks joins the goroutines that run them; retirementsClosed stops new ones once Shutdown has run the pending stops. Guarded by retirementMu.
@@ -923,6 +925,8 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.onRuntimeStateMutated = h.runtimeStateMutated
 		bridge.OnRunSignalChanged = h.runSignalChanged
 		bridge.OnHostStateChanged = h.hostStateChanged
+		bridge.OnHostStateChanging = h.hostStateChanging
+		bridge.OnHostStateSettled = h.hostStateSettled
 		bridge.resolveFlag = h.resolveFlagValue
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback
@@ -1743,9 +1747,14 @@ func (h *Host) runtimeStateMutated(extName string) {
 }
 
 // pushStateTo sends me's state on conn, one of me's connections.
+func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) error {
+	return h.pushState(ctx, me, conn, false)
+}
+
+// pushState is pushStateTo for a caller that already holds me.entryCursorMu when cursorHeld is set, as a watchSessionLog call does through its reply.
 //
 //pig:hotpath
-func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) (err error) {
+func (h *Host) pushState(ctx context.Context, me *managedExt, conn *Conn, cursorHeld bool) (err error) {
 	if h.uiBridge == nil || me == nil || conn == nil {
 		return nil
 	}
@@ -1760,8 +1769,10 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) (err
 	if err := h.syncRunSignal(conn); err != nil {
 		return err
 	}
-	me.entryCursorMu.Lock()
-	defer me.entryCursorMu.Unlock()
+	if !cursorHeld {
+		me.entryCursorMu.Lock()
+		defer me.entryCursorMu.Unlock()
+	}
 
 	for {
 		gen := me.runtimeStateGen.Load()
