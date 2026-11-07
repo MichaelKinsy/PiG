@@ -2059,17 +2059,17 @@ Summary: A Go extension reads the keys of an object of the event it is handling 
 
 Audience: author
 
-Stock disposition: inert capability. Nothing calls it unless an extension does, and a handler that never calls it pays nothing: the order is read from the event bytes at the first call.
+Stock disposition: inert capability. Nothing calls it unless an extension does. The order it reads is recorded when the Go SDK decodes an event (`json.ObjectOrder`, the same record that writes a handed-back object in the order it came in), which costs a context event of 3000 messages that returns nothing 2% more time and 6% more memory (a context handler's whole event, decode to reply); a call is a lookup.
 
 What: `Context.ObjectKeys(object map[string]any) []string` (Go SDK). For an object of the event the handler is serving it returns the keys in the order the host wrote the members, for the members the object still holds, then the members the handler added in byte order; array-index keys (`"0"`, `"1"`, ...) come first, ascending, as JavaScript enumerates them. A map the handler built, or any object of an event whose payload arrived in pieces, has its keys in byte order. Node reads `Object.keys(object)`, Rust `object.as_object()?.keys()` (serde_json with `preserve_order`), Python `list(object)` and Lisp the insertion-ordered hash table's keys, so no other SDK has a new call.
 
-Pi source: a handler's `event` objects are JavaScript objects: `Object.keys`, `for...in` and `JSON.stringify` visit their members in insertion order (integer-like keys first), which is the order the host wrote them. A Go map has no order, so the SDK reads it from the event's own bytes.
+Pi source: a handler's `event` objects are JavaScript objects: `Object.keys`, `for...in` and `JSON.stringify` visit their members in insertion order (integer-like keys first), which is the order the host wrote them. A Go map has no order, so the SDK records it while it decodes the event, and each object is known by its own map.
 
 Why: the Posthorse port printed a tool call's arguments in the model's member order (recovery-results.ts `callDetails`); a Go handler had only sorted keys (review R1).
 
 Call-site markers: `extensions/sdk/source_order.go` (`Context.ObjectKeys`).
 
-Locked by: `TestObjectKeysAreReadInTheOrderTheHostWroteThem`, `TestObjectKeysPutArrayIndexKeysFirst`, `TestObjectKeysDoNotLeakTheOrderOfAFreedObject` (`extensions/sdk/key_order_test.go`); `TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys` (`test/extension-conformance/event_echo_order_test.go`: Go, Node, Rust, Python and Lisp, isolated and packed, and fused Go, each reporting the keys of a provider payload that no sorted read produces).
+Locked by: `TestObjectKeysAreReadInTheOrderTheHostWroteThem`, `TestObjectKeysPutArrayIndexKeysFirst`, `TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `TestAKeptContextReadsByteOrderAfterTheReply` (`extensions/sdk/key_order_test.go`), `TestUnmarshalObjectRecordsTheMemberOrder` (`extensions/sdk/json/object_order_test.go`); `TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys` (`test/extension-conformance/event_echo_order_test.go`: Go, Node, Rust, Python and Lisp, isolated and packed, and fused Go, each reporting the keys of a provider payload that no sorted read produces).
 
 Remove when: Pi gives a Go extension an ordered object type, or the Go SDK decodes event objects into one.
 
