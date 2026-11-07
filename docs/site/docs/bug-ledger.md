@@ -457,6 +457,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4fd80d1-3](#bf-4fd80d1-3) | On Windows, an empty `SystemRoot` takes `C:\Windows` for `taskkill.exe`, as an unset one already did, in the… | PiG's own defect | Windows | 0.5.2 |
 | [BF-4fd80d1-4](#bf-4fd80d1-4) | On Windows, shells that are runnable Microsoft Store aliases are accepted: a configured shell path… | PiG's own defect | Windows | 0.5.2 |
 | [BF-4fe779e](#bf-4fe779e) | A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the… | PiG's own defect | All platforms | 0.5.2 |
+| [BF-4feaeb9](#bf-4feaeb9) | Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of… | PiG's own defect | Windows | Unreleased |
 | [BF-4ff1a44](#bf-4ff1a44) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-4ffcd59](#bf-4ffcd59) | An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a… | PiG's own defect | All platforms | Unreleased |
 | [BF-50233fd](#bf-50233fd) | An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the… | PiG's own defect | All platforms | 0.5.0 |
@@ -7832,6 +7833,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4fe779e53e` (2026-10-20, #236)
 - **Tests:** `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedCrashAfterRetainedReloadRestarts`, `coding/extension/host/subprocess/retained_factory_test.go::TestNodeIsolatedReloadWaitsForCrashRestart`
 - **Release note:** A `/reload` that arrived while the supervisor was restarting a crashed isolated extension could end the process the reloaded extension runs in, so its next call failed with a reset or closed connection. The restart now runs under the same lock as load and reload: a reload waits for the restart to register, then retains the restarted process; a restart that a reload or load already replaced does nothing.
+
+### BF-4feaeb9
+
+**Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of giving up after go-winio's default 2 s dial deadline.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `4feaeb9e8e` (2026-11-07)
+- **Tests:** `chord/nextnode/workers/workers_channel_windows_test.go::TestOpenProcessChannelWaitsForAParentThatAcceptsLate`
+- **Release note:** Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of giving up after go-winio's default 2 s dial deadline. A parent that started many workers at once, or a loaded machine, could accept later than that; the worker then had no parent, exited, and its start failed.
 
 ### BF-4ff1a44
 
