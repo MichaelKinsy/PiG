@@ -29,9 +29,6 @@ const warmGrace = 10 * time.Second
 // build's own error, and the tests of the other SDKs still run. The toolchains of all SDKs are required by the suite, so a machine that lacks one fails its
 // tests with a message that says so (a test cannot be skipped for a missing tool: TestRequiredSDKToolsFailWhenMissing).
 func warmFixtures() error {
-	if flagValue("test.list") != "" {
-		return nil // go test -list only names the tests.
-	}
 	ctx := context.Background()
 	if timeout, err := time.ParseDuration(flagValue("test.timeout")); err == nil && timeout > 0 {
 		var cancel context.CancelFunc
