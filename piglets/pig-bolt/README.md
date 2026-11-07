@@ -86,6 +86,7 @@ A set is refused, and runs on Bun or Node, when a file that reads files or start
 ## Known limits
 
 - In a compiled CommonJS module `module.filename`, `module.paths`, `module.id`, `require.main` and `process.argv[1]` do not name the installed file; only `__dirname`, `__filename`, `import.meta.*`, `require.resolve` and computed `require()`/`import()` are pinned to it.
+- The rewrite has no scope analysis, as in Pi-Bolt: a module that declares `__dirname`, `__filename` or `require` anywhere keeps its own in every use, and a class head whose generics contain `{`, `;` or `:` is not recognised as a class body.
 - The compiled host runs a tight loop slower than Bun's JIT (about 1.1x in the measurement above).
 - The image is 240 to 270 MB, so the default 2 GB budget keeps about eight sets; the least recently used image goes first and its set is built again at its next request.
 - Pi-Bolt 0.7.4's compiler segfaulted ("Segmentation fault at address 0x30") in the ahead-of-time step on the current runtime tree, on the CI image and on the host, whenever the build's function order held any record; 1.1.2 builds the same input. A Piglet release that is pinned to 0.7.4 cannot build an image on this tree.
