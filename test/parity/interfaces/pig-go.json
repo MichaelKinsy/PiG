@@ -361224,6 +361224,17 @@
       "shapeHash": "sha256:0a6da294f98f53305388179d15d782a3658cda2e664b3d9229fd0b6d7206944d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#hlLastShared",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "hlLastShared",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "bool"
+      },
+      "shapeHash": "sha256:58c4edfb6b4510b75f2f02a3aab499ee7b806d5fe9e574872a76242744f74be4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#hlMu",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "hlMu",
