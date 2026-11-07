@@ -382,6 +382,21 @@ func takeHelperConn(sockPath string) *conn {
 	return c
 }
 
+// ReportLoadFailure ends the host's wait for the extension that serves sockPath after its factory failed. A packed cell's runner calls it when a member's factory
+// panics or returns no extension, so the shared process lives on for the other members. A factory that called a host helper (ParseFrontmatter, ParseDate, a
+// pi.events call) before it failed left the connection that call dialled open, and the host reads the registration of the connection it accepted first: that one is
+// closed. With no such connection it is the connection of the socket that is dialled and closed, as the failure of an extension that never connected.
+func ReportLoadFailure(sockPath string) error {
+	if started := takeHelperConn(sockPath); started != nil {
+		return started.nc.Close()
+	}
+	nc, err := net.Dial("unix", sockPath)
+	if err != nil {
+		return fmt.Errorf("connect to host: %w", err)
+	}
+	return nc.Close()
+}
+
 // adoptHelperConn makes the connection of a running extension the one helpers use when they run outside a factory and a Context, so such a helper does not
 // dial a socket the host already accepted.
 func adoptHelperConn(c *conn, path string, ext *Extension) {

@@ -54,7 +54,7 @@ The standalone entry point: (pig:run-extension (new-extension)) in an executable
         (if previous (sb-posix:setenv "PIG_EXT_SOCKET" previous 1) (sb-posix:unsetenv "PIG_EXT_SOCKET"))))))
 
 (defun report-member-failure (member condition socket)
-  (format *error-output* "~A: ~A~%" (car member) (condition-message condition))
+  (format *error-output* "extension \"~A\" load failed: ~A~%" (car member) (condition-message condition))
   (finish-output *error-output*)
   (when (and socket (plusp (length socket)))
     (unless (helper-drop-conn socket) (ignore-errors (conn-close (connect-unix socket))))))
@@ -80,6 +80,7 @@ generations on the host's control lines, and exit once none is live (unless the 
                                (unless (and socket (plusp (length socket)))
                                  (error "~A not set for ~A" (socket-env-name (car member)) (car member)))
                                (let ((ext (build-member member socket)))
+                                 (unless ext (error "factory returned nil"))
                                  (latch-set built)
                                  (unless (serve ext (helper-take-conn socket))
                                    (setf failed t)

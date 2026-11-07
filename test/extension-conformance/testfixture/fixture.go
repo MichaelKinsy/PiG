@@ -3572,6 +3572,8 @@ type conformanceEditor struct{ *sdk.Editor }
 
 func (e *conformanceEditor) HandleInput(data string) error {
 	switch data {
+	case "!":
+		panic("bad key")
 	case "q":
 		return nil
 	case "a":

@@ -833,6 +833,11 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 		h.recoverNodeProcess(process, reason)
 		return
 	}
+	// A trace that names one member of a shared native process blames that member only: the others restart in a shared process, and the culprit runs isolated.
+	if culprit := process.nativeCulprit(err); culprit != "" && len(process.members) > 1 {
+		h.recoverNativeProcess(process, culprit, reason)
+		return
+	}
 	// quarantinePackedCellGeneration checks process.generation against the
 	// key's current packedCellGeneration atomically with the quarantine
 	// write (CNC-002): a plain pre-check here would leave a window between

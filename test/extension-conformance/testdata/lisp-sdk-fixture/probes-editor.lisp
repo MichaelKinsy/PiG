@@ -11,7 +11,8 @@
           do (unless first (write-string separator out)) (write-string line out))))
 
 (defun lfx-editor-handle (base data)
-  (cond ((string= data "q"))
+  (cond ((string= data "!") (error "bad key"))
+        ((string= data "q"))
         ((string= data "L")
          (pig:editor-base-set-text base (concatenate 'string "raw:lines=" (lfx-editor-join "|" (pig:editor-base-get-lines base)))))
         (t (pig:editor-base-handle-input base (if (string= data "a") "A" data)))))

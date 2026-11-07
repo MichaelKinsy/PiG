@@ -3709,10 +3709,16 @@ pub fn context_unchanged() -> Option<Value> {
     Some(serde_json::json!({ "_pigContextUnchanged": true }))
 }
 
-/// Connect and close a failed packed member's socket so the host stops waiting for registration.
+/// End the host's wait for a failed packed member after its factory failed (it panicked), so the host stops waiting for registration.
+/// A factory that called a host helper (`parse_frontmatter`, `parse_date`, a `pi.events` call) before it failed left the connection that call dialled open, and the host
+/// reads the registration of the connection it accepted first: that one is closed. With no such connection the socket is connected to and closed.
 /// Uses the same transport as `Extension::run_with_socket` and sends no registration frame.
 // pig additive (D20): generated packed runners report factory failures independently of live siblings.
 pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
+    if let Some(conn) = crate::host_helpers::take_dialled(sock_path) {
+        conn.close_transport();
+        return Ok(());
+    }
     UnixStream::connect(sock_path).map(drop)
 }
 

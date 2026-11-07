@@ -2,6 +2,8 @@ package sdk
 
 import (
 	"fmt"
+	"os"
+	"runtime/debug"
 	"slices"
 	"sync"
 
@@ -238,8 +240,35 @@ func (s *editorSession) run() {
 			return
 		default:
 		}
-		task()
+		s.runTask(task)
 	}
+}
+
+// runTask runs one queued task. Every call into the component is guarded on its own (guard), so a panic that reaches here is the SDK's own and ends nothing:
+// the goroutine and the process, which in a packed cell serves other extensions, go on.
+func (s *editorSession) runTask(task func()) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			fmt.Fprintf(os.Stderr, "extension: recovered from panic in an editor task: %v\n%s\n", recovered, debug.Stack())
+		}
+	}()
+	task()
+}
+
+// guard runs one call into the component and reports whether it succeeded. An error the call returns and a panic it raises are reported the same way, as
+// "editor <what> failed: <message>", as the Python, Rust and Lisp SDKs report theirs; the worker goes on, and the caller still finishes what the host waits for
+// (handleInput's inputDone).
+func (s *editorSession) guard(what string, call func() error) (ok bool) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			fmt.Fprintf(os.Stderr, "extension: recovered from panic in editor %s: %v\n%s\n", what, recovered, debug.Stack())
+			s.fail(what, fmt.Errorf("%v", recovered))
+			ok = false
+		}
+	}()
+	err := call()
+	s.fail(what, err)
+	return err == nil
 }
 
 func (s *editorSession) fail(what string, err error) {
@@ -257,15 +286,19 @@ func (s *editorSession) renderNow() {
 	if width <= 0 {
 		width = 80
 	}
-	lines, err := s.component.Render(width)
-	if err != nil {
-		s.fail("render", err)
+	var lines []string
+	var captures bool
+	if !s.guard("render", func() (err error) {
+		if lines, err = s.component.Render(width); err == nil {
+			captures = capturesViewportInput(s.component)
+		}
+		return err
+	}) {
 		return
 	}
 	if lines == nil {
 		lines = []string{}
 	}
-	captures := capturesViewportInput(s.component)
 	if s.rendered && width == s.lastWidth && captures == s.lastCaptures && slices.Equal(lines, s.lastLines) {
 		return
 	}
@@ -304,23 +337,38 @@ func (e *Extension) handleEditorNotify(method string, args json.RawMessage) bool
 	switch method {
 	case "ui.editor.input":
 		s.post(func() {
-			s.fail("handleInput", s.component.HandleInput(payload.Data))
+			s.guard("handleInput", func() error { return s.component.HandleInput(payload.Data) })
 			s.renderNow()
 			_ = e.conn.notify("ui.editor.inputDone", map[string]any{"key": s.key})
 		})
 	case "ui.editor.mouse":
-		s.post(func() { s.fail("handleMouse", s.component.HandleMouse(payload.Event)); s.renderNow() })
+		s.post(func() {
+			s.guard("handleMouse", func() error { return s.component.HandleMouse(payload.Event) })
+			s.renderNow()
+		})
 	case "ui.editor.setText":
-		s.post(func() { s.fail("setText", s.component.SetText(payload.Text)); s.renderNow() })
+		s.post(func() {
+			s.guard("setText", func() error { return s.component.SetText(payload.Text) })
+			s.renderNow()
+		})
 	case "ui.editor.insertText":
-		s.post(func() { s.fail("insertTextAtCursor", s.component.InsertTextAtCursor(payload.Text)); s.renderNow() })
+		s.post(func() {
+			s.guard("insertTextAtCursor", func() error { return s.component.InsertTextAtCursor(payload.Text) })
+			s.renderNow()
+		})
 	case "ui.editor.addToHistory":
-		s.post(func() { s.fail("addToHistory", s.component.AddToHistory(payload.Text)); s.renderNow() })
+		s.post(func() {
+			s.guard("addToHistory", func() error { return s.component.AddToHistory(payload.Text) })
+			s.renderNow()
+		})
 	case "ui.editor.configure":
 		status := payload.WorkingStatus
 		s.post(func() { s.editorConfigured(status); s.renderNow() })
 	case "ui.editor.invalidate":
-		s.post(func() { s.fail("invalidate", s.invalidate()); s.renderNow() })
+		s.post(func() {
+			s.guard("invalidate", s.invalidate)
+			s.renderNow()
+		})
 	case "ui.editor.closed":
 		e.detachEditor(s)
 	}

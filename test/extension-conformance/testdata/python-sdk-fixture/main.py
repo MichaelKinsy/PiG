@@ -695,6 +695,8 @@ def new_extension() -> pig_sdk.Extension:
         """Swallows "q", rewrites "a" to "A", upper-cases the host's setText, and frames super.render."""
 
         def handle_input(self, data):
+            if data == "!":
+                raise RuntimeError("bad key")
             if data == "q":
                 return
             if data == "L":

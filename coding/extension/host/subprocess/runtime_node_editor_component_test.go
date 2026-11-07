@@ -260,3 +260,55 @@ runtime.ui.setEditorComponent(undefined);
 		t.Fatalf("editor component: %v\n%s", err, output)
 	}
 }
+
+// A component whose handleInput throws is reported as the other SDKs report theirs ("editor handleInput failed: <message>"), its key still finishes so the
+// host's input pump does not wait on it, and the keys after it reach the component.
+func TestNodeEditorComponentFailureIsReportedLikeTheOtherSDKs(t *testing.T) {
+	abs := func(rel string) string {
+		path, err := filepath.Abs(rel)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String()
+	}
+	readPinned(t, "dist", "core", "keybindings.js")
+	script := fmt.Sprintf(`
+import assert from "node:assert/strict";
+const { Runtime } = await import(%q);
+const pigAgent = await import(%q);
+const piKeybindings = await import(%q);
+
+const definitions = {};
+for (const [id, definition] of Object.entries(piKeybindings.KEYBINDINGS)) {
+  definitions[id] = { defaultKeys: [definition.defaultKeys].flat(), description: definition.description };
+}
+const runtime = new Runtime("/ext/modal.mjs");
+runtime.ready = { width: 60, height: 24, cwd: process.cwd() };
+const sent = [];
+runtime.notify = (method, args) => sent.push({ method, args });
+const failures = [];
+runtime.fireAndForget = (method, args) => { if (method === "ui.notify") failures.push(args); };
+runtime.callSync = () => ({ id: "base", triggerCharacters: [], hasFileTrigger: false });
+runtime.applyState({ thinkingLevel: "off", keybindings: { definitions, userBindings: {} } });
+
+class Failing extends pigAgent.CustomEditor {
+  handleInput(data) {
+    if (data === "!") throw new Error("bad key");
+    super.handleInput(data);
+  }
+}
+runtime.ui.setEditorComponent((tui, theme, keybindings) => new Failing(tui, theme, keybindings));
+const key = sent.find((m) => m.method === "ui.editor.install").args.key;
+runtime.handleNotify({ method: "ui.editor.configure", args: { key, paddingX: 0, autocompleteMaxVisible: 5, focused: true, thinkingLevel: "off", shortcuts: [] } });
+runtime.handleNotify({ method: "ui.editor.input", args: { key, data: "!" } });
+assert.deepEqual(failures, [{ message: "editor handleInput failed: bad key", level: "error" }]);
+assert.equal(sent.filter((m) => m.method === "ui.editor.inputDone").length, 1, "the failing key finishes");
+runtime.handleNotify({ method: "ui.editor.input", args: { key, data: "b" } });
+assert.equal(runtime.editorHost.session.component.getText(), "b", "the key after the failing one reaches the component");
+assert.equal(failures.length, 1);
+runtime.ui.setEditorComponent(undefined);
+`, abs("runtime-node/runtime.mjs"), abs("runtime-node/shims/pi-coding-agent.mjs"), abs(filepath.Join(pinnedPiPackages, "dist", "core", "keybindings.js")))
+	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
+		t.Fatalf("editor component failure: %v\n%s", err, output)
+	}
+}

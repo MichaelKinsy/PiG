@@ -289,7 +289,7 @@ func (s *editorSession) editorConfigured(status *EditorStatus) {
 		return
 	}
 	s.statusSent, s.lastStatus = true, status
-	s.fail("setWorkingStatusIndicator", s.setWorkingStatus(status))
+	s.guard("setWorkingStatusIndicator", func() error { return s.setWorkingStatus(status) })
 }
 
 func statusEqual(a, b *EditorStatus) bool {

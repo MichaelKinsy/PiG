@@ -72,7 +72,7 @@ func readStderrTail(path string) []byte {
 // stderrCause returns the error line belonging to an extension's failed start. A packed Node error block can start with a source location before its named error line; the selected member's error takes precedence over warnings and sibling blocks. It reads at most stderrCauseLimit bytes and returns an empty string for a missing or empty log.
 func stderrCause(path, extensionName string) string {
 	data := readStderrTail(path)
-	var owned, matched, fallback string
+	var reported, owned, matched, fallback string
 	inOwnedBlock, ownedError := false, false
 	// A Rust panic names its location on one line, ending in a colon, and its message on the next: the message is the cause.
 	panicLocation := ""
@@ -87,6 +87,12 @@ func stderrCause(path, extensionName string) string {
 				matched = panicLocation + " " + trimmed
 			}
 			panicLocation = ""
+			continue
+		}
+		// A packed Go, Rust, Python or Lisp runner reports a member whose factory failed on one line that holds the whole cause, as the member's own: sibling
+		// members that failed too wrote theirs, and the panic or traceback lines between them belong to no one in particular.
+		if cause, ok := strings.CutPrefix(trimmed, `extension "`+extensionName+`" load failed: `); ok {
+			reported = cause
 			continue
 		}
 		if cause, ok := strings.CutPrefix(trimmed, `extension "`+extensionName+`" failed to load: `); ok {
@@ -111,7 +117,10 @@ func stderrCause(path, extensionName string) string {
 			fallback = trimmed
 		}
 	}
-	cause := owned
+	cause := reported
+	if cause == "" {
+		cause = owned
+	}
 	if cause == "" {
 		cause = matched
 	}

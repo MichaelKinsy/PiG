@@ -238,11 +238,14 @@ and for a call no assistant message issued, such as a nested ctx-execute-tool ca
 ;;; ---------------------------------------------------------------- background work owned by the connection
 
 (defun core-spawn (ext name function)
-  "Run FUNCTION on a thread the connection owns: shutdown waits for it."
+  "Run FUNCTION on a thread the connection owns: shutdown waits for it. A condition FUNCTION leaves unhandled (a failing callback of its own) is reported
+on stderr: no thread but the one that signals it can handle it, and one that ends a thread ends the whole process, which a packed cell shares."
   (sb-thread:with-mutex ((extension-state-lock ext))
     (let ((thread (sb-thread:make-thread
                    (lambda ()
-                     (unwind-protect (funcall function)
+                     (unwind-protect (handler-case (funcall function)
+                                       (serious-condition (c)
+                                         (format *error-output* "~A: ~A failed: ~A~%" (extension-name ext) name (condition-message c))))
                        (sb-thread:with-mutex ((extension-state-lock ext))
                          (setf (extension-request-threads ext) (remove sb-thread:*current-thread* (extension-request-threads ext))))))
                    :name name)))
