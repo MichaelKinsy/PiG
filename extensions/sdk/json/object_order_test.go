@@ -224,6 +224,17 @@ func TestMarshalJSOrderedAsksOnlyForMapsOfTwoMembersOrMore(t *testing.T) {
 	if order.asked != 0 {
 		t.Errorf("a map of one member asked %d times", order.asked)
 	}
+	// With the order of a decode: a reply of one member neither builds the filter nor sorts the objects.
+	_, decoded, err := UnmarshalObject([]byte(`{"a":{"b":1,"c":2},"d":{"e":1,"f":2}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := MarshalJSOrdered(map[string]any{"_pigContextUnchanged": true}, decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.sorted != nil || decoded.filter != nil {
+		t.Error("a reply of one member read the order of the decode")
+	}
 	if _, err := MarshalJSOrdered(map[string]any{"a": map[string]any{"b": 1, "c": 2}, "d": []any{map[string]any{"e": 1}}}, &order); err != nil {
 		t.Fatal(err)
 	}
@@ -252,6 +263,9 @@ func TestObjectOrderLookupOfAnotherMapDoesNotSort(t *testing.T) {
 	order.Keys(8)
 	var other uintptr
 	for other = 16; order.mayHold(other); other += 8 {
+		if other > 1<<24 {
+			t.Fatal("the filter passes every address")
+		}
 	}
 	if _, ok := order.Keys(other); ok {
 		t.Fatal("an address that is not an object has an order")

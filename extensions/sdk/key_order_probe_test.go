@@ -181,31 +181,29 @@ func redactAllArgs(count int) (args, reply string) {
 	return a.String(), r.String()
 }
 
+// askedOrder is a KeyOrder that counts the questions the reply's encoder asks of the order of an event.
+type askedOrder struct {
+	order json.KeyOrder
+	asked int
+}
+
+func (a *askedOrder) Keys(m uintptr) ([]string, bool) { a.asked++; return a.order.Keys(m) }
+
 // The reply of a context handler that returned nothing holds no object of the event, and a map of one member has no order to choose: the reply must not look
 // up the order, whose first lookup sorts every object of the event.
 func TestAnUnchangedContextReplyReadsNoOrder(t *testing.T) {
-	const runs = 20
-	args := []byte(contextArgs(3000))
-	orders := make([]*json.ObjectOrder, runs)
-	for i := range orders {
-		var err error
-		if _, orders[i], err = json.UnmarshalObject(args); err != nil {
-			t.Fatal(err)
-		}
+	_, order, err := json.UnmarshalObject([]byte(contextArgs(300)))
+	if err != nil {
+		t.Fatal(err)
 	}
-	reply := map[string]any{"_pigContextUnchanged": true}
-	var before, after runtime.MemStats
-	runtime.GC()
-	runtime.ReadMemStats(&before)
-	for _, order := range orders {
-		if _, err := encodeResponse("id", handedBack(EventContext, reply, order), nil); err != nil {
-			t.Fatal(err)
-		}
+	asked := &askedOrder{order: order}
+	reply := handedBack(EventContext, map[string]any{"_pigContextUnchanged": true}, order).(orderedReply)
+	reply.order = asked
+	if _, err := encodeResponse("id", reply, nil); err != nil {
+		t.Fatal(err)
 	}
-	runtime.ReadMemStats(&after)
-	// Asking for the order of an event of 3000 messages takes tens of kilobytes (the filter, the sorted objects); the reply itself takes about one.
-	if perReply := (after.TotalAlloc - before.TotalAlloc) / runs; perReply > 4<<10 {
-		t.Errorf("an unchanged context reply allocated %d bytes: it read the order of the event", perReply)
+	if asked.asked != 0 {
+		t.Errorf("an unchanged context reply asked for the order %d times", asked.asked)
 	}
 }
 
@@ -229,15 +227,17 @@ func TestFusedCopiesDoNotLeakTheOrderOfAFreedObject(t *testing.T) {
 	for i := range nested {
 		delete(payload, fmt.Sprintf("n%d", i))
 	}
-	runtime.GC()
-	runtime.GC()
-	fresh := make([]map[string]any, 0, 4*nested)
-	for range 4 * nested {
-		fresh = append(fresh, map[string]any{"y": 1, "z": 2})
-	}
-	for _, m := range fresh {
-		if keys, ok := order.KeysOf(m); ok {
-			t.Fatalf("a new map got the order of a freed copy: %v", keys)
+	// The freed copies are swept and their size class is allocated again, round after round, until nothing could be left to reuse.
+	for range 20 {
+		runtime.GC()
+		fresh := make([]map[string]any, 0, 8*nested)
+		for range 8 * nested {
+			fresh = append(fresh, map[string]any{"y": 1, "z": 2})
+		}
+		for _, m := range fresh {
+			if keys, ok := order.KeysOf(m); ok {
+				t.Fatalf("a new map got the order of a freed copy: %v", keys)
+			}
 		}
 	}
 }
