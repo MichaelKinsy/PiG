@@ -33,9 +33,10 @@ func TestToolEventVariantsMatchAcrossSDKs(t *testing.T) {
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
+			h := test.make(t)
+			// The deadline starts after make: a harness may first build its fixture, which can outlast it, and an emit under an expired context delivers nothing yet reports no error.
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			h := test.make(t)
 			t.Cleanup(func() {
 				if h.cleanup != nil {
 					h.cleanup()
