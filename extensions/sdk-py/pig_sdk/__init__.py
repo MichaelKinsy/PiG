@@ -2872,6 +2872,16 @@ class Context:
     def call_host(self, method: str, args: Any = None) -> Any:
         return self._call(method, args).get("result")
 
+    def with_file_mutation_queue(self, file_path: str, fn: Callable[[], Any]) -> Any:
+        """Pi's ``withFileMutationQueue`` for a handler that has its context: run ``fn`` in the host's file mutation queue for ``file_path`` and return its result.
+
+        A tool that takes the queue through its context registers in the order Pi's one thread runs the batch's tools (D187); the free ``with_file_mutation_queue``
+        registers in the order the calls reach the host. See :func:`pig_sdk.file_mutation_queue.with_context_file_mutation_queue`.
+        """
+        from .file_mutation_queue import with_context_file_mutation_queue
+
+        return with_context_file_mutation_queue(self, file_path, fn)
+
     def create_agent_session(self, options: CreateAgentSessionOptions | None = None) -> AgentSession:
         """Pi's ``createAgentSession``: create a child agent session in the host and return once it is ready.
 

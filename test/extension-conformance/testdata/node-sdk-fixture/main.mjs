@@ -451,6 +451,20 @@ export default function (pi) {
       return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
     },
   });
+  // mutation_order_ctx_probe makes `calls` getter calls, then takes the queue through its context (TestFileMutationOrderOfTheContextFormAcrossSDKs).
+  pi.registerTool({
+    name: "mutation_order_ctx_probe",
+    description: "Make getter calls, take the queue through the context and append a tag",
+    parameters: { type: "object", properties: { file: { type: "string" }, tag: { type: "string" }, calls: { type: "number" } } },
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      for (let i = 0; i < (params.calls ?? 0); i++) ctx.getContextUsage();
+      await ctx.withFileMutationQueue(params.file, async () => {
+        const before = fs.existsSync(params.file) ? fs.readFileSync(params.file, "utf8") : "";
+        fs.writeFileSync(params.file, `${before}${params.tag}\n`);
+      });
+      return { content: [{ type: "text", text: `mutated ${params.tag}` }] };
+    },
+  });
   pi.registerTool({
     name: "dialog_order",
     description: "Open a select dialog titled by the call and report the answer",

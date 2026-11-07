@@ -1,4 +1,5 @@
 import { modelFetchCallbacks } from "./model-fetch.mjs";
+import { withFileMutationQueue } from "./shims/file-mutation-queue-bridge.mjs";
 import { AutocompleteRuntime } from "./autocomplete.mjs";
 import { dispatchFacet, dispatchFacetSync, hasFacetBridge } from "./facet-bridge.mjs";
 import { syncTerminalGeometry } from "./terminal-geometry.mjs";
@@ -1648,6 +1649,13 @@ class RuntimeContext {
   getSystemPrompt() {
     this.runtime.extensionRuntime.assertActive();
     return this.runtime.promptWritten ? this.runtime.callSync("getSystemPrompt")?.prompt ?? "" : this.runtime.state.systemPrompt;
+  }
+  // PiG-only (D187): withFileMutationQueue for a handler that has its context. The Node runtime is Pi's one thread, so the registration order of Pi's own export
+  // (core/tools/file-mutation-queue.ts) is the order Pi gives a batch's tools, and the runtime holds a tool's enter behind the edit and write calls that precede it
+  // (tool_window_settled): the context form is that function, so the Node SDK offers the same call as the other SDKs with the same order.
+  withFileMutationQueue(filePath, fn) {
+    this.runtime.extensionRuntime.assertActive();
+    return withFileMutationQueue(filePath, fn);
   }
   getSystemPromptOptions() {
     this.runtime.extensionRuntime.assertActive();

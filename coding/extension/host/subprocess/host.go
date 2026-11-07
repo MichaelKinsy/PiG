@@ -4013,6 +4013,7 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 		if window := agent.ToolStartWindowFromContext(ctx, toolCallID); window != nil {
 			defer window.Close()
 			reqCtx = withRequestWindow(reqCtx, window)
+			reqCtx = withRequestEarlierWindows(reqCtx, agent.ToolEarlierStartWindowsFromContext(ctx, toolCallID))
 		}
 		if target.syncState != nil {
 			if err := target.syncState(reqCtx, conn); err != nil {

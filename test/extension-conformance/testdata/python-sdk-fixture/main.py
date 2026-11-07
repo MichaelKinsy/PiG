@@ -1868,6 +1868,20 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "mutated " + params["tag"]}
 
     ext.tool("mutation_order_probe", "Take the file mutation queue and append a tag to the file", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}}}, mutation_order_probe)
+    # mutation_order_ctx_probe makes `calls` getter calls, then takes the queue through its context (TestFileMutationOrderOfTheContextFormAcrossSDKs).
+    def mutation_order_ctx_probe(ctx, params):
+        for _ in range(int(params.get("calls", 0))):
+            ctx.get_context_usage()
+
+        def body():
+            path = pathlib.Path(params["file"])
+            before = path.read_bytes() if path.exists() else b""
+            path.write_bytes(before + (params["tag"] + "\n").encode())
+
+        ctx.with_file_mutation_queue(params["file"], body)
+        return {"content": "mutated " + params["tag"]}
+
+    ext.tool("mutation_order_ctx_probe", "Make getter calls, take the queue through the context and append a tag", {"type": "object", "properties": {"file": {"type": "string"}, "tag": {"type": "string"}, "calls": {"type": "number"}}}, mutation_order_ctx_probe)
     ext.tool("start_order", "Report the order in which calls start", {"type": "object", "properties": {"n": {"type": "number"}}}, start_order)
 
     def dialog_order(ctx, params):

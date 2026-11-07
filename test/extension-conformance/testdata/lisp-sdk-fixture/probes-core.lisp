@@ -843,6 +843,21 @@
                      (write-string tag out) (write-char #\Newline out))))
                 (pig:obj "content" (concatenate 'string "mutated " tag))))))
 
+(def-fixture "core-mutation-order-ctx" (ext)
+  ;; makes CALLS getter calls, then takes the queue through its context and appends its tag (TestFileMutationOrderOfTheContextFormAcrossSDKs)
+  (pig:tool ext "mutation_order_ctx_probe" "Make getter calls, take the queue through the context and append a tag"
+            (core-schema "properties" (pig:obj "file" (pig:obj "type" "string") "tag" (pig:obj "type" "string") "calls" (pig:obj "type" "number")))
+            (lambda (ctx params)
+              (let ((tag (pig:jget params "tag"))
+                    (calls (pig:jget params "calls")))
+                (dotimes (i (if (integerp calls) calls 0)) (pig:ctx-get-context-usage ctx))
+                (pig:ctx-with-file-mutation-queue
+                 ctx (pig:jget params "file")
+                 (lambda ()
+                   (with-open-file (out (pig:jget params "file") :direction :output :if-exists :append :if-does-not-exist :create :external-format :utf-8)
+                     (write-string tag out) (write-char #\Newline out))))
+                (pig:obj "content" (concatenate 'string "mutated " tag))))))
+
 (def-fixture "core-width-probe" (ext)
   ;; a width handler makes a host call the way any other handler does; the host's reply must reach it (TestConformance_WidthHandlerHostCall)
   (let ((armed nil))

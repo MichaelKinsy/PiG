@@ -833,6 +833,26 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": "mutated " + tag}, nil
 	})
 
+	// mutation_order_ctx_probe makes `calls` getter calls (a host round trip each in the native SDKs, none that returns a Promise in Pi), then takes the file mutation
+	// queue through its Context and appends its tag to the file (TestFileMutationOrderOfTheContextFormAcrossSDKs): the shape of two tools of one batch that reach the
+	// queue after different numbers of round trips.
+	ext.Tool("mutation_order_ctx_probe", "Make getter calls, take the file mutation queue through the context and append a tag to the file", sdk.Schema{"type": "object", "properties": map[string]any{"file": map[string]any{"type": "string"}, "tag": map[string]any{"type": "string"}, "calls": map[string]any{"type": "number"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		file, _ := params["file"].(string)
+		tag, _ := params["tag"].(string)
+		calls, _ := params["calls"].(float64)
+		for range int(calls) {
+			_, _ = ctx.GetContextUsage()
+		}
+		err := ctx.WithFileMutationQueue(file, func() error {
+			before, _ := os.ReadFile(file)
+			return os.WriteFile(file, append(before, tag+"\n"...), 0o600)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "mutated " + tag}, nil
+	})
+
 	ext.Tool("throw_probe", "Throw a value of the requested kind", sdk.Schema{"type": "object", "properties": map[string]any{"kind": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
 		switch params["kind"] {
 		case "unicode":

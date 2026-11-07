@@ -3062,6 +3062,17 @@ impl Context {
         crate::host_helpers::decode_resized(self.call_host(method, Some(args))?)
     }
 
+    /// Pi's `withFileMutationQueue` for a handler that has its context: run `f` in the host's file mutation queue for `file_path` and return its result. A tool
+    /// that takes the queue through its context registers in the order Pi's one thread runs the batch's tools (D187); the free
+    /// [`crate::with_file_mutation_queue`] registers in the order the calls reach the host. See `file_mutation_queue::with_context`.
+    pub fn with_file_mutation_queue<T>(
+        &self,
+        file_path: impl AsRef<std::path::Path>,
+        f: impl FnOnce() -> T,
+    ) -> io::Result<T> {
+        crate::file_mutation_queue::with_context(self, file_path.as_ref(), f)
+    }
+
     /// Low-level host call escape hatch. Prefer typed methods when available.
     pub fn call_host(
         &self,
