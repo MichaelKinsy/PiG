@@ -1195,11 +1195,13 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 	}
 	flags := conformanceFlagDeclarations()
 	schemaRejected := testfixture.ReferenceToolSchemaRejected()
+	clickCards := &inprocClickCards{}
 	return extension.Extension{
 		Flags:        flags,
 		Path:         "inproc-conformance-fixture",
 		ResolvedPath: "inproc-conformance-fixture",
 		MessageRenderers: map[string]extension.MessageRenderer{
+			"conformance-click-message": clickCards.messageRenderer,
 			// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the message options. The content is the keybinding id.
 			"keyhints-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
 				id, _ := message.Content.(string)
@@ -1215,6 +1217,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			},
 		},
 		EntryRenderers: map[string]extension.EntryRenderer{
+			"conformance-click-entry": clickCards.entryRenderer,
 			// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the entry options. The data is the keybinding id.
 			"keyhints-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
 				id, _ := entry.Data.(string)

@@ -31,15 +31,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Python | 493 | 26 | 10 |
 | Lisp | 500 | 19 | 10 |
 
-31 PiG-only surfaces:
+35 PiG-only surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 29 | 0 | 2 |
-| Go | 31 | 0 | 0 |
-| Rust | 31 | 0 | 0 |
-| Python | 31 | 0 | 0 |
-| Lisp | 31 | 0 | 0 |
+| Node runtime | 33 | 0 | 2 |
+| Go | 35 | 0 | 0 |
+| Rust | 35 | 0 | 0 |
+| Python | 35 | 0 | 0 |
+| Lisp | 35 | 0 | 0 |
 
 1639 package exports and class members, Node runtime:
 
@@ -1421,6 +1421,10 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `kit tool renderResult(view)` | `a tool result card drawn from a view (spec §9)` | implemented `read:tool.renderResult` | implemented `ToolRenderers.ResultView` | implemented `ToolRendererSet.result_view` | implemented `ToolRenderers.result_view` | implemented `pig:register-tool(result-view)` |
 | `kit message renderer(view)` | `a custom message drawn from a view (spec §9)` | implemented `api.registerMessageRenderer` | implemented `Extension.MessageViewRenderer` | implemented `Extension::message_view_renderer` | implemented `Extension.message_view_renderer` | implemented `pig:message-view-renderer` |
 | `kit entry renderer(view)` | `a custom session entry drawn from a view (spec §9)` | implemented `api.registerEntryRenderer` | implemented `Extension.EntryViewRenderer` | implemented `Extension::entry_view_renderer` | implemented `Extension.entry_view_renderer` | implemented `pig:entry-view-renderer` |
+| `kit message renderer view event` | `the events of the mouse regions of a message renderer's view (Pi: the MouseRegion closure of the component the renderer returns)` | implemented `api.registerMessageRenderer` | implemented `Extension.MessageViewEvent` | implemented `Extension::message_view_event` | implemented `Extension.message_view_event` | implemented `pig:message-view-event` |
+| `kit entry renderer view event` | `the events of the mouse regions of an entry renderer's view (Pi: the MouseRegion closure of the component the renderer returns)` | implemented `api.registerEntryRenderer` | implemented `Extension.EntryViewEvent` | implemented `Extension::entry_view_event` | implemented `Extension.entry_view_event` | implemented `pig:entry-view-event` |
+| `kit message renderer state` | `the renderer state of one displayed message (Pi: the WeakMap a renderer keeps by message object)` | implemented `api.registerMessageRenderer` | implemented `MessageRenderOptions.State` | implemented `MessageRenderOptions.state` | implemented `MessageRenderOptions.state` | implemented `pig:message-render-options-state` |
+| `kit entry renderer state` | `the renderer state of one displayed entry (Pi: the WeakMap a renderer keeps by entry object)` | implemented `api.registerEntryRenderer` | implemented `EntryRenderOptions.State` | implemented `EntryRenderOptions.state` | implemented `MessageRenderOptions.state` | implemented `pig:entry-render-options-state` |
 | `kit lines list annotation` | `a lines node's frontend-only list (spec §2, §13.2)` | implemented `read:list.selectedIndex` | implemented `kit.Lines.List` | implemented `kit::List` | implemented `kit.List` | implemented `pig:kit-list` |
 
 ## Package exports: pi-coding-agent

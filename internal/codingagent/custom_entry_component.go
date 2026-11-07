@@ -19,12 +19,19 @@ type CustomEntryComponent struct {
 	customComponent tui.Component
 	expanded        bool
 	outputPad       int
+	// identity stands for the entry object Pi hands the renderer on every rebuild.
+	identity *extension.RenderIdentity
 }
 
 // NewCustomEntryComponent builds the component and renders the entry once (custom-entry.ts:18 constructor(entry, renderer, outputPad = 1));
-// outputPad is the horizontal padding of the renderer-failed box.
-func NewCustomEntryComponent(entry CustomEntry, renderer extension.EntryRenderer, outputPad int) *CustomEntryComponent {
-	c := &CustomEntryComponent{Container: tui.NewContainer(), entry: entry, renderer: renderer, outputPad: outputPad}
+// outputPad is the horizontal padding of the renderer-failed box. identity stands for the entry object Pi renders on every rebuild of the transcript;
+// the transcript passes the session's identity for the entry (Session.EntryRenderIdentity), so a rebuilt component keeps the renderer's state. A nil
+// identity is a new one, the entry of a component nothing rebuilds.
+func NewCustomEntryComponent(entry CustomEntry, renderer extension.EntryRenderer, identity *extension.RenderIdentity, outputPad int) *CustomEntryComponent {
+	if identity == nil {
+		identity = extension.NewRenderIdentity()
+	}
+	c := &CustomEntryComponent{Container: tui.NewContainer(), entry: entry, renderer: renderer, outputPad: outputPad, identity: identity}
 	c.rebuild()
 	return c
 }
@@ -93,7 +100,7 @@ func (c *CustomEntryComponent) render() (component tui.Component) {
 			component = box
 		}
 	}()
-	return c.renderer(c.entry, extension.EntryRenderOptions{Expanded: c.expanded}, nil)
+	return c.renderer(c.entry, extension.EntryRenderOptions{Expanded: c.expanded, Identity: c.identity}, nil)
 }
 
 var _ tui.Component = (*CustomEntryComponent)(nil)

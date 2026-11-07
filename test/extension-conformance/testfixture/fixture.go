@@ -584,6 +584,22 @@ func Extension() *sdk.Extension {
 	ext.EntryViewRenderer("kit-entry", func(sdk.Context, map[string]any, sdk.EntryRenderOptions, int) (kit.View, error) {
 		return (&kitProbe{}).View(0), nil
 	})
+	// The click cards: a message and an entry that keep per-message state (the clicks and where the last one landed) the way Pi's renderer keeps it in a
+	// WeakMap keyed by the message, and count the click a mouse region of their view reports.
+	ext.MessageViewRenderer("conformance-click-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, _ int) (kit.View, error) {
+		return clickCardView("clickcard", message["content"], options.State, options.Expanded), nil
+	})
+	ext.MessageViewEvent("conformance-click-message", func(_ sdk.Context, _ map[string]any, options sdk.MessageRenderOptions, event kit.Event) error {
+		countClick(options.State, event)
+		return nil
+	})
+	ext.EntryViewRenderer("conformance-click-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, _ int) (kit.View, error) {
+		return clickCardView("clickentry", entry["data"], options.State, options.Expanded), nil
+	})
+	ext.EntryViewEvent("conformance-click-entry", func(_ sdk.Context, _ map[string]any, options sdk.EntryRenderOptions, event kit.Event) error {
+		countClick(options.State, event)
+		return nil
+	})
 	ext.EntryRenderer("conformance-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, width int) ([]string, error) {
 		return []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=%d", entry["data"], options.Expanded, width)}, nil
 	})
@@ -3685,4 +3701,26 @@ func registerSignalAbort(ext *sdk.Extension) {
 func dialogText(value any) string {
 	text, _ := value.(string)
 	return text
+}
+
+// clickCardView is the view of a click card: its text under a mouse region named "card" that answers click only.
+func clickCardView(prefix string, subject any, state map[string]any, expanded bool) kit.View {
+	clicks, _ := state["clicks"].(int)
+	last, ok := state["last"].(string)
+	if !ok {
+		last = "none"
+	}
+	region := kit.NewMouseRegion("card", kit.NewText(fmt.Sprintf("%s:%v:clicks=%d:last=%s:expanded=%t", prefix, subject, clicks, last, expanded), 0, 0))
+	region.Types = []string{"click"}
+	return kit.View{Root: region}
+}
+
+// countClick counts a click the "card" region reported and remembers where it landed, in the region's own coordinates.
+func countClick(state map[string]any, event kit.Event) {
+	if event.Type != kit.EventMouse || event.Node != "card" || event.Mouse == nil {
+		return
+	}
+	clicks, _ := state["clicks"].(int)
+	state["clicks"] = clicks + 1
+	state["last"] = fmt.Sprintf("%d,%d", event.Mouse.X, event.Mouse.Y)
 }

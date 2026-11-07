@@ -83,6 +83,11 @@ type MessageRenderOptions struct {
 	Expanded bool `json:"expanded"`
 	// OutputPad is the horizontal padding configured by the outputPad setting.
 	OutputPad int `json:"outputPad"`
+	// State is the message's renderer state, the Go form of the WeakMap keyed by the message object that a Pi renderer keeps per message: it starts
+	// empty, is the same map on every call for one displayed message (the renderer's and its [Extension.MessageViewEvent] handler's), and is dropped
+	// when the host stops showing the message. Calls for one message run one at a time. It is a fresh empty map for a call that is not for a
+	// displayed message (HTML export). It never crosses the wire.
+	State map[string]any `json:"-"`
 }
 
 // RendererFunc renders a custom message into terminal lines for the host.
@@ -91,6 +96,8 @@ type RendererFunc func(ctx Context, message map[string]any, options MessageRende
 // EntryRenderOptions is the entry-renderer request options.
 type EntryRenderOptions struct {
 	Expanded bool `json:"expanded"`
+	// State is the entry's renderer state, as [MessageRenderOptions.State] is the message's.
+	State map[string]any `json:"-"`
 }
 
 // EntryRendererFunc renders a custom session entry into terminal lines for the host.
@@ -198,6 +205,12 @@ type Extension struct {
 	toolRenderMu    sync.Mutex
 	toolRenderers   map[string]ToolRenderers
 	toolRenderCards map[string]*toolRenderCard
+	// renderMu guards renderCards, the renderer state of the displayed messages and entries by the host's key. messageViewEventFuncs and
+	// entryViewEventFuncs, the event handlers of their view renderers, are guarded by toolMu with the renderers.
+	renderMu              sync.Mutex
+	renderCards           map[string]*renderCard
+	messageViewEventFuncs map[string]MessageViewEventFunc
+	entryViewEventFuncs   map[string]EntryViewEventFunc
 	// toolRendererResolvers are the pi.registerToolRenderer resolvers in registration order; resolvedToolRenderers
 	// holds the renderers they returned, by the id the host draws them with. Both are guarded by toolRenderMu.
 	toolRendererResolvers []ToolRendererResolver
@@ -1662,21 +1675,23 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown renderer: %s", req.Tool))
 			return
 		}
-		var payload struct {
-			Message map[string]any       `json:"message"`
-			Options MessageRenderOptions `json:"options"`
-			Width   int                  `json:"width"`
-		}
-		if len(req.Args) > 0 {
-			_ = json.Unmarshal(req.Args, &payload)
-		}
-		if viewOK {
-			view, err := viewHandler(ctx, payload.Message, payload.Options, payload.Width)
-			e.respondView(id, view, err)
-			return
-		}
-		lines, err := handler(ctx, payload.Message, payload.Options, payload.Width)
-		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
+		e.renderTranscript(id, req, "message", func(c *renderCard, subject map[string]any, options renderOptions, width int) (renderOutput, error) {
+			messageOptions := MessageRenderOptions{Expanded: options.Expanded, OutputPad: options.OutputPad, State: c.state}
+			if viewOK {
+				view, err := viewHandler(ctx, subject, messageOptions, width)
+				return renderOutput{view: &view}, err
+			}
+			lines, err := handler(ctx, subject, messageOptions, width)
+			return renderOutput{lines: lines}, err
+		}, func(c *renderCard, subject map[string]any, options renderOptions, event kit.Event) error {
+			e.toolMu.RLock()
+			handle := e.messageViewEventFuncs[req.Tool]
+			e.toolMu.RUnlock()
+			if handle == nil {
+				return nil
+			}
+			return handle(ctx, subject, MessageRenderOptions{Expanded: options.Expanded, OutputPad: options.OutputPad, State: c.state}, event)
+		})
 
 	case "render_entry":
 		e.toolMu.RLock()
@@ -1687,21 +1702,23 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown entry renderer: %s", req.Tool))
 			return
 		}
-		var payload struct {
-			Entry   map[string]any     `json:"entry"`
-			Options EntryRenderOptions `json:"options"`
-			Width   int                `json:"width"`
-		}
-		if len(req.Args) > 0 {
-			_ = json.Unmarshal(req.Args, &payload)
-		}
-		if viewOK {
-			view, err := viewHandler(ctx, payload.Entry, payload.Options, payload.Width)
-			e.respondView(id, view, err)
-			return
-		}
-		lines, err := handler(ctx, payload.Entry, payload.Options, payload.Width)
-		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
+		e.renderTranscript(id, req, "entry", func(c *renderCard, subject map[string]any, options renderOptions, width int) (renderOutput, error) {
+			entryOptions := EntryRenderOptions{Expanded: options.Expanded, State: c.state}
+			if viewOK {
+				view, err := viewHandler(ctx, subject, entryOptions, width)
+				return renderOutput{view: &view}, err
+			}
+			lines, err := handler(ctx, subject, entryOptions, width)
+			return renderOutput{lines: lines}, err
+		}, func(c *renderCard, subject map[string]any, options renderOptions, event kit.Event) error {
+			e.toolMu.RLock()
+			handle := e.entryViewEventFuncs[req.Tool]
+			e.toolMu.RUnlock()
+			if handle == nil {
+				return nil
+			}
+			return handle(ctx, subject, EntryRenderOptions{Expanded: options.Expanded, State: c.state}, event)
+		})
 
 	case "markdown_transform":
 		_ = e.conn.respond(id, e.transformMarkdown(req.Args), nil)
@@ -1830,6 +1847,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		e.releaseEventListener(env.Notify.Args)
 	case "tool_render_release":
 		e.releaseToolRenderCard(env.Notify.Args)
+	case notifyRenderRelease:
+		e.releaseRenderCard(env.Notify.Args)
 	case notifyBashOperationsRelease:
 		var release struct {
 			Handle string `json:"handle"`

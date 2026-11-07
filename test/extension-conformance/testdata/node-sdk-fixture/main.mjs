@@ -1955,6 +1955,33 @@ export default function (pi) {
       ctx.ui.notify(`${result ?? ""}`, "info");
     },
   });
+  // The click cards, written as Pi's renderers are: the state lives in a WeakMap keyed by the message (entry) object, which the renderer receives on every rebuild, and a MouseRegion over the text counts the click.
+  const clickCard = (prefix, subjectOf) => {
+    const states = new WeakMap();
+    return (subject, options) => {
+      let state = states.get(subject);
+      if (state === undefined) {
+        state = { clicks: 0, last: "none" };
+        states.set(subject, state);
+      }
+      const content = { render: () => [`${prefix}:${subjectOf(subject)}:clicks=${state.clicks}:last=${state.last}:expanded=${options.expanded}`], invalidate() {} };
+      return new piTui.MouseRegion(content, (event) => {
+        if (event.type !== "click") return undefined;
+        state.clicks += 1;
+        state.last = `${event.x},${event.y}`;
+        return { handled: true };
+      });
+    };
+  };
+  pi.registerMessageRenderer("conformance-click-message", clickCard("clickcard", (message) => message.content));
+  // A card in a padded Box, as Pi's own cards are: the MouseRegion answers inside the padding only, so Box.handleMouse leaves a click on the padding unhandled.
+  const paddedClick = clickCard("clickpadded", (message) => message.content);
+  pi.registerMessageRenderer("conformance-click-padded", (message, options, theme) => {
+    const box = new piTui.Box(3, 0);
+    box.addChild(paddedClick(message, options, theme));
+    return box;
+  });
+  pi.registerEntryRenderer("conformance-click-entry", clickCard("clickentry", (entry) => entry.data));
   pi.registerMessageRenderer("kit-message", (_message, _options, theme) => new KitProbe(theme));
   pi.registerEntryRenderer("kit-entry", (_entry, _options, theme) => new KitProbe(theme));
   pi.registerCommand("kit-surfaces", {

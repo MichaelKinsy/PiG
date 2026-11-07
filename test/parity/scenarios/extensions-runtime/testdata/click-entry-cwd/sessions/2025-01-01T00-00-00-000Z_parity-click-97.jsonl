@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"parity-click-97","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"hello"}],"timestamp":1735689601000}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Done."}],"usage":{"input":10,"output":8,"cacheRead":0,"cacheWrite":0,"totalTokens":18,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
+{"type":"custom","id":"e3","parentId":"e2","timestamp":"2025-01-01T00:00:03.000Z","customType":"click-entry","data":"first"}
+{"type":"custom","id":"e4","parentId":"e3","timestamp":"2025-01-01T00:00:04.000Z","customType":"click-entry","data":"second"}
