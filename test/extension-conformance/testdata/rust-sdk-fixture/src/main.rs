@@ -4083,6 +4083,80 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_ordered_result_subscriber = ext.event_subscriber();
+    let event_ordered_result_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_ordered_result_probe",
+        "Subscribe to an event with a handler that returns the given JSON, members in written order",
+        move |_ctx, args| {
+            let trimmed = args.trim();
+            let (name, raw) = trimmed.split_once(' ').unwrap_or((trimmed, "null"));
+            // serde_json keeps the members in the order they are written (preserve_order).
+            let result: serde_json::Value = match serde_json::from_str(raw) {
+                Ok(value) => value,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let subscription = subscribe(&event_ordered_result_subscriber, name, move |_ctx, _data| {
+                Ok(Some(result.clone()))
+            });
+            event_ordered_result_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_keys_subscriber = ext.event_subscriber();
+    let event_keys_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_keys_probe",
+        "Subscribe to the event named by the argument with a handler that reports the key order of its payload",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let reported = name.clone();
+            let subscription = subscribe(&event_keys_subscriber, &name, move |ctx, data| {
+                let keys = |value: &Value| -> Vec<String> {
+                    value.as_object().map(|o| o.keys().cloned().collect()).unwrap_or_default()
+                };
+                let payload = &data["payload"];
+                let wire = serde_json::json!([keys(payload), keys(&payload["zeta"])]);
+                ctx.notify(&format!("event_keys:{reported}:{wire}"), "info");
+                Ok(None)
+            });
+            event_keys_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_echo_subscriber = ext.event_subscriber();
+    let event_echo_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_echo_probe",
+        "Subscribe to the event named by the argument with a handler that hands back the objects it was sent",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let echoed = name.clone();
+            let subscription = subscribe(&event_echo_subscriber, &name, move |_ctx, data| {
+                let member = |key: &str| data.get(key).cloned().unwrap_or(Value::Null);
+                match echoed.as_str() {
+                    "turn_end" => Ok(Some(serde_json::json!({ "entries": member("entries") }))),
+                    "context" => {
+                        let messages = member("messages");
+                        let rest: Vec<Value> = messages.as_array().map(|m| m[1..].to_vec()).unwrap_or_default();
+                        Ok(Some(serde_json::json!({ "messages": rest })))
+                    }
+                    "before_provider_request" => Ok(Some(member("payload"))),
+                    "tool_result" => Ok(Some(serde_json::json!({ "content": member("content"), "details": member("details") }))),
+                    "message_end" => Ok(Some(serde_json::json!({ "message": member("message") }))),
+                    other => Err(format!("event_echo_probe has no echo for {other}").into()),
+                }
+            });
+            event_echo_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command("label_probe", "Label the entry named first", |ctx, args| {
         let trimmed = args.trim();
         let (id, label) = trimmed.split_once(' ').unwrap_or((trimmed, ""));

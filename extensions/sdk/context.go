@@ -267,6 +267,8 @@ type Context struct {
 	systemPrompt *SystemPrompt
 	// replacement is set for a withSession context: the replacement Session's locally answered values.
 	replacement *replacementState
+	// req is the event request a handler is serving, for ObjectKeys.
+	req *requestMsg
 }
 
 // RegisterTool registers a model-callable tool and waits for the host registry refresh. It shares Extension.RegisterTool's validation and panic behavior.

@@ -55,6 +55,14 @@ func contentBlocksChars[T any](blocks []T) int {
 // customContentChars sizes a decoded custom-message content value: a string or
 // an array of content-block objects.
 func customContentChars(content any) int {
+	if raw, ok := content.(json.RawMessage); ok {
+		// A content array an extension wrote is kept as its JSON text, which holds the members in the order it wrote them.
+		var blocks any
+		if json.Unmarshal(raw, &blocks) != nil {
+			return 0
+		}
+		content = blocks
+	}
 	switch content := content.(type) {
 	case string:
 		return jsLength(content)

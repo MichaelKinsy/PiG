@@ -707,9 +707,14 @@ func (m *AgentMessage) decode(data []byte) (bool, error) {
 		if err := json.Unmarshal(data, &custom); err != nil {
 			return false, err
 		}
-		// `details` is the opaque value an extension wrote; keep its member order.
+		// `details` and the blocks of `content` are the opaque values an extension wrote; keep their member order.
 		if _, present := custom["details"]; present {
 			custom["details"] = orderedjson.Value(wire.Details)
+		}
+		if _, present := custom["content"]; present {
+			if content := orderedjson.Value(wire.Content); content != nil {
+				custom["content"] = content
+			}
 		}
 		m.Custom = custom
 	}

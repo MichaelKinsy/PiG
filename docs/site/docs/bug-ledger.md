@@ -340,6 +340,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d3f421](#bf-3d3f421) | A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129 | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -352,6 +353,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
 | [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
+| [BF-402f61c](#bf-402f61c) | A custom message keeps the member order of its `content` blocks everywhere the host holds it | PiG's own defect | All platforms | Unreleased |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40b5a89](#bf-40b5a89) | Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40bc651](#bf-40bc651) | The Anthropic event reader decides message_start and message_stop from the parsed event type as Pi does (not… | PiG's own defect | All platforms | 0.5.0 |
@@ -1454,10 +1456,12 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d8bed22](#bf-d8bed22) | `auth.json` keeps every provider's entry as written, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d8d513a](#bf-d8d513a) | With the Bun TypeScript runtime (`PIG_TS_RUNTIME=bun`), `/reload` now evaluates an edited ES module extension… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d90c2f4](#bf-d90c2f4) | Markdown now nests a `**strong**` run inside `*emphasis*` as Pi does, renders a line underlined with `===` or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d918706](#bf-d918706) | A Go extension no longer re-sorts the JSON keys of objects it hands back to the host | PiG's own defect | All platforms | Unreleased |
 | [BF-d91ce8f](#bf-d91ce8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d943286](#bf-d943286) | A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d943286-2](#bf-d943286-2) | `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d94e83f](#bf-d94e83f) | Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-d983343](#bf-d983343) | A custom message draft proposed at a turn boundary keeps the member order of its `content` blocks | PiG's own defect | All platforms | Unreleased |
 | [BF-d983b74](#bf-d983b74) | Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | 0.7.0 |
@@ -6217,6 +6221,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/validate_oracle_test.go::TestToolArgumentValidationMatchesPi`, `ai/validate_cache_test.go::TestToolArgumentSchemaCacheIsBounded`, `ai/validate_cache_test.go::TestToolArgumentSchemaEvictionDoesNotChangeOutcomes`, `ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding`, `ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors`, `internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters`
 - **Release note:** Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.
 
+### BF-3de4b8e
+
+**A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries, a string of a message) and hands them back no longer re-sorts their keys, so tool-call arguments, tool schemas and message members reach the session and the provider in the order the host sent them.
+- **Root cause:** - Lint: annotate the G103 unsafe.String in decodeKey and delete the unused compactJSON. - A handler that returns nothing, or a reply with a one-member map, no longer reads the event: the source order is built at the first question and a map with fewer than two members is never asked. A context handler returning nothing went from walking the whole context (5.5 ms, 4 MiB at 3000 messages) to 0.8 us and 392 B at any size; a nil tool_result or message_end capture is 3 allocations. - An array a handler reorders, filters or sorts in place (the blocks of a message, a request's tools, a list of messages) keeps the order of its objects: elements that no longer stand where the text has them are…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3de4b8e877` (2026-11-06)
+- **Tests:** `extensions/sdk/key_order_test.go::TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `extensions/sdk/key_order_test.go::TestObjectKeysPutArrayIndexKeysFirst`, `extensions/sdk/key_order_test.go::TestObjectsMovedInPlaceKeepTheirMemberOrder`
+- **Release note:** A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries, a string of a message) and hands them back no longer re-sorts their keys, so tool-call arguments, tool schemas and message members reach the session and the provider in the order the host sent them. The Go SDK records the member order of every object while it decodes the event and knows each object by its own map, so no object is ever given another's order and a reply reads nothing of the event's text. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.
+
 ### BF-3def2a7
 
 **MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON…**
@@ -6384,6 +6402,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4027b34bc8` (2026-10-13)
 - **Tests:** `codemode/resources_linux_test.go::TestConcurrentExecutionsReturnMemoryAndDescriptors`
 - **Release note:** A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs. Each such VM held its whole linear memory (the heap limit plus 64 MiB, 320 MiB at a 256 MiB limit) until then. After 16 concurrent executions on a 196-CPU Linux host, the live Go heap after a collection was 0 to 6 of those memories above the start before the fix (up to 1.9 GiB) and under 0.1 MiB after it.
+
+### BF-402f61c
+
+**A custom message keeps the member order of its `content` blocks everywhere the host holds it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom message keeps the member order of its `content` blocks everywhere the host holds it.
+- **Root cause:** pi.sendMessage and appendCustomMessageEntry took the content of a custom message from a Go map, a session entry read its content the same way, and a custom message read from the wire held its content blocks sorted, so the blocks of a content array ({type, text}, {type, data, mimeType}) were stored, re-written and shown to extensions with their members sorted for every SDK, Node included. Pi appends and stringifies the objects themselves, in insertion order.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `402f61c220` (2026-11-06)
+- **Tests:** `coding/custom_message_content_order_test.go::TestCustomMessageContentKeepsItsMemberOrderWhenRead`, `coding/custom_message_content_order_test.go::TestSendMessageStoresContentBlocksInTheOrderTheExtensionWroteThem`
+- **Release note:** A custom message keeps the member order of its `content` blocks everywhere the host holds it. `pi.sendMessage`, `appendCustomMessageEntry`, a session entry read back from a file and a custom message read from the wire took the content from a Go map, so the blocks of a content array (`{type, text}`, `{type, data, mimeType}`) were stored, written again and shown to extensions with their members sorted, for every SDK.
 
 ### BF-4058f34
 
@@ -21707,6 +21739,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/mermaid_interactive_test.go::TestAssistantThinkingUsesThinkingTransformContext`, `internal/codingagent/mermaid_interactive_test.go::TestInteractiveUserMessageRunsBuiltinMarkdownTransform`, `internal/codingagent/mermaid_strip_test.go::TestRuntimeStripMermaidLeavesFenceRaw`, `internal/codingagent/mermaid_strip_test.go::TestStripMermaidBuildOmitsMermaidRenderer`, `internal/wordsegmenter/strip_test.go::TestRuntimeStripWordDictionariesKeepsRunsWhole`, `internal/wordsegmenter/strip_test.go::TestStripWordDictionariesBuildOmitsDictionaryEmbeds`, `tui/components_test.go::TestEditor_WordBoundaryHelpers`, `tui/highlight_strip_test.go::TestRuntimeStripSyntaxHighlightRendersUnknownLanguagePath` and 5 more in docs/bug-ledger.json
 - **Release note:** Markdown now nests a `**strong**` run inside `*emphasis*` as Pi does, renders a line underlined with `===` or `---` as a heading, and leaves a blank row between a paragraph and a blockquote, heading, rule or math block that directly follows it.
 
+### BF-d918706
+
+**A Go extension no longer re-sorts the JSON keys of objects it hands back to the host**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension no longer re-sorts the JSON keys of objects it hands back to the host.
+- **Root cause:** The Go SDK holds an event's objects as map[string]any and wrote every reply with the members sorted. A Go extension that left another extension's turn_end draft entries alone (the SDK echoes event.entries on every turn_end), dropped a context message, or returned the provider payload, a tool result's details or a message_end message unchanged therefore re-sorted their JSON keys: the saved session bytes and the provider request bytes (tool-call arguments included) changed each turn, which a Node extension under PiG and Pi itself do not do. Rust (serde_json preserve_order), Python (dict), Lisp (insertion-ordered hash table) and Node keep the order.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d918706fbc` (2026-11-06)
+- **Tests:** `extensions/sdk/key_order_test.go::TestHandedBackContextMessagesKeepTheirMemberOrder`, `extensions/sdk/key_order_test.go::TestHandedBackEventMembersKeepTheirMemberOrder`, `extensions/sdk/key_order_test.go::TestHandedBackEventObjectsKeepTheirMemberOrder`, `test/extension-conformance/event_echo_order_test.go::TestConformance_HandedBackEventObjectsKeepTheirMemberOrder`
+- **Release note:** A Go extension no longer re-sorts the JSON keys of objects it hands back to the host. The Go SDK held an event's objects as maps and wrote every reply with the members sorted, so an extension that left another extension's `turn_end` draft entries alone (the SDK echoes `event.entries` on every `turn_end`), dropped a `context` message, or returned the `before_provider_request` payload, a `tool_result`'s `details` or a `message_end` message unchanged rewrote their member order: the saved session bytes and the provider request bytes, tool-call arguments included, changed every turn, which a Node extension under PiG and Pi itself do not do. The SDK now writes those objects in the order the host sent them; the Rust, Python, Lisp and Node SDKs already did.
+
 ### BF-d91ce8f
 
 **Fix in shipped code**
@@ -21761,6 +21807,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d94e83f2ac` (2026-11-02)
 - **Tests:** `coding/extension/host/subprocess/node_pi_package_root_test.go::TestNodeExtensionStartsThePiCLIFromTheResolvedPackageRoot`
 - **Release note:** Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG. They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist. The package now resolves to `dist/index.js` of the vendored package root, as it does in Pi, and that root's `dist/cli.js` starts PiG with the arguments it is given, as `process.execPath process.argv[1]` does.
+
+### BF-d983343
+
+**A custom message draft proposed at a turn boundary keeps the member order of its `content` blocks**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom message draft proposed at a turn boundary keeps the member order of its `content` blocks.
+- **Root cause:** A draft entry's data and details were read with their member order, but a custom message draft's content was decoded into Go maps, so the blocks of a content array ({type, text}, {type, data, mimeType}) were stored with their members sorted. Pi appends the draft objects themselves and JSON.stringify writes insertion order, so the session file differed from Pi's for every SDK, Node included. SessionBoundaryDraft now reads content as it reads data and details.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d9833433d2` (2026-11-06)
+- **Tests:** `coding/session_boundary_draft_order_test.go::TestBoundaryDraftMembersAreStoredInTheOrderTheExtensionWroteThem`
+- **Release note:** A custom message draft proposed at a turn boundary keeps the member order of its `content` blocks. The host read a draft's `data` and `details` in order but built `content` as a Go map, so the blocks of a content array (`{type, text}`, `{type, data, mimeType}`) were stored with their members sorted, for every SDK.
 
 ### BF-d983b74
 

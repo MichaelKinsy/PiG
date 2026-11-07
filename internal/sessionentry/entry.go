@@ -142,10 +142,10 @@ func (e *CustomEntry) UnmarshalJSON(data []byte) error {
 	return orderedjson.UnmarshalFields(data, (*plain)(e), "data")
 }
 
-// UnmarshalJSON keeps the member order of `details`, the object an extension wrote (session-manager.ts appendCustomMessageEntry).
+// UnmarshalJSON keeps the member order of `content` blocks and `details`, the objects an extension wrote (session-manager.ts appendCustomMessageEntry).
 func (e *CustomMessageEntry) UnmarshalJSON(data []byte) error {
 	type plain CustomMessageEntry
-	return orderedjson.UnmarshalFields(data, (*plain)(e), "details")
+	return orderedjson.UnmarshalFields(data, (*plain)(e), "content", "details")
 }
 
 // LabelEntry is upstream's "user-renamed this branch" marker. Carries

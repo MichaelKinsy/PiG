@@ -10,3 +10,8 @@ import "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 func unmarshalFrameMember(member []byte, v any) error {
 	return json.UnmarshalTrusted(member, v)
 }
+
+// unmarshalFrameObject is unmarshalFrameMember into a map[string]any that also returns the member order of the objects it holds (json.UnmarshalTrustedObject).
+func unmarshalFrameObject(member []byte) (map[string]any, *json.ObjectOrder, error) {
+	return json.UnmarshalTrustedObject(member)
+}
