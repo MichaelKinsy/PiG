@@ -238,6 +238,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2c5d240](#bf-2c5d240) | fix(extension): take a Node client whose pipe connect event has not been set | PiG's own defect | All platforms | Unreleased |
 | [BF-2c5db8b](#bf-2c5db8b) | A Piglet Binary with a fused Go extension starts within a few milliseconds of Stock PiG | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2c88c5f](#bf-2c88c5f) | Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-2cef1bf](#bf-2cef1bf) | A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a… | PiG's own defect | All platforms | Unreleased |
+| [BF-2cef1bf-2](#bf-2cef1bf-2) | When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one… | PiG's own defect | All platforms | Unreleased |
+| [BF-2cef1bf-3](#bf-2cef1bf-3) | A panic in a Go editor component call is reported as `editor <call> failed: <message>`, as the other SDKs… | PiG's own defect | All platforms | Unreleased |
+| [BF-2cef1bf-4](#bf-2cef1bf-4) | A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing… | PiG's own defect | All platforms | Unreleased |
 | [BF-2d05dc8](#bf-2d05dc8) | A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2d23c91](#bf-2d23c91) | A redundant system prompt update (tools, rules) no longer follows an extension setting the same active tools… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2d31c33](#bf-2d31c33) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -287,6 +291,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-34bcd58](#bf-34bcd58) | OpenAI Responses prices a response that reports no `service_tier` at the requested tier, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34c4d8e](#bf-34c4d8e) | MCP tools declare the `CallToolResult` scripts receive as Pi 1.2.0 does: content blocks with their `type`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34c4d8e-2](#bf-34c4d8e-2) | The MCP extension decides which tools reach MCP tools by their `ReachesTools`, as Pi 1.2.0 does: another… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-34f110f](#bf-34f110f) | When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-34f7594](#bf-34f7594) | An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-2](#bf-34f7594-2) | Fixed the interactive bash block stripping escape sequences with the wrong rule… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-3](#bf-34f7594-3) | Fixed the `re:` mode of the session selector search to read its pattern as JavaScript does (`new… | PiG's own defect | All platforms | 0.5.0 |
@@ -384,6 +389,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4599fab](#bf-4599fab) | fix(ai): an iteration's shared cancellation does not compare contexts | PiG's own defect | All platforms | Unreleased |
 | [BF-45ec149](#bf-45ec149) | Read-only credential storage reports an unreadable or malformed `auth.json` as Pi does: `Failed to read… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4610c9f](#bf-4610c9f) | A `!` or `!!` command's block draws the bytes Pi's `BashExecutionComponent` draws: its rows are padded to the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4625b4c](#bf-4625b4c) | `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength`… | PiG's own defect | All platforms | Unreleased |
 | [BF-462b96e](#bf-462b96e) | A Python or Rust extension no longer fails to load when the host releases one of its listeners between… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4649166](#bf-4649166) | fix(sdk): place the arrival-order start in the request scope so a tool_call round trip keeps its 68… | PiG's own defect | All platforms | Unreleased |
 | [BF-46abed3](#bf-46abed3) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -411,6 +417,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-488a47a](#bf-488a47a) | `chord/host`: `ProcessLock` no longer fails with `invalid argument` on macOS and the BSDs when the temporary… | PiG's own defect | macOS | 0.5.0 |
 | [BF-48a28fe](#bf-48a28fe) | Models an extension's provider object returns keep the member order the extension wrote them in, as Pi keeps… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4916f14](#bf-4916f14) | A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-4924f3a](#bf-4924f3a) | `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more… | PiG's own defect | All platforms | Unreleased |
 | [BF-495e25b](#bf-495e25b) | Accepting an autocomplete popup of awaited command-argument completions after the cursor moved applies the… | PiG's own defect | All platforms | Unreleased |
 | [BF-495e25b-2](#bf-495e25b-2) | A compaction that completes with an empty summary, such as one an extension answers `session_before_compact`… | PiG's own defect | All platforms | Unreleased |
 | [BF-495f017](#bf-495f017) | A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an… | PiG's own defect | All platforms | 0.5.0 |
@@ -1121,6 +1128,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D267](#bf-d267) | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D269](#bf-d269) | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D270](#bf-d270) | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D272](#bf-d272) | The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -1393,6 +1401,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d1cbde3](#bf-d1cbde3) | The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d1f258f](#bf-d1f258f) | The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d212cdf](#bf-d212cdf) | `pig --piglet piglets/standard/pig-standard.yaml` no longer warns on every start that its `piglogin`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-d22ad24](#bf-d22ad24) | A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now… | PiG's own defect | All platforms | Unreleased |
 | [BF-d249c70](#bf-d249c70) | SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d26d494](#bf-d26d494) | fix(tui): Editor.SetText resets the scroll offset | PiG's own defect | All platforms | Unreleased |
 | [BF-d276c00](#bf-d276c00) | `pig piglet schema` lists the `apis` strip list | PiG's own defect | All platforms | 0.5.0 |
@@ -1602,6 +1611,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ed07745-4](#bf-ed07745-4) | A finished response shows the thinking-drop notice before the cache-miss notice, an aborted or failed… | PiG's own defect | All platforms | Unreleased |
 | [BF-ed9548a](#bf-ed9548a) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-ed99f42](#bf-ed99f42) | The built-in `read` tool no longer resolves to `""` for an image in Code Mode scripts, so `image(await… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-eda66dd](#bf-eda66dd) | A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed… | PiG's own defect | All platforms | Unreleased |
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ededef9](#bf-ededef9) | `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -4785,6 +4795,62 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`, `ai/google_request_body_oracle_test.go::TestGoogleRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralRequestBodyMatchesPi`, `ai/mistral_request_body_oracle_test.go::TestMistralTypedWirePayloadMatchesTheGeneralLowering`, `ai/openai_codex_websocket_frame_oracle_test.go::TestCodexWebSocketFramesMatchPi`, `ai/provider_ecmascript_whitespace_test.go::TestMistralAssistantBlankUsesECMAScriptTrim`, `ai/provider_wire_defaults_test.go::TestMistralAssistantReplayPrefixAndToolIndex`, `ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem` and 15 more in docs/bug-ledger.json
 - **Release note:** Ill-formed UTF-8 in a string that PiG re-encodes as JSON (an extension's raw JSON, tool schemas, code-mode keys, Bedrock and Google request members) is written as `JSON.stringify` writes the decoded text: one literal U+FFFD for each ill-formed sequence, instead of one `\ufffd` escape per byte.
 
+### BF-2cef1bf
+
+**A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.
+
+### BF-2cef1bf-2
+
+**When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one…**
+
+- **Source:** PiG's own defect
+- **Symptom:** When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one the shared process wrote to its log.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one the shared process wrote to its log.
+
+### BF-2cef1bf-3
+
+**A panic in a Go editor component call is reported as `editor <call> failed: <message>`, as the other SDKs…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A panic in a Go editor component call is reported as `editor <call> failed: <message>`, as the other SDKs report theirs, instead of ending the extension's process, and a `handleInput` that fails still finishes its key, so the editor does not stall on the next one; the Rust SDK reports a panic's value in that notice rather than a fixed text.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06), `0a9002fb19` (2026-11-07)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestEditorHandleInputPanicStillSendsInputDone`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished` and 1 more in docs/bug-ledger.json
+- **Release note:** A panic in a Go editor component call is reported as `editor <call> failed: <message>`, as the other SDKs report theirs, instead of ending the extension's process, and a `handleInput` that fails still finishes its key, so the editor does not stall on the next one; the Rust SDK reports a panic's value in that notice rather than a fixed text.
+
+### BF-2cef1bf-4
+
+**A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing `onError` callback of `ctx.compact` (Lisp), no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.
+- **Root cause:** A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2cef1bf5e0` (2026-11-06)
+- **Tests:** `extensions/sdk-py/tests/test_report_load_failure.py`, `extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError`, `extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError`, `extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled`, `extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled`, `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing `onError` callback of `ctx.compact` (Lisp), no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.
+
 ### BF-2d05dc8
 
 **A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps…**
@@ -5460,6 +5526,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/mcpext/regression_test.go::TestCreateMcpToolDefinitionMatchesUpstreamProbes`, `coding/mcpext/tools_test.go::TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheServersOutputSchema`
 - **Release note:** The MCP extension decides which tools reach MCP tools by their `ReachesTools`, as Pi 1.2.0 does: another extension's `codemode` or `tool_search` that declares `reachesTools` is activated for MCP servers and waits for the servers its call may reach. Before, only the built-in tools of those names were recognized, by their source path (Pi 1.2.0 `mcp/index.ts`).
 
+### BF-34f110f
+
+**When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D274)
+- **Symptom:** When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated.
+- **Root cause:** A member's connection that closes because the shared process is ending no longer disables that member before the process's watcher has read the trace: the handler waits for the process, within the heartbeat bound D56 gives a process that outlives a closed connection, and leaves the report to the watcher.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.
+- **Fix commits:** `34f110f09d` (2026-11-06), `28042f4fa6` (2026-11-07), `6c9d6559f6` (2026-11-07), `a87afdafc9` (2026-11-07)
+- **Tests:** `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt`, `coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessExitStopsTheWholeCell`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritReadsOnlyWhatEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritReadsOnlyWhatEndedTheProcess`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestProcessExitCode`, `coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine` and 4 more in docs/bug-ledger.json
+- **Release note:** When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier or text an extension logged in the form of a panic or a backtrace: the host reads the Go trace only when the process exited with status 2 and no fatal error follows the panic, and the Lisp backtrace only when SBCL's unhandled-condition quit line follows it. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.
+
 ### BF-34f7594
 
 **An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or…**
@@ -5918,7 +6000,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `3b8aa66c74` (2026-10-11)
-- **Tests:** `coding/cli/extension_upgrade_analyze_off_test.go::TestUpgradeInAGoSDKStrippedBinaryNamesTheStrip`, `coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK`, `coding/cli/strip_upgrade_link_test.go::TestStripExtensionSDKGoBuildOmitsTheUpgradeAnalysis`
+- **Tests:** `coding/cli/extension_upgrade_analyze_off_test.go::TestUpgradeInAGoSDKStrippedBinaryNamesTheStrip`, `coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK`
 - **Release note:** A Piglet Binary that strips `bedrock-converse-stream` links the AWS SDK again: the Bedrock retry backoff (`ai/bedrock_retry_backoff.go`) had no `pig_strip_bedrock_converse_stream` build tag and imported `aws-sdk-go-v2` (27 packages). It carries the tag now, like the rest of the Bedrock provider.
 
 ### BF-3b9bd16
@@ -6804,6 +6886,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure`, `coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure` and 50 more in docs/bug-ledger.json
 - **Release note:** A `!` or `!!` command's block draws the bytes Pi's `BashExecutionComponent` draws: its rows are padded to the terminal width, the exit status, cancelled and truncation lines use the theme's error and warning colors instead of fixed red and yellow, the collapse hint uses the theme's key hint with the configured expand key, the spinner names the configured cancel keys (`escape/ctrl+c` by default) instead of `Esc`, no blank row follows the bottom border, the output Pi would cut for the model's context (the last 2000 lines or 50 KB) is cut the same way, and ANSI escapes and carriage returns in the output are cleaned as Pi cleans them.
 
+### BF-4625b4c
+
+**`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength` and `maxLength` in grapheme clusters, `multipleOf` with a tolerance of 1e-10, `uniqueItems` by TypeBox's hash (0 and -0 differ), and the `hostname`, `idn-hostname`, `idn-email` and `regex` formats with TypeBox's own checks, as TypeBox does in Pi.
+- **Root cause:** D226 made `internal/typebox` reachable from `cmd/pig`, and its `Value.Check` compiled every schema with the vendored JSON Schema validator, so the whole validator (and `golang.org/x/text/message`, through its localized error kinds) came into the binary: +622,592 bytes on linux_amd64.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4625b4cc3d` (2026-11-06)
+- **Tests:** `internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases`
+- **Release note:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength` and `maxLength` in grapheme clusters, `multipleOf` with a tolerance of 1e-10, `uniqueItems` by TypeBox's hash (0 and -0 differ), and the `hostname`, `idn-hostname`, `idn-email` and `regex` formats with TypeBox's own checks, as TypeBox does in Pi. They counted code points, compared exactly and followed a JSON Schema library's format rules.
+
 ### BF-462b96e
 
 **A Python or Rust extension no longer fails to load when the host releases one of its listeners between…**
@@ -7174,6 +7270,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4916f14005` (2026-11-03)
 - **Tests:** `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage`, `durable/harness/checkpoint_decode_differential_test.go::TestRawCheckpointPredicatesFailLikeTheTypedDecode`, `durable/harness/partial_object_test.go::TestPartialObjectEqualsTheEncodedPartial`, `durable/harness/streamed_partials_memory_test.go::TestStreamedPartialsCommitAtACostThatFollowsTheNewText`
 - **Release note:** A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi (`harness-view-run.test.ts` "commits a growing text and tool call at a cost that follows the new text"). A commit of `pi.live`'s partial no longer encodes and decodes the whole message: it takes the text and thinking of the partial as they are, and the check that a committed value decodes as its type decodes only the members and content blocks an operation touched, and not at all an append to a text, thinking or argument string. Streaming a 400 KB answer allocates about as much per commit as a 40 KB one. The stored format is unchanged.
+
+### BF-4924f3a
+
+**`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases.
+- **Root cause:** Schema.IsMinLength, IsMaximum, IsMultipleOf, IsMinItems, IsEnum, IsPattern and the other guards of typebox 1.3.27 (build/schema/types) accept a keyword only when it has its type: a finite number (minLength, maxLength, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, minProperties, maxProperties), a string (pattern, format), an array (enum) or a boolean (uniqueItems). CheckSchema and ErrorSchema skip any other keyword, so {"minLength":"3"} passes "", enum 3 passes everything, and an Infinity limit (null once it is JSON) is skipped. checkKeyword failed the check for such a keyword, as the comment above it said a NaN comparison does, so a schema with a…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4924f3a174` (2026-11-06), `62f99dccb6` (2026-11-06), `7071ef14e3` (2026-11-06)
+- **Tests:** None recorded.
+- **Release note:** `Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases. A schema keyword that has the wrong type (`{"minLength": "3"}`, `enum: 3`, `pattern: 5`, `multipleOf: "2"`, `maximum: null`) is skipped, so it accepts every value, as in Pi; it rejected values before, and `Errors` reported a limit that was empty. `const` and `enum` accept an object for an array that has the same indices and `length` (`{"0": "a", "length": 1}` equals `["a"]`). `uniqueItems` ignores an object's `constructor` member, so `{}` and `{"constructor": 2}` count as duplicates.
 
 ### BF-495e25b
 
@@ -17066,6 +17176,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8ece4ea7e5` (2026-11-06)
 - **Tests:** `internal/codingagent/interactive_tree_frames_test.go::TestTreeDialogsOfOtherContextsNeverStartTheHold`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionDialog`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsAnExtensionOverlay`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeNavigationPaintsNoStaleFrameBeforeTheTranscriptSwap`, `internal/codingagent/interactive_tree_frames_test.go::TestTreeSummaryPromptChoiceHoldsTheFramesOfItsClose`
 
+### BF-D272
+
+**The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D272)
+- **Symptom:** none.
+- **Root cause:** the type checker was 1.4 MB of a binary every user downloads, and only the upgrade path runs it. The go command is already required by that path, because it lists and builds the extension. The driver is compiled by the user's own toolchain, so the compiler export data and `go/types` match.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the owner prefers the type checker in the binary again, or Go ships `go/types` in a form that the binary can link at no size cost.
+- **Fix commits:** `6c107c3403` (2026-11-06), `93734af470` (2026-11-06), `d54a4ece3c` (2026-11-06)
+- **Tests:** None recorded.
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -20835,6 +20960,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/standard_piglet_startup_test.go::TestStandardPigletStartsWithoutReplacedBuiltinWarning`
 - **Release note:** `pig --piglet piglets/standard/pig-standard.yaml` no longer warns on every start that its `piglogin` extension registers `/sprite`, so the built-in `pig-login` extension was not loaded. PiG Standard now strips the built-in `pig-login` (`strip.extensions: [pig-login]`), and its own `piglogin` extension owns `/sprite`.
 
+### BF-d22ad24
+
+**A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: <message>`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: <message>`.
+- **Root cause:** The Node editor host reported every failing component call as "editor failed: <message>". The Go, Rust, Python and Lisp SDKs name the method ("editor handleInput failed: bad key"). Pi has no text for this: an exception in a component's handleInput propagates out of the TUI, so the text is PiG's own and the SDKs now agree. The row that checks the text for the native SDKs does not run Node, whose editor is Pi's own CustomEditor in the extension process and has its own harness; a test of that harness covers the text, the finished key and the key after it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d22ad24247` (2026-11-07)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_editor_component_test.go::TestNodeEditorComponentFailureIsReportedLikeTheOtherSDKs`
+- **Release note:** A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: <message>`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: <message>`.
+
 ### BF-d249c70
 
 **SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does**
@@ -23727,6 +23866,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `durable/codemode/output_tool_test.go::TestDurableCodeModeOutputAndToolSearch`, `durable/tools/coding_tools_run_pi_oracle_test.go::TestCodingToolsRunLikePi`, `durable/tools/read_structured_output_test.go::TestReadDeclaresTheTextOrImageStructuredOutputSchema`, `durable/tools/read_structured_output_test.go::TestReadReturnsAnImageBlockAsStructuredOutput`, `durable/tools/read_structured_output_test.go::TestReadReturnsTheShownTextAsStructuredOutput`
 - **Release note:** The built-in `read` tool no longer resolves to `""` for an image in Code Mode scripts, so `image(await tools.read(...))` works: `read` declares a structured output, a text file's text or an image's block. Carried forward from Pi 04414839 (earendil-works/pi#11015), past the 1.4.0+b3a29f11 pin.
 
+### BF-eda66dd
+
+**A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell.
+- **Root cause:** A packed Go runner built each member's factory on a goroutine with no recover, so a factory that panics (where the TypeScript factory would throw) ended the shared process and failed every sibling Go extension. The runner now recovers the member's goroutine and reports the panic as that member's failure, as it reports an error return: the stack goes to the stderr log, the member's socket closes, the siblings keep serving.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eda66dd663` (2026-11-06)
+- **Tests:** `test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded`
+- **Release note:** A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell. The packed runner now reports the panic as that extension's own load error, as an isolated process does, with the stack in its stderr log, and every sibling keeps running; `/reload` lists only the failing extension. A factory that returns no extension fails the same way in a Go, Python or Lisp cell (`factory returned nil`, `factory returned None`), and a Lisp cell no longer hangs the load until the caller cancels it when a factory returns nothing.
+
 ### BF-edb73db
 
 **fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…**
@@ -25890,6 +26043,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
 | D269 | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | [BF-D269](#bf-d269) |
 | D270 | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | [BF-D270](#bf-d270) |
+| D272 | The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the… | [BF-D272](#bf-d272) |
+| D274 | A packed Go or Lisp member whose own code ends the shared process stops alone, and the members that shared… | [BF-34f110f](#bf-34f110f) |
 | D277 | A Node renderer component that handles the mouse itself takes the click only, and the host answers it handled… | [BF-44f93fe](#bf-44f93fe) |
 
 ## Fix-titled commits that are not bugs in a release

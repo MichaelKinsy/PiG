@@ -6470,6 +6470,124 @@
       ]
     },
     {
+      "id": "BF-2cef1bf",
+      "title": "A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a…",
+      "symptom": "A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.",
+      "rootCause": "A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A packed Go, Python or Rust extension whose factory calls a host helper (`parseFrontmatter`, `Date.parse`, a `pi.events` call) and then panics, raises or returns no extension no longer hangs its load until the caller cancels it: the runner closes the connection the helper opened, and the extension is reported as the load error it is while its siblings load.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2cef1bf5e0",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_report_load_failure.py",
+        "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled",
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
+      "id": "BF-2cef1bf-2",
+      "title": "When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one…",
+      "symptom": "When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one the shared process wrote to its log.",
+      "rootCause": "A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When two extensions of one packed cell fail to load, each load error carries its own cause, not the last one the shared process wrote to its log.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2cef1bf5e0",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_report_load_failure.py",
+        "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled",
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
+      "id": "BF-2cef1bf-3",
+      "title": "A panic in a Go editor component call is reported as `editor \u003ccall\u003e failed: \u003cmessage\u003e`, as the other SDKs…",
+      "symptom": "A panic in a Go editor component call is reported as `editor \u003ccall\u003e failed: \u003cmessage\u003e`, as the other SDKs report theirs, instead of ending the extension's process, and a `handleInput` that fails still finishes its key, so the editor does not stall on the next one; the Rust SDK reports a panic's value in that notice rather than a fixed text.",
+      "rootCause": "A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A panic in a Go editor component call is reported as `editor \u003ccall\u003e failed: \u003cmessage\u003e`, as the other SDKs report theirs, instead of ending the extension's process, and a `handleInput` that fails still finishes its key, so the editor does not stall on the next one; the Rust SDK reports a panic's value in that notice rather than a fixed text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2cef1bf5e0",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "0a9002fb19",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_report_load_failure.py",
+        "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestEditorHandleInputPanicStillSendsInputDone",
+        "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled",
+        "test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished",
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
+      "id": "BF-2cef1bf-4",
+      "title": "A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing…",
+      "symptom": "A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing `onError` callback of `ctx.compact` (Lisp), no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.",
+      "rootCause": "A packed runner reported a member whose factory failed by dialling the member's socket and closing the new connection. The host reads the registration of the connection it accepted first, and a factory that had called a host helper (parseFrontmatter, Date.parse, a pi.events call) before it panicked or returned nothing had already opened one and left it open, so the packed load waited on it until the caller cancelled it. The Go SDK gains ReportLoadFailure and the Python SDK report_load_failure, and the Rust SDK's report_load_failure now closes the connection the helper dialled; each connects and closes only when no helper connection exists (the Lisp runner already did). The Go runner reports…",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A panic in an MCP credential store's `WithRefreshLock` or a settings storage's `WithLock` (Go), and a failing `onError` callback of `ctx.compact` (Lisp), no longer end the extension's process, which in a packed cell serves other extensions: the call fails with the error instead.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2cef1bf5e0",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_report_load_failure.py",
+        "extensions/sdk/callback_guard_test.go::TestCallbackErrorTurnsAPanicIntoTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestMcpRefreshLockPanicIsTheCallsError",
+        "extensions/sdk/callback_guard_test.go::TestSettingsStorageLockPanicIsTheCallsError",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureClosesTheConnectionAHelperDialled",
+        "extensions/sdk/report_load_failure_test.go::TestReportLoadFailureConnectsAndClosesWhenNoHelperDialled",
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
       "id": "BF-2d05dc8",
       "title": "A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps…",
       "symptom": "A models.json cost that sets `tiers: []` (a custom model's cost, or a `modelOverrides` cost) keeps `cost.tiers: []` in an extension's `ctx.model` and model lists and in RPC `get_state` and `get_available_models`, as Pi keeps the authored cost, instead of dropping the member.",
@@ -7905,6 +8023,53 @@
       ]
     },
     {
+      "id": "BF-34f110f",
+      "title": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell…",
+      "symptom": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated.",
+      "rootCause": "A member's connection that closes because the shared process is ending no longer disables that member before the process's watcher has read the trace: the handler waits for the process, within the heartbeat bound D56 gives a process that outlives a closed connection, and leaves the report to the watcher.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D274",
+      "removeWhen": "an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a goroutine or thread that a packed Go or Lisp extension started itself ends the process the cell shares, only that extension stops, reported with its panic and the log that holds it, and a `/reload` runs it isolated. The other extensions of the cell start again together, instead of every one stopping until `/reload`; they run their factories again, so their in-memory state starts over, and a call in flight when the process ended fails with the connection error (D274). The blame comes from the panic that ended the process only, never from a panic the SDK had recovered earlier or text an extension logged in the form of a panic or a backtrace: the host reads the Go trace only when the process exited with status 2 and no fatal error follows the panic, and the Lisp backtrace only when SBCL's unhandled-condition quit line follows it. A crash whose trace names no one extension, names two, or does not exist (`os.Exit`, a runtime fatal error, a kill) still stops the whole cell.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "34f110f09d",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "28042f4fa6",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "6c9d6559f6",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "a87afdafc9",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt",
+        "coding/extension/host/subprocess/packed_native_recovery_host_test.go::TestPackedProcessExitStopsTheWholeCell",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestGoTraceCulpritReadsOnlyWhatEndedTheProcess",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestLispTraceCulpritReadsOnlyWhatEndedTheProcess",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestProcessExitCode",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestStderrCauseNamesEachFailingMembersOwnLine",
+        "coding/extension/host/subprocess/packed_native_recovery_test.go::TestTraceCulpritReadsOnlyGoAndLisp",
+        "test/extension-conformance/editor_input_failure_test.go::TestEditorComponentFailingKeyIsReportedAndFinished",
+        "test/extension-conformance/packed_crash_blame_test.go::TestPackedCrashBlameAcrossSDKs",
+        "test/extension-conformance/packed_crash_blame_test.go::TestPackedLispProcessEndedWithoutAnUnhandledConditionStopsTheWholeCell"
+      ]
+    },
+    {
       "id": "BF-34f7594",
       "title": "An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or…",
       "symptom": "An extension that calls `ctx.shutdown()` from a `session_start` handler, or from a `session_before_switch` or `session_before_fork` handler during `/new`, `/resume` or `/fork`, ends the session as Pi does: extensions get `session_shutdown`, `pig` prints the resume command when the session has a file, and exits 0 without waiting for the handler that asked for the shutdown.",
@@ -8771,8 +8936,7 @@
       ],
       "tests": [
         "coding/cli/extension_upgrade_analyze_off_test.go::TestUpgradeInAGoSDKStrippedBinaryNamesTheStrip",
-        "coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK",
-        "coding/cli/strip_upgrade_link_test.go::TestStripExtensionSDKGoBuildOmitsTheUpgradeAnalysis"
+        "coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK"
       ]
     },
     {
@@ -10723,6 +10887,28 @@
       ]
     },
     {
+      "id": "BF-4625b4c",
+      "title": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength`…",
+      "symptom": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength` and `maxLength` in grapheme clusters, `multipleOf` with a tolerance of 1e-10, `uniqueItems` by TypeBox's hash (0 and -0 differ), and the `hostname`, `idn-hostname`, `idn-email` and `regex` formats with TypeBox's own checks, as TypeBox does in Pi.",
+      "rootCause": "D226 made `internal/typebox` reachable from `cmd/pig`, and its `Value.Check` compiled every schema with the vendored JSON Schema validator, so the whole validator (and `golang.org/x/text/message`, through its localized error kinds) came into the binary: +622,592 bytes on linux_amd64.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs check a schema's `minLength` and `maxLength` in grapheme clusters, `multipleOf` with a tolerance of 1e-10, `uniqueItems` by TypeBox's hash (0 and -0 differ), and the `hostname`, `idn-hostname`, `idn-email` and `regex` formats with TypeBox's own checks, as TypeBox does in Pi. They counted code points, compared exactly and followed a JSON Schema library's format rules.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4625b4cc3d",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/typebox/value_oracle_test.go::TestValueMatchesTypeboxOnCases"
+      ]
+    },
+    {
       "id": "BF-462b96e",
       "title": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between…",
       "symptom": "A Python or Rust extension no longer fails to load when the host releases one of its listeners between registering it and marking it ready (`expected ready, got notify`).",
@@ -11395,6 +11581,34 @@
         "durable/harness/partial_object_test.go::TestPartialObjectEqualsTheEncodedPartial",
         "durable/harness/streamed_partials_memory_test.go::TestStreamedPartialsCommitAtACostThatFollowsTheNewText"
       ]
+    },
+    {
+      "id": "BF-4924f3a",
+      "title": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more…",
+      "symptom": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases.",
+      "rootCause": "Schema.IsMinLength, IsMaximum, IsMultipleOf, IsMinItems, IsEnum, IsPattern and the other guards of typebox 1.3.27 (build/schema/types) accept a keyword only when it has its type: a finite number (minLength, maxLength, minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf, minItems, maxItems, minProperties, maxProperties), a string (pattern, format), an array (enum) or a boolean (uniqueItems). CheckSchema and ErrorSchema skip any other keyword, so {\"minLength\":\"3\"} passes \"\", enum 3 passes everything, and an Infinity limit (null once it is JSON) is skipped. checkKeyword failed the check for such a keyword, as the comment above it said a NaN comparison does, so a schema with a…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`Value.Check` and `Value.Errors` of the Go, Rust, Python and Lisp extension SDKs follow TypeBox in three more cases. A schema keyword that has the wrong type (`{\"minLength\": \"3\"}`, `enum: 3`, `pattern: 5`, `multipleOf: \"2\"`, `maximum: null`) is skipped, so it accepts every value, as in Pi; it rejected values before, and `Errors` reported a limit that was empty. `const` and `enum` accept an object for an array that has the same indices and `length` (`{\"0\": \"a\", \"length\": 1}` equals `[\"a\"]`). `uniqueItems` ignores an object's `constructor` member, so `{}` and `{\"constructor\": 2}` count as duplicates.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4924f3a174",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "62f99dccb6",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "7071ef14e3",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-495e25b",
@@ -31258,6 +31472,35 @@
       ]
     },
     {
+      "id": "BF-D272",
+      "title": "The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the…",
+      "symptom": "none.",
+      "rootCause": "the type checker was 1.4 MB of a binary every user downloads, and only the upgrade path runs it. The go command is already required by that path, because it lists and builds the extension. The driver is compiled by the user's own toolchain, so the compiler export data and `go/types` match.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D272",
+      "removeWhen": "the owner prefers the type checker in the binary again, or Go ships `go/types` in a form that the binary can link at no size cost.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "6c107c3403",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "93734af470",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "d54a4ece3c",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -39263,6 +39506,28 @@
       ]
     },
     {
+      "id": "BF-d22ad24",
+      "title": "A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now…",
+      "symptom": "A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: \u003cmessage\u003e`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: \u003cmessage\u003e`.",
+      "rootCause": "The Node editor host reported every failing component call as \"editor failed: \u003cmessage\u003e\". The Go, Rust, Python and Lisp SDKs name the method (\"editor handleInput failed: bad key\"). Pi has no text for this: an exception in a component's handleInput propagates out of the TUI, so the text is PiG's own and the SDKs now agree. The row that checks the text for the native SDKs does not run Node, whose editor is Pi's own CustomEditor in the extension process and has its own harness; a test of that harness covers the text, the finished key and the key after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's editor component whose `handleInput` (or another call the host makes) throws is now reported as `editor handleInput failed: \u003cmessage\u003e`, naming the call as the Go, Rust, Python and Lisp SDKs do, instead of `editor failed: \u003cmessage\u003e`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d22ad24247",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_editor_component_test.go::TestNodeEditorComponentFailureIsReportedLikeTheOtherSDKs"
+      ]
+    },
+    {
       "id": "BF-d249c70",
       "title": "SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does",
       "symptom": "SDK: `Session.Dispose` now releases the Session as Pi's `dispose` does.",
@@ -46252,6 +46517,28 @@
       ]
     },
     {
+      "id": "BF-eda66dd",
+      "title": "A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed…",
+      "symptom": "A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell.",
+      "rootCause": "A packed Go runner built each member's factory on a goroutine with no recover, so a factory that panics (where the TypeScript factory would throw) ended the shared process and failed every sibling Go extension. The runner now recovers the member's goroutine and reports the panic as that member's failure, as it reports an error return: the stack goes to the stderr log, the member's socket closes, the siblings keep serving.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell. The packed runner now reports the panic as that extension's own load error, as an isolated process does, with the stack in its stderr log, and every sibling keeps running; `/reload` lists only the failing extension. A factory that returns no extension fails the same way in a Go, Python or Lisp cell (`factory returned nil`, `factory returned None`), and a Lisp cell no longer hangs the load until the caller cancels it when a factory returns nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eda66dd663",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
@@ -51389,6 +51676,16 @@
       "id": "D270",
       "title": "After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first",
       "entry": "BF-D270"
+    },
+    {
+      "id": "D272",
+      "title": "The upgrade type check runs in a driver program that the go command builds from the staged SDK, not in the…",
+      "entry": "BF-D272"
+    },
+    {
+      "id": "D274",
+      "title": "A packed Go or Lisp member whose own code ends the shared process stops alone, and the members that shared…",
+      "entry": "BF-34f110f"
     },
     {
       "id": "D277",
