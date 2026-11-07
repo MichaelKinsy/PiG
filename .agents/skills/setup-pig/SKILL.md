@@ -53,7 +53,7 @@ Report installed, missing, and incompatible tools separately.
 | Author a Python extension | a PiG binary and Python |
 | Author a Node extension | a PiG binary and Node.js |
 | Build a Piglet Binary | Go, plus the compiler required by each source extension in the Piglet |
-| Run complete verification | Go, Git, Node.js, npm, Python, Rust, Cargo, and tmux on Unix |
+| Run complete verification | Go, Git, Node.js, npm, Python 3.12 and CPython 3.11 (`make check` runs `make test-sdk-py-311`; `PIG_SDK_PY_311` names the interpreter), Rust, Cargo, and tmux on Unix |
 
 A prebuilt native extension does not require its compiler. A Python or Node
 extension still requires its interpreter unless its declared environment
