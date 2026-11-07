@@ -552,8 +552,11 @@ func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry) {
 				Details:    message.Details,
 				Timestamp:  entryTimestampMs(message.Timestamp),
 			}
+			// Pi's renderer receives the same message object on every rebuild; the identity is that object for a renderer that keeps per-message
+			// state (a card that a click expands).
+			identity := extension.NewRenderIdentity()
 			renderer = func(_ *tui.CustomMessage, options tui.MessageRenderOptions) tui.Component {
-				return registered(customMessage, extension.MessageRenderOptions{Expanded: options.Expanded, OutputPad: options.OutputPad}, nil)
+				return registered(customMessage, extension.MessageRenderOptions{Expanded: options.Expanded, OutputPad: options.OutputPad, Identity: identity}, nil)
 			}
 		}
 	}

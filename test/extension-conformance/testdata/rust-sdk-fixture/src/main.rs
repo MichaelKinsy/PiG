@@ -2432,6 +2432,71 @@ fn main() {
     ext.entry_view_renderer("kit-entry", |_ctx, _entry, _options, _width| {
         Ok(kit_probe_view())
     });
+    // conformance-click-message / conformance-click-entry: a card whose mouse region counts clicks in the renderer state the SDK keeps per displayed
+    // message. The handler runs for each event the host's view took, before the render.
+    fn click_state(state: &pig_sdk::RenderState, event: &kit::Event) {
+        if event.kind != EventKind::Mouse || event.node != "card" {
+            return;
+        }
+        let Some(mouse) = &event.mouse else { return };
+        let mut state = state.lock().unwrap();
+        let clicks = state.get("clicks").and_then(Value::as_i64).unwrap_or(0);
+        state.insert("clicks".into(), json!(clicks + 1));
+        state.insert("last".into(), json!(format!("{},{}", mouse.x, mouse.y)));
+    }
+    fn click_view(
+        label: &str,
+        subject: &str,
+        state: &pig_sdk::RenderState,
+        expanded: bool,
+    ) -> kit::View {
+        let state = state.lock().unwrap();
+        let clicks = state.get("clicks").and_then(Value::as_i64).unwrap_or(0);
+        let last = state.get("last").and_then(Value::as_str).unwrap_or("none");
+        kit::View::new(
+            kit::MouseRegion::new(
+                "card",
+                Text::new(
+                    format!("{label}:{subject}:clicks={clicks}:last={last}:expanded={expanded}"),
+                    0,
+                    0,
+                ),
+            )
+            .types(["click"]),
+        )
+    }
+    ext.message_view_renderer(
+        "conformance-click-message",
+        |_ctx, message, options, _width| {
+            let content = message.get("content").and_then(Value::as_str).unwrap_or("");
+            Ok(click_view(
+                "clickcard",
+                content,
+                &options.state,
+                options.expanded,
+            ))
+        },
+    );
+    ext.message_view_event(
+        "conformance-click-message",
+        |_ctx, _message, options, event| {
+            click_state(&options.state, &event);
+            Ok(())
+        },
+    );
+    ext.entry_view_renderer("conformance-click-entry", |_ctx, entry, options, _width| {
+        let data = entry.get("data").and_then(Value::as_str).unwrap_or("");
+        Ok(click_view(
+            "clickentry",
+            data,
+            &options.state,
+            options.expanded,
+        ))
+    });
+    ext.entry_view_event("conformance-click-entry", |_ctx, _entry, options, event| {
+        click_state(&options.state, &event);
+        Ok(())
+    });
     ext.markdown_transformer(|markdown, context| {
         // "trace:<dir>:<name>" records the body's entry in <dir>/trace; the body named "first" returns only once <dir>/release exists.
         if let Some(rest) = markdown.strip_prefix("trace:") {

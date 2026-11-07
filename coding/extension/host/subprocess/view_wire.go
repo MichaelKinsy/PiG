@@ -120,15 +120,20 @@ type rendererView struct {
 // apply interprets a renderer result rendered for width and returns the
 // lines to paint; ok is false for a rejected view, whose result is treated
 // as a failed render.
-func (r *rendererView) apply(conn *Conn, repaint func(), result RenderResult, width int) (lines []string, ok bool) {
+//
+// A renderer whose component can take the mouse names the events' destination: key is the transcript component's name, and events are
+// delivered to sink, which queues them for the extension (the tool renderers' views take none, so their key and sink are empty).
+func (r *rendererView) apply(conn *Conn, repaint func(), key string, sink func(ViewEventPayload), result RenderResult, width int) (lines []string, ok bool) {
 	if !hasView(result.View) {
 		r.drop()
 		return result.Lines, true
 	}
 	r.mu.Lock()
 	if r.surface == nil {
-		r.surface = newConnViewSurface(conn, "")
+		r.surface = newConnViewSurface(conn, key)
 		r.surface.repaint = repaint
+		// The default sink of a keyed surface is the ui.custom notification, which a renderer's view has no overlay for.
+		r.surface.sendEvent = sink
 	}
 	surface := r.surface
 	r.mu.Unlock()
@@ -154,6 +159,18 @@ func (r *rendererView) live(width int) ([]string, bool) {
 		return nil, false
 	}
 	return surface.Render(width), true
+}
+
+// handleMouse gives a mouse event, local to the result's first cell, to the components of the view, as a ui.custom view takes it. Handled is false
+// without an authoritative view.
+func (r *rendererView) handleMouse(event extension.RemoteMouseEvent) extension.ViewMouseResult {
+	r.mu.Lock()
+	surface, authoritative := r.surface, r.authoritative
+	r.mu.Unlock()
+	if surface == nil || !authoritative {
+		return extension.ViewMouseResult{}
+	}
+	return surface.HandleViewMouse(event)
 }
 
 // frontendView returns the structure of the result laid out at width.

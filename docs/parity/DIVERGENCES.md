@@ -3794,3 +3794,25 @@ Call-site markers: `extensions/sdk/protocol.go` (`readLoop`), `extensions/sdk-py
 Evidence: `TestToolParamsNestingAcrossSDKs` (`test/extension-conformance/tool_params_deep_test.go`; red on 03c551f3e2 for Go at d=9998, and for Python, Rust and Lisp), `TestModelStreamEventWithDeepToolArgumentsReachesEverySDK` (`model_stream_deep_event_test.go`), `TestDeepEventStreamDeltasReachEverySDK` (`deep_event_delta_test.go`; deep `message_update` and `tool_execution_update` deltas, red for Rust on c1da695c1d), both over isolated and packed placements, and each SDK's own suite for the frames past its bound (`extensions/sdk/protocol_deep_frame_test.go`, `extensions/sdk-py/tests/test_deep_frames.py`, `extensions/sdk-rs/src/surrogate_tests.rs`, `extensions/sdk-lisp/tests/json-tests.lisp`).
 
 Parity allowance: the row pins every SDK's outcome at depths 200, 1000, 4000, 5000, 9000 and 9998: the object for the Go, Python, Rust and Lisp SDKs at all six; for the Node SDK (Pi's own runtime, pinned Node 24.22.1) the object at 200, 1000 and 4000 and V8's RangeError at 5000, 9000 and 9998. The event rows (`TestDeepEventStreamDeltasReachEverySDK`) pin the payload of a `message_update` or `tool_execution_update` delta, in arrays and in objects, at 200, 3000, 4000, 9000 (and 1 after them): every SDK hands its handler the payload, except that the Node SDK's handler at 9000 throws V8's RangeError from its own `JSON.stringify`, as a handler does in Pi, which gives the handler the object without copying. Each depth is followed by a call to the same extension. Pi's runtime gives the object at d=4300 and the RangeError at d=4400 on that Node; the row does not pin those, because the cut-off moves with the Node version.
+
+## D277 A renderer component that lives in a Node extension takes the click only, and the host answers it handled for the whole component
+
+What: Pi routes every mouse event of a fullscreen frame to the component under the pointer, and the answer of the component decides what the renderer does next: an unhandled press starts a text selection, an unhandled wheel scrolls the transcript, and a click without a drag is dispatched after the press (`tui-alt-screen.ts` `handleMouseEvent`, `handleSelectionMouseEvent`). A custom message or entry renderer of the Node SDK returns a component that lives in the extension's process, so the host cannot know its answer before it has to answer the terminal; it must not wait for the extension (AGENTS.md TUI rules). PiG hands such a component the click only: a left or other click inside the component is answered as handled at once and delivered to the component (`dispatchMouseEvent` on the component its renderer last returned, coordinates local to it), and every other event (press, release, drag, move, wheel) is left unhandled, so selection and scrolling work over the card. A click that the component's tree would not have handled (a spot outside its `MouseRegion`, inside the card's bounds) is also handled and clears a text selection; in Pi it falls through to the selection's copy-on-select path. A component that handles press, drag or wheel itself gets none of those events. The SDKs whose renderers return a kit view are not affected: the host hit-tests a view's mouse regions from their description and answers exactly as the region says.
+
+Why: the alternative is the ui.custom rule (D107 §4.3: a component that takes the mouse handles every event in its bounds), which would make every clickable card swallow its text selection and the transcript's wheel scrolling. Answering the click only keeps what a card's author writes in practice (a `MouseRegion` that toggles on `click`, the pattern of Pi's own compaction, branch-summary and skill cards) working, at the cost of the cases above.
+
+Pi bug: none.
+
+Observable effect: over a Node renderer's card the only difference from Pi is a click outside the card's own `MouseRegion` but inside its bounds, and a card that handles press, drag or wheel. Both need an extension that does something Pi's built-in cards and the posthorse cards do not.
+
+Scope: `render_message` and `render_entry` components of the Node runtime that take the mouse (`takesMouse`). Not tool renderers, widgets, header and footer (they take none yet, a recorded gap), not kit views.
+
+Owner decision: requested by the lead of lane fix/071-renderer-click; pending.
+
+Remove when: the host can ask the extension synchronously for a component's answer, or Pi's own components of a separate process need none.
+
+Call-site markers: `coding/extension/host/subprocess/render_proxy.go` (`HandleMouse`), `coding/extension/host/subprocess/runtime-node/runtime.mjs` (`renderTranscriptComponent`).
+
+Evidence: `TestRenderProxyNodeComponentTakesClickOnly` (`coding/extension/host/subprocess/render_proxy_mouse_test.go`) pins that every other event is unhandled and the click handled; `TestRendererClickAcrossSDKs/subprocess-node` pins the click, the count and the coordinates against Pi's `WeakMap` and `MouseRegion` pattern; the tmux scenario `extensions-runtime/96-message-click-expansion` compares a clicked card with Pi's.
+
+Parity allowance: none beyond the scenario above.

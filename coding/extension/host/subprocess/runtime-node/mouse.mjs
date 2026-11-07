@@ -50,3 +50,10 @@ export function dispatchOverlayMouse(overlay, event) {
   if (result && event.type === "press") overlay.mouseTarget = result.target;
   return result;
 }
+
+// dispatchComponentMouse delivers one event, local to component, to a component of a transcript message or entry (Pi's dispatchMouseEvent), and
+// returns the dispatch result of the component that took it, or undefined.
+export function dispatchComponentMouse(component, event) {
+  const { dispatchMouseEvent } = runtimeRequire("./shims/pi-dist/pi-tui/tui.js");
+  return dispatchMouseEvent(component, event);
+}
