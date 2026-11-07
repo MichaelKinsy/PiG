@@ -45385,6 +45385,28 @@
       ]
     },
     {
+      "id": "BF-eda66dd",
+      "title": "A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed…",
+      "symptom": "A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell.",
+      "rootCause": "A packed Go runner built each member's factory on a goroutine with no recover, so a factory that panics (where the TypeScript factory would throw) ended the shared process and failed every sibling Go extension. The runner now recovers the member's goroutine and reports the panic as that member's failure, as it reports an error return: the stack goes to the stderr log, the member's socket closes, the siblings keep serving.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension whose factory panics (where the TypeScript factory would throw, for example on a malformed environment variable) no longer takes down the other Go extensions that share its runtime cell. The packed runner now reports the panic as that extension's own load error, as an isolated process does, with the stack in its stderr log, and every sibling keeps running; `/reload` lists only the failing extension. A factory that returns no extension fails the same way in a Go, Python or Lisp cell (`factory returned nil`, `factory returned None`), and a Lisp cell no longer waits out the load deadline when a factory returns nothing.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eda66dd663",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/factory_failure_siblings_test.go::TestPackedFactoryFailureLeavesSiblingsLoaded"
+      ]
+    },
+    {
       "id": "BF-edb73db",
       "title": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's…",
       "symptom": "fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's early read",
