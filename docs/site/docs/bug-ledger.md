@@ -377,6 +377,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-448ff71](#bf-448ff71) | A panic in an extension error listener is now named on stderr instead of vanishing, and extension SDK… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-448ff71-2](#bf-448ff71-2) | MCP notifications no longer swallow every panic from the notify callback; only the "MCP failed to load"… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-44f8d86](#bf-44f8d86) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-44f93fe](#bf-44f93fe) | A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-4534a2b](#bf-4534a2b) | fix(durable): put the lifetime note of the publication goroutine on its line | PiG's own defect | All platforms | Unreleased |
 | [BF-4599fab](#bf-4599fab) | fix(ai): an iteration's shared cancellation does not compare contexts | PiG's own defect | All platforms | Unreleased |
 | [BF-45ec149](#bf-45ec149) | Read-only credential storage reports an unreadable or malformed `auth.json` as Pi does: `Failed to read… | PiG's own defect | All platforms | 0.5.0 |
@@ -6693,6 +6694,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `44f8d86c29` (2026-10-20)
 - **Tests:** None recorded.
 
+### BF-44f93fe
+
+**A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D277)
+- **Symptom:** A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives the same message identity on every rebuild, the component it returns takes the mouse, and the extension keeps the card's state per message, and for an entry it keeps it across compaction, `/tree` and a resume, as Pi's renderer does for the session manager's one object per entry.
+- **Root cause:** Pi hands a custom message renderer the same message object on every rebuild (custom-message.ts rebuild) and the component it returns takes the mouse (MouseRegion), so an extension keeps a card's expansion in a WeakMap keyed by the message and flips it on a left click. PiG gave renderers no identity and no mouse: a click on a custom card did nothing, so a port could not match Pi.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the host can ask the extension synchronously for a component's answer, or Pi's own components of a separate process need none.
+- **Fix commits:** `44f93fea88` (2026-11-06), `54a86b2d68` (2026-11-06), `e7e37b38ad` (2026-11-06)
+- **Tests:** `coding/extension/host/subprocess/node_mouse_regions_test.go::TestNodeMouseRegionsAreTheCellsPiDispatchReaches`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderKeysNameIdentitiesAndReleaseThemWhenCollected`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyClickNeverWaitsForIPC`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyNodeComponentTakesClickOnly`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyNodeMouseRegionsAreHitTestedLikePi`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyRerendersOnlyWhenPiBuildsTheComponent`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyViewMouseRegionClickReachesTheExtensionInTheNextRequest`, `coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyWithoutMouseTakesNone` and 7 more in docs/bug-ledger.json
+- **Release note:** A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives the same message identity on every rebuild, the component it returns takes the mouse, and the extension keeps the card's state per message, and for an entry it keeps it across compaction, `/tree` and a resume, as Pi's renderer does for the session manager's one object per entry. The Node SDK runs Pi's own `WeakMap` and `MouseRegion` renderer unchanged, and the host hit-tests the `MouseRegion` rectangles the runtime finds in one walk over the rules by which Pi's dispatch hands an event down (a 4000-line card costs milliseconds, where asking Pi's dispatch about every cell took seconds), so a click on a card's padding falls through to text selection as in Pi and only a component with a hand-written `handleMouse` takes the click as a whole (D277); the Go, Rust, Python and Lisp SDKs get `options.state` and `MessageViewEvent`/`EntryViewEvent` handlers for the clicks on their view's mouse regions. A click does no IPC on the TUI loop, and a transcript container now redraws a component whose handler changed it without telling the container.
+
 ### BF-4534a2b
 
 **fix(durable): put the lifetime note of the publication goroutine on its line**
@@ -6924,7 +6941,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `471d6fb3bd` (2026-11-06)
-- **Tests:** `piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse`, `piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame`, `piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainHostHelper`, `piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration`
+- **Tests:** None recorded.
 - **Release note:** `pig piglet build` of an ahead-of-time image no longer waits 200 ms per extension after each training run's registration, and no longer closes the training connection in the middle of a registration frame that arrives in more than one piece.
 
 ### BF-4741f6a
@@ -25679,6 +25696,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
 | D269 | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | [BF-D269](#bf-d269) |
 | D270 | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | [BF-D270](#bf-d270) |
+| D277 | A Node renderer component that handles the mouse itself takes the click only, and the host answers it handled… | [BF-44f93fe](#bf-44f93fe) |
 
 ## Fix-titled commits that are not bugs in a release
 

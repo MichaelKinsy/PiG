@@ -163412,9 +163412,9 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
-        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNoComponent"
+        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
     },
     {
@@ -163434,9 +163434,9 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
-        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNoComponent"
+        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
     },
     {
@@ -163476,9 +163476,9 @@
         "call:internal/sessionentry/union.go#CustomMessageEntry.MarshalJSON"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_message_click_test.go#TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
         "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageFallbackOutputPadProduction",
-        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageFallsBackWhenRendererReturnsNoComponent"
+        "test:internal/codingagent/custom_message_padding_test.go#TestCustomMessageOutputPadProduction"
       ]
     },
     {
@@ -187285,8 +187285,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs",
-        "test:coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyExpandedStateRefreshesOffLoop",
-        "test:internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer"
+        "test:test/extension-conformance/renderer_click_test.go#TestRendererClickAcrossSDKs",
+        "test:coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyExpandedStateRefreshesOffLoop"
       ]
     },
     {
@@ -203940,7 +203940,7 @@
       "evidence": [
         "test:coding/session_context_usage_replaced_log_test.go#TestContextUsageRecomputesAfterTheLogIsReplacedInPlace",
         "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
-        "test:internal/codingagent/session_name_scan_test.go#TestGetSessionNameEqualsTheBackwardScan"
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog"
       ]
     },
     {
@@ -203962,7 +203962,7 @@
       "evidence": [
         "test:coding/session_context_usage_replaced_log_test.go#TestContextUsageRecomputesAfterTheLogIsReplacedInPlace",
         "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
-        "test:internal/codingagent/session_name_scan_test.go#TestGetSessionNameEqualsTheBackwardScan"
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog"
       ]
     },
     {
@@ -204676,6 +204676,7 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
       ]
     },
@@ -204696,6 +204697,7 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.NewSession"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
       ]
     },
@@ -204760,9 +204762,9 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.SetSessionFile"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileChangesTheRevision",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerWritesNothing"
+        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist"
       ]
     },
     {
@@ -204782,9 +204784,9 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.SetSessionFile"
       ],
       "evidence": [
+        "test:internal/codingagent/custom_entry_identity_test.go#TestEntryRenderIdentitiesGoWithTheSessionLog",
         "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileChangesTheRevision",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist",
-        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerWritesNothing"
+        "test:internal/codingagent/session_set_file_test.go#TestSetSessionFileOnAnInMemoryManagerDoesNotPersist"
       ]
     },
     {

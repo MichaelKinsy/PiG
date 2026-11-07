@@ -10467,6 +10467,52 @@
       "tests": []
     },
     {
+      "id": "BF-44f93fe",
+      "title": "A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives…",
+      "symptom": "A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives the same message identity on every rebuild, the component it returns takes the mouse, and the extension keeps the card's state per message, and for an entry it keeps it across compaction, `/tree` and a resume, as Pi's renderer does for the session manager's one object per entry.",
+      "rootCause": "Pi hands a custom message renderer the same message object on every rebuild (custom-message.ts rebuild) and the component it returns takes the mouse (MouseRegion), so an extension keeps a card's expansion in a WeakMap keyed by the message and flips it on a left click. PiG gave renderers no identity and no mouse: a click on a custom card did nothing, so a port could not match Pi.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D277",
+      "removeWhen": "the host can ask the extension synchronously for a component's answer, or Pi's own components of a separate process need none.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives the same message identity on every rebuild, the component it returns takes the mouse, and the extension keeps the card's state per message, and for an entry it keeps it across compaction, `/tree` and a resume, as Pi's renderer does for the session manager's one object per entry. The Node SDK runs Pi's own `WeakMap` and `MouseRegion` renderer unchanged, and the host hit-tests the `MouseRegion` rectangles the runtime finds in one walk over the rules by which Pi's dispatch hands an event down (a 4000-line card costs milliseconds, where asking Pi's dispatch about every cell took seconds), so a click on a card's padding falls through to text selection as in Pi and only a component with a hand-written `handleMouse` takes the click as a whole (D277); the Go, Rust, Python and Lisp SDKs get `options.state` and `MessageViewEvent`/`EntryViewEvent` handlers for the clicks on their view's mouse regions. A click does no IPC on the TUI loop, and a transcript container now redraws a component whose handler changed it without telling the container.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "44f93fea88",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "54a86b2d68",
+          "date": "2026-11-06"
+        },
+        {
+          "hash": "e7e37b38ad",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_mouse_regions_test.go::TestNodeMouseRegionsAreTheCellsPiDispatchReaches",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderKeysNameIdentitiesAndReleaseThemWhenCollected",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyClickNeverWaitsForIPC",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyNodeComponentTakesClickOnly",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyNodeMouseRegionsAreHitTestedLikePi",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyRerendersOnlyWhenPiBuildsTheComponent",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyViewMouseRegionClickReachesTheExtensionInTheNextRequest",
+        "coding/extension/host/subprocess/render_proxy_mouse_test.go::TestRenderProxyWithoutMouseTakesNone",
+        "extensions/sdk-py/tests/test_renderer_click.py",
+        "internal/codingagent/custom_message_click_test.go::TestCustomEntryComponentHandsTheRendererOneIdentityAcrossRebuilds",
+        "internal/codingagent/custom_message_click_test.go::TestCustomMessageClickTogglesOnlyThatMessageAndIdentitySurvivesRebuilds",
+        "test/extension-conformance/renderer_click_test.go::TestRendererClickAcrossSDKs",
+        "test/extension-conformance/renderer_click_test.go::TestRendererClickOutsideTheRegionFallsThrough",
+        "test/parity/scenarios/extensions-runtime/96-message-click-expansion.toml",
+        "tui/container_mouse_redraw_test.go::TestHandledMouseEventRedrawsComponentsThatChangedSilently"
+      ]
+    },
+    {
       "id": "BF-4534a2b",
       "title": "fix(durable): put the lifetime note of the publication goroutine on its line",
       "symptom": "fix(durable): put the lifetime note of the publication goroutine on its line",
@@ -10919,12 +10965,7 @@
           "date": "2026-11-06"
         }
       ],
-      "tests": [
-        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationReportsWhatItCannotUse",
-        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestReadRegistrationWaitsForTheWholeFrame",
-        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainHostHelper",
-        "piglets/aot/extensions/aotruntime/train_registration_test.go::TestTrainRunEndsOnTheWholeRegistration"
-      ]
+      "tests": []
     },
     {
       "id": "BF-4741f6a",
@@ -51027,6 +51068,11 @@
       "id": "D270",
       "title": "After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first",
       "entry": "BF-D270"
+    },
+    {
+      "id": "D277",
+      "title": "A Node renderer component that handles the mouse itself takes the click only, and the host answers it handled…",
+      "entry": "BF-44f93fe"
     }
   ],
   "exemptCommits": {
