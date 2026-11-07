@@ -1296,14 +1296,6 @@ count = 1
 
 # dev/bench tooling or one-time schema compile
 [[hit]]
-file = "internal/typebox/value.go"
-func = "compile"
-call = "json.Unmarshal"
-dest = "*any"
-count = 1
-
-# dev/bench tooling or one-time schema compile
-[[hit]]
 file = "internal/upstreammirror/upstreammirror.go"
 func = "readJSON"
 call = "json.Unmarshal"

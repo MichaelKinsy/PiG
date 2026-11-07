@@ -1,0 +1,138 @@
+# Differences between go.yaml.in/yaml/v3 and internal/yaml12 on the corpus of v3_differential_test.go. Columns: group, kind, document, v3 reading, yaml12 reading.
+# Readings are the document as a JSON-like value (v3: yaml.Unmarshal into an any; yaml12: ParseOrdered); keys are sorted. kind is meaning (both accept, different value), v3-rejects, or yaml12-rejects.
+# group edge: 250 documents, 181 read the same or rejected by both, meaning 34, v3-rejects 25, yaml12-rejects 10
+# group file: 37 documents, 37 read the same or rejected by both
+# group oracle: 778 documents, 395 read the same or rejected by both, meaning 72, v3-rejects 266, yaml12-rejects 45
+# group piglet-tests: 712 documents, 712 read the same or rejected by both
+edge	meaning	"- |\n x\n- >\n y"	v3="[\"x\\n\",\"y\"]"	yaml12="[\"x\\n\",\"y\\n\"]"
+edge	meaning	"<<: {a: 1}\nb: 2"	v3="{\"a\":1,\"b\":2}"	yaml12="{\"<<\":{\"a\":1},\"b\":2}"
+edge	meaning	"a: !!merge <<"	v3="{\"a\":\"<<\"}"	yaml12="{\"a\":symbol(\"<<\")}"
+edge	meaning	"a: &x {b: 1}\nc:\n  <<: *x"	v3="{\"a\":{\"b\":1},\"c\":{\"b\":1}}"	yaml12="{\"a\":{\"b\":1},\"c\":{\"<<\":{\"b\":1}}}"
+edge	meaning	"a: &x {b: 1}\nc:\n  <<: *x\n  b: 2"	v3="{\"a\":{\"b\":1},\"c\":{\"b\":2}}"	yaml12="{\"a\":{\"b\":1},\"c\":{\"<<\":{\"b\":1},\"b\":2}}"
+edge	meaning	"a: &x {b: 1}\nc:\n  <<: [*x, {d: 3}]"	v3="{\"a\":{\"b\":1},\"c\":{\"b\":1,\"d\":3}}"	yaml12="{\"a\":{\"b\":1},\"c\":{\"<<\":[{\"b\":1},{\"d\":3}]}}"
+edge	meaning	"a: &x {b: 1}\nc:\n  b: 2\n  <<: *x"	v3="{\"a\":{\"b\":1},\"c\":{\"b\":2}}"	yaml12="{\"a\":{\"b\":1},\"c\":{\"<<\":{\"b\":1},\"b\":2}}"
+edge	meaning	"a: 1\n<<: {a: 2}"	v3="{\"a\":1}"	yaml12="{\"<<\":{\"a\":2},\"a\":1}"
+edge	meaning	"a: >\n  x\n   y\n  z"	v3="{\"a\":\"x\\n y\\nz\"}"	yaml12="{\"a\":\"x\\n y\\nz\\n\"}"
+edge	meaning	"a: >\n  x\n  y\n\n  z"	v3="{\"a\":\"x y\\nz\"}"	yaml12="{\"a\":\"x y\\nz\\n\"}"
+edge	meaning	"a: \u0085"	v3="{\"a\":null}"	yaml12="{\"a\":\"\\u0085\"}"
+edge	meaning	"a: \u2028"	v3="{\"a\":null}"	yaml12="{\"a\":\"\\u2028\"}"
+edge	meaning	"a: | # c\n  x"	v3="{\"a\":\"x\"}"	yaml12="{\"a\":\"x\\n\"}"
+edge	meaning	"a: |1\n  x"	v3="{\"a\":\" x\"}"	yaml12="{\"a\":\" x\\n\"}"
+edge	meaning	"a: |2\n   x"	v3="{\"a\":\" x\"}"	yaml12="{\"a\":\" x\\n\"}"
+edge	meaning	"a: |\n  x\n   y"	v3="{\"a\":\"x\\n y\"}"	yaml12="{\"a\":\"x\\n y\\n\"}"
+edge	meaning	"a: |\n  x\n  y"	v3="{\"a\":\"x\\ny\"}"	yaml12="{\"a\":\"x\\ny\\n\"}"
+edge	meaning	"a: |\n\n  x"	v3="{\"a\":\"\\nx\"}"	yaml12="{\"a\":\"\\nx\\n\"}"
+edge	meaning	"services:\n  a: &base\n    build: ./a\n  b:\n    <<: *base\n    image: x"	v3="{\"services\":{\"a\":{\"build\":\"./a\"},\"b\":{\"build\":\"./a\",\"image\":\"x\"}}}"	yaml12="{\"services\":{\"a\":{\"build\":\"./a\"},\"b\":{\"<<\":{\"build\":\"./a\"},\"image\":\"x\"}}}"
+edge	meaning	"v: !!binary aGk="	v3="{\"v\":\"hi\"}"	yaml12="{\"v\":<\"\\\"aGk=\\\"\">}"
+edge	meaning	"v: !!float 1"	v3="{\"v\":1}"	yaml12="{\"v\":\"1\"}"
+edge	meaning	"v: !!omap [a: 1]"	v3="{\"v\":[{\"a\":1}]}"	yaml12="{\"v\":<\"{\\\"Keys\\\":[\\\"a\\\"],\\\"Values\\\":[1]}\">}"
+edge	meaning	"v: !!set {a, b}"	v3="{\"v\":{\"a\":null,\"b\":null}}"	yaml12="{\"v\":<\"{\\\"Values\\\":[\\\"a\\\",\\\"b\\\"]}\">}"
+edge	meaning	"v: !!timestamp 2001-12-14"	v3="{\"v\":timestamp(2001-12-14T00:00:00Z)}"	yaml12="{\"v\":date(1008288000000)}"
+edge	meaning	"v: 010"	v3="{\"v\":8}"	yaml12="{\"v\":10}"
+edge	meaning	"v: 0b11"	v3="{\"v\":3}"	yaml12="{\"v\":\"0b11\"}"
+edge	meaning	"v: 0xFFFFFFFFFFFFFFFFFF"	v3="{\"v\":\"0xFFFFFFFFFFFFFFFFFF\"}"	yaml12="{\"v\":4.722366482869645e+21}"
+edge	meaning	"v: 1_000"	v3="{\"v\":1000}"	yaml12="{\"v\":\"1_000\"}"
+edge	meaning	"v: 1e400"	v3="{\"v\":\"1e400\"}"	yaml12="{\"v\":Infinity}"
+edge	meaning	"v: 2001-12-14"	v3="{\"v\":timestamp(2001-12-14T00:00:00Z)}"	yaml12="{\"v\":\"2001-12-14\"}"
+edge	meaning	"v: 2001-12-14T21:59:43Z"	v3="{\"v\":timestamp(2001-12-14T21:59:43Z)}"	yaml12="{\"v\":\"2001-12-14T21:59:43Z\"}"
+edge	meaning	"v: 2001-12-14t21:59:43.10-05:00"	v3="{\"v\":timestamp(2001-12-15T02:59:43.1Z)}"	yaml12="{\"v\":\"2001-12-14t21:59:43.10-05:00\"}"
+edge	meaning	"v: 9007199254740993"	v3="{\"v\":9007199254740993}"	yaml12="{\"v\":9007199254740992}"
+edge	meaning	"x-common: &c\n  build: ./x\nservices:\n  a:\n    <<: *c\n"	v3="{\"services\":{\"a\":{\"build\":\"./x\"}},\"x-common\":{\"build\":\"./x\"}}"	yaml12="{\"services\":{\"a\":{\"<<\":{\"build\":\"./x\"}}},\"x-common\":{\"build\":\"./x\"}}"
+edge	v3-rejects	"%YAML 1.2\n%YAML 1.2\n---\na"	v3="error"	yaml12="\"a\""
+edge	v3-rejects	"%YAML 1.2\n---\na: 1"	v3="error"	yaml12="{\"a\":1}"
+edge	v3-rejects	"%YAML 2.0\n---\na: 1"	v3="error"	yaml12="{\"a\":1}"
+edge	v3-rejects	"&a [*a]"	v3="error"	yaml12="[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[<deep>]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"
+edge	v3-rejects	"- \ta"	v3="error"	yaml12="[\"a\"]"
+edge	v3-rejects	"..."	v3="error"	yaml12="null"
+edge	v3-rejects	"1: a\n\"1\": b"	v3="error"	yaml12="{\"1\":\"b\"}"
+edge	v3-rejects	": x"	v3="error"	yaml12="{\"\":\"x\"}"
+edge	v3-rejects	"? - a\n  - b\n: c"	v3="error"	yaml12="{\"[ a, b ]\":\"c\"}"
+edge	v3-rejects	"? [a, b]\n: c"	v3="error"	yaml12="{\"[ a, b ]\":\"c\"}"
+edge	v3-rejects	"[a, b]: c"	v3="error"	yaml12="{\"[ a, b ]\":\"c\"}"
+edge	v3-rejects	"a: !!bool maybe"	v3="error"	yaml12="{\"a\":\"maybe\"}"
+edge	v3-rejects	"a: !!float abc"	v3="error"	yaml12="{\"a\":\"abc\"}"
+edge	v3-rejects	"a: !!int abc"	v3="error"	yaml12="{\"a\":\"abc\"}"
+edge	v3-rejects	"a: \"\\/\""	v3="error"	yaml12="{\"a\":\"/\"}"
+edge	v3-rejects	"a: \"\\ud800\""	v3="error"	yaml12="{\"a\":\"�\"}"
+edge	v3-rejects	"a: \"\xc3\""	v3="error"	yaml12="{\"a\":\"\\xc3\"}"
+edge	v3-rejects	"a: \a"	v3="error"	yaml12="{\"a\":\"\\a\"}"
+edge	v3-rejects	"a: \ufffe"	v3="error"	yaml12="{\"a\":\"\\ufffe\"}"
+edge	v3-rejects	"a: \x00"	v3="error"	yaml12="{\"a\":\"\\x00\"}"
+edge	v3-rejects	"a: \xff"	v3="error"	yaml12="{\"a\":\"\\xff\"}"
+edge	v3-rejects	"a: {<<: 1}"	v3="error"	yaml12="{\"a\":{\"<<\":1}}"
+edge	v3-rejects	"true: a\n\"true\": b"	v3="error"	yaml12="{\"true\":\"b\"}"
+edge	v3-rejects	"v: !!bool yes"	v3="error"	yaml12="{\"v\":\"yes\"}"
+edge	v3-rejects	"{a: b}: c"	v3="error"	yaml12="{\"{ a: b }\":\"c\"}"
+edge	yaml12-rejects	"--- a\n--- b"	v3="\"a\""	yaml12="error"
+edge	yaml12-rejects	"---\n---\n"	v3="null"	yaml12="error"
+edge	yaml12-rejects	"0x10: a\n16: b"	v3="{\"16\":\"b\"}"	yaml12="error"
+edge	yaml12-rejects	"1: a\n1.0: b"	v3="{\"1\":\"a\",\"1\":\"b\"}"	yaml12="error"
+edge	yaml12-rejects	"a: 1\n%YAML 1.2\n---\nb: 2"	v3="{\"a\":1}"	yaml12="error"
+edge	yaml12-rejects	"a: 1\n---\nb: 2"	v3="{\"a\":1}"	yaml12="error"
+edge	yaml12-rejects	"a: 1\n...\nb"	v3="{\"a\":1}"	yaml12="error"
+edge	yaml12-rejects	"a: 1\rb: 2"	v3="{\"a\":1,\"b\":2}"	yaml12="error"
+edge	yaml12-rejects	"a: [-]"	v3="{\"a\":[\"-\"]}"	yaml12="error"
+edge	yaml12-rejects	"null: a\n~: b"	v3="{\"null\":\"b\"}"	yaml12="error"
+typed	"v: !!bool yes"	into string	v3=ERR	yaml12="yes"	yaml12 value="yes"
+typed	"v: !!float 5"	into float64	v3=5	yaml12=ERR	yaml12 value="5"
+typed	"v: !!float 5"	into int	v3=5	yaml12=ERR	yaml12 value="5"
+typed	"v: !!int \"5\""	into string	v3="5"	yaml12=ERR	yaml12 value=5
+typed	"v: "	into bool	v3=false	yaml12=ERR	yaml12 value=null
+typed	"v: "	into float64	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: "	into int	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: "	into string	v3=""	yaml12=ERR	yaml12 value=null
+typed	"v: 'yes'"	into bool	v3=true	yaml12=ERR	yaml12 value="yes"
+typed	"v: +1"	into string	v3="+1"	yaml12=ERR	yaml12 value=1
+typed	"v: -1"	into string	v3="-1"	yaml12=ERR	yaml12 value=-1
+typed	"v: .5"	into int	v3=0	yaml12=ERR	yaml12 value=0.5
+typed	"v: .5"	into string	v3=".5"	yaml12=ERR	yaml12 value=0.5
+typed	"v: .NaN"	into string	v3=".NaN"	yaml12=ERR	yaml12 value=NaN
+typed	"v: .inf"	into string	v3=".inf"	yaml12=ERR	yaml12 value=Infinity
+typed	"v: 0.0"	into string	v3="0.0"	yaml12=ERR	yaml12 value=0
+typed	"v: 00"	into string	v3="00"	yaml12=ERR	yaml12 value=0
+typed	"v: 010"	into float64	v3=8	yaml12=10	yaml12 value=10
+typed	"v: 010"	into int	v3=8	yaml12=10	yaml12 value=10
+typed	"v: 010"	into string	v3="010"	yaml12=ERR	yaml12 value=10
+typed	"v: 0b10"	into float64	v3=2	yaml12=ERR	yaml12 value="0b10"
+typed	"v: 0b10"	into int	v3=2	yaml12=ERR	yaml12 value="0b10"
+typed	"v: 0o10"	into string	v3="0o10"	yaml12=ERR	yaml12 value=8
+typed	"v: 0x10"	into string	v3="0x10"	yaml12=ERR	yaml12 value=16
+typed	"v: 1.0"	into string	v3="1.0"	yaml12=ERR	yaml12 value=1
+typed	"v: 1.10"	into int	v3=1	yaml12=ERR	yaml12 value=1.1
+typed	"v: 1.10"	into string	v3="1.10"	yaml12=ERR	yaml12 value=1.1
+typed	"v: 18446744073709551616"	into string	v3="18446744073709551616"	yaml12=ERR	yaml12 value=18446744073709552000
+typed	"v: 1_000"	into float64	v3=1000	yaml12=ERR	yaml12 value="1_000"
+typed	"v: 1_000"	into int	v3=1000	yaml12=ERR	yaml12 value="1_000"
+typed	"v: 1e3"	into string	v3="1e3"	yaml12=ERR	yaml12 value=1000
+typed	"v: 1e400"	into float64	v3=ERR	yaml12=Infinity	yaml12 value=Infinity
+typed	"v: 1e400"	into string	v3="1e400"	yaml12=ERR	yaml12 value=Infinity
+typed	"v: 5."	into string	v3="5."	yaml12=ERR	yaml12 value=5
+typed	"v: 9007199254740993"	into int	v3=9007199254740993	yaml12=9007199254740992	yaml12 value=9007199254740992
+typed	"v: 9007199254740993"	into string	v3="9007199254740993"	yaml12=ERR	yaml12 value=9007199254740992
+typed	"v: 9223372036854775808"	into string	v3="9223372036854775808"	yaml12=ERR	yaml12 value=9223372036854776000
+typed	"v: FALSE"	into string	v3="FALSE"	yaml12=ERR	yaml12 value=false
+typed	"v: NO"	into bool	v3=false	yaml12=ERR	yaml12 value="NO"
+typed	"v: Null"	into bool	v3=false	yaml12=ERR	yaml12 value=null
+typed	"v: Null"	into float64	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: Null"	into int	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: Null"	into string	v3=""	yaml12=ERR	yaml12 value=null
+typed	"v: On"	into bool	v3=true	yaml12=ERR	yaml12 value="On"
+typed	"v: TRUE"	into string	v3="TRUE"	yaml12=ERR	yaml12 value=true
+typed	"v: True"	into string	v3="True"	yaml12=ERR	yaml12 value=true
+typed	"v: Yes"	into bool	v3=true	yaml12=ERR	yaml12 value="Yes"
+typed	"v: false"	into string	v3="false"	yaml12=ERR	yaml12 value=false
+typed	"v: n"	into bool	v3=false	yaml12=ERR	yaml12 value="n"
+typed	"v: no"	into bool	v3=false	yaml12=ERR	yaml12 value="no"
+typed	"v: null"	into bool	v3=false	yaml12=ERR	yaml12 value=null
+typed	"v: null"	into float64	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: null"	into int	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: null"	into string	v3=""	yaml12=ERR	yaml12 value=null
+typed	"v: off"	into bool	v3=false	yaml12=ERR	yaml12 value="off"
+typed	"v: on"	into bool	v3=true	yaml12=ERR	yaml12 value="on"
+typed	"v: true"	into string	v3="true"	yaml12=ERR	yaml12 value=true
+typed	"v: y"	into bool	v3=true	yaml12=ERR	yaml12 value="y"
+typed	"v: yes"	into bool	v3=true	yaml12=ERR	yaml12 value="yes"
+typed	"v: ~"	into bool	v3=false	yaml12=ERR	yaml12 value=null
+typed	"v: ~"	into float64	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: ~"	into int	v3=0	yaml12=ERR	yaml12 value=null
+typed	"v: ~"	into string	v3=""	yaml12=ERR	yaml12 value=null

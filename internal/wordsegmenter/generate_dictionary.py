@@ -2,8 +2,9 @@
 """Build the current CJK dictionary index from ICU 78.3's exact source data."""
 import hashlib
 import pathlib
-import struct
 import sys
+
+import dictionary_format
 
 SOURCE_HASH = "e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0"
 source = pathlib.Path(sys.argv[1]).read_bytes()
@@ -22,20 +23,17 @@ for line in source.decode("utf-8-sig").splitlines():
 rows.sort()
 if len({word for word, _ in rows}) != len(rows):
     raise SystemExit("duplicate dictionary word")
-offsets = [0]
+# The embedded trie of dictionary_format.py: one UTF-16 unit per label. Every word is BMP text without U+FFFD, so a lookup
+# that reads the text as UTF-16 units misses no word and invents none (invalid UTF-8 and supplementary characters match nothing).
+entries = []
 for word, cost in rows:
-    if not 0 <= cost <= 255:
-        raise SystemExit("dictionary weight is outside ICU byte cost range")
-    offsets.append(offsets[-1] + len(word))
-if offsets[-1] > 0xffffffff or len(rows) > 0xffffffff:
-    raise SystemExit("dictionary offsets exceed uint32")
-# One current unversioned shape: uint32 count, count+1 uint32 offsets,
-# count byte weights, then concatenated UTF-8 words, in byte-lexical order.
-encoded = struct.pack("<I", len(rows))
-encoded += struct.pack("<" + "I" * len(offsets), *offsets)
-encoded += bytes(cost for _, cost in rows)
-encoded += b"".join(word for word, _ in rows)
+    text = word.decode("utf-8")
+    if any(ord(c) > 0xFFFF or c == "\ufffd" for c in text):
+        raise SystemExit("dictionary word outside the BMP or holding U+FFFD")
+    entries.append((tuple(ord(c) for c in text), cost))
+encoded = dictionary_format.encode_trie(entries, 2, True)
 root = pathlib.Path(__file__).resolve().parent
+dictionary_format.write_flat(root / "testdata" / "cjk_flat.bin.gz", [word for word, _ in rows], [cost for _, cost in rows])
 (root / "cjk_dictionary.bin").write_bytes(encoded)
 (root.parent.parent / "LICENSES" / "LicenseRef-ICU-CJK.txt").write_text("\n".join(license_lines).strip() + "\n", encoding="utf-8")
 print(f"{len(rows)} dictionary entries, {len(encoded)} bytes, source sha256:{SOURCE_HASH}")

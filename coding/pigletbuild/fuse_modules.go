@@ -15,6 +15,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // fusedModuleGraph is the module graph fused members add to Pig's main module.
@@ -192,7 +193,7 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 	for old := range replaces {
 		olds = append(olds, old)
 	}
-	slices.SortFunc(olds, func(a, b module.Version) int {
+	sortx.Func(olds, func(a, b module.Version) int {
 		if c := strings.Compare(a.Path, b.Path); c != 0 {
 			return c
 		}

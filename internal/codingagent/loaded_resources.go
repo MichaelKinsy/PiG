@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
@@ -540,7 +541,7 @@ func formatScopeGroups(theme *tui.Theme, collator *localecompare.Collator, group
 	for _, group := range groups {
 		lines = append(lines, "  "+theme.Fg("accent", group.scope))
 		paths := slices.Clone(group.paths)
-		slices.SortStableFunc(paths, byPath)
+		sortx.Stable(paths, byPath)
 		for _, item := range paths {
 			lines = append(lines, theme.Fg("dim", "    "+formatPath(item)))
 		}
@@ -552,7 +553,7 @@ func formatScopeGroups(theme *tui.Theme, collator *localecompare.Collator, group
 		for _, source := range sources {
 			lines = append(lines, "    "+theme.Fg("mdLink", source))
 			items := slices.Clone(group.packages[source])
-			slices.SortStableFunc(items, byPath)
+			sortx.Stable(items, byPath)
 			for _, item := range items {
 				lines = append(lines, theme.Fg("dim", "      "+formatPackagePath(item)))
 			}
