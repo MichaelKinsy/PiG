@@ -325,6 +325,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d3f421](#bf-3d3f421) | A hung-up terminal now leaves exactly one `exit.log` line, and its exit status stays 129 | PiG's own defect | All platforms | 0.7.0 |
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -5956,6 +5957,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3d980815b1` (2026-11-01)
 - **Tests:** `agent/validate_oracle_test.go::TestToolArgumentValidationMatchesPi`, `ai/validate_cache_test.go::TestToolArgumentSchemaCacheIsBounded`, `ai/validate_cache_test.go::TestToolArgumentSchemaEvictionDoesNotChangeOutcomes`, `ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding`, `ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors`, `internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters`
 - **Release note:** Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.
+
+### BF-3de4b8e
+
+**A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them.
+- **Root cause:** - Lint: annotate the G103 unsafe.String in decodeKey and delete the unused compactJSON. - A handler that returns nothing, or a reply with a one-member map, no longer reads the event: the source order is built at the first question and a map with fewer than two members is never asked. A context handler returning nothing went from walking the whole context (5.5 ms, 4 MiB at 3000 messages) to 0.8 us and 392 B at any size; a nil tool_result or message_end capture is 3 allocations. - An array a handler reorders, filters or sorts in place (the blocks of a message, a request's tools, a list of messages) keeps the order of its objects: elements that no longer stand where the text has them are…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3de4b8e877` (2026-11-06)
+- **Tests:** `extensions/sdk/key_order_test.go::TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `extensions/sdk/key_order_test.go::TestObjectKeysPutArrayIndexKeysFirst`, `extensions/sdk/key_order_test.go::TestObjectsMovedInPlaceKeepTheirMemberOrder`
+- **Release note:** A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. A Go handler that returns nothing no longer reads the event to write its reply: a `context` handler that left the messages alone costs 0.8 µs at any context size, where it had cost 5.5 ms at 3,000 messages. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.
 
 ### BF-3def2a7
 

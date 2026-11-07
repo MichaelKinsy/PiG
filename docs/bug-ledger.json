@@ -8942,6 +8942,30 @@
       ]
     },
     {
+      "id": "BF-3de4b8e",
+      "title": "A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a…",
+      "symptom": "A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them.",
+      "rootCause": "- Lint: annotate the G103 unsafe.String in decodeKey and delete the unused compactJSON. - A handler that returns nothing, or a reply with a one-member map, no longer reads the event: the source order is built at the first question and a map with fewer than two members is never asked. A context handler returning nothing went from walking the whole context (5.5 ms, 4 MiB at 3000 messages) to 0.8 us and 392 B at any size; a nil tool_result or message_end capture is 3 allocations. - An array a handler reorders, filters or sorts in place (the blocks of a message, a request's tools, a list of messages) keeps the order of its objects: elements that no longer stand where the text has them are…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. A Go handler that returns nothing no longer reads the event to write its reply: a `context` handler that left the messages alone costs 0.8 µs at any context size, where it had cost 5.5 ms at 3,000 messages. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3de4b8e877",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/key_order_test.go::TestObjectKeysDoNotLeakTheOrderOfAFreedObject",
+        "extensions/sdk/key_order_test.go::TestObjectKeysPutArrayIndexKeysFirst",
+        "extensions/sdk/key_order_test.go::TestObjectsMovedInPlaceKeepTheirMemberOrder"
+      ]
+    },
+    {
       "id": "BF-3def2a7",
       "title": "MCP servers whose names are numbers (`\"9\"`, `\"42\"`) load and report their errors in the order Pi does: a JSON…",
       "symptom": "MCP servers whose names are numbers (`\"9\"`, `\"42\"`) load and report their errors in the order Pi does: a JSON object lists its array-index keys first, in ascending order, then the others in file order.",
