@@ -36048,6 +36048,25 @@
       "tests": []
     },
     {
+      "id": "BF-c21aaa6",
+      "title": "fix(nix): the install check reads Pi's version from --version and PiG's from pig version",
+      "symptom": "fix(nix): the install check reads Pi's version from --version and PiG's from pig version",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c21aaa659d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c225c97",
       "title": "fix(rpc): compaction_start precedes a refused replacement's error; D148 names the extra compaction_end; D141…",
       "symptom": "fix(rpc): compaction_start precedes a refused replacement's error; D148 names the extra compaction_end; D141 end-to-end evidence",

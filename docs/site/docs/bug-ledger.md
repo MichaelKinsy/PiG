@@ -1286,6 +1286,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1fedc2](#bf-c1fedc2) | The durable `read` tool reads a file that grows while it is read, such as an active log, instead of failing… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c1fedc2-2](#bf-c1fedc2-2) | Bounded durable tool output drops a byte-order mark only at the start of byte output, and keeps a U+FEFF at… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c21aaa6](#bf-c21aaa6) | fix(nix): the install check reads Pi's version from --version and PiG's from pig version | PiG's own defect | All platforms | Unreleased |
 | [BF-c225c97](#bf-c225c97) | fix(rpc): compaction_start precedes a refused replacement's error; D148 names the extra compaction_end; D141… | PiG's own defect | All platforms | Unreleased |
 | [BF-c229e1c](#bf-c229e1c) | A Pi Durable SQLite file written by PiG can be read by Pi, and the reverse, when a task kind, request ID, or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c2b2b8b](#bf-c2b2b8b) | fix(tui): the inline memo is used only with tui's own style functions | PiG's own defect | All platforms | Unreleased |
@@ -19323,6 +19324,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `c1fedc2790` (2026-10-05)
 - **Tests:** None recorded.
 - **Release note:** Bounded durable tool output drops a byte-order mark only at the start of byte output, and keeps a U+FEFF at the start of the retained tail.
+
+### BF-c21aaa6
+
+**fix(nix): the install check reads Pi's version from --version and PiG's from pig version**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(nix): the install check reads Pi's version from --version and PiG's from pig version
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c21aaa659d` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-c225c97
 
