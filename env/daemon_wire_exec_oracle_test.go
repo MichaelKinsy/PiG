@@ -278,7 +278,7 @@ func TestDaemonHelloMatchesPisDaemon(t *testing.T) {
 }
 
 // TestDaemonRepliesBeforeBulkOutputLikePisDaemon: a small reply goes ahead of command output that is queued behind a client that
-// does not read. Output is read only after the request is answered, so the queued bulk output is what the reply jumps.
+// does not read. Output is read only after the daemon ran the request, so the queued bulk output is what the reply jumps.
 func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
 	// The command has written 3.2 MB when the request is sent, so at least 1.9 MB of it waits in the daemon behind what its
 	// output buffer (1 MiB) and the pipe (64 KiB) hold. A reply that waited its turn would come after that much output.
@@ -300,7 +300,20 @@ func TestDaemonRepliesBeforeBulkOutputLikePisDaemon(t *testing.T) {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-		infoID := d.start(object("op", "lstat", "path", root), nil)
+		// The request is a mkdir: its effect says the daemon ran it, and the reply is queued right behind that. Reading starts then,
+		// not while the daemon is still being scheduled to take the request, so the output the reply jumps is what the daemon had
+		// queued and not what a client drained during that wait (which a loaded machine stretches to any size).
+		answered := filepath.Join(root, "answered")
+		infoID := d.start(object("op", "mkdir", "path", answered), nil)
+		for deadline := time.Now().Add(30 * time.Second); ; {
+			if _, err := os.Stat(answered); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: the daemon never ran the request", name)
+			}
+			time.Sleep(time.Millisecond)
+		}
 		before := 0
 		for {
 			frame := d.next()
