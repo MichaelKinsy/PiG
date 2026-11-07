@@ -202,6 +202,8 @@ func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	b.WriteString(pythonRunnerFactoryScope)
 	b.WriteString("def _run(item, sock, built=None):\n")
 	b.WriteString("    extension = _build(item, sock)\n")
+	b.WriteString("    if extension is None:\n")
+	b.WriteString("        raise RuntimeError('factory returned None')\n")
 	b.WriteString("    if built is not None:\n")
 	b.WriteString("        built.set()\n")
 	b.WriteString("    extension.run_with_socket(sock)\n\n")

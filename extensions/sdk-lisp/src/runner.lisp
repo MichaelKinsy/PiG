@@ -80,6 +80,7 @@ generations on the host's control lines, and exit once none is live (unless the 
                                (unless (and socket (plusp (length socket)))
                                  (error "~A not set for ~A" (socket-env-name (car member)) (car member)))
                                (let ((ext (build-member member socket)))
+                                 (unless ext (error "factory returned nil"))
                                  (latch-set built)
                                  (unless (serve ext (helper-take-conn socket))
                                    (setf failed t)

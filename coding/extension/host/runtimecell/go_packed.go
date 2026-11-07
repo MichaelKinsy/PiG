@@ -718,7 +718,7 @@ func modulePathAt(root string) (string, error) {
 func renderGoRunner(extensions []GoExtension) string {
 	var b strings.Builder
 	b.WriteString("package main\n\nimport (\n")
-	b.WriteString("\t\"bufio\"\n\t\"errors\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
+	b.WriteString("\t\"bufio\"\n\t\"errors\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"runtime/debug\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
 		fmt.Fprintf(&b, "\t%s %q\n", pkgName, ext.Package)
@@ -730,7 +730,7 @@ func renderGoRunner(extensions []GoExtension) string {
 	b.WriteString("\titems := []item{\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
-		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string, built func()) error { extension := build(sock, func() runnable { return %s.%s() }); built(); return extension.RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
+		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string, built func()) error { extension := build(sock, func() runnable { if member := %s.%s(); member != nil { return member }; return nil }); built(); if extension == nil { return errNoExtension }; return extension.RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
 	}
 	b.WriteString("\t}\n")
 	b.WriteString(goRunnerBody)
@@ -742,6 +742,7 @@ func renderGoRunner(extensions []GoExtension) string {
 // helper the factory calls before Run (the SDK's ParseFrontmatter, ParseDate) dials that socket. The members' factories run one at a time, as Pi loads
 // extensions one at a time.
 const goRunnerFactoryScope = `	type runnable interface{ RunWithSocket(string) error }
+	errNoExtension := errors.New("factory returned nil")
 	var factoryMu sync.Mutex
 	build := func(sock string, factory func() runnable) runnable {
 		factoryMu.Lock()
@@ -764,6 +765,16 @@ const goRunnerBody = `	var mu sync.Mutex
 	cond := sync.NewCond(&mu)
 	live, parked, inputClosed := 0, false, false
 	var failures []error
+	// A panic in a member's factory or serve loop is that member's failure, reported as an error return is: a factory that throws fails its own load in Pi and in an isolated process, and must not end the process that serves the other members. The stack goes to the log indented, so the failure line stays the last unindented line the host reads as the cause.
+	runMember := func(it item, sock string, built func()) (err error) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				fmt.Fprintf(os.Stderr, "%s: panic stack:\n\t%s\n", it.name, strings.ReplaceAll(strings.TrimSpace(string(debug.Stack())), "\n", "\n\t"))
+				err = fmt.Errorf("panic: %v", recovered)
+			}
+		}()
+		return it.run(sock, built)
+	}
 	start := func(it item, sock string) <-chan struct{} {
 		mu.Lock()
 		live++
@@ -773,7 +784,7 @@ const goRunnerBody = `	var mu sync.Mutex
 		built := func() { once.Do(func() { close(ready) }) }
 		go func() {
 			defer built()
-			err := it.run(sock, built)
+			err := runMember(it, sock, built)
 			if err != nil && !errors.Is(err, net.ErrClosed) {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", it.name, err)
 				if c, dialErr := net.Dial("unix", sock); dialErr == nil { _ = c.Close() }
