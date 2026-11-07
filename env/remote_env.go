@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	durableenv "github.com/MichaelKinsy/PiG/durable/env"
 
@@ -1077,17 +1079,6 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 		}
 	}
 	inheritEnv := options.InheritEnv == nil || *options.InheritEnv
-	cwd := e.Cwd()
-	if options.Cwd != "" {
-		resolved, err := e.resolvePath(ctx, options.Cwd)
-		if err != nil {
-			return durableenv.ShellExecResult{}, durableenv.NewExecutionError(durableenv.ExecutionErrorUnknown, err.Error(), nil)
-		}
-		cwd = resolved
-	}
-	if ctx.Err() != nil {
-		return durableenv.ShellExecResult{}, durableenv.NewExecutionError(durableenv.ExecutionErrorAborted, "aborted", nil)
-	}
 	environment := Json{}
 	if inheritEnv {
 		for key, value := range e.shellEnv {
@@ -1097,7 +1088,7 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 	for key, value := range options.Env {
 		environment[key] = value
 	}
-	request := Json{"cwd": cwd, "env": environment, "inheritEnv": inheritEnv}
+	request := Json{"env": environment, "inheritEnv": inheritEnv}
 	switch typed := command.(type) {
 	case string:
 		request["command"] = typed
@@ -1132,6 +1123,40 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 	defer cancel()
 	stopForwarding := context.AfterFunc(ctx, cancel)
 	defer stopForwarding()
+	// pig divergence (D304): the daemon enforces the timeout once it runs the command. This timer also covers starting the connection and a daemon that
+	// stopped answering (a rebooting host), so the call ends on time whatever the remote host does (Pi main c96e368e2).
+	var timedOut atomic.Bool
+	if options.Timeout != nil {
+		timer := time.AfterFunc(time.Duration(*options.Timeout*float64(time.Second)), func() {
+			if requestContext.Err() != nil {
+				return
+			}
+			timedOut.Store(true)
+			cancel()
+		})
+		defer timer.Stop()
+	}
+	stopped := func() *durableenv.ExecutionError {
+		if timedOut.Load() {
+			return execTimeout(options.Timeout)
+		}
+		return durableenv.NewExecutionError(durableenv.ExecutionErrorAborted, "aborted", nil)
+	}
+	cwd := e.Cwd()
+	if options.Cwd != "" {
+		resolved, err := e.resolvePath(requestContext, options.Cwd)
+		if err != nil {
+			if requestContext.Err() != nil {
+				return durableenv.ShellExecResult{}, stopped()
+			}
+			return durableenv.ShellExecResult{}, durableenv.NewExecutionError(durableenv.ExecutionErrorUnknown, err.Error(), nil)
+		}
+		cwd = resolved
+	}
+	if requestContext.Err() != nil {
+		return durableenv.ShellExecResult{}, stopped()
+	}
+	request["cwd"] = cwd
 	onEvent := func(event Json, payload []byte) {
 		stateMu.Lock()
 		skip := settled || callbackError != nil
@@ -1189,7 +1214,7 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 		return durableenv.ShellExecResult{}, failedCallback
 	}
 	if err != nil {
-		return durableenv.ShellExecResult{}, execFailure(err, options.Timeout)
+		return durableenv.ShellExecResult{}, execFailure(err, options.Timeout, stopped)
 	}
 	exitCode, _ := reply.JSON["exitCode"].(float64)
 	//portlint:allow numbers exitCode is the daemon's i64 exit_code (daemon/src/sys/unix.rs:298-304); remote-env.ts:907 passes it through
@@ -1212,7 +1237,7 @@ func callOnOutput(onOutput func(context.Context, string, durableenv.ShellOutputI
 }
 
 // execFailure maps the daemon's error of a command to an ExecutionError.
-func execFailure(err error, timeout *float64) *durableenv.ExecutionError {
+func execFailure(err error, timeout *float64, stopped func() *durableenv.ExecutionError) *durableenv.ExecutionError {
 	remote, ok := errors.AsType[*RemoteError](err)
 	if !ok {
 		return durableenv.NewExecutionError(durableenv.ExecutionErrorUnknown, err.Error(), nil)
@@ -1220,13 +1245,9 @@ func execFailure(err error, timeout *float64) *durableenv.ExecutionError {
 	var failure *durableenv.ExecutionError
 	switch remote.Code {
 	case "timeout":
-		seconds := "undefined"
-		if timeout != nil {
-			seconds = jsnumber.String(*timeout)
-		}
-		failure = durableenv.NewExecutionError(durableenv.ExecutionErrorTimeout, "timeout:"+seconds, nil)
+		failure = execTimeout(timeout)
 	case "aborted":
-		failure = durableenv.NewExecutionError(durableenv.ExecutionErrorAborted, "aborted", nil)
+		failure = stopped()
 	case "shell_unavailable", "spawn_error":
 		failure = durableenv.NewExecutionError(durableenv.ExecutionErrorCode(remote.Code), remote.Message, nil)
 	default:
@@ -1236,6 +1257,15 @@ func execFailure(err error, timeout *float64) *durableenv.ExecutionError {
 		failure.SpillPath = spill
 	}
 	return failure
+}
+
+// execTimeout is the error of a command that ran past its timeout.
+func execTimeout(timeout *float64) *durableenv.ExecutionError {
+	seconds := "undefined"
+	if timeout != nil {
+		seconds = jsnumber.String(*timeout)
+	}
+	return durableenv.NewExecutionError(durableenv.ExecutionErrorTimeout, "timeout:"+seconds, nil)
 }
 
 // Cleanup kills the commands this environment started without aborting them, so they settle with their killed status,

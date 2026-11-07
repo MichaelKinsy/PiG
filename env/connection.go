@@ -53,6 +53,10 @@ const (
 	silenceLimit = 30 * time.Second
 	// startTimeout is how long starting the daemon and its `hello` may take.
 	startTimeout = 60 * time.Second
+	// abortGrace is how long an aborted request waits for the daemon's answer to its cancel before it settles as aborted on its
+	// own. A live daemon answers within a round trip, with its own result (an `exec`'s spill file); a connection that died
+	// unnoticed (a rebooting host) would otherwise hold the request until the keepalive gives up.
+	abortGrace = time.Second
 	// maxNoise is how much output before the sync line is kept while looking for it.
 	maxNoise = 1024 * 1024
 	// stderrTailChars is how much stderr a startup error shows: short, because a tool error can reach the model.
@@ -215,6 +219,11 @@ func IsConnectionLost(err error) bool {
 	return ok && remote.Fields["lost"] == true
 }
 
+// abortedError is the error of a request that stopped waiting: code `aborted`.
+func abortedError() *RemoteError {
+	return NewRemoteError(Json{"code": "aborted", "message": "aborted"})
+}
+
 func closedError() *RemoteError {
 	return NewRemoteError(Json{"code": "unknown", "message": "Connection closed"})
 }
@@ -288,6 +297,12 @@ func (c *Call) finish(reply Reply, err error) {
 	}
 	c.reply, c.err = reply, err
 	close(c.done)
+}
+
+func (c *Call) isFinished() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.finished
 }
 
 // onSettled runs stop once the call settles; if it already has, it runs now.
@@ -470,18 +485,18 @@ func NewConnection(options ConnectionOptions) *Connection {
 	return &Connection{options: options, nextID: 1, lifetime: lifetime, cancel: cancel}
 }
 
-// Info connects if needed and returns what the daemon reported about its machine. Connecting takes no cancellation, as upstream's info() takes no signal; the start ends at its own timeout or at Close.
-func (c *Connection) Info(_ context.Context) (RemoteInfo, error) {
-	ready, err := c.connect()
+// Info connects if needed and returns what the daemon reported about its machine. Cancelling ctx stops waiting for the start (code `aborted`), not the start itself.
+func (c *Connection) Info(ctx context.Context) (RemoteInfo, error) {
+	ready, err := c.connect(ctx)
 	if err != nil {
 		return RemoteInfo{}, err
 	}
 	return ready.info, nil
 }
 
-// Session connects if needed and returns the live session's id. Like Info, it does not cancel the connecting.
+// Session connects if needed and returns the live session's id. Upstream's session() takes no signal: the connecting is not cancelled.
 func (c *Connection) Session(_ context.Context) (int, error) {
-	ready, err := c.connect()
+	ready, err := c.connect(context.Background())
 	if err != nil {
 		return 0, err
 	}
@@ -494,7 +509,9 @@ func (c *Connection) Request(ctx context.Context, op string, request Json, optio
 }
 
 // Start sends one request and returns without waiting for its reply. Starting requests in a row sends them in that
-// order. Cancelling ctx sends `cancel` after the request is written; a request cancelled while the daemon starts waits for the start and is then sent.
+// order. Cancelling ctx while the connection starts ends the call at once with code `aborted` (the start goes on for other
+// requests); once the request is written, cancelling ctx sends `cancel`, and the call settles with the daemon's result or
+// error, or with code `aborted` if the daemon does not answer within a second.
 func (c *Connection) Start(ctx context.Context, op string, request Json, options RequestOptions) *Call {
 	if options.Session != 0 {
 		c.mu.Lock()
@@ -505,7 +522,7 @@ func (c *Connection) Start(ctx context.Context, op string, request Json, options
 		}
 		return c.send(ctx, current, op, request, options)
 	}
-	ready, err := c.connect()
+	ready, err := c.connect(ctx)
 	if err != nil {
 		return failedCall(err)
 	}
@@ -541,7 +558,9 @@ func (s *session) isLive() bool {
 	return s.live
 }
 
-func (c *Connection) connect() (*readyStart, error) {
+// connect waits for the daemon to be started, starting it if needed. It is untilAborted(#connect(), signal): ctx ending first rejects
+// with code `aborted` and leaves the start going.
+func (c *Connection) connect(ctx context.Context) (*readyStart, error) {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -554,8 +573,15 @@ func (c *Connection) connect() (*readyStart, error) {
 	}
 	ready := c.ready
 	c.mu.Unlock()
-	// Starting takes no cancellation, as upstream's #connect takes no signal: a cancelled request waits for the start and is then sent and cancelled. The start ends at its own timeout or at Close.
-	<-ready.done
+	// pig divergence (D304): the start takes no cancellation of its own (it ends at its own timeout or at Close), but waiting for it does (Pi main c96e368e2).
+	if ctx.Err() != nil {
+		return nil, abortedError()
+	}
+	select {
+	case <-ready.done:
+	case <-ctx.Done():
+		return nil, abortedError()
+	}
 	if ready.err != nil {
 		return nil, ready.err
 	}
@@ -590,7 +616,8 @@ func (c *Connection) send(ctx context.Context, s *session, op string, request Js
 		s.mu.Unlock()
 		return failedCall(lost("pi-env connection lost"))
 	}
-	s.pending[id] = &pendingCall{call: call, onEvent: options.OnEvent}
+	pending := &pendingCall{call: call, onEvent: options.OnEvent}
+	s.pending[id] = pending
 	s.mu.Unlock()
 	if options.OnStart != nil {
 		options.OnStart(id, s.id)
@@ -606,7 +633,32 @@ func (c *Connection) send(ctx context.Context, s *session, op string, request Js
 	c.write(s, frame)
 	// Registered after the request is written, so a cancel never leaves before its request; a context that is already
 	// done sends its cancel right away.
-	call.onSettled(context.AfterFunc(ctx, func() { c.writeControl(s, frameCancel, id, Json{}) }))
+	var grace atomic.Pointer[time.Timer]
+	stopAbort := context.AfterFunc(ctx, func() {
+		c.writeControl(s, frameCancel, id, Json{})
+		// pig divergence (D304): a cancel the daemon does not answer within abortGrace settles the call as aborted (Pi main c96e368e2). A late answer finds
+		// no pending request and is dropped.
+		timer := time.AfterFunc(abortGrace, func() {
+			s.mu.Lock()
+			if s.pending[id] != pending {
+				s.mu.Unlock()
+				return
+			}
+			delete(s.pending, id)
+			s.mu.Unlock()
+			call.finish(Reply{}, abortedError())
+		})
+		grace.Store(timer)
+		if call.isFinished() {
+			timer.Stop()
+		}
+	})
+	call.onSettled(func() bool {
+		if timer := grace.Load(); timer != nil {
+			timer.Stop()
+		}
+		return stopAbort()
+	})
 	return call
 }
 
