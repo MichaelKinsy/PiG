@@ -517,6 +517,28 @@ func Extension() *sdk.Extension {
 		ext.UnregisterProvider("conformance-probe")
 		return nil
 	})
+	// registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+	ext.Command("registry-model-probe", "Register the active model's provider with a new name, then read the model", func(ctx sdk.Context, name string) error {
+		encoded, err := json.Marshal(name)
+		if err != nil {
+			return err
+		}
+		var config sdk.ProviderConfig
+		if err := json.Unmarshal([]byte(`{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"m","name":`+string(encoded)+`,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}`), &config); err != nil {
+			return err
+		}
+		ext.RegisterProvider("replica-reg", config)
+		info, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
+		read := ""
+		if info != nil {
+			read = info.Name
+		}
+		ctx.Notify("regname="+read, "info")
+		return nil
+	})
 	ext.Command("commands-probe", "Read the host's slash commands", func(ctx sdk.Context, _ string) error {
 		commands, err := ctx.GetCommands()
 		if err != nil {
@@ -1668,6 +1690,60 @@ func Extension() *sdk.Extension {
 		_, _ = fmt.Fprintln(os.Stderr, "probe-err-command")
 		panic("probe-panic-boom")
 	})
+	// replica-probe (TestReplicatedReadsAreLocalAcrossSDKs) reads the model object, the session id, name and file (from the context and from the session manager) and the context usage, and reports them as one JSON object. Its argument is empty, or "set-model:<provider>/<id>" to call SetModel before it reads. Every SDK fixture reports the same shape.
+	ext.Command("replica-probe", "Report the replicated model object, session ids and context usage", func(ctx sdk.Context, args string) error {
+		if model, ok := strings.CutPrefix(args, "set-model:"); ok {
+			if _, err := ctx.SetModel(model); err != nil {
+				return err
+			}
+		}
+		info, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
+		sessionID, err := ctx.GetSessionID()
+		if err != nil {
+			return err
+		}
+		managerID, err := ctx.SessionManager().GetSessionID()
+		if err != nil {
+			return err
+		}
+		usage, err := ctx.GetContextUsage()
+		if err != nil {
+			return err
+		}
+		var model any
+		if info != nil {
+			model = map[string]any{
+				"id": info.ID, "name": info.Name, "provider": info.Provider, "contextWindow": info.ContextWindow, "maxOutputTokens": info.MaxOutputTokens, "reasoning": info.Reasoning,
+				"inputCostPer1M": info.InputCostPer1M, "outputCostPer1M": info.OutputCostPer1M, "cacheReadCostPer1M": info.CacheReadCostPer1M, "cacheWriteCostPer1M": info.CacheWriteCostPer1M,
+			}
+		}
+		name, err := ctx.GetSessionName()
+		if err != nil {
+			return err
+		}
+		file, err := ctx.GetSessionFile()
+		if err != nil {
+			return err
+		}
+		managerName, err := ctx.SessionManager().GetSessionName()
+		if err != nil {
+			return err
+		}
+		managerFile, err := ctx.SessionManager().GetSessionFile()
+		if err != nil {
+			return err
+		}
+		data, err := json.Marshal(map[string]any{"model": model, "sessionId": sessionID, "managerSessionId": managerID, "usage": usage, "sessionName": name, "sessionFile": file, "managerSessionName": managerName, "managerSessionFile": managerFile})
+		if err != nil {
+			return err
+		}
+		ctx.Notify(string(data), "info")
+		return nil
+	})
+
 	ext.Command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", func(ctx sdk.Context, args string) error {
 		opts, err := ctx.GetSystemPromptOptions()
 		if err != nil {
