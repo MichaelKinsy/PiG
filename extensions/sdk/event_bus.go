@@ -354,7 +354,7 @@ func (e *Extension) dispatchEventBus(ctx Context, id string, req *requestMsg) {
 		Channel   string          `json:"channel"`
 		JSON      json.RawMessage `json:"json"`
 	}
-	if err := json.Unmarshal(req.Args, &args); err != nil {
+	if err := unmarshalFrameMember(req.Args, &args); err != nil {
 		_ = ctx.hostConnection().respond(id, nil, fmt.Errorf("parse %s: %w", methodEventsDispatch, err))
 		return
 	}

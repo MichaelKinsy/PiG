@@ -133,3 +133,18 @@
     (let ((result (pig::too-deep-envelope (frame-body (format nil "{\"type\":\"call_result\",\"id\":\"h-2\",\"call_result\":{\"result\":~A}}" deep)))))
       (check-equal "Maximum call stack size exceeded" (pig:jget (pig:jget (pig:jget result "call_result") "error") "message")))
     (check-equal "refused" (pig:jget (pig::too-deep-envelope (frame-body (format nil "{\"type\":\"notify\",\"notify\":{\"args\":~A}}" deep))) "type"))))
+
+;; A string with an escape or a non-ASCII character was decoded into a buffer as long as the rest of the frame, so a frame of N bytes holding K such strings
+;; consed K x N characters: a 16 MiB frame took 20 s. The buffer is as long as the string.
+(deftest decoding-strings-with-escapes-conses-in-proportion-to-the-frame
+  (let* ((text (format nil "~{~A~^,~}"
+                       (loop for i below 2000 collect (format nil "\"line ~D\\nsecond \\\"line\\\" \\u00e9 ~A\"" i (make-string 400 :initial-element #\x)))))
+         (body (frame-body (format nil "[~A]" text)))
+         (before (sb-ext:get-bytes-consed))
+         (value (pig:decode-json body))
+         (consed (- (sb-ext:get-bytes-consed) before)))
+    (check (= 2000 (length value)))
+    (check-equal (format nil "line 7~%second \"line\" ~C ~A" (code-char 233) (make-string 400 :initial-element #\x)) (aref value 7))
+    ;; 2000 strings of about 450 characters (4 bytes each) in a frame of about 1 MB: well under 100 bytes consed per frame byte; the buffer sized by the rest of the
+    ;; frame conses about 4 MB per string, 8 GB in all.
+    (check (< consed (* 100 (length body))))))

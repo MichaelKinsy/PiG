@@ -16,6 +16,7 @@ Other local changes (lw-json):
 
 - The JSON.stringify mode: `MarshalStringify`/`AppendStringify`, `encOpts.jsStrings` and `appendCompactJS` for nested Marshaler output, plus the `StringifyAppender` splice.
 - `UnmarshalTrusted`.
+- Frame decode (`fast_valid.go`, `decode.go`): `validate` is the validity pass of every `Unmarshal` and `UnmarshalFrame`; it crosses string bytes eight bytes at a time and runs the scanner (`checkValid`) only on a document it does not accept, so the error is the scanner's. `skip` counts brackets and crosses strings instead of stepping the scanner, `unquote` copies runs between escapes and well-formed multi-byte runs, `rescanLiteral` finds a string's end eight bytes at a time, and `UnmarshalFrame` hands a `RawMessage` member the frame's own bytes (capacity-limited) instead of a copy. Decoding into an interface value shares short ASCII strings through a per-state table (`nameCache`) and returns one boxed value for each integer 0 to 255. Equivalence: `FuzzValidateMatchesCheckValid`, `FuzzUnquoteMatchesReference` (the pre-change `unquoteBytes`), `TestDecodeCrossesValuesWithoutLosingItsPlace`, `TestUnmarshalFrameErrorsAreTheScannersErrors`, `TestInterfaceNumbers`, `TestInterfaceStringsAreTheirOwnText`.
 - An eight-byte scan in `appendString`.
 - A plain-slice `encodeState` buffer in place of the embedded `bytes.Buffer`, with pooled buffers capped at 64 KiB.
 - The verify mode (`verify_off.go`/`verify_on.go`, build tag `pigjson_verify`).

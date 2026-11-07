@@ -36,7 +36,7 @@ func (e *Extension) applyEventStream(req *requestMsg) {
 	}()
 	var root any
 	if len(req.Args) > 0 {
-		if err := json.Unmarshal(req.Args, &root); err != nil {
+		if err := unmarshalFrameMember(req.Args, &root); err != nil {
 			delete(e.eventReplicas, id)
 			req.streamErr = fmt.Errorf("event stream: decode keyframe: %w", err)
 			return

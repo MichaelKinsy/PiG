@@ -116,8 +116,18 @@ adds a few levels); a value past the bound is answered with Pi's RangeError (see
               do (setf (schar s (- j start)) (code-char (aref buf j))))
         (setf (jr-pos r) (1+ i))
         (return-from jr-string s)))
-    ;; slow path
-    (let ((out (make-array (max 16 (- end start)) :element-type 'character :fill-pointer 0 :adjustable t)))
+    ;; slow path. The string holds no more characters than it has bytes up to its closing quote (an escape is two bytes or more for one character, a UTF-8 sequence
+    ;; two or more); without a closing quote the string is malformed and the loop below fails with the position the first pass reports.
+    (let ((out (make-array (max 16 (- (let ((j i))
+                                        (declare (type fixnum j))
+                                        (loop
+                                          (when (>= j end) (return end))
+                                          (let ((b (aref buf j)))
+                                            (cond ((= b 34) (return j))
+                                                  ((= b 92) (incf j 2))
+                                                  (t (incf j))))))
+                                      start))
+                           :element-type 'character :fill-pointer 0 :adjustable t)))
       (setf i start)
       (loop
         (when (>= i end) (json-fail "unterminated string" (jr-pos r)))

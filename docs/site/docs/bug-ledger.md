@@ -101,6 +101,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-10189c4](#bf-10189c4) | The `/tree` Summarize option sends the session's thinking level with the branch summary request when the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-10818f5](#bf-10818f5) | Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
 | [BF-11866f8](#bf-11866f8) | `WaitForIdle` on the Harness or a Conversation no longer fails with "Harness is closed" when a close begins… | PiG's own defect | All platforms | 0.7.0 |
@@ -2876,6 +2877,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `10189c4741` (2026-10-27)
 - **Tests:** `coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryPassesTheSessionThinkingLevel`, `internal/codingagent/compaction/branch_summarization_test.go::TestGenerateBranchSummaryPassesThinkingLevelOnlyForReasoningModels`
 - **Release note:** The `/tree` Summarize option sends the session's thinking level with the branch summary request when the model supports reasoning, as compaction does. Before, the request carried no reasoning, and a reasoning model on OpenAI Responses or Azure Responses that rejects an effort of `none` failed the summary with a 400 error.
+
+### BF-10818f5
+
+**Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now decode them about four times faster and allocate about half as much.
+- **Root cause:** They were slow because the Go SDK and the host scanned and copied each frame five times: a byte-at-a-time validity scan, a second scan to skip a request's arguments, a copy of them, and two more validations and scans to hand the event to a handler.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `10818f5661` (2026-11-06)
+- **Tests:** `extensions/sdk/event_args_memo_test.go::TestEventArgsMemoRepeatIsCheaperThanADecode`, `extensions/sdk/frame_decode_verdicts_test.go::TestFrameDecodeVerdicts`, `extensions/sdk/frame_decode_verdicts_test.go::TestRequestArgsKeepTheirBytesAcrossFrames`, `extensions/sdk/json/decode_fast_test.go::FuzzDecodeCrossesValues`, `extensions/sdk/json/decode_fast_test.go::TestDecodeCrossesValuesWithoutLosingItsPlace`, `extensions/sdk/json/decode_fast_test.go::TestInterfaceNumbers`, `extensions/sdk/json/decode_fast_test.go::TestInterfaceStringsAreTheirOwnText`, `extensions/sdk/json/decode_fast_test.go::TestUnmarshalFrameAliasesRawMessages` and 7 more in docs/bug-ledger.json
+- **Release note:** Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now decode them about four times faster and allocate about half as much. They were slow because the Go SDK and the host scanned and copied each frame five times: a byte-at-a-time validity scan, a second scan to skip a request's arguments, a copy of them, and two more validations and scans to hand the event to a handler. On a 43 MiB provider payload, the read and decode of one request frame fell from about 600-800 ms to about 225 ms and from 181 MB to 101 MB allocated, and the host's read of a frame an extension sent rose from about 130 to about 500 MB/s. Malformed frames end the connection with the same message as before, and every value decodes to the same Go value. The Lisp SDK decoded a frame with many strings containing escapes in time quadratic in the frame (a 16 MiB frame took 20 s, now 0.15 s).
 
 ### BF-108cb7d
 
