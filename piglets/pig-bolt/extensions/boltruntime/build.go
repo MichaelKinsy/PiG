@@ -239,6 +239,7 @@ func runCompiler(ctx context.Context, opts buildOptions, stageDir, config, meta,
 		args = append(args, "--bytecode-order="+orderFile)
 	}
 	args = append(args, "./"+stageEntry, "./"+stageTree+"/provider-socket.mjs", "--outfile", out)
+	//nolint:gosec // G204 (class b): the program is the Pi-Bolt runtime this Piglet installed and verified against its pinned digest; the arguments are the fixed build flags and paths in the staged build directory.
 	cmd := exec.CommandContext(ctx, opts.Compiler, args...)
 	ownProcessGroup(cmd)
 	cmd.Dir = stageDir
@@ -407,6 +408,7 @@ func train(ctx context.Context, opts buildOptions, bytecodeHost, orderFile strin
 func trainRun(ctx context.Context, opts buildOptions, bytecodeHost, orderOut string, args []string, timeout time.Duration, log io.Writer) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	//nolint:gosec // G204 (class b): the program is the bytecode host this build just compiled in its own work directory; the arguments are the fixed training modes and an extension entry path of the request.
 	cmd := exec.CommandContext(ctx, bytecodeHost, args...)
 	// A training run executes the extensions' factories, which may start processes of their own: the whole group ends with the run.
 	ownProcessGroup(cmd)

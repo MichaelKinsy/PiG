@@ -5,6 +5,7 @@ package boltruntime
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"os"
@@ -72,7 +73,7 @@ func TestTrainHostHelper(t *testing.T) {
 		t.Skip("runs as the training host of TestTrainRunEndsOnTheWholeRegistration")
 	}
 	outcome := func() string {
-		conn, err := net.Dial("unix", os.Getenv("PIG_EXT_SOCKET"))
+		conn, err := net.Dial("unix", os.Getenv("PIG_EXT_SOCKET")) //nolint:gosec // G704: the address is the training socket trainRun created for this test and passed in PIG_EXT_SOCKET.
 		if err != nil {
 			return "dial: " + err.Error()
 		}
@@ -87,7 +88,7 @@ func TestTrainHostHelper(t *testing.T) {
 			return "second part: " + err.Error()
 		}
 		_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-		if _, err := conn.Read(make([]byte, 1)); err != io.EOF {
+		if _, err := conn.Read(make([]byte, 1)); !errors.Is(err, io.EOF) {
 			return "after the frame the host did not close: " + err.Error()
 		}
 		return "closed after the whole frame"
