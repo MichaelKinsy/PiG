@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -77,7 +78,7 @@ func (f *cacheFixture) manifest() Manifest {
 func (f *cacheFixture) start(exe, digest string) (hashes int, reason Reason, err error) {
 	f.t.Helper()
 	f.hashes.Store(0)
-	reason, err = f.process().Verify(f.t.Context(), f.manifest(), exe, digest)
+	reason, err = verifyClosed(f.process(), f.t.Context(), f.manifest(), exe, digest)
 	return int(f.hashes.Load()), reason, err
 }
 
@@ -146,7 +147,7 @@ func TestCacheHitStillRunsAndHonoursTheProbe(t *testing.T) {
 	v := f.process()
 	v.probe = func(context.Context, string) (string, error) { return "", errors.New("exit status 1") }
 	f.hashes.Store(0)
-	reason, err := v.Verify(t.Context(), f.manifest(), f.exe, f.digest)
+	reason, err := verifyClosed(v, t.Context(), f.manifest(), f.exe, f.digest)
 	if reason != ReasonStartFailed || err == nil || f.hashes.Load() != 0 {
 		t.Fatalf("reason %q, err %v, %d hashes; want start_failed from the probe with no hash", reason, err, f.hashes.Load())
 	}
@@ -427,7 +428,7 @@ func TestLockCheckStaysBeforeTheCache(t *testing.T) {
 	m := f.manifest()
 	m.Kind, m.Version = KindBun, "1.4.2"
 	locked := LockEntry{Runtime: "bun", Version: "1.4.2", Platform: m.Platform, SHA256: f.digest}
-	if reason, err := f.process(locked).Verify(t.Context(), m, f.exe, f.digest); err != nil || reason != "" {
+	if reason, err := verifyClosed(f.process(locked), t.Context(), m, f.exe, f.digest); err != nil || reason != "" {
 		t.Fatalf("locked first start: %q, %v", reason, err)
 	}
 	if _, ok := readDigestRecord(f.record()); !ok {
@@ -435,7 +436,7 @@ func TestLockCheckStaysBeforeTheCache(t *testing.T) {
 	}
 	f.hashes.Store(0)
 	f.probes.Store(0)
-	reason, err := f.process().Verify(t.Context(), m, f.exe, f.digest)
+	reason, err := verifyClosed(f.process(), t.Context(), m, f.exe, f.digest)
 	if reason != ReasonVerifyFailed || err == nil || !strings.Contains(err.Error(), "not in the runtime lock") || f.hashes.Load() != 0 || f.probes.Load() != 0 {
 		t.Fatalf("unlocked start over a record: reason %q, err %v, %d hashes, %d probes; want verify_failed from the lock before hash and probe", reason, err, f.hashes.Load(), f.probes.Load())
 	}
@@ -459,7 +460,7 @@ func TestUnsettledExecutableIsNotRecorded(t *testing.T) {
 		v := f.process()
 		v.settled = func(identity fileIdentity) bool { return identity.settledAt(now) }
 		f.hashes.Store(0)
-		if _, err := v.Verify(t.Context(), f.manifest(), f.exe, f.digest); err != nil || f.hashes.Load() != 1 {
+		if _, err := verifyClosed(v, t.Context(), f.manifest(), f.exe, f.digest); err != nil || f.hashes.Load() != 1 {
 			t.Fatalf("start at %v after the newest time: %d hashes, err %v; want 1 hash", now.Sub(newest), f.hashes.Load(), err)
 		}
 	}
@@ -475,8 +476,9 @@ func TestUnsettledExecutableIsNotRecorded(t *testing.T) {
 	}
 }
 
-// Bytes that change while they are hashed are not recorded: the identity read before no longer describes what was read.
-func TestExecutableChangedWhileHashedIsNotRecorded(t *testing.T) {
+// Bytes that change while they are hashed fail the check and are not recorded: the identity read before no longer describes what was
+// read, and the digest describes no single state of the file.
+func TestExecutableChangedWhileHashedFailsAndIsNotRecorded(t *testing.T) {
 	f := newCacheFixture(t)
 	pastTick(t, f.exe)
 	v := f.process()
@@ -493,12 +495,104 @@ func TestExecutableChangedWhileHashedIsNotRecorded(t *testing.T) {
 		}
 		return sum, err
 	}
-	// The digest it read is the one the manifest names, so the start passes; the executable changed after, so nothing is recorded.
-	if _, err := v.Verify(t.Context(), f.manifest(), f.exe, f.digest); err != nil {
-		t.Fatal(err)
+	// The digest it read is the one the manifest names, but the executable changed after it was read.
+	reason, err := verifyClosed(v, t.Context(), f.manifest(), f.exe, f.digest)
+	if reason != ReasonVerifyFailed || err == nil || !strings.Contains(err.Error(), "changed while it was being verified") {
+		t.Fatalf("reason %q, err %v; want verify_failed for a file that changed while it was hashed", reason, err)
 	}
 	if _, err := os.Stat(f.record()); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("a record of an executable that changed while it was hashed: %v", err)
+	}
+}
+
+// Whether a file is settled is decided when its hash begins. A file that is too young then is not recorded even when the hash takes
+// longer than the settle window: a write in the same timestamp tick as the newest time in its identity can land while the hash reads.
+func TestFileUnsettledWhenTheHashBeginsIsNotRecordedHoweverLongTheHashTakes(t *testing.T) {
+	f := newCacheFixture(t)
+	info, err := os.Stat(f.exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := identify(info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Unix(0, max(identity.Modified, identity.Changed)).Add(time.Millisecond)
+	v := f.process()
+	v.settled = func(i fileIdentity) bool { return i.settledAt(now) }
+	v.sum = func(r io.Reader) (string, error) {
+		// The hash outlasts the settle window.
+		now = now.Add(settleWindow + time.Second)
+		return sumSHA256(r)
+	}
+	if reason, err := verifyClosed(v, t.Context(), f.manifest(), f.exe, f.digest); err != nil {
+		t.Fatalf("%s: %v", reason, err)
+	}
+	if _, err := os.Stat(f.record()); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("a file that was %v old when its hash began was recorded after the hash: %v", time.Millisecond, err)
+	}
+}
+
+// A record that is a symbolic link is ignored, even one that points to a valid record of this file.
+func TestSymlinkedRecordIsIgnored(t *testing.T) {
+	f := newCacheFixture(t)
+	f.prime()
+	real := filepath.Join(f.dir, "real-record")
+	if err := os.Rename(f.record(), real); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, f.record()); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := readDigestRecord(f.record()); ok {
+		t.Fatal("a symbolic link was read as a record")
+	}
+	if hashes, _, err := f.start(f.exe, f.digest); hashes != 1 || err != nil {
+		t.Fatalf("%d hashes, err %v; want 1 hash and success", hashes, err)
+	}
+}
+
+// A FIFO at the record path is refused without blocking on it.
+func TestFIFORecordIsIgnoredWithoutBlocking(t *testing.T) {
+	f := newCacheFixture(t)
+	if err := syscall.Mkfifo(f.record(), 0o600); err != nil {
+		t.Skipf("no FIFO here: %v", err)
+	}
+	done := make(chan bool, 1)
+	go func() {
+		_, ok := readDigestRecord(f.record())
+		done <- ok
+	}()
+	select {
+	case ok := <-done:
+		if ok {
+			t.Fatal("a FIFO was read as a record")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("reading a FIFO record blocked")
+	}
+	// The start does not block on it either: it hashes and replaces the FIFO with its record.
+	finished := make(chan int, 1)
+	go func() {
+		hashes, _, _ := f.start(f.exe, f.digest)
+		finished <- hashes
+	}()
+	select {
+	case hashes := <-finished:
+		if hashes != 1 {
+			t.Fatalf("%d hashes, want 1", hashes)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("a start blocked on a FIFO record")
+	}
+}
+
+// A regular owner-only record is still read.
+func TestRegularRecordIsStillRead(t *testing.T) {
+	f := newCacheFixture(t)
+	f.prime()
+	if record, ok := readDigestRecord(f.record()); !ok || record.SHA256 != f.digest {
+		t.Fatalf("record %+v, %v; want the recorded digest", record, ok)
 	}
 }
 
@@ -533,7 +627,7 @@ func TestConcurrentStartsLeaveOneWholeRecord(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-begin
-			if _, err := f.process().Verify(t.Context(), f.manifest(), f.exe, f.digest); err != nil {
+			if _, err := verifyClosed(f.process(), t.Context(), f.manifest(), f.exe, f.digest); err != nil {
 				errs <- err
 			}
 		}()

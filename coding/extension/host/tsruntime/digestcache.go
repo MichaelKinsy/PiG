@@ -37,15 +37,19 @@ import (
 //     the device or sets the clock back. The hash is a start-time check, not a defence against them, as it was before.
 //   - The time between the check and the exec. The executable is started by path after Verify returns, with or without the cache.
 //
-// A file whose newest modification or ctime is within settleWindow of the moment its record would be written is not recorded: a second
-// write inside one timestamp tick leaves the same modification time and ctime (git's racily-clean index entries), and the hash may have
-// read bytes from between the two writes. The next start hashes it again and records it.
+// A file is recorded only when, at the moment its hash begins, its newest modification time or ctime is at least settleWindow old
+// (settleWindow is far more than any timestamp granularity). A write that completed before then is in the identity and in the bytes
+// the hash reads; a write after it carries a timestamp later than the newest one the identity holds, so the identity of the file after
+// the hash differs and the check fails. Without the window, a write in the same timestamp tick as the one before the hash leaves the
+// same modification time and ctime (git's racily-clean index entries) while the hash reads bytes from between the two writes.
+// The window is decided before the hash: deciding it after the hash would let a hash that took longer than the window launder a
+// file that was fresh when it began. The next start of a file too young to record hashes it again and records it.
 //
 // The record is one file per executable, <dir>/.verified-<name>, so a provider that removes an image's directory removes its record.
 // It is written through an owner-only temporary file and a rename: simultaneous starts each leave a whole record, and a lost race
 // costs one more hash. Every failure to read, parse, trust or write it means hash again: it never fails a start.
 
-// settleWindow is how old the newest modification or ctime of a file must be before a digest of it is recorded.
+// settleWindow is how old the newest modification or ctime of a file must be when its hash begins for a digest of it to be recorded.
 // pig additive (D19): Pi has no runtime slot whose executable a start verifies.
 const settleWindow = 2 * time.Second
 
@@ -73,6 +77,12 @@ func (r digestRecord) vouches(identity fileIdentity, want string) bool {
 	return r.Identity == identity && r.SHA256 == want
 }
 
+// unchangedBy reports whether current, read from the same open file later, shows the file unchanged since i. Unlinking a file sets
+// its ctime, so the ctime counts only while the file is still linked.
+func (i fileIdentity) unchangedBy(current fileIdentity, unlinked bool) bool {
+	return i.Device == current.Device && i.Inode == current.Inode && i.Size == current.Size && i.Modified == current.Modified && (unlinked || i.Changed == current.Changed)
+}
+
 // settledAt reports whether identity is old enough at now to be recorded.
 func (i fileIdentity) settledAt(now time.Time) bool {
 	return now.UnixNano()-max(i.Modified, i.Changed) >= int64(settleWindow)
@@ -82,25 +92,21 @@ func digestRecordPath(executable string) string {
 	return filepath.Join(filepath.Dir(executable), ".verified-"+filepath.Base(executable))
 }
 
-// checkDigest verifies that the file at path has SHA-256 digest want, without hashing it when the record next to it vouches for the
-// file's current identity. A different digest is an error exactly as when the file is hashed.
-func (v *Verifier) checkDigest(path, want string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }() // Read-only: close cannot lose data.
-	info, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	identity, identErr := identify(info)
-	record := digestRecordPath(path)
-	if identErr == nil {
+// checkDigest verifies that the file of exe has SHA-256 digest want, without hashing it when the record next to it vouches for the
+// file's current identity. A different digest is an error exactly as when the file is hashed. A file that changes while it is hashed
+// fails the check: the digest describes no single state of it.
+func (v *Verifier) checkDigest(exe *Executable, want string) error {
+	file, identity := exe.file, exe.identity
+	record := digestRecordPath(exe.path)
+	if exe.identErr == nil {
 		if cached, ok := readDigestRecord(record); ok && cached.vouches(identity, want) {
 			return nil
 		}
 	}
+	// Whether the file may be recorded is decided from the identity read before the hash, at the moment the hash begins: a write after
+	// that moment gets a later timestamp than settleWindow after the newest one the identity holds, so it cannot hide in the same
+	// timestamp tick as the identity.
+	settled := exe.identErr == nil && v.settled(identity)
 	actual, err := v.sum(file)
 	if err != nil {
 		return err
@@ -108,19 +114,20 @@ func (v *Verifier) checkDigest(path, want string) error {
 	if actual != want {
 		return fmt.Errorf("digest %s, manifest says %s", actual, want)
 	}
-	if identErr != nil || !v.settled(identity) {
+	if exe.identErr != nil {
 		return nil
 	}
-	// A file that changed while it was hashed is not recorded.
-	after, err := file.Stat()
+	info, err := file.Stat()
 	if err != nil {
-		return nil
+		return err
 	}
-	if current, err := identify(after); err != nil || current != identity {
-		return nil
+	if current, err := identify(info); err != nil || current != identity {
+		return errors.New(exe.path + " changed while it was being verified")
 	}
-	// Best effort: a read-only slot, or a full disk, only costs the next start its hash.
-	_ = writeDigestRecord(record, digestRecord{Identity: identity, SHA256: actual})
+	if settled {
+		// Best effort: a read-only slot, or a full disk, only costs the next start its hash.
+		_ = writeDigestRecord(record, digestRecord{Identity: identity, SHA256: actual})
+	}
 	return nil
 }
 
@@ -132,10 +139,10 @@ func sumSHA256(r io.Reader) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// readDigestRecord returns the record at path, or false when it is missing, unreadable, too large, not a regular file that the current
-// user owns and no one else can access, or not exactly the record shape.
+// readDigestRecord returns the record at path, or false when it is missing, unreadable, a symbolic link, too large, not a regular file
+// (a FIFO or device is opened without blocking and refused) that the current user owns and no one else can access, or not exactly the record shape.
 func readDigestRecord(path string) (digestRecord, bool) {
-	file, err := os.Open(path)
+	file, err := openRecord(path)
 	if err != nil {
 		return digestRecord{}, false
 	}

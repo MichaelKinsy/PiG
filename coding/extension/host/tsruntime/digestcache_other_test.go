@@ -29,7 +29,7 @@ func TestEveryStartHashesWhereNoFileIdentityIsTrusted(t *testing.T) {
 		v.probe = func(context.Context, string) (string, error) { return "", nil }
 		v.sum = func(r io.Reader) (string, error) { hashes++; return sumSHA256(r) }
 		v.settled = func(fileIdentity) bool { return true }
-		if _, err := v.Verify(t.Context(), m, exe, digest); err != nil || hashes != 1 {
+		if _, err := verifyClosed(v, t.Context(), m, exe, digest); err != nil || hashes != 1 {
 			t.Fatalf("%d hashes, err %v; want 1 hash", hashes, err)
 		}
 		if _, err := os.Stat(digestRecordPath(exe)); err == nil {

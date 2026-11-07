@@ -655,6 +655,7 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		h.markExtension(pending.me.config.Name, "spawn-start")
 	}
 	processTree, err := startProcessTree(cmd)
+	releaseVerified(tsSelection)
 	if !nodeRuntime || err != nil {
 		// A direct child inherited the log file; Node's host-side copy owns the writer until Cmd.Wait drains it, and no Cmd.Wait runs after a failed start.
 		processState.stderrLog.closeWriter()

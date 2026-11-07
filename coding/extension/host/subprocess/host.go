@@ -3270,6 +3270,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		cmd.Stdout, cmd.Stderr = h.nodeExtensionOutput(stderrSink)
 	}
 	processTree, err := startProcessTree(cmd)
+	releaseVerified(tsSelection)
 	if err != nil {
 		// No Cmd.Wait runs to close the writer the host-side copy owns.
 		me.stderrLog.closeWriter()
