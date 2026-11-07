@@ -1,0 +1,3 @@
+### Fixed
+
+- A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. A Go handler that returns nothing no longer reads the event to write its reply: a `context` handler that left the messages alone costs 0.8 µs at any context size, where it had cost 5.5 ms at 3,000 messages. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does. <!-- fix: 3de4b8e877c8fc4d3b7bedafa5e8ae8cbad7161f -->
