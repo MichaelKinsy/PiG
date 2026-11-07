@@ -9,6 +9,7 @@ package compiledin
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -27,6 +28,9 @@ func OptionsError(name string, err error) error {
 	return fmt.Errorf("options of the %s extension: %w", name, err)
 }
 
+// factoriesMu guards factories: the sessions of a --listen server assemble their built-ins concurrently, and each assembly registers them again (pig additive (D232)).
+var factoriesMu sync.RWMutex
+
 // factories holds the registered factories, two at most, so a list is searched; a map would allocate its table at the first Register.
 var factories []registered
 
@@ -37,6 +41,8 @@ type registered struct {
 
 // Register records the factory of the compiled-in extension name, replacing an earlier one of that name.
 func Register(name string, factory Factory) {
+	factoriesMu.Lock()
+	defer factoriesMu.Unlock()
 	for i := range factories {
 		if factories[i].name == name {
 			factories[i].factory = factory
@@ -51,6 +57,8 @@ func Register(name string, factory Factory) {
 
 // Lookup returns the factory of the compiled-in extension name.
 func Lookup(name string) (Factory, bool) {
+	factoriesMu.RLock()
+	defer factoriesMu.RUnlock()
 	for _, r := range factories {
 		if r.name == name {
 			return r.factory, true

@@ -275,6 +275,9 @@ func extConfigOrigin(config ExtConfig) string {
 //
 // pig-specific: no upstream equivalent.
 type Host struct {
+	// cells is the registry of cell processes shared with other Hosts, and group this Host's ready.group in it; both are unset for a Host that shares no cells. pig additive (D232): Host.ShareCells.
+	cells *CellRegistry
+	group string
 	// slotCalls keeps UI replacements in the order the extensions sent them (runSlotCall).
 	slotCalls          pendingSlotCalls
 	toolRegistrationMu sync.Mutex
@@ -3110,7 +3113,11 @@ func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool)
 			return nil, newLoadError(me.config.Name, "spawn", "admit_failed", err)
 		}
 	}
-	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
+	parent := runtimeParent(ctx)
+	if retainedFrom == nil {
+		parent = h.processParent(ctx)
+	}
+	extCtx, cancel := context.WithCancel(parent)
 	me.cancel = cancel
 	me.parentCtx = runtimeParent(ctx)
 	defer func() {
@@ -3159,6 +3166,15 @@ func (h *Host) ensureNodeRuntime(ctx context.Context) error {
 	}
 	h.nodeRuntimeReady = true
 	return nil
+}
+
+// factoryLauncherEnv is what the first generation of a Node factory launcher reads from its environment: the Host's configured cwd, which keys Pi's factory cache as every later admission does (the process's own cwd is the physical path), and, pig additive (D232), the Host's group when it shares cells, passed to the first generation as every later admission passes it, because the registry offers the process to the other Hosts. cli.mjs reads and deletes both.
+func (h *Host) factoryLauncherEnv() []string {
+	env := []string{"PIG_EXT_CWD=" + h.cwd}
+	if group := h.Group(); group != "" {
+		env = append(env, "PIG_EXT_GROUP="+group)
+	}
+	return env
 }
 
 // connectExt establishes the extension connection. For a fused in-process
@@ -3236,7 +3252,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	if me.procOwner != nil {
 		// pig additive (D20): the process that already holds this extension's modules re-invokes the factory, as Pi's loader does inside one runtime.
 		entry, _ := nodeLauncherEntry(binPath)
-		if err := me.share.send(factoryAdmission{Name: me.config.Name, Entry: entry, Socket: address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); err != nil {
+		if err := me.share.send(factoryAdmission{Name: me.config.Name, Entry: entry, Socket: address, ReloadPass: reloadPass(ctx), Cwd: h.cwd, Group: h.Group()}); err != nil {
 			return nil, newLoadError(me.config.Name, "spawn", "admit_failed", fmt.Errorf("admit %s to the running extension process: %w", me.config.Name, err))
 		}
 		return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3289,7 +3305,9 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	entry, factoryLauncher := nodeLauncherEntry(binPath)
 	if factoryLauncher {
 		// The first generation keys Pi's factory cache by this Host's configured cwd, as every later admission does; the process's own cwd is the physical path.
-		cmd.Env = append(cmd.Env, "PIG_EXT_CWD="+h.cwd)
+		// pig additive (D232): a PIG_EXT_GROUP the user exported is not a group: only this Host's own group reaches the launcher.
+		cmd.Env = slices.DeleteFunc(cmd.Env, func(value string) bool { return envHasKey(value, "PIG_EXT_GROUP") })
+		cmd.Env = append(cmd.Env, h.factoryLauncherEnv()...)
 		if admissionWriter, err = cmd.StdinPipe(); err != nil {
 			cancel()
 			return nil, newLoadError(me.config.Name, "spawn", "spawn_failed", fmt.Errorf("spawn %s: %w", binPath, err))
@@ -3367,6 +3385,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.share.node = true
 		me.share.tier = tierOf(tsSelection)
 		h.retention().register(me.share)
+		// pig additive (D232): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
+		if h.sharesCells(ctx) {
+			h.cells.register(h.cellRegistryKey(me.share.key), me.share)
+		}
 	}
 
 	return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3505,6 +3527,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 
 	// Send ready. sendReady fills the geometry.
 	readyPayload := &ReadyPayload{
+		Group:      h.Group(),
 		Cwd:        h.cwd,
 		Mode:       h.mode,
 		SourceInfo: h.readySourceInfo(me),

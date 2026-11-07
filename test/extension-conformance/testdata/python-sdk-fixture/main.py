@@ -1800,6 +1800,21 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "soft tool error", "is_error": True}
 
     ext.tool("echo", "Echo input text", {"type": "object", "required": ["text"], "properties": {"text": {"type": "string", "description": "Text to echo"}, "offset": {"type": "number"}}}, echo)
+    # D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    shared = {"calls": 0, "heard": []}
+    ext.events.on("shared-cells", lambda _ctx, data: shared["heard"].append(data["from"]))
+
+    def shared_counter(_ctx, _params):
+        shared["calls"] += 1
+        return str(shared["calls"])
+
+    def shared_ping(ctx, params):
+        ctx.events.emit("shared-cells", {"from": params["name"]})
+        return "pinged"
+
+    ext.tool("counter", "This instance's call count", {"type": "object", "properties": {}}, shared_counter)
+    ext.tool("ping", "Emit on the shared-cells channel", {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}, shared_ping)
+    ext.tool("received", "What this instance heard on shared-cells", {"type": "object", "properties": {}}, lambda _ctx, _params: "received=" + ",".join(shared["heard"]))
     ext.tool("render_probe", "Render its own tool card", {"type": "object", "properties": {}}, lambda _ctx, _params: "render ok")
 
     def render_probe_call(_ctx, args, render, width):

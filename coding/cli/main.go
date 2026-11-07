@@ -34,6 +34,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -886,11 +887,17 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	runMode := processAppMode(flags)
-	if runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC {
+	if flags.Listen != "" {
+		// pig additive (D232): a --listen server runs many sessions, so it ends D174's cap of 2 Ps: sessions that start together do their server-side work on every P.
+		procpolicy.Release()
+	}
+	// pig additive (D232): a --listen server skips D175's GOGC 400 start, because resident memory across many sessions is its objective.
+	if (runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC) && flags.Listen == "" {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
 		gcpolicy.Apply()
 	}
-	if runMode == appModeRPC {
+	// pig additive (D232): a --listen server skips the rpc cap of 1 P, because one process runs many sessions.
+	if runMode == appModeRPC && flags.Listen == "" {
 		// pig additive (D174): an rpc run schedules on procpolicy.RPCCap Ps unless the environment sets GOMAXPROCS.
 		procpolicy.ApplyRPC()
 	}
@@ -947,6 +954,10 @@ func Main(args []string, options *MainOptions) {
 	signal.Notify(sigCh, syscall.SIGTERM)
 	if runtime.GOOS != "windows" {
 		signal.Notify(sigCh, syscall.SIGHUP)
+	}
+	if flags.Listen != "" {
+		// pig additive (D232): Ctrl+C ends a --listen server like SIGTERM, so the sessions shut down and the socket file is removed.
+		signal.Notify(sigCh, os.Interrupt)
 	}
 	defer signal.Stop(sigCh)
 	go func() {
@@ -1185,6 +1196,13 @@ func Main(args []string, options *MainOptions) {
 			return stageExtensionSDKsFor(ctx, codingagent.ConfigRoot(), startupSDKLockTimeout)
 		},
 	}
+	if flags.Listen != "" {
+		// pig additive (D232): with --listen-share-extensions the server's Hosts share cell processes through one registry and its builds run one at a time. Otherwise every session's Host spawns its own processes, as a process per session would, and sessions build concurrently.
+		if flags.ListenShareExtensions {
+			builder.buildMu = &sync.Mutex{}
+			builder.cellRegistry = subprocess.NewCellRegistry()
+		}
+	}
 	startupExtensions := &startupExtensionSet{}
 	stopStartupExtensions = startupExtensions.close
 	defer startupExtensions.close()
@@ -1372,6 +1390,12 @@ func Main(args []string, options *MainOptions) {
 		codingagent.ReportDiagnostics(startupDiagnostics)
 		timings.PrintTimings()
 		startAutomaticExtensionCacheGC(ctx)
+		if flags.Listen != "" {
+			// pig additive (D232): --listen serves one rpc session per connection.
+			exitProcess(runRPCListen(ctx, flags, activePiglet, rpcModeResources{
+				Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
+			}))
+		}
 		exitProcess(runRPCMode(ctx, flags, activePiglet, rpcModeResources{
 			Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
 		}))

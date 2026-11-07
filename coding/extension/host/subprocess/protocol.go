@@ -479,6 +479,8 @@ type EntryRendererDecl struct {
 
 // ReadyPayload is sent after successful registration. The session name and the active model travel in State (State.Session.SessionName, State.Model), the one snapshot every state_update repeats.
 type ReadyPayload struct {
+	// Group names the Host whose Session this member serves, unique in the process; a runtime scopes its per-process bookkeeping by it. Absent for a Host that shares no cells. pig additive (D232).
+	Group  string            `json:"group,omitempty"`
 	Cwd    string            `json:"cwd"`              // Working directory
 	Mode   string            `json:"mode,omitempty"`   // Run mode: tui|rpc|json|print (ctx.mode)
 	Width  int               `json:"width"`            // Terminal width

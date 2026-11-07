@@ -64,9 +64,11 @@ func makeSubprocessLispHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
+	// pig additive (D232): a Host that joined a registry admits its Lisp members into the process another Host runs (TestConformance_SharedCellsIsolatePerHostInstances).
+	h.ShareCells(conformanceCellRegistry)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 

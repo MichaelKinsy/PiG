@@ -27,4 +27,20 @@ f3fd868442 see ab1d07097c
 ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour
 # f26dfe2355 corrects f06ba8fd15, which hid the symptom of the same bug (its trailer names f06ba8fd15 back): the entry is the correction's.
 f06ba8fd15 see f26dfe2355
+20e1c2a698 Follow-up to unreleased work: the --listen server's per-group sibling-tool check in the Node runtime (D232), no behaviour of a release changes
+0224f258c2 Follow-up to unreleased work: the --listen socket's mode (D232), replaced by a private bind directory in a95098aa83
+039dc7ba0c Follow-up to unreleased work: the --listen connection's forced-signal exit (D232), replaced by D234's repeated-signal handling in the merge
+4cdec4be2f Follow-up to unreleased work: the --listen server's stale-host bus allowance (D232)
+9e6d7943a2 Follow-up to unreleased work: per-group Node state of the --listen server's shared cells (D232)
+a40694ab0e Follow-up to unreleased work: --listen accept retries and signals (D232)
+c1b88904c3 Follow-up to unreleased work: lint fallout of the --listen server (D232), no product behaviour
+edae8e70d7 Follow-up to unreleased work: --listen live-host tracking and second-signal escape (D232)
+f34cb22f47 Follow-up to unreleased work: ctx.abort scoped per host group for the --listen server's shared cells (D232)
+ddc6060aa0 Follow-up to unreleased work: shared cell processes of the --listen server outlive their spawner (D232)
+a95098aa83 Follow-up to unreleased work: the --listen socket is bound in a private directory instead of under a changed umask (D232)
+85b025699f Follow-up to unreleased work: a --listen connection's exit ends its session (D232), found in review before any release
+1e9847163e Follow-up to unreleased work: the first generation of an isolated Node launcher carries its Host's group in the opt-in shared mode of --listen (D232)
+9d84543b6c Follow-up to unreleased work: --listen burst memory, accept messages and socket removal (D232)
 b18fc1ee00 Follow-up to unreleased work: comment-only D238 and D257 markers on two existing constants, no product behaviour
+c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node launcher gets its Host's group from connectExt only, and a user's PIG_EXT_GROUP never reaches it (D232), found in review before any release
+2a4c3c0bd7 Follow-up to unreleased work: the --listen server's exit removes the socket path only if it still names the socket it created, pinned by file ID on Windows (D232), found in CI before any release

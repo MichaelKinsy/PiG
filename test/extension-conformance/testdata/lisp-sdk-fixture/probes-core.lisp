@@ -59,6 +59,22 @@
     (pig:tool ext "echo" "Echo input text"
               (core-json "{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"Text to echo\"},\"offset\":{\"type\":\"number\"}}}")
               (lambda (ctx params) (declare (ignore ctx)) (pig:obj "content" (concatenate 'string "echo: " (core-str (pig:jget params "text"))))))
+    ;; D232 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+    (let ((calls 0) (heard '()) (heard-lock (sb-thread:make-mutex)))
+      (pig:events-on (pig:extension-events ext) "shared-cells"
+                     (lambda (ctx data) (declare (ignore ctx))
+                       (sb-thread:with-mutex (heard-lock) (setf heard (append heard (list (pig:jget data "from")))))))
+      (pig:tool ext "counter" "This instance's call count" (core-schema "properties" (pig:obj))
+                (lambda (ctx params) (declare (ignore ctx params))
+                  (pig:obj "content" (format nil "~D" (sb-thread:with-mutex (heard-lock) (incf calls))))))
+      (pig:tool ext "ping" "Emit on the shared-cells channel"
+                (core-json "{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}")
+                (lambda (ctx params)
+                  (pig:events-emit (pig:ctx-events ctx) "shared-cells" (pig:obj "from" (pig:jget params "name")))
+                  (pig:obj "content" "pinged")))
+      (pig:tool ext "received" "What this instance heard on shared-cells" (core-schema "properties" (pig:obj))
+                (lambda (ctx params) (declare (ignore ctx params))
+                  (pig:obj "content" (sb-thread:with-mutex (heard-lock) (format nil "received=~{~A~^,~}" heard))))))
     (pig:tool ext "render_probe" "Render its own tool card" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore ctx params)) "render ok"))
     (pig:tool-renderers ext "render_probe" :render-shell "self"
