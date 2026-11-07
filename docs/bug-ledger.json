@@ -9310,6 +9310,29 @@
       ]
     },
     {
+      "id": "BF-402f61c",
+      "title": "A custom message keeps the member order of its `content` blocks everywhere the host holds it",
+      "symptom": "A custom message keeps the member order of its `content` blocks everywhere the host holds it.",
+      "rootCause": "pi.sendMessage and appendCustomMessageEntry took the content of a custom message from a Go map, a session entry read its content the same way, and a custom message read from the wire held its content blocks sorted, so the blocks of a content array ({type, text}, {type, data, mimeType}) were stored, re-written and shown to extensions with their members sorted for every SDK, Node included. Pi appends and stringifies the objects themselves, in insertion order.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom message keeps the member order of its `content` blocks everywhere the host holds it. `pi.sendMessage`, `appendCustomMessageEntry`, a session entry read back from a file and a custom message read from the wire took the content from a Go map, so the blocks of a content array (`{type, text}`, `{type, data, mimeType}`) were stored, written again and shown to extensions with their members sorted, for every SDK.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "402f61c220",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/custom_message_content_order_test.go::TestCustomMessageContentKeepsItsMemberOrderWhenRead",
+        "coding/custom_message_content_order_test.go::TestSendMessageStoresContentBlocksInTheOrderTheExtensionWroteThem"
+      ]
+    },
+    {
       "id": "BF-4058f34",
       "title": "The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap",
       "symptom": "The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap.",

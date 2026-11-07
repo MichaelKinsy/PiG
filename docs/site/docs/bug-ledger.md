@@ -337,6 +337,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3fd2500](#bf-3fd2500) | `pi update` no longer stops with `git clean -fdx failed with code 1` when a Git package has files that cannot… | PiG's own defect | Windows | 0.7.0 |
 | [BF-3fe717a](#bf-3fe717a) | A bash or PowerShell command that timed out after its shell had already exited, because a background process… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-4027b34](#bf-4027b34) | A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer… | PiG's own defect | Linux | 0.5.0 |
+| [BF-402f61c](#bf-402f61c) | A custom message keeps the member order of its `content` blocks everywhere the host holds it | PiG's own defect | All platforms | Unreleased |
 | [BF-4058f34](#bf-4058f34) | The /fork message picker checks its keys in Pi's order (up, down, confirm, cancel) when bindings overlap | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40b5a89](#bf-40b5a89) | Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-40bc651](#bf-40bc651) | The Anthropic event reader decides message_start and message_stop from the parsed event type as Pi does (not… | PiG's own defect | All platforms | 0.5.0 |
@@ -6123,6 +6124,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4027b34bc8` (2026-10-13)
 - **Tests:** `codemode/resources_linux_test.go::TestConcurrentExecutionsReturnMemoryAndDescriptors`
 - **Release note:** A finished code-mode execution no longer keeps its closed VM reachable through its stopped halt-grace timer, which stays in an idle scheduler's timer heap until that scheduler next runs. Each such VM held its whole linear memory (the heap limit plus 64 MiB, 320 MiB at a 256 MiB limit) until then. After 16 concurrent executions on a 196-CPU Linux host, the live Go heap after a collection was 0 to 6 of those memories above the start before the fix (up to 1.9 GiB) and under 0.1 MiB after it.
+
+### BF-402f61c
+
+**A custom message keeps the member order of its `content` blocks everywhere the host holds it**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom message keeps the member order of its `content` blocks everywhere the host holds it.
+- **Root cause:** pi.sendMessage and appendCustomMessageEntry took the content of a custom message from a Go map, a session entry read its content the same way, and a custom message read from the wire held its content blocks sorted, so the blocks of a content array ({type, text}, {type, data, mimeType}) were stored, re-written and shown to extensions with their members sorted for every SDK, Node included. Pi appends and stringifies the objects themselves, in insertion order.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `402f61c220` (2026-11-06)
+- **Tests:** `coding/custom_message_content_order_test.go::TestCustomMessageContentKeepsItsMemberOrderWhenRead`, `coding/custom_message_content_order_test.go::TestSendMessageStoresContentBlocksInTheOrderTheExtensionWroteThem`
+- **Release note:** A custom message keeps the member order of its `content` blocks everywhere the host holds it. `pi.sendMessage`, `appendCustomMessageEntry`, a session entry read back from a file and a custom message read from the wire took the content from a Go map, so the blocks of a content array (`{type, text}`, `{type, data, mimeType}`) were stored, written again and shown to extensions with their members sorted, for every SDK.
 
 ### BF-4058f34
 
