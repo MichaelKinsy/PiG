@@ -2255,6 +2255,24 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    // registry-model-probe registers the provider of the active model again with the argument as the model's name, then reads the model (TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs).
+    ext.command(
+        "registry-model-probe",
+        "Register the active model's provider with a new name, then read the model",
+        |ctx, name| {
+            let config = json!({"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"m","name":name,"reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]});
+            if let Err(err) = ctx.model_registry().register_provider("replica-reg", config) {
+                return CommandResult::Error(err.to_string());
+            }
+            match ctx.get_model_info() {
+                Ok(info) => {
+                    ctx.notify(&format!("regname={}", info.map(|info| info.name).unwrap_or_default()), "info");
+                    CommandResult::Ok
+                }
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command("provider_probe_register", "Register a provider with one model", |ctx, _| {
         let config: Value = serde_json::from_str(r#"{"baseUrl":"https://probe.invalid/v1","api":"openai-completions","apiKey":"probe-key","models":[{"id":"probe-model","name":"Probe Model","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":1000,"maxTokens":100}]}"#).unwrap();
         match ctx.model_registry().register_provider("conformance-probe", config) {
@@ -4395,6 +4413,41 @@ fn main() {
         ctx.notify(&serde_json::to_string(&usage).unwrap(), "info");
         CommandResult::Ok
     });
+    // Reports the model, the session id read through the context and through the session manager, and the context usage, as one JSON object (TestReplicatedReadsAreLocalAcrossSDKs). "set-model:<provider>/<id>" switches the model first.
+    ext.command(
+        "replica-probe",
+        "Report the replicated reads",
+        |ctx, args| {
+            if let Some(model) = args.strip_prefix("set-model:") {
+                let (ok, error) = ctx.set_model(model);
+                if !ok {
+                    return CommandResult::Error(format!("set_model failed: {error:?}"));
+                }
+            }
+            let model = ctx.get_model_info().unwrap().map(|m| {
+                json!({
+                    "id": m.id, "name": m.name, "provider": m.provider,
+                    "contextWindow": m.context_window, "maxOutputTokens": m.max_output_tokens,
+                    "reasoning": m.reasoning,
+                    "inputCostPer1M": m.input_cost_per_1m, "outputCostPer1M": m.output_cost_per_1m,
+                    "cacheReadCostPer1M": m.cache_read_cost_per_1m, "cacheWriteCostPer1M": m.cache_write_cost_per_1m,
+                })
+            });
+            let usage = ctx.get_context_usage().unwrap().map(|u| json!({"tokens": u.tokens, "contextWindow": u.context_window, "percent": u.percent}));
+            let report = json!({
+                "model": model,
+                "sessionId": ctx.get_session_id().unwrap(),
+                "managerSessionId": ctx.session_manager().get_session_id().unwrap(),
+                "sessionName": ctx.get_session_name().unwrap(),
+                "sessionFile": ctx.get_session_file().unwrap(),
+                "managerSessionName": ctx.session_manager().get_session_name().unwrap(),
+                "managerSessionFile": ctx.session_manager().get_session_file().unwrap(),
+                "usage": usage,
+            });
+            ctx.notify(&report.to_string(), "info");
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "console-probe",
         "Write console lines to stdout and stderr",
@@ -5558,7 +5611,7 @@ fn main() {
 const STATE_PUSH_WINDOW: Duration = Duration::from_secs(5);
 
 /// Registers the state-push-probe command (TestHostStateChangeReachesABackgroundReaderAcrossSDKs). The command arms a thread that reads one replicated accessor from outside every request, as an extension's timer does, and returns: the host then changes its own state with no call and no event to this extension, and the thread reports the first value that differs from the one it armed on, or the value it still holds after STATE_PUSH_WINDOW, to a file in the directory the arguments name.
-/// The arguments are {"kind": "model" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
+/// The arguments are {"kind": "model" | "model-name" | "session-id" | "context-usage" | "session-name" | "theme" | "settings:<key>" | "mcp", "dir": <directory>}; the report is "<armed>=><read>".
 fn register_state_push_probe(ext: &mut Extension) {
     ext.command(
         "state-push-probe",
@@ -5604,6 +5657,40 @@ fn state_push_reader(
     }
     if kind == "session-name" {
         return Ok(Box::new(move || ctx.session_name()));
+    }
+    if kind == "model-name" {
+        return Ok(Box::new(move || match ctx.get_model_info() {
+            Ok(info) => info.map(|info| info.name).unwrap_or_default(),
+            Err(err) => format!("error:{err}"),
+        }));
+    }
+    if kind == "context-usage" {
+        return Ok(Box::new(move || match ctx.get_context_usage() {
+            Ok(Some(usage)) => format!(
+                "tokens={}",
+                usage.tokens.map(|n| n.to_string()).unwrap_or_default()
+            ),
+            Ok(None) => "none".to_string(),
+            Err(err) => format!("error:{err}"),
+        }));
+    }
+    if kind == "usage-then-id" {
+        // A host call, then the replicated id: the id must not be older than the host's answer.
+        return Ok(Box::new(move || match ctx.get_context_usage() {
+            Ok(Some(usage)) if usage.tokens == Some(250) => match ctx.get_session_id() {
+                Ok(id) => format!("tokens=250,id={id}"),
+                Err(err) => format!("error:{err}"),
+            },
+            Ok(Some(usage)) => format!("tokens={}", usage.tokens.map(|n| n.to_string()).unwrap_or_default()),
+            Ok(None) => "none".to_string(),
+            Err(err) => format!("error:{err}"),
+        }));
+    }
+    if kind == "session-id" {
+        return Ok(Box::new(move || match ctx.get_session_id() {
+            Ok(id) => id,
+            Err(err) => format!("error:{err}"),
+        }));
     }
     if kind == "theme" {
         return Ok(Box::new(move || ctx.theme().name));

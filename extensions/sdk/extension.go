@@ -154,9 +154,8 @@ type Extension struct {
 	providerOperations map[string]providerOperations
 	toolMu             sync.RWMutex
 	toolConn           *conn
-	// footer is the host's footer data (guarded by mu) and footerSubs the onBranchChange callbacks.
+	// footer is the host's footer data (guarded by mu).
 	footer           footerSnapshot
-	footerSubs       footerSubscribers
 	toolFuncs        map[string]ToolFunc
 	toolPrepareFuncs map[string]ToolPrepareArgumentsFunc
 	toolBatches      toolBatchOrders
@@ -253,7 +252,9 @@ type Extension struct {
 	height        int
 	model         string
 	modelProvider string
-	sessionFile   string
+	// identity is the replicated model object and session id behind GetModelInfo and GetSessionID (state_replica.go).
+	identity    replicatedIdentity
+	sessionFile string
 	// uiTheme is the host's theme palette from the state snapshot and
 	// theme_change notifies (upstream ctx.ui.theme).
 	uiTheme UITheme
@@ -273,9 +274,10 @@ type Extension struct {
 	// loadedDone closes when the OnLoaded handlers returned; requests wait for it.
 	loadedDone <-chan struct{}
 
-	// themeFeed and expandedFeed deliver a change of the replicated theme and tool-expansion state to the handlers of OnThemeChange and OnToolsExpandedChange.
+	// themeFeed, expandedFeed and branchFeed deliver a change of the replicated theme, tool-expansion state and Git branch to the handlers of OnThemeChange, OnToolsExpandedChange and FooterData.OnBranchChange.
 	themeFeed    stateFeed[UITheme]
 	expandedFeed stateFeed[bool]
+	branchFeed   stateFeed[struct{}]
 
 	requestsMu sync.Mutex
 	requests   map[string]context.CancelCauseFunc
@@ -707,6 +709,7 @@ func New(name string) *Extension {
 		name:                     name,
 		themeFeed:                stateFeed[UITheme]{what: "theme"},
 		expandedFeed:             stateFeed[bool]{what: "tools expanded"},
+		branchFeed:               stateFeed[struct{}]{what: "footer branch"},
 		toolFuncs:                make(map[string]ToolFunc),
 		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:             make(map[string]CommandFunc),
@@ -1031,7 +1034,7 @@ func (e *Extension) OwnThinkingRuns(enabled bool) {
 	conn := e.toolConn
 	e.toolMu.Unlock()
 	if conn != nil {
-		result, err := hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
+		result, err := e.hostCallFor(nil, conn, "ownThinkingRuns", map[string]bool{"enabled": enabled})
 		if err = callResultError(result, err); err != nil {
 			panic(fmt.Errorf("ownThinkingRuns: %w", err))
 		}
@@ -1328,6 +1331,7 @@ func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
 	e.themeFeed.stop()
 	e.expandedFeed.stop()
+	e.branchFeed.stop()
 	// The sessions end with the connection, as the host disposes them: no listener runs after it.
 	e.children.closeAll()
 	if e.runCancel != nil {
@@ -1905,6 +1909,7 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		// Session replication: apply incremental entries before any handler
 		// runs, so GetBranch()/GetEntries() are current and local.
 		var sessionState struct {
+			SessionID   string `json:"sessionId"`
 			SessionName string `json:"sessionName"`
 			SessionFile string `json:"sessionFile"`
 		}
@@ -1924,6 +1929,8 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		// Every session snapshot carries the name; the empty string is the host's carrier for a session with no name, so it clears the replica.
 		if len(payload.State.Session) > 0 {
 			e.sessionName = sessionState.SessionName
+			// The host omits the id only when it is empty, so a snapshot's Session always replaces the replicated id.
+			e.identity = e.identity.withSession(sessionState.SessionID, sessionState.SessionName, sessionState.SessionFile)
 		}
 		if theme, ok := decodeUITheme(payload.State.Theme); ok {
 			e.setUITheme(theme)
@@ -1943,9 +1950,12 @@ func (e *Extension) handleNotifyAt(env envelope, seq uint64) {
 		}()
 		// An absent model key leaves the replica, an explicit null clears it (the Session has no model), and an object replaces it.
 		if len(payload.State.Model) > 0 {
-			var model map[string]any
-			if json.Unmarshal(payload.State.Model, &model) == nil {
-				e.model, e.modelProvider = modelIdentity(model)
+			var changed bool
+			if e.identity, changed = e.identity.withModel(payload.State.Model); changed {
+				var model map[string]any
+				if json.Unmarshal(payload.State.Model, &model) == nil {
+					e.model, e.modelProvider = modelIdentity(model)
+				}
 			}
 		}
 	case "theme_change":
