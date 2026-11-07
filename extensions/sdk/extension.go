@@ -154,9 +154,8 @@ type Extension struct {
 	providerOperations map[string]providerOperations
 	toolMu             sync.RWMutex
 	toolConn           *conn
-	// footer is the host's footer data (guarded by mu) and footerSubs the onBranchChange callbacks.
+	// footer is the host's footer data (guarded by mu).
 	footer           footerSnapshot
-	footerSubs       footerSubscribers
 	toolFuncs        map[string]ToolFunc
 	toolPrepareFuncs map[string]ToolPrepareArgumentsFunc
 	toolBatches      toolBatchOrders
@@ -275,9 +274,10 @@ type Extension struct {
 	// loadedDone closes when the OnLoaded handlers returned; requests wait for it.
 	loadedDone <-chan struct{}
 
-	// themeFeed and expandedFeed deliver a change of the replicated theme and tool-expansion state to the handlers of OnThemeChange and OnToolsExpandedChange.
+	// themeFeed, expandedFeed and branchFeed deliver a change of the replicated theme, tool-expansion state and Git branch to the handlers of OnThemeChange, OnToolsExpandedChange and FooterData.OnBranchChange.
 	themeFeed    stateFeed[UITheme]
 	expandedFeed stateFeed[bool]
+	branchFeed   stateFeed[struct{}]
 
 	requestsMu sync.Mutex
 	requests   map[string]context.CancelCauseFunc
@@ -709,6 +709,7 @@ func New(name string) *Extension {
 		name:                     name,
 		themeFeed:                stateFeed[UITheme]{what: "theme"},
 		expandedFeed:             stateFeed[bool]{what: "tools expanded"},
+		branchFeed:               stateFeed[struct{}]{what: "footer branch"},
 		toolFuncs:                make(map[string]ToolFunc),
 		toolPrepareFuncs:         make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:             make(map[string]CommandFunc),
@@ -1330,6 +1331,7 @@ func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
 	e.themeFeed.stop()
 	e.expandedFeed.stop()
+	e.branchFeed.stop()
 	// The sessions end with the connection, as the host disposes them: no listener runs after it.
 	e.children.closeAll()
 	if e.runCancel != nil {
