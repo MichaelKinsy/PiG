@@ -217,7 +217,7 @@ shards 4
 # (shard-pack.py states its model, errors and loads; automation/ci/shard_pack_test.py tests it.)
 # Measured in containers of 4 CPUs, fresh checkouts and cold caches, make test-conformance-1 and -2 (four jobs side by side for the twelve shards and the previous
 # weights, two for these): the twelve shards took 1,987 and 2,019 s a job (shards 268 to 355 s); these twenty
-# took 1,758 and 1,743 s with the previous weights (shards 92 to 201 s) and 2,000 and 2,063 s with these (shards 124 to 239 s) on a host that other work had made slower, where the prerequisite builds alone took 349 s against 180 s; the worst shard, 40% of the limit and 56% on a 1.4x slower runner, ran 36% over its model, as one shard did in the review's cold runs..
+# took 1,758 and 1,743 s with the previous weights (shards 92 to 201 s) and 2,000 and 2,063 s with these (shards 124 to 239 s) on a host that other work had made slower, where the prerequisite builds alone took 349 s against 180 s; the worst shard, 40% of the limit and 56% on a 1.4x slower runner, ran 36% over its model, as one shard did in the review's cold runs.
 package ./test/extension-conformance
 shards 20
 1 TestAutocompleteSettlementAcrossSDKs
