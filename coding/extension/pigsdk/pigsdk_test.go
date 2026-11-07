@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/mod/modfile"
 
-	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/gosdkbundle"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
 
@@ -70,10 +70,10 @@ func TestSyncStagesAllLanguages(t *testing.T) {
 		dirs[lang] = dir
 	}
 	// Go: flat module files.
-	if counts["go"] != len(sdk.BundledFiles()) {
-		t.Fatalf("go staged %d files, want %d", counts["go"], len(sdk.BundledFiles()))
+	if counts["go"] != len(gosdkbundle.BundledFiles()) {
+		t.Fatalf("go staged %d files, want %d", counts["go"], len(gosdkbundle.BundledFiles()))
 	}
-	for _, name := range sdk.BundledFiles() {
+	for _, name := range gosdkbundle.BundledFiles() {
 		if _, err := os.Stat(filepath.Join(dirs["go"], filepath.FromSlash(name))); err != nil {
 			t.Fatalf("missing staged go/%s: %v", name, err)
 		}

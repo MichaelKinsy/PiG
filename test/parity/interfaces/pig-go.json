@@ -203991,17 +203991,6 @@
       "shapeHash": "sha256:f2a5a982be4a9b74b7160e0a9bcb59f5dd8973409d9a1f309edfd819282c7d13"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#StagedHash",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "StagedHash",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#StringEnum",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "StringEnum",
@@ -208103,17 +208092,6 @@
         "type": "builtinWireOptions"
       },
       "shapeHash": "sha256:f65c58426096951175fe6399187714a85289d99a6d066d5ed654486c3cf1896b"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#bundledFiles",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "bundledFiles",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "[]string"
-      },
-      "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#busCallArgs",
@@ -215286,17 +215264,6 @@
         "type": "func(m map[string]any) []string"
       },
       "shapeHash": "sha256:3fcef7913a5d185e57520cddf9aa1750f448221db39caabf7d1e952ce22a532f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#stagedHash",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "stagedHash",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#startsInArrivalOrder",

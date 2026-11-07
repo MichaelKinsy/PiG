@@ -2,10 +2,10 @@
 
 // Command packsdk writes the files an SDK bundle embeds: sdk.zst, the SDK's staged files as one zstd frame (internal/sdkpack lays them out, internal/zstdblob encodes the frame), and bundle_pack.go, the Go file that embeds it with the list of files and the staging hash pig reads without decoding anything.
 //
-// Run by `go generate` in each of extensions/sdk, sdk-py, sdk-rs and sdk-lisp (make sdk-bundles); the bundle's tests and TestEmbeddedBundlesHoldTheirSources in coding/extension/pigsdk fail when the pack and the sources disagree.
+// Run by `go generate` in each of internal/gosdkbundle (the Go SDK), extensions/sdk-py, sdk-rs and sdk-lisp (make sdk-bundles); the bundle's tests and TestEmbeddedBundlesHoldTheirSources in coding/extension/pigsdk fail when the pack and the sources disagree.
 //
-// Usage: packsdk -pkg name [-walk dir]... [-skip suffix]... pattern...
-// Each pattern is a path or a glob relative to the working directory. Each -walk directory contributes every regular file under it. A file whose base name ends with a -skip suffix is left out. The files are packed in sorted order.
+// Usage: packsdk -pkg name [-root dir] [-walk dir]... [-skip suffix]... pattern...
+// Each pattern is a path or a glob relative to the SDK root, the working directory unless -root names another: a bundle package that sits outside its SDK's directory (internal/gosdkbundle packs extensions/sdk, a nested module whose own bundle is a different layout) reads the sources there and writes sdk.zst and bundle_pack.go in the working directory. The packed names are relative to the SDK root. Each -walk directory contributes every regular file under it. A file whose base name ends with a -skip suffix is left out. The files are packed in sorted order.
 //
 // An existing sdk.zst that already decodes to the packed blob is left alone, so a regeneration does not rewrite bytes another encoder version would write differently.
 package main
@@ -32,12 +32,13 @@ func (l *list) Set(v string) error { *l = append(*l, v); return nil }
 
 func main() {
 	pkg := flag.String("pkg", "", "package name")
+	root := flag.String("root", ".", "directory of the SDK's files (patterns, walks and packed names are relative to it)")
 	var walks, skips list
 	flag.Var(&walks, "walk", "directory whose files are all packed")
 	flag.Var(&skips, "skip", "base name suffix of files left out")
 	flag.Parse()
 	if *pkg == "" {
-		fmt.Fprintln(os.Stderr, "usage: packsdk -pkg name [-walk dir]... [-skip suffix]... pattern...")
+		fmt.Fprintln(os.Stderr, "usage: packsdk -pkg name [-root dir] [-walk dir]... [-skip suffix]... pattern...")
 		os.Exit(2)
 	}
 	files := map[string]bool{}
@@ -47,10 +48,14 @@ func main() {
 				return
 			}
 		}
-		files[filepath.ToSlash(path)] = true
+		name, err := filepath.Rel(*root, path)
+		if err != nil {
+			fail(err)
+		}
+		files[filepath.ToSlash(name)] = true
 	}
 	for _, pattern := range flag.Args() {
-		matches, err := filepath.Glob(pattern)
+		matches, err := filepath.Glob(filepath.Join(*root, pattern))
 		if err != nil {
 			fail(err)
 		}
@@ -62,7 +67,7 @@ func main() {
 		}
 	}
 	for _, dir := range walks {
-		err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		err := filepath.WalkDir(filepath.Join(*root, dir), func(path string, entry fs.DirEntry, err error) error {
 			if err == nil && entry.Type().IsRegular() {
 				add(path)
 			}
@@ -80,7 +85,7 @@ func main() {
 	var blob []byte
 	var listed strings.Builder
 	for _, name := range names {
-		data, err := os.ReadFile(name)
+		data, err := os.ReadFile(filepath.Join(*root, filepath.FromSlash(name)))
 		if err != nil {
 			fail(err)
 		}

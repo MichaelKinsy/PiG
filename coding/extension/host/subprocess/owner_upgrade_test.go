@@ -10,7 +10,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/extensions/sdk"
+	"github.com/MichaelKinsy/PiG/internal/gosdkbundle"
 	"github.com/MichaelKinsy/PiG/internal/sdkpack"
 	"github.com/MichaelKinsy/PiG/internal/zstdblob"
 )
@@ -19,7 +19,7 @@ import (
 func TestLegacyStandaloneBuildsStagedSDKSubpackages(t *testing.T) {
 	root := t.TempDir()
 	sdkDir := stagedSDKDir(t, root, "go")
-	frame, err := sdk.Source.ReadFile(sdkpack.ArchiveName)
+	frame, err := gosdkbundle.Source.ReadFile(sdkpack.ArchiveName)
 	if err != nil {
 		t.Fatal(err)
 	}
