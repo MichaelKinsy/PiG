@@ -75,6 +75,16 @@ Interactive `/login` masks secret input by default. Turn off **Mask secret input
 
 The [documentation](https://pi-in-go.dev/docs/latest) covers everything else, starting with the [quickstart](https://pi-in-go.dev/docs/latest/quickstart). You can also ask PiG to explain itself.
 
+## Serve many sessions (unreleased)
+
+`pig --mode rpc --listen <path>` serves one RPC session per connection on the Unix socket at `<path>`, with Pi's RPC protocol unchanged on each connection (D232). It is on the 0.7.1 branch and not in PiG 0.7.0, and Pi has no equivalent.
+
+- There is no default socket path: `--listen` requires one, `--mode rpc`, and a path that does not exist. A path longer than a socket address holds (104 bytes on macOS, 108 on Linux) is refused.
+- The socket has mode 0600 from the moment the path exists and **has no authentication**: any process that runs as your user, and root, can connect and drive a full session with the server's credentials, tools and approvals. Put the socket in a directory only you can reach, such as `$XDG_RUNTIME_DIR`.
+- Every session has its own extension processes, so no extension state is shared between sessions. `--listen-share-extensions` shares the extension processes instead, which costs less per session but shares module-level state between sessions.
+- `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`. The server runs until a termination signal and then exits with 128 plus the signal number.
+- On Windows the server listens on an `AF_UNIX` socket (Windows 10 version 1803 or later), not a named pipe, and its access follows the permissions of the socket's directory. The Windows tests have not been run yet.
+
 ## Upstream Pi
 
 Pi is the reference implementation. PiG follows Pi's behavior and design unless a Go constraint or an approved product-neutral requirement makes a difference necessary.
