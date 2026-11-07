@@ -3,7 +3,6 @@ package jsstring
 import (
 	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 // ToLower is String.prototype.toLowerCase: the full Unicode lowercase mapping. Besides the simple per-code-point mapping it maps U+0130 to
@@ -12,43 +11,47 @@ func ToLower(s string) string {
 	if isASCIIOnly(s) {
 		return strings.ToLower(s)
 	}
-	runes := codePoints(s)
-	out := make([]byte, 0, len(s))
+	var stack [32]rune // like []rune(s), text of up to 32 code points is decoded without a heap allocation
+	runes := appendCodePoints(stack[:0], s)
+	var b strings.Builder
+	b.Grow(len(s))
 	for i, r := range runes {
 		switch r {
 		case 0x0130:
-			out = append(out, "i\u0307"...)
+			b.WriteString("i\u0307")
 		case 0x03A3:
 			if isFinalSigma(runes, i) {
-				out = utf8.AppendRune(out, 'ς')
+				b.WriteRune('ς')
 			} else {
-				out = utf8.AppendRune(out, 'σ')
+				b.WriteRune('σ')
 			}
 		default:
-			out = appendCodePoint(out, unicode.ToLower(r))
+			writeCodePoint(&b, unicode.ToLower(r))
 		}
 	}
-	return string(out)
+	return b.String()
 }
 
-// codePoints decodes s as the JavaScript code points of its UTF-16 units. A lone surrogate is kept as its own surrogate value, which has no case
+// appendCodePoints appends the JavaScript code points of the UTF-16 units of s to dst. A lone surrogate is kept as its own surrogate value, which has no case
 // and is neither cased nor case-ignorable, so toLowerCase and toUpperCase leave it alone; each other ill-formed byte is U+FFFD.
-func codePoints(s string) []rune {
-	runes := make([]rune, 0, len(s))
+func appendCodePoints(dst []rune, s string) []rune {
 	for i := 0; i < len(s); {
 		r, size := DecodeRuneInString(s[i:])
-		runes = append(runes, r)
+		dst = append(dst, r)
 		i += size
 	}
-	return runes
+	return dst
 }
 
-// appendCodePoint appends r as UTF-8, or as WTF-8 when r is a surrogate, which utf8.AppendRune would turn into U+FFFD.
-func appendCodePoint(out []byte, r rune) []byte {
+// writeCodePoint writes r as UTF-8, or as WTF-8 when r is a surrogate, which WriteRune would turn into U+FFFD. The builder is the result's only buffer.
+func writeCodePoint(b *strings.Builder, r rune) {
 	if r >= 0xd800 && r <= 0xdfff {
-		return append(out, byte(0xe0|(r>>12)), byte(0x80|((r>>6)&0x3f)), byte(0x80|(r&0x3f)))
+		b.WriteByte(byte(0xe0 | (r >> 12)))
+		b.WriteByte(byte(0x80 | ((r >> 6) & 0x3f)))
+		b.WriteByte(byte(0x80 | (r & 0x3f)))
+		return
 	}
-	return utf8.AppendRune(out, r)
+	b.WriteRune(r)
 }
 
 // LowerContains is strings.Contains(ToLower(s), lowerNeedle) for a lowerNeedle that is already lowercase. An ASCII-only s, the common case of a model
