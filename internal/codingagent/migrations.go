@@ -18,7 +18,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -90,7 +89,7 @@ func marshalMigratedKeybindings(config map[string]any) ([]byte, error) {
 			extras = append(extras, key)
 		}
 	}
-	sortx.Func(extras, func(a, b string) int {
+	slices.SortFunc(extras, func(a, b string) int {
 		return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
 	})
 	var compact bytes.Buffer

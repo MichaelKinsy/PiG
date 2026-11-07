@@ -12,7 +12,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/minimatch"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ScopedModel pairs a model with an explicitly selected thinking level, if any.
@@ -88,7 +87,7 @@ func ResolveModelScopeFromModels(patterns []string, models []RuntimeModel) Resol
 			}
 		}
 		collator := localecompare.NewCollator()
-		sortx.Stable(providers, collator.CompareString)
+		slices.SortStableFunc(providers, collator.CompareString)
 		diagnostic("ambiguous", fmt.Sprintf(`Pattern "%s" matches several providers: %s. Use provider/id to choose one.`, pattern, strings.Join(providers, ", ")), pattern)
 	}
 	everyUsable := func(string) bool { return true }

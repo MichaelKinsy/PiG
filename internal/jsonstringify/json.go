@@ -8,12 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // Canonicalize applies JSON.parse/stringify semantics to validated JSON, preserving object insertion order and lone UTF-16 surrogates. Text that JSON.stringify would write unchanged is copied, without a decode and re-encode.
@@ -113,7 +113,7 @@ func object(raw []byte) ([]byte, error) {
 		positions[key] = len(members)
 		members = append(members, member{key, encoded, index})
 	}
-	sortx.Stable(members, func(a, b member) int {
+	slices.SortStableFunc(members, func(a, b member) int {
 		if a.index < b.index {
 			return -1
 		}

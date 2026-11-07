@@ -160,7 +160,7 @@ func (m *InteractiveMode) loginArgCompletions(prefix string) []tui.AutocompleteI
 		}
 		if !slices.Contains(providers[index].authTypes, option.AuthType) {
 			providers[index].authTypes = append(providers[index].authTypes, option.AuthType)
-			sortx.Func(providers[index].authTypes, func(a, b string) int {
+			slices.SortFunc(providers[index].authTypes, func(a, b string) int {
 				if a == b {
 					return 0
 				}

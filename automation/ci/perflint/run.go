@@ -86,6 +86,7 @@ type scanner struct {
 	pkg     *packages.Package
 	rel     string
 	hot     bool
+	linked  bool         // the package is linked into cmd/pig (sort-instance)
 	allowed map[int]bool // lines covered by //perf:ok <reason>
 	counts  map[string]*finding
 }
@@ -283,6 +284,8 @@ func (s *scanner) scanFunc(fn *ast.FuncDecl) {
 				s.add(owner, "compile-in-func", "regexp."+name, n.Pos())
 			case (p == "text/template" || p == "html/template") && name == "Parse" && fn.Name.Name != "init":
 				s.add(owner, "compile-in-func", "template.Parse", n.Pos())
+			case s.linked && p == "slices" && (name == "SortFunc" || name == "SortStableFunc"):
+				s.add(owner, "sort-instance", "slices."+name, n.Pos())
 			case p == "slices" && name == "Clone" && len(n.Args) == 1 && isMessageSlice(info.TypeOf(n.Args[0])):
 				s.add(owner, "history-clone", "slices.Clone", n.Pos())
 			case p == "":
@@ -394,9 +397,36 @@ func allowedLines(pkg *packages.Package, file *ast.File) map[int]bool {
 	return out
 }
 
+// linkedPackages returns the import paths cmd/pig links, or nil when pkgs hold no cmd/pig (then every package counts as linked, as in the sample module).
+func linkedPackages(pkgs []*packages.Package) map[string]bool {
+	var entry *packages.Package
+	for _, pkg := range pkgs {
+		if strings.HasSuffix(pkg.PkgPath, "/cmd/pig") {
+			entry = pkg
+		}
+	}
+	if entry == nil {
+		return nil
+	}
+	linked := map[string]bool{}
+	var walk func(p *packages.Package)
+	walk = func(p *packages.Package) {
+		if linked[p.PkgPath] {
+			return
+		}
+		linked[p.PkgPath] = true
+		for _, dep := range p.Imports {
+			walk(dep)
+		}
+	}
+	walk(entry)
+	return linked
+}
+
 // scan returns the findings in the non-test code of pkgs, with file names relative to root.
 func scan(root string, pkgs []*packages.Package) []finding {
 	counts := map[string]*finding{}
+	linked := linkedPackages(pkgs)
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Syntax {
 			name := pkg.Fset.Position(file.Pos()).Filename
@@ -411,7 +441,7 @@ func scan(root string, pkgs []*packages.Package) []finding {
 			if isToolingPath(rel) && !strings.HasPrefix(rel, "testdata/") {
 				continue
 			}
-			s := &scanner{pkg: pkg, rel: rel, hot: hotPackage(rel), allowed: allowedLines(pkg, file), counts: counts}
+			s := &scanner{pkg: pkg, rel: rel, hot: hotPackage(rel), linked: linked == nil || linked[pkg.PkgPath], allowed: allowedLines(pkg, file), counts: counts}
 			if sampleHot {
 				s.hot = true
 			}
@@ -462,7 +492,7 @@ func entry(f finding) string {
 // needsClass is true for the patterns whose baseline entries must say how hot the site is.
 func needsClass(pattern string) bool {
 	switch pattern {
-	case "json-roundtrip", "history-clone", "chan-hop", "decode-own-encode", "nested-marshal", "open-per-call", "pool-uncapped", "timer-per-call":
+	case "json-roundtrip", "history-clone", "chan-hop", "decode-own-encode", "nested-marshal", "open-per-call", "pool-uncapped", "timer-per-call", "sort-instance":
 		return true
 	}
 	return false

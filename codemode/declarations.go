@@ -13,7 +13,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 const (
@@ -668,7 +667,7 @@ func objectType(schema *object, ctx *schemaContext) string {
 		}
 	}
 	names := slices.Clone(properties.keys)
-	sortx.Func(names, compareUTF16)
+	slices.SortFunc(names, compareUTF16)
 	members := make([]string, len(names))
 	for i, name := range names {
 		optional := "?"

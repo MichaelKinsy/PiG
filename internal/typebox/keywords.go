@@ -13,7 +13,6 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // checkKeyword is the check of the leaf keyword key of n on value: a string for the string keywords, a float64 for the numeric ones, a
@@ -246,7 +245,7 @@ func (h *fnv64) value(value any) {
 		for name := range typed {
 			names = append(names, name)
 		}
-		sortx.Func(names, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
+		slices.SortFunc(names, func(a, b string) int { return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b)) })
 		for _, name := range names {
 			h.value(name)
 			h.value(typed[name])
