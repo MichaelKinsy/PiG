@@ -356868,6 +356868,17 @@
       "shapeHash": "sha256:70ae363098c21c804f8be652440be23f050f59d9b8e75707a57acebe73799a1c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#appendCodePoints",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "appendCodePoints",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dst []byte, runes []rune) []byte"
+      },
+      "shapeHash": "sha256:bd7557171f17860454369b2dea6959933a119faa66d256dbeef6b14799719089"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#appendModifiedFinal",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "appendModifiedFinal",
@@ -364172,17 +364183,6 @@
       "shapeHash": "sha256:9a0e2bc28dfa5112300a49bdd21b5da48a82e4e8d46c38a8dd6f1f00a297bf40"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockFences",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "markedBlockFences",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*markedRegexp"
-      },
-      "shapeHash": "sha256:9a0e2bc28dfa5112300a49bdd21b5da48a82e4e8d46c38a8dd6f1f00a297bf40"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockHTML",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedBlockHTML",
@@ -364282,6 +364282,72 @@
       "shapeHash": "sha256:b71639e34f63ce6f999cb655ff3b52231a353a80fdac57423ef8f9d8de75a002"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.bytesRoom",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.bytesRoom",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(n int)"
+      },
+      "shapeHash": "sha256:678d26a8092ca69909d869f432200c6daab60758c625ca85c8ec99105bbca192"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.copyBytes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.copyBytes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(b []byte) string"
+      },
+      "shapeHash": "sha256:607077bb3edf3b58e45646091af153916e6e4b0129c2baf3c3d9e65360e62579"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.copyRunes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.copyRunes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(runes []rune) string"
+      },
+      "shapeHash": "sha256:51071ad65cbea8649fdc210245b20b4339d09e51cb093317ca4c5c9eab7db563"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.fence",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.fence",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src []rune) (*markedBlock, int)"
+      },
+      "shapeHash": "sha256:bde00b56be767b85fde817054cd8613c23aaf8982b422a83aacfdac08c7ad3f3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.firstLine",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.firstLine",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src []rune) string"
+      },
+      "shapeHash": "sha256:ec1254037d6d5692b5ee30b325ff4a7e01326ea8abcf67b2cbe27f309d1f153b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.group",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.group",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(match *github.com/dlclark/regexp2.Match, group int) string"
+      },
+      "shapeHash": "sha256:bf2194710d596ed9dfb583861a48d09b83c059c565038bb023436ee79082897d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.heading",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedBlockLexer.heading",
@@ -364359,6 +364425,17 @@
       "shapeHash": "sha256:bde00b56be767b85fde817054cd8613c23aaf8982b422a83aacfdac08c7ad3f3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.matchText",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.matchText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(m *github.com/dlclark/regexp2.Match) string"
+      },
+      "shapeHash": "sha256:f187536d500874330c05a14623df1c534eff22220ce9cac9f5ea7e92956dab14"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.newBlock",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedBlockLexer.newBlock",
@@ -364381,6 +364458,39 @@
       "shapeHash": "sha256:904f01884bdcd679bba8b34f5b0ec75edb6a9905c40c95cc5b05f00e15827948"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.popRunes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.popRunes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.pushRunes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.pushRunes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string) []rune"
+      },
+      "shapeHash": "sha256:a7124c8e5de8451eff934f76e9ea0f71cd8e270d685757dfe6a32abc9650f76c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.rawText",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.rawText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src []rune, str string, n int) string"
+      },
+      "shapeHash": "sha256:c30f6ea3f88e11981ced0e1ac82571af97c1fabb55573594afdd717aa469d876"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.table",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedBlockLexer.table",
@@ -364401,6 +364511,28 @@
         "type": "func(src []rune, str string) (*markedBlock, int)"
       },
       "shapeHash": "sha256:904f01884bdcd679bba8b34f5b0ec75edb6a9905c40c95cc5b05f00e15827948"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.tokenList",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.tokenList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []*markedBlock"
+      },
+      "shapeHash": "sha256:3480534c6289d39ead6342b95f9e9675bb398ddafa6548ae3455cb24e9c6c0e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.withNewline",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.withNewline",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string) string"
+      },
+      "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLheading",
@@ -364612,6 +364744,17 @@
       "shapeHash": "sha256:752315d2e77b144d82f58d8e7f7f4104e49e364294c1e337072920a92b2d9577"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedByteLength",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedByteLength",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(runes []rune) int"
+      },
+      "shapeHash": "sha256:752315d2e77b144d82f58d8e7f7f4104e49e364294c1e337072920a92b2d9577"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedCJK",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedCJK",
@@ -364643,6 +364786,28 @@
         "type": "func(raw string) bool"
       },
       "shapeHash": "sha256:9bec827878eddcbdd8a67e162d901dea4e4c9cb221ba38d138b7406eb4103ead"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedChunkMax",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedChunkMax",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedChunkMin",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedChunkMin",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedCode",
@@ -364865,15 +365030,15 @@
       "shapeHash": "sha256:916931bdb182988311c65ae87b9aca7174a90648b53552094dd164ec12004493"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#markedFence",
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedFenceClose",
       "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "markedFence",
+      "name": "markedFenceClose",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(src []rune) (*markedBlock, int)"
+        "type": "func(src []rune, at int, fence rune, run int) int"
       },
-      "shapeHash": "sha256:bde00b56be767b85fde817054cd8613c23aaf8982b422a83aacfdac08c7ad3f3"
+      "shapeHash": "sha256:5089940b9d563391d85b837a4c015584881a23ba49201bf8e7e33f1e00422311"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedFencesBegin",
@@ -364898,17 +365063,6 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#markedFencesSource",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "markedFencesSource",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedFindClosingBracket",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedFindClosingBracket",
@@ -364918,17 +365072,6 @@
         "type": "func(s []rune, open rune, close rune) int"
       },
       "shapeHash": "sha256:5c2033d92c4281119078478d57f9633366dd81c58a4e6f324ff1eb89448b590f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#markedFirstLine",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "markedFirstLine",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(src []rune) string"
-      },
-      "shapeHash": "sha256:ec1254037d6d5692b5ee30b325ff4a7e01326ea8abcf67b2cbe27f309d1f153b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedFirstNonSpace",
@@ -365833,15 +365976,37 @@
       "shapeHash": "sha256:fbb86a186be421ca9dc236aae383184c864b72235ef26c95c5370b6623ba77ed"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedListCap",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedListCap",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedListItem",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedListItem",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(src []rune, bull string) (bulletLength int, length int, ok bool)"
+        "type": "func(src []rune, bull []rune) (bulletLength int, length int, ok bool)"
       },
-      "shapeHash": "sha256:e79e6a3ee1957efa280ccf6283d6e06ee8cbabccbd0d17c89ec4010cefde3b14"
+      "shapeHash": "sha256:4b80211ed76a6ae66886bf5a0399b6d8da6a231c19a2710990511a9c50a5bf60"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedListSlabSize",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedListSlabSize",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedMaskSource",
@@ -366029,17 +366194,6 @@
         "type": "func(lower string, open string) bool"
       },
       "shapeHash": "sha256:d0c4fe8713cca8d7faed411bb59f089195028963eb7daa80f142cf1cfb953407"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#markedRawText",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "markedRawText",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(src []rune, str string, n int) string"
-      },
-      "shapeHash": "sha256:c30f6ea3f88e11981ced0e1ac82571af97c1fabb55573594afdd717aa469d876"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedReflinkSearch",
