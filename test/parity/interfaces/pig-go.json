@@ -144084,6 +144084,17 @@
       "shapeHash": "sha256:1b6f18dd0b8ab14893a4f82bde8854b633d320bf95be12fc7b629b90bbd0fee6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#goPanicExitStatus",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "goPanicExitStatus",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#goSDKModule",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "goSDKModule",
@@ -144101,9 +144112,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(trace []byte, members []nativeMember) string"
+        "type": "func(trace []byte, members []nativeMember, exitCode int) string"
       },
-      "shapeHash": "sha256:38267181b572586a6e50d7f9d64b2195a04e13bd54e87b044aa77e4ccf9771f6"
+      "shapeHash": "sha256:cb1fa1408f41cdfb338630bd85833a62d11bb9c79ac64513b16fac904a1c284f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#graphHold",
@@ -144656,6 +144667,17 @@
       "shapeHash": "sha256:521be66c5ef7722ed26da2e521ffa73e35dd4de4c1ef00d9dd2aabfc818850bd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#isGoroutineHeader",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "isGoroutineHeader",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(line string) bool"
+      },
+      "shapeHash": "sha256:4add4451cde5ca1b703833c1163306d08f2bfbb3d360bbf37460a110438ab273"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#isLispFactoryConfig",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "isLispFactoryConfig",
@@ -144940,6 +144962,17 @@
         "type": "func(h *Host, ctx context.Context, extCtx context.Context, language string, binPath string) (*os/exec.Cmd, error)"
       },
       "shapeHash": "sha256:6902009b98312d901ffcd990afdc8e75bc1c287dd510e0e17e4e07f19a2ffb29"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#lispQuitLine",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "lispQuitLine",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#lispStartCell",
@@ -148072,9 +148105,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() string"
+        "type": "func(waitErr error) string"
       },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+      "shapeHash": "sha256:9abdae42e93d5ca827563413f739b3e64c6b1ab3e756c46694eb9b8c3b38cf45"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedProcessState.nativeMembers",
@@ -148526,6 +148559,17 @@
         "type": "func(id string, conns []*Conn)"
       },
       "shapeHash": "sha256:20765fd4e6c8c42e2e87f404a0f963ea84f9635bbc43843aeea0f71e964d81f2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processExitCode",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processExitCode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(waitErr error) int"
+      },
+      "shapeHash": "sha256:bf3f88cc477a66fde8caeac4d506d247ba7298d91d9c8a28b83db288aad9b229"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processIdentity",
@@ -152505,9 +152549,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(trace []byte, members []nativeMember) string"
+        "type": "func(trace []byte, members []nativeMember, exitCode int) string"
       },
-      "shapeHash": "sha256:38267181b572586a6e50d7f9d64b2195a04e13bd54e87b044aa77e4ccf9771f6"
+      "shapeHash": "sha256:cb1fa1408f41cdfb338630bd85833a62d11bb9c79ac64513b16fac904a1c284f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#transferredArgs",
