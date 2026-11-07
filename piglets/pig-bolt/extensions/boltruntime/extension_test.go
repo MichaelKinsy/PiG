@@ -11,7 +11,7 @@ import (
 func TestStatusReportsTheCompilerImagesAndFailures(t *testing.T) {
 	w := newWorker(t.TempDir(), "linux-x64", nil)
 	status := w.status(context.Background())
-	for _, want := range []string{"experimental", "platform: linux-x64", "compiler: not installed", "images: 0, 0 bytes of 1.0 GB", `"extensionsTypescriptRuntime": "aot"`} {
+	for _, want := range []string{"experimental", "platform: linux-x64", "compiler: not installed", "images: 0, 0 bytes of 2.0 GB", `"extensionsTypescriptRuntime": "aot"`} {
 		if !strings.Contains(status, want) {
 			t.Errorf("status lacks %q:\n%s", want, status)
 		}
@@ -51,7 +51,7 @@ func TestCommandActions(t *testing.T) {
 	if _, err := runAction(ctx, "frobnicate", w); err == nil || !strings.Contains(err.Error(), "Usage:") {
 		t.Errorf("unknown action = %v", err)
 	}
-	if message, err := runAction(ctx, "budget", w); err != nil || !strings.Contains(message, "1.0 GB") {
+	if message, err := runAction(ctx, "budget", w); err != nil || !strings.Contains(message, "2.0 GB") {
 		t.Errorf("budget = %q, %v", message, err)
 	}
 	if _, err := runAction(ctx, "budget lots", w); err == nil {

@@ -10,8 +10,10 @@ import (
 	"strings"
 )
 
-// defaultCacheBudget is the total size of the compiled images the store keeps: 1 GB, as the cache budget setting's default.
-const defaultCacheBudget int64 = 1 << 30
+// defaultCacheBudget is the total size of the compiled images the store keeps: 2 GB, about eight images of the 240 to 270 MB a compiled host takes
+// (1 GB held three or four, and each eviction costs a 20 to 30 s background rebuild while the set runs on Bun or Node). /bolt-runtime budget and
+// PIG_AOT_CACHE_MAX still set it, for a small disk.
+const defaultCacheBudget int64 = 2 << 30
 
 // Environment variables of the provider.
 const (

@@ -160,13 +160,13 @@ func TestParseSizeAndBudget(t *testing.T) {
 		}
 	}
 	st := newStore(t.TempDir(), "linux-x64")
-	if got, _ := st.cacheBudget(); got != defaultCacheBudget || defaultCacheBudget != 1<<30 {
-		t.Errorf("default budget %d, want 1 GB", got)
+	if got, _ := st.cacheBudget(); got != defaultCacheBudget || defaultCacheBudget != 2<<30 {
+		t.Errorf("default budget %d, want 2 GB", got)
 	}
-	if err := st.writeConfig(config{CacheMax: "2GB"}); err != nil {
+	if err := st.writeConfig(config{CacheMax: "3GB"}); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := st.cacheBudget(); got != 2<<30 {
+	if got, _ := st.cacheBudget(); got != 3<<30 {
 		t.Errorf("configured budget %d", got)
 	}
 	t.Setenv(envCacheMax, "300MB")
