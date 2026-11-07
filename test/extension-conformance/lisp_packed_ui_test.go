@@ -26,7 +26,7 @@ func createPackedLispUIConfigs() ([]subprocess.ExtConfig, error) {
 	for i := range configs {
 		cfg := &configs[i]
 		cfg.Enabled, cfg.RuntimeKind, cfg.RuntimeLanguage, cfg.Isolation, cfg.EntrypointKind = true, "subprocess", "lisp", "shared-ok", "factory"
-		cfg.Factory, cfg.SDKName, cfg.ContentHash = "new-extension", "pig-sdk-lisp", "packed-ui-lisp-"+cfg.Name
+		cfg.Factory, cfg.SDKName, cfg.ContentHash = "new-extension", "pig-sdk-lisp", "packed-ui-lisp-"+cfg.Name+"-"+sourceHash(body)
 	}
 	return configs, nil
 }

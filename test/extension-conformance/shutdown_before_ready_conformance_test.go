@@ -275,12 +275,17 @@ func packedShutdownRunner(t *testing.T, language string) func(addresses []string
 	root := findModuleRoot(t)
 	cacheRoot := filepath.Join(os.Getenv("PIG_HOME"), "cache")
 	sources := filepath.Join(sharedSources, "packed-shutdown-"+language)
+	// The cells are shared with every other process (shareCellCaches), so a member's Hash is the hash of the text written so far, not its name alone: an edit
+	// to a member's source here must not meet a cell built from the old text.
+	var written []string
 	write := func(path, text string) {
 		t.Helper()
 		if err := writeSharedSource(path, text); err != nil {
 			t.Fatal(err)
 		}
+		written = append(written, path, text)
 	}
+	memberHash := func(name string) string { return "shutdown-" + name + "-" + sourceHash(written...) }
 	var binary string
 	var args []string
 	switch language {
@@ -302,7 +307,7 @@ func Extension() *sdk.Extension {
 	return e
 }
 `, name, earlydispatch.Channel, earlydispatch.EchoChannel))
-			exts = append(exts, runtimecell.GoExtension{Name: name, Root: dir, ModulePath: module, Package: module, Factory: "Extension", Hash: "shutdown-" + name})
+			exts = append(exts, runtimecell.GoExtension{Name: name, Root: dir, ModulePath: module, Package: module, Factory: "Extension", Hash: memberHash(name)})
 		}
 		cell, err := runtimecell.BuildGoPackedCell(t.Context(), cacheRoot, "shutdown-before-ready-go", exts)
 		if err != nil {
@@ -322,7 +327,7 @@ func Extension() *sdk.Extension {
     ext
 }
 `, name, earlydispatch.Channel, earlydispatch.EchoChannel))
-			exts = append(exts, runtimecell.RustExtension{Name: name, Root: dir, Package: name, Factory: "new_extension", Hash: "shutdown-" + name})
+			exts = append(exts, runtimecell.RustExtension{Name: name, Root: dir, Package: name, Factory: "new_extension", Hash: memberHash(name)})
 		}
 		cell, err := runtimecell.BuildRustPackedCell(t.Context(), cacheRoot, "shutdown-before-ready-rust", exts)
 		if err != nil {
@@ -341,7 +346,7 @@ def new_extension():
     e.events.on(%q, lambda ctx, data: ctx.events.emit(%q, data))
     return e
 `, name, earlydispatch.Channel, earlydispatch.EchoChannel))
-			exts = append(exts, runtimecell.PythonExtension{Name: name, Root: dir, Package: name, Factory: "new_extension", Hash: "shutdown-" + name})
+			exts = append(exts, runtimecell.PythonExtension{Name: name, Root: dir, Package: name, Factory: "new_extension", Hash: memberHash(name)})
 		}
 		cell, err := runtimecell.BuildPythonPackedCell(t.Context(), cacheRoot, "shutdown-before-ready-python", exts)
 		if err != nil {
@@ -361,7 +366,7 @@ def new_extension():
                    (lambda (ctx data) (pig:events-emit (pig:ctx-events ctx) %q data)))
     e))
 `, name, name, name, earlydispatch.Channel, earlydispatch.EchoChannel))
-			exts = append(exts, runtimecell.LispExtension{Name: name, Root: dir, Package: name, Factory: "new-extension", Hash: "shutdown-" + name})
+			exts = append(exts, runtimecell.LispExtension{Name: name, Root: dir, Package: name, Factory: "new-extension", Hash: memberHash(name)})
 		}
 		cell, err := runtimecell.BuildLispPackedCell(t.Context(), cacheRoot, "shutdown-before-ready-lisp", exts)
 		if err != nil {
