@@ -63,6 +63,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rpc-settle-wait-rs"
+version = "0.1.0"
+dependencies = [
+ "pig-sdk",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -104,13 +111,6 @@ dependencies = [
  "serde",
  "serde_core",
  "zmij",
-]
-
-[[package]]
-name = "rpc-settle-wait-rs"
-version = "0.1.0"
-dependencies = [
- "pig-sdk",
 ]
 
 [[package]]
