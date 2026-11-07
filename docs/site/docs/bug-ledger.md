@@ -1102,6 +1102,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D262](#bf-d262) | The startup benchmark disposes the session runtime | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D266](#bf-d266) | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D267](#bf-d267) | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-a02543e](#bf-a02543e) | A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's… | PiG's own defect | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -5985,7 +5986,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3de4b8e877` (2026-11-06)
 - **Tests:** `extensions/sdk/key_order_test.go::TestObjectKeysDoNotLeakTheOrderOfAFreedObject`, `extensions/sdk/key_order_test.go::TestObjectKeysPutArrayIndexKeysFirst`, `extensions/sdk/key_order_test.go::TestObjectsMovedInPlaceKeepTheirMemberOrder`
-- **Release note:** A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. The order of every object is recorded when the event is decoded and each object is identified by its own map, so no object is ever given another's order: sorting a provider request's `tools`, swapping siblings whose leading strings match, or editing a string in place keeps every member order, and redacting every message of a 10,000-message context in place takes 97 ms where it took 3 s. A Go handler that returns nothing does not read the event to write its reply. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.
+- **Release note:** A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.
 
 ### BF-3def2a7
 
@@ -16770,6 +16771,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi stops waiting on inherited pipes (its install settles on the command's `exit`, or bounds the wait for `close`). Then the call-site marker and this record go.
 - **Fix commits:** `0bc49744aa` (2026-11-05), `79032e4d1f` (2026-11-05)
 - **Tests:** `chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes`
+
+### BF-a02543e
+
+**A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's member order into what it hands back.
+- **Root cause:** The order of an event's objects was read back from the event text when a reply was written, matching moved array elements to the text by their first string members. That wrote another object's order into a provider request when tools were sorted, siblings shared leading strings, or a string was edited in place, and it searched quadratically.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a02543e282` (2026-11-07)
+- **Tests:** `extensions/sdk/json/object_order_test.go::TestObjectOrderIdentifiesObjectsByTheirMaps`, `extensions/sdk/json/object_order_test.go::TestObjectOrderIsReadConcurrently`, `extensions/sdk/json/object_order_test.go::TestObjectOrderKeepsEveryObjectsKeysWhole`, `extensions/sdk/json/object_order_test.go::TestUnmarshalObjectOfAValueThatIsNotAnObject`, `extensions/sdk/json/object_order_test.go::TestUnmarshalObjectRecordsTheMemberOrder`, `extensions/sdk/key_order_probe_test.go::TestAnUnchangedContextReplyReadsNoOrder`, `extensions/sdk/key_order_probe_test.go::TestObjectsEditedInPlaceKeepTheirOrderInTheContext`, `extensions/sdk/key_order_probe_test.go::TestObjectsKeepTheirOrderWhateverTheHandlerDoesToTheirPlace` and 3 more in docs/bug-ledger.json
+- **Release note:** A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's member order into what it hands back. The order of an event's objects was matched back to the event's text by the first string members of the moved elements, so sorting an OpenAI provider request's `tools` by name re-sorted each tool's `properties`, siblings with the same leading strings or only numbers swapped their orders, an escaped string or an in-place string edit gave the wrong order, and a context of 3,000 messages edited in place took 1.2 s to answer (10 s at 10,000). The Go SDK now records the member order of every object while it decodes the event and knows each object by its own map, so a moved, copied, edited or twice-listed object keeps exactly the order the host wrote it: redacting every message of a 10,000-message context takes 97 ms, and a context handler that returns nothing costs 2% more than the decode it already paid.
 
 ### BF-a076a50
 

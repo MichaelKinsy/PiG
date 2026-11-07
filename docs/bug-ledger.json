@@ -8987,7 +8987,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. The order of every object is recorded when the event is decoded and each object is identified by its own map, so no object is ever given another's order: sorting a provider request's `tools`, swapping siblings whose leading strings match, or editing a string in place keeps every member order, and redacting every message of a 10,000-message context in place takes 97 ms where it took 3 s. A Go handler that returns nothing does not read the event to write its reply. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.",
+      "releaseNote": "A Go extension that reorders, filters or sorts an array of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries) and hands it back no longer re-sorts the keys of the moved objects, so tool-call arguments and tool schemas reach the session and the provider in the order the host sent them. `Context.ObjectKeys` lists integer-like keys first and ascending, as `Object.keys` does.",
       "origin": "release note",
       "commits": [
         {
@@ -30718,6 +30718,38 @@
       ],
       "tests": [
         "chord/nextnode/plugins/plugins_install_test.go::TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
+      ]
+    },
+    {
+      "id": "BF-a02543e",
+      "title": "A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's…",
+      "symptom": "A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's member order into what it hands back.",
+      "rootCause": "The order of an event's objects was read back from the event text when a reply was written, matching moved array elements to the text by their first string members. That wrote another object's order into a provider request when tools were sorted, siblings shared leading strings, or a string was edited in place, and it searched quadratically.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension that sorts, swaps or edits objects of an event in place no longer writes another object's member order into what it hands back. The order of an event's objects was matched back to the event's text by the first string members of the moved elements, so sorting an OpenAI provider request's `tools` by name re-sorted each tool's `properties`, siblings with the same leading strings or only numbers swapped their orders, an escaped string or an in-place string edit gave the wrong order, and a context of 3,000 messages edited in place took 1.2 s to answer (10 s at 10,000). The Go SDK now records the member order of every object while it decodes the event and knows each object by its own map, so a moved, copied, edited or twice-listed object keeps exactly the order the host wrote it: redacting every message of a 10,000-message context takes 97 ms, and a context handler that returns nothing costs 2% more than the decode it already paid.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a02543e282",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/json/object_order_test.go::TestObjectOrderIdentifiesObjectsByTheirMaps",
+        "extensions/sdk/json/object_order_test.go::TestObjectOrderIsReadConcurrently",
+        "extensions/sdk/json/object_order_test.go::TestObjectOrderKeepsEveryObjectsKeysWhole",
+        "extensions/sdk/json/object_order_test.go::TestUnmarshalObjectOfAValueThatIsNotAnObject",
+        "extensions/sdk/json/object_order_test.go::TestUnmarshalObjectRecordsTheMemberOrder",
+        "extensions/sdk/key_order_probe_test.go::TestAnUnchangedContextReplyReadsNoOrder",
+        "extensions/sdk/key_order_probe_test.go::TestObjectsEditedInPlaceKeepTheirOrderInTheContext",
+        "extensions/sdk/key_order_probe_test.go::TestObjectsKeepTheirOrderWhateverTheHandlerDoesToTheirPlace",
+        "extensions/sdk/key_order_test.go::TestAKeptContextReadsByteOrderAfterTheReply",
+        "extensions/sdk/key_order_test.go::TestObjectKeysDoNotLeakTheOrderOfAFreedObject",
+        "extensions/sdk/key_order_time_norace_test.go::TestRedactingEveryMessageTakesLinearTime"
       ]
     },
     {
