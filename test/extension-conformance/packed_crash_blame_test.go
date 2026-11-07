@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -166,8 +167,75 @@ func observeCrashBlame(t *testing.T, language, isolation string) map[string]bool
 	return observed
 }
 
+// A Lisp member prints a backtrace of its own (sb-debug:print-backtrace writes the header SBCL's own report of an unhandled condition has), and the shared
+// process then ends another way than an unhandled condition: sb-ext:exit or a kill. No unhandled condition ended it, so the printed backtrace names no one and the
+// whole cell stops until a /reload (D274); the member that printed it is not blamed, and no member restarts.
+func TestPackedLispProcessEndedWithoutAnUnhandledConditionStopsTheWholeCell(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping crash blame conformance in short mode (builds runner images)")
+	}
+	for _, end := range []string{"exit", "kill"} {
+		t.Run(end, func(t *testing.T) {
+			h := subprocess.NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+			t.Cleanup(func() { h.Shutdown("test done") })
+			bridge := subprocess.NewUIBridge(func() {})
+			bridge.SetUIContext(newRecordingUI(new([]string), new([]string)))
+			h.SetUIBridge(bridge)
+			var mu sync.Mutex
+			var reports []string
+			h.SetCrashHandler(func(name string, _ time.Duration, disabled bool, reason string) {
+				mu.Lock()
+				defer mu.Unlock()
+				reports = append(reports, fmt.Sprintf("%s disabled=%t: %s", name, disabled, reason))
+			})
+			configs := []subprocess.ExtConfig{crashFactory(t, "lisp", "culprit", "shared-ok"), crashFactory(t, "lisp", "sibling", "shared-ok")}
+			h.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
+			defer cancel()
+			loaded, errs := h.LoadAll(ctx, configs)
+			if len(errs) != 0 || len(loaded) != 2 {
+				t.Fatalf("loaded %d, errors %v", len(loaded), errs)
+			}
+			run := func(name, command string) {
+				for _, ext := range loaded {
+					if ext.Name == name {
+						_ = ext.Commands[command].Handler(ctx, "")
+						return
+					}
+				}
+				t.Fatalf("%s is not loaded", name)
+			}
+			run("sibling", "printbt")
+			run("culprit", end)
+			stoppedWithCell := func(name string) bool {
+				mu.Lock()
+				defer mu.Unlock()
+				return slices.ContainsFunc(reports, func(report string) bool {
+					return strings.HasPrefix(report, name+" disabled=true") && strings.Contains(report, "/reload restarts them")
+				})
+			}
+			deadline := time.Now().Add(2 * time.Minute)
+			for !stoppedWithCell("culprit") || !stoppedWithCell("sibling") {
+				if time.Now().After(deadline) {
+					mu.Lock()
+					defer mu.Unlock()
+					t.Fatalf("the whole cell was not reported stopped: %q (quarantined %v)", reports, h.QuarantinedCells())
+				}
+				time.Sleep(50 * time.Millisecond)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			for _, report := range reports {
+				if strings.Contains(report, "own code ended the shared process") || strings.Contains(report, "restarting") {
+					t.Fatalf("a member was blamed or restarted: %q", reports)
+				}
+			}
+		})
+	}
+}
+
 // crashFactory writes a conventional factory of language with a command "ping" that notifies "pong-<name>" and a command "crash" that starts a goroutine
-// (a thread) of its own that panics (signals an error) with "crash of <name>", which nothing handles.
+// (a thread) of its own that panics (signals an error) with "crash of <name>", which nothing handles; a Lisp one also has "printbt", "exit" and "kill".
 func crashFactory(t testing.TB, language, name, isolation string) subprocess.ExtConfig {
 	t.Helper()
 	dir := t.TempDir()
@@ -211,6 +279,12 @@ func Extension() *sdk.Extension {
     (pig:command e "crash" "" (lambda (ctx args) (declare (ignore ctx args))
                                 (sb-thread:make-thread (lambda () (error "crash of %[1]s")))
                                 nil))
+    (pig:command e "printbt" "" (lambda (ctx args) (declare (ignore ctx args))
+                                  (sb-debug:print-backtrace :stream *error-output* :count 8)
+                                  (finish-output *error-output*)
+                                  nil))
+    (pig:command e "exit" "" (lambda (ctx args) (declare (ignore ctx args)) (sb-ext:exit :code 3 :abort t)))
+    (pig:command e "kill" "" (lambda (ctx args) (declare (ignore ctx args)) (sb-unix:unix-kill (sb-unix:unix-getpid) 9)))
     e))
 `, name))
 	}

@@ -814,7 +814,7 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 		return
 	}
 	// A trace that names one member of a shared native process blames that member only: the others restart in a shared process, and the culprit runs isolated.
-	if culprit := process.nativeCulprit(); culprit != "" && len(process.members) > 1 {
+	if culprit := process.nativeCulprit(err); culprit != "" && len(process.members) > 1 {
 		h.recoverNativeProcess(process, culprit, reason)
 		return
 	}

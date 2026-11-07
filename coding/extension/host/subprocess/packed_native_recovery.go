@@ -3,7 +3,9 @@ package subprocess
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os/exec"
 	"slices"
 	"strings"
 	"unicode"
@@ -31,8 +33,9 @@ func (p *packedProcessState) nativeMembers() []nativeMember {
 	return members
 }
 
-// nativeCulprit is the member the process's crash trace names, or "" when it names none or more than one.
-func (p *packedProcessState) nativeCulprit() string {
+// nativeCulprit is the member the process's crash trace names, or "" when it names none or more than one, or when the process did not end the way that trace
+// says: waitErr is what the process's wait returned.
+func (p *packedProcessState) nativeCulprit(waitErr error) string {
 	if p.node || len(p.members) == 0 {
 		return ""
 	}
@@ -44,29 +47,50 @@ func (p *packedProcessState) nativeCulprit() string {
 			break
 		}
 	}
-	return traceCulprit(readStderrTail(log), members)
+	return traceCulprit(readStderrTail(log), members, processExitCode(waitErr))
 }
 
-func traceCulprit(trace []byte, members []nativeMember) string {
+// processExitCode is the exit status a wait error reports, or -1 for a process a signal ended or a wait that failed.
+func processExitCode(waitErr error) int {
+	if waitErr == nil {
+		return 0
+	}
+	if exitErr, ok := errors.AsType[*exec.ExitError](waitErr); ok {
+		return exitErr.ExitCode()
+	}
+	return -1
+}
+
+func traceCulprit(trace []byte, members []nativeMember, exitCode int) string {
 	if len(members) == 0 {
 		return ""
 	}
 	switch members[0].language {
 	case "go":
-		return goTraceCulprit(trace, members)
+		return goTraceCulprit(trace, members, exitCode)
 	case "lisp":
 		return lispTraceCulprit(trace, members)
 	}
 	return ""
 }
 
-// goTraceCulprit reads the trace of the panic that ended the process: the section the Go runtime writes for an unrecovered panic, which starts at the last line
-// that begins "panic: " and holds the goroutine that was running ("goroutine N [running]:"). The goroutine's frames, innermost first, and the goroutine's creator
-// ("created by pkg.fn in goroutine M") name the member whose package is a frame's: its import path, else the one member whose module holds the package. The
-// SDK's and the runner's frames name nobody. Nothing before that section decides: the blocks the SDK writes for the panics it recovered ("goroutine N [running]:"
-// after "extension: recovered from panic ...") are handled failures, and a process that ended by os.Exit, a runtime fatal error or a kill wrote no such section
-// and names no one. A trace that names two members names no one.
-func goTraceCulprit(trace []byte, members []nativeMember) string {
+// goPanicExitStatus is the exit status of a Go process that an unrecovered panic or a runtime fatal error ended.
+const goPanicExitStatus = 2
+
+// goTraceCulprit reads the trace of the panic that ended the process. It reads one only when the process ended with Go's status for a panic (2), and the log's
+// last line that begins "panic: " starts the runtime's section: its message and continuation lines up to the blank line, then the header of the goroutine that
+// was running ("goroutine N [running]:") with nothing written between. A process that ended any other way names no one: os.Exit and a kill leave the text a
+// member logged for a panic it recovered (the common "panic: %v\n\n%s" with debug.Stack()) as the last such line, and a runtime fatal error ("fatal error: "
+// after the last "panic: " line) ends with status 2 as a panic does. Text a goroutine wrote between the panic's line and its goroutine header (a goroutine
+// header inside the message block) means the section is not the runtime's alone, and names no one.
+// The goroutine's frames, innermost first, and its creator ("created by pkg.fn in goroutine M") name the member whose package is a frame's: its import
+// path, else the one member whose module holds the package. The SDK's and the runner's frames name nobody. Nothing before the section decides: the blocks the
+// SDK writes for the panics it recovered ("goroutine N [running]:" after "extension: recovered from panic ...") are handled failures. A trace that names two
+// members names no one.
+func goTraceCulprit(trace []byte, members []nativeMember, exitCode int) string {
+	if exitCode != goPanicExitStatus {
+		return ""
+	}
 	var lines []string
 	for rawLine := range bytes.Lines(trace) {
 		lines = append(lines, strings.TrimRight(string(rawLine), "\r\n"))
@@ -80,17 +104,25 @@ func goTraceCulprit(trace []byte, members []nativeMember) string {
 	if section < 0 {
 		return ""
 	}
+	if slices.ContainsFunc(lines[section+1:], func(line string) bool { return strings.HasPrefix(line, "fatal error: ") }) {
+		return ""
+	}
+	next := section + 1
+	for ; next < len(lines) && lines[next] != ""; next++ {
+		if isGoroutineHeader(lines[next]) {
+			return ""
+		}
+	}
+	next++
+	if next >= len(lines) || !isGoroutineHeader(lines[next]) || !strings.Contains(lines[next], "[running") {
+		return ""
+	}
 	owners := map[string]bool{}
-	seen, inRunning := false, false
-	for _, line := range lines[section+1:] {
+	for _, line := range lines[next+1:] {
 		switch {
-		case strings.HasPrefix(line, "goroutine ") && strings.HasSuffix(line, ":"):
-			if seen {
-				return soleOwner(owners)
-			}
-			seen, inRunning = true, strings.Contains(line, "[running")
-			continue
-		case !inRunning, line == "", line[0] == '\t', line[0] == ' ':
+		case isGoroutineHeader(line):
+			return soleOwner(owners)
+		case line == "", line[0] == '\t', line[0] == ' ':
 			continue
 		}
 		function, created := strings.CutPrefix(line, "created by ")
@@ -102,6 +134,10 @@ func goTraceCulprit(trace []byte, members []nativeMember) string {
 		}
 	}
 	return soleOwner(owners)
+}
+
+func isGoroutineHeader(line string) bool {
+	return strings.HasPrefix(line, "goroutine ") && strings.HasSuffix(line, ":")
 }
 
 // goFramePackageOwner returns the member that owns the package of a stack frame's function name ("example.com/ext.(*T).Method(0xc0)" has package
@@ -131,21 +167,33 @@ func goFramePackageOwner(function string, members []nativeMember) string {
 	return ""
 }
 
-// lispTraceCulprit reads the backtrace SBCL prints for the thread an unhandled condition ended (the last "Backtrace for: ..." section), and returns the one
-// member whose package qualifies the function of one of its frames. Only a frame's function counts: the arguments SBCL prints after it include the condition's
-// text ("3: (ERROR \"sibling: connection lost\")"), which names nobody. Frames that name two members, or none, name no one.
+// lispQuitLine is what SBCL writes, after the backtrace of the thread an unhandled condition ended, when it quits in --disable-debugger mode.
+const lispQuitLine = "unhandled condition in --disable-debugger mode, quitting"
+
+// lispTraceCulprit reads the backtrace SBCL prints for the thread an unhandled condition ended: the last "Backtrace for: ..." section, and only when SBCL's quit
+// line follows it. A process that ended any other way names no one: a member that printed a backtrace itself (sb-debug:print-backtrace writes the same header)
+// and a process that then ended by sb-ext:exit or a kill leave no quit line after it. The one member whose package qualifies the function of one of the
+// section's frames is returned. Only a frame's function counts: the arguments SBCL prints after it include the condition's text ("3: (ERROR \"sibling: connection
+// lost\")"), which names nobody. Frames that name two members, or none, name no one.
 func lispTraceCulprit(trace []byte, members []nativeMember) string {
 	var frames []string
-	inBacktrace := false
+	inBacktrace, quit := false, false
 	for rawLine := range bytes.Lines(trace) {
 		line := strings.TrimRight(string(rawLine), "\r\n")
 		if strings.HasPrefix(line, "Backtrace for:") {
-			frames, inBacktrace = frames[:0], true
+			frames, inBacktrace, quit = frames[:0], true, false
 			continue
 		}
-		if frame, ok := lispFrameFunction(line); ok && inBacktrace {
+		if line == lispQuitLine {
+			quit = inBacktrace
+			continue
+		}
+		if frame, ok := lispFrameFunction(line); ok && inBacktrace && !quit {
 			frames = append(frames, frame)
 		}
+	}
+	if !quit {
+		return ""
 	}
 	owners := map[string]bool{}
 	for _, frame := range frames {

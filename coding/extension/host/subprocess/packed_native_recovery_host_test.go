@@ -24,7 +24,9 @@ func (u *notifyingUI) Notify(message, _ string) { u.messages <- message }
 
 // writeCrashingFactoryModule writes a Go factory with these commands: "ping" notifies "pong-<name>"; "handled" panics in its handler, which the SDK recovers
 // (and writes a goroutine block for to the log the cell shares); "crash" starts a goroutine of the extension's own that panics, which nothing recovers, so the
-// shared process ends with a trace that names this extension; "exit" ends the process with os.Exit(3), which writes no trace.
+// shared process ends with a trace that names this extension; "exit" ends the process with os.Exit(3), which writes no trace; "logpanic" recovers nothing and
+// writes to stderr the text a member logs for a panic it handled, in the form the Go runtime writes its own ("panic: msg", a blank line, debug.Stack());
+// "fatal" ends the process with a runtime fatal error (an unlock of an unlocked mutex, exit status 2), and "kill" with SIGKILL, neither of which is a panic.
 func writeCrashingFactoryModule(t *testing.T, modulePath, name string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -35,6 +37,8 @@ func writeCrashingFactoryModule(t *testing.T, modulePath, name string) string {
 
 import (
 	"os"
+	"runtime/debug"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 )
@@ -48,6 +52,16 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	e.Command("exit", "", func(ctx sdk.Context, _ string) error { os.Exit(3); return nil })
+	e.Command("logpanic", "", func(ctx sdk.Context, _ string) error {
+		_, _ = os.Stderr.WriteString("panic: assignment to entry in nil map\n\n" + string(debug.Stack()))
+		return nil
+	})
+	e.Command("fatal", "", func(ctx sdk.Context, _ string) error { var mu sync.Mutex; mu.Unlock(); return nil })
+	e.Command("kill", "", func(ctx sdk.Context, _ string) error {
+		p, _ := os.FindProcess(os.Getpid())
+		_ = p.Kill()
+		select {}
+	})
 	return e
 }
 `, name)
@@ -217,32 +231,46 @@ func TestPackedProcessCrashBlamesTheMemberWhoseGoroutineEndedIt(t *testing.T) {
 	}
 }
 
-// A shared process that ends with os.Exit writes no trace, and the log holds the block of a panic the SDK recovered earlier: no member is blamed, and the
-// whole cell stops until a /reload, as D274 says.
-func TestPackedProcessExitStopsTheWholeCell(t *testing.T) {
-	c := loadCrashCell(t)
-	if err := c.run("healthy", "handled"); err == nil {
-		t.Fatal("the healthy member's handler panic was not reported as an error")
-	}
-	_ = c.run("culprit", "exit")
-	c.waitFor("both members' stop", func() bool {
-		quarantined := c.h.QuarantinedCells()[c.packedKey] != ""
-		c.h.mu.Lock()
-		defer c.h.mu.Unlock()
-		return quarantined && c.h.exts["culprit"] == nil && c.h.exts["healthy"] == nil
+// stopped reports whether the host has reported the member stopped with its cell (the report a cell's quarantine sends each member, which it sends after it
+// removed the members), so a wait for it also waits for the reports.
+func (c *crashCell) stoppedWithCell(name string) bool {
+	return slices.ContainsFunc(c.reportsCopy(), func(report string) bool {
+		return strings.HasPrefix(report, name+" disabled=true") && strings.Contains(report, "/reload restarts them")
 	})
-	reports := c.reportsCopy()
-	for _, name := range []string{"culprit", "healthy"} {
-		if !slices.ContainsFunc(reports, func(report string) bool {
-			return strings.HasPrefix(report, name+" disabled=true") && strings.Contains(report, "/reload restarts them")
-		}) {
-			t.Fatalf("no report says %s stopped with the cell: %q", name, reports)
-		}
-	}
-	c.h.mu.Lock()
-	faults := len(c.h.nativeFaults)
-	c.h.mu.Unlock()
-	if faults != 0 {
-		t.Fatalf("an exit without a trace blamed %d members", faults)
+}
+
+// A shared process that ends any way but an unrecovered panic of a member's goroutine blames no member, and the whole cell stops until a /reload, as D274 says,
+// however the log reads: the block of a panic the SDK recovered earlier, or the text a member wrote for a panic it handled in the form the runtime writes its own
+// ("panic: " and a goroutine block), is not what ended the process. os.Exit, a runtime fatal error (which ends with the status of a panic) and a kill write no panic
+// of a member's.
+func TestPackedProcessExitStopsTheWholeCell(t *testing.T) {
+	for name, tc := range map[string]struct{ before, end string }{
+		"os.Exit after a recovered panic":    {"handled", "exit"},
+		"os.Exit after a logged panic":       {"logpanic", "exit"},
+		"a fatal error after a logged panic": {"logpanic", "fatal"},
+		"a kill after a logged panic":        {"logpanic", "kill"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := loadCrashCell(t)
+			if err := c.run("healthy", tc.before); tc.before == "handled" && err == nil {
+				t.Fatal("the healthy member's handler panic was not reported as an error")
+			}
+			c.ping("healthy")
+			_ = c.run("culprit", tc.end)
+			// The cell's members are removed before they are reported, so the wait is for the reports too.
+			c.waitFor("both members' stop", func() bool {
+				quarantined := c.h.QuarantinedCells()[c.packedKey] != ""
+				c.h.mu.Lock()
+				gone := c.h.exts["culprit"] == nil && c.h.exts["healthy"] == nil
+				c.h.mu.Unlock()
+				return quarantined && gone && c.stoppedWithCell("culprit") && c.stoppedWithCell("healthy")
+			})
+			c.h.mu.Lock()
+			faults := len(c.h.nativeFaults)
+			c.h.mu.Unlock()
+			if faults != 0 {
+				t.Fatalf("a process that no panic of a member's ended blamed %d members: %q", faults, c.reportsCopy())
+			}
+		})
 	}
 }

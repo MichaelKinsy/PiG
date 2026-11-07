@@ -1,7 +1,9 @@
 package subprocess
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -69,10 +71,71 @@ func TestGoTraceCulpritNamesTheMemberWhoseCodeEndedTheProcess(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			if got := goTraceCulprit([]byte(tc.trace), members); got != tc.want {
+			if got := goTraceCulprit([]byte(tc.trace), members, goPanicExitStatus); got != tc.want {
 				t.Fatalf("culprit = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// A section of the log decides only when the process ended the way that section says: the exit status is Go's for a panic, no fatal error follows the panic's
+// line, and the panic's message is followed by the running goroutine's header and nothing else.
+func TestGoTraceCulpritReadsOnlyWhatEndedTheProcess(t *testing.T) {
+	members := []nativeMember{
+		{name: "alpha", language: "go", importPath: "example.test/alpha", modulePath: "example.test/alpha"},
+		{name: "beta", language: "go", importPath: "example.test/beta/ext", modulePath: "example.test/beta"},
+	}
+	// What a member writes for a panic it recovered, in the form the Go runtime writes its own.
+	const logged = "panic: assignment to entry in nil map\n\ngoroutine 41 [running]:\nruntime/debug.Stack()\n\t/go/src/runtime/debug/stack.go:26 +0x5e\nexample.test/beta/ext.Handler(0xc0)\n\texample.test/beta/ext/h.go:9 +0x1\n"
+	const runtimePanic = "panic: crash of alpha\n\ngoroutine 23 [running]:\nexample.test/alpha.Extension.func1.1()\n\texample.test/alpha/ext.go:9 +0x25\ncreated by example.test/alpha.Extension.func1 in goroutine 22\n\texample.test/alpha/ext.go:8 +0x1\n"
+	cases := map[string]struct {
+		trace string
+		exit  int
+		want  string
+	}{
+		"an unrecovered panic that ended with status 2": {logged + runtimePanic, 2, "alpha"},
+		"a logged panic, then os.Exit(3)":               {logged + "exit status 3\n", 3, ""},
+		"a logged panic, then a kill":                   {logged, -1, ""},
+		"a logged panic, then os.Exit(0)":               {logged, 0, ""},
+		"a logged panic, then a fatal error, status 2": {
+			logged + "fatal error: sync: unlock of unlocked mutex\n\ngoroutine 5 [running]:\nexample.test/alpha.Unlock()\n\t/x.go:1\n", 2, "",
+		},
+		"a fatal error after a runtime panic section":                                                        {runtimePanic + "fatal error: all goroutines are asleep - deadlock!\n", 2, ""},
+		"a logged panic block then os.Exit(2) cannot be told from a runtime section (the limit D274 states)": {logged, 2, "beta"},
+		"a panic whose message has continuation lines": {
+			"panic: runtime error: invalid memory address or nil pointer dereference\n[signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x4]\n\ngoroutine 23 [running]:\nexample.test/alpha.Run()\n\t/x.go:1\n", 2, "alpha",
+		},
+		"a repanic": {
+			"panic: first [recovered]\n\tpanic: second\n\ngoroutine 23 [running]:\nexample.test/alpha.Run()\n\t/x.go:1\n", 2, "alpha",
+		},
+		// The probe of the review: a member's recovered block written between the runtime's panic line and its goroutine header.
+		"a block between the panic line and its goroutine header": {
+			"panic: crash of alpha\nrecovered: busy\ngoroutine 41 [running]:\nexample.test/beta/ext.Handler(0xc0)\n\t/h.go:9 +0x1\n\ngoroutine 23 [running]:\nexample.test/alpha.Run()\n\t/x.go:1\n", 2, "",
+		},
+		"text between the panic's message and its goroutine header": {
+			"panic: crash of alpha\n\nrecovered: busy\ngoroutine 23 [running]:\nexample.test/alpha.Run()\n\t/x.go:1\n", 2, "",
+		},
+		"a panic with no goroutine header": {"panic: crash of alpha\n", 2, ""},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := goTraceCulprit([]byte(tc.trace), members, tc.exit); got != tc.want {
+				t.Fatalf("culprit = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestProcessExitCode(t *testing.T) {
+	if got := processExitCode(nil); got != 0 {
+		t.Fatalf("a clean exit = %d", got)
+	}
+	if got := processExitCode(errors.New("wait failed")); got != -1 {
+		t.Fatalf("a wait error = %d", got)
+	}
+	// A test binary that is given a flag it does not know exits with status 2.
+	if got := processExitCode(exec.Command(os.Args[0], "-test.nosuchflag").Run()); got != 2 {
+		t.Fatalf("a child that exited with status 2 = %d", got)
 	}
 }
 
@@ -121,6 +184,30 @@ func TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame(t *testing.T)
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
+			if got := lispTraceCulprit([]byte(tc.trace+lispQuitLine+"\n"), members); got != tc.want {
+				t.Fatalf("culprit = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A backtrace decides only when SBCL's quit line follows it: a member that printed one itself and a process that then ended another way name no one.
+func TestLispTraceCulpritReadsOnlyWhatEndedTheProcess(t *testing.T) {
+	members := []nativeMember{
+		{name: "alpha", language: "lisp", lispPkg: "ALPHA"},
+		{name: "beta", language: "lisp", lispPkg: "BETA"},
+	}
+	const printed = "Backtrace for: #<SB-THREAD:THREAD tid=24 RUNNING {1201}>\n0: (BETA::HELPER)\n1: (SB-INT:SIMPLE-EVAL-IN-LEXENV (BETA::HELPER) #<NULL-LEXENV>)\n"
+	const unhandled = "Unhandled SIMPLE-ERROR in thread #<SB-THREAD:THREAD tid=22 RUNNING {1200}>:\n  boom\n\nBacktrace for: #<SB-THREAD:THREAD tid=22 RUNNING {1200}>\n3: (ERROR \"boom\")\n4: ((LAMBDA NIL :IN ALPHA::NEW-EXTENSION))\n\n" + lispQuitLine + "\n"
+	cases := map[string]struct{ trace, want string }{
+		"an unhandled condition":                           {unhandled, "alpha"},
+		"a printed backtrace, then an unhandled condition": {printed + unhandled, "alpha"},
+		"a printed backtrace, then sb-ext:exit or a kill":  {printed, ""},
+		"a printed backtrace after the quit line":          {unhandled + printed, ""},
+		"a quit line before any backtrace":                 {lispQuitLine + "\n", ""},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
 			if got := lispTraceCulprit([]byte(tc.trace), members); got != tc.want {
 				t.Fatalf("culprit = %q, want %q", got, tc.want)
 			}
@@ -130,7 +217,7 @@ func TestLispTraceCulpritNamesTheMemberWhosePackageQualifiesAFrame(t *testing.T)
 
 // A trace names a member only for a language whose threads the host can read; a Python or Rust process does not end with a thread.
 func TestTraceCulpritReadsOnlyGoAndLisp(t *testing.T) {
-	if got := traceCulprit([]byte("goroutine 1 [running]:\nexample.test/a.F()\n"), []nativeMember{{name: "a", language: "rust", importPath: "example.test/a"}}); got != "" {
+	if got := traceCulprit([]byte("goroutine 1 [running]:\nexample.test/a.F()\n"), []nativeMember{{name: "a", language: "rust", importPath: "example.test/a"}}, 2); got != "" {
 		t.Fatalf("culprit = %q", got)
 	}
 }
