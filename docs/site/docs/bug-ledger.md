@@ -1209,6 +1209,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ad6d659](#bf-ad6d659) | The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ad9ed64-2](#bf-ad9ed64-2) | A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ada7018](#bf-ada7018) | `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack | PiG's own defect | All platforms | Unreleased |
 | [BF-ae1ee6d](#bf-ae1ee6d) | The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -18310,6 +18311,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/session_append_allocs_norace_test.go::TestAppendingATurnDoesNotParseItsRecordsForAccounting`, `internal/codingagent/session_append_typed_details_test.go::TestAppendToolResultWithTypedDetailsDoesNotDecodeItsRecord`, `internal/codingagent/session_held_entry_test.go::FuzzHeldMessageEntryMatchesTheRecordDecode`, `internal/codingagent/session_held_entry_test.go::TestHeldMessageEntryMatchesTheRecordDecode`, `internal/codingagent/session_line_capacity_test.go::TestMessageEntryRecordKeepsNoSpareCapacity`, `test/perfgate/process_test.go::TestRPCTurnProcessGate`
 - **Release note:** A large message's session record no longer keeps a regrown buffer when its text has escapes such as newlines, tabs or quotes. A truncated 1 MiB read used to keep 1.6 MB of unused space for the life of the session and now keeps about 160 KB; a 1 MiB source-code message kept 226 KB and now keeps 88 KB.
 
+### BF-ada7018
+
+**`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack**
+
+- **Source:** PiG's own defect
+- **Symptom:** `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.
+- **Root cause:** Every build creates its Host on the server's registry, a connection's shutdown no longer holds its retirements, a stale Host still serves events.off and xref.hello, a migrated bus listener is tracked, and a lone shared Node member restarts into the shared cell.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ada701819c` (2026-11-01)
+- **Tests:** None recorded.
+- **Release note:** `events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.
+
 ### BF-ae1ee6d
 
 **The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…**
@@ -26245,7 +26260,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 1
-- Follow-up to unreleased work: 2
+- Follow-up to unreleased work: 19
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1

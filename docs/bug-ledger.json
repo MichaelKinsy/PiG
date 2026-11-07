@@ -33860,6 +33860,26 @@
       ]
     },
     {
+      "id": "BF-ada7018",
+      "title": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack",
+      "symptom": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.",
+      "rootCause": "Every build creates its Host on the server's registry, a connection's shutdown no longer holds its retirements, a stale Host still serves events.off and xref.hello, a migrated bus listener is tracked, and a lone shared Node member restarts into the shared cell.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`events.off` on an extension listener that had migrated to the routed event bus panicked on a nil untrack.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ada701819c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-ae1ee6d",
       "title": "The login dialog opens and prints only `http:` and `https:` URLs, in their normalized form (percent-encoded…",
       "symptom": "A URL from a login server could end a terminal hyperlink early or send its own escape sequences.",
@@ -51999,7 +52019,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
-    "Follow-up to unreleased work": 2,
+    "Follow-up to unreleased work": 19,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
     "test-only": 1
