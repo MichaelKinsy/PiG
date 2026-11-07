@@ -4261,6 +4261,10 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 		flight := h.beginCommandFlight(me)
 		defer h.endCommandFlight(flight)
 		ctx = h.withCommandSuspension(ctx, flight)
+		if !flight.node {
+			// pig divergence (D86): a command of a runtime that cannot report its waits is suspended once it outlives the quantum, so Pi's next stdin line is admitted.
+			ctx = withRequestQuantum(ctx, nil)
+		}
 		resp, err := conn.Request(ctx, &Envelope{
 			Type: MsgRequest,
 			Request: &RequestPayload{
@@ -4474,6 +4478,13 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					me.host.setTailSuspended(flight)
 				}
 			}, func() bool { return false })
+			if !flight.node {
+				// pig divergence (D86): a handler of a runtime that cannot report its waits is waiting once it outlives the quantum.
+				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(flight) })
+			}
+		} else if !me.hostsNodeRuntime() && invocation.Bound(parent) {
+			// pig divergence (D86): the handler of a caller that waits for its first suspension (an input handler) is suspended once it outlives the quantum.
+			parent = withRequestQuantum(parent, nil)
 		}
 		// The state push and the request are one stretch of outstanding work, so the heartbeat sees one idle/busy transition per dispatch rather than one per frame.
 		conn.beginWork()
