@@ -1,0 +1,3 @@
+### Fixed
+
+- A left click on a custom message or entry card now toggles it as it does in Pi: a message renderer receives the same message identity on every rebuild, the component it returns takes the mouse, and the extension keeps the card's state per message. The Node SDK runs Pi's own `WeakMap` and `MouseRegion` renderer unchanged; the Go, Rust, Python and Lisp SDKs get `options.state` and `MessageViewEvent`/`EntryViewEvent` handlers for the clicks on their view's mouse regions. A click does no IPC on the TUI loop, and a transcript container now redraws a component whose handler changed it without telling the container. <!-- fix: 44f93fea88 -->
