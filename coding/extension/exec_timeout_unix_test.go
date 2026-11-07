@@ -156,3 +156,23 @@ func TestExecCommandStartsTheTimeoutAfterTheSpawnAsPiDoes(t *testing.T) {
 		entries = min(entries*2, maxEntries)
 	}
 }
+
+// dueDeadline is a context whose deadline has passed and whose cancellation has not been delivered: Done is open and Err is nil, as they are for the
+// instant between a timer's expiry and the goroutine that cancels the context, which a host that keeps the process off the CPU stretches to the whole
+// call.
+type dueDeadline struct{ context.Context }
+
+func (dueDeadline) Deadline() (time.Time, bool) { return time.Now().Add(-time.Second), true }
+
+// exec.ts keeps its timer until the call settles, and a timer that is due then has fired: the call reports killed, whether or not the child had ended.
+// The settle used to take the cancellation's delivery for the timer: with the child ended and the cancellation still on its way, it reported killed
+// only when select happened to pick it (TestExecOracleTimerScenariosHoldWhileTheCallerStalls, trap row: Pig killed false, Pi true).
+func TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle(t *testing.T) {
+	result, err := ExecCommand(dueDeadline{context.Background()}, t.TempDir(), "echo", []string{"quick"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Killed || result.Stdout != "quick\n" || result.Code != 0 {
+		t.Fatalf("result = %+v, want killed with the child's own output and code 0", result)
+	}
+}

@@ -3893,6 +3893,29 @@
       "tests": []
     },
     {
+      "id": "BF-1caec6e",
+      "title": "`pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does…",
+      "symptom": "`pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does, when the process was kept off the CPU past both the timer and the child's end; the result used to depend on which of two ready channels the watcher picked.",
+      "rootCause": "ExecCommand's watcher selected between ctx.Done and stopWatch; when a host kept the process off the CPU past the timer and past the child's end, both were ready or the cancellation had not been delivered, and the result was killed:false where Pi (timers stay armed until the call settles) reports true (nightly 42368266926, Ubuntu host: TestExecOracleTimerScenariosHoldWhileTheCallerStalls trap row, Pig killed false, Pi true). The settle now checks the context and its deadline.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does, when the process was kept off the CPU past both the timer and the child's end; the result used to depend on which of two ready channels the watcher picked.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1caec6e3a5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle"
+      ]
+    },
+    {
       "id": "BF-1cc7519",
       "title": "fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK",
       "symptom": "fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK",
@@ -3929,6 +3952,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-1cfaf26",
+      "title": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII…",
+      "symptom": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "rootCause": "An earlier change kept lone surrogates in ToLower by decoding into a heap slice and converting a byte slice with string(...), two allocations more per non-ASCII text than []rune(s) on the stack and a strings.Builder. The lowercase memo of a /tree search lowercases every row once, so BenchmarkTreeRecompute rose from 11328 to 16254 allocs/op (bisected to that commit on the 0.7.1 line). UpperRune likewise built a byte slice for string(...). Same results, the old allocation counts, and a guard test for each.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Searching a long session in `/tree` allocates 30% less than in 0.7.0: lowercasing text with non-ASCII characters (the search text of every row, model ids and names, and other callers of `jsstring.ToLower`) made a second copy of each text, which raised `BenchmarkTreeRecompute` by 43%.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1cfaf26848",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfLongNonASCIITextAllocatesTwice",
+        "internal/jsstring/case_allocs_norace_test.go::TestToLowerOfShortNonASCIITextAllocatesItsResultOnly",
+        "internal/jsstring/case_allocs_norace_test.go::TestUpperRuneOfAPlainCharacterAllocatesOnce"
+      ]
     },
     {
       "id": "BF-1d02c73",
@@ -16225,6 +16272,28 @@
         "tui/complexity_scaling_norace_test.go::TestScalingEditorKeystroke",
         "tui/complexity_scaling_norace_test.go::TestScalingMainScreenFrames",
         "tui/complexity_scaling_norace_test.go::TestScalingStreamingMessage"
+      ]
+    },
+    {
+      "id": "BF-62f0353",
+      "title": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape…",
+      "symptom": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "rootCause": "An earlier change routed the renderer's writes through WriteToTerminal, which ends in io.WriteString. fmt.Fprint copied into a pooled buffer; io.WriteString converts the string to a new byte slice for a writer that is not an io.StringWriter, and the renderer's stdout writer hands the string on to such a writer.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Every frame the renderer paints allocates two fewer objects: the cursor's hide and show copied their escape sequence into a new slice, where they had copied it into a pooled buffer before dead-terminal handling routed them through `WriteToTerminal`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "62f0353e7c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "tui/terminal_write_allocs_norace_test.go::TestWriteToTerminalOfAByteWriterDoesNotAllocate"
       ]
     },
     {
@@ -39505,6 +39574,28 @@
       ]
     },
     {
+      "id": "BF-d1ee883",
+      "title": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages…",
+      "symptom": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "rootCause": "An earlier change made Clone stream its records and decode each one it keeps in memory with DecodeFileEntry, where the earlier code rebased the source's decoded message entries onto their new parent and decoded only the other records.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages again instead of decoding every record a second time, which doubled the allocations of that clone.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d1ee8838e6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_clone_memory_allocs_norace_test.go::TestCloneOfAnInMemorySessionReusesItsDecodedMessages"
+      ]
+    },
+    {
       "id": "BF-d1f258f",
       "title": "The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K…",
       "symptom": "The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K, Ctrl+Y, paste and the other input keys work, and any key the list does not own returns the selection to the first match.",
@@ -44680,6 +44771,29 @@
       ]
     },
     {
+      "id": "BF-e3bc5f0",
+      "title": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout…",
+      "symptom": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout, `Sandbox.Close`) could have the call start after `Execute` returned, because the call was counted in the execution's wait group only after the check that the execution had not finished.",
+      "rootCause": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout, `Sandbox.Close`) could have the call start after `Execute` returned, because the call was counted in the execution's wait group only after the check that the execution had not finished.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout, `Sandbox.Close`) could have the call start after `Execute` returned, because the call was counted in the execution's wait group only after the check that the execution had not finished. The call is counted under that check now, so `Execute` returns only after every tool call it started has ended.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e3bc5f0f13",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/execution_call_join_test.go::TestACallMessageRacingTheFinishIsJoinedBeforeTheWaitReturns",
+        "codemode/lifetime_test.go::TestEveryTerminalKindClosesItsVMWithoutHaltingTheInstance"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
@@ -46692,6 +46806,28 @@
       "tests": [
         "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender"
+      ]
+    },
+    {
+      "id": "BF-ee0017a",
+      "title": "On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever…",
+      "symptom": "On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever instead of failing with the \"stale lock file\" error that names the file to remove.",
+      "rootCause": "connect(2) to a plain file a crashed holder left fails with ENOTSOCK on macOS and the BSDs (ECONNREFUSED on Linux). lockRefused took only ECONNREFUSED, so waitWhileHeld reported the lock as held, lockAt retried its listen and connect without end, and TestSocketFileLocksFailClosedOnAStaleLockFile... ran until the package's 1 h timeout (nightly 42368266926, macOS libs: both takers in connect(2) at the timeout). ENOTSOCK now means nobody accepts, as ECONNREFUSED does, and the taker returns the stale-lock-file error.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever instead of failing with the \"stale lock file\" error that names the file to remove. Connecting to a plain file fails with ENOTSOCK there (ECONNREFUSED on Linux), and the waiter took that for a holder that was still releasing and retried without end.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee0017ae81",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_lock_unix_test.go::TestAConnectErrorMeaningNobodyAcceptsOnTheLockMarksItStale"
       ]
     },
     {

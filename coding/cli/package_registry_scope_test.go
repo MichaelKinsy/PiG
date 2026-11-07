@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
@@ -190,6 +191,7 @@ func BenchmarkNpmMetadataLookup(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	testenv.PathOnlyEnvironment(b, "node")
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := packagemanager.GetLatestNpmVersion(cwd, sm, ref, false); err != nil {
