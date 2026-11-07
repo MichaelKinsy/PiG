@@ -2472,6 +2472,42 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: result)
 
     ext.command("event_result_probe", "Subscribe to an event with a handler that returns the given JSON", event_result_probe)
+
+    def event_ordered_result_probe(ctx, args):
+        # A Python dict keeps its members in the order they were written, so this is event_result_probe.
+        name, _, raw = args.strip().partition(" ")
+        result = json.loads(raw)
+        ext.on_event(name, lambda hctx, data: result)
+
+    ext.command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", event_ordered_result_probe)
+
+    def event_keys_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that reports the key order of its payload (dict keeps the order the host wrote).
+        name = args.strip()
+        ext.on_event(name, lambda hctx, data: hctx.notify("event_keys:%s:%s" % (name, json.dumps([list(data["payload"]), list(data["payload"]["zeta"])], separators=(",", ":"))), "info"))
+
+    ext.command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", event_keys_probe)
+
+    def event_echo_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that hands back, unchanged, the objects it was sent.
+        name = args.strip()
+
+        def echo(hctx, data):
+            if name == "turn_end":
+                return {"entries": data["entries"]}
+            if name == "context":
+                return {"messages": data["messages"][1:]}
+            if name == "before_provider_request":
+                return data["payload"]
+            if name == "tool_result":
+                return {"content": data["content"], "details": data["details"]}
+            if name == "message_end":
+                return {"message": data["message"]}
+            raise RuntimeError("event_echo_probe has no echo for " + name)
+
+        ext.on_event(name, echo)
+
+    ext.command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", event_echo_probe)
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()

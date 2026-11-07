@@ -27,7 +27,9 @@ const eventArgsMemoSize = 2
 type eventArgsMemoEntry struct {
 	args   []byte
 	master map[string]any
-	isMap  bool
+	// order is the member order of the objects of master.
+	order *json.ObjectOrder
+	isMap bool
 }
 
 // fusedEventArgs is the memo of the fused extensions of this process. Extensions in their own process decode their args directly.
@@ -35,14 +37,14 @@ var fusedEventArgs eventArgsMemo
 
 // decode returns what `var data map[string]any; json.Unmarshal(args, &data)` leaves in data: a fresh value the caller owns, or nil when the payload is not an object or does not decode. The caller calls release once its handler has returned.
 func (m *eventArgsMemo) decode(args []byte) (data map[string]any, release func()) {
-	data, _, release = m.decodeWithMaster(args)
+	data, _, _, release = m.decodeWithMaster(args)
 	return data, release
 }
 
-// decodeWithMaster is decode that also returns the decoded master, the value data was copied from. The caller only reads the master, and only until it calls release: other handlers copy it concurrently.
-func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]any, release func()) {
+// decodeWithMaster is decode that also returns the decoded master, the value data was copied from, and the member order of the objects of data. The caller only reads the master, and only until it calls release: other handlers copy it concurrently.
+func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]any, order *json.ObjectOrder, release func()) {
 	if len(args) == 0 {
-		return nil, nil, func() {}
+		return nil, nil, nil, func() {}
 	}
 	m.mu.Lock()
 	var entry *eventArgsMemoEntry
@@ -57,7 +59,9 @@ func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]a
 		m.misses++
 		m.mu.Unlock()
 		entry = &eventArgsMemoEntry{args: bytes.Clone(args)}
-		entry.isMap = json.Unmarshal(args, &entry.master) == nil && entry.master != nil
+		var err error
+		entry.master, entry.order, err = json.UnmarshalObject(args)
+		entry.isMap = err == nil && entry.master != nil
 		m.mu.Lock()
 		m.entries[m.next] = weak.Make(entry)
 		m.next = (m.next + 1) % eventArgsMemoSize
@@ -75,10 +79,11 @@ func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]a
 		m.mu.Unlock()
 	}
 	if !entry.isMap {
-		return nil, nil, release
+		return nil, nil, nil, release
 	}
-	out, _ := cloneStreamValue(entry.master).(map[string]any)
-	return out, entry.master, release
+	order = entry.order.Copies()
+	out, _ := cloneStreamValueOrdered(entry.master, order).(map[string]any)
+	return out, entry.master, order, release
 }
 
 // held reports how many entries the collector has not freed.

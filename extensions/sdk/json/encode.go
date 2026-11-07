@@ -487,6 +487,8 @@ type encOpts struct {
 	// jsStrings is the JSON.stringify mode of MarshalStringify: U+2028 and U+2029 stay raw, Marshaler output is rewritten by
 	// appendCompactJS, and a StringifyAppender appends its own text. pig additive (lw-json).
 	jsStrings bool
+	// order, when set, gives the member order of the maps it knows (MarshalJSOrdered). pig additive (key-order).
+	order KeyOrder
 }
 
 // stringEscapes is the set of optional escapes appendString writes for opts.
@@ -985,6 +987,13 @@ func (me mapEncoder) encode(e *encodeState, v reflect.Value, opts encOpts) {
 		defer delete(e.ptrSeen, ptr)
 	}
 	_ = e.WriteByte('{')
+
+	if m, keys, ok := orderedMapOf(v, opts); ok {
+		writeOrderedMap(e, m, keys, opts)
+		_ = e.WriteByte('}')
+		e.ptrLevel--
+		return
+	}
 
 	// Extract and sort the keys.
 	var (

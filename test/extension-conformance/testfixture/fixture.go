@@ -1456,6 +1456,56 @@ func Extension() *sdk.Extension {
 		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
 		return nil
 	})
+	// event_ordered_result_probe is event_result_probe whose result keeps its members in the order they are written: a Go handler authors an object with
+	// member order as a json.RawMessage (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder proposes a draft this way).
+	ext.Command("event_ordered_result_probe", "Subscribe to an event with a handler that returns the given JSON, members in written order", func(ctx sdk.Context, args string) error {
+		name, raw, _ := strings.Cut(strings.TrimSpace(args), " ")
+		if !json.Valid([]byte(raw)) {
+			return fmt.Errorf("event_ordered_result_probe: %q is not JSON", raw)
+		}
+		result := json.RawMessage(raw)
+		ext.OnEvent(name, func(sdk.Context, map[string]any) (any, error) { return result, nil })
+		return nil
+	})
+	// event_keys_probe subscribes to the event named by the argument with a handler that reports, as JSON, the keys of its payload member and of that
+	// object's zeta member in the order Object.keys gives them (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder/object_keys).
+	ext.Command("event_keys_probe", "Subscribe to the event named by the argument with a handler that reports the key order of its payload", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			payload, _ := data["payload"].(map[string]any)
+			zeta, _ := payload["zeta"].(map[string]any)
+			wire, err := json.Marshal([][]string{hctx.ObjectKeys(payload), hctx.ObjectKeys(zeta)})
+			if err != nil {
+				return nil, err
+			}
+			hctx.Notify("event_keys:"+name+":"+string(wire), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	// event_echo_probe subscribes to the event named by the argument with a handler that hands back, unchanged, the objects it was sent: the entries of a
+	// turn boundary, the context's messages but the first, the provider request's payload, a tool result's content and details, a message_end message
+	// (TestConformance_HandedBackEventObjectsKeepTheirMemberOrder).
+	ext.Command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			switch name {
+			case "turn_end":
+				return map[string]any{"entries": data["entries"]}, nil
+			case "context":
+				messages, _ := data["messages"].([]any)
+				return map[string]any{"messages": messages[1:]}, nil
+			case "before_provider_request":
+				return data["payload"], nil
+			case "tool_result":
+				return map[string]any{"content": data["content"], "details": data["details"]}, nil
+			case "message_end":
+				return map[string]any{"message": data["message"]}, nil
+			}
+			return nil, fmt.Errorf("event_echo_probe has no echo for %s", name)
+		})
+		return nil
+	})
 	// event_payload_probe reports the JSON of the event the named handler received, so a conformance test compares what every SDK was sent
 	// (TestConformance_EventPayloadsReachEverySDKUnchanged).
 	ext.Command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", func(ctx sdk.Context, args string) error {
