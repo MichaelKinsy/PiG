@@ -3526,12 +3526,12 @@ allocs = 1
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=500"
-allocs = 49
+allocs = 46
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=5000"
-allocs = 336
+allocs = 315
 
 [[benchmark]]
 package = "./tui"
