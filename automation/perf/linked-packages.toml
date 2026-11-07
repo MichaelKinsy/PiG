@@ -61,6 +61,7 @@ allow = [
 	"github.com/MichaelKinsy/PiG/mcp/oauth",
 	"github.com/MichaelKinsy/PiG/schema",
 	"github.com/MichaelKinsy/PiG/schema/internal/ecmaregex",
+	"github.com/MichaelKinsy/PiG/third_party/collate",
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/config",
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/bedrockruntime",
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/signin",
