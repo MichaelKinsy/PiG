@@ -3804,6 +3804,29 @@
       "tests": []
     },
     {
+      "id": "BF-1caec6e",
+      "title": "`pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does…",
+      "symptom": "`pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does, when the process was kept off the CPU past both the timer and the child's end; the result used to depend on which of two ready channels the watcher picked.",
+      "rootCause": "ExecCommand's watcher selected between ctx.Done and stopWatch; when a host kept the process off the CPU past the timer and past the child's end, both were ready or the cancellation had not been delivered, and the result was killed:false where Pi (timers stay armed until the call settles) reports true (nightly 42368266926, Ubuntu host: TestExecOracleTimerScenariosHoldWhileTheCallerStalls trap row, Pig killed false, Pi true). The settle now checks the context and its deadline.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does, when the process was kept off the CPU past both the timer and the child's end; the result used to depend on which of two ready channels the watcher picked.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1caec6e3a5",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_oracle_stall_unix_test.go::TestExecOracleTimerScenariosHoldWhileTheCallerStalls",
+        "coding/extension/exec_timeout_unix_test.go::TestExecCommandReportsKilledWhenTheDeadlineIsDueAtSettle"
+      ]
+    },
+    {
       "id": "BF-1cc7519",
       "title": "fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK",
       "symptom": "fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK",
@@ -43615,6 +43638,29 @@
       ]
     },
     {
+      "id": "BF-e3bc5f0",
+      "title": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout…",
+      "symptom": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout, `Sandbox.Close`) could have the call start after `Execute` returned, because the call was counted in the execution's wait group only after the check that the execution had not finished.",
+      "rootCause": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout, `Sandbox.Close`) could have the call start after `Execute` returned, because the call was counted in the execution's wait group only after the check that the execution had not finished.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A codemode script that makes a tool call at the moment its execution ends (an abort, a timeout, `Sandbox.Close`) could have the call start after `Execute` returned, because the call was counted in the execution's wait group only after the check that the execution had not finished. The call is counted under that check now, so `Execute` returns only after every tool call it started has ended.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e3bc5f0f13",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/execution_call_join_test.go::TestACallMessageRacingTheFinishIsJoinedBeforeTheWaitReturns",
+        "codemode/lifetime_test.go::TestEveryTerminalKindClosesItsVMWithoutHaltingTheInstance"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
@@ -45555,6 +45601,28 @@
       "tests": [
         "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender"
+      ]
+    },
+    {
+      "id": "BF-ee0017a",
+      "title": "On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever…",
+      "symptom": "On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever instead of failing with the \"stale lock file\" error that names the file to remove.",
+      "rootCause": "connect(2) to a plain file a crashed holder left fails with ENOTSOCK on macOS and the BSDs (ECONNREFUSED on Linux). lockRefused took only ECONNREFUSED, so waitWhileHeld reported the lock as held, lockAt retried its listen and connect without end, and TestSocketFileLocksFailClosedOnAStaleLockFile... ran until the package's 1 h timeout (nightly 42368266926, macOS libs: both takers in connect(2) at the timeout). ENOTSOCK now means nobody accepts, as ECONNREFUSED does, and the taker returns the stale-lock-file error.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On macOS and the BSDs, a chord worker that found a lock file left by a crashed holder waited for it forever instead of failing with the \"stale lock file\" error that names the file to remove. Connecting to a plain file fails with ENOTSOCK there (ECONNREFUSED on Linux), and the waiter took that for a holder that was still releasing and retried without end.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee0017ae81",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_lock_unix_test.go::TestAConnectErrorMeaningNobodyAcceptsOnTheLockMarksItStale"
       ]
     },
     {
