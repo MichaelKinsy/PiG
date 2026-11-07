@@ -75,6 +75,7 @@ func (c *consolePipe) marker(seq uint64) []byte {
 
 // forward forwards the pipe to the sink, removing flush markers and acknowledging them. It never stops on a sink error: a sink drops its own failed writes.
 func (c *consolePipe) forward() {
+	//portlint:allow doubleclose only forward closes done, once, when it returns; one goroutine forwards each pipe
 	defer close(c.done)
 	buf := make([]byte, consoleBufferSize+c.markerLen())
 	held := 0
