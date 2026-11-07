@@ -326,7 +326,7 @@ journeys: parity-deps ## Run every PTY journey against PiG and Pi (CI); timings 
 journeys-changed: parity-deps ## Run only the PTY journeys whose Touches prefixes contain a file changed since JOURNEY_BASE (default @{upstream}); lane gate
 	JOURNEY_CHANGED_BASE='$(JOURNEY_BASE)' JOURNEY_PARALLEL=$${JOURNEY_PARALLEL:-2} go test -timeout 30m -tags parity ./test/journeys -run TestJourneys -count=1
 
-.PHONY: journeys journeys-changed test-aot-conformance
+.PHONY: journeys journeys-changed test-aot-conformance test-pig-bolt-build
 
 # Every maintained nested Go module must pass without workspace assistance.
 # Fixture modules are included because they exercise the same clean-clone
@@ -346,6 +346,9 @@ test-go-modules: test-sdk-go ## Test every maintained nested Go module with GOWO
 		echo "testing Go module: $$module"; \
 		(cd "$$module" && GOWORK=off go test $(GO_TEST_CI_COUNT) ./...); \
 	done
+
+test-pig-bolt-build: ## Build a compiled host with the pinned Pi-Bolt compiler (the Piglet's installer downloads and verifies it) and start it: the guard against a compiler release that crashes on PiG's runtime tree
+	@cd piglets/pig-bolt && GOWORK=off PIG_AOT_TEST_DOWNLOAD=1 go test ./extensions/boltruntime -run '^(TestBuildCompilesAnExtensionSetAndTheHostRegistersIt|TestBuildCompilesAnExtensionThatLocatesItselfAndItFindsItsFiles|TestBuildRefusesWhatTheRewriteCannotPin)$$' -count=1 -timeout 20m -v
 
 test-aot-conformance: ## Run the extension conformance suite on the compiled Pi-Bolt host (needs PIG_AOT_TEST_COMPILER, the Pi-Bolt 1.1.2 runtime executable)
 	@piglets/pig-bolt/conformance.sh
@@ -605,7 +608,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/bunruntime >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/standard/pig-standard.yaml >/dev/null
 	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-bolt.yaml >/dev/null
-	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/pig-bolt/pig-aot.yaml >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/aot/pig-aot.yaml >/dev/null
 
 ##@ Gates
 
