@@ -228,6 +228,9 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	timeMu.Lock()
 	shellExitedAfter = time.Since(startedAt)
 	timeMu.Unlock()
+	if testHookShellExited != nil {
+		testHookShellExited()
+	}
 	input.Wait()
 	pipes.Wait(func() bool { return processGroupMayHoldOutput(cmd.Process) })
 	close(stopWatch)
@@ -310,19 +313,22 @@ func startTrackedShell(cmd *exec.Cmd) error {
 }
 
 // Test hooks that order the reader, the shell's exit, the grace and the kill without
-// sleeps. Nil outside tests.
+// sleeps. Nil outside tests. testHookStdioGraceTimer replaces the wall-clock timer that measures the post-exit grace (childwait.Hooks.GraceTimer),
+// and testHookShellExited runs once the shell's exit is recorded, before the pipes' wait begins.
 var (
 	testHookBeforeStdioRead   func()
 	testHookStdioGraceExpired func()
+	testHookStdioGraceTimer   func() childwait.IdleTimer
 	testHookAfterShellStart   func()
+	testHookShellExited       func()
 )
 
 // testStdioHooks is nil outside tests, so a command's pipes carry no hooks.
 func testStdioHooks() *childwait.Hooks {
-	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil {
+	if testHookBeforeStdioRead == nil && testHookStdioGraceExpired == nil && testHookStdioGraceTimer == nil {
 		return nil
 	}
-	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired}
+	return &childwait.Hooks{BeforeRead: testHookBeforeStdioRead, GraceExpired: testHookStdioGraceExpired, GraceTimer: testHookStdioGraceTimer}
 }
 
 // testHookTimeoutTimer replaces the wall-clock timer that arms a command's timeout, so a test can fire the timeout once the command has done
