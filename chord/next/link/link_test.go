@@ -74,8 +74,11 @@ func TestMemoryLinks(t *testing.T) {
 		}
 	})
 
+	// What a microtask does not do before the code that queued it finishes needs a queue the test runs itself (fifoQueue): on the
+	// pair's own queue the delivery goroutine may run between two statements of the test.
 	t.Run("close this end at once and the peer one task later; send after close is a no-op", func(t *testing.T) {
-		a, b := link.MemoryLinkPair()
+		queue := &fifoQueue{}
+		a, b := link.MemoryLinkPairOn(queue.post, queue.run)
 		var closes recorder[string]
 		var got recorder[byte]
 		a.OnClose(func() { closes.add("a") })
@@ -103,7 +106,8 @@ func TestMemoryLinks(t *testing.T) {
 	})
 
 	t.Run("drop messages still in flight to a closed end", func(t *testing.T) {
-		a, b := link.MemoryLinkPair()
+		queue := &fifoQueue{}
+		a, b := link.MemoryLinkPairOn(queue.post, queue.run)
 		var got recorder[byte]
 		a.OnMessage(func(message []byte) { got.add(message[0]) })
 		b.Send([]byte{1})
