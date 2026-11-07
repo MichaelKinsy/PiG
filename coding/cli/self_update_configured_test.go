@@ -108,7 +108,7 @@ func TestConfiguredSelfUpdateWarnsWhenThePigOnPathDoesNotReportTheNewVersion(t *
 	if code != 0 {
 		t.Fatalf("code=%d", code)
 	}
-	if want := "Ran pi-wrapper upgrade, but `pig --version` reports " + selfUpdateVersion() + ", not 9.9.9."; !strings.Contains(stdout, want) {
+	if want := "Ran pi-wrapper upgrade, but `pig version` reports " + selfUpdateVersion() + ", not 9.9.9."; !strings.Contains(stdout, want) {
 		t.Fatalf("stdout lacks %q:\n%s", want, stdout)
 	}
 	if strings.Contains(stdout, "Updated pig from") {

@@ -28,60 +28,28 @@ func assertNoTopLevelVersionJSON(t *testing.T, output string) {
 	}
 }
 
-// versionFormatCase is one PIG_VERSION_FORMAT state: unset, set to a value, or set to the empty string.
-type versionFormatCase struct {
-	name, format, want string
-	set                bool
-}
-
-// versionFormatCases lists the states; the pi case wants Pi's own `--version` output, the package version of the pinned build.
-func versionFormatCases() []versionFormatCase {
-	return []versionFormatCase{
-		{name: "default", want: Version},
-		{name: "empty", format: "", want: Version, set: true},
-		{name: "unrecognized", format: "upstream", want: Version, set: true},
-		{name: "uppercase", format: "PI", want: Version, set: true},
-		{name: "padded", format: " pi", want: Version, set: true},
-		{name: "pi", format: "pi", want: UpstreamPackageVersion, set: true},
-	}
-}
-
-// setVersionFormat applies one case to this process and restores the caller's value when the test ends.
-func (c versionFormatCase) setVersionFormat(t *testing.T) {
+// versionChildEnv is the environment for a pig subprocess: the caller's environment with every variable that selects the
+// agent directory pointed at a fresh temporary directory.
+func versionChildEnv(t *testing.T) []string {
 	t.Helper()
-	t.Setenv("PIG_VERSION_FORMAT", c.format)
-	if !c.set {
-		if err := os.Unsetenv("PIG_VERSION_FORMAT"); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-// childEnv is the environment for a pig subprocess: the caller's environment without PIG_VERSION_FORMAT, the case applied,
-// and every variable that selects the agent directory pointed at a fresh temporary directory.
-func (c versionFormatCase) childEnv(t *testing.T) []string {
-	t.Helper()
-	managed := []string{"PIG_VERSION_FORMAT", "HOME", "PIG_HOME", "PI_HOME", "PIG_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"}
+	managed := []string{"HOME", "PIG_HOME", "PI_HOME", "PIG_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"}
 	env := slices.DeleteFunc(os.Environ(), func(entry string) bool {
 		name, _, _ := strings.Cut(entry, "=")
 		return slices.Contains(managed, name)
 	})
-	if c.set {
-		env = append(env, "PIG_VERSION_FORMAT="+c.format)
-	}
-	for _, name := range managed[1:] {
+	for _, name := range managed {
 		env = append(env, name+"="+t.TempDir())
 	}
 	return env
 }
 
-// D63: --version prints the composite PigVersion+UpstreamVersion unless the caller explicitly requests Pi's version format.
-func TestCLIVersionStringFormat(t *testing.T) {
-	for _, test := range versionFormatCases() {
-		t.Run(test.name, func(t *testing.T) {
-			test.setVersionFormat(t)
-			if got := cliVersionString(); got != test.want {
-				t.Fatalf("cliVersionString() = %q, want %q", got, test.want)
+// --version prints Pi's own `--version` output, the package version of the pinned build, and nothing else; PIG_VERSION_FORMAT no longer exists.
+func TestCLIVersionStringIsPisBareVersion(t *testing.T) {
+	for _, format := range []string{"", "pi", "upstream"} {
+		t.Run("format="+format, func(t *testing.T) {
+			t.Setenv("PIG_VERSION_FORMAT", format)
+			if got := cliVersionString(); got != UpstreamPackageVersion {
+				t.Fatalf("cliVersionString() = %q, want %q", got, UpstreamPackageVersion)
 			}
 		})
 	}
@@ -90,25 +58,23 @@ func TestCLIVersionStringFormat(t *testing.T) {
 	}
 }
 
-func TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion(t *testing.T) {
+func TestVersionFlagsPrintPisVersionWhileVersionCommandNamesBoth(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
-	for _, test := range versionFormatCases() {
-		for _, flag := range []string{"--version", "-v"} {
-			t.Run(test.name+"/"+flag, func(t *testing.T) {
-				cmd := exec.CommandContext(t.Context(), binary, flag)
-				cmd.Env = test.childEnv(t)
-				var stderr bytes.Buffer
-				cmd.Stderr = &stderr
-				output, err := cmd.Output()
-				if err != nil || stderr.Len() != 0 || string(output) != test.want+"\n" {
-					t.Fatalf("exit error=%v stdout=%q stderr=%q, want %q", err, output, stderr.String(), test.want+"\n")
-				}
-			})
-		}
+	for _, flag := range []string{"--version", "-v"} {
+		t.Run(flag, func(t *testing.T) {
+			cmd := exec.CommandContext(t.Context(), binary, flag)
+			cmd.Env = versionChildEnv(t)
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			output, err := cmd.Output()
+			if err != nil || stderr.Len() != 0 || string(output) != UpstreamPackageVersion+"\n" {
+				t.Fatalf("exit error=%v stdout=%q stderr=%q, want %q", err, output, stderr.String(), UpstreamPackageVersion+"\n")
+			}
+		})
 	}
 
 	cmd := exec.CommandContext(t.Context(), binary, "version")
-	cmd.Env = versionFormatCase{format: "pi", set: true}.childEnv(t)
+	cmd.Env = versionChildEnv(t)
 	output, err := cmd.Output()
 	if err != nil {
 		t.Fatal(err)
