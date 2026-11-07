@@ -3,7 +3,7 @@
 ;;;; (to-json schema) is what JSON.stringify of Pi's value writes. TypeBox's hidden members (~kind, ~optional, ~readonly, ~immutable, ~unsafe,
 ;;;; ~refine) live in a weak side table keyed by the schema: JSON never sees them, the constructors and guards read them. A schema is never
 ;;;; changed after it is built; every constructor returns a new one. A JSON array can be a schema too (Type.unsafe, Type.optional of one).
-;;;; The Codec family of Type is not served (divergence D198).
+;;;; pig divergence (D198): the Codec family of Type (Codec, Decode, Encode, DecodeBuilder, EncodeBuilder, IsCodec) is not served; no such function exists in this SDK.
 
 (in-package #:pig)
 

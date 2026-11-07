@@ -875,7 +875,7 @@ SCRUTINIZED:approved
 
 ## D64 PiG's hosted endpoints live on pi-in-go.dev
 
-What: upstream 0.99.2 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The version check, install report, and managed installer API keep Pi's response shapes at the PiG host; the installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package.
+What: upstream 0.99.2 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The install report and the managed installer API keep Pi's response shapes at the PiG host. PiG's version check does not call pi-in-go.dev: it reads the update manifest of the latest GitHub Release (D39, `internal/codingagent/selfupdate.go`). The installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package.
 
 Pi's `/share` uploads an organization-visible JSONL artifact to Radius only when Radius auth is available, then otherwise falls back to a private GitHub gist. PiG always requires the explicit `/share` command, displays a persistent privacy notice before the request, and uploads the same `exportSessionForShare` JSONL shape to `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session`. PiG needs neither Radius nor `gh` login for this path. The PiG platform stores at most 8 MiB per artifact, gives it an unlisted `https://pi-in-go.dev/session/p_<id>` URL, and expires it after 30 days. `PI_SHARE_GATEWAY_URL` explicitly replaces the complete upload URL; `PI_INSTALLER_API_BASE` keeps its upstream meaning for the installer.
 
@@ -2520,9 +2520,9 @@ Remove when: the Go runtime lets a program keep its inherited soft limit, or Pi'
 
 SCRUTINIZED:approved
 
-## D198 The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`, `EncodeBuilder`, `IsCodec`)
+## D198 The Go, Rust, Python and Lisp `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`, `EncodeBuilder`, `IsCodec`)
 
-What: pi-ai's `Type` is TypeBox 1.3.27's builder namespace. The Go (`sdk.Type`), Rust (`pig_sdk::Type`) and Python (`pig_sdk.Type`) ports serve its schema constructors and guards, but not the six members that attach a JavaScript decode/encode callback pair to a schema (`Codec(type).Decode(f).Encode(g)`, `Decode(type, f)`, `Encode(type, g)`, the `DecodeBuilder` and `EncodeBuilder` classes, and the guard `IsCodec`). They are absent: a call fails to compile in Go and Rust and raises `AttributeError` in Python. The Node runtime serves TypeBox's own and behaves as in Pi.
+What: pi-ai's `Type` is TypeBox 1.3.27's builder namespace. The Go (`sdk.Type`), Rust (`pig_sdk::Type`), Python (`pig_sdk.Type`) and Lisp ports serve its schema constructors and guards, but not the six members that attach a JavaScript decode/encode callback pair to a schema (`Codec(type).Decode(f).Encode(g)`, `Decode(type, f)`, `Encode(type, g)`, the `DecodeBuilder` and `EncodeBuilder` classes, and the guard `IsCodec`). They are absent: a call fails to compile in Go and Rust and raises `AttributeError` in Python, and the Lisp SDK defines no such function. The Node runtime serves TypeBox's own and behaves as in Pi.
 
 Why: a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (at Pi b556cfe5, `ai/src/utils/validation.ts:15,59` compiles the schema with pi-schema and calls `parse`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.
 
@@ -2538,9 +2538,9 @@ Amendment 2026-11-02 (owner decision of the same day): the approval above (2026-
 
 Remove when: an SDK serves `Value.Decode`/`Value.Encode` (or a host call runs a codec) so a stored callback pair has a consumer.
 
-Call-site markers: `extensions/sdk/type_schema.go` (`Type`), `extensions/sdk-py/pig_sdk/type_schema.py` (module doc), `extensions/sdk-rs/src/type_schema.rs` (module doc).
+Call-site markers: `extensions/sdk/type_schema.go` (`Type`), `extensions/sdk-py/pig_sdk/type_schema.py` (module doc), `extensions/sdk-rs/src/type_schema.rs` (module doc), `extensions/sdk-lisp/src/type-schema.lisp` (file header).
 
-Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`) and `test_type_omits_the_codec_family` (`extensions/sdk-py/tests/test_pi_ai_type_vectors.py`) require that the six members do not exist; the Rust members are absent by construction (`type_schema.rs` doctest `compile_fail`). The Node row of `TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs` (`test/extension-conformance/type_schema_registration_test.go`) runs TypeBox's own `Type`.
+Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`), `test_type_omits_the_codec_family` (`extensions/sdk-py/tests/test_pi_ai_type_vectors.py`) and `type-omits-the-codec-family` (`extensions/sdk-lisp/tests/type-tests.lisp`) require that the six members do not exist; the Rust members are absent by construction (`type_schema.rs` doctest `compile_fail`). The Node row of `TestConformance_TypeSchemaToolParametersAgreeAcrossSDKs` (`test/extension-conformance/type_schema_registration_test.go`) runs TypeBox's own `Type`.
 
 ## D199 PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only what OpenRouter's /models returns
 

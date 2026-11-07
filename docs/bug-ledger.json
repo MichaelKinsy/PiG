@@ -30111,7 +30111,7 @@
     },
     {
       "id": "BF-D198",
-      "title": "The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
+      "title": "The Go, Rust, Python and Lisp `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
       "symptom": "none.",
       "rootCause": "a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (at Pi, `ai/src/utils/validation.ts:15,59` compiles the schema with pi-schema and calls `parse`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.",
       "rootCauseSource": "divergence record",
@@ -50533,7 +50533,7 @@
     },
     {
       "id": "D198",
-      "title": "The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
+      "title": "The Go, Rust, Python and Lisp `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`…",
       "entry": "BF-D198"
     },
     {
