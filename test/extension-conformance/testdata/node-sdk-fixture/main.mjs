@@ -1490,6 +1490,20 @@ export default function (pi) {
       }
     },
   });
+  // panic-probe and the onLoaded handler throw after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+  pi.onLoaded(() => {
+    if (process.env.PIG_FIXTURE_PANIC_PROBE) {
+      console.error("probe-err-loaded");
+      throw new Error("probe-panic-boom");
+    }
+  });
+  pi.registerCommand("panic-probe", {
+    description: "Throw after an stderr line of the extension's own",
+    handler: async () => {
+      console.error("probe-err-command");
+      throw new Error("probe-panic-boom");
+    },
+  });
   pi.registerCommand("context-probe", {
     description: "Report ctx.mode + ctx.getSystemPromptOptions()",
     handler: async (_args, ctx) => {

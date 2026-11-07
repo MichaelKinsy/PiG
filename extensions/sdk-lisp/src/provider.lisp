@@ -473,7 +473,7 @@ and SIGNAL, once set, cancels the call (the cancel is sent after the call, so th
   (let ((thread (sb-thread:make-thread
                  (lambda ()
                    (unwind-protect (handler-case (funcall function)
-                                     (error (e) (format *error-output* "~A: ~A failed: ~A~%" (extension-name ext) name e)))
+                                     (error (e) (diagnose "~A: ~A failed: ~A~%" (extension-name ext) name e)))
                      (sb-thread:with-mutex ((extension-state-lock ext))
                        (setf (extension-request-threads ext) (remove sb-thread:*current-thread* (extension-request-threads ext))))))
                  :name name)))

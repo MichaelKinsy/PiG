@@ -4410,6 +4410,17 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // panic-probe and the on_loaded handler panic after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+    ext.on_loaded(|_ctx| {
+        if std::env::var_os("PIG_FIXTURE_PANIC_PROBE").is_some() {
+            eprintln!("probe-err-loaded");
+            panic!("probe-panic-boom");
+        }
+    });
+    ext.command("panic-probe", "Panic after an stderr line of the extension's own", |_ctx, _args| {
+        eprintln!("probe-err-command");
+        panic!("probe-panic-boom");
+    });
     ext.command(
         "context-probe",
         "Report ctx.mode + ctx.getSystemPromptOptions()",

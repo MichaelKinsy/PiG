@@ -324,6 +324,7 @@ type Host struct {
 	cwd       string
 	mode      string   // run mode: tui|rpc|json|print, sent in ReadyPayload (ctx.mode)
 	hostInfo  HostInfo // getAgentDir, CONFIG_DIR_NAME and VERSION, sent to extension processes in PIG_EXT_HOST_INFO
+	fusedLog  fusedExtLog
 	socketDir string
 
 	// harnessBinary and harnessArgs are the executable and command-line
@@ -2578,6 +2579,7 @@ func (h *Host) Shutdown(reason string) {
 	if h.sockRuntimeDir != "" {
 		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
+	h.fusedLog.remove()
 }
 
 // ensureSockRuntimeDir lazily creates this Host's private socket directory under
@@ -3127,6 +3129,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 				return nil, newLoadError(me.config.Name, "spawn", "host_info_failed", err)
 			}
 		}
+		h.fusedLog.export()
 		hostConn, extConn := newFusedConn()
 		serve := me.inProcServe
 		go func() {
@@ -3256,13 +3259,16 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		installchange.TrackFile(binPath)
 	}
 	// pig divergence (D56): retain stderr only when a subprocess failure diagnostic references it.
-	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-ext-%s-*.log", fileNameComponent(me.config.Name)))
+	stderrFile, _ := createExtLog(fmt.Sprintf("pig-ext-%s-*.log", fileNameComponent(me.config.Name)))
 	var stderrSink io.Writer
+	extLogPath := ""
 	if stderrFile != nil {
-		me.stderrLogPath = stderrFile.Name()
-		me.stderrLog = &processStderrLog{path: stderrFile.Name(), writer: stderrFile}
+		extLogPath = stderrFile.Name()
+		me.stderrLogPath = extLogPath
+		me.stderrLog = &processStderrLog{path: extLogPath, writer: stderrFile}
 		stderrSink = me.stderrLog
 	}
+	cmd.Env = withExtLog(cmd.Env, extLogPath)
 	cmd.Stdout, cmd.Stderr = h.extensionOutput(stderrSink)
 	processTree, err := startProcessTree(cmd)
 	if err != nil {

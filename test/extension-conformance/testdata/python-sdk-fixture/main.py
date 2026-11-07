@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import pathlib
 import re
 import struct
@@ -2624,6 +2625,19 @@ def new_extension() -> pig_sdk.Extension:
             print(f"probe-err-{n}", file=sys.stderr, flush=True)
 
     ext.command("console-probe", "Write console lines to stdout and stderr", console_probe)
+
+    # panic-probe and the on_loaded handler fail after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+    def loaded_panic_probe(ctx: pig_sdk.Context) -> None:
+        if os.environ.get("PIG_FIXTURE_PANIC_PROBE"):
+            print("probe-err-loaded", file=sys.stderr, flush=True)
+            raise RuntimeError("probe-panic-boom")
+
+    def panic_probe(ctx: pig_sdk.Context, args: str) -> None:
+        print("probe-err-command", file=sys.stderr, flush=True)
+        raise RuntimeError("probe-panic-boom")
+
+    ext.on_loaded(loaded_panic_probe)
+    ext.command("panic-probe", "Fail after an stderr line of the extension's own", panic_probe)
 
     def dialog_probe(ctx: pig_sdk.Context, args: str) -> None:
         selected = dialog_text(ctx.select("Pick", ["first", "second"])[0])

@@ -636,15 +636,17 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 		processState.releaseUsageLease()
 		return err
 	}
-	cmd.Env = env
 	cmd.Dir = h.cwd
 	// pig additive (D20): packed-process diagnostics live only until teardown unless a reported failure retains them.
-	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
+	stderrFile, _ := createExtLog(fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
 	var stderrLog io.Writer
+	extLogPath := ""
 	if stderrFile != nil {
-		processState.stderrLog = &processStderrLog{path: stderrFile.Name(), writer: stderrFile}
+		extLogPath = stderrFile.Name()
+		processState.stderrLog = &processStderrLog{path: extLogPath, writer: stderrFile}
 		stderrLog = processState.stderrLog
 	}
+	cmd.Env = withExtLog(env, extLogPath)
 	if nodeRuntime {
 		cmd.Stdout, cmd.Stderr = h.extensionOutput(stderrLog)
 	} else {

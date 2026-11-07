@@ -1656,6 +1656,18 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	// panic-probe and the OnLoaded handler panic after a deliberate stderr line the extension itself writes
+	// (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog). The OnLoaded handler panics only when the row asks for it, so no other row meets it.
+	ext.OnLoaded(func(ctx sdk.Context) {
+		if os.Getenv("PIG_FIXTURE_PANIC_PROBE") != "" {
+			_, _ = fmt.Fprintln(os.Stderr, "probe-err-loaded")
+			panic("probe-panic-boom")
+		}
+	})
+	ext.Command("panic-probe", "Panic after an stderr line of the extension's own", func(ctx sdk.Context, args string) error {
+		_, _ = fmt.Fprintln(os.Stderr, "probe-err-command")
+		panic("probe-panic-boom")
+	})
 	ext.Command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", func(ctx sdk.Context, args string) error {
 		opts, err := ctx.GetSystemPromptOptions()
 		if err != nil {

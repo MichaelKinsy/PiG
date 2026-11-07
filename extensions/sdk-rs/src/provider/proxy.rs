@@ -175,11 +175,10 @@ impl Proxy {
         if let Err(err) = std::thread::Builder::new()
             .name("pig-provider-stream".into())
             .spawn(move || {
-                let error =
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| operation.wait()))
-                        .unwrap_or_else(|_| Err("Provider stream worker panicked".into()))
-                        .err()
-                        .unwrap_or_else(|| "Provider stream ended without a terminal event".into());
+                let error = crate::diagnostic::recover(|| operation.wait())
+                    .unwrap_or_else(|_| Err("Provider stream worker panicked".into()))
+                    .err()
+                    .unwrap_or_else(|| "Provider stream ended without a terminal event".into());
                 running.mark_started(Some(error.clone()));
                 running.push(crate::context::model_stream_error_event(&error, &model));
                 state.streams.lock().unwrap().remove(&id);

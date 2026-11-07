@@ -8,6 +8,7 @@ import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
 import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
+import { diagnose } from "./diagnostic.mjs";
 import { constants as bufferConstants } from "node:buffer";
 import { MessageChannel } from "node:worker_threads";
 import net from "node:net";
@@ -2333,7 +2334,7 @@ export class Runtime {
           try { this.writeSync("sendMessage", { message, options, yield_token: token }); }
           catch (err) {
             if (!isHostCancellation(err)) {
-              try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
+              try { diagnose(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
             }
             return;
           }
@@ -2347,7 +2348,7 @@ export class Runtime {
         try { this.writeSync("sendMessage", { message, options }); }
         catch (err) {
           if (!isHostCancellation(err)) {
-            try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
+            try { diagnose(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
           }
           return;
         }
@@ -3508,7 +3509,7 @@ export class Runtime {
     const owner = this.activeRequest();
     let operation;
     operation = this.syncSessionLog(entries.length, this.sessionLogGeneration).catch((error) => {
-      try { process.stderr.write(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
+      try { diagnose(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
     }).finally(() => {
       owner?.pendingHostCalls.delete(operation);
     });
@@ -5219,7 +5220,7 @@ export class Runtime {
             try {
               result = handler(current);
             } catch (error) {
-              try { process.stderr.write(`pig: terminal input handler failed: ${error?.stack || String(error)}\n`); } catch {}
+              try { diagnose(`pig: terminal input handler failed: ${error?.stack || String(error)}\n`); } catch {}
               continue;
             }
             if (result?.consume) {
@@ -5518,7 +5519,7 @@ export class Runtime {
       try {
         await handler(this.ctx);
       } catch (error) {
-        process.stderr.write(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
+        diagnose(`extension: ${this.name}: onLoaded handler failed: ${error?.stack ?? error}\n`);
       }
     }
   }
@@ -5633,7 +5634,7 @@ export class Runtime {
       if (isHostCancellation(err) || conn.closed) return;
       const reason = err && err.message ? err.message : String(err);
       try {
-        process.stderr.write(`pig: host call ${method} failed: ${reason}\n`);
+        diagnose(`pig: host call ${method} failed: ${reason}\n`);
       } catch {
         // A closed stderr during shutdown must not escalate into an unhandled
         // rejection in a path the caller never awaits.

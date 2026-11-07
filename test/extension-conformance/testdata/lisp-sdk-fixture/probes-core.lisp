@@ -777,6 +777,19 @@
                    (format *error-output* "probe-err-~D~%" n)
                    (finish-output *error-output*)))))
 
+;; panic-probe and the on-loaded handler signal after a deliberate stderr line the extension itself writes (TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog).
+(def-fixture "core-panic" (ext)
+  (pig:on-loaded ext (lambda (ctx) (declare (ignore ctx))
+                       (when (plusp (length (sb-posix:getenv "PIG_FIXTURE_PANIC_PROBE")))
+                         (format *error-output* "probe-err-loaded~%")
+                         (finish-output *error-output*)
+                         (error "probe-panic-boom"))))
+  (pig:command ext "panic-probe" "Signal after an stderr line of the extension's own"
+               (lambda (ctx args) (declare (ignore ctx args))
+                 (format *error-output* "probe-err-command~%")
+                 (finish-output *error-output*)
+                 (error "probe-panic-boom"))))
+
 (def-fixture "core-context" (ext)
   (pig:command ext "context-probe" "Report ctx.mode + ctx.getSystemPromptOptions()"
                (lambda (ctx args) (declare (ignore args))
