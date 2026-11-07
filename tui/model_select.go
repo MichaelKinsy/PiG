@@ -14,7 +14,6 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ModelScope discriminates the two views of the picker.
@@ -132,7 +131,7 @@ func NewStaticModelSelectorComponent(title string, scoped, allReachable []ModelS
 // sorts the all-models list only; scoped models keep their configured order.
 func sortModelItems(items []ModelSelectorItem, current, defaultModel string) []ModelSelectorItem {
 	out := slices.Clone(items)
-	sortx.Stable(out, func(a, b ModelSelectorItem) int {
+	slices.SortStableFunc(out, func(a, b ModelSelectorItem) int {
 		aCurrent := a.FQ() == current
 		bCurrent := b.FQ() == current
 		if aCurrent != bCurrent {

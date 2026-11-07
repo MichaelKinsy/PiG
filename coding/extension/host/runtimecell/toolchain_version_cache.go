@@ -20,7 +20,6 @@ import (
 	"github.com/gofrs/flock"
 
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 type toolchainVersionRecord struct {
@@ -151,7 +150,7 @@ func pruneToolchainVersions(cacheRoot, name string, args []string, keep string) 
 			modTime[slot] = info.ModTime()
 		}
 	}
-	sortx.Func(slots, func(a, b string) int { return modTime[b].Compare(modTime[a]) })
+	slices.SortFunc(slots, func(a, b string) int { return modTime[b].Compare(modTime[a]) })
 	kept := 0
 	for _, slot := range slots {
 		if slot == keep || kept < toolchainSlotsPerCommand {

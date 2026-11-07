@@ -9,12 +9,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -222,7 +222,7 @@ func sortEntriesLikeLocaleCompare(entries []string) {
 	}
 	if replacement {
 		collator := localecompare.NewCollator()
-		sortx.Stable(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
+		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return collator.CompareString(a.lower, b.lower) })
 	} else {
 		collator := localecompare.NewCollator()
 		keys := make([]byte, 0, 8*lowerBytes) // a key takes about 5 bytes per ASCII byte of name; growing it by doubling costs 4 MB of copies at 10,000 names
@@ -236,7 +236,7 @@ func sortEntriesLikeLocaleCompare(entries []string) {
 			sorted[i].key = keys[start:ends[i]:ends[i]]
 			start = ends[i]
 		}
-		sortx.Stable(sorted, func(a, b sortEntry) int { return bytes.Compare(a.key, b.key) })
+		slices.SortStableFunc(sorted, func(a, b sortEntry) int { return bytes.Compare(a.key, b.key) })
 	}
 	for i := range sorted {
 		entries[i] = sorted[i].name

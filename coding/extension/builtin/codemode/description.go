@@ -214,7 +214,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 	for i, key := range order {
 		ordered[i] = groups[key]
 	}
-	sortx.Stable(ordered, func(a, b *catalogGroup) int {
+	slices.SortStableFunc(ordered, func(a, b *catalogGroup) int {
 		switch {
 		case a.namespace == nil && b.namespace == nil:
 			return 0

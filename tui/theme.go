@@ -13,7 +13,6 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/widthx"
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -677,7 +676,7 @@ func (r *ThemeRegistry) Names() []string {
 	r.mu.RUnlock()
 	// The system theme comes first: it is the default and adapts to every terminal. The others follow in localeCompare order (theme.ts getAvailableThemesWithPaths).
 	collator := localecompare.NewCollator()
-	sortx.Stable(names, func(a, b string) int {
+	slices.SortStableFunc(names, func(a, b string) int {
 		switch {
 		case a == SystemThemeName:
 			return -1

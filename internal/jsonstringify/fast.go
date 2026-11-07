@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"slices"
 	"unicode/utf8"
-
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 const (
@@ -165,7 +163,7 @@ func (state *scanner) repeatedKey(base int) bool {
 		sorted = append(sorted, state.key(k))
 	}
 	text := state.text
-	sortx.Func(sorted, func(a, b span) int { return bytes.Compare(text[a.start:a.end], text[b.start:b.end]) })
+	slices.SortFunc(sorted, func(a, b span) int { return bytes.Compare(text[a.start:a.end], text[b.start:b.end]) })
 	state.sorted = sorted
 	for k := 1; k < len(sorted); k++ {
 		if bytes.Equal(text[sorted[k-1].start:sorted[k-1].end], text[sorted[k].start:sorted[k].end]) {

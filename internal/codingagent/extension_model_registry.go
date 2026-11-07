@@ -18,7 +18,6 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ExtensionModelRegistryState returns the registry snapshot for extension
@@ -122,7 +121,7 @@ func (r *ModelRegistry) orderExtensionModels(models []*ai.Model) {
 	if compare == nil {
 		return
 	}
-	sortx.Stable(models, func(a, b *ai.Model) int {
+	slices.SortStableFunc(models, func(a, b *ai.Model) int {
 		return compare(a.ProviderID(), a.ID, b.ProviderID(), b.ID)
 	})
 }

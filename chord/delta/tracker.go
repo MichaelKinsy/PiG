@@ -787,7 +787,7 @@ func collectEmissions(n *node, path []any, fold int, out *[]emission) {
 				kids = append(kids, located{position, e.kid})
 			}
 		}
-		sortx.Func(kids, func(a, b located) int { return a.position - b.position })
+		slices.SortFunc(kids, func(a, b located) int { return a.position - b.position })
 		for _, kid := range kids {
 			if kid.kid.modified() {
 				collectEmissions(kid.kid, childPath(path, kid.position), fold, out)

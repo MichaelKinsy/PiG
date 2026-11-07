@@ -10,7 +10,6 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
-	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // ModelResolverRuntime supplies the catalog and configured-auth observations used by CLI resolution. Selection does not resolve credentials or refresh the catalog.
@@ -89,7 +88,7 @@ func ResolveCliModel(cliProvider, cliModel, cliThinking string, inlineApiKey boo
 			refs = append(refs, modelRef(model))
 		}
 		collator := localecompare.NewCollator()
-		sortx.Stable(refs, collator.CompareString)
+		slices.SortStableFunc(refs, collator.CompareString)
 		hint := "More than one matching provider is authenticated."
 		if inlineApiKey {
 			hint = "--api-key does not choose a provider."
