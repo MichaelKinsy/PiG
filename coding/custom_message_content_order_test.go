@@ -61,4 +61,13 @@ func TestCustomMessageContentKeepsItsMemberOrderWhenRead(t *testing.T) {
 	if err != nil || string(content) != orderedContent {
 		t.Errorf("the message does not hold its content as it read it: %s (%v)", content, err)
 	}
+	// A message with a member of the wrong type, which the decoder reads leniently (a record from session history that Pi keeps as parsed), keeps its content order too.
+	var lax agent.AgentMessage
+	if err := json.Unmarshal([]byte(`{"role":"custom","customType":"order","content":`+orderedContent+`,"display":true,"details":`+orderedDetails+`,"timestamp":"x"}`), &lax); err != nil {
+		t.Fatal(err)
+	}
+	content, err = json.Marshal(lax.Custom["content"])
+	if err != nil || string(content) != orderedContent {
+		t.Errorf("the leniently read message does not hold its content as it read it: %s (%v)", content, err)
+	}
 }
