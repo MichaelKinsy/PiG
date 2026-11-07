@@ -437,7 +437,7 @@ func pythonExtensionFromConfig(cfg ExtConfig) (runtimecell.PythonExtension, erro
 // Reload() to make quarantine/fission decisions visible in /reload --explain.
 func (h *Host) quarantineReports(now time.Time) []ReloadCellReport {
 	q := h.QuarantinedCells()
-	if len(q) == 0 && len(h.nodeFaults) == 0 {
+	if len(q) == 0 && len(h.nodeFaults) == 0 && len(h.nativeFaults) == 0 {
 		return nil
 	}
 	_ = now
@@ -452,6 +452,9 @@ func (h *Host) quarantineReports(now time.Time) []ReloadCellReport {
 	}
 	for name, reason := range h.nodeFaults {
 		out = append(out, ReloadCellReport{Key: "node-member:" + name, Strategy: CellStrategyIsolated, Language: "node", Extensions: []string{name}, Quarantined: true, Reason: "Node culprit isolated; healthy members remain shared: " + reason})
+	}
+	for name, reason := range h.nativeFaults {
+		out = append(out, ReloadCellReport{Key: "native-member:" + name, Strategy: CellStrategyIsolated, Extensions: []string{name}, Quarantined: true, Reason: nativeFaultNotice(reason)})
 	}
 	return out
 }
