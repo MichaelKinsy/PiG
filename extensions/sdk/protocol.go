@@ -794,6 +794,12 @@ func (c *conn) respond(id string, result any, respErr error) error {
 	return c.writeFrameLocked(response)
 }
 
+// orderedReply is a result whose objects the host sent, written with the member order it sent them in (sourceOrder).
+type orderedReply struct {
+	value any
+	order json.KeyOrder
+}
+
 // encodeResponse is the response frame of a request. A result that cannot be encoded, or that cannot be framed (past MaxFrameSize), is answered with that
 // failure, as the Node and Python SDKs answer it, rather than leaving the host waiting for a response until the call is aborted.
 func encodeResponse(id string, result any, respErr error) ([]byte, error) {
@@ -802,7 +808,13 @@ func encodeResponse(id string, result any, respErr error) ([]byte, error) {
 		resp.Error = &errorInfo{Message: respErr.Error()}
 	}
 	if result != nil {
-		data, err := json.MarshalJS(result)
+		var data []byte
+		var err error
+		if reply, ok := result.(orderedReply); ok {
+			data, err = json.MarshalJSOrdered(reply.value, reply.order)
+		} else {
+			data, err = json.MarshalJS(result)
+		}
 		if err != nil {
 			resp.Error = &errorInfo{Message: err.Error()}
 		} else {

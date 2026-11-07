@@ -1408,6 +1408,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	// mirrors upstream's per-request error isolation (a thrown handler error in
 	// the TS runtime rejects one call, it does not tear down the runtime).
 	var boundaryData map[string]any
+	// echo holds the objects of an event as the host sent them, to write the ones a handler hands back in their member order.
+	var echo *echoRoots
 	var promptOptions map[string]any
 	var toolCall *toolCallInput
 	defer func() {
@@ -1431,7 +1433,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if promptOptions != nil {
 				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": nil}
 			}
-			_ = e.conn.respond(id, result, fmt.Errorf("handler panicked: %v", r))
+			_ = e.conn.respond(id, echo.reply(result, req.Args), fmt.Errorf("handler panicked: %v", r))
 		}
 	}()
 
@@ -1604,6 +1606,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			data["systemPrompt"] = ctx.systemPrompt
 		}
 		snapshot := snapshotContextMessages(req.Event, data)
+		echo = captureEchoRoots(req.Event, data, snapshot)
 		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
 		ctx.place.Pass()
 		result, err := handler(ctx, data)
@@ -1640,7 +1643,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 			result = map[string]any{"_pigBoundaryEntries": data["entries"], "_pigBoundaryResult": result}
 		}
-		_ = e.conn.respond(id, result, err)
+		_ = e.conn.respond(id, echo.reply(result, req.Args), err)
 
 	case "shortcut":
 		e.toolMu.RLock()

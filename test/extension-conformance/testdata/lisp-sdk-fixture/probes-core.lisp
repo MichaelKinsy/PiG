@@ -616,6 +616,21 @@
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)
                        (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      (pig:command ext "event_ordered_result_probe" "Subscribe to an event with a handler that returns the given JSON, members in written order"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name raw) (split-first args)
+                       (let ((result (pig:from-json raw))) (pig:on ext name (lambda (hctx data) (declare (ignore hctx data)) result))))))
+      (pig:command ext "event_echo_probe" "Subscribe to the event named by the argument with a handler that hands back the objects it was sent"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
+                       (pig:on ext name
+                               (lambda (hctx data) (declare (ignore hctx))
+                                 (cond ((equal name "turn_end") (pig:obj "entries" (pig:jget data "entries")))
+                                       ((equal name "context") (pig:obj "messages" (subseq (pig:jget data "messages") 1)))
+                                       ((equal name "before_provider_request") (pig:jget data "payload"))
+                                       ((equal name "tool_result") (pig:obj "content" (pig:jget data "content") "details" (pig:jget data "details")))
+                                       ((equal name "message_end") (pig:obj "message" (pig:jget data "message")))
+                                       (t (error "event_echo_probe has no echo for ~A" name))))))))
       (pig:command ext "event_payload_probe" "Subscribe and report the payload of the event named by the argument"
                    (lambda (ctx args) (declare (ignore ctx))
                      (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
