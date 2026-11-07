@@ -1010,3 +1010,10 @@ commit = "6a7c950562738c73f58e9df89b7e35d487e4a888"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit stores the Go SDK as one zstd frame instead of a gzip per file, so the embedded names are the staged names and BundledFiles is asserted against the module's files; the decoded contents are asserted in TestEmbeddedBundlesHoldTheirSources, because this module has no dependency to decode the frame with."
+
+[[entry]]
+path = "extensions/sdk/bundle_test.go"
+commit = "015966dd6e8e9ac4e41a467e0e478514dfe7a200"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit puts the Go SDK module back to the gzip-per-file bundle it was published with, so the test asserts the names the module embeds (.gz/<name>.gz) again, where the previous commit asserted the staged names of a zstd frame that now lives in internal/gosdkbundle (TestBundledFilesCoverTheModule there)."
