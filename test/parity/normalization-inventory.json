@@ -2588,6 +2588,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/96-message-click-expansion.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[compaction]",
+            "capture_end": "details of second card"
+          },
+          "reason": "Owned visible surface: Left clicks expand the built-in compaction, skill and branch summaries and a custom renderer's card, and a second click collapses the card",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/97-entry-click-state-survives-rebuild.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "entry:first",
+            "capture_end": "details of second"
+          },
+          "reason": "Owned visible surface: A custom entry card expanded by a click stays expanded after the transcript is rebuilt from the session",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {

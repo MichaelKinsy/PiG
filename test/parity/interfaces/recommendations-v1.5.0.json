@@ -166620,6 +166620,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#editorViewBuilder.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeRealmSeq.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadPasses.Store",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeySeq.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sdkDigests.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#stagedSDKVerifierFactory.Store",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#themeLoader.Store",
@@ -171071,7 +171072,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "105 normalized-name Pig candidates are ambiguous."
+        "106 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -171109,6 +171110,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hostEventBus.add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeRealmSeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadPasses.Add",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeySeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderCardSeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.Add",
@@ -171233,7 +171235,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "21 normalized-name Pig candidates are ambiguous."
+        "22 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -171257,6 +171259,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#tombstoneSequence.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeRealmSeq.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadPasses.And",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeySeq.And",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderCardSeq.And",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#busHandlerSeq.And",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/engine#keyIDCacheCount.And",
@@ -174763,7 +174766,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "25 normalized-name Pig candidates are ambiguous."
+        "26 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -174787,6 +174790,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#tombstoneSequence.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#nativeRealmSeq.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reloadPasses.Or",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeySeq.Or",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderCardSeq.Or",
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#triBool.or",
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#triFalse.or",
@@ -380665,7 +380669,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "7 normalized-name Pig candidates are ambiguous."
+        "9 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -380677,6 +380681,8 @@
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/ai/providers/bedrock#bedrockObject.key",
         "go:github.com/MichaelKinsy/PiG/coding/cli#placementMetadata.key",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeyRegistry.key",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeys.key",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sparse.key",
         "go:github.com/MichaelKinsy/PiG/coding/packagecontent#packageGlobPattern.key",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui#Key",

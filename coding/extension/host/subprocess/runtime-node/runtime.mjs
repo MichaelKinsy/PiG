@@ -32,7 +32,7 @@ import { createExtensionRuntime } from "./shims/pi-dist/pi-coding-agent/core/ext
 import { installCloneHooks, installTestCollect, Realm } from "./xref.mjs";
 import { SharedBus } from "./event-bus.mjs";
 import { deriveView, surfaceTheme, VIEW_THEME_TOKENS } from "./view-walk.mjs";
-import { dispatchOverlayMouse, takesMouse } from "./mouse.mjs";
+import { dispatchComponentMouse, dispatchOverlayMouse, mouseRegions, takesMouse } from "./mouse.mjs";
 import { EventReplicas } from "./event-stream.mjs";
 
 installTimerOrigin();
@@ -2211,6 +2211,10 @@ export class Runtime {
     // shared by renderCall and renderResult, and each renderer's last
     // component. The host names the card and releases it when the card is gone.
     this.toolRenderCards = new Map();
+    // A custom message or entry the host displays keeps its message object and the component its renderer last returned here, as Pi's does: the
+    // renderer's WeakMap keys on the same object on every rebuild, and a click reaches the component that was drawn. The host names the message and
+    // releases it when the transcript drops it.
+    this.renderedComponents = new Map();
     this.modelStreams = new Map();
     this.modelStreamCallbacks = new Map();
     // ctx.modelRegistry's catalog and this extension's own copies of the models it has read (modelFor), every model once it has read them all.
@@ -3309,6 +3313,47 @@ export class Runtime {
       images.push({ ref, mimeType: image.mimeType, data: image.data });
     }
     return images.length > 0 ? { ...derived.view, images } : derived.view;
+  }
+
+  // renderTranscriptComponent answers a render_message or render_entry request as Pi draws a custom message or entry. Pi runs the renderer when it
+  // builds the component (rerender: the first draw, a new expansion or padding, an invalidation) and draws the component it returned on every other
+  // frame, so a resize or a click reaches the component the last run returned. The renderer receives the same message object on every run, which is
+  // what its WeakMap keys on. The host names the message (payload.key) and leaves it empty for a renderer call that is not for a displayed one, which
+  // keeps nothing.
+  async renderTranscriptComponent(handler, payload, subjectKey) {
+    const key = payload.key;
+    let kept = key ? this.renderedComponents.get(key) : undefined;
+    if (kept === undefined) {
+      kept = { subject: payload[subjectKey], component: undefined };
+      if (key) this.renderedComponents.set(key, kept);
+    }
+    // The host's events are the clicks its view took: Pi's dispatchMouseEvent hands each to the component that was drawn.
+    if (kept.component !== undefined) {
+      for (const event of payload.events || []) {
+        if (event?.type === "mouse" && event.mouse) dispatchComponentMouse(kept.component, event.mouse);
+      }
+    }
+    let component = kept.component;
+    if (payload.rerender || component === undefined || !key) {
+      const { keyText, keyHint } = piKeybindingHints();
+      component = await handler(kept.subject, { ...payload.options, keyText, keyHint }, this.ui.theme);
+      kept.component = component;
+    }
+    return this.withSurfaceTheme(component, () => {
+      const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
+      const result = this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
+      if (key && takesMouse(component)) {
+        // The host hit-tests the rectangles of the component's MouseRegions as Pi's dispatch would; the click outside them is left to selection.
+        const regions = mouseRegions(component, Number(payload.width) || 0, Array.isArray(lines) ? lines.length : 0);
+        if (regions === undefined) {
+          // pig divergence (D277): a component that handles the mouse itself answers for itself, which the host cannot ask before it answers the terminal, so it gets the clicks inside it and no other event.
+          result.mouse = true;
+        } else if (regions.length > 0) {
+          result.regions = regions;
+        }
+      }
+      return result;
+    });
   }
 
   // rendererResult is a render_* result: the lines, and the component's view
@@ -4418,6 +4463,16 @@ export class Runtime {
         this.toolRenderCards.delete(args?.card);
         return;
       }
+      case "render_release": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.renderedComponents.delete(args?.key);
+        return;
+      }
       case "autocomplete.release":
         this.autocomplete.release(notify.args?.id);
         return;
@@ -5110,13 +5165,7 @@ export class Runtime {
         case "render_message": {
           const handler = this.renderers.get(request.tool);
           if (!handler) throw new Error(`unknown renderer: ${request.tool}`);
-          const payload = request.args || {};
-          const { keyText, keyHint } = piKeybindingHints();
-          const component = await handler(payload.message, { ...payload.options, keyText, keyHint }, this.ui.theme);
-          await this.respond(id, this.withSurfaceTheme(component, () => {
-            const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
-            return this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
-          }));
+          await this.respond(id, await this.renderTranscriptComponent(handler, request.args || {}, "message"));
           return;
         }
         case "markdown_transform": {
@@ -5137,13 +5186,7 @@ export class Runtime {
         case "render_entry": {
           const handler = this.entryRenderers.get(request.tool);
           if (!handler) throw new Error(`unknown entry renderer: ${request.tool}`);
-          const payload = request.args || {};
-          const { keyText, keyHint } = piKeybindingHints();
-          const component = await handler(payload.entry, { ...payload.options, keyText, keyHint }, this.ui.theme);
-          await this.respond(id, this.withSurfaceTheme(component, () => {
-            const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
-            return this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
-          }));
+          await this.respond(id, await this.renderTranscriptComponent(handler, request.args || {}, "entry"));
           return;
         }
         case "resolve_tool_renderers": {

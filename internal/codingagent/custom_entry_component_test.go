@@ -18,7 +18,7 @@ func TestCustomEntryComponentRerendersOnExpandAndReportsContent(t *testing.T) {
 		calls = append(calls, options.Expanded)
 		return tui.NewText(fmt.Sprintf("expanded=%t", options.Expanded))
 	}
-	component := NewCustomEntryComponent(CustomEntry{CustomType: "note"}, renderer, 1)
+	component := NewCustomEntryComponent(CustomEntry{CustomType: "note"}, renderer, nil, 1)
 	if !component.HasContent() || len(component.Children()) != 2 {
 		t.Fatalf("content %t, children %d", component.HasContent(), len(component.Children()))
 	}
@@ -34,7 +34,7 @@ func TestCustomEntryComponentRerendersOnExpandAndReportsContent(t *testing.T) {
 
 	none := NewCustomEntryComponent(CustomEntry{CustomType: "note"}, func(extension.CustomEntry, extension.EntryRenderOptions, extension.Theme) extension.Component {
 		return nil
-	}, 1)
+	}, nil, 1)
 	if none.HasContent() || len(none.Children()) != 0 {
 		t.Fatalf("a renderer returning nothing must leave the component empty")
 	}
@@ -44,7 +44,7 @@ func TestCustomEntryComponentRerendersOnExpandAndReportsContent(t *testing.T) {
 func TestCustomEntryComponentShowsAnErrorBoxWhenTheRendererFails(t *testing.T) {
 	component := NewCustomEntryComponent(CustomEntry{CustomType: "note"}, func(extension.CustomEntry, extension.EntryRenderOptions, extension.Theme) extension.Component {
 		panic(fmt.Errorf("boom"))
-	}, 1)
+	}, nil, 1)
 	if !component.HasContent() {
 		t.Fatal("the error box counts as content")
 	}

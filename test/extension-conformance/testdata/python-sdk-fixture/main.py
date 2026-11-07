@@ -1336,6 +1336,21 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
 
+    # conformance-click-message / conformance-click-entry: a card whose mouse region counts clicks in the renderer state the SDK keeps per displayed message. The handler runs for each event the host's view took, before the render.
+    def click_state(options, event):
+        if event.type == kit.MOUSE and event.node == "card":
+            options.state["clicks"] = options.state.get("clicks", 0) + 1
+            options.state["last"] = f"{int(event.mouse['x'])},{int(event.mouse['y'])}"
+
+    def click_view(prefix, subject_text, options):
+        text = f"{prefix}:{subject_text}:clicks={options.state.get('clicks', 0)}:last={options.state.get('last', 'none')}:expanded={'true' if options.get('expanded') else 'false'}"
+        return kit.View(kit.MouseRegion("card", kit.Text(text, 0, 0), types=["click"]))
+
+    ext.message_view_renderer("conformance-click-message", lambda ctx, message, options, width: click_view("clickcard", message.get("content", ""), options))
+    ext.message_view_event("conformance-click-message", lambda ctx, message, options, event: click_state(options, event))
+    ext.entry_view_renderer("conformance-click-entry", lambda ctx, entry, options, width: click_view("clickentry", entry.get("data", ""), options))
+    ext.entry_view_event("conformance-click-entry", lambda ctx, entry, options, event: click_state(options, event))
+
     # The extension owns the thinking runs from load; thinking_runs_off/on flip the flag through the runtime entry point (the conformance row reads the host's aggregated flag).
     ext.own_thinking_runs(True)
     ext.command("thinking_runs_off", "Clear the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(False))

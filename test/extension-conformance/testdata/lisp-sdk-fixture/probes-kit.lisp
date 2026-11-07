@@ -392,6 +392,31 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
   ;; the view renderers are the providers' API (pig:: until its exports are merged)
   (pig::message-view-renderer ext "kit-message" (lambda (ctx message options width) (declare (ignore ctx message options width)) (kp-probe-view)))
   (pig::entry-view-renderer ext "kit-entry" (lambda (ctx entry options width) (declare (ignore ctx entry options width)) (kp-probe-view)))
+  ;; conformance-click-message and conformance-click-entry: a click-toggled card, the state of a message renderer's WeakMap in Pi. The event
+  ;; handler counts the clicks of the "card" mouse region in the options' state; the view draws the state after the request's events.
+  (flet ((click-handler (ctx subject options event)
+           (declare (ignore ctx subject))
+           (when (and (equal (pig:kit-event-type event) "mouse") (equal (pig:kit-event-node event) "card"))
+             (let ((state (pig:message-render-options-state options)) (mouse (pig:kit-event-mouse event)))
+               (setf (gethash "clicks" state) (1+ (gethash "clicks" state 0))
+                     (gethash "last" state) (format nil "~D,~D" (pig:jget mouse "x") (pig:jget mouse "y"))))))
+         (click-view (prefix text options)
+           (let ((state (pig:message-render-options-state options)))
+             (pig:kit-view (pig:kit-mouse-region
+                            "card" (pig:kit-text (format nil "~A:~A:clicks=~D:last=~A:expanded=~A" prefix text (gethash "clicks" state 0)
+                                                         (gethash "last" state "none") (kp-bool (eq (pig:jget options "expanded") t)))
+                                                 0 0)
+                            :types '("click"))))))
+    (pig:message-view-renderer ext "conformance-click-message"
+                               (lambda (ctx message options width)
+                                 (declare (ignore ctx width))
+                                 (click-view "clickcard" (let ((c (pig:jget message "content"))) (if (stringp c) c "")) options)))
+    (pig:message-view-event ext "conformance-click-message" #'click-handler)
+    (pig:entry-view-renderer ext "conformance-click-entry"
+                             (lambda (ctx entry options width)
+                               (declare (ignore ctx width))
+                               (click-view "clickentry" (let ((d (pig:jget entry "data"))) (if (stringp d) d "")) options)))
+    (pig:entry-view-event ext "conformance-click-entry" #'click-handler))
   (pig::tool-renderer ext (lambda (tool next)
                             (if (equal tool "kit_resolved_tool")
                                 (pig::make-tool-renderers :call-view (lambda (ctx args render width) (declare (ignore ctx args render width)) (kp-probe-view))

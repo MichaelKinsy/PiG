@@ -2043,6 +2043,46 @@ python = "Extension.entry_view_renderer"
 lisp = "pig:entry-view-renderer|pig:entry-view-renderer-p"
 
 [[row]]
+key = "kit message renderer view event"
+section = "component kit (D107)"
+decl = "the events of the mouse regions of a message renderer's view (Pi: the MouseRegion closure of the component the renderer returns)"
+node = "api.registerMessageRenderer"
+go = "Extension.MessageViewEvent"
+rust = "Extension::message_view_event"
+python = "Extension.message_view_event"
+lisp = "pig:message-view-event"
+
+[[row]]
+key = "kit entry renderer view event"
+section = "component kit (D107)"
+decl = "the events of the mouse regions of an entry renderer's view (Pi: the MouseRegion closure of the component the renderer returns)"
+node = "api.registerEntryRenderer"
+go = "Extension.EntryViewEvent"
+rust = "Extension::entry_view_event"
+python = "Extension.entry_view_event"
+lisp = "pig:entry-view-event"
+
+[[row]]
+key = "kit message renderer state"
+section = "component kit (D107)"
+decl = "the renderer state of one displayed message (Pi: the WeakMap a renderer keeps by message object)"
+node = "api.registerMessageRenderer"
+go = "MessageRenderOptions.State"
+rust = "MessageRenderOptions.state"
+python = "MessageRenderOptions.state"
+lisp = "pig:message-render-options-state"
+
+[[row]]
+key = "kit entry renderer state"
+section = "component kit (D107)"
+decl = "the renderer state of one displayed entry (Pi: the WeakMap a renderer keeps by entry object)"
+node = "api.registerEntryRenderer"
+go = "EntryRenderOptions.State"
+rust = "EntryRenderOptions.state"
+python = "MessageRenderOptions.state"
+lisp = "pig:entry-render-options-state"
+
+[[row]]
 key = "kit lines list annotation"
 section = "component kit (D107)"
 decl = "a lines node's frontend-only list (spec §2, §13.2)"

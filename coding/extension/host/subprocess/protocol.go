@@ -1549,6 +1549,56 @@ type RenderResult struct {
 	// View is the rendered component's structure (D107); with Lines absent
 	// the host renders it at the requested width.
 	View json.RawMessage `json:"view,omitempty"`
+	// Mouse is set by an extension whose component lives in its process (Node) and takes the mouse; the host then hands it the clicks inside the
+	// component (a kit view needs no flag: its mouse regions are in the view).
+	Mouse bool `json:"mouse,omitempty"`
+	// Regions are the rectangles, local to the component's first cell, in which the MouseRegions of a Node component's tree answer a click, as Pi's
+	// hit test finds them; the host hit-tests them itself and leaves a click outside them to text selection. Absent for a component without a
+	// MouseRegion, and for one that handles the mouse itself (Mouse).
+	Regions []RenderMouseRegion `json:"regions,omitempty"`
+}
+
+// RenderMouseRegion is one rectangle of RenderResult.Regions.
+type RenderMouseRegion struct {
+	X      int `json:"x"`
+	Y      int `json:"y"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+// RenderComponentPayload is the argument of RequestRenderMessage and RequestRenderEntry: the message (PayloadKey "message") or entry ("entry") and
+// the options and width to draw it at.
+//
+// Key names the transcript component the renderer draws for (RenderIdentity); it is the same on every request for one message or entry and is
+// empty for a renderer call that is not for a displayed one. Pi hands a renderer the same message object on every rebuild, so an extension keeps
+// per-message state in a WeakMap; the extension keeps it under Key (the Go, Rust, Python and Lisp SDKs as a state bag of the renderer's options, Node as
+// the message object itself) until NotifyRenderRelease names Key.
+//
+// Rerender runs the renderer, as Pi does when it builds the component: the first request, a new expansion or padding, an invalidation. Without it
+// the extension draws the component its last run returned at Width (a Node extension; a resize, or the events below), as Pi draws the same component
+// every frame. An extension that keeps no component runs the renderer either way.
+//
+// Events are the mouse events the view took since the last request: kit "mouse" view events of the mouse regions of the view (Node names the
+// region, with coordinates local to it), or, for a Node component, the click inside it (local to the component). The extension applies them in order
+// before it draws.
+type RenderComponentPayload struct {
+	Key      string             `json:"key,omitempty"`
+	Rerender bool               `json:"rerender,omitempty"`
+	Events   []ViewEventPayload `json:"events,omitempty"`
+	Options  json.RawMessage    `json:"options"`
+	Width    int                `json:"width"`
+	// Message or Entry is the custom message or session entry, as upstream's renderer receives it.
+	Message json.RawMessage `json:"message,omitempty"`
+	Entry   json.RawMessage `json:"entry,omitempty"`
+}
+
+// NotifyRenderRelease (host→ext) reports that a message or entry the extension rendered is no longer shown, so it drops the state it kept under the
+// key. Args is a RenderReleasePayload.
+const NotifyRenderRelease = "render_release"
+
+// RenderReleasePayload names one released message or entry.
+type RenderReleasePayload struct {
+	Key string `json:"key"`
 }
 
 // RequestRenderTool (host→ext) runs a tool's renderCall or renderResult for

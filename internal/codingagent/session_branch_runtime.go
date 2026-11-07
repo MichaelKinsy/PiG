@@ -148,6 +148,7 @@ func (s *Session) replaceSessionLog(branched *Session) {
 	s.stats = branched.stats
 	s.name = branched.name
 	s.undecodable = nil
+	s.renderIdentities.clear()
 	s.revision++
 	s.msgMu.Unlock()
 	s.mu.Unlock()

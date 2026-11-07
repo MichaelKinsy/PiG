@@ -708,6 +708,122 @@ once the response arrives. A responder that returns (values nil message) answers
         (declare (ignore result))
         (check-equal "unknown message renderer \"none\"" message)))))
 
+;;; ---------------------------------------------------------------- per-message state and mouse events
+
+(defun pt-click (node x y)
+  "A render request's event: the host's ui.view.event of a click at (X, Y) local to the kit mouse region NODE."
+  (pig:obj "key" "k" "node" node "type" "mouse" "index" 0
+           "mouse" (pig:obj "type" "click" "button" "left" "x" x "y" y "screenX" 0 "screenY" 0 "width" 10 "height" 1)))
+
+(defun pt-click-ext (seen)
+  "An extension whose message and entry renderers count clicks in their state. SEEN collects (kind subject) per render."
+  (pt-ext (lambda (ext)
+            (flet ((handler (ctx subject options event)
+                     (declare (ignore ctx subject))
+                     (let ((state (pig:message-render-options-state options)))
+                       (cond ((equal (pig:kit-event-node event) "boom") (error "handler-boom"))
+                             ((equal (pig:kit-event-node event) "card")
+                              (incf (gethash "clicks" state 0))
+                              (setf (gethash "last" state) (format nil "~D,~D" (pig:jget (pig:kit-event-mouse event) "x")
+                                                                   (pig:jget (pig:kit-event-mouse event) "y"))))))))
+              (pig:message-renderer ext "mt" (lambda (ctx message options width)
+                                               (declare (ignore ctx width))
+                                               (push (cons :message message) (car seen))
+                                               (let ((state (pig:message-render-options-state options)))
+                                                 (list (format nil "~A:~D:~A" (pig:jget message "content") (gethash "clicks" state 0)
+                                                               (gethash "last" state "none"))))))
+              (pig:message-view-event ext "mt" #'handler)
+              (pig:entry-renderer ext "et" (lambda (ctx entry options width)
+                                             (declare (ignore ctx width))
+                                             (push (cons :entry entry) (car seen))
+                                             (list (format nil "~A:~D" (pig:jget entry "data")
+                                                           (gethash "clicks" (pig:entry-render-options-state options) 0)))))
+              (pig:entry-view-event ext "et" #'handler)
+              ;; no handler registered
+              (pig:message-renderer ext "quiet" (lambda (ctx message options width)
+                                                  (declare (ignore ctx message width))
+                                                  (list (format nil "~D" (hash-table-count (pig:message-render-options-state options))))))))))
+
+(defun pt-render (host id method type key subject-key subject &rest events)
+  (pig:jref (pt-run host id method #'pt-none "tool" type
+                    "args" (pig:obj subject-key subject "key" key "events" (coerce events 'simple-vector)
+                                    "options" (pig:obj "expanded" :false) "width" 10))
+            "lines" 0))
+
+(deftest render-events-run-before-the-render-and-state-persists-per-key
+  (let* ((seen (list nil)) (ext (pt-click-ext seen)))
+    (with-host (host ext)
+      (check-equal "a:0:none" (pt-render host "r1" "render_message" "mt" "k" "message" (pig:obj "content" "a")))
+      (check-equal "a:2:3,4" (pt-render host "r2" "render_message" "mt" "k" "message" (pig:obj "content" "b")
+                                        (pt-click "card" 1 1) (pt-click "other" 9 9) (pt-click "card" 3 4)))
+      (check-equal "a:2:3,4" (pt-render host "r3" "render_message" "mt" "k" "message" (pig:obj "content" "c")))
+      ;; the subject of the first request is the one every later request receives
+      (let ((subjects (mapcar #'cdr (car seen))))
+        (check (and (= 3 (length subjects)) (eq (first subjects) (second subjects)) (eq (second subjects) (third subjects))))
+        (check-equal "a" (pig:jget (first subjects) "content")))
+      ;; a different key is independent, with its own subject
+      (check-equal "z:0:none" (pt-render host "r4" "render_message" "mt" "j" "message" (pig:obj "content" "z")))
+      (check (not (eq (cdr (first (car seen))) (cdr (second (car seen))))))
+      ;; the host names messages and entries apart, so an entry key is its own card; the handler of the entry kind runs
+      (check-equal "e:0" (pt-render host "r5" "render_entry" "et" "ek" "entry" (pig:obj "data" "e")))
+      (check-equal "e:1" (pt-render host "r6" "render_entry" "et" "ek" "entry" (pig:obj "data" "f") (pt-click "card" 0 0)))
+      (check-equal "e:1" (pt-render host "r7" "render_entry" "et" "ek" "entry" (pig:obj "data" "g"))))))
+
+(deftest render-release-forgets-the-state-and-the-subject
+  (let* ((seen (list nil)) (ext (pt-click-ext seen)))
+    (with-host (host ext)
+      (check-equal "a:1:2,2" (pt-render host "r1" "render_message" "mt" "k" "message" (pig:obj "content" "a") (pt-click "card" 2 2)))
+      (hsend host "type" "notify" "notify" (pig:obj "method" "render_release" "args" (pig:obj "key" "k")))
+      (sleep 0.05)
+      (check-equal "b:0:none" (pt-render host "r2" "render_message" "mt" "k" "message" (pig:obj "content" "b"))))))
+
+(deftest render-without-a-key-keeps-nothing
+  (let* ((seen (list nil)) (ext (pt-click-ext seen)))
+    (with-host (host ext)
+      (check-equal "a:1:5,6" (pt-render host "r1" "render_message" "mt" "" "message" (pig:obj "content" "a") (pt-click "card" 5 6)))
+      (check-equal "b:0:none" (pt-render host "r2" "render_message" "mt" "" "message" (pig:obj "content" "b")))
+      (check (not (eq (cdr (first (car seen))) (cdr (second (car seen)))))))))
+
+(deftest render-events-without-a-handler-are-ignored
+  (let* ((seen (list nil)) (ext (pt-click-ext seen)))
+    (with-host (host ext)
+      (check-equal "0" (pt-render host "r1" "render_message" "quiet" "k" "message" (pig:obj "content" "a") (pt-click "card" 1 1)))
+      ;; an event of a type this SDK does not deliver is dropped
+      (check-equal "a:0:none" (pt-render host "r2" "render_message" "mt" "k2" "message" (pig:obj "content" "a")
+                                         (pig:obj "key" "k2" "node" "card" "type" "bogus" "index" 0))))))
+
+(deftest a-failing-event-handler-does-not-stop-later-events-or-the-render
+  (let* ((seen (list nil)) (ext (pt-click-ext seen)))
+    (with-host (host ext)
+      (multiple-value-bind (result message)
+          (pt-run host "r1" "render_message" #'pt-none "tool" "mt"
+                  "args" (pig:obj "message" (pig:obj "content" "a") "key" "k" "width" 10
+                                  "events" (vector (pt-click "card" 1 1) (pt-click "boom" 0 0) (pt-click "card" 7 8))))
+        (declare (ignore result))
+        (check-equal "handler-boom" message))
+      (check (= 1 (length (car seen))) "the render ran")
+      (check-equal "a:2:7,8" (pt-render host "r2" "render_message" "mt" "k" "message" (pig:obj "content" "a"))))))
+
+(deftest a-view-renderer-draws-the-state-after-the-events
+  (let ((ext (pt-ext (lambda (ext)
+                       (pig:message-view-renderer ext "vt" (lambda (ctx message options width)
+                                                             (declare (ignore ctx message width))
+                                                             (pig:kit-view (pig:kit-mouse-region
+                                                                            "card" (pig:kit-text (format nil "clicks=~D" (gethash "clicks" (pig:message-render-options-state options) 0)) 0 0)
+                                                                            :types '("click")))))
+                       (pig:message-view-event ext "vt" (lambda (ctx message options event)
+                                                          (declare (ignore ctx message))
+                                                          (incf (gethash "clicks" (pig:message-render-options-state options) 0))
+                                                          (check-equal "card" (pig:kit-event-node event))
+                                                          (check-equal "click" (pig:jget (pig:kit-event-mouse event) "type"))))))))
+    (with-host (host ext)
+      (flet ((view-json (id &rest events)
+               (pig:to-json (pig:jget (pt-run host id "render_message" #'pt-none "tool" "vt"
+                                              "args" (pig:obj "message" (pig:obj) "key" "k" "width" 10 "events" (coerce events 'simple-vector)))
+                                      "view"))))
+        (check (search "clicks=0" (view-json "r1")))
+        (check (search "clicks=2" (view-json "r2" (pt-click "card" 0 0) (pt-click "card" 1 0))))))))
+
 (deftest tool-renderers-set-the-declaration-flags-and-render-with-the-cards-state
   (let ((ext (pt-ext (lambda (ext)
                        (pig:tool ext "t" "T" (pig:obj "type" "object") (lambda (ctx p) (declare (ignore ctx p)) "x"))
