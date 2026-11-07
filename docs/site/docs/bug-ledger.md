@@ -1146,6 +1146,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a94c58f](#bf-a94c58f) | RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or… | PiG's own defect | All platforms | Unreleased |
 | [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
@@ -17372,6 +17373,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3b9c8e7b11` (2026-10-11), `3d751efbda` (2026-10-11), `676874441a` (2026-10-11), `a94455cb5e` (2026-10-12)
 - **Tests:** `durable/codemode/join_text_test.go::TestJoinAdjacentTextEqualsTheQuadraticJoinOnRandomItems`, `durable/codemode/join_text_test.go::TestJoinAdjacentTextIsLinearAtTheItemLimit`, `durable/codemode/models_test.go::TestCodeModeModels`, `durable/codemode/output_test.go::TestFormatResultMatchesPi`, `durable/harness/tool_nested_records_test.go::TestNestedErrorResultsAndStructuredOutput`
 - **Release note:** The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7, [#10678](https://github.com/earendil-works/pi/issues/10678)): 100,000 items took about 3 s because every item read the end of the growing joined text. The coding-agent code mode already joined each run once.
+
+### BF-a94c58f
+
+**RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns.
+- **Root cause:** An agent_settled handler or command of a Go, Rust, Python or Lisp extension blocks in the language's own call; the host could not tell a socket read from computing, so rpcSettleGate and rpcAwaitHandler held stdin for the whole wait, where Pi answers get_state while the handler awaits (rpc-mode.ts:808-810, agent-session.ts:1094-1105). Conn acknowledges such a request as suspended after HandlerWaitQuantum (250 ms, measured fast handlers answer in under 9 ms) and counts a settle-tail handler as waiting. D86 records the option survey and the rejected options.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a94c58f227` (2026-11-06)
+- **Tests:** `coding/extension/host/subprocess/command_window_test.go::TestSettleTailCountsNativeHandlerSuspendedByTheQuantum`, `coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerAnsweringWithinTheQuantumIsNotSuspended`, `coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerOutlivingTheQuantumIsSuspended`, `coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer`
+- **Release note:** RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns. The host takes such a handler to be waiting once it has run for 250 ms, as Pi's event loop serves stdin while a handler awaits; handlers that answer sooner keep their order.
 
 ### BF-a967e74
 

@@ -32047,6 +32047,31 @@
       ]
     },
     {
+      "id": "BF-a94c58f",
+      "title": "RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or…",
+      "symptom": "RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns.",
+      "rootCause": "An agent_settled handler or command of a Go, Rust, Python or Lisp extension blocks in the language's own call; the host could not tell a socket read from computing, so rpcSettleGate and rpcAwaitHandler held stdin for the whole wait, where Pi answers get_state while the handler awaits (rpc-mode.ts:808-810, agent-session.ts:1094-1105). Conn acknowledges such a request as suspended after HandlerWaitQuantum (250 ms, measured fast handlers answer in under 9 ms) and counts a settle-tail handler as waiting. D86 records the option survey and the rejected options.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or input handler that waits on the network or another blocking call no longer holds every later RPC command, `get_state` included, until it returns. The host takes such a handler to be waiting once it has run for 250 ms, as Pi's event loop serves stdin while a handler awaits; handlers that answer sooner keep their order.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a94c58f227",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/command_window_test.go::TestSettleTailCountsNativeHandlerSuspendedByTheQuantum",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerAnsweringWithinTheQuantumIsNotSuspended",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestHandlerOutlivingTheQuantumIsSuspended",
+        "coding/extension/host/subprocess/handler_quantum_test.go::TestRequestWithoutTheQuantumSetsNoTimer"
+      ]
+    },
+    {
       "id": "BF-a967e74",
       "title": "A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it…",
       "symptom": "A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it could remove itself: a close on another goroutine between its registration and the hand-back of its removal called a nil removal (a data race, seen once in 60 starved `-race` runs).",
