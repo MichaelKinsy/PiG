@@ -2287,6 +2287,42 @@
       ]
     },
     {
+      "id": "BF-10818f5",
+      "title": "Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now…",
+      "symptom": "Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now decode them about four times faster and allocate about half as much.",
+      "rootCause": "They were slow because the Go SDK and the host scanned and copied each frame five times: a byte-at-a-time validity scan, a second scan to skip a request's arguments, a copy of them, and two more validations and scans to hand the event to a handler.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now decode them about four times faster and allocate about half as much. They were slow because the Go SDK and the host scanned and copied each frame five times: a byte-at-a-time validity scan, a second scan to skip a request's arguments, a copy of them, and two more validations and scans to hand the event to a handler. On a 43 MiB provider payload, the read and decode of one request frame fell from about 600-800 ms to about 225 ms and from 181 MB to 101 MB allocated, and the host's read of a frame an extension sent rose from about 130 to about 500 MB/s. Malformed frames end the connection with the same message as before, and every value decodes to the same Go value. The Lisp SDK decoded a frame with many strings containing escapes in time quadratic in the frame (a 16 MiB frame took 20 s, now 0.15 s).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "10818f5661",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/event_args_memo_test.go::TestEventArgsMemoRepeatIsCheaperThanADecode",
+        "extensions/sdk/frame_decode_verdicts_test.go::TestFrameDecodeVerdicts",
+        "extensions/sdk/frame_decode_verdicts_test.go::TestRequestArgsKeepTheirBytesAcrossFrames",
+        "extensions/sdk/json/decode_fast_test.go::FuzzDecodeCrossesValues",
+        "extensions/sdk/json/decode_fast_test.go::TestDecodeCrossesValuesWithoutLosingItsPlace",
+        "extensions/sdk/json/decode_fast_test.go::TestInterfaceNumbers",
+        "extensions/sdk/json/decode_fast_test.go::TestInterfaceStringsAreTheirOwnText",
+        "extensions/sdk/json/decode_fast_test.go::TestUnmarshalFrameAliasesRawMessages",
+        "extensions/sdk/json/decode_fast_test.go::TestUnmarshalFrameErrorsAreTheScannersErrors",
+        "extensions/sdk/json/unquote_equiv_test.go::FuzzUnquoteMatchesReference",
+        "extensions/sdk/json/unquote_equiv_test.go::TestUnquoteMatchesReference",
+        "extensions/sdk/json/validate_equiv_test.go::FuzzValidateMatchesCheckValid",
+        "extensions/sdk/json/validate_equiv_test.go::TestValidateMatchesCheckValidOnGrammarEdges",
+        "extensions/sdk/json/validate_equiv_test.go::TestValidateMatchesCheckValidOnTruncationsAndMutations",
+        "extensions/sdk/json/validate_equiv_test.go::TestValidateNestingLimits"
+      ]
+    },
+    {
       "id": "BF-108cb7d",
       "title": "An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its…",
       "symptom": "An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.",
