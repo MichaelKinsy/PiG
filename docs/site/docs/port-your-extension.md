@@ -22,7 +22,7 @@ Port to Go, not to another language. A Go extension on PiG's public SDK can be f
 
 ## What you need
 
-- `pig` and `pi` executables. Use the Pi release that your `pig` follows. `pig --version` prints it after the `+`.
+- `pig` and `pi` executables. Use the Pi release that your `pig` follows. `pig --version` prints it, and `pig version` names it on the `upstream pi:` line.
 - Go and Node. Go builds the extension and the test harness. Node runs the original.
 - A checkout of Pigpen. Run `npm ci --ignore-scripts` in it.
 - The `pigeq` command, which runs the proof steps. Build it from the Pigpen checkout:
@@ -55,7 +55,7 @@ The `pig-extension-porter` Piglet selects the Skill and the equivalence tools. P
 pig piglet pull 'github:MichaelKinsy/pigpen/pig-extension-porter@0.1.1'
 ```
 
-The command prints a `binary:` line. Run the file on that line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. It carries the PiG version it was built with, which `--version` prints. Version 0.1.1 of the porter is PiG 0.5.3, which can be older than your `pig`. [Add a Piglet from Pigpen](/docs/latest/piglets#add-a-piglet-from-pigpen) explains the pull. [Piglet Binaries](/docs/latest/piglet-binaries#pull-a-published-binary) explains the signature checks.
+The command prints a `binary:` line. Run the file on that line. It is a complete PiG with the Piglet built in, so it needs no `--piglet` option. It carries the PiG version it was built with, which its `version` command prints. Version 0.1.1 of the porter is PiG 0.5.3, which can be older than your `pig`. [Add a Piglet from Pigpen](/docs/latest/piglets#add-a-piglet-from-pigpen) explains the pull. [Piglet Binaries](/docs/latest/piglet-binaries#pull-a-published-binary) explains the signature checks.
 
 The proof steps need `pigeq` and the Pigpen checkout in any case. To use the Skill text of Pigpen's main branch, which can be newer than a release, run the Piglet from the checkout:
 

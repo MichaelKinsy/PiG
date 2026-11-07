@@ -21,7 +21,7 @@ npm install -g @pi-in-go/pig
 The first command downloads the newest published release, checks its SHA-256 checksum, and puts the `pig` program in the folder `~/.local/bin`. `~` is your home folder. It ends with a line such as:
 
 ```text
-pig-install: Installed 0.5.0+1.2.0 to /home/you/.local/bin/pig
+pig-install: Installed pig 0.5.0 to /home/you/.local/bin/pig
 ```
 
 Your terminal finds a program only when its folder is on your `PATH`. `PATH` is the list of folders the terminal searches for commands. When `~/.local/bin` is not on your `PATH`, the installer prints one more line that tells you what to run, for example:
@@ -35,14 +35,20 @@ Run the `export` command it shows. That command lasts until you close the termin
 Check that the command works:
 
 ```bash
-pig --version
+pig version
 ```
 
-PiG prints its version and the Pi version it follows. The text on your computer shows a different number when your release differs:
+PiG prints its own release and the Pi release it follows. The text on your computer shows different numbers when your release differs:
 
 ```text
-0.5.0+1.2.0
+pig: 0.5.0
+upstream pi: 1.2.0
+go: go1.27.2
+platform: linux/amd64
+build: dev
 ```
+
+`pig --version` prints only the Pi release, `1.2.0` here, exactly as `pi --version` does.
 
 The [Quickstart](/docs/latest/quickstart) lists the other install routes. [Install troubleshooting](/docs/latest/install-troubleshooting#pig-command-not-found) helps when the terminal answers `pig: command not found`.
 

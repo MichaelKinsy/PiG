@@ -184,7 +184,7 @@ export PI_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
 
 `pig update` checks the signed release manifest first and runs the command only when the release is newer (or with `--force`), after printing the release note. `{packageName}`, `{version}` and `{installSpec}` (`{packageName}@{version}`) come from that release. The value is split on whitespace. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.pig/agent/settings.json`, an argv array such as `["nix", "profile", "upgrade", "pig"]`. A project's settings file is never read for it.
 
-The configured command is your explicit choice of the one owner of the update. It replaces PiG's own tier selection (standalone replace, package manager, immutable Piglet Binary, container image) and never falls through to one of them. Without an update source there is no release to fill the placeholders from, so the command does not run. Exit code 0 does not prove an update: `pig update` prints `Updated pig from X to Y` when `pig --version` reports Y (from the replaced executable, else from `PATH`), and otherwise warns with the version it found.
+The configured command is your explicit choice of the one owner of the update. It replaces PiG's own tier selection (standalone replace, package manager, immutable Piglet Binary, container image) and never falls through to one of them. Without an update source there is no release to fill the placeholders from, so the command does not run. Exit code 0 does not prove an update: `pig update` prints `Updated pig from X to Y` when `pig version` reports Y (from the replaced executable, else from `PATH`), and otherwise warns with the version it found.
 
 ## `pig docs`
 

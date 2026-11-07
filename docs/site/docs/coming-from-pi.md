@@ -24,7 +24,7 @@ Every difference that a user or an extension can observe has a numbered record i
 | `~/.pi/agent` | `~/.pig/agent`. PiG does not read or write `~/.pi` unless you opt in. | D2 |
 | `<project>/.pi` | `<project>/.pig`. PiG reads `.pig` only from the working directory. | D2 |
 | `PI_CODING_AGENT_DIR` | `PIG_CODING_AGENT_DIR`. Pi's variable is read only in shared mode. | D2 |
-| `pi --version` prints `1.5.0` | `pig --version` prints the PiG release and the Pi release it ports, for example `0.7.0+1.5.0`. `PIG_VERSION_FORMAT=pi` makes it print only the Pi version for launchers that check it. | D63 |
+| The startup header shows Pi's version, `v1.5.0` | The startup header and the help banner show PiG's version with the Pi release it ports, for example `v0.7.0+1.5.0`. `pig --version` prints Pi's version exactly as `pi --version` does; `pig version` prints the PiG release and the Pi release as separate fields. | D2 |
 | Requests identify as `pi/<version>` | Requests identify as `pig/<version>`. PiG never identifies itself as Pi to a service. | D26, D65 |
 | Hosted endpoints on pi.dev | Hosted endpoints on pi-in-go.dev, including `/share`, the model catalog, the install report and the installer. PiG reads its version check from the update manifest of the latest GitHub Release, not from pi-in-go.dev. | D39, D64 |
 | `/bug` can upload a report | `/bug` writes a zip file and prints a link to a PiG issue form. | D62 |

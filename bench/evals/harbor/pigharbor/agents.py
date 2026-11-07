@@ -60,7 +60,7 @@ class PigAgent(Pi):
 
     @override
     def get_version_command(self) -> str | None:
-        return "pig --version"
+        return "pig version"
 
     @override
     async def install(self, environment: BaseEnvironment) -> None:
@@ -72,7 +72,7 @@ class PigAgent(Pi):
             fetch = (f"curl -fsSL -o /tmp/pig.tar.gz {shlex.quote(self._pig_url)} && echo {shlex.quote(self._pig_sha256 + '  /tmp/pig.tar.gz')} | sha256sum -c - "
                      "&& rm -rf /tmp/pig-release && mkdir -p /tmp/pig-release && tar -xzf /tmp/pig.tar.gz -C /tmp/pig-release "
                      "&& install -m 0755 \"$(find /tmp/pig-release -type f -name pig | head -1)\" /usr/local/bin/pig")
-        await self.exec_as_root(environment, command=f"set -euo pipefail; {fetch} && ln -sf /usr/local/bin/pig /usr/local/bin/pi && pig --version")
+        await self.exec_as_root(environment, command=f"set -euo pipefail; {fetch} && ln -sf /usr/local/bin/pig /usr/local/bin/pi && pig version")
 
     @override
     async def exec_as_agent(self, environment, command, env=None, cwd=None, timeout_sec=None):
