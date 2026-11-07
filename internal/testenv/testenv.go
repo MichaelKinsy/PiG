@@ -37,6 +37,12 @@ func RequireSymlink(t testing.TB, oldname, newname string) {
 	}
 }
 
+// DirectoryLink creates newname as a link to the directory oldname and returns the error, for code that has no testing.TB (a TestMain) and decides for itself
+// what a refusal means. It makes what RequireDirectoryLink makes: on Windows a privilege-free junction, elsewhere a symbolic link.
+func DirectoryLink(oldname, newname string) error {
+	return createDirectoryLink(oldname, newname)
+}
+
 // RequireDirectoryLink creates newname as a required link to the directory oldname. On Windows it creates a privilege-free drive-target junction, which Node and this module report as a symbolic link; a volume-GUID target creates a volume mount point instead. Elsewhere it creates a symbolic link. Any failure fails the test.
 func RequireDirectoryLink(t testing.TB, oldname, newname string) {
 	t.Helper()

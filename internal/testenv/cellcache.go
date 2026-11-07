@@ -5,11 +5,11 @@ package testenv
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -19,9 +19,11 @@ import (
 )
 
 const (
-	// cellCacheKeep is how many directories of other hashes survive beside the current one: the branches a developer moves between. A full suite builds
-	// 2 to 3 GB of cells into a directory, so the number bounds the disk the cache takes.
+	// cellCacheKeep is how many directories of other hashes each checkout keeps beside its current one: the branches a developer moves between. A full suite
+	// builds 2 to 3 GB of cells into a directory, so the number bounds the disk a checkout takes.
 	cellCacheKeep = 2
+	// cellCacheStale is how long a directory may go unused before it is removed whatever its checkout keeps: the cache of a checkout that no longer exists.
+	cellCacheStale = 14 * 24 * time.Hour
 	// cellCacheUsed is the file every process using a directory holds a shared lock on for its lifetime, and whose modification time says when one last
 	// started on it.
 	cellCacheUsed = ".used"
@@ -46,8 +48,9 @@ var (
 // processes that run at once and processes that start after one another share it safely. The absolute path is part of the key for the reason
 // SharedCargoTargetDir's is: a build bakes in the paths of its sources.
 //
-// The calling process holds a shared lock on <dir>/.used until it exits. Of the directories of other hashes of the same package only the two most recently
-// used survive (pruneCellCaches), and one that any process holds is never removed, however old.
+// The name is <pkg>-<hash of the input paths>-<hash of their contents>: the first part names the checkout. The calling process holds a shared lock on
+// <dir>/.used until it exits. Each checkout keeps its two most recently used directories of other contents, a directory unused for 14 days goes whatever its
+// checkout keeps, and a directory that any process holds is never removed (pruneCellCaches).
 func SharedCellCacheDir(pkg string, roots ...string) (string, error) {
 	base := os.Getenv("PIG_TEST_CELL_CACHE")
 	if base == "" {
@@ -57,13 +60,14 @@ func SharedCellCacheDir(pkg string, roots ...string) (string, error) {
 		}
 		base = filepath.Join(cache, "pig-dev", "cell-cache")
 	}
-	sum := sha256.New()
+	sum, paths := sha256.New(), sha256.New()
 	for _, root := range roots {
 		abs, err := filepath.Abs(root)
 		if err != nil {
 			return "", fmt.Errorf("resolve cell cache input: %w", err)
 		}
 		_, _ = fmt.Fprintf(sum, "root\x00%d\x00%s\x00", len(abs), abs)
+		_, _ = fmt.Fprintf(paths, "%d\x00%s\x00", len(abs), abs)
 		err = filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -94,7 +98,8 @@ func SharedCellCacheDir(pkg string, roots ...string) (string, error) {
 			return "", fmt.Errorf("hash cell cache input %s: %w", abs, err)
 		}
 	}
-	dir := filepath.Join(base, pkg+"-"+hex.EncodeToString(sum.Sum(nil))[:16])
+	checkout := hex.EncodeToString(paths.Sum(nil))[:16]
+	dir := filepath.Join(base, pkg+"-"+checkout+"-"+hex.EncodeToString(sum.Sum(nil))[:16])
 	if err := os.MkdirAll(base, 0o755); err != nil {
 		return "", fmt.Errorf("create the shared cell cache: %w", err)
 	}
@@ -115,6 +120,9 @@ func claimCellCache(dir string) error {
 		}
 		lock := flock.New(used)
 		if err := lock.RLock(); err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				continue // a pruner moved the directory away between the MkdirAll and the open
+			}
 			return fmt.Errorf("claim the shared cell cache: %w", err)
 		}
 		held, err := lock.Stat()
@@ -132,11 +140,33 @@ func claimCellCache(dir string) error {
 	return fmt.Errorf("claim the shared cell cache %s: it was removed under the claim eight times", dir)
 }
 
-// pruneCellCaches removes the directories of other hashes of package pkg beyond the cellCacheKeep most recently used, never current and never one that a
-// process holds: each removal first takes the directory's .used exclusively and without waiting, which a running process's shared lock refuses. A change to a
-// hashed file selects a new directory and leaves the old one behind; without this they pile up, each holding every cell the suite builds. The scan holds a
-// file lock, so processes that start together prune once, and a scan that finds it held leaves the work to the holder. Pruning is housekeeping: a
-// directory that cannot be removed stays for the next scan.
+// cellCacheName reports whether name is <pkg>-<16 hex digits>-<16 hex digits> and returns the first group, the checkout.
+func cellCacheName(name, pkg string) (checkout string, ok bool) {
+	rest, found := strings.CutPrefix(name, pkg+"-")
+	if !found || len(rest) != 33 || rest[16] != '-' {
+		return "", false
+	}
+	for i := range len(rest) {
+		if i != 16 && !lowerHex(rest[i]) {
+			return "", false
+		}
+	}
+	return rest[:16], true
+}
+
+func lowerHex(c byte) bool { return '0' <= c && c <= '9' || 'a' <= c && c <= 'f' }
+
+// pruneCellCaches removes directories of package pkg, never current and never one that a process holds: each removal first takes the directory's .used
+// exclusively and without waiting, which a running process's shared lock refuses. A directory goes when it is beyond the cellCacheKeep most recently used
+// of its checkout (the first hash of its name; current is not counted, so a checkout keeps current and the two before it), or when it has
+// not been used for cellCacheStale. A change to a hashed file selects a new directory and leaves the old one behind, each holding every cell the suite builds;
+// the checkouts of a machine that shares one cache root (containers, lanes, worktrees) must not evict one another, which a count over the whole root would.
+// The scan holds a file lock, so processes that start together prune once, and a scan that finds it held leaves the work to the holder. Pruning is
+// housekeeping: a directory that cannot be removed stays for the next scan (on Windows, which cannot rename a directory that holds a file open for locking,
+// that is every directory: nothing is pruned there).
+//
+// A directory is removed by renaming it to a name that nothing matches (.<name>.removing) while the lock is held, then deleting that: deleting in place would
+// unlink .used first and let a process that arrives meanwhile create a new .used, lock it at once and find its directory deleted under it.
 func pruneCellCaches(base, pkg, current string) {
 	lock := flock.New(filepath.Join(base, pkg+"-prune.lock"))
 	if locked, err := lock.TryLock(); err != nil || !locked {
@@ -147,15 +177,15 @@ func pruneCellCaches(base, pkg, current string) {
 	if err != nil {
 		return
 	}
-	named := regexp.MustCompile("^" + regexp.QuoteMeta(pkg) + "-[0-9a-f]{16}$")
 	type candidate struct {
 		path string
 		used time.Time
 	}
-	var others []candidate
+	byCheckout := map[string][]candidate{}
 	for _, entry := range entries {
 		path := filepath.Join(base, entry.Name())
-		if !entry.IsDir() || !named.MatchString(entry.Name()) || path == current {
+		checkout, ok := cellCacheName(entry.Name(), pkg)
+		if !entry.IsDir() || !ok || path == current {
 			continue
 		}
 		info, err := os.Stat(filepath.Join(path, cellCacheUsed))
@@ -164,19 +194,25 @@ func pruneCellCaches(base, pkg, current string) {
 				continue
 			}
 		}
-		others = append(others, candidate{path, info.ModTime()})
+		byCheckout[checkout] = append(byCheckout[checkout], candidate{path, info.ModTime()})
 	}
-	slices.SortFunc(others, func(a, b candidate) int { return b.used.Compare(a.used) })
-	for i, c := range others {
-		if i < cellCacheKeep {
-			continue
+	now := time.Now()
+	for _, others := range byCheckout {
+		slices.SortFunc(others, func(a, b candidate) int { return b.used.Compare(a.used) })
+		for i, c := range others {
+			if i < cellCacheKeep && now.Sub(c.used) <= cellCacheStale {
+				continue
+			}
+			claim := flock.New(filepath.Join(c.path, cellCacheUsed))
+			if locked, err := claim.TryLock(); err != nil || !locked {
+				continue // a process is using it
+			}
+			tombstone := filepath.Join(base, "."+filepath.Base(c.path)+".removing")
+			if err := os.RemoveAll(tombstone); err == nil && os.Rename(c.path, tombstone) == nil {
+				_ = os.RemoveAll(tombstone)
+			}
+			_ = claim.Unlock()
 		}
-		claim := flock.New(filepath.Join(c.path, cellCacheUsed))
-		if locked, err := claim.TryLock(); err != nil || !locked {
-			continue // a process is using it
-		}
-		_ = os.RemoveAll(c.path)
-		_ = claim.Unlock()
 	}
 }
 

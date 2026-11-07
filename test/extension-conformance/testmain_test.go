@@ -67,6 +67,11 @@ func TestMain(m *testing.M) {
 	// and nothing builds a cell, so only the process that is not itself a helper links the cell caches.
 	primary := os.Getenv(cellCacheMarker) == ""
 	if primary {
+		flag.Parse() // m.Run parses again; the setup needs -test.timeout and -test.list.
+	}
+	// go test -list (check-shard-union.sh, test-shard-pattern.sh) only names the tests: it links no cache, hashes no sources and builds nothing.
+	listing := flagValue("test.list") != ""
+	if primary && !listing {
 		if err := shareCellCaches(sourceRoot, filepath.Join(testRoot, "pig"), busBuildRoot); err != nil {
 			fmt.Fprintln(os.Stderr, "share the extension cell cache:", err)
 			_ = os.RemoveAll(testRoot)
@@ -86,8 +91,7 @@ func TestMain(m *testing.M) {
 			os.Exit(2)
 		}
 	}
-	if primary {
-		flag.Parse() // m.Run parses again; the setup needs -test.timeout and -test.list.
+	if primary && !listing {
 		started := time.Now()
 		if err := warmFixtures(); err != nil {
 			// A build that failed is reported, not fatal: the tests that need it build it themselves and fail with its own error, and the tests of the other SDKs run.
@@ -139,8 +143,7 @@ func shareCellCaches(sourceRoot string, configRoots ...string) error {
 		if err := os.MkdirAll(root, 0o755); err != nil {
 			return err
 		}
-		//portlint:allow rawsymlink TestMain has no testing.TB; a host that refuses the link falls back to per-process caches below
-		if err := os.Symlink(cache, filepath.Join(root, "cache")); err != nil {
+		if err := testenv.DirectoryLink(cache, filepath.Join(root, "cache")); err != nil {
 			if runtime.GOOS != "windows" {
 				return err
 			}
