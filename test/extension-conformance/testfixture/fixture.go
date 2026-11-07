@@ -2493,7 +2493,7 @@ func Extension() *sdk.Extension {
 			Window   int                    `json:"window"`
 			Settings sdk.CompactionSettings `json:"settings"`
 			Entries  []map[string]any       `json:"entries"`
-			Message  map[string]any         `json:"message"`
+			Message  json.RawMessage        `json:"message"`
 			Start    int                    `json:"start"`
 			End      int                    `json:"end"`
 			Keep     int                    `json:"keep"`
@@ -2519,7 +2519,12 @@ func Extension() *sdk.Extension {
 		case "turn":
 			result = map[string]any{"index": sdk.FindTurnStartIndex(c.Entries, c.Index, c.Start)}
 		case "estimate":
-			result = map[string]any{"tokens": sdk.EstimateTokens(c.Message)}
+			// The message is decoded the way an extension decodes wire text: with the SDK's decoder, which keeps an unpaired surrogate (WTF-8).
+			var message map[string]any
+			if err := jsjson.Unmarshal(c.Message, &message); err != nil {
+				return err
+			}
+			result = map[string]any{"tokens": sdk.EstimateTokens(message)}
 		case "defaults":
 			result = sdk.DefaultCompactionSettings
 		default:

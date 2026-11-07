@@ -173,6 +173,15 @@
     (check-equal 3 (tokens "{\"role\":\"bashExecution\",\"command\":\"ls\",\"output\":\"abcdefghij\"}"))
     (check-equal 0 (tokens "{\"role\":\"nobody\",\"content\":\"abcd\"}"))))
 
+(deftest estimate-tokens-counts-unpaired-surrogates-as-pi-does
+  ;; Pi 1.5.0's estimateTokens, run by node: eight unpaired surrogates are 8 units (2 tokens), and in a tool call's arguments each is the six characters of its escape.
+  (flet ((tokens (text) (pig:estimate-tokens (json-of text))))
+    (check-equal 2 (tokens "{\"role\":\"user\",\"content\":\"\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\"}"))
+    (check-equal 1 (tokens "{\"role\":\"user\",\"content\":\"\\ud800\"}"))
+    (check-equal 1 (tokens "{\"role\":\"user\",\"content\":\"a\\ud83db\"}"))
+    (check-equal 14 (tokens "{\"role\":\"assistant\",\"content\":[{\"type\":\"toolCall\",\"id\":\"c\",\"name\":\"\",\"arguments\":{\"k\":\"\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\\ud800\"}}]}"))
+    (check-equal 4 (tokens "{\"role\":\"assistant\",\"content\":[{\"type\":\"toolCall\",\"id\":\"c\",\"name\":\"\",\"arguments\":{\"k\":\"\\ud800\"}}]}"))))
+
 (deftest find-cut-point-and-turn-start
   (let* ((entries (json-of "[{\"type\":\"message\",\"message\":{\"role\":\"user\",\"content\":\"aaaaaaaa\"}},
                              {\"type\":\"message\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"bbbbbbbb\"}]}},
