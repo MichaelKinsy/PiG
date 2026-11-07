@@ -364326,17 +364326,6 @@
       "shapeHash": "sha256:bde00b56be767b85fde817054cd8613c23aaf8982b422a83aacfdac08c7ad3f3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.firstLine",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "markedBlockLexer.firstLine",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(src []rune) string"
-      },
-      "shapeHash": "sha256:ec1254037d6d5692b5ee30b325ff4a7e01326ea8abcf67b2cbe27f309d1f153b"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.group",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedBlockLexer.group",
@@ -364414,15 +364403,26 @@
       "shapeHash": "sha256:bde00b56be767b85fde817054cd8613c23aaf8982b422a83aacfdac08c7ad3f3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.lineAt",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "markedBlockLexer.lineAt",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(src []rune, str string, from int) string"
+      },
+      "shapeHash": "sha256:51e6ed631ea9fee9c95212b7dad3d9b93a83583693bd534a2193aa82ba73a74b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.list",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "markedBlockLexer.list",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(src []rune) (*markedBlock, int)"
+        "type": "func(src []rune, str string) (*markedBlock, int)"
       },
-      "shapeHash": "sha256:bde00b56be767b85fde817054cd8613c23aaf8982b422a83aacfdac08c7ad3f3"
+      "shapeHash": "sha256:904f01884bdcd679bba8b34f5b0ec75edb6a9905c40c95cc5b05f00e15827948"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#markedBlockLexer.matchText",
