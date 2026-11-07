@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/gofrs/flock"
 )
 
 func cellRoots(t *testing.T) (string, string) {
@@ -72,5 +75,84 @@ func TestSharedCellCacheDirIsKeyedByTheContentsOfItsInputs(t *testing.T) {
 	}
 	if added := dir("pkg"); added == changed {
 		t.Fatalf("a new fixture file kept the cache %s", changed)
+	}
+}
+
+// A directory of another hash is removed once nothing has used it for two weeks, except the four most recently used; the current directory, another
+// package's and anything a held prune lock protects stay.
+func TestSharedCellCacheDirPrunesOldDirectoriesOfOtherHashes(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("PIG_TEST_CELL_CACHE", base)
+	sdk, fixtures := cellRoots(t)
+	age := func(name string, days int) string {
+		t.Helper()
+		dir := filepath.Join(base, name)
+		if err := os.MkdirAll(filepath.Join(dir, "cache"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		used := filepath.Join(dir, cellCacheUsed)
+		if err := os.WriteFile(used, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		when := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+		if err := os.Chtimes(used, when, when); err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
+	exists := func(dir string) bool {
+		_, err := os.Stat(dir)
+		return err == nil
+	}
+	// Seven directories of other hashes: the four most recently used stay however old; the three after them are older than the retention and go.
+	var kept []string
+	for i, days := range []int{20, 30, 40, 50} {
+		kept = append(kept, age("pkg-kept"+string(rune('a'+i)), days))
+	}
+	gone := []string{age("pkg-old1", 60), age("pkg-old2", 90)}
+	recent := age("pkg-recent", 1)
+	other := age("other-ancient", 400)
+	if _, err := SharedCellCacheDir("pkg", sdk, fixtures); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range gone {
+		if exists(dir) {
+			t.Errorf("%s, unused for more than the retention and beyond the newest four, was kept", dir)
+		}
+	}
+	for _, dir := range append(kept[:3:3], recent, other) {
+		if !exists(dir) {
+			t.Errorf("%s was removed", dir)
+		}
+	}
+	// The 50-day directory is the fifth newest and older than the retention.
+	if exists(kept[3]) {
+		t.Errorf("%s, the fifth newest and older than the retention, was kept", kept[3])
+	}
+	current, err := SharedCellCacheDir("pkg", sdk, fixtures)
+	if err != nil || !exists(current) {
+		t.Fatalf("the current directory %s: %v", current, err)
+	}
+
+	// A prune lock that is held means another process is pruning: nothing is removed.
+	stale := age("pkg-stale", 100)
+	lock := flock.New(filepath.Join(base, "pkg-prune.lock"))
+	if locked, err := lock.TryLock(); err != nil || !locked {
+		t.Fatalf("take the prune lock: %v", err)
+	}
+	if _, err := SharedCellCacheDir("pkg", sdk, fixtures); err != nil {
+		t.Fatal(err)
+	}
+	if !exists(stale) {
+		t.Errorf("%s was removed while the prune lock was held", stale)
+	}
+	if err := lock.Unlock(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SharedCellCacheDir("pkg", sdk, fixtures); err != nil {
+		t.Fatal(err)
+	}
+	if exists(stale) {
+		t.Errorf("%s was kept after the lock was released", stale)
 	}
 }
