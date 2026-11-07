@@ -149,7 +149,8 @@ func readDigestRecord(path string) (digestRecord, bool) {
 		return digestRecord{}, false
 	}
 	defer func() { _ = file.Close() }() // Read-only: close cannot lose data.
-	info, err := file.Stat() //perf:ok cold: once per extension launch, on the handle being read
+	//perf:ok cold: once per extension launch, on the handle being read
+	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxDigestRecordBytes || !ownedByCurrentUser(info) {
 		return digestRecord{}, false
 	}
