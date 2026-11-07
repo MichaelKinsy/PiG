@@ -89,18 +89,36 @@ def _js_to_string(message: Mapping[str, Any], key: str) -> str:
     return _js_value_string(message[key])
 
 
+class _Separator(str):
+    """A comma the walk of ``_js_value_string`` writes between the elements of an array."""
+
+
 def _js_value_string(value: Any) -> str:
+    """ToString of a decoded JSON value. An array is its elements joined by commas (null as nothing), an object is "[object Object]". It walks nested arrays with a stack of its own, not the
+    interpreter's: an array nested thousands of levels deep (the host sends up to 10000) is read, where a recursive walk raises RecursionError at about 400 levels on 3.11 and 1000 on 3.12."""
     if value is None:
         return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, str):
-        return value
-    if isinstance(value, (int, float)):
-        return _js_number_to_string(value)
-    if isinstance(value, (list, tuple)):
-        return ",".join("" if element is None else _js_value_string(element) for element in value)
-    return "[object Object]"
+    out: list[str] = []
+    stack: list[Any] = [value]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, _Separator):
+            out.append(",")
+        elif isinstance(item, bool):
+            out.append("true" if item else "false")
+        elif isinstance(item, str):
+            out.append(item)
+        elif isinstance(item, (int, float)):
+            out.append(_js_number_to_string(item))
+        elif isinstance(item, (list, tuple)):
+            for index in range(len(item) - 1, -1, -1):
+                if item[index] is not None:
+                    stack.append(item[index])
+                if index:
+                    stack.append(_Separator())
+        else:
+            out.append("[object Object]")
+    return "".join(out)
 
 
 def _js_number_to_string(value: Any) -> str:

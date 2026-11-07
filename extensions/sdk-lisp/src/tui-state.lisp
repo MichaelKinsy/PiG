@@ -15,15 +15,23 @@
 (defvar *ts-theme-cache* nil "(palette . theme) of the theme built last.")
 
 (defun ts-json-equal (a b)
-  (cond ((and (hash-table-p a) (hash-table-p b))
-         (and (= (hash-table-count a) (hash-table-count b))
-              (loop for key being the hash-keys of a using (hash-value value)
-                    always (multiple-value-bind (other found) (gethash key b) (and found (ts-json-equal value other))))))
-        ((and (vectorp a) (vectorp b) (not (stringp a)) (not (stringp b)))
-         (and (= (length a) (length b)) (every #'ts-json-equal a b)))
-        ((and (stringp a) (stringp b)) (string= a b))
-        ((and (realp a) (realp b)) (= a b))
-        (t (eql a b))))
+  "Whether the decoded JSON values A and B are equal. The containers are compared with a stack of the function's own: a palette nested thousands of levels deep does not depend on the thread's control stack."
+  (let ((stack (list (cons a b))))
+    (loop while stack
+          do (destructuring-bind (a . b) (pop stack)
+               (cond ((and (hash-table-p a) (hash-table-p b))
+                      (unless (= (hash-table-count a) (hash-table-count b)) (return-from ts-json-equal nil))
+                      (loop for key being the hash-keys of a using (hash-value value)
+                            do (multiple-value-bind (other found) (gethash key b)
+                                 (unless found (return-from ts-json-equal nil))
+                                 (push (cons value other) stack))))
+                     ((and (vectorp a) (vectorp b) (not (stringp a)) (not (stringp b)))
+                      (unless (= (length a) (length b)) (return-from ts-json-equal nil))
+                      (dotimes (i (length a)) (push (cons (aref a i) (aref b i)) stack)))
+                     ((and (stringp a) (stringp b)) (unless (string= a b) (return-from ts-json-equal nil)))
+                     ((and (realp a) (realp b)) (unless (= a b) (return-from ts-json-equal nil)))
+                     ((not (eql a b)) (return-from ts-json-equal nil)))))
+    t))
 
 (defun ts-set-host-theme (palette)
   "Record the palette the host published. One that differs from the last ends what init-theme installed; the same one, which every snapshot
