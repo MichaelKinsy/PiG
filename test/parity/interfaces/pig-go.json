@@ -208935,9 +208935,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(value any, from *github.com/MichaelKinsy/PiG/extensions/sdk/json.ObjectOrder, to *github.com/MichaelKinsy/PiG/extensions/sdk/json.ObjectOrder) any"
+        "type": "func(value any, to *github.com/MichaelKinsy/PiG/extensions/sdk/json.ObjectOrder) any"
       },
-      "shapeHash": "sha256:460c95b0ce24925fa60bf22a657d6aab4f470755b5b8fbef750c2f9e840f4f6e"
+      "shapeHash": "sha256:76cd1d4570fb905c6dfe5e3fa9b343ada4dd79eb081a1cd2141a4b383db22081"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#cmdDef",
@@ -220628,9 +220628,20 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(from *ObjectOrder, source map[string]any, to map[string]any)"
+        "type": "func(source map[string]any, to map[string]any)"
       },
-      "shapeHash": "sha256:967135a0da05d7f65bddf2247cbc928387d3fcc34fdb0f8ce6f885f2c4c2b1fa"
+      "shapeHash": "sha256:25025c0e30ed6aa3c00d6a9cba5212d55b6060a162abc5671590e2b31d56c70d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.Copies",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "ObjectOrder.Copies",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *ObjectOrder"
+      },
+      "shapeHash": "sha256:e7e4ffbbd4bd7972209a262fdee7387c1fc866473b1e9a03f05c3a5a7a6136a2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.Keys",
@@ -220666,6 +220677,28 @@
       "shapeHash": "sha256:bbca2b89221d1bd9e9fd74e3c79c4d6da294ba810703caaecc724c72664beba2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.buildFilter",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "ObjectOrder.buildFilter",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.filterBits",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "ObjectOrder.filterBits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p uintptr) (first uint64, second uint64)"
+      },
+      "shapeHash": "sha256:babd141e154e185cff8011fcef8d5cf1748c8e761c59de3be9152ec36a05329c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.finish",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
       "name": "ObjectOrder.finish",
@@ -220675,6 +220708,17 @@
         "type": "func(m map[string]any, base int)"
       },
       "shapeHash": "sha256:25da1ffc87c781ec977d51dba9e5c518f8e5be2bc6c9495cfc81fb5b4b2dc087"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.mayHold",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "ObjectOrder.mayHold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(p uintptr) bool"
+      },
+      "shapeHash": "sha256:ef6263e9a527a2f2c9b90206011ebec8a30231063a3ed459b06c0417eaa4a526"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#ObjectOrder.record",
@@ -221126,6 +221170,17 @@
         "type": "func(e *encodeState, v reflect.Value, opts encOpts)"
       },
       "shapeHash": "sha256:081d029f952053d859f05fee8c128eaf58bb9ab6237458b05d181711d7876dd8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#copyEntry",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "copyEntry",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "copyEntry"
+      },
+      "shapeHash": "sha256:d15458ccd4261de21f392848fa7f4a0b88aea8cb2fd211069d2fef14142c49e4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#decodeState",
@@ -221984,6 +222039,17 @@
         "type": "func(key any, value any) (previous any, loaded bool)"
       },
       "shapeHash": "sha256:ded09ab918cbba6deb906e9cb411feb510c97f4cddbe8668976aeb59e0a462d1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#filterBitsPerObject",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/json",
+      "name": "filterBitsPerObject",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/json#firstOccurrences",
