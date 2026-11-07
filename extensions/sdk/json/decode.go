@@ -1259,7 +1259,7 @@ func (d *decodeState) literalInterface() any {
 					return smallNumbers[n]
 				}
 			}
-			if f, err := strconv.ParseFloat(unsafe.String(unsafe.SliceData(item), len(item)), 64); err == nil {
+			if f, err := strconv.ParseFloat(unsafe.String(unsafe.SliceData(item), len(item)), 64); err == nil { //nolint:gosec // G103: item is an immutable slice of the frame that outlives this call, and ParseFloat does not retain the string.
 				return f
 			}
 		}
@@ -1354,7 +1354,7 @@ func unquote(s []byte) (t string, ok bool) {
 	}
 	if owned {
 		// b was built here and nothing else holds it: the string takes it over instead of copying it.
-		return unsafe.String(unsafe.SliceData(b), len(b)), true
+		return unsafe.String(unsafe.SliceData(b), len(b)), true //nolint:gosec // G103: b was built here and nothing else holds it, so the string takes it over and nothing mutates it afterwards.
 	}
 	return string(b), true
 }
