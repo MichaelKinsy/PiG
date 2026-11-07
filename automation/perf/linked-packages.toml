@@ -68,7 +68,6 @@ allow = [
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sso",
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/ssooidc",
 	"github.com/MichaelKinsy/PiG/third_party/awssdk/service/sts",
-	"github.com/MichaelKinsy/PiG/third_party/collate",
 	"github.com/MichaelKinsy/PiG/third_party/goldmark/ast",
 	"github.com/MichaelKinsy/PiG/third_party/goldmark/parser",
 	"github.com/MichaelKinsy/PiG/tui",
