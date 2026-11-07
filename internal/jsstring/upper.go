@@ -117,7 +117,11 @@ func UpperRune(r rune) string {
 	if upper, ok := jsUpperSpecial[r]; ok {
 		return upper
 	}
-	return string(appendCodePoint(nil, unicode.ToUpper(r)))
+	upper := unicode.ToUpper(r)
+	if upper >= 0xd800 && upper <= 0xdfff { // a lone surrogate stays in its WTF-8 form; string(rune) would give U+FFFD
+		return string([]byte{byte(0xe0 | (upper >> 12)), byte(0x80 | ((upper >> 6) & 0x3f)), byte(0x80 | (upper & 0x3f))})
+	}
+	return string(upper)
 }
 
 // ToUpper is String.prototype.toUpperCase. Go's strings.ToUpper applies only the simple mapping, so it leaves ß as ß where JavaScript gives SS and
