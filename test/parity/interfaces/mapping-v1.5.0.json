@@ -119226,8 +119226,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
+        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
       ]
     },
     {
@@ -119248,8 +119248,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
+        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
       ]
     },
     {
@@ -120714,7 +120714,7 @@
       "evidence": [
         "test:chord/next/host/host_example_14_test.go#TestExample14FlowControl",
         "test:chord/next/link/channel_test.go#TestInOrderHandling",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort"
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
     {
@@ -120822,9 +120822,9 @@
         "call:chord/next/link/channel.go#Channel.Start"
       ],
       "evidence": [
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
       ]
     },
     {
@@ -120844,9 +120844,9 @@
         "call:chord/next/link/channel.go#Channel.Start"
       ],
       "evidence": [
+        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver",
         "test:chord/next/link/ipc_test.go#TestIPCLinksOverAFakePort",
-        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild",
-        "test:chord/next/link/websocket_test.go#TestWebSocketLinksOverAFakeSocket"
+        "test:chord/next/link/ipc_test.go#TestIPCLinksToAChild"
       ]
     },
     {
@@ -300495,7 +300495,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -300517,7 +300517,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -305736,7 +305736,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
@@ -305758,7 +305758,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_tree.go#InteractiveMode.navigateTree"
       ],
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
