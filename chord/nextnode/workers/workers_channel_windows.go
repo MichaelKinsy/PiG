@@ -3,6 +3,7 @@
 package workers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -55,7 +56,12 @@ func openProcessChannel() *channel {
 	if !found {
 		return disconnectedChannel()
 	}
-	conn, err := winio.DialPipe(name, nil)
+	// DialPipe(name, nil) gives up after 2 seconds of ERROR_PIPE_BUSY, which is what the pipe answers until the parent's accept
+	// goroutine has put an instance into listening (a parent starting many workers at once, or a loaded machine, can be later than
+	// that), and a worker that gave up is a worker with no parent: it exits, and its start fails. Node's fork has no such limit (its
+	// channel is a descriptor the parent opened before the child ran), so the dial waits for the parent: it ends when the parent
+	// accepts, or when the pipe is gone (the parent closed its listener or ended: not found, no longer busy).
+	conn, err := winio.DialPipeContext(context.Background(), name)
 	if err != nil {
 		return disconnectedChannel()
 	}
