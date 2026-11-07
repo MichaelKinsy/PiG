@@ -103,6 +103,19 @@ type recording struct {
 // TestConformance_HostConfigurationAgreesAcrossSDKs sets it for its run (that test is not parallel, so it owns the value while it runs).
 var conformanceHostInfo subprocess.HostInfo
 
+// conformanceCellRegistry, when set, is the cell registry every harness host joins (TestConformance_SharedCellsIsolatePerHostInstances sets it for its run; that test is not parallel, so it owns the value while it runs). nil keeps each host's cells to itself.
+var conformanceCellRegistry *subprocess.CellRegistry
+
+// conformanceCellCwd, when set beside conformanceCellRegistry, is the working directory every harness host runs in: a registry shares a process only between Hosts of one cwd.
+var conformanceCellCwd string
+
+func harnessHostCwd(t *testing.T) string {
+	if conformanceCellCwd != "" {
+		return conformanceCellCwd
+	}
+	return t.TempDir()
+}
+
 type harness struct {
 	runner  *inproc.Runner
 	host    *subprocess.Host
@@ -1188,10 +1201,26 @@ func registerInprocSprite(ui extension.UIContext, owner string, definition exten
 	return nil
 }
 
+// inprocSharedTool is one of the shared-cells tools of the in-process fixture; its answer is run's text.
+func inprocSharedTool(name, description, schema string, run func(json.RawMessage) string) extension.RegisteredTool {
+	return extension.RegisteredTool{
+		Definition: extension.ToolDefinition{
+			Name: name, Description: description, Parameters: json.RawMessage(schema),
+			Execute: func(_ context.Context, _ string, params json.RawMessage, _ extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+				return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: run(params)}}}, nil
+			},
+		},
+		Source: inprocFixtureName,
+	}
+}
+
 func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Extension {
 	var termUnsub func()
 	var abortObserved atomic.Bool
 	var inprocStartedCalls atomic.Int64
+	var sharedCalls atomic.Int64
+	var sharedMu sync.Mutex
+	var sharedHeard []string
 	update := func(onUpdate extension.AgentToolUpdateCallback, text string) {
 		if cb := onUpdate; cb != nil {
 			cb(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}})
@@ -1482,6 +1511,22 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"counter": inprocSharedTool("counter", "This instance's call count", `{"type":"object","properties":{}}`, func(json.RawMessage) string { return strconv.Itoa(int(sharedCalls.Add(1))) }),
+			"ping": inprocSharedTool("ping", "Emit on the shared-cells channel", `{"type":"object","required":["name"],"properties":{"name":{"type":"string"}}}`, func(params json.RawMessage) string {
+				var input struct {
+					Name string `json:"name"`
+				}
+				_ = json.Unmarshal(params, &input)
+				sharedMu.Lock()
+				sharedHeard = append(sharedHeard, input.Name)
+				sharedMu.Unlock()
+				return "pinged"
+			}),
+			"received": inprocSharedTool("received", "What this instance heard on shared-cells", `{"type":"object","properties":{}}`, func(json.RawMessage) string {
+				sharedMu.Lock()
+				defer sharedMu.Unlock()
+				return "received=" + strings.Join(sharedHeard, ",")
+			}),
 			"prepared_tool": {
 				Definition: extension.ToolDefinition{
 					Name:        "prepared_tool",
@@ -3029,9 +3074,10 @@ func makeSubprocessGoHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
+	h.ShareCells(conformanceCellRegistry)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 
@@ -3068,9 +3114,10 @@ func makeFusedGoHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	host := subprocess.NewHost(t.TempDir())
+	host := subprocess.NewHost(harnessHostCwd(t))
 	host.SetMode(harnessHostMode())
 	host.SetHostInfo(conformanceHostInfo)
+	host.ShareCells(conformanceCellRegistry)
 	host.SetUIBridge(bridge)
 	wire := observeWire(t, host)
 	// A Piglet Binary installs the host's parsers before any fused factory runs (fusepack.Register).
@@ -3203,9 +3250,10 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
+	h.ShareCells(conformanceCellRegistry)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 
@@ -3253,9 +3301,10 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
+	h.ShareCells(conformanceCellRegistry)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 
@@ -3267,6 +3316,38 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 		t.Fatalf("packed Node LoadAll: %d loaded, %v", len(exts), errs)
 	}
 
+	runner := inproc.NewRunner(exts, t.TempDir())
+	bridge.SetUIPromptScope(runner)
+	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
+}
+
+// makeSubprocessNodeLoneCellHarness loads the node-sdk-fixture through Host.LoadAll with no peer, so a Host of a shared registry runs it as the only Node realm of its process and keeps its pi.events listeners in that process's own bus.
+func makeSubprocessNodeLoneCellHarness(t *testing.T) *harness {
+	t.Helper()
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatalf("node is required for SDK conformance: %v", err)
+	}
+	path := filepath.Join(findModuleRoot(t), "test", "extension-conformance", "testdata", "node-sdk-fixture", "main.mjs")
+	notify := &[]string{}
+	status := &[]string{}
+	actions := &[]string{}
+	ui := newRecordingUI(notify, status)
+	bridge := subprocess.NewUIBridge(hostEffects.notify)
+	bridge.SetUIContext(ui)
+	bridge.SetNotifyFunc(ui.RecordNotify)
+	bridge.SetActions(conformanceActions(actions))
+
+	h := subprocess.NewHost(harnessHostCwd(t))
+	h.SetMode(harnessHostMode())
+	h.SetHostInfo(conformanceHostInfo)
+	h.ShareCells(conformanceCellRegistry)
+	h.SetUIBridge(bridge)
+	wire := observeWire(t, h)
+
+	exts, errs := h.LoadAll(context.Background(), []subprocess.ExtConfig{{Name: "node-sdk-fixture", Source: path, Enabled: true, RuntimeKind: "subprocess", RuntimeLanguage: "node", EntrypointKind: "factory", SDKName: "pi-node"}})
+	if len(errs) != 0 || len(exts) != 1 {
+		t.Fatalf("lone Node LoadAll: %d loaded, %v", len(exts), errs)
+	}
 	runner := inproc.NewRunner(exts, t.TempDir())
 	bridge.SetUIPromptScope(runner)
 	return &harness{runner: runner, host: h, notify: notify, status: status, actions: actions, ui: ui, bridge: bridge, wire: wire}
@@ -3286,9 +3367,10 @@ func makeSubprocessPythonHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
+	h.ShareCells(conformanceCellRegistry)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 
@@ -3321,9 +3403,10 @@ func makeSubprocessRustHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
+	h.ShareCells(conformanceCellRegistry)
 	h.SetUIBridge(bridge)
 	wire := observeWire(t, h)
 
