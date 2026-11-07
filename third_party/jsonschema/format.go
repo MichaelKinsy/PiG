@@ -17,25 +17,37 @@ type Format struct {
 	Validate func(v any) error
 }
 
-var formats = map[string]*Format{
-	"json-pointer":          {"json-pointer", validateJSONPointer},
-	"relative-json-pointer": {"relative-json-pointer", validateRelativeJSONPointer},
-	"uuid":                  {"uuid", validateUUID},
-	"duration":              {"duration", validateDuration},
-	"period":                {"period", validatePeriod},
-	"ipv4":                  {"ipv4", validateIPV4},
-	"ipv6":                  {"ipv6", validateIPV6},
-	"hostname":              {"hostname", validateHostname},
-	"email":                 {"email", validateEmail},
-	"date":                  {"date", validateDate},
-	"time":                  {"time", validateTime},
-	"date-time":             {"date-time", validateDateTime},
-	"uri":                   {"uri", validateURI},
-	"iri":                   {"iri", validateURI},
-	"uri-reference":         {"uri-reference", validateURIReference},
-	"iri-reference":         {"iri-reference", validateURIReference},
-	"uri-template":          {"uri-template", validateURITemplate},
-	"semver":                {"semver", validateSemver},
+// builtinFormats are the formats a schema asserts without a Compiler.RegisterFormat. A static array (the validators are functions), searched by name:
+// PiG fork: v6.0.2 held them in a map of pointers built by a package init(), 22 allocations of every process that links the package.
+var builtinFormats = [...]Format{
+	{"json-pointer", validateJSONPointer},
+	{"relative-json-pointer", validateRelativeJSONPointer},
+	{"uuid", validateUUID},
+	{"duration", validateDuration},
+	{"period", validatePeriod},
+	{"ipv4", validateIPV4},
+	{"ipv6", validateIPV6},
+	{"hostname", validateHostname},
+	{"email", validateEmail},
+	{"date", validateDate},
+	{"time", validateTime},
+	{"date-time", validateDateTime},
+	{"uri", validateURI},
+	{"iri", validateURI},
+	{"uri-reference", validateURIReference},
+	{"iri-reference", validateURIReference},
+	{"uri-template", validateURITemplate},
+	{"semver", validateSemver},
+}
+
+// builtinFormat returns the built-in format of the name, or nil.
+func builtinFormat(name string) *Format {
+	for i := range builtinFormats {
+		if builtinFormats[i].Name == name {
+			return &builtinFormats[i]
+		}
+	}
+	return nil
 }
 
 // see https://www.rfc-editor.org/rfc/rfc6901#section-3
