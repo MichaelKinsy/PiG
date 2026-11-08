@@ -2441,14 +2441,13 @@
       "disposition": "partial",
       "upstreamTestHash": "sha256:dc961893e2eff074cf517a3ff3c8d9448bb7fed96a2b14626dd2bcb4d776c514",
       "evidence": [
-        "chord/next/host/host_ctx_test.go"
+        "chord/next/host/host_ctx_test.go",
+        "chord/next/host/host_spans_test.go"
       ],
-      "rationale": "11 of 15 upstream cases are ported on the lane branches; the 4 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "rationale": "13 of 15 upstream cases are ported on the lane branches; the 2 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
       "missingCases": [
-        "ctx.trace (C11, slice 9) › runs fn in a child span of the handler's, with a child ctx: the same principal, signal and references",
         "ctx.trace (C11, slice 9) › marks its span failed (`trace_failed`) and rethrows",
-        "ctx.trace (C11, slice 9) › rejects, never throws, when fn throws synchronously, recorded or not (review L5)",
-        "ctx.trace (C11, slice 9) › gives fn the handler's own ctx when nothing records"
+        "ctx.trace (C11, slice 9) › rejects, never throws, when fn throws synchronously, recorded or not (review L5)"
       ]
     },
     {
@@ -2501,7 +2500,7 @@
         "chord/next/host/host_host_test.go",
         "chord/nextnode/plugins/plugins_node_hostoptions_test.go"
       ],
-      "rationale": "67 of 78 upstream cases are ported on the lane branches; the 11 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "rationale": "68 of 78 upstream cases are ported on the lane branches; the 10 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
       "missingCases": [
         "load › throws for an invalid plugin name before it changes anything; the host loads afterwards (decision (d))",
         "load › is called first: get, hold, registry and a root's ctx.get throw not_ready before it (decision (a))",
@@ -2510,7 +2509,6 @@
         "who a span was for (principalAttributes) › records nothing of the principal when the hook returns {}",
         "who a span was for (principalAttributes) › never calls the hook when nothing records (the NOOP adapter)",
         "who a span was for (principalAttributes) › records a call span's principal: whom its reference acts for",
-        "the host's spans (slice 9) › traces load under its caller's span: plugins given and left out; host-lifetime activations link to it",
         "the host's spans (slice 9) › traces a reload with one event per object's fate",
         "the host's spans (slice 9) › counts the cost counters of its links' and roots' work on its adapter, under contexts without a span (review L6)",
         "the host's spans (slice 9) › records a revocation's count after it under the caller's span"
@@ -3437,8 +3435,12 @@
     },
     {
       "path": "packages/chord/test/node/surfaces/tui.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7195a06f4cffbfe206b44129bd2935f23c9975204e88bccb94ad9c3d95ac618c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7195a06f4cffbfe206b44129bd2935f23c9975204e88bccb94ad9c3d95ac618c",
+      "evidence": [
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/surfaces/web.test.ts",
@@ -3447,23 +3449,58 @@
     },
     {
       "path": "packages/chord/test/node/tui/actions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:85652f2ba42cdcf9fc7860b6031b6ff0ab7021faeab208d0a9fbc9492d598331"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:85652f2ba42cdcf9fc7860b6031b6ff0ab7021faeab208d0a9fbc9492d598331",
+      "evidence": [
+        "chord/nextnode/tui/tui_actions_test.go"
+      ],
+      "rationale": "5 of 10 upstream cases are ported on the lane branches; the 5 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "copying › shows every line up to five, then how many more; OSC 52 only once confirmed",
+        "attaching a file › shows the path by its text before the yes; refuses a directory, a missing file and one over 16 MiB alike (Opus L2, E5, E9)",
+        "attaching a file › reads only the file confirmed: a parent directory swapped for a link after the yes is refused (Opus R1)",
+        "attaching a file › refuses UNC, device and //host paths on Windows without asking (Opus E9)",
+        "attaching a file › never waits on a FIFO: opened without blocking, refused as no regular file (Opus E12)"
+      ]
     },
     {
       "path": "packages/chord/test/node/tui/credentials.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6801b85c1e6f8f84e0694ee4ce85cadbead55d2638d8caebd765e22a27c18d9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6801b85c1e6f8f84e0694ee4ce85cadbead55d2638d8caebd765e22a27c18d9",
+      "evidence": [
+        "chord/nextnode/tui/tui_credentials_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
     },
     {
       "path": "packages/chord/test/node/tui/filter.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b1aec08238bc2f7b2ca3cb8e9db8efda68ff2b31661631f98c4e533511e1fab8"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:b1aec08238bc2f7b2ca3cb8e9db8efda68ff2b31661631f98c4e533511e1fab8",
+      "evidence": [
+        "chord/nextnode/tui/tui_filter_test.go"
+      ],
+      "rationale": "3 of 5 upstream cases are ported on the lane branches; the 2 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "what is dropped › drops unknown modes, charset changes, other ESC sequences and control characters",
+        "what is dropped › refuses a frame over 64 KiB"
+      ]
     },
     {
       "path": "packages/chord/test/node/tui/launcher.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d12ab9479e4422ccf72ad917eceead4740c351bc1b6c385c8fb0892fb86d3c87"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:d12ab9479e4422ccf72ad917eceead4740c351bc1b6c385c8fb0892fb86d3c87",
+      "evidence": [
+        "chord/nextnode/tui/tui_kit_upstream_test.go"
+      ],
+      "rationale": "4 of 10 upstream cases are ported on the lane branches; the 6 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "the Node it needs › refuses a Node older than 26.5.1 with a clear error",
+        "the files the sandbox may fetch › are the terminal surface's, after dot segments and encodings resolve (Opus M2, Fable L1)",
+        "a terminal client › runs the app's terminal code with the plugins, confirms its actions, applies an edit in place, exits",
+        "a terminal client › answers eight requests at once, refuses more, and ignores SIGUSR1 (Opus E10, E8)",
+        "a terminal client › ends on Ctrl-C while its prompt is open, whatever the sandbox asks (Opus E11)",
+        "a terminal client › ends on three Ctrl-C within a second, though the sandbox ignores them (Opus R2)"
+      ]
     },
     {
       "path": "packages/chord/test/node/tui/pipe.test.ts",
@@ -3472,8 +3509,15 @@
     },
     {
       "path": "packages/chord/test/node/tui/sandbox.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:012b6c4676863bd8224316426c9a2c92bbd6313478b26778956d9063691310e6"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:012b6c4676863bd8224316426c9a2c92bbd6313478b26778956d9063691310e6",
+      "evidence": [
+        "chord/nextnode/tui/tui_sandbox_test.go"
+      ],
+      "rationale": "2 of 3 upstream cases are ported on the lane branches; the 1 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "missingCases": [
+        "the sandbox › closes every escape to the app's code and to plugins, on a real terminal (Fable C1, Opus H1, E1, E2)"
+      ]
     },
     {
       "path": "packages/chord/test/node/web/language.test.ts",
@@ -4410,20 +4454,19 @@
       "disposition": "partial",
       "upstreamTestHash": "sha256:e2411807ef5c1a744489182c765f92fbb54395eaa52bfc6e9d8964fe781b60df",
       "evidence": [
+        "chord/next/host/host_telemetry_test.go",
         "chord/next/telemetry/telemetry_upstream_test.go"
       ],
-      "rationale": "2 of 18 upstream cases are ported on the lane branches; the 16 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
+      "rationale": "4 of 18 upstream cases are ported on the lane branches; the 14 listed in missingCases have no matching Go test (see handoffs chord-missing-cases/ and rows/chord-*.md).",
       "missingCases": [
         "the schema › declares every metric a traced call over a relay records",
         "nothing recorded › treats the NOOP context as untraced: no carrier, its own root",
-        "nothing recorded › records nothing and sends no carrier when no host has an adapter",
         "carriers › extracts an unknown or absent carrier as the adapter's root, never throwing",
         "open spans › ends once, with how its work settled: ok, a cancel (status ok), or an error with its category",
         "open spans › marks a span failed with a fixed category and at most 500 characters",
         "metrics › makes each instrument once per adapter's metrics and none for NOOP",
         "metrics › keeps no adapter alive (its instruments are cached by its metrics object, weakly)",
         "across hosts › follows a call from the tab through the server's relay into the worker's method and its commit",
-        "across hosts › names the host that recorded each span: its address key, `client` without an address",
         "across hosts › holds through the relay under the tab's span; the worker's start and its activations link to their triggers",
         "across hosts › costs a call over a relay exactly its spans and no extra encode",
         "across hosts › starts a new root for a well-formed carrier the server's adapter does not know",
