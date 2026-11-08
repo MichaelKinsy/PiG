@@ -20,45 +20,47 @@ type mindNode struct {
 	children []*mindNode
 }
 
-var mindmapDiagram = diagram{
-	kind:    "mindmap",
-	headers: []string{"mindmap"},
-	render: func(src string) (*canvas, drawnMeta, bool) {
-		roots, warnings, ok := parseMindmap(src)
-		if !ok {
-			return nil, drawnMeta{}, false
-		}
+func mindmapDiagram() *diagram {
+	return &diagram{
+		kind:    "mindmap",
+		headers: []string{"mindmap"},
+		render: func(src string) (*canvas, drawnMeta, bool) {
+			roots, warnings, ok := parseMindmap(src)
+			if !ok {
+				return nil, drawnMeta{}, false
+			}
 
-		// [prefix, text] per row; prefixes carry the `│ ├ └` guides.
-		type mindRow struct{ prefix, text string }
-		var rows []mindRow
-		var walk func(n *mindNode, prefix, childPrefix string)
-		walk = func(n *mindNode, prefix, childPrefix string) {
-			rows = append(rows, mindRow{prefix, n.text})
-			for i, child := range n.children {
-				last := i == len(n.children)-1
-				if last {
-					walk(child, childPrefix+"└── ", childPrefix+"    ")
-				} else {
-					walk(child, childPrefix+"├── ", childPrefix+"│   ")
+			// [prefix, text] per row; prefixes carry the `│ ├ └` guides.
+			type mindRow struct{ prefix, text string }
+			var rows []mindRow
+			var walk func(n *mindNode, prefix, childPrefix string)
+			walk = func(n *mindNode, prefix, childPrefix string) {
+				rows = append(rows, mindRow{prefix, n.text})
+				for i, child := range n.children {
+					last := i == len(n.children)-1
+					if last {
+						walk(child, childPrefix+"└── ", childPrefix+"    ")
+					} else {
+						walk(child, childPrefix+"├── ", childPrefix+"│   ")
+					}
 				}
 			}
-		}
-		for _, root := range roots {
-			walk(root, "", "")
-		}
+			for _, root := range roots {
+				walk(root, "", "")
+			}
 
-		width := 0
-		for _, r := range rows {
-			width = max(width, stringWidth(r.prefix)+stringWidth(r.text))
-		}
-		c := newCanvas(width, len(rows))
-		for y, r := range rows {
-			drawText(c, r.prefix, 0, y, RoleEdge)
-			drawText(c, r.text, stringWidth(r.prefix), y, RoleText)
-		}
-		return c, drawnMeta{warnings: warnings, classDefs: map[string]map[string]string{}}, true
-	},
+			width := 0
+			for _, r := range rows {
+				width = max(width, stringWidth(r.prefix)+stringWidth(r.text))
+			}
+			c := newCanvas(width, len(rows))
+			for y, r := range rows {
+				drawText(c, r.prefix, 0, y, RoleEdge)
+				drawText(c, r.text, stringWidth(r.prefix), y, RoleText)
+			}
+			return c, drawnMeta{warnings: warnings, classDefs: map[string]map[string]string{}}, true
+		},
+	}
 }
 
 func parseMindmap(src string) (roots []*mindNode, warnings []string, ok bool) {
