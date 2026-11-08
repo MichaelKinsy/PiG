@@ -2,10 +2,13 @@ package documents
 
 import (
 	"context"
+	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/documents/documents.ts
@@ -36,6 +39,12 @@ type DocumentsOwner interface {
 	// a section already.
 	Do(work func())
 	Clock
+}
+
+// CancelReporter is a DocumentsOwner that reports a transaction that did not commit while its context was cancelled
+// (`transaction_cancelled`): an empty `catch` cannot hide a change that never happened. cause is the context's cause.
+type CancelReporter interface {
+	TransactionCancelled(cause error)
 }
 
 // DeclaredSlot is what Documents needs of a slot of either kind.
@@ -288,18 +297,56 @@ func (d *Documents) Tx(fn func(tx *Transaction) (any, error), token *SealToken, 
 		}
 	})
 	var result any
+	var started time.Time
+	// Timed only when something records: the commit's duration metric, its event on the enclosing span.
+	metrics := d.Batch().Metrics()
+	timed := metrics != nil || chordctx.Telemetry(ctx) != telemetry.NoopTelemetryContext
 	if err == nil {
 		result, err = fn(tx)
 	}
 	if err == nil {
+		if timed {
+			started = time.Now()
+		}
 		// In-memory-only commits are synchronous (W12): the store's step is taken only for persisted writes.
 		err = tx.Commit()
 	}
 	if err != nil {
 		d.Do(tx.Discard)
+		// Only a transaction that did not commit reads this; Chord's own run under contexts that never abort.
+		if ctx.Err() != nil {
+			if reporter, ok := d.owner.(CancelReporter); ok {
+				cause := context.Cause(ctx)
+				d.Do(func() { reporter.TransactionCancelled(cause) })
+			}
+		}
 		return nil, err
 	}
+	if timed {
+		d.Do(func() { d.recordCommit(tx, time.Since(started), ctx, metrics) })
+	}
 	return result, nil
+}
+
+// recordCommit records a commit of tx that took duration (from its start to its adoption): its event on ctx's span (the
+// method, routine or job it ran in) and the host's commit duration metric; a commit that changed nothing records
+// nothing. A section.
+func (d *Documents) recordCommit(tx *Transaction, duration time.Duration, ctx context.Context, metrics telemetry.TelemetryMetrics) {
+	documents, ops, writes, rows := tx.Committed()
+	if documents == 0 && writes == 0 {
+		return
+	}
+	ms := float64(duration) / float64(time.Millisecond)
+	if span := chordctx.Telemetry(ctx); span != telemetry.NoopTelemetryContext {
+		span.AddEvent("chord.commit", telemetry.SpanAttributes{
+			telemetry.Attr("documents", float64(documents)), telemetry.Attr("ops", float64(ops)),
+			telemetry.Attr("rows", float64(rows)), telemetry.Attr("duration", ms),
+		})
+	}
+	if metrics != nil {
+		unit := "ms"
+		metrics.Histogram("chord.commit.duration", telemetry.HistogramOptions{InstrumentOptions: telemetry.InstrumentOptions{Unit: &unit}}).Record(ms, nil, nil)
+	}
 }
 
 // Fence seals token (the seal fence): its transactions are refused from now on, and the one holding the line is

@@ -78,6 +78,9 @@ const (
 	// at its version, a registry whose first `compose` threw), once: WaitingFor is the type's name or `registry <name>`,
 	// Error why, Since when it started (Date.now() time). It keeps waiting.
 	ErrUnboundLong HostErrorKind = "unbound_long"
+	// ErrTransactionCancelled: the context a document change or transaction was started with ended before it
+	// committed (a root whose fn returned, a caller that cancelled, its object's end), besides the rejection (Object, Error).
+	ErrTransactionCancelled HostErrorKind = "transaction_cancelled"
 )
 
 // HostError is what `onError` gets, by Kind (Pi's tagged union, one struct as registries.RegistryError is). Object is the
