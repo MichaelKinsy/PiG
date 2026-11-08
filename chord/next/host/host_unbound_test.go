@@ -247,29 +247,6 @@ func TestHostReferencesWaitingInTheIndexAfterThePublicationATypeServedBindsOneNo
 	}
 }
 
-// Mirrors "what waits unserved (slice 12 §6, testPlugin) › lists the index's names sorted, and the host the names no plugin serves".
-func TestWhatWaitsUnservedListsTheIndexsNamesSortedAndTheHostTheNamesNoPluginServes(t *testing.T) {
-	index := newUnboundIndex(newUnboundClock(newFakeLoop(), func(unboundLong) {}))
-	index.add("b", unboundRequestOf(nil), nil)
-	index.add("a", unboundRequestOf(nil), nil)
-	if got := index.sortedNames(); !reflect.DeepEqual(got, []string{"a", "b"}) {
-		t.Fatalf("names = %v, want [a b]", got)
-	}
-	host := newHost(t, HostOptions{OnError: func(HostError) {}})
-	mustLoad(t)(host.Load([]HostFacet{{Name: "info", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
-	held, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
-	must(t, err)
-	turn(host)
-	h := host.(*chordHost)
-	var unserved []string
-	h.enter(func() { unserved = h.unservedNames() })
-	if !reflect.DeepEqual(unserved, []string{"app.missing"}) {
-		t.Fatalf("unservedNames = %v, want [app.missing]", unserved)
-	}
-	held.Release()
-	must(t, host.Close(background))
-}
-
 // Mirrors "references waiting in the index › leave nothing behind once released, before and after the publication (GC)".
 func TestHostReferencesWaitingInTheIndexLeaveNothingBehindOnceReleased(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
@@ -410,9 +387,9 @@ func TestHostHoldsWaitingInTheIndexLeaveNothingBehindOnceTheirLinkClosed(t *test
 // Ports unbound.test.ts `describe("what waits unserved (slice 12 §6, testPlugin)")`: lists the index's names sorted, and
 // the host the names no plugin serves.
 func TestWhatWaitsUnservedListsTheIndexsNamesSortedAndTheHostTheNamesNoPluginServes(t *testing.T) {
-	index := newUnboundIndex()
-	index.add("b", unboundRequestOf(nil))
-	index.add("a", unboundRequestOf(nil))
+	index := newUnboundIndex(newUnboundClock(newFakeLoop(), func(unboundLong) {}))
+	index.add("b", unboundRequestOf(nil), nil)
+	index.add("a", unboundRequestOf(nil), nil)
 	if got, want := index.Names(), []string{"a", "b"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("names = %v, want %v", got, want)
 	}

@@ -1025,45 +1025,6 @@ func (h *chordHost) reportUndeclared() {
 	}
 }
 
-// unservedNames are the names requests here wait for unbound that no plugin here serves (types and registries:
-// `not_served`), sorted; a name served at another version (`version`) is not among them.
-func (h *chordHost) unservedNames() []string {
-	var names []string
-	for _, name := range h.unbound.sortedNames() {
-		if h.types.has(name) {
-			continue
-		}
-		if record := h.registries[name]; record != nil {
-			if _, provided := record.ProvidedVersion(); provided {
-				continue
-			}
-		}
-		names = append(names, name)
-	}
-	return names
-}
-
-// undeclaredRegistry is a registry with contributions here and no provider, with the newest version contributed.
-type undeclaredRegistry struct {
-	Name    string
-	Version int
-}
-
-// undeclaredRegistries are the registries with contributions here and no provider, by name.
-func (h *chordHost) undeclaredRegistries() []undeclaredRegistry {
-	var found []undeclaredRegistry
-	for _, name := range h.registryOrder {
-		record := h.registries[name]
-		if version, ok := record.NewestContribution(); ok {
-			if _, provided := record.ProvidedVersion(); !provided {
-				found = append(found, undeclaredRegistry{Name: record.Name, Version: version})
-			}
-		}
-	}
-	slices.SortFunc(found, func(a, b undeclaredRegistry) int { return strings.Compare(a.Name, b.Name) })
-	return found
-}
-
 // published is whether the host published its setups (`load`'s batch): until then requests made here and holds arriving
 // wait in the unbound index, placed by the publication.
 func (h *chordHost) published() bool { return h.published_ }
