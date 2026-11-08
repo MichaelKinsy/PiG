@@ -7,11 +7,13 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
@@ -346,4 +348,62 @@ func TestReadinessReleaseEndsAWaitStillRunningReadyResolvesAtOnce(t *testing.T) 
 	if !readinessSettled(host, ready) {
 		t.Fatalf("ready did not resolve after the release")
 	}
+}
+
+// Mirrors "Readiness: memory › is collected with its bindings once the restart's successor is live". The readiness is taken
+// from the object while its old attempt drains (an old call held at a gate), where Pi's `instancesOf(Readiness, "start")` spy
+// takes it as it starts.
+func TestReadinessMemoryIsCollectedWithItsBindingsOnceTheRestartsSuccessorIsLive(t *testing.T) {
+	dependentType := mustContract(declareLocal("app.dependent", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{
+			contracts.Mem("n", contracts.Int()),
+			contracts.Mem("wait", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
+		},
+	}))
+	gate := newReloadGate()
+	gates := reloadGates(gate)
+	facet := func(n float64) func(FacetHost, FacetSelf) error {
+		return func(h FacetHost, _ FacetSelf) error {
+			if err := h.Serve(readinessSlow, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}, nil
+			}, ServeOptions{}); err != nil {
+				return err
+			}
+			return h.Serve(dependentType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				slow := self.Get(readinessSlow, jsonObject("id", 1.0))
+				return contracts.Implementation{Members: contracts.VariantImplementation{
+					State: map[string]chord.Watchable[delta.JsonValue]{
+						"n": self.Derive([]any{slow.Member("n")}, func(values []any) (delta.JsonValue, error) { return values[0].(float64) + n, nil }),
+					},
+					Methods: map[string]contracts.MethodFunction{"wait": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						if held := gates.shift(); held != nil {
+							held.entered.fire()
+							held.open.await(t, ctx)
+						}
+						return n, nil
+					}},
+				}}, nil
+			}, ServeOptions{})
+		}
+	}
+	host, _ := loaded(t, facet(1), loadedOptions{})
+	defer closeHosts(t, host)
+	dependent := mustGet(t, host, dependentType, jsonObject())
+	running := startReloadCall(dependent, "wait", nil)
+	gate.entered.wait(t)
+	reloadMust(t)(host.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(facet(2))}}, background, ReloadOptions{}))
+	var started weak.Pointer[readiness]
+	object := reloadObjectOf(dependent)
+	host.(*chordHost).enter(func() { started = weak.Make(object.readiness) })
+	if started.Value() == nil {
+		t.Fatalf("the restart has no readiness while its old attempt drains")
+	}
+	gate.open.fire()
+	running.wait(t)
+	scopeEventually(t, "n 3", func() bool {
+		value, err := dependent.Member("n").Value()
+		return err == nil && value == 3.0
+	})
+	nexttest.ExpectCollected(t, started)
 }

@@ -28,7 +28,10 @@ type readiness struct {
 	ctx      context.Context
 	bindings []*binding
 	started  *keyedPromise[struct{}]
-	// abort ends the waits on its bindings at its release; aborted is the context it cancels.
+	// typed is how many of its requests are type requests (the ones it binds); a readiness with none is ready once started.
+	typed int
+	// abort ends the waits on its bindings at its release; aborted is the context it cancels (both nil with no type
+	// request: nothing waits).
 	aborted context.Context
 	abort   func(cause error)
 	// refused is a request refused for good at the start (an authority, a host address): it heals with no change of a
@@ -46,8 +49,25 @@ type readinessFailure struct {
 
 // newReadiness makes the readiness of requests, as from asks them; shows gets each change of its failure.
 func newReadiness(host *chordHost, from caller, requests []request, shows func(cause *data.FailureCause), ctx context.Context) *readiness {
-	aborted, abort := chordctx.WithCancel(chordctx.Background())
-	return &readiness{host: host, from: from, requests: requests, shows: shows, ctx: ctx, started: newKeyedPromise[struct{}](host.loop()), aborted: aborted, abort: abort}
+	r := &readiness{host: host, from: from, requests: requests, shows: shows, ctx: ctx, started: newKeyedPromise[struct{}](host.loop())}
+	for _, each := range requests {
+		if each.kind == requestType {
+			r.typed++
+		}
+	}
+	// Most restarts depend on no other type: nothing to wait on, so no context to abort it with.
+	if r.typed > 0 {
+		r.aborted, r.abort = chordctx.WithCancel(chordctx.Background())
+	}
+	return r
+}
+
+// following is the context of the waits on the bindings: the object's, ended with the readiness's release.
+func (r *readiness) following() context.Context {
+	if r.aborted == nil {
+		return r.ctx
+	}
+	return chordctx.WithAbortSignal(r.ctx, r.aborted)
 }
 
 // cause is what the successor waits for now: a request refused for good, or `waiting` for the first failed one; nil when none.
@@ -64,7 +84,7 @@ func (r *readiness) cause() *data.FailureCause {
 // start binds the recorded type requests as the object's own would be (once every fate of the reload started), kept out of
 // presence lists (they are no consumers of their own), and follows them: shows gets each change of cause.
 func (r *readiness) start() {
-	following := chordctx.WithAbortSignal(r.ctx, r.aborted)
+	following := r.following()
 	for _, each := range r.requests {
 		if each.kind != requestType {
 			continue
@@ -98,6 +118,10 @@ func (r *readiness) start() {
 
 // ready resolves once every request is ready, or at due (the loop's `Now`, milliseconds), whichever is first.
 func (r *readiness) ready(due int64) *keyedPromise[struct{}] {
+	if r.typed == 0 {
+		// No binding to wait for: ready as soon as every fate of the reload started (nothing to bound).
+		return r.started
+	}
 	loop := r.host.loop()
 	result := newKeyedPromise[struct{}](loop)
 	timer := loop.AfterFunc(time.Duration(max(0, due-loop.Now()))*time.Millisecond, func() { result.resolve(struct{}{}) })
@@ -108,7 +132,9 @@ func (r *readiness) ready(due int64) *keyedPromise[struct{}] {
 
 // release: the successor's own requests bound: its bindings are let go (a dependency held only by them never ends).
 func (r *readiness) release() {
-	r.abort(nil)
+	if r.abort != nil {
+		r.abort(nil)
+	}
 	bindings := r.bindings
 	r.bindings = nil
 	for _, each := range bindings {
@@ -149,7 +175,7 @@ func (r *readiness) allReady() *keyedPromise[struct{}] {
 	loop := r.host.loop()
 	all := newKeyedPromise[struct{}](loop)
 	r.started.then(func(struct{}, error) {
-		following := chordctx.WithAbortSignal(r.ctx, r.aborted)
+		following := r.following()
 		// A wait ends with the binding (released) or the abort: either way nothing waits any more.
 		waits := make([]*keyedPromise[struct{}], 0, len(r.bindings))
 		for _, each := range r.bindings {

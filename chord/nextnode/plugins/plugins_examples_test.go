@@ -532,8 +532,8 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	}
 	changed := exLine{[]string{}, []string{"@example/notes"}, []string{}, []string{}}
 	want := []stepLine{
-		{"server", changed, []host.ReloadedObject{{Object: "example.index", Kind: host.ReloadSwapped}}},
-		{"worker", changed, []host.ReloadedObject{{Object: "example.notes", Kind: host.ReloadSwapped}}},
+		{"server", changed, []host.ReloadedObject{{Object: "example.index", Kind: host.ReloadedObjectKind("swapped")}}},
+		{"worker", changed, []host.ReloadedObject{{Object: "example.notes", Kind: host.ReloadedObjectKind("swapped")}}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
@@ -665,8 +665,8 @@ func TestExample36PluginFailures(t *testing.T) {
 		objects[object.Object] = object.Kind
 	}
 	wantObjects := map[string]host.ReloadedObjectKind{
-		"example.boot": host.ReloadSwapped, "example.counter": host.ReloadSwapped, "example.greeting": host.ReloadSwapped,
-		"example.price": host.ReloadSwapped, "example.summary": host.ReloadParked,
+		"example.boot": host.ReloadedObjectKind("swapped"), "example.counter": host.ReloadedObjectKind("swapped"), "example.greeting": host.ReloadedObjectKind("swapped"),
+		"example.price": host.ReloadedObjectKind("swapped"), "example.summary": host.ReloadParked,
 	}
 	if !reflect.DeepEqual(objects, wantObjects) {
 		t.Fatalf("3. objects: %v, want %v", objects, wantObjects)
@@ -753,7 +753,7 @@ func TestExample36PluginFailures(t *testing.T) {
 	if got, want := exLineOf(last), (exLine{[]string{}, []string{"@example/greeter"}, []string{}, []string{"@example/weather"}}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("4. plugins: %+v, want %+v", got, want)
 	}
-	if want := []host.ReloadedObject{{Object: "example.greeting", Kind: host.ReloadSwapped}}; !reflect.DeepEqual(last.Objects, want) {
+	if want := []host.ReloadedObject{{Object: "example.greeting", Kind: host.ReloadedObjectKind("swapped")}}; !reflect.DeepEqual(last.Objects, want) {
 		t.Fatalf("4. objects: %+v, want %+v", last.Objects, want)
 	}
 	if got, want := exFailures(t, last.Failed), map[string]string{"@example/weather": `Error: plugin "@example/weather": weather: no API key configured`}; !reflect.DeepEqual(got, want) {
