@@ -4,7 +4,7 @@ package schema_test
 //
 // testdata/coerce-typebox.json holds every `it` of the TypeScript file, in its describe and it names, with the JSON of each TypeBox schema, input and expectation. testdata/gen-coerce-typebox.mjs generates it by running the TypeScript file against TypeBox 1.3.27: `node gen-coerce-typebox.mjs <pi-export-dir> coerce-typebox.json b556cfe5`.
 //
-// Go has no `undefined`, bigint or symbol value, so a case whose schema, input or expectation holds one has no Go form and is not run (the data lists it as "noGoForm" with the kind): 18 cases (undefined: 8, bigint: 10); Pi's own 17 `it.skip` cases (bigint literals, a Symbol, a bigint array) are listed as skipped there. Each of the 186 other cases runs.
+// JSON data cannot carry an `undefined` or a bigint (a Symbol has no Go value), so a case whose schema, input or expectation holds one is not run from the data (it lists it as "noGoForm" with the kind; TestPiMainValueConvertWithBigIntAndUndefined in pi_main_bigint_upstream_test.go runs those 18 with Go values, a *big.Int and schema.Undefined): 18 cases (undefined: 8, bigint: 10); Pi's own 17 `it.skip` cases (bigint literals, a Symbol, a bigint array) are listed as skipped there. Each of the 186 other cases runs.
 
 import (
 	"testing"

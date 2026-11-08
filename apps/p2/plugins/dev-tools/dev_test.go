@@ -195,7 +195,7 @@ func extensionsOf(t *testing.T, fixture *p2test.TestHost) *p2runtime.P2Extension
 	var found *p2runtime.P2Extension
 	if err := p2test.Poll(func() (bool, error) {
 		// Read inside a section of the host's loop, where contributions change.
-		value, err := registryValue(fixture.Host, p2runtime.Extensions.Registry)
+		value, err := registryCurrent(fixture.Host, p2runtime.Extensions.Registry)
 		if err != nil {
 			return false, nil
 		}
@@ -245,7 +245,7 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 		}
 		fixture := devToolsHost(t, t.TempDir(), cwd)
 		time.Sleep(20 * time.Millisecond)
-		value, err := registryValue(fixture.Host, p2runtime.ExtensionSwitches.Registry)
+		value, err := registryCurrent(fixture.Host, p2runtime.ExtensionSwitches.Registry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -267,17 +267,11 @@ func TestReloadPluginsIsOfferedOnlyInDevModeForASessionOnThisP2Checkout(t *testi
 	}
 }
 
-// registryValue is a registry's current value (the source reads inside a section of the host's loop); an error while it has
-// none, so a poll tries again.
-func registryValue(h host.Host, registry registries.Registry[any, any]) (value any, err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("registry %s: %v", registry.Name, recovered)
-		}
-	}()
+// registryCurrent is a registry's value now, read as the host's section gives it (the source reads inside one).
+func registryCurrent(h host.Host, registry registries.Registry[any, any]) (any, error) {
 	source, err := h.Registry(p2test.Background, registry, host.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return source.Value(), nil
+	return source.Current()
 }

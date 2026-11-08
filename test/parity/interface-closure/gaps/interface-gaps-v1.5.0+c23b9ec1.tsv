@@ -728,7 +728,7 @@ pkg:mcp/.#McpPipe::property:write	mcp	not-exercised	mcp/pipe.go#McpPipe.Write
 pkg:mcp/.#McpPipe::property:write::call:0	mcp	not-exercised	mcp/pipe.go#McpPipe.Write
 pkg:mcp/.#McpServerConfig	mcp	no-go-symbol	
 pkg:mcp/.#McpServerConfigOptions	mcp	child-gap	mcp/config.go#McpServerConfigOptions
-pkg:mcp/.#McpServerConfigOptions::property:checkMetadataDocumentCallback	mcp	signature-mismatch	mcp/config.go#McpServerConfigOptions.CheckMetadataDocumentCallback
+pkg:mcp/.#McpServerConfigOptions::property:checkMetadataDocumentCallback	mcp	signature-mismatch	internal/mcpshared/config.go#McpServerConfigOptions.CheckMetadataDocumentCallback
 pkg:mcp/.#McpStdioServerConfig	mcp	no-go-symbol	
 pkg:mcp/.#McpStdioServerConfig::property:args	mcp	child-gap	
 pkg:mcp/.#McpStdioServerConfig::property:command	mcp	child-gap	
@@ -762,7 +762,5 @@ pkg:schema/.#BigintBounds::property:exclusiveMinimum	schema	child-gap
 pkg:schema/.#BigintBounds::property:maximum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:minimum	schema	child-gap	
 pkg:schema/.#BigintBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#bigint	schema	no-go-symbol	
-pkg:schema/.#bigint::call:0	schema	child-gap	
-pkg:schema/.#unsafe	schema	no-go-symbol	
-pkg:schema/.#unsafe::call:0	schema	child-gap	
+pkg:schema/.#bigint	schema	child-gap	schema/builders.go#BigInt
+pkg:schema/.#bigint::call:0	schema	undecidable	schema/builders.go#BigInt
