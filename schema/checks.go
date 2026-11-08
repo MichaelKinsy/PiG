@@ -230,6 +230,7 @@ func (b *numberBounds) holds(v any) bool {
 
 // numberCheck is the number keywords, for numbers and bigints alike (as TypeBox applies them). mode 0 passes other types, 1 requires a number, 2 an integer, 3 a bigint.
 func numberCheck(mode int, bounds *numberBounds) Check {
+	plain, lo, hi, xmin, xmax, multipleOf, hasMultiple := bounds.plain, bounds.flo, bounds.fhi, bounds.fxmin, bounds.fxmax, bounds.fmultipleOf, bounds.hasMultiple
 	return func(v any) bool {
 		n, ok := asNumber(v)
 		if !ok {
@@ -248,10 +249,10 @@ func numberCheck(mode int, bounds *numberBounds) Check {
 		if mode == 2 && !isInteger(n) {
 			return false
 		}
-		if !bounds.plain {
+		if !plain {
 			return bounds.holds(n)
 		}
-		return n >= bounds.flo && n <= bounds.fhi && n > bounds.fxmin && n < bounds.fxmax && (!bounds.hasMultiple || isMultiple(n, bounds.fmultipleOf))
+		return n >= lo && n <= hi && n > xmin && n < xmax && (!hasMultiple || isMultiple(n, multipleOf))
 	}
 }
 

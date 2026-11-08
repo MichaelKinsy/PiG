@@ -165,7 +165,7 @@ func appendStringify(dst []byte, value any) []byte {
 			if i > 0 {
 				dst = append(dst, ',')
 			}
-			if item == schema.Undefined {
+			if _, undefined := item.(schema.UndefinedType); undefined {
 				dst = append(dst, "null"...)
 				continue
 			}
@@ -176,7 +176,7 @@ func appendStringify(dst []byte, value any) []byte {
 		dst = append(dst, '{')
 		first := true
 		for key, member := range value.All() {
-			if member == schema.Undefined {
+			if _, undefined := member.(schema.UndefinedType); undefined {
 				continue
 			}
 			if !first {
@@ -193,7 +193,7 @@ func appendStringify(dst []byte, value any) []byte {
 		dst = append(dst, '{')
 		first := true
 		for _, key := range keys {
-			if value[key] == schema.Undefined {
+			if _, undefined := value[key].(schema.UndefinedType); undefined {
 				continue
 			}
 			if !first {
