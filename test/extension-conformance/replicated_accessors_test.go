@@ -160,13 +160,14 @@ func TestReplicatedAccessorsReadYourWritesAcrossSDKs(t *testing.T) {
 // ends in the label or message just written) and the late page then replaced the replicated log with one entry. The Node fixture registers pi.onLoaded,
 // which also delays every request's handler to a microtask after the receive loop waits again: the extension shape that surfaced it (setLabel after
 // onLoaded, read back). Both load modes of the Node runtime (isolated and packed into a shared cell) run it. The log holds the two entries the row
-// starts with and the three it writes.
+// starts with and the three it writes, read again after the model write (await pi.setModel) once the serve loop ran, which a push applied twice would collapse to one entry.
 func TestNodeReplicatedWritesReadBackAfterAwait(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
 	want := map[string]any{
 		"name0": "s-sentinel", "name1": "renamed", "entryAfterName": "session_info", "entryAfterLabel": "label", "entryAfterMessage": "custom_message", "entryCount": float64(5),
+		"entryCountLater": float64(5), "lastLater": "custom_message",
 		"model1": "id-after", "provider1": "prov-after", "qualified1": "prov-after/id-after",
 	}
 	for _, tc := range allHarnessCases() {

@@ -1405,7 +1405,12 @@ export class Connection {
   }
 
   next() {
-    if (this.queue.length > 0) return Promise.resolve(this.queue.shift());
+    if (this.queue.length > 0) {
+      // The frame is read by the loop's await a microtask later, as a delivered one is: a synchronous host call made before then applies it first (takeHandedOff), and the frames still queued are newer.
+      const env = this.queue.shift();
+      this.handedOff = env;
+      return Promise.resolve(env);
+    }
     if (this.closed) return Promise.resolve(null);
     return new Promise((resolve) => this.waiters.push(resolve));
   }
