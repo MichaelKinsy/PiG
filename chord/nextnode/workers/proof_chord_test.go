@@ -12,7 +12,7 @@ import (
 // entry is WorkerMain), the start message reaches the app's function, and the worker answers its load and goes idle.
 
 func TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall(t *testing.T) {
-	var _ func(func(WorkerStart, context.Context) (*WorkerResult, error), WorkerMainOptions) = WorkerMain
+	var _ func(func(WorkerStart, context.Context) (*WorkerResult, error), WorkerMainOptions) = WorkerMain //nolint:staticcheck // QF1011: the declared type is the pin: the test asserts the signature
 	f := newFleet(t, fleetOptions{})
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()

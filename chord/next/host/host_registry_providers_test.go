@@ -2,14 +2,13 @@ package host
 
 import (
 	"fmt"
+	"reflect"
+	"testing"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
-	"reflect"
-	"testing"
-
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
