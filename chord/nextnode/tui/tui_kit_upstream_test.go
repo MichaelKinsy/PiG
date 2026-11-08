@@ -96,6 +96,13 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 		t.Fatal(err)
 	}
 	set := next.ScriptSetOf(value)
+	if len(set.Plugins) == 0 {
+		built, err := s.app.Plugins.Build([]string{"@test/lines"}, background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatalf("the set has no plugin script; the build: %+v", built.Facets)
+	}
 	entry := set.Plugins[0]
 	if entry.URL != "/_chord/tui/plugin/@test~lines."+entry.Digest+".js" {
 		t.Fatalf("url = %s", entry.URL)
