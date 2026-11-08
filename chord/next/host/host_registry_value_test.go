@@ -29,7 +29,10 @@ func TestRegistryValueReadsRaceFreeWhileAContributionChanges(t *testing.T) {
 		}()
 	}
 	for i := range 500 {
-		if err := registry.writables[i%len(registry.writables)].Set(float64(i + 1)); err != nil {
+		// A change is made inside a section of the host's loop, as an object's code makes it.
+		var err error
+		registry.host.(*chordHost).enter(func() { err = registry.writables[i%len(registry.writables)].Set(float64(i + 1)) })
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
