@@ -6,7 +6,6 @@
 
 use std::collections::HashMap;
 use std::io;
-use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -166,7 +165,7 @@ impl BusRegistry {
             .filter(|sub| args["channel"].as_str() == Some(sub.channel.as_str()))
             .ok_or_else(|| format!("Unknown event bus handler: {id}"))?;
         let data = args.get("json").cloned().unwrap_or(Value::Null);
-        match catch_unwind(AssertUnwindSafe(|| (sub.handler)(ctx, &data))) {
+        match crate::diagnostic::recover(|| (sub.handler)(ctx, &data)) {
             Ok(result) => result,
             Err(payload) => Err(payload
                 .downcast_ref::<String>()
@@ -316,10 +315,10 @@ impl Subscription {
         if sent {
             let bus = EventBus::new(self.registry.clone(), None);
             if let Err(err) = bus.call("events.off", json!({"handlerId": self.sub.id})) {
-                eprintln!(
-                    "extension: pi.events unsubscribe {:?}: {err}",
+                crate::diagnostic::diagnose(&format!(
+                    "extension: pi.events unsubscribe {:?}: {err}\n",
                     self.sub.channel
-                );
+                ));
             }
         }
     }

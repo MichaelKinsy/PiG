@@ -76,3 +76,18 @@ func RemoteEnvironments(session *delta.JsonObject, children []any) []string {
 	}
 	return environments
 }
+
+// ConversationLocation is where a conversation works (`conversationLocation`): a child's own location, else the session's
+// (the main conversation's) as its cwd and env (null when none). Both may be nil (nil when neither is given).
+func ConversationLocation(session, child *delta.JsonObject) *delta.JsonObject {
+	if child != nil {
+		if location, ok := child.Value("location").(*delta.JsonObject); ok {
+			return location
+		}
+	}
+	if session == nil {
+		return nil
+	}
+	env := session.Value("env")
+	return delta.JsonObjectOf("cwd", session.Value("cwd"), "env", env)
+}

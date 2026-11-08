@@ -514,7 +514,7 @@ fn first_answer<C>(
     Err(failure)
 }
 
-fn finish(result: crate::protocol::CallResultMsg) -> io::Result<Option<Value>> {
+pub(crate) fn finish(result: crate::protocol::CallResultMsg) -> io::Result<Option<Value>> {
     if let Some(err) = result.error {
         return Err(io::Error::other(crate::context::host_error_message(err)));
     }
