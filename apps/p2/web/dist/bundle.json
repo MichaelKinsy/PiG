@@ -1,0 +1,68 @@
+{
+	"version": "2ce1999fd85280ad5c780e2df63de79afb4e3eaff799c05ebe76fb2fae5c18c4",
+	"script": "app-XZSUEGA5.js",
+	"style": "app-XS4LWRDH.css",
+	"plugins": [
+		"chat",
+		"envs",
+		"sessions",
+		"subagents",
+		"web-shell"
+	],
+	"files": [
+		{
+			"name": "CommitMono-300-Regular-6YPFJLCF.woff2",
+			"type": "font/woff2",
+			"size": 48212,
+			"sha256": "4eee6c95ed068a8008c336edc336418d2ce57b61cee34bc0701895077b7796e5"
+		},
+		{
+			"name": "CommitMono-400-Regular-5X3MEPYG.woff2",
+			"type": "font/woff2",
+			"size": 48140,
+			"sha256": "4f012280532c05af962280693a38e10183c75921b0351d7311b31c023c4d1170"
+		},
+		{
+			"name": "CommitMono-700-Regular-ZBGGEPPP.woff2",
+			"type": "font/woff2",
+			"size": 47432,
+			"sha256": "009470d902a1c5bb8daf827691ea65890e8b31d6d3572428b5335922d1a15212"
+		},
+		{
+			"name": "MallosSerif-Italic-Variable-65GP6KZL.woff2",
+			"type": "font/woff2",
+			"size": 58716,
+			"sha256": "02e2f8ac929f708c21950b1ac6edd14a7806cf13b06cfd452fa296965f3582ec"
+		},
+		{
+			"name": "MallosSerif-Variable-L4VRIFHQ.woff2",
+			"type": "font/woff2",
+			"size": 68504,
+			"sha256": "29b1a5c95c8fa5920b2acc54501ac56800757cfee07cb9ab46c08e512ff75426"
+		},
+		{
+			"name": "app-XS4LWRDH.css",
+			"type": "text/css; charset=utf-8",
+			"size": 337833,
+			"sha256": "eec0939b54b093d2470b06797839f255f41642ded52a589276aa8409f79bdf57"
+		},
+		{
+			"name": "app-XS4LWRDH.css.map",
+			"type": "application/json",
+			"size": 606411,
+			"sha256": "b5cabfcf808f5664164d9bf6562198af1d72e730bb1b2d77aab16e8e982a069b"
+		},
+		{
+			"name": "app-XZSUEGA5.js",
+			"type": "text/javascript; charset=utf-8",
+			"size": 1092285,
+			"sha256": "032937aff97be324364d444bd6dd3a97f7d6d36fe4c2b8fdca5f4843715f4a86"
+		},
+		{
+			"name": "app-XZSUEGA5.js.map",
+			"type": "application/json",
+			"size": 5310470,
+			"sha256": "2eee8afa418f29461aeb456c4684ae1fccd20cfcbbd7284f0aa3ee6ad6330ed1"
+		}
+	]
+}
