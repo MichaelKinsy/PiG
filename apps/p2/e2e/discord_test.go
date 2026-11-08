@@ -72,6 +72,8 @@ func (r *discordRig) must(method string, args delta.JsonValue) *delta.JsonObject
 			r.t.Log(line)
 		}
 		r.t.Log(p2runtime.ProcessLogs.Notices())
+		log, _ := os.ReadFile("/tmp/discord-dbg.log")
+		r.t.Logf("dbg log:\n%s", log)
 		r.t.Fatalf("%s: %v (workers %s)", method, err, encoded)
 	}
 	return object(value)
