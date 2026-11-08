@@ -153,7 +153,7 @@ func startReloadTab(t testing.TB) *reloadTab {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		var shown string
-		if err := r.browser.Evaluate(ctx, `JSON.stringify({ connection: globalThis.page?.connection, errors: globalThis.page?.errors, loads: globalThis.page?.loads, views: document.getElementById("views")?.innerText, states: globalThis.reload?.states, wslog: globalThis.wslog })`, &shown); err != nil {
+		if err := r.browser.Evaluate(ctx, `JSON.stringify({ connection: globalThis.page?.connection, errors: globalThis.page?.errors, loads: globalThis.page?.loads, views: document.getElementById("views")?.innerText, states: globalThis.reload?.states, wslog: globalThis.wslog, scripts: [...document.scripts].map((s) => s.src) })`, &shown); err != nil {
 			shown = err.Error()
 		}
 		t.Logf("the page at the end: %s", shown)
