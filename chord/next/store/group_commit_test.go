@@ -562,7 +562,7 @@ func TestGroupCommit(t *testing.T) {
 			t.Fatalf("first = %d, want 2", seq)
 		}
 		_ = rejected(t, <-maintenance, data.CodeReleased, "")
-		failureOf(t, broken)
+		_ = failureOf(t, broken)
 		_ = rejected(t, failureOf(t, last), data.CodeUnavailable, data.ReasonStorageFailed)
 		noError(t, ctl.store.Close(background))
 		if ctl.store.LastSeq() != 2 {
