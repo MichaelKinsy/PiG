@@ -1,6 +1,6 @@
 // Package smoke launches the built desktop app and drives it from outside, the way a person's machine would: it is the macOS
 // smoke test and the measurement of the desktop app against `p2 server` and a browser tab. It runs only when
-// P2_DESKTOP_BIN names the app's executable (the inside of p2.app); see docs/p2-desktop.md in apps/p2desktop.
+// P2_DESKTOP_BIN names the app's executable (the inside of PiG.app); see docs/p2-desktop.md in apps/p2desktop.
 package smoke
 
 import (
@@ -191,13 +191,33 @@ func (a *app) waitWindow(t *testing.T) time.Duration {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		if out := a.windows(t); strings.Contains(out, "onscreen=1 name=p2 bounds=1280x840") {
+		if out := a.windows(t); strings.Contains(out, "onscreen=1 name=PiG bounds=1280x840") {
 			return time.Since(a.t0)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 	t.Fatalf("no window after 30 s: %s; stderr:\n%s", a.windows(t), a.stderr.String())
 	return 0
+}
+
+var windowID = regexp.MustCompile(`id=(\d+) layer=0 onscreen=1 name=PiG `)
+
+// screenshot saves the app's window to dir/name (P2_DESKTOP_SHOTS), through its window id: screencapture -l works while the
+// screen is locked, where capturing the screen gives black.
+func (a *app) screenshot(t *testing.T, name string) {
+	dir := os.Getenv("P2_DESKTOP_SHOTS")
+	if dir == "" {
+		return
+	}
+	m := windowID.FindStringSubmatch(a.windows(t))
+	if m == nil {
+		t.Errorf("no window to capture")
+		return
+	}
+	_ = os.MkdirAll(dir, 0o755)
+	if out, err := exec.Command("screencapture", "-x", "-l", m[1], filepath.Join(dir, name)).CombinedOutput(); err != nil {
+		t.Errorf("screencapture: %v %s", err, out)
+	}
 }
 
 // chat runs the faux-provider round trip over the app's own /chord socket, as the web UI does: create a session, send,
@@ -264,6 +284,7 @@ func TestSmoke(t *testing.T) {
 	t.Logf("server answered /health %v after launch; the window existed after %v", health.Round(time.Millisecond), window.Round(time.Millisecond))
 	time.Sleep(1500 * time.Millisecond) // the page loads
 	t.Logf("window: %s", a.windows(t))
+	a.screenshot(t, "p2-desktop-window.png")
 	// The web view's networking process holds a connection to the server: the window loaded the page from it (the screen of
 	// this Mac is locked when the smoke runs unattended, so there is no screenshot).
 	lsof, _ := exec.Command("lsof", "-nP", "-iTCP:"+strconv.Itoa(a.port)).Output()
@@ -355,16 +376,16 @@ func idleSample(t *testing.T, members func(map[int]proc) []proc, settle, window 
 	return s
 }
 
-// TestMeasure measures the desktop app against the baseline server with a browser tab open on it: time until the page is
-// there, resident memory and CPU while idle. Both show the same page (p2's), so the difference is the shell's.
+// TestMeasure measures the desktop app against `p2 server` with a browser tab open on it: time until the page is
+// there, resident memory and CPU while idle. Both show p2's own page, so the difference is the shell's.
 func TestMeasure(t *testing.T) {
 	bin := binary(t)
 	baseline := os.Getenv("P2_BASELINE_BIN")
 	chrome := os.Getenv("P2_CHROME_BIN")
 	if baseline == "" || chrome == "" {
-		t.Skip("P2_BASELINE_BIN and P2_CHROME_BIN are not set")
+		t.Skip("P2_BASELINE_BIN (a built apps/p2/cmd/p2) and P2_CHROME_BIN are not set")
 	}
-	const runs = 3
+	const runs = 2
 	webkit := regexp.MustCompile(`com\.apple\.WebKit`)
 	for run := 1; run <= runs; run++ {
 		// Desktop app: process tree (app, workers) plus the web view's helper processes that this launch started.
@@ -375,7 +396,7 @@ func TestMeasure(t *testing.T) {
 		time.Sleep(2 * time.Second)
 		s := idleSample(t, func(all map[int]proc) []proc {
 			return append(tree(all, a.cmd.Process.Pid), started(before, all, webkit)...)
-		}, 8*time.Second, 30*time.Second)
+		}, 25*time.Second, 30*time.Second)
 		t.Logf("RESULT desktop run=%d health=%v window=%v rss=%.0fMB cpu=%.2f%% procs=%d %v", run, health.Round(time.Millisecond), window.Round(time.Millisecond), s.rssMB, s.cpuPct, s.nproc, s.members)
 		_ = a.cmd.Process.Signal(syscall.SIGTERM)
 		_ = a.cmd.Wait()
@@ -383,16 +404,16 @@ func TestMeasure(t *testing.T) {
 
 		// Baseline: the server alone plus a browser tab (a separate Chrome for Testing with its own profile).
 		root := t.TempDir()
-		server := exec.Command(baseline)
-		server.Env = append(os.Environ(), "P2_FAKE=1", "P2_DATA_DIR="+filepath.Join(root, "data"))
+		server := exec.Command(baseline, "server")
+		server.Env = append(os.Environ(), "P2_FAKE=1", "PORT=0", "P2_DATA_DIR="+filepath.Join(root, "data"))
 		stdout, _ := server.StdoutPipe()
 		t0 := time.Now()
 		if err := server.Start(); err != nil {
 			t.Fatal(err)
 		}
-		line := make([]byte, 16)
+		line := make([]byte, 128)
 		n, _ := stdout.Read(line)
-		port := strings.TrimSpace(string(line[:n]))
+		port := strings.TrimSuffix(strings.SplitN(strings.TrimPrefix(string(line[:n]), "p2: http://127.0.0.1:"), " ", 2)[0], "\n")
 		for {
 			resp, err := http.Get("http://127.0.0.1:" + port + "/health")
 			if err == nil {
@@ -418,7 +439,7 @@ func TestMeasure(t *testing.T) {
 		time.Sleep(2 * time.Second)
 		s = idleSample(t, func(all map[int]proc) []proc {
 			return append(tree(all, server.Process.Pid), tree(all, browser.Process.Pid)...)
-		}, 8*time.Second, 30*time.Second)
+		}, 25*time.Second, 30*time.Second)
 		serverOnly := tree(processes(t), server.Process.Pid)
 		var serverMB float64
 		for _, p := range serverOnly {

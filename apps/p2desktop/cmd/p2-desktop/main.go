@@ -6,14 +6,33 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/desktop"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell/mygoshell"
 )
 
-//go:embed resources/tray.png
-var trayIcon []byte
+// The tray icons are the PiG pixel pig, made by icons/gen: a monochrome template image for the macOS menu bar, a coloured one
+// for the Windows notification area and the Linux panel.
+var (
+	//go:embed resources/tray-template.png
+	trayTemplate []byte
+	//go:embed resources/tray-color-32.png
+	trayColor32 []byte
+	//go:embed resources/tray-color-64.png
+	trayColor64 []byte
+)
+
+func trayIcon() (icon []byte, template bool) {
+	switch runtime.GOOS {
+	case "darwin":
+		return trayTemplate, true
+	case "windows":
+		return trayColor32, false
+	}
+	return trayColor64, false
+}
 
 // pig additive (D480): the desktop app is one executable that is the app and the session worker the in-process server forks.
 func main() {
@@ -21,12 +40,14 @@ func main() {
 		hosts.RunWorker()
 		return
 	}
+	icon, template := trayIcon()
 	cfg := desktop.Config{
-		Platform:  mygoshell.New("p2", ""),
-		Title:     "p2",
-		StateDir:  os.Getenv("P2_DESKTOP_STATE_DIR"),
-		TrayIcon:  trayIcon,
-		LeakCheck: os.Getenv("P2_DESKTOP_LEAKCHECK") == "1",
+		Platform:     mygoshell.New("PiG", ""),
+		Title:        "PiG",
+		StateDir:     os.Getenv("P2_DESKTOP_STATE_DIR"),
+		TrayIcon:     icon,
+		TrayTemplate: template,
+		LeakCheck:    os.Getenv("P2_DESKTOP_LEAKCHECK") == "1",
 	}
 	app := desktop.New(cfg)
 	if err := app.Run(); err != nil {

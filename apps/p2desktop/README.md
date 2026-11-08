@@ -2,7 +2,7 @@
 
 The p2 server running in the app's own process on a loopback port, shown in one window of the system's web view, with the menus, tray icon, notifications and `pig://` links of a desktop app. It is a client of p2 like a browser tab: the server, its protocol and its data are `apps/p2`'s and are not changed (additive record D480, `docs/additive-features.md` once landed; the draft is `handoffs/next/specs/p2/DESKTOP-ADDITIVE-DRAFT.md`).
 
-**Status: experimental, follows p2's own label (D477).** At the commit this was written against, `apps/p2` serves no web UI yet (lane D, D471): the window shows what the server answers at `/`, which is its plain "Not found" page, until the vendored client lands. Everything else (server in process, window, menus, tray, notifications, deep links, quit) works and is tested.
+**Status: experimental, follows p2's own label (D477).** The window shows p2's own web UI (the embedded Pi bundle `apps/p2` serves, D471); it holds the web facets of the plugins linked so far, so the desktop app grows with `apps/p2`.
 
 ## Layout
 
@@ -13,8 +13,9 @@ The p2 server running in the app's own process on a loopback port, shown in one 
 | `shell/fakeshell/` | a recording `shell.Platform` for tests without a display |
 | `internal/desktop/` | the app: server start and close, window, menus, tray, deep-link parser, notifier, sticky port |
 | `internal/leakcheck/` | goroutine leak check run at shutdown (`P2_DESKTOP_LEAKCHECK=1`) |
+| `icons/` | the PiG pixel pig master (`pig-pixel-green.png`) and every generated icon; `go run ./icons/gen` regenerates them all (script header documents the grid, scaling rules and sources) |
 | `cmd/p2-desktop/` | the executable: the app, and `p2-desktop worker` for the session workers the server forks |
-| `smoke/` | macOS smoke and measurements; `smoke/baseline` is a window-less `StartServer`, the stand-in for `p2 server` until `apps/p2/cmd/p2` exists |
+| `smoke/` | macOS smoke and measurements (against `p2 server` plus a browser tab) |
 | `mygo.json` | app name, identifier, `pig` URL scheme, macOS microphone text, Linux package fields |
 
 The module has its own `go.work` (`.`, `../..`, `../p2`) so that MyGo's requirements do not enter the root workspace; do not add it to the root `go.work` and do not run `go work sync` here (it rewrites the root `go.mod`).
@@ -35,8 +36,8 @@ The module has its own `go.work` (`.`, `../..`, `../p2`) so that MyGo's requirem
 ```sh
 cd apps/p2desktop
 go build ./cmd/p2-desktop                         # debug build: developer tools menu, runs unbundled (no notifications, no pig://)
-go run github.com/egoist/mygo/cmd/mygo build -platform darwin/arm64 -skip-dmg   # build/darwin-arm64/p2.app, production, ad hoc signed
-P2_FAKE=1 build/darwin-arm64/p2.app/Contents/MacOS/p2   # the faux provider
+go run github.com/egoist/mygo/cmd/mygo build -platform darwin/arm64 -skip-dmg   # build/darwin-arm64/PiG.app, production, ad hoc signed
+P2_FAKE=1 build/darwin-arm64/PiG.app/Contents/MacOS/PiG   # the faux provider
 ```
 
 Environment: `P2_FAKE=1` (faux provider), `P2_DATA_DIR`, `P2_IDLE_MS` (worker idle stop), `P2_DESKTOP_STATE_DIR` (where `state.json` lives), `P2_DESKTOP_LEAKCHECK=1` (check at quit that no goroutine started by the server survives; exit code 3 if one does).
@@ -46,28 +47,32 @@ Environment: `P2_FAKE=1` (faux provider), `P2_DATA_DIR`, `P2_IDLE_MS` (worker id
 ```sh
 go test -race ./...                                           # Linux (xd6702), no display: fake shell + real in-process server
 swiftc -O -o /tmp/cgw smoke/windows.swift                     # macOS only: lists an app's windows from the window server
-go test -c -o /tmp/p2-smoke.test ./smoke && P2_WINDOWS_BIN=/tmp/cgw P2_DESKTOP_BIN=$PWD/build/darwin-arm64/p2.app/Contents/MacOS/p2 /tmp/p2-smoke.test -test.run TestSmoke -test.v
+go test -c -o /tmp/p2-smoke.test ./smoke && P2_WINDOWS_BIN=/tmp/cgw P2_DESKTOP_BIN=$PWD/build/darwin-arm64/PiG.app/Contents/MacOS/PiG /tmp/p2-smoke.test -test.run TestSmoke -test.v
 ```
 
-`TestMeasure` also needs `P2_BASELINE_BIN` (built from `./smoke/baseline`) and `P2_CHROME_BIN`. The smoke uses the window server's list because System Events and `screencapture` see nothing while the session is locked.
+`TestMeasure` also needs `P2_BASELINE_BIN` (a built `../p2/cmd/p2`) and `P2_CHROME_BIN`. The smoke uses the window server's list because System Events and `screencapture` see nothing while the session is locked.
 
 ## Installer recipes (documented, not run, not signed, not published)
 
 All use the pinned CLI from this module: `go run github.com/egoist/mygo/cmd/mygo build ...` (see the supply-chain review: updates stay off, `mygo.json` only). Output goes to `build/<os>-<arch>/`.
 
 **macOS** (needs a Mac; the Mac is the only machine that can sign and notarize):
-1. `mygo build -platform darwin/universal` writes `p2.app` and `p2-<version>.dmg`.
+1. `mygo build -platform darwin/universal` writes `PiG.app` and `pig-desktop-<version>.dmg`.
 2. Signing: set `macos.signingIdentity` ("Developer ID Application: ...", the owner's) or pass `-sign`; the default is ad hoc, which Gatekeeper rejects on other Macs.
 3. Notarization: `macos.notarize.keychainProfile` (made once with `xcrun notarytool store-credentials`), the CLI submits the dmg, waits for `Accepted` and staples it. Skipped with `-skip-notarize`.
 4. Hardened runtime and entitlements: if lane B's codemode plugin links wazero's compiler into the server, the signed app needs `com.apple.security.cs.allow-unsigned-executable-memory` (`macos.entitlements`), or the interpreter (D263); decide when that plugin lands. The microphone usage text is already in `mygo.json`.
 
 **Linux** (any host with Go can build; no cgo):
-1. `mygo build -platform linux/amd64,linux/arm64` writes the executable, a `.desktop` entry, `p2-<version>-linux-<arch>.tar.gz` with `install.sh`, `p2_<version>_<arch>.deb` and a `PKGBUILD`.
+1. `mygo build -platform linux/amd64,linux/arm64` writes the executable, a `.desktop` entry, `pig-desktop-<version>-linux-<arch>.tar.gz` with `install.sh`, `pig-desktop_<version>_<arch>.deb` and a `PKGBUILD`.
 2. Runtime needs: `libgtk-3-0`, `libwebkit2gtk-4.1-0`; `libayatana-appindicator3-1` for the tray (without it the tray is skipped, the app still runs).
 3. Signing: the `.deb` and the archive are unsigned; publishing a signed APT repository or checksummed release assets is the owner's step.
 
 **Windows** (blocked today, see below):
-1. `mygo build -platform windows/amd64,windows/arm64` writes the executable and `p2-setup-<version>-<arch>.exe` (NSIS 3.13 is downloaded and SHA-256 checked, or use an installed `makensis`).
+1. `mygo build -platform windows/amd64,windows/arm64` writes the executable and `pig-desktop-setup-<version>-<arch>.exe` (NSIS 3.13 is downloaded and SHA-256 checked, or use an installed `makensis`).
 2. Signing: `windows.certificate` (+ `MYGO_WINDOWS_CERTIFICATE_PASSWORD`) or `windows.signCommand`; timestamp server `http://timestamp.digicert.com` by default.
 3. Runtime needs the WebView2 Runtime (included in Windows 11; the installer for Windows 10 is Microsoft's).
 4. **Blocker found:** `GOOS=windows go build ./cmd/p2-desktop` fails in `chord/nextnode/app/layout.go:71` (`undefined: syscall.Stat_t`), a Chord Files v2 file the p2 server imports. It is not MyGo's; the Windows build of p2 itself has the same failure. Needs a Chord fix (a build-tagged owner check) before any Windows package exists.
+
+## Branding and icons
+
+The app is called **PiG** (window title, menus, About, notifications); the executable and package files are `pig-desktop` so they never clash with the `pig` command. Every icon comes from one master, the PiG pixel pig of the site (`icons/pig-pixel-green.png`, copied from `handoffs/brand/pig-pixel-green.png`, which came from `site-r5/lead/public/` of the site tree): `go run ./icons/gen` rebuilds `icons/AppIcon.icns` (macOS grid: 824 px tile on a 1024 canvas, `macos.icon`), `resources/icon.png` (full-bleed 1024 px, from which `mygo build` derives the Windows and Linux icons), `icons/p2.ico`, `icons/linux/p2-<size>.png` and the tray icons (`cmd/p2-desktop/resources/`: a monochrome template pig for the macOS menu bar, coloured ones for Windows and Linux). Cells scale by whole pixels, nearest neighbour. Known limit: `mygo build` makes the Windows `.ico` and the Linux 256/512 px icons from `resources/icon.png` by area averaging, so those two are slightly soft; the crisp `icons/p2.ico` and `icons/linux/*.png` are generated for the installer recipes and for a MyGo fork patch (`handoffs/0.8.0/mygo-upstream/3-icon-overrides.md`).

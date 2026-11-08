@@ -20,9 +20,12 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/internal/leakcheck"
 	"github.com/MichaelKinsy/PiG/apps/p2desktop/shell"
 )
+
+var configureFetch sync.Once
 
 // Config is what New takes.
 type Config struct {
@@ -40,8 +43,9 @@ type Config struct {
 	// Port is the loopback port the server asks for. nil: the one of the last launch if free, else any free port. 0: any
 	// free port.
 	Port *int
-	// TrayIcon is the tray icon's PNG; nil leaves the app without a tray.
-	TrayIcon []byte
+	// TrayIcon is the tray icon's PNG, a monochrome template image when TrayTemplate; nil leaves the app without a tray.
+	TrayIcon     []byte
+	TrayTemplate bool
 	// LeakCheck makes shutdown check that no goroutine started by the server outlives it, and report it on stderr.
 	LeakCheck bool
 	// Errors receives diagnostics (nil: stderr).
@@ -83,7 +87,7 @@ func New(cfg Config) *App {
 		}
 	}
 	if cfg.Title == "" {
-		cfg.Title = "p2"
+		cfg.Title = "PiG"
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &App{cfg: cfg, p: cfg.Platform, ready: make(chan struct{}), ctx: ctx, cancel: cancel}
@@ -126,7 +130,7 @@ func (a *App) Run() error {
 func (a *App) start() {
 	a.p.SetMenu(buildMenu(runtime.GOOS, a.p.Debug()))
 	if len(a.cfg.TrayIcon) > 0 {
-		if err := a.p.NewTray(shell.TraySpec{Icon: a.cfg.TrayIcon, ToolTip: a.cfg.Title, Menu: buildTray()}); err != nil {
+		if err := a.p.NewTray(shell.TraySpec{Icon: a.cfg.TrayIcon, Template: a.cfg.TrayTemplate, ToolTip: a.cfg.Title, Menu: buildTray()}); err != nil {
 			a.cfg.Errors("no tray icon: %v", err)
 		}
 	}
@@ -195,6 +199,8 @@ func (a *App) listen() (*hosts.P2Server, error) {
 	case a.cfg.StateDir != "":
 		port = loadState(a.cfg.StateDir).Port
 	}
+	// As `p2 server` does, before any provider request or login fetch of this process.
+	configureFetch.Do(p2runtime.ConfigureFetch)
 	options := hosts.ServerOptions{DataDir: a.cfg.DataDir, Port: &port, Fake: a.cfg.Fake, Idle: a.cfg.Idle}
 	server, err := hosts.StartServer(options)
 	var listenErr *net.OpError

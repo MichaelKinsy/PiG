@@ -103,10 +103,12 @@ type Notification struct {
 
 // TraySpec describes the tray (menu bar, notification area) icon.
 type TraySpec struct {
-	// Icon is a PNG, black on transparent: macOS tints it as a template.
-	Icon    []byte
-	ToolTip string
-	Menu    Menu
+	// Icon is a PNG. Template says it is a monochrome template image (black with alpha) that macOS tints to match the menu
+	// bar; otherwise it is drawn as it is.
+	Icon     []byte
+	Template bool
+	ToolTip  string
+	Menu     Menu
 }
 
 // Handlers are what the platform calls back, set before Run so that a deep link or a second launch that started the app
