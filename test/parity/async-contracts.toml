@@ -947,52 +947,52 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/plugins/base-inputs.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "concurrent-joined"]
+evidence = ["test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsRecordedSourcesLoadEveryFileWithEsbuildsOwnLoaderAndRecordEachOnesBytes", "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem"]
+rationale = "`readRecorded` and `recordedSources`: blocking `Recorder.Read` and an esbuild plugin (`Recorder.Plugin`) whose OnLoad runs on esbuild's goroutines, so the record is kept under a lock (upstream's shared Map); the hash is the one read of the file, SHA-256 of the bytes esbuild is given (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/build.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesAPlainStylesheetsURLAnAsset"]
+rationale = "`buildFacet`: blocking `BuildFacet` on esbuild's Go API; a missing facet and a failed build are results, an error only for an aborted ctx (`context.Cause`). Delta at Pi c23b9ec1: a CSS module is scoped by `ScopeCSSModule` inside the build's OnLoad (a scoped stylesheet namespace the build imports), and a stylesheet's `url()` is an asset in a browser build (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/css-modules.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited"]
+evidence = ["test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildScopesACSSModulesClassNamesToItsFileTheImportGivingTheMapping", "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestEsbuildBuildGivesACSSModulesURLAssetsItsImportComposesAndEscapedClassNames"]
+rationale = "`scopeCssModule`: blocking `ScopeCSSModule`, one small esbuild build per CSS module, called from the facet build's OnLoad; the mapping module is parsed by `parseClassMap` (esbuild's own object literal) where Pi runs it in a `vm` context, a fuzzed parser, not an evaluation (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/discover.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryReturnsTheAbortsReasonBeforeEachDirectoryAndNothingForNoDirectory"]
+rationale = "`discoverPlugins`: blocking `DiscoverPlugins(roots, options, ctx)`; roots listed in order, abort checked before each directory (never at entry or after the last), a read error is the returned error. Delta at Pi 9823079ad: `discoverPackage` is the same blocking call; roots are `PluginRoot`s and a required root that does not exist is a problem, not an error (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/install.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheContextAborts", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunningAnything", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated"]
+rationale = "`installDependencies` (spawn with the context's signal): blocking `InstallDependencies`; an aborted ctx returns its reason before starting, abort while running sends SIGTERM and returns the reason, a non-zero exit returns the command output. Delta at Pi 9823079ad: `installPlugin` (git clone and npm pack/extract as awaited child processes, a mkdir claim, staging, a rename) is blocking `InstallPlugin`; an aborted ctx returns its reason (`context.Cause`), kills the running child (SIGTERM) and removes only what the call created; two concurrent installs of one name: the mkdir claim lets one win and the other removes nothing of it (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/plugins.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited","concurrent-joined","microtask-ordering"]
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRootsAndMarksSetRefusesADirectoryThatIsNoRoot"]
+rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections. Delta at Pi 9823079ad: `installPlugin` is a blocking `Plugins.InstallPlugin` that marks `set` after the install; `load` of a required root rejects with a `PluginError` after the host's load settled (the loaded host is returned with the error) (lane chord-slice12). Delta at Pi c23b9ec1: `watchBase` is the blocking `Plugins.WatchBase` (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/runtime.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1AdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt", "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"]
+rationale = "`evaluateFacet` and `createPluginRuntime().load/reload` run in the Node subprocess; `PluginRuntime.Load/Reload` block over the control channel: ctx abort sends `abort`, the wait goes on until the subprocess answers (`aborted`, with `details.committed` after a commit) or ends; requests reach the subprocess in call order and Pi's runtime queues one reload after another per host; a NodeHost is never restarted, a process exit fails pending requests with `*NodeExit`. Delta at Pi 9823079ad: `load` throws `PluginError` after `host.load` settled when a plugin of a required root is among the failed: the vendored runtime throws it in the subprocess, host.mjs answers it as data and `PluginRuntime.Load` returns the host, the report and a `*PluginError` (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/node/plugins/testing.ts"
@@ -1003,10 +1003,10 @@ rationale = ""
 
 [[files]]
 path = "packages/chord/src/node/plugins/watcher.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["concurrent-joined", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkIgnoresARewriteWithTheSameBytesMarksAChangeAndClearsAtItsRevert", "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkTakesTheLatestOfABurstOfWritesAChangeAndItsQuickRevertLeaveNoMark", "test:chord/nextnode/plugins/plugins_watcher_linux_test.go#TestTheBaseMarkReadsOnePathInOrderASecondComparisonWaitsForTheFirstHeldOnAPipeAndDecides", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
+rationale = "The marks' microtask publication is `Batch.Soon` and fsnotify events enter the host as sections (one section per burst of queued events, renewals once per burst). Base comparisons: upstream's per-path promise chain is a queue read by at most 8 goroutines owned by the watcher (`join` waits for them), a path asked for again while queued or read is read once more after it, each result entering the host as a section (lane chord-plugins)."
 
 [[files]]
 path = "packages/chord/src/node/surfaces/bundle.ts"

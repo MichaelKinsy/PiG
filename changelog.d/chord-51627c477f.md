@@ -1,0 +1,8 @@
+### Added
+
+- Go API `chord/nextnode/plugins`: Chord v2's plugin model (Pi `9823079ad`, slice 12). `PluginsOptions.Api` (`AppApi{Name, Versions}`) checks every import of the app's versioned API (`@acme/app/v3`, per-kind modules such as `@acme/app/v3/web`): an unlisted version, another kind's module, two versions in one facet and a direct import of Chord are build errors naming the file and line, and a computed `require` is refused the same at evaluation. Roots are `PluginRoot{Path, Required}`: a required root's plugin failing, or a problem discovery reports in it, makes `Plugins.Load` return a `*PluginError` after the host's load settled. Files named `<name>.<kind>.<ext>` are of that kind and refused in facets of another kind with the chain of imports named; single-file plugins (`hello.server.ts` at a root's top, host packages only); a package's `chord.plugins` lists its plugins (paths, globs, `!` exclusions); `DiscoverPackage`, `SameFiles`; `InstallPlugin` and `Plugins.InstallPlugin` install plugins from git (`{Git, Ref}`) or npm (`{Npm, Version}`) with a claimed directory, staging and checks. The vendored Node subprocess (evaluate.ts, runtime.ts, host.ts, object.ts, unbound.ts, record.ts) is Pi `9823079ad` as a named catch-up.
+- Go API `chord/next/host`, `chord/next/registries`: `Host.UnservedNames`, `ActivationsUnderWay`, `UndeclaredRegistries` (the reads Pi's `testPlugin` uses), `UnboundIndex.Names`, `RegistryRecord.NewestContribution`.
+
+### Changed
+
+- Plugins import each other by relative path within a root (copied into the importer's script) and across repositories by package name through the package's `exports`; imports by plugin name (`@app/notes/contract`) are removed, and a relative path leaving the root is a build error.

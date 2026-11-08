@@ -42,15 +42,15 @@ enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
-const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
+const [chordNext, { ipcLink }, { createPluginRuntime, PluginError }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
 	await Promise.all([
-		pi("next/index.ts"),
-		pi("next/link/index.ts"),
-		pi("next-node/plugins/runtime.ts"),
-		pi("next-node/plugins/stack.ts"),
+		pi("index.ts"),
+		pi("link/index.ts"),
+		pi("node/plugins/runtime.ts"),
+		pi("node/plugins/stack.ts"),
 		pi("context/index.ts"),
-		pi("next-node/compression.ts"),
-		pi("next/data/internal.ts"),
+		pi("node/compression.ts"),
+		pi("data/internal.ts"),
 	]);
 const { createHost, isChordError } = chordNext;
 
@@ -198,7 +198,7 @@ process.on("uncaughtException", (error) => {
 
 async function load(request, context) {
 	if (hosted !== undefined) throw new Error("load: this process loaded its host already");
-	const modules = { "@earendil-works/chord/next": chordNext };
+	const modules = { "@earendil-works/chord": chordNext };
 	for (const [specifier, file] of Object.entries(request.modules)) modules[specifier] = await import(pathToFileURL(file).href);
 	for (const pkg of request.goPackages) modules[pkg.specifier] = await importGoPackage(pkg);
 	// principalKey and revokedBy are synchronous in the host: they call the Go side on a connection of their own.
@@ -238,8 +238,16 @@ async function load(request, context) {
 		}),
 	);
 	const traced = telemetry === undefined ? context : withTelemetry(telemetry, context);
-	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
-	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
+	const wireFailures = (failures) => failures.map(({ plugin, error }) => ({ plugin, error: wireError(error) }));
+	try {
+		const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
+		return { failed: wireFailures(report.failed) };
+	} catch (error) {
+		// A required root's plugins failed once the host's load settled (runtime.ts's PluginError): the host stays
+		// loaded, and the Go side raises the error with these (`required` is never empty then).
+		if (!(error instanceof PluginError)) throw error;
+		return { failed: wireFailures(error.failed), required: wireFailures(error.required) };
+	}
 }
 
 /**
@@ -267,7 +275,7 @@ async function reload(request, context) {
 }
 
 /**
- * As a worker connects to its parent (next-node/workers/main.ts): the Go side uses the other end of the link, as the server
+ * As a worker connects to its parent (node/workers/main.ts): the Go side uses the other end of the link, as the server
  * of a worker does, and `peer` is who the Go side is, as this host stamps it. Once; the host's heartbeat starts with the link.
  */
 function attach() {

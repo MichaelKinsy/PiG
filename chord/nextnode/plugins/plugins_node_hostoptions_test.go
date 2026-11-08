@@ -40,7 +40,7 @@ var cbWhoContract = mustContract(contracts.Remote("test.who", contracts.RemoteDe
 func cbWhoPlugin(t *testing.T) PluginScript {
 	t.Helper()
 	return handmade(t, "@test/who", "worker", `(function (require, module, exports) {
-const { defineFacet, remote, str, hostKind, constant } = require("@earendil-works/chord/next");
+const { defineFacet, remote, str, hostKind, constant } = require("@earendil-works/chord");
 const Worker = hostKind("test.worker");
 const Who = remote("test.who", {
 	version: 1,
@@ -428,7 +428,7 @@ func BenchmarkNodeSyncCall(b *testing.B) {
 		b.Fatal(err)
 	}
 	module := filepath.Join(b.TempDir(), "cost.mjs")
-	if err := os.WriteFile(module, []byte(`import * as next from "@earendil-works/chord/next";
+	if err := os.WriteFile(module, []byte(`import * as next from "@earendil-works/chord";
 import { callSync, memoizedByPrincipal } from "`+"file://"+filepath.ToSlash(filepath.Join(tree, "callbacks.mjs"))+`";
 const { defineFacet, remote, method, str, hostKind } = next;
 const Probe = remote("test.probe", {

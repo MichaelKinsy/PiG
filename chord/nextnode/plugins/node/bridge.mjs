@@ -7,13 +7,13 @@
 // unrequested and in the order they happen on the one channel: `frame` (one call of a watch's listener), `watchEnd` (the
 // watch ended, and why) and `state` (a reference's state changed).
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
-import { ChordError } from "@earendil-works/chord/next";
+import { ChordError } from "@earendil-works/chord";
 import { contractOf, operations as contractOperations } from "./contracts.mjs";
 import { createProxies } from "./proxy.mjs";
 import { decodeValue, encodeValue } from "./wire.mjs";
 
 /** The specifier the Go core facets' proxy scripts import their host package by (plugins_node_bridged.go's `bridgePackage`). */
-export const GO_PACKAGE = "@earendil-works/chord/next/go";
+export const GO_PACKAGE = "@earendil-works/chord/go";
 
 /** A reference's state as data: its kind and the fields of that kind (the causes and errors as ChordError data). */
 function wireState(state) {
