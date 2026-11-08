@@ -251,14 +251,12 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 // its entry executable's copy (D600), recorded with its bytes; the rewrite marks nothing, an edit marks `base`, and the app's
 // `BaseWatched` settles once the records' first comparisons ended.
 func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes(t *testing.T) {
+	// A small program: this test starts no worker, and a rewrite of a large file is read half written by the watcher on a slow disk.
 	original, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	bytes, err := os.ReadFile(original)
-	if err != nil {
-		t.Fatal(err)
-	}
+	bytes := []byte("#!/bin/sh\nexit 0\n")
 	entry := filepath.Join(t.TempDir(), "worker"+filepath.Ext(original))
 	if err := os.WriteFile(entry, bytes, 0o755); err != nil {
 		t.Fatal(err)
@@ -276,7 +274,7 @@ func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes
 		t.Fatalf("reported %v", got)
 	}
 	// The barrier is a plugin edit: the watcher handles events in order, so once it shows the plugin dirty it has seen the rewrite.
-	if err := os.WriteFile(entry, bytes, 0o755); err != nil {
+	if err := replaceFile(entry, bytes); err != nil {
 		t.Fatal(err)
 	}
 	editEcho(t, s.root, "barrier")
@@ -284,10 +282,19 @@ func TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes
 	if s.app.Plugins.Marks().Base {
 		t.Fatal("base is marked by a rewrite with the same bytes")
 	}
-	if err := os.WriteFile(entry, append(append([]byte(nil), bytes...), 0), 0o755); err != nil {
+	if err := replaceFile(entry, append(append([]byte(nil), bytes...), '\n')); err != nil {
 		t.Fatal(err)
 	}
 	untilMarks(t, s.app, "base", func(m plugins.PluginsState) bool { return m.Base })
+}
+
+// replaceFile makes path hold data in one step (a file written beside it, renamed over it): a watcher never reads it half written.
+func replaceFile(path string, data []byte) error {
+	next := path + ".next"
+	if err := os.WriteFile(next, data, 0o755); err != nil {
+		return err
+	}
+	return os.Rename(next, path)
 }
 
 // gitRepository makes a local bare repository `<name>.git` of files, tagged tag, and returns its `file://` URL (no network).
