@@ -17,13 +17,14 @@ var (
 )
 
 // UseTerminalDaemon makes the pi-env daemon this repository builds (`./env/cmd/pi-env`) the one terminals use on this
-// machine (P2_TERMINAL_DAEMON), and a plain shell the one they run, without the developer's rc files. Pi's tests skip when
+// machine (P2_TERMINAL_DAEMON), and a plain `sh` the one they run, without the developer's rc files. Pi's tests skip when
 // there is no daemon build; the Go daemon is built from source here, so a failure to build one fails the test.
 //
-// The shell is bash where there is one: Pi's tests set `/bin/sh`, which is bash on the machines they are written on (macOS:
-// readline echoes what was typed ahead, so a program's output starts its own line and the prompt matches `[$#] $`). Where
-// `/bin/sh` is dash (Debian), the tty echoes typed-ahead input before the prompt and the output follows the prompt on its
-// line.
+// Pi's tests set SHELL=/bin/sh, which is bash in POSIX mode on the machines they are written on (macOS): readline echoes
+// what was typed ahead after the prompt, so a program's output starts its own line and the prompt matches `[$#] $`. Where
+// /bin/sh is dash (Debian, Ubuntu), the tty echoes typed-ahead input before the prompt and the output follows the prompt
+// on its line. There the shell is the same thing Pi's machines have: bash --posix, started without rc files, prompting
+// `$ `.
 func UseTerminalDaemon(t testing.TB) {
 	t.Helper()
 	daemonOnce.Do(func() {
@@ -44,7 +45,25 @@ func UseTerminalDaemon(t testing.TB) {
 		t.Fatalf("building the pi-env daemon: %v", daemonErr)
 	}
 	t.Setenv("P2_TERMINAL_DAEMON", daemonPath)
-	t.Setenv("SHELL", "/bin/sh")
+	t.Setenv("SHELL", plainShell(t))
+	t.Setenv("PS1", "$ ")
+}
+
+// plainShell is /bin/sh when that is bash, otherwise a `sh` script that is bash in POSIX mode without rc files.
+func plainShell(t testing.TB) string {
+	t.Helper()
+	if resolved, err := filepath.EvalSymlinks("/bin/sh"); err == nil && filepath.Base(resolved) == "bash" {
+		return "/bin/sh"
+	}
+	bash, err := exec.LookPath("bash")
+	if err != nil {
+		return "/bin/sh"
+	}
+	path := filepath.Join(t.TempDir(), "sh")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexec "+bash+" --posix --norc --noprofile \"$@\"\n"), 0o755); err != nil {
+		t.Fatalf("writing the sh wrapper: %v", err)
+	}
+	return path
 }
 
 type daemonBuildError struct {
