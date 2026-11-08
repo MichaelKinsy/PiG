@@ -101,7 +101,10 @@ func TestBangAndDoubleBangRunCommandsTheLiveOneShowsAtTheEndEscapeCancelsEntries
 	if first.Value("command") != "ls -la" || first.Value("includeInContext") != true || first.Value("requestId") == nil {
 		t.Fatalf("shell args = %v", first)
 	}
-	tuitest.Poll(t, func() bool { screen := top.Screen(); return strings.Contains(screen, "$ ls -la") && strings.Contains(screen, "partial output") })
+	tuitest.Poll(t, func() bool {
+		screen := top.Screen()
+		return strings.Contains(screen, "$ ls -la") && strings.Contains(screen, "partial output")
+	})
 	if !strings.Contains(top.Screen(), "Running...") {
 		t.Fatalf("no running indicator:\n%s", top.Screen())
 	}

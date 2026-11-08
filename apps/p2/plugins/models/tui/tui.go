@@ -369,6 +369,9 @@ func setDefault(ctx runtime.TuiContext, state *ModelState, choice ModelChoice, d
 	})
 }
 
+// Ready is whether the owner's catalog is live: the selectors change the model only then.
+func (m *ModelState) Ready() bool { return m.service() != nil }
+
 // readOnly: guests (and the owner without the catalog yet) see the model read-only.
 func readOnly(ctx runtime.TuiContext, state *ModelState) bool {
 	if ctx.Role() == runtime.RoleOwner && state != nil && state.service() != nil {
