@@ -3,9 +3,11 @@ package plugins
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"hash"
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -29,30 +31,33 @@ func ContentHash(data []byte) string {
 
 // hashFile is the hash of the bytes of the file at path as ContentHash gives it, streamed (a base file is never held whole
 // for it); ok is false when it cannot be read (gone, a directory, no access).
-func hashFile(path string) (hash string, ok bool) {
+func hashFile(path string) (text string, ok bool) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", false
 	}
 	defer func() { _ = file.Close() }()
-	buf := hashBuffers.Get().(*[]byte)
-	defer func() {
-		if cap(*buf) == hashBufferSize {
-			hashBuffers.Put(buf)
-		}
-	}()
-	sum := sha256.New()
-	// The reader is wrapped so that the copy uses buf, not the file's own WriterTo (which allocates a buffer of its own).
-	if _, err := io.CopyBuffer(sum, struct{ io.Reader }{file}, *buf); err != nil {
+	state := hashers.Get().(*hasher)
+	defer hashers.Put(state)
+	state.sum.Reset()
+	// The reader is wrapped so that the copy uses the buffer, not the file's own WriterTo (which allocates one of its own).
+	if _, err := io.CopyBuffer(state.sum, struct{ io.Reader }{file}, state.buf[:]); err != nil {
 		return "", false
 	}
-	return hex.EncodeToString(sum.Sum(nil)), true
+	hex.Encode(state.text[:], state.sum.Sum(state.digest[:0]))
+	return string(state.text[:]), true
 }
 
-// hashBuffers are the buffers files are streamed through to be hashed: a start hashes a whole base directory.
-const hashBufferSize = 32 << 10
+// hasher is what hashing one file needs, kept for the next: a start hashes a whole base directory, so the digest, its
+// text and the buffer the file is streamed through are made once per goroutine at work, not once per file.
+type hasher struct {
+	sum    hash.Hash
+	buf    [32 << 10]byte
+	digest [sha256.Size]byte
+	text   [2 * sha256.Size]byte
+}
 
-var hashBuffers = sync.Pool{New: func() any { buf := make([]byte, hashBufferSize); return &buf }}
+var hashers = sync.Pool{New: func() any { return &hasher{sum: sha256.New()} }}
 
 // Recorder records what a build read: the one read of each file, its hash kept by path, its bytes for esbuild. It is safe for
 // the goroutines of one build.
@@ -108,4 +113,25 @@ func (r *Recorder) Plugin() api.Plugin {
 			})
 		},
 	}
+}
+
+// hashFiles is the hash of each of files (hashFile's), "" for one that cannot be read, read by at most maxComparers goroutines
+// that end before it returns: a start hashes a whole base directory, and upstream reads its files at once on libuv's threads.
+func hashFiles(files []string) []string {
+	hashes := make([]string, len(files))
+	var next atomic.Int64
+	var group sync.WaitGroup
+	for range min(maxComparers, len(files)) {
+		group.Go(func() {
+			for {
+				i := int(next.Add(1)) - 1
+				if i >= len(files) {
+					return
+				}
+				hashes[i], _ = hashFile(files[i])
+			}
+		})
+	}
+	group.Wait()
+	return hashes
 }

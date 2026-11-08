@@ -138,6 +138,9 @@ type pluginWatcher struct {
 	// baseWatched is the directories watched alone for base code: the recorded files' directories outside the base
 	// directories, and every existing ancestor of a location (its replacement or move is an event of its parent's watch).
 	baseWatched map[string]struct{}
+	// identities is the identity of each directory watched, by path (Pi's `#identities`): an event for an entry on the way to
+	// base code whose identity is the one it had when watched is no replacement.
+	identities map[string]dirIdentity
 	// renamed is the entries on the way to base code replaced since the last renewal: one renewal per burst of events.
 	renamed map[string]struct{}
 	closed  bool
@@ -181,6 +184,7 @@ func newPluginWatcher(options watcherOptions, batch *state.Batch) *pluginWatcher
 		locations:   map[string]struct{}{},
 		anchored:    map[string]struct{}{},
 		baseWatched: map[string]struct{}{},
+		identities:  map[string]dirIdentity{},
 		renamed:     map[string]struct{}{},
 		generation:  1,
 		dirty:       map[string]int{},
@@ -389,6 +393,7 @@ func (w *pluginWatcher) close() {
 	}
 	clear(w.watched)
 	clear(w.baseWatched)
+	clear(w.identities)
 	clear(w.renamed)
 	clear(w.trees)
 }
@@ -478,6 +483,7 @@ func (w *pluginWatcher) watchDirs(dir string) {
 		return
 	}
 	w.watched[dir] = struct{}{}
+	w.identities[dir] = identityOf(dir)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		// Removed meanwhile: its parent's event says so.
@@ -598,6 +604,7 @@ func (w *pluginWatcher) unwatchDirs(dir string) {
 			continue
 		}
 		delete(w.watched, watched)
+		delete(w.identities, watched)
 		w.releaseWatch(watched)
 	}
 }
@@ -672,9 +679,9 @@ func (w *pluginWatcher) recordOwn(base []string) {
 		w.locate(filepath.Dir(file))
 	}
 	record := BaseInputs{}
-	for _, file := range files {
-		if hash, ok := hashFile(file); ok {
-			record[file] = hash
+	for i, hash := range hashFiles(files) {
+		if hash != "" {
+			record[files[i]] = hash
 		}
 	}
 	w.records = append(w.records, record)
@@ -889,8 +896,8 @@ func (w *pluginWatcher) watchLocation(dir string) {
 }
 
 // watchAlone watches directory dir alone (once) for base code: a recorded (or differing) file there is compared; an entry on
-// the way to a location created, removed or moved renews the watches under it. A directory that does not exist or cannot be
-// watched (an ancestor without access) is skipped.
+// the way to a location created, removed, moved or replaced (another identity: not an attribute change) renews the watches
+// under it. A directory that does not exist or cannot be watched (an ancestor without access) is skipped.
 func (w *pluginWatcher) watchAlone(dir string) {
 	if _, ok := w.baseWatched[dir]; ok || w.reported {
 		return
@@ -902,23 +909,48 @@ func (w *pluginWatcher) watchAlone(dir string) {
 		return
 	}
 	w.baseWatched[dir] = struct{}{}
+	w.identities[dir] = identityOf(dir)
 }
 
-// baseEvent handles an event for path in a directory watched alone: a recorded (or differing) file there is compared; an
-// entry on the way to base code created, removed or moved is renewed after this burst of events (an attribute change is no
-// replacement).
+// baseEvent handles an event for path in a directory watched alone: a recorded (or differing) file there is compared, whatever
+// the event (an attribute change too: `#watchAlone` passes every event of a recorded file to `mark`, and libuv reports an
+// `IN_ATTRIB` as a change); an entry on the way to base code created, removed or moved is renewed after this burst of events
+// when it is another directory than the one watched (`#replaced`: another inode or birth time), never for a change of its
+// attributes or for the one watched moved away and back.
 func (w *pluginWatcher) baseEvent(path string, op fsnotify.Op) {
-	if op == fsnotify.Chmod {
-		return
-	}
 	_, recorded := w.recorded[path]
 	_, differing := w.differing[path]
 	if recorded || differing {
 		w.mark(path)
 		return
 	}
-	if _, anchored := w.anchored[path]; anchored && op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
+	if _, anchored := w.anchored[path]; !anchored || op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
+		return
+	}
+	if w.replaced(path) {
 		w.renamed[path] = struct{}{}
+		return
+	}
+	w.keepWatches(path)
+}
+
+// keepWatches puts back the base watches at and under path that the watcher no longer holds, for the directory there is the one
+// they watched, moved away and back: libuv's watch follows it (inotify) or its path (FSEvents), and some of fsnotify's end with
+// the move (kqueue removes the watch of a directory that is renamed). Nothing is compared: as Pi, it renewed nothing.
+func (w *pluginWatcher) keepWatches(path string) {
+	if w.fs == nil {
+		return
+	}
+	held := w.fs.WatchList()
+	var lost []string
+	for dir := range w.baseWatched {
+		if (dir == path || under(path, dir)) && !slices.Contains(held, dir) {
+			lost = append(lost, dir)
+		}
+	}
+	for _, dir := range lost {
+		delete(w.baseWatched, dir)
+		w.watchAlone(dir)
 	}
 }
 
@@ -947,6 +979,7 @@ func (w *pluginWatcher) reconcile(path string) {
 	for dir := range w.baseWatched {
 		if dir == path || under(path, dir) {
 			delete(w.baseWatched, dir)
+			delete(w.identities, dir)
 			w.releaseWatch(dir)
 		}
 	}
@@ -972,14 +1005,26 @@ func sourceFiles(path string) []string {
 		}
 		return nil
 	}
-	entries, err := os.ReadDir(path)
+	return appendSourceFiles(nil, path)
+}
+
+// appendSourceFiles adds the source files under directory dir to files. A directory is known by the type its entry carries
+// (`ReadDir` has it from the read: a link is none, as a scan with `Lstat` finds), so no entry is looked up again.
+func appendSourceFiles(files []string, dir string) []string {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil
+		return files
 	}
-	var files []string
 	for _, entry := range entries {
-		if !isIgnored(entry.Name()) {
-			files = append(files, sourceFiles(filepath.Join(path, entry.Name()))...)
+		name := entry.Name()
+		switch {
+		case isIgnored(name):
+		case entry.IsDir():
+			files = appendSourceFiles(files, filepath.Join(dir, name))
+		default:
+			if _, ok := sourceExtensions[extname(name)]; ok {
+				files = append(files, filepath.Join(dir, name))
+			}
 		}
 	}
 	return files
