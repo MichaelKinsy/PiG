@@ -54,3 +54,4 @@ plugins/ports/PortsPanel.tsx
 plugins/ports/activity.tsx
 plugins/ports/activity.css
 plugins/locations/contract.ts
+plugins/search/contract.ts
