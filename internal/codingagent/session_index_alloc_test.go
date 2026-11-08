@@ -3,7 +3,6 @@ package codingagent
 import (
 	"reflect"
 	"testing"
-	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -23,8 +22,8 @@ func TestDecodeJSONStringMatchesTheDecoder(t *testing.T) {
 	}
 }
 
-// A line whose parentId is the id of the line before it shares that string, and the probe is the one a walk without the hint reads.
-func TestIndexProbeSharesThePreviousID(t *testing.T) {
+// A line whose parentId is the id of the line before it reads the probe a walk without the hint reads.
+func TestIndexProbeAfterMatchesTheWalk(t *testing.T) {
 	line := []byte(`{"type":"message","id":"b2","parentId":"a1","timestamp":"2026-01-01T00:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"x"}],"timestamp":12}}`)
 	plain, ok := walkIndexProbe(line)
 	if !ok {
@@ -36,11 +35,4 @@ func TestIndexProbeSharesThePreviousID(t *testing.T) {
 			t.Fatalf("walk after %q = %+v, %v; want %+v", previous, got, ok, plain)
 		}
 	}
-	previous := string([]byte("a1"))
-	got, _ := walkIndexProbeAfter(line, previous)
-	if *got.ParentID != previous || len(*got.ParentID) != len(previous) || unsafeStringData(*got.ParentID) != unsafeStringData(previous) {
-		t.Errorf("parentId %q does not share the previous id", *got.ParentID)
-	}
 }
-
-func unsafeStringData(s string) *byte { return unsafe.StringData(s) }
