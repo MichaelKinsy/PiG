@@ -70,10 +70,15 @@ func TestAServerPluginsObjectHoldsTheTypesTheGoServerServesAsThePrincipalItActsA
 	page.until("the plugin's view of the theme choice", reloadWait, func() bool {
 		return memberText(page, "lang", "theme") == "\"{\\\"dark\\\":null,\\\"light\\\":null}\""
 	})
-	// A call of the plugin's object changes the Go server's object of the same principal.
-	if got := page.result(page.call("lang", "choose", "de")); got.Status != "ok" {
-		t.Fatalf("choose = %+v, want ok", got)
+	// The page's own call on the Go server's choice reaches the plugin's object, which holds the same object (the same principal)...
+	if got := page.result(page.call("choice", "choose", "fr")); got.Status != "ok" {
+		t.Fatalf("the page's choose = %+v, want ok", got)
 	}
-	page.until("the page's own choice follows", reloadWait, func() bool { return memberText(page, "choice", "pick") == `"de"` })
-	page.until("the plugin's view follows", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=de"` })
+	page.until("the plugin's view follows the page's choice", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=fr"` })
+	// ... and a call of the plugin's object reaches the page's.
+	if got := page.result(page.call("lang", "choose", "de")); got.Status != "ok" {
+		t.Fatalf("the plugin's choose = %+v, want ok", got)
+	}
+	page.until("the plugin's view follows its own call", reloadWait, func() bool { return memberText(page, "lang", "pick") == `"pick=de"` })
+	page.until("the page's own choice follows the plugin's call", reloadWait, func() bool { return memberText(page, "choice", "pick") == `"de"` })
 }
