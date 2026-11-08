@@ -1,13 +1,10 @@
-package mcpext
+package oauth
 
-import (
-	"net/url"
-	"testing"
-)
+import "testing"
 
-// oauth.ts:384-402 responseFromRedirectUrl: each failure has its own message, checked in this order: unparsable input, origin or path mismatch, provider error (error_description first), wrong state, missing code; a code returns with its optional iss.
+// loopback.ts responseFromRedirectUrl: each failure has its own message, checked in this order: unparsable input, origin or path mismatch, provider error (error_description first), wrong state, missing code; a code returns with its optional iss (an empty one counts as none, as `...(iss ? { iss } : {})` does).
 func TestResponseFromRedirectURLMessagesAndOrder(t *testing.T) {
-	redirect, _ := url.Parse("http://127.0.0.1:1/callback")
+	authorization := McpSignInRedirect{State: "s", RedirectURL: "http://127.0.0.1:1/callback"}
 	for _, tc := range []struct {
 		name, input, wantErr, wantCode string
 		wantISS                        *string
@@ -26,22 +23,35 @@ func TestResponseFromRedirectURLMessagesAndOrder(t *testing.T) {
 		{"empty code", "http://127.0.0.1:1/callback?state=s&code=", "The redirect URL does not contain an authorization code", "", nil},
 		{"code without iss", "  http://127.0.0.1:1/callback?state=s&code=abc  ", "", "abc", nil},
 		{"code with iss", "http://127.0.0.1:1/callback?state=s&code=abc&iss=https%3A%2F%2Fas.example", "", "abc", new("https://as.example")},
-		{"empty iss is kept", "http://127.0.0.1:1/callback?state=s&code=abc&iss=", "", "abc", new("")},
+		{"empty iss is dropped", "http://127.0.0.1:1/callback?state=s&code=abc&iss=", "", "abc", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			response, err := responseFromRedirectURL(tc.input, "s", redirect)
+			response, err := ResponseFromRedirectURL(tc.input, authorization)
 			if tc.wantErr != "" || tc.name == "empty error description is still the description" {
 				if err == nil || err.Error() != tc.wantErr {
 					t.Fatalf("error = %v, want %q", err, tc.wantErr)
 				}
 				return
 			}
-			if err != nil || response.code != tc.wantCode {
+			if err != nil || response.Code != tc.wantCode {
 				t.Fatalf("response = %+v, %v, want code %q", response, err, tc.wantCode)
 			}
-			if (response.iss == nil) != (tc.wantISS == nil) || (tc.wantISS != nil && *response.iss != *tc.wantISS) {
-				t.Fatalf("iss = %v, want %v", response.iss, tc.wantISS)
+			if (response.Iss == "") != (tc.wantISS == nil) || (tc.wantISS != nil && response.Iss != *tc.wantISS) {
+				t.Fatalf("iss = %q, want %v", response.Iss, tc.wantISS)
 			}
 		})
+	}
+}
+
+// loopback.ts responseFromRedirectUrl: `new URL(input.trim())`. A BOM around the pasted URL is removed; U+0085 stays and
+// makes the URL invalid (node: `new URL("\u0085http://…")` throws "Invalid URL").
+func TestResponseFromRedirectURLTrimsLikeJavaScript(t *testing.T) {
+	authorization := McpSignInRedirect{State: "s", RedirectURL: "http://127.0.0.1:1/callback"}
+	response, err := ResponseFromRedirectURL("\uFEFFhttp://127.0.0.1:1/callback?code=c&state=s\uFEFF", authorization)
+	if err != nil || response.Code != "c" {
+		t.Fatalf("BOM-padded URL: %+v, %v", response, err)
+	}
+	if _, err := ResponseFromRedirectURL("\u0085http://127.0.0.1:1/callback?code=c&state=s", authorization); err == nil || err.Error() != "Expected the full redirect URL from the browser address bar" {
+		t.Fatalf("U+0085-prefixed URL: err = %v", err)
 	}
 }

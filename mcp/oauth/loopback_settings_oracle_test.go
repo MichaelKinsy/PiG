@@ -1,4 +1,4 @@
-package mcpext
+package oauth
 
 import (
 	"testing"
@@ -6,8 +6,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-// callbackSettings (extensions/mcp/oauth.ts:86-107) is not exported by Pi's module, so the oracle body transcribes it and runs it on Node's own URL implementation: the listen host, redirect host, port, path and exact redirect URI for every callbackUrl spelling and callbackPort.
-func TestNewCallbackSettingsMatchesNodeURL(t *testing.T) {
+// loopbackSettings (packages/mcp/src/oauth/client-settings.ts) is not exported by Pi's package, so the oracle body transcribes it and runs it on Node's own URL implementation: the listen host, redirect host, port, path and exact redirect URI for every callbackUrl spelling and callbackPort.
+func TestGetLoopbackSettingsMatchesNodeURL(t *testing.T) {
 	callbackURLs := []string{
 		"", "http://127.0.0.1:8080/callback", "http://127.0.0.1/callback", "http://127.0.0.1:80/callback", "https://example.com:443/cb", "https://example.com/cb?x=1#f", "http://localhost/callback", "http://localhost:3000/callback", "HTTP://LOCALHOST/Callback",
 		"http://[::1]/callback", "http://[::1]:8080/callback", "http://[0:0:0:0:0:0:0:1]/callback", "http://127.1/callback", "http://0x7f.0.0.1/callback", "http://exämple.com/cb", "http://127.0.0.1", "http://127.0.0.1/", "http://127.0.0.1/a/../b", "http://127.0.0.1/a b",
@@ -57,11 +57,11 @@ emit(input.map((p) => {
 			settings.CallbackPort = &port
 		}
 		var have result
-		got, err := newCallbackSettings(settings)
+		got, err := GetLoopbackSettings(settings)
 		if err != nil {
 			have.Error = "Invalid URL"
 		} else {
-			have = result{Host: got.host, RedirectHost: got.redirectHost, Port: got.port, Path: got.path, Fixed: got.fixedRedirectURL}
+			have = result{Host: got.Host, RedirectHost: got.RedirectHost, Port: got.Port, Path: got.Path, Fixed: got.FixedRedirectURL}
 		}
 		if have.Error != want[i].Error || have.Host != want[i].Host || have.RedirectHost != want[i].RedirectHost || have.Path != want[i].Path || have.Fixed != want[i].Fixed || (have.Port == nil) != (want[i].Port == nil) || (have.Port != nil && *have.Port != *want[i].Port) {
 			t.Errorf("callbackUrl=%q callbackPort=%d:\n Go %+v\n Pi %+v", p.CallbackURL, p.CallbackPort, have, want[i])
