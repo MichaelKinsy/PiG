@@ -3572,6 +3572,26 @@
       ]
     },
     {
+      "id": "BF-18e7372",
+      "title": "Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a…",
+      "symptom": "Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a data race: the check that the object is still live read the object's documents state outside the host's sections while its end wrote it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a data race: the check that the object is still live read the object's documents state outside the host's sections while its end wrote it. The check now takes a section of its own.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "18e7372b98",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-18f7d39",
       "title": "Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired…",
       "symptom": "Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired surrogates, and an explicitly empty global signature renders as Pi renders it.",
