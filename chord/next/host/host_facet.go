@@ -111,6 +111,16 @@ func DefineFacet(setup func(host FacetHost, self FacetSelf) error) Facet {
 	return Facet{definition: &facetDefinition{setup: setup}}
 }
 
+// Renew is a new facet of the same setup: the Go form of evaluating a plugin's module again (the code is compiled in, so the
+// setup is the same function). It is not the same facet as f (`Host.Reload` counts it changed), and not shared with it. The zero
+// Facet (the error-path value of facet constructors) has no setup to evaluate again: its renewal is the zero Facet.
+func (f Facet) Renew() Facet {
+	if f.definition == nil {
+		return Facet{}
+	}
+	return DefineFacet(f.definition.setup)
+}
+
 // same is Pi's `facet === other`: both are one DefineFacet's.
 func (f Facet) same(other Facet) bool {
 	return f.definition != nil && f.definition == other.definition

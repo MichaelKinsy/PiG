@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -137,10 +141,18 @@ func (BatchWorkersError) workersError()    {}
 // options.Entry is no program that can be started (Pi's rejection when the worker base does not build: the server does not
 // start with it).
 func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (*Workers, error) {
-	if _, err := exec.LookPath(options.Entry); err != nil {
+	found, err := exec.LookPath(options.Entry)
+	if err != nil {
 		return nil, fmt.Errorf("workers: the worker entry cannot be started: %w", err)
 	}
-	component := newWorkers(options, ctx)
+	// The worker base: every worker is forked from a private copy made now, as Pi's bundle of the entry is a private file,
+	// so an edit of the program on disk after this runs in no worker. Close removes it.
+	baseDir, base, err := copyWorkerBase(found)
+	if err != nil {
+		return nil, fmt.Errorf("workers: the worker base cannot be made: %w", err)
+	}
+	options.Entry = base
+	component := newWorkers(options, baseDir, ctx)
 	route, err := h.Route(kind, host.RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			// An error would reach the holder as the hold's failure: the app's error stays private.
@@ -154,10 +166,46 @@ func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions
 		Resolve: component.resolve,
 	}, ctx)
 	if err != nil {
+		component.removeBase()
 		return nil, err
 	}
 	component.route = route
 	return component, nil
+}
+
+// copyWorkerBase copies the executable at path into a new private directory and returns the directory and the copy.
+func copyWorkerBase(path string) (dir, copied string, err error) {
+	source, err := os.Open(path)
+	if err != nil {
+		return "", "", err
+	}
+	defer func() { _ = source.Close() }()
+	dir, err = os.MkdirTemp("", "chord-workers-base-")
+	if err != nil {
+		return "", "", err
+	}
+	copied = filepath.Join(dir, filepath.Base(path))
+	target, err := os.OpenFile(copied, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o700)
+	if err == nil {
+		_, err = io.Copy(target, source)
+		if closeErr := target.Close(); err == nil {
+			err = closeErr
+		}
+	}
+	if err != nil {
+		_ = os.RemoveAll(dir)
+		return "", "", err
+	}
+	return dir, copied, nil
+}
+
+// removeBase removes the worker base's private copy, once.
+func (c *Workers) removeBase() {
+	c.baseOnce.Do(func() {
+		if c.baseDir != "" {
+			_ = os.RemoveAll(c.baseDir)
+		}
+	})
 }
 
 // failure is what an address keeps until `Retry` or a rollout: what the public sees (a fixed message, or the child's
@@ -247,11 +295,14 @@ var startFailed = CrossedError{Message: "worker failed to start", Code: "unavail
 // Workers is the workers component.
 type Workers struct {
 	// route is set by CreateWorkers once the route exists.
-	route   host.RouteHandle
-	state   *workersState
-	options WorkersOptions
-	loop    *host.Loop
-	clock   clock
+	route host.RouteHandle
+	// baseDir is the private directory of the worker base's copy, removed once by removeBase.
+	baseDir  string
+	baseOnce sync.Once
+	state    *workersState
+	options  WorkersOptions
+	loop     *host.Loop
+	clock    clock
 
 	// addresses is Pi's `Map<string, Routed>`, in insertion order; guarded by the loop.
 	addresses map[string]*routed
@@ -265,8 +316,8 @@ type Workers struct {
 	tasks     taskGroup
 }
 
-func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
-	c := &Workers{options: options, loop: host.NewLoop(), addresses: map[string]*routed{}}
+func newWorkers(options WorkersOptions, baseDir string, ctx context.Context) *Workers {
+	c := &Workers{options: options, baseDir: baseDir, loop: host.NewLoop(), addresses: map[string]*routed{}}
 	c.clock = options.clock
 	if c.clock == nil {
 		c.clock = c.loop
@@ -367,7 +418,7 @@ func (c *Workers) Retry(address contracts.Address, _ context.Context) error {
 // Step is a rollout step shipping the kind's current set to every worker, one result per worker (§4).
 func (c *Workers) Step(name string) plugins.RolloutStep {
 	return plugins.RolloutStep{Name: name, Kinds: []string{c.options.Kind}, Reload: func(_ *plugins.Built, applied map[string][]plugins.PluginScript, ctx context.Context) (plugins.StepResult, error) {
-		hosts, err := c.rollout(applied[c.options.Kind], ctx)
+		hosts, err := c.Rollout(applied[c.options.Kind], ctx)
 		return plugins.StepResult{Hosts: hosts}, err
 	}}
 }
@@ -382,6 +433,7 @@ func (c *Workers) Close(ctx context.Context) error {
 }
 
 func (c *Workers) close(ctx context.Context) error {
+	defer c.removeBase()
 	var stops []*outcome[struct{}]
 	var records []*routed
 	c.loop.Run(func() {
@@ -889,12 +941,13 @@ func (c *Workers) idleFor() time.Duration {
 	return defaultIdle
 }
 
-// rollout is the rollout step (§4): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
+// Rollout is the rollout step (§4), for an app that ships the set itself (without a plugins component, p2's compiled-in
+// plugins): scripts is the set as this rollout applied it (Pi reads `plugins.current(kind)` in the
 // same synchronous section as the rollout's ship; the component hands it over); the
 // failures recorded before it cleared and the held ones retried (listed once ready or failed); the set shipped to every
 // worker whose last applied set differs, in parallel. ctx's abort ends only this wait: the entries still waiting are listed
 // with its error.
-func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
+func (c *Workers) Rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
 	key := keyOf(scripts)
 	type entry struct {
 		host  string
