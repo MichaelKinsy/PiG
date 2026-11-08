@@ -30,7 +30,7 @@ func arr(item schema.Schema) schema.Schema           { return schema.Arr(item) }
 func union(branches ...schema.Schema) schema.Schema  { return schema.Union(branches) }
 
 // AuthTypeSchema is "api_key" or "oauth".
-var AuthTypeSchema = union(schema.Lit("api_key"), schema.Lit("oauth"))
+var AuthTypeSchema = union(p2runtime.Literal("api_key"), p2runtime.Literal("oauth"))
 
 // ProviderSchema is a provider with its login methods and how its stored credential signs in (null: none; environment keys may still apply).
 var ProviderSchema = obj(schema.Properties{
@@ -47,8 +47,8 @@ var LoginStateSchema = obj(schema.Properties{
 	prop("attemptId", str()),
 	prop("providerId", str()),
 	prop("authType", AuthTypeSchema),
-	prop("status", union(schema.Lit("working"), schema.Lit("success"), schema.Lit("cancelled"), schema.Lit("error"))),
-	prop("prompt", union(schema.Unknown(), nul())),
+	prop("status", union(p2runtime.Literal("working"), p2runtime.Literal("success"), p2runtime.Literal("cancelled"), p2runtime.Literal("error"))),
+	prop("prompt", union(obj(schema.Properties{prop("id", str()), prop("type", str())}), nul())),
 	prop("notices", arr(obj(schema.Properties{prop("id", num()), prop("event", schema.Unknown())}))),
 	opt("message", str()),
 })
