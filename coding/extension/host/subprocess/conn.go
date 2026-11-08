@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	"github.com/MichaelKinsy/PiG/internal/jsloop"
 )
@@ -189,6 +190,8 @@ type Conn struct {
 	toolRequests map[string]struct{}
 	// startWindows closes the start window of a pending tool_call request that holds one (withRequestWindow); guarded by pendingMu.
 	startWindows map[string]requestWindowHandle
+	// earlierWindows holds, for a pending tool_call request, the start windows of the extension tools before it in its batch (withRequestEarlierWindows); guarded by pendingMu.
+	earlierWindows map[string][]*agent.StartWindow
 	// answered runs on the read loop when the response of a request routes to its waiter.
 	answered map[string]func()
 	// dialogOrder orders the replies to the connection's dialog calls by the order their answers arrived (extension.WithDialogSettle).
@@ -317,6 +320,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		updates:            make(map[string]func(json.RawMessage)),
 		toolRequests:       make(map[string]struct{}),
 		startWindows:       make(map[string]requestWindowHandle),
+		earlierWindows:     make(map[string][]*agent.StartWindow),
 		toolUpdates:        newCallLanes(),
 		answered:           make(map[string]func()),
 		arrived:            make(map[string]func()),
@@ -786,6 +790,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if window := requestWindow(ctx); window != nil {
 		c.startWindows[env.ID] = window
 	}
+	if earlier := requestEarlierWindows(ctx); len(earlier) > 0 {
+		c.earlierWindows[env.ID] = earlier
+	}
 	if fn := requestDrained(ctx); fn != nil {
 		c.drainable[env.ID] = &drainableRequest{drained: fn}
 	}
@@ -818,6 +825,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.arrived, env.ID)
 		delete(c.hostCallCounts, env.ID)
 		delete(c.startWindows, env.ID)
+		delete(c.earlierWindows, env.ID)
 		delete(c.drainable, env.ID)
 		c.pendingMu.Unlock()
 		c.stateMu.Lock()
@@ -2356,6 +2364,31 @@ func withRequestWindow(ctx context.Context, window requestWindowHandle) context.
 func requestWindow(ctx context.Context) requestWindowHandle {
 	window, _ := ctx.Value(requestWindowKey{}).(requestWindowHandle)
 	return window
+}
+
+type requestEarlierWindowsKey struct{}
+
+// withRequestEarlierWindows carries the start windows of the extension tools before a tool_call request in its batch: the file mutation queue turn the request
+// asks for with its own request id (FileMutationEnterArgs.Request) waits for each of them to close.
+func withRequestEarlierWindows(ctx context.Context, windows []*agent.StartWindow) context.Context {
+	return context.WithValue(ctx, requestEarlierWindowsKey{}, windows)
+}
+
+func requestEarlierWindows(ctx context.Context) []*agent.StartWindow {
+	windows, _ := ctx.Value(requestEarlierWindowsKey{}).([]*agent.StartWindow)
+	return windows
+}
+
+// awaitEarlierWindows returns once the start windows of the extension tools before the tool_call request requestID in its batch are closed: Pi runs their
+// synchronous prefixes, which may take the file mutation queue, before the request's own (agent-loop.ts:646-648). It returns at once for a request that is no
+// tool call, holds no earlier window, or has ended.
+func (c *Conn) awaitEarlierWindows(requestID string) {
+	c.pendingMu.Lock()
+	windows := c.earlierWindows[requestID]
+	c.pendingMu.Unlock()
+	for _, window := range windows {
+		window.AwaitClosed()
+	}
 }
 
 type requestInterjectionsKey struct{}

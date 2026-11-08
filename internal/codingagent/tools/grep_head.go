@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
 	"unicode/utf16"
@@ -28,35 +29,49 @@ func newHeadJoin(options TruncationOptions) *headJoin {
 // full reports whether the prefix holds everything Result can return, so a later line only counts.
 func (h *headJoin) full() bool { return h.prefix.Len() > h.maxBytes }
 
-// Add appends one line (it may itself contain newlines).
-func (h *headJoin) Add(line string) {
+// Add appends one line (it may itself contain newlines); line is copied.
+func (h *headJoin) Add(line []byte) {
 	if h.parts > 0 {
-		h.write("\n", 1)
+		h.write(headJoinNewline, 1)
 	}
 	h.parts++
-	h.write(line, strings.Count(line, "\n"))
+	h.write(line, bytes.Count(line, headJoinNewline))
 }
 
 // AddLength appends a line of n bytes without newlines whose text Result cannot return: it is only called once full.
 func (h *headJoin) AddLength(n int) {
 	if h.parts > 0 {
-		h.count("\n", 1)
+		h.count(headJoinNewline, 1)
 	}
 	h.parts++
 	// firstLineBytes need not grow: without a newline yet, the first line already fills the prefix past maxBytes.
 	h.countBytes(n, 0, false)
 }
 
-func (h *headJoin) write(s string, newlines int) {
+// headJoinSpanGrowth is the prefix size from which it grows to its cap in one step.
+const headJoinSpanGrowth = 8 * 1024
+
+// headJoinNewline is the separator of the joined lines.
+var headJoinNewline = []byte{'\n'}
+
+func (h *headJoin) write(s []byte, newlines int) {
 	if room := h.maxBytes + 1 - h.prefix.Len(); room > 0 {
-		h.prefix.WriteString(s[:min(len(s), room)])
+		n := min(len(s), room)
+		if h.prefix.Cap()-h.prefix.Len() < n {
+			// An output that has grown this far is likely to fill the prefix: grow it once to the cap, not by doubling up to it.
+			if h.prefix.Len() >= headJoinSpanGrowth {
+				n = room
+			}
+			h.prefix.Grow(n)
+		}
+		h.prefix.Write(s[:min(len(s), room)])
 	}
 	h.count(s, newlines)
 }
 
-func (h *headJoin) count(s string, newlines int) {
+func (h *headJoin) count(s []byte, newlines int) {
 	if h.newlines == 0 {
-		if at := strings.IndexByte(s, '\n'); at >= 0 {
+		if at := bytes.IndexByte(s, '\n'); at >= 0 {
 			h.firstLineBytes += at
 		} else {
 			h.firstLineBytes += len(s)
@@ -118,16 +133,18 @@ func (h *headJoin) Result() TruncationResult {
 	return TruncationResult{Content: prefix[:outputBytes], Truncated: true, TruncatedBy: truncatedBy, TotalLines: totalLines, TotalBytes: h.totalBytes, OutputLines: collected, OutputBytes: outputBytes, MaxLines: maxLines, MaxBytes: maxBytes}
 }
 
-// truncatedLineBytes is len(TruncateLine(line, maxChars).Text) and its WasTruncated, without building the text.
-func truncatedLineBytes(line string, maxChars int) (int, bool) {
+// truncatedLineBytes is len(TruncateLine(string(line), maxChars).Text) and its WasTruncated, without building the text.
+func truncatedLineBytes(line []byte, maxChars int) (int, bool) {
 	if maxChars <= 0 {
 		maxChars = GrepMaxLineLengthUpstream
 	}
-	if jsLength(line) <= maxChars {
+	if jsLengthBytes(line) <= maxChars {
 		return len(line), false
 	}
 	n, units := 0, 0
-	for _, r := range line {
+	for rest := line; len(rest) > 0; {
+		r, size := utf8.DecodeRune(rest)
+		rest = rest[size:]
 		width := utf16.RuneLen(r)
 		if units+width > maxChars {
 			// pig divergence (D252): a pair the cut would split is dropped whole.
@@ -143,4 +160,20 @@ func truncatedLineBytes(line string, maxChars int) (int, bool) {
 func decimalBytes(n int) int {
 	var buf [24]byte
 	return len(strconv.AppendInt(buf[:0], int64(n), 10))
+}
+
+// jsLengthBytes is jsLength(string(s)) without the copy.
+func jsLengthBytes(s []byte) int {
+	n := 0
+	for len(s) > 0 {
+		if s[0] < utf8.RuneSelf {
+			n++
+			s = s[1:]
+			continue
+		}
+		r, size := utf8.DecodeRune(s)
+		n += utf16.RuneLen(r)
+		s = s[size:]
+	}
+	return n
 }

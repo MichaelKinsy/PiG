@@ -1,20 +1,27 @@
 // Check factories: each returns a closure that captures only its arguments, never the compiler, so a compiled
-// schema keeps no compile-time state alive. Leaf checks are module constants that object and array loops inline.
+// schema keeps no compile-time state alive. Leaf checks (a type, a const, an enum, bounds) are registered with a code
+// and an argument, so object and array loops run them inline instead of calling them.
 export const ALWAYS = () => true;
 export const NEVER = () => false;
 const IS_STRING = (v) => typeof v === "string";
-const IS_NUMBER = (v) => typeof v === "number";
+const IS_NUMBER = (v) => Number.isFinite(v);
 const IS_INTEGER = (v) => Number.isInteger(v);
 const IS_BOOLEAN = (v) => typeof v === "boolean";
 const IS_NULL = (v) => v === null;
 export const IS_ARRAY = (v) => Array.isArray(v);
 const IS_BYTES = (v) => v instanceof Uint8Array;
+const IS_BIGINT = (v) => typeof v === "bigint";
+const IS_UNDEFINED = (v) => v === undefined;
 export const IS_OBJECT = (v) => isObject(v);
 /** Whether `v` is a JSON object: not null, an array or bytes. */
 export function isObject(v) {
     return typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array);
 }
-/** The check of a `type` name; `bytes` (a Uint8Array) extends JSON Schema for values that never pass through JSON. */
+/**
+ * The check of a `type` name. `bytes` (a Uint8Array), `bigint` (TypeBox's `Type.BigInt`) and `undefined` (TypeBox's
+ * `Type.Undefined`) extend JSON Schema for values that never pass through JSON. A `number` is finite, as in TypeBox:
+ * JSON has no NaN or Infinity, so only a value built in code can be one.
+ */
 export const TYPE_CHECKS = new Map([
     ["string", IS_STRING],
     ["number", IS_NUMBER],
@@ -24,40 +31,85 @@ export const TYPE_CHECKS = new Map([
     ["array", IS_ARRAY],
     ["object", IS_OBJECT],
     ["bytes", IS_BYTES],
+    ["bigint", IS_BIGINT],
+    ["undefined", IS_UNDEFINED],
 ]);
-/** Leaf checks that object and array loops run inline by code instead of calling them. */
-export const LEAF_CODES = new Map([
-    [IS_STRING, 1],
-    [IS_NUMBER, 2],
-    [IS_INTEGER, 3],
-    [IS_BOOLEAN, 4],
-    [IS_NULL, 5],
-    [ALWAYS, 6],
+const leaves = new WeakMap([
+    [IS_STRING, [1, undefined]],
+    [IS_NUMBER, [2, undefined]],
+    [IS_INTEGER, [3, undefined]],
+    [IS_BOOLEAN, [4, undefined]],
+    [IS_NULL, [5, undefined]],
+    [ALWAYS, [6, undefined]],
 ]);
-function leafOk(code, x) {
+/** The leaf form of `check`, undefined when it is not a leaf. */
+export function leafOf(check) {
+    return leaves.get(check);
+}
+function leaf(code, arg, check) {
+    leaves.set(check, [code, arg]);
+    return check;
+}
+/** Bounds of a number or a string length leaf. */
+class Bounds {
+    min;
+    max;
+    xmin;
+    xmax;
+    constructor(min, max, xmin, xmax) {
+        this.min = min;
+        this.max = max;
+        this.xmin = xmin;
+        this.xmax = xmax;
+    }
+}
+// Codes 1-6 are the bare types and `true`; the others read their argument.
+function leafOk(code, x, arg) {
     switch (code) {
         case 1:
             return typeof x === "string";
         case 2:
-            return typeof x === "number";
+            return Number.isFinite(x);
         case 3:
             return Number.isInteger(x);
         case 4:
             return typeof x === "boolean";
         case 5:
             return x === null;
+        case 7:
+            return x === arg;
+        case 8: {
+            const list = arg;
+            for (let i = 0; i < list.length; i++)
+                if (list[i] === x)
+                    return true;
+            return false;
+        }
+        case 9:
+            return (typeBits(x) & arg) !== 0;
+        case 10:
+            return Number.isInteger(x) && inBounds(x, arg);
+        case 11:
+            return Number.isFinite(x) && inBounds(x, arg);
+        case 12:
+            return typeof x === "string" && lengthOk(x, arg.min, arg.max);
+        case 13:
+            return typeof x === "string" && arg.test(x);
         default:
             return true;
     }
+}
+function inBounds(x, b) {
+    return x >= b.min && x <= b.max && x > b.xmin && x < b.xmax;
 }
 /** Whether a combined object or array check also checks the type: not at all, strictly, or passing other types. */
 export const GUARD_NONE = 0;
 export const GUARD_STRICT = 1;
 export const GUARD_LOOSE = 2;
 /** Flags of a declared property in an object check's entries: its leaf code and two bits. */
-export const CODE = 7;
-export const REQUIRED = 8;
-export const INHERITED = 16;
+export const CODE = 15;
+export const REQUIRED = 16;
+export const INHERITED = 32;
 /** All of `parts`; two and three parts get closures without a loop. */
 export function and(parts) {
     switch (parts.length) {
@@ -97,15 +149,58 @@ export function scopedCheck(scope, uri, check) {
 }
 /** Any of the named types. */
 export function typeCheck(types) {
-    const checks = types.map((t) => (typeof t === "string" ? TYPE_CHECKS.get(t) : undefined) ?? NEVER);
-    if (checks.length === 1)
-        return checks[0];
-    return (v) => {
-        for (let i = 0; i < checks.length; i++)
-            if (checks[i](v))
-                return true;
-        return false;
-    };
+    if (types.length === 1)
+        return (typeof types[0] === "string" ? TYPE_CHECKS.get(types[0]) : undefined) ?? NEVER;
+    return maskCheck(typeMask(types));
+}
+const TYPE_BITS = new Map([
+    ["string", 1],
+    ["number", 2],
+    ["integer", 4],
+    ["boolean", 8],
+    ["null", 16],
+    ["array", 32],
+    ["object", 64],
+    ["bytes", 128],
+    ["bigint", 256],
+    ["undefined", 512],
+]);
+/** The bits of the named types; unknown names add none. */
+export function typeMask(types) {
+    let mask = 0;
+    for (const t of types)
+        if (typeof t === "string")
+            mask |= TYPE_BITS.get(t) ?? 0;
+    return mask;
+}
+/** The type bits of `v`: an integer has the bits of `number` and `integer`; NaN and Infinity have neither. */
+function typeBits(v) {
+    switch (typeof v) {
+        case "string":
+            return 1;
+        case "number":
+            return Number.isInteger(v) ? 6 : Number.isFinite(v) ? 2 : 0;
+        case "boolean":
+            return 8;
+        case "object":
+            return v === null ? 16 : Array.isArray(v) ? 32 : v instanceof Uint8Array ? 128 : 64;
+        case "bigint":
+            return 256;
+        case "undefined":
+            return 512;
+        default:
+            return 0;
+    }
+}
+function maskCheck(mask) {
+    return leaf(9, mask, (v) => (typeBits(v) & mask) !== 0);
+}
+/** `anyOf` whose bare-type branches have the types of `mask`: those by one type test, the others by their checks. */
+export function maskedAnyCheck(mask, checks) {
+    if (checks.length === 0)
+        return maskCheck(mask);
+    const rest = checks.length === 1 ? checks[0] : anyCheck(checks);
+    return (v) => (typeBits(v) & mask) !== 0 || rest(v);
 }
 /** A Uint8Array within the length bounds. */
 export function bytesCheck(min, max) {
@@ -137,11 +232,13 @@ function lengthOk(s, min, max) {
 /** The string keywords: length bounds, pattern and format. */
 export function stringCheck(strict, min, max, re, format) {
     if (re !== undefined && min === 0 && max === Number.POSITIVE_INFINITY && format === undefined) {
-        return strict ? (v) => typeof v === "string" && re.test(v) : (v) => typeof v !== "string" || re.test(v);
+        return strict
+            ? leaf(13, re, (v) => typeof v === "string" && re.test(v))
+            : (v) => typeof v !== "string" || re.test(v);
     }
     if (re === undefined && format === undefined) {
         return strict
-            ? (v) => typeof v === "string" && lengthOk(v, min, max)
+            ? leaf(12, new Bounds(min, max, 0, 0), (v) => typeof v === "string" && lengthOk(v, min, max))
             : (v) => typeof v !== "string" || lengthOk(v, min, max);
     }
     return (v) => {
@@ -150,18 +247,39 @@ export function stringCheck(strict, min, max, re, format) {
         return lengthOk(v, min, max) && (re === undefined || re.test(v)) && (format === undefined || format(v));
     };
 }
-/** The number keywords. `mode`: 0 passes other types, 1 requires a number, 2 an integer. */
+/**
+ * The number keywords, for numbers and bigints alike (as TypeBox applies them): bounds of either kind compare with
+ * values of either kind. `mode`: 0 passes other types, 1 requires a number, 2 an integer, 3 a bigint.
+ */
 export function numberCheck(mode, min, max, xmin, xmax, multipleOf) {
-    return (v) => {
-        if (typeof v !== "number")
+    const check = (v) => {
+        if (typeof v !== "number" && typeof v !== "bigint")
             return mode === 0;
+        if (mode === 3 ? typeof v !== "bigint" : mode !== 0 && !Number.isFinite(v))
+            return false;
         if (mode === 2 && !Number.isInteger(v))
             return false;
         return v >= min && v <= max && v > xmin && v < xmax && (multipleOf === undefined || isMultiple(v, multipleOf));
     };
+    const plain = typeof min === "number" && typeof max === "number" && typeof xmin === "number" && typeof xmax === "number";
+    if (mode === 0 || mode === 3 || multipleOf !== undefined || !plain)
+        return check;
+    return leaf(mode === 2 ? 10 : 11, new Bounds(min, max, xmin, xmax), check);
 }
-/** Whether `v` is a multiple of `d`, exactly for decimals: 0.0075 / 0.0001 is 74.99999999999999 in floating point. */
+/**
+ * Whether `v` is a multiple of `d`, exactly for decimals: 0.0075 / 0.0001 is 74.99999999999999 in floating point. With
+ * a bigint on either side, exact integer arithmetic; a bigint is no multiple of 0 or of a fraction.
+ *
+ * Deliberately unlike TypeBox, which throws there (`BigInt(0.5)`, division by zero): a check answers for every value
+ * and never throws, and no real schema pairs a bigint with a fractional or zero `multipleOf`.
+ */
 export function isMultiple(v, d) {
+    if (typeof v === "bigint" || typeof d === "bigint") {
+        if ((typeof v === "number" && !Number.isInteger(v)) || (typeof d === "number" && !Number.isInteger(d)))
+            return false;
+        const divisor = BigInt(d);
+        return divisor !== 0n && BigInt(v) % divisor === 0n;
+    }
     const q = v / d;
     if (Number.isInteger(q))
         return true;
@@ -198,21 +316,29 @@ export function declaredObject(entries, requiredCount, closed, guard) {
         // Guarded: by the check above, or by the caller for GUARD_NONE.
         const o = v;
         let required = 0;
+        let next = 0;
         for (const k in o) {
-            let i = 0;
-            while (i < n && entries[i] !== k)
-                i += 3;
-            if (i === n) {
-                if (closed)
-                    return false;
-                continue;
+            // Keys usually come in the declared order: try the entry after the last match before searching.
+            let i = next;
+            if (entries[i] !== k) {
+                i = 0;
+                while (i < n && entries[i] !== k)
+                    i += 3;
+                if (i === n) {
+                    if (closed)
+                        return false;
+                    continue;
+                }
             }
+            next = i + 3;
             const x = o[k];
-            if (x === undefined)
-                continue;
             const f = entries[i + 2];
+            // An optional property set to undefined counts as absent; a required one is present, and its schema decides
+            // whether undefined is a value of it (TypeBox's Type.Undefined, Unknown, Any).
+            if (x === undefined && !(f & REQUIRED))
+                continue;
             const c = f & CODE;
-            if (c !== 0 ? !leafOk(c, x) : !entries[i + 1](x))
+            if (c !== 0 ? !leafOk(c, x, entries[i + 1]) : !entries[i + 1](x))
                 return false;
             if (f & REQUIRED)
                 required++;
@@ -231,13 +357,14 @@ export function openObject(entries, keys, extraRequired, patterns, additional, g
             const k = entries[i];
             const x = o[k];
             const f = entries[i + 2];
-            if (x === undefined || (f & INHERITED && !Object.hasOwn(o, k))) {
+            // Absent, or an optional property set to undefined (which counts as absent); see declaredObject.
+            if ((x === undefined && !(f & REQUIRED && Object.hasOwn(o, k))) || (f & INHERITED && !Object.hasOwn(o, k))) {
                 if (f & REQUIRED)
                     return false;
                 continue;
             }
             const c = f & CODE;
-            if (c !== 0 ? !leafOk(c, x) : !entries[i + 1](x))
+            if (c !== 0 ? !leafOk(c, x, entries[i + 1]) : !entries[i + 1](x))
                 return false;
         }
         for (let i = 0; i < extraRequired.length; i++)
@@ -299,10 +426,11 @@ export function dependentSchemasCheck(entries) {
         return true;
     };
 }
+const NO_LEAF = [0, undefined];
 /** The common array: guard, length bounds, prefix items and the items after them, in one closure. */
 export function listCheck(guard, min, max, prefix, rest) {
     const n = prefix.length;
-    const code = rest === undefined ? 0 : (LEAF_CODES.get(rest) ?? 0);
+    const [code, arg] = (rest === undefined ? undefined : leafOf(rest)) ?? NO_LEAF;
     return (v) => {
         if (!Array.isArray(v))
             return guard === GUARD_LOOSE;
@@ -317,7 +445,7 @@ export function listCheck(guard, min, max, prefix, rest) {
             return true;
         if (code !== 0) {
             for (let i = n; i < length; i++)
-                if (!leafOk(code, v[i]))
+                if (!leafOk(code, v[i], arg))
                     return false;
             return true;
         }
@@ -359,12 +487,12 @@ export function uniqueCheck(v) {
 export function enumCheck(values) {
     const primitives = values.filter((x) => typeof x !== "object" || x === null);
     if (primitives.length === values.length && primitives.length <= 8) {
-        return (v) => {
+        return leaf(8, primitives, (v) => {
             for (let i = 0; i < primitives.length; i++)
                 if (primitives[i] === v)
                     return true;
             return false;
-        };
+        });
     }
     const set = new Set(primitives);
     const objects = values.filter((x) => typeof x === "object" && x !== null);
@@ -373,7 +501,7 @@ export function enumCheck(values) {
 /** `const`. */
 export function constCheck(value) {
     if (typeof value !== "object" || value === null)
-        return (v) => v === value;
+        return leaf(7, value, (v) => v === value);
     return (v) => deepEqual(v, value);
 }
 /** `anyOf`. */
@@ -415,7 +543,10 @@ export function taggedCheck(key, tags, checks) {
         return false;
     };
 }
-/** JSON equality: same primitives, arrays with equal items in order, objects with the same keys and equal values. */
+/**
+ * JSON equality, as `const`, `enum` and `uniqueItems` compare: the same primitives, arrays with equal items in order,
+ * objects with the same keys and equal values (key order does not matter).
+ */
 export function deepEqual(a, b) {
     if (a === b)
         return true;

@@ -63,7 +63,8 @@ export function createFindToolDefinition(cwd, options) {
                 (async () => {
                     try {
                         const searchPath = resolveToCwd(searchDir || ".", ctx?.cwd || cwd);
-                        const effectiveLimit = limit ?? DEFAULT_LIMIT;
+                        // fd treats --max-results 0 as unlimited, so a limit below 1 means 1.
+                        const effectiveLimit = Math.max(1, Math.floor(limit ?? DEFAULT_LIMIT));
                         const ops = customOps ?? defaultFindOperations;
                         // If custom operations provide glob(), use that instead of fd.
                         if (customOps?.glob) {
@@ -75,9 +76,10 @@ export function createFindToolDefinition(cwd, options) {
                                 settle(() => reject(new Error("Operation aborted")));
                                 return;
                             }
+                            // One result past the limit tells "exactly N matches" apart from "more than N".
                             const results = await ops.glob(pattern, searchPath, {
                                 ignore: ["**/node_modules/**", "**/.git/**"],
-                                limit: effectiveLimit,
+                                limit: effectiveLimit + 1,
                             });
                             if (signal?.aborted) {
                                 settle(() => reject(new Error("Operation aborted")));
@@ -90,9 +92,11 @@ export function createFindToolDefinition(cwd, options) {
                                 }));
                                 return;
                             }
+                            const resultLimitReached = results.length > effectiveLimit;
                             // Relativize paths against the search root for stable output.
-                            const relativized = results.map((p) => relativizeFindResultPath(p, searchPath));
-                            const resultLimitReached = relativized.length >= effectiveLimit;
+                            const relativized = results
+                                .slice(0, effectiveLimit)
+                                .map((p) => relativizeFindResultPath(p, searchPath));
                             const rawOutput = relativized.join("\n");
                             const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
                             let resultOutput = truncation.content;
@@ -143,7 +147,8 @@ export function createFindToolDefinition(cwd, options) {
                         }
                         if (!insideGitRepo)
                             args.push("--no-require-git");
-                        args.push("--max-results", String(effectiveLimit));
+                        // One result past the limit tells "exactly N matches" apart from "more than N" (#7121).
+                        args.push("--max-results", String(effectiveLimit + 1));
                         // fd --glob matches against the basename unless --full-path is set; in --full-path
                         // mode it matches against the absolute candidate path, so a path-containing
                         // pattern like 'src/**/*.spec.ts' needs a leading '**/' to match anything.
@@ -161,7 +166,13 @@ export function createFindToolDefinition(cwd, options) {
                         const child = spawn(fdPath, args, { stdio: ["ignore", "pipe", "pipe"] });
                         const rl = createInterface({ input: child.stdout });
                         let stderr = "";
-                        const lines = [];
+                        // Results within the limit, stored only up to the first one past the byte cap:
+                        // truncateHead drops the rest anyway, so they are counted but not kept.
+                        const storedResults = [];
+                        let resultCount = 0;
+                        // Byte size of all results within the limit, each counted with a trailing newline.
+                        let outputBytes = 0;
+                        let resultLimitReached = false;
                         stopChild = () => {
                             if (!child.killed) {
                                 child.kill();
@@ -173,8 +184,19 @@ export function createFindToolDefinition(cwd, options) {
                         child.stderr?.on("data", (chunk) => {
                             stderr += chunk.toString();
                         });
-                        rl.on("line", (line) => {
-                            lines.push(line);
+                        rl.on("line", (rawLine) => {
+                            const line = rawLine.replace(/\r$/, "").trim();
+                            if (!line)
+                                return;
+                            if (resultCount === effectiveLimit) {
+                                resultLimitReached = true;
+                                return;
+                            }
+                            const result = relativizeFindResultPath(line, searchPath);
+                            resultCount++;
+                            if (outputBytes - 1 <= DEFAULT_MAX_BYTES)
+                                storedResults.push(result);
+                            outputBytes += Buffer.byteLength(result, "utf-8") + 1;
                         });
                         child.on("error", (error) => {
                             cleanup();
@@ -186,31 +208,25 @@ export function createFindToolDefinition(cwd, options) {
                                 settle(() => reject(new Error("Operation aborted")));
                                 return;
                             }
-                            const output = lines.join("\n");
-                            if (code !== 0) {
+                            if (code !== 0 && resultCount === 0) {
                                 const errorMsg = stderr.trim() || `fd exited with code ${code}`;
-                                if (!output) {
-                                    settle(() => reject(new Error(errorMsg)));
-                                    return;
-                                }
+                                settle(() => reject(new Error(errorMsg)));
+                                return;
                             }
-                            if (!output) {
+                            if (resultCount === 0) {
                                 settle(() => resolve({
                                     content: [{ type: "text", text: "No files found matching pattern" }],
                                     details: undefined,
                                 }));
                                 return;
                             }
-                            const relativized = [];
-                            for (const rawLine of lines) {
-                                const line = rawLine.replace(/\r$/, "").trim();
-                                if (!line)
-                                    continue;
-                                relativized.push(relativizeFindResultPath(line, searchPath));
-                            }
-                            const resultLimitReached = relativized.length >= effectiveLimit;
-                            const rawOutput = relativized.join("\n");
-                            const truncation = truncateHead(rawOutput, { maxLines: Number.MAX_SAFE_INTEGER });
+                            // Stored results extend past the byte cap when more exist, so truncateHead decides
+                            // truncation as for the full output; only the totals need the unstored rest.
+                            const truncation = {
+                                ...truncateHead(storedResults.join("\n"), { maxLines: Number.MAX_SAFE_INTEGER }),
+                                totalLines: resultCount,
+                                totalBytes: outputBytes - 1,
+                            };
                             let resultOutput = truncation.content;
                             const details = {};
                             const notices = [];

@@ -30,7 +30,7 @@ func (tool disposeWaitTool) Execute(ctx context.Context, _ string, _ json.RawMes
 	return agent.AgentToolResult{}, errors.New("Operation aborted")
 }
 
-// pi: test/suite/regressions/9124-runtime-dispose-tool-settlement.test.ts (Pi main 7a53c310a, #9126; D247). Closing the runtime
+// pi: test/suite/regressions/9124-runtime-dispose-tool-settlement.test.ts (Pi main 7a53c310a, #9126). Closing the runtime
 // during a tool settles the interrupted turn before the session is disconnected, and session_shutdown reaches extensions after it.
 func TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown(t *testing.T) {
 	tool := disposeWaitTool{started: make(chan struct{})}

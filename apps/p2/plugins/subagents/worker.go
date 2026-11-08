@@ -265,28 +265,22 @@ func toolsContribution(shared *reports) func(self host.StoreSelf) error {
 				})
 				return err
 			}))
+		// Only the sidebar orders by activity, and it lists no one-shot agents: their entries do not report. The set is also
+		// what refuses steering them: the check runs on the host's loop, where a read of the session would wait for a
+		// publication that loop has to deliver, so it never reads the Durable registry.
+		var oneShotsMu sync.Mutex
+		oneShots := map[durable.ConversationId]bool{}
 		// A one-shot agent belongs to the script waiting for its answer: it can be read and stopped, not steered.
 		p2runtime.ContributeKeyed(self, p2runtime.ReadOnlyConversations, p2runtime.Entry[p2runtime.ReadOnlyCheck]("subagents",
-			func(ctx host.Ctx, conversation int) (string, error) {
-				opened, err := session()
-				if err != nil {
-					return "", err
-				}
-				registry, err := contract.Registry(ctx, opened)
-				if err != nil {
-					return "", err
-				}
-				for _, agent := range registry.OneShots {
-					if int(agent.ConversationId) == conversation {
-						return readOnly, nil
-					}
+			func(_ host.Ctx, conversation int) (string, error) {
+				oneShotsMu.Lock()
+				defer oneShotsMu.Unlock()
+				if oneShots[durable.ConversationId(conversation)] {
+					return readOnly, nil
 				}
 				return "", nil
 			}))
 
-		// Only the sidebar orders by activity, and it lists no one-shot agents: their entries do not report.
-		var oneShotsMu sync.Mutex
-		oneShots := map[durable.ConversationId]bool{}
 		commits := self.Open(
 			func(context.Context) (any, error) {
 				opened, err := session()

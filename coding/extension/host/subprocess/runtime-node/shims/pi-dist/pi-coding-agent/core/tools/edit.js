@@ -2,7 +2,7 @@ import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile, writeFile as fsWriteFile } from "fs/promises";
 import { Type } from "../../../../typebox.mjs";
 import { splitBom } from "../../utils/text.js";
-import { applyEditsToNormalizedContent, detectLineEnding, generateDiffString, generateUnifiedPatch, normalizeToLF, restoreLineEndings, } from "./edit-diff.js";
+import { applyEditsToNormalizedContent, applyReplacementsToOriginal, generateEditDiff, normalizeToLF, } from "./edit-diff.js";
 import { withFileMutationQueue } from "../../../../file-mutation-queue-bridge.mjs";
 import { resolveToCwd } from "./path-utils.js";
 import { editRenderers } from "./renderers/edit.js";
@@ -116,15 +116,16 @@ export function createEditToolDefinition(cwd, options) {
                 throwIfAborted();
                 // Strip BOM before matching. The model will not include an invisible BOM in oldText.
                 const { bom, text: content } = splitBom(rawContent);
-                const originalEnding = detectLineEnding(content);
                 const normalizedContent = normalizeToLF(content);
-                const { baseContent, newContent } = applyEditsToNormalizedContent(normalizedContent, edits, path);
+                const { baseContent, newContent, replacements } = applyEditsToNormalizedContent(normalizedContent, edits, path);
+                // Diff before writing, so diff computation cannot fail after the write.
+                const editDiff = generateEditDiff(path, baseContent, newContent, replacements);
                 throwIfAborted();
-                const finalContent = bom + restoreLineEndings(newContent, originalEnding);
+                // Splice into the original text, so untouched lines keep their line endings. Without any CR
+                // the original is the normalized text, and the normalized result is already final.
+                const finalContent = bom + (content === normalizedContent ? newContent : applyReplacementsToOriginal(content, replacements));
                 await ops.writeFile(absolutePath, finalContent);
                 throwIfAborted();
-                const diffResult = generateDiffString(baseContent, newContent);
-                const patch = generateUnifiedPatch(path, baseContent, newContent);
                 return {
                     content: [
                         {
@@ -132,7 +133,7 @@ export function createEditToolDefinition(cwd, options) {
                             text: `Successfully replaced ${edits.length} block(s) in ${path}.`,
                         },
                     ],
-                    details: { diff: diffResult.diff, patch, firstChangedLine: diffResult.firstChangedLine },
+                    details: editDiff,
                 };
             });
         },
