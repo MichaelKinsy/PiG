@@ -278,11 +278,11 @@ func TestEmitHelpers_NilRunnerIsNoOp(t *testing.T) {
 	_ = emitBeforeAgentStart(nil, "x", extension.BuildSystemPromptOptions{})
 	_, _ = emitUserBash(t.Context(), nil, "ls", "/", false)
 	emitAgentStart(nil)
-	emitAgentEnd(nil, nil, false)
+	emitAgentEnd(nil, nil, false, nil)
 	emitTurnStart(nil, 0)
-	emitTurnEnd(nil, agent.TurnEndEvent{})
-	emitMessageStart(nil, agent.MessageStartEvent{}, agent.AgentMessage{})
-	emitMessageEnd(nil, agent.MessageEndEvent{}, agent.AgentMessage{})
+	emitTurnEnd(nil, agent.TurnEndEvent{}, nil)
+	emitMessageStart(nil, agent.MessageStartEvent{}, agent.AgentMessage{}, nil)
+	emitMessageEnd(nil, agent.MessageEndEvent{}, agent.AgentMessage{}, nil)
 	emitToolExecutionStart(nil, "id", "bash", nil, "")
 	emitToolExecutionUpdate(nil, "id", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "partial"}}}, nil, "")
 	emitToolExecutionEnd(nil, agent.ToolExecutionEndEvent{ToolCallID: "id", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}})
@@ -331,7 +331,7 @@ func TestEmitAgentStart_BridgesToRunner(t *testing.T) {
 func TestEmitAgentEnd_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventAgentEnd, func() { fired.Add(1) })
-	emitAgentEnd(fresh, nil, false)
+	emitAgentEnd(fresh, nil, false, nil)
 	if got := fired.Load(); got != 1 {
 		t.Errorf("agent_end handler fired %d times, want 1", got)
 	}
@@ -355,7 +355,7 @@ func TestEmitAgentEnd_BridgesPayload(t *testing.T) {
 	}
 	fresh := inproc.NewRunner([]extension.Extension{ext}, ".")
 	msgs := []agent.AgentMessage{{}, {}}
-	emitAgentEnd(fresh, msgs, true)
+	emitAgentEnd(fresh, msgs, true, nil)
 	got := captured.Load()
 	if got == nil {
 		t.Fatal("handler did not fire")
@@ -378,7 +378,7 @@ func TestEmitTurnStart_BridgesToRunner(t *testing.T) {
 func TestEmitTurnEnd_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventTurnEnd, func() { fired.Add(1) })
-	emitTurnEnd(fresh, agent.TurnEndEvent{})
+	emitTurnEnd(fresh, agent.TurnEndEvent{}, nil)
 	if got := fired.Load(); got != 1 {
 		t.Errorf("turn_end handler fired %d times, want 1", got)
 	}
@@ -407,7 +407,7 @@ func TestEmitTurnEnd_BridgesPayload(t *testing.T) {
 		ToolResults:        trs,
 		MessageEntryID:     "assistant-entry",
 		ToolResultEntryIDs: []string{"tool-entry"},
-	})
+	}, nil)
 	got := captured.Load()
 	if got == nil {
 		t.Fatal("handler did not fire")
@@ -427,7 +427,7 @@ func TestEmitTurnEnd_BridgesPayload(t *testing.T) {
 func TestEmitMessageStart_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventMessageStart, func() { fired.Add(1) })
-	emitMessageStart(fresh, agent.MessageStartEvent{}, agent.AgentMessage{})
+	emitMessageStart(fresh, agent.MessageStartEvent{}, agent.AgentMessage{}, nil)
 	if got := fired.Load(); got != 1 {
 		t.Errorf("message_start handler fired %d times, want 1", got)
 	}
@@ -436,7 +436,7 @@ func TestEmitMessageStart_BridgesToRunner(t *testing.T) {
 func TestEmitMessageEnd_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventMessageEnd, func() { fired.Add(1) })
-	emitMessageEnd(fresh, agent.MessageEndEvent{}, agent.AgentMessage{})
+	emitMessageEnd(fresh, agent.MessageEndEvent{}, agent.AgentMessage{}, nil)
 	if got := fired.Load(); got != 1 {
 		t.Errorf("message_end handler fired %d times, want 1", got)
 	}

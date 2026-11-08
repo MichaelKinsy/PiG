@@ -129,6 +129,7 @@ export async function extensionRunnerScript({ cwd, agentDir, runnerProbeA, runne
   const started = await runner.emitBeforeAgentStart({ messageType: "user", prompt: "do it", images: undefined }, { cwd, customPrompt: "base" });
   const forced = started.systemPromptOptions.forceSystemPrompt;
   emits.beforeAgentStart = { messages: started.messages, forced: { startsWithBase: forced.startsWith("base"), endsWithA: forced.endsWith("[A]") }, customPrompt: started.systemPromptOptions.customPrompt };
+  await runner.emit({ type: "message_start", message: { role: "user", content: "hi", timestamp: 1 } });
   emits.messageEnd = await runner.emitMessageEnd({ type: "message_end", message: { role: "user", content: "hi", timestamp: 1 } });
   emits.providerRequest = await runner.emitBeforeProviderRequest({ model: "m" });
   emits.providerHeaders = await runner.emitBeforeProviderHeaders({ "x-del": "d", "x-keep": "k" });

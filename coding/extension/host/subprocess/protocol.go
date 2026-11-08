@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
 // pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current or invokes apply/trigger, while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
@@ -584,6 +585,8 @@ type SessionStatePayload struct {
 	EntriesAppended  []json.RawMessage `json:"entriesAppended,omitempty"`
 	EntryCount       int               `json:"entryCount"`
 	EntriesRemaining bool              `json:"entriesRemaining,omitempty"`
+	// MessageEntries names, for the entries message_end persisted since the last push, the sequence the message_end request carried for each (RequestPayload.MessageSeqs). A Node runtime that kept the object a handler held for that sequence gives the entry that object, as Pi's entry holds the event's own message. They ride on every push, whether or not the runtime has the log: a runtime that reads the session file later binds the entries it finds there by id.
+	MessageEntries []sessionentry.MessageSeq `json:"messageEntries,omitempty"` //portlint:allow emptydrop a PiG-only frame field; absent means no entry was persisted since the last push
 	// Info carries the session manager facts the log does not hold: the
 	// header, cwd, session directory, and whether the session persists
 	// (upstream getHeader, getCwd, getSessionDir, isPersisted,
@@ -607,6 +610,8 @@ type RequestPayload struct {
 	ChildSession string `json:"child_session,omitempty"`
 	// ToolCallIndex, on tool_call, is the call's position among the tool calls of the assistant message that issued it (its batch). Absent for a call no assistant message issued (a nested executeTool call).
 	ToolCallIndex *int `json:"tool_call_index,omitempty"`
+	// MessageSeqs, on message_start, message_end, turn_end and agent_end, numbers the messages the event carries, in the order the event holds them (message_start and message_end have one, turn_end has its message and then its tool results, agent_end its messages): the sequence the session gave each, 0 for a message Pi shares no object for. The same message has the same number in every event and in SessionStatePayload.MessageEntries, so a Node runtime hands each handler the one object Pi's handlers share (agent-session.ts appendMessage stores the message object message_end carried).
+	MessageSeqs []uint64 `json:"message_seqs,omitempty"` //portlint:allow emptydrop a PiG-only frame field; absent means no message of the event is shared
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
@@ -737,6 +742,24 @@ func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*p = ToolCallResponsePayload(decoded)
+	return nil
+}
+
+// MessageEndResponsePayload is the result of a Node runtime's message_end handler. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+type MessageEndResponsePayload struct {
+	Message json.RawMessage `json:"_pigMessageEndMessage"`
+	Result  json.RawMessage `json:"_pigMessageEndResult"`
+}
+
+func (p *MessageEndResponsePayload) UnmarshalJSON(data []byte) error {
+	type messageEndResponsePayload MessageEndResponsePayload
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var decoded messageEndResponsePayload
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	*p = MessageEndResponsePayload(decoded)
 	return nil
 }
 
