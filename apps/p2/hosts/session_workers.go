@@ -86,7 +86,54 @@ type SessionWorkers struct {
 	lastPid map[string]int
 	chains  map[string]chan struct{}
 	stop    func()
-	done    chan struct{}
+	retries *retryHost
+	// told is what the observers of `Hosts.workers` were last told of each session's worker (the end of a publication),
+	// by address key; toldChanged is closed and replaced at each publication that told something.
+	told        map[string]toldState
+	toldChanged chan struct{}
+	done        chan struct{}
+	closeOnce   sync.Once
+}
+
+// toldState is a worker as its observers were told: its status and pid (-1: none).
+type toldState struct {
+	status string
+	pid    int
+}
+
+// retryHost is the host the workers component routes on: its route handle's Retry also keeps what it reported for each
+// address, whether it started a resolve (held, no link, none running). The component's own Retry drops it (as Pi's does:
+// Pi's caller reads what its synchronous `resolve` recorded, in one event loop), and `started` needs it: a start the retry
+// began shows in the workers' state in time, one it did not begin never will.
+type retryHost struct {
+	host.Host
+	mu    sync.Mutex
+	began map[string]bool
+}
+
+func (h *retryHost) Route(kind *contracts.HostKind, options host.RouteOptions, ctx context.Context) (host.RouteHandle, error) {
+	handle, err := h.Host.Route(kind, options, ctx)
+	if err != nil {
+		return handle, err
+	}
+	retry := handle.Retry
+	handle.Retry = func(address contracts.Address) bool {
+		began := retry(address)
+		h.mu.Lock()
+		h.began[address.Key] = began
+		h.mu.Unlock()
+		return began
+	}
+	return handle, nil
+}
+
+// tookBegan reports, once, whether the last Retry of address started a resolve.
+func (h *retryHost) tookBegan(address contracts.Address) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	began := h.began[address.Key]
+	delete(h.began, address.Key)
+	return began
 }
 
 var _ p2runtime.SessionWorkerControl = (*SessionWorkers)(nil)
@@ -98,7 +145,8 @@ func NewSessionWorkers(options SessionWorkersOptions, ctx context.Context) (*Ses
 		options: options, generations: map[string]int{}, listeners: map[int]func(p2runtime.HostEvent){}, observers: map[int]host.FollowObserver[any]{},
 		states: map[string]p2runtime.WorkerState{}, writers: map[string]*p2runtime.LogWriter{}, reasons: map[string]string{},
 		exits: map[string]string{}, crashRestart: map[string][]time.Time{}, last: map[string]string{}, lastPid: map[string]int{}, chains: map[string]chan struct{}{},
-		done: make(chan struct{}),
+		done: make(chan struct{}), told: map[string]toldState{}, toldChanged: make(chan struct{}),
+		retries: &retryHost{Host: options.Host, began: map[string]bool{}},
 	}
 	p2runtime.ProcessLogs.Redactor.AddDirectory(options.DataDir)
 	for key, value := range options.Env {
@@ -116,7 +164,7 @@ func NewSessionWorkers(options SessionWorkersOptions, ctx context.Context) (*Ses
 	}
 	// No roots: the set of scripts is empty and nothing is built or started (the workers' plugins are compiled in).
 	w.plugins = plugins.CreatePlugins(plugins.PluginsOptions{Kinds: []plugins.KindDefinition{{Name: workerKind}}}, ctx)
-	w.workers, err = workers.CreateWorkers(options.Host, p2runtime.SessionKind, workers.WorkersOptions{
+	w.workers, err = workers.CreateWorkers(w.retries, p2runtime.SessionKind, workers.WorkersOptions{
 		Kind:     workerKind,
 		Entry:    options.Entry,
 		ExecArgv: options.ExecArgv,
@@ -488,6 +536,7 @@ func (w *SessionWorkers) Suspend(ctx context.Context, session string) error {
 
 // Close stops every worker; their exits are no news to subscribers (the server's objects close next).
 func (w *SessionWorkers) Close(ctx context.Context) error {
+	w.closeOnce.Do(func() { close(w.done) })
 	w.mu.Lock()
 	w.listeners = map[int]func(p2runtime.HostEvent){}
 	stop := w.stop
@@ -509,10 +558,12 @@ func (w *SessionWorkers) suspended(session string, work func(ctx context.Context
 		return err
 	}
 	err := work(chordctx.Background())
-	if retry := w.workers.Retry(address, chordctx.Background()); retry != nil && err == nil {
+	retry := w.workers.Retry(address, chordctx.Background())
+	began := w.retries.tookBegan(address)
+	if retry != nil && err == nil {
 		err = retry
 	}
-	if started := w.started(session); started != nil && err == nil {
+	if started := w.started(session, began); started != nil && err == nil {
 		err = started
 	}
 	return err
@@ -562,16 +613,68 @@ func (w *SessionWorkers) whileRunning(ctx context.Context, session string, timeo
 	}
 }
 
-// started blocks until a start of the session's worker the retry began (its holders') is running or failed.
-func (w *SessionWorkers) started(session string) error {
-	// The route resolves its held addresses asynchronously: the start shows within a few turns, or never (unheld).
-	shows, cancel := context.WithTimeout(chordctx.Background(), 50*time.Millisecond)
-	_ = w.until(shows, func(states *delta.JsonObject) bool { return statusIn(states, session) != "" })
-	cancel()
-	if w.statusOf(session) != "starting" {
+// started blocks until the start of the session's worker that its retry began (its holders') is running or failed, and the
+// observers of `Hosts.workers` were told what the workers' state shows: callers read that next.
+//
+// Pi's `#started` yields five turns of its event loop for the route to resolve its held addresses, then waits for a start
+// that shows. Go has no turns to count, and the route says it plainly: began is whether the retry started a resolve (the
+// address is held, its link gone: a stop returns once its worker's link closed), so a start is awaited exactly when one is
+// coming, and an unheld session waits for nothing. One already under way (starting) is awaited as well.
+func (w *SessionWorkers) started(session string, began bool) error {
+	if !began && w.statusOf(session) != "starting" {
 		return nil
 	}
-	return w.until(chordctx.Background(), func(states *delta.JsonObject) bool { return statusIn(states, session) != "starting" })
+	err := w.until(chordctx.Background(), func(states *delta.JsonObject) bool {
+		status := statusIn(states, session)
+		if began {
+			return status == "running" || status == "failed"
+		}
+		return status != "starting"
+	})
+	if err != nil {
+		return err
+	}
+	w.shown(session)
+	return nil
+}
+
+// shown blocks until the observers of `Hosts.workers` were told what the workers' state shows of the session now: the
+// publication follows the state on its own goroutine, and Pi's follows it first (its waiters resume after it). It ends
+// with Close.
+func (w *SessionWorkers) shown(session string) {
+	key := "session|" + session
+	for {
+		status, pid := workerEntry(w.stateObject(), key)
+		w.mu.Lock()
+		told, have := w.told[key]
+		changed := w.toldChanged
+		w.mu.Unlock()
+		if status == "" && !have || have && told.status == status && told.pid == pid {
+			return
+		}
+		select {
+		case <-changed:
+		case <-w.done:
+			return
+		}
+	}
+}
+
+// workerEntry is the status and pid (-1: none) of the worker at key in states; "" when it has none.
+func workerEntry(states *delta.JsonObject, key string) (status string, pid int) {
+	pid = -1
+	if states == nil {
+		return "", pid
+	}
+	entry, _ := states.Value(key).(*delta.JsonObject)
+	if entry == nil {
+		return "", pid
+	}
+	status, _ = entry.Value("status").(string)
+	if value, ok := entry.Value("pid").(float64); ok {
+		pid = int(value)
+	}
+	return status, pid
 }
 
 func (w *SessionWorkers) writer(session, stream string) *p2runtime.LogWriter {
@@ -711,6 +814,7 @@ func (w *SessionWorkers) publish(states *delta.JsonObject) {
 		}
 	}
 	var events []p2runtime.HostEvent
+	var touched []string
 	for _, key := range keys {
 		entry, _ := states.Value(key).(*delta.JsonObject)
 		status := ""
@@ -752,6 +856,7 @@ func (w *SessionWorkers) publish(states *delta.JsonObject) {
 			w.last[key], w.lastPid[key] = status, pid
 		}
 		events = append(events, event)
+		touched = append(touched, key)
 		if _, known := w.states[event.Session]; !known {
 			w.stateOrder = append(w.stateOrder, event.Session)
 		}
@@ -779,6 +884,19 @@ func (w *SessionWorkers) publish(states *delta.JsonObject) {
 	for _, observer := range observers {
 		observer.Advance(chord.WatchCall[any]{Kind: chord.WatchCallValue, Value: value, Ops: []delta.Op{{"r", value}}}, chordctx.Background())
 	}
+	// Told: what `shown` waits for.
+	w.mu.Lock()
+	for _, key := range touched {
+		if status, ok := w.last[key]; ok {
+			w.told[key] = toldState{status: status, pid: w.lastPid[key]}
+		} else {
+			delete(w.told, key)
+		}
+	}
+	changed := w.toldChanged
+	w.toldChanged = make(chan struct{})
+	w.mu.Unlock()
+	close(changed)
 }
 
 func sortedIDs[V any](m map[int]V) []int {
