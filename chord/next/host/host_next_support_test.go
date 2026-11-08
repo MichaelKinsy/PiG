@@ -1694,7 +1694,7 @@ func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ con
 }
 
 // incarnationOf is a host's incarnation, which its handshakes send.
-func incarnationOf(host Host) string { return host.(*chordHost).incarnation }
+func incarnationOf(host Host) string { return host.Incarnation() }
 
 // countingCompression is Pi's `countInflated()`: a compression whose Inflate output bytes are counted. Go forced
 // difference: Pi stubs the global `DecompressionStream` that a host without compression uses for async inflates; Go's
