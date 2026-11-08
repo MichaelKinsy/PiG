@@ -219,6 +219,10 @@ type Host interface {
 	// (`unavailable`, not served here). Go addition (D605): Pi's server runs its plugins in its own host; the Go kit's plugins
 	// run in a Node subprocess behind this host.
 	Delegate(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
+	// Serves is whether this host serves a type under name (its published table, by which Delegate decides: a restarting or
+	// parked type is still served). The delegate's host asks it to hand this host the types placed on its own address that
+	// it does not serve itself (D605: the delegation goes both ways, as Pi's one host serves the union).
+	Serves(name string) bool
 	// Revoke revokes revocation (§4, R10, R11), synchronously: every remote object whose principal it revokes (`RevokedBy`)
 	// ends at once, whatever references remain (holders get `forbidden`, running calls are aborted, an activation is
 	// abandoned); every child link whose principal it revokes closes (never the parent, never this host's own principal);
@@ -946,6 +950,13 @@ func (h *chordHost) Root(fn func(ctx Ctx) (any, error), ctx context.Context, opt
 	}
 	// The scope's ctx acts as principal.
 	return h.roots.run(fn, principal, ctx)
+}
+
+// Serves implements Host.
+func (h *chordHost) Serves(name string) bool {
+	served := false
+	h.enter(func() { served = h.served(name) != nil })
+	return served
 }
 
 // UnservedNames are the names requests here wait for unbound that no plugin here serves (types and registries:
@@ -2111,8 +2122,9 @@ func (h *chordHost) unboundRequest(table *staged, request request, failed *named
 		if entry != nil && !failed.has(provider) {
 			return ""
 		}
-		// A remote type the object reaches on another host: placed by the rollout's rules, not this host's.
-		if !h.placedHere(contract, request.params) {
+		// A remote type the object reaches on another host, or the delegate's (what the staged table does not serve): placed by the
+		// rollout's rules, not this host's.
+		if !h.placedHere(table, contract, request.params) {
 			return ""
 		}
 		if entry != nil && h.wouldBind(entry, contract, request.params) {
@@ -2161,10 +2173,10 @@ func (h *chordHost) wouldBind(entry *served, typ *contracts.Contract, params *de
 	return err == nil && cause == nil
 }
 
-// placedHere reports whether a request for typ with params goes here; a `hostAddress` that fails: not here (it fails at
-// bind).
-func (h *chordHost) placedHere(typ *contracts.Contract, params *delta.JsonObject) bool {
-	here, err := h.destination.placedHere(typ, params)
+// placedHere reports whether a request for typ with params goes here, by what table serves (the delegate takes what it does not); a
+// `hostAddress` that fails: not here (it fails at bind).
+func (h *chordHost) placedHere(table *staged, typ *contracts.Contract, params *delta.JsonObject) bool {
+	here, err := h.destination.placedHere(typ, params, table.types.has)
 	return err == nil && here
 }
 

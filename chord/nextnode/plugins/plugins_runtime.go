@@ -108,6 +108,12 @@ type RuntimeLoad struct {
 	// own objects (BridgedFacet), so a plugin that needs such a type binds to it, and Pi's closure rule and reload rules
 	// treat the Go core facets as they treat any facet. NodeHost.SetBridged changes the set for the reloads.
 	Bridged []BridgedFacet
+	// ParentServes is whether the Go host this host's link attaches to serves a remote type by name: a hold of a remote type
+	// placed on this host's own address that Go host serves goes over the link to it, where Pi's one host binds it (the
+	// delegation of that host's `Delegate`, in the other direction: D605). The subprocess host asks it synchronously, as
+	// PrincipalKey, and keeps each answer until its next load or reload. Nil: every remote type placed on this host's address
+	// is this host's own.
+	ParentServes func(name string) bool
 }
 
 // PluginError is Load's error when a required root did not deliver its plugins: some failed (their build, evaluation or

@@ -2,6 +2,8 @@ package host
 
 import (
 	"context"
+	"reflect"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -165,6 +167,41 @@ func TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched(t *testing.T
 	}
 }
 
+func TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack(t *testing.T) {
+	r := newDelegateRig(t)
+	b := r.hold(t, r.tab, r.B)
+	wantMember(t, b, 2)
+	r.allow.Store(false)
+	must(t, r.delegate.Close(background))
+	scopeEventually(t, "the delegate's holder left live", func() bool { return routeState(b).Kind != RefStateLive })
+	scopeEventually(t, "the re-resolve failed", func() bool { return r.resolves.Load() >= 2 })
+	// A hold made now is the delegate's too (the table says the server does not serve `app.b`): it waits on the resolve's own error,
+	// not on `not served here`, which would be the server holding the type itself and never leaving it.
+	during := r.hold(t, r.tab, r.B)
+	wantRouteWaiting(t, during, "server: "+context.Canceled.Error())
+	// A new delegate is up and resolved again: the holder that was live, the hold made while it was down and a new one all bind to it.
+	back := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
+	mustLoad(t)(back.Load([]HostFacet{{Name: "@test/b", Facet: delegateServes(r.B, 4.0)}}, background))
+	r.delegate = back
+	r.allow.Store(true)
+	wantMember(t, r.hold(t, r.tab, r.B), 4)
+	wantMember(t, b, 4)
+	wantMember(t, during, 4)
+}
+
+func TestHostServesTheTypesOfItsPublishedTableAndNoOtherName(t *testing.T) {
+	r := newDelegateRig(t)
+	// The delegate's host asks the server what it serves (D605): its own table, not the delegate's and not a name nobody serves.
+	for name, want := range map[string]bool{"app.a": true, "app.b": false, "app.c": false} {
+		if got := r.server.Serves(name); got != want {
+			t.Errorf("server.Serves(%q) = %v, want %v", name, got, want)
+		}
+	}
+	if !r.delegate.Serves("app.b") || r.delegate.Serves("app.a") {
+		t.Errorf("delegate serves app.b = %v, app.a = %v, want true, false", r.delegate.Serves("app.b"), r.delegate.Serves("app.a"))
+	}
+}
+
 func TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove(t *testing.T) {
 	r := newDelegateRig(t)
 	a, b := r.hold(t, r.tab, r.A), r.hold(t, r.tab, r.B)
@@ -245,5 +282,44 @@ func TestDestinationDelegatesOnlyTheRemoteTypesTheHostDoesNotServe(t *testing.T)
 	d.delegating = true
 	if d.delegates("app.a", nil) || !d.delegates("app.b", nil) {
 		t.Fatal("the delegate takes what the host serves, or not what it does not")
+	}
+	// Whether a type goes here is by the table asked: a reference by the published one, a reload's closure rule by the staged one.
+	typ, none := delegateType(t, "app.b"), func(string) bool { return false }
+	if here, err := d.placedHere(typ, jsonObject(), none); err != nil || here {
+		t.Fatalf("placedHere without the type in the table = %v, %v, want false (the delegate's)", here, err)
+	}
+	if here, err := d.placedHere(typ, jsonObject(), func(name string) bool { return name == "app.b" }); err != nil || !here {
+		t.Fatalf("placedHere with the type in the table = %v, %v, want true", here, err)
+	}
+}
+
+func TestDelegateTheClosureRuleReadsTheStagedTableAChangedPluginsRequestForATypeTheReloadStopsServingGoesToTheDelegate(t *testing.T) {
+	r := newDelegateRig(t)
+	viewType := mustContract(declareLocal("app.view", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	view := func(code float64) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(viewType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				// The view's `n` is `app.b`'s: the server serves it now, the delegate does once the server stops.
+				return impl("n", Expose(self.Get(r.B, jsonObject()).Member("n"))), nil
+			}, ServeOptions{})
+		})
+	}
+	// The server serves `app.b` itself for now (the delegate also has one: the server's table decides).
+	_, err := r.server.Reload([]HostFacet{
+		{Name: "@test/a", Facet: delegateServes(r.A, 1.0)}, {Name: "@test/b", Facet: delegateServes(r.B, 9.0)}, {Name: "@test/view", Facet: view(1)},
+	}, background, ReloadOptions{})
+	must(t, err)
+	mustGet(t, r.server, viewType, jsonObject())
+	wantMember(t, r.hold(t, r.tab, r.B), 9)
+	// A reload in which `@test/a` fails, `@test/b` is gone and the view changes: the view's request for `app.b` is the delegate's
+	// from now on (the staged table does not serve it), so no failed plugin makes it keep its old code. The published table still
+	// serves `app.b` and would put it here, where nothing serves it once `a` failed.
+	report, err := r.server.Reload([]HostFacet{{Name: "@test/a", Facet: stagingThrowing}, {Name: "@test/view", Facet: view(2)}}, background, ReloadOptions{})
+	must(t, err)
+	if got, want := failedMessages(report.Failed), [][2]string{{"@test/a", `plugin "@test/a": setup threw`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	if !slices.Contains(report.Plugins.Changed, "@test/view") {
+		t.Fatalf("changed = %v, want the view among them", report.Plugins.Changed)
 	}
 }

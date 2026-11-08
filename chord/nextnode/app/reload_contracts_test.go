@@ -29,6 +29,7 @@ func oldPage(t *testing.T) (started, *reloadPage) {
 	page.hold("alpha", counterContract(t, "worker", "v1"), "p1", 0, "label")
 	expectEqual(t, "add 2", page.result(page.call("alpha", "add", 2.0)), okResult("v1:2"))
 	page.waitLabel("alpha", "v1:2")
+	page.waitState("alpha", "live")
 	return s, page
 }
 

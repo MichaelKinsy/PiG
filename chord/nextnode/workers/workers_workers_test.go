@@ -29,7 +29,7 @@ import (
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
 // rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
 // `stop` and its suspension, the per-address queue, `close`, stale lock files cleared, nothing kept of 1,000 addresses, and
-// the worker base (designed out, D600; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
+// the worker base (designed out: docs/parity/divergences; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
 
 func requireCode(t *testing.T, err error, code data.ChordErrorCode, reason data.ChordErrorReason) {
 	t.Helper()
@@ -736,7 +736,8 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 // Pi's `describe('the worker base (decision "Workers start from the base code the server booted with")')`: its first test
 // (an edit of the entry's imported source after the component was created runs in no worker, `workers.inputs` names the
 // bundled files, the bundle's file is removed by `close`) is a property of Pi's esbuild bundle of a Node entry; a Go worker
-// is this program's own compiled executable, which holds all of its code already (no counterpart: D600, docs/parity/divergences/D600.md).
+// is this program's own compiled executable, which holds all of its code already (no counterpart, see the worker base note in
+// docs/parity/divergences).
 
 func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain(t *testing.T) {
 	dir := t.TempDir()

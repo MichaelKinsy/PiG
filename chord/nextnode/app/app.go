@@ -237,7 +237,7 @@ func (k KitStart) json() *delta.JsonObject {
 		timeouts.Set("readyTimeout", float64(k.Timeouts.Ready/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	if k.Timeouts.ReloadDrain != 0 {
-		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrain/time.Millisecond))
+		timeouts.Set("reloadDrainTimeout", float64(k.Timeouts.ReloadDrain/time.Millisecond)) //portlint:allow numbers Go-to-Go start data: whole milliseconds the kit wrote itself
 	}
 	object := delta.JsonObjectOf("dir", k.Dir, "facet", k.Facet, "principal", k.Principal, "server", k.Server, "files", files, "telemetry", k.Telemetry)
 	if k.Uploads != 0 {
@@ -278,7 +278,7 @@ func decodeKitStart(value delta.JsonValue) (KitStart, error) {
 			kit.Timeouts.Ready = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 		if n, ok := timeouts.Value("reloadDrainTimeout").(float64); ok {
-			kit.Timeouts.ReloadDrain = time.Duration(n) * time.Millisecond
+			kit.Timeouts.ReloadDrain = time.Duration(n) * time.Millisecond //portlint:allow numbers Go-to-Go start data: whole milliseconds KitStart.json wrote
 		}
 	}
 	if kit.Dir == "" || kit.Facet == "" {
@@ -561,6 +561,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
 		Store: &plugins.StoreOptions{Path: pluginsStore},
+		// The delegation the other way: what the Go server host serves (the choices, the telemetry ingest, the app's Go facets) is
+		// bound there when a plugin holds it, as Pi's one server host binds it (D605).
+		ParentServes: h.Serves,
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.info", Host: h, Contracts: []*contracts.Contract{AppInfo}},
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},

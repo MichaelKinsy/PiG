@@ -180,8 +180,10 @@ type PluginsLoad struct {
 	Telemetry    telemetry.TelemetryContext
 	PrincipalKey *data.PrincipalKeyFunction
 	RevokedBy    host.RevokedBy[delta.JsonValue]
-	// Bridged are the app's Go core facets whose local types the plugins use (RuntimeLoad.Bridged).
-	Bridged []BridgedFacet
+	// Bridged are the app's Go core facets whose local types the plugins use (RuntimeLoad.Bridged); ParentServes is the remote
+	// types the Go host serves that the plugins use (RuntimeLoad.ParentServes).
+	Bridged      []BridgedFacet
+	ParentServes func(name string) bool
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
@@ -424,7 +426,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, ReloadDrainTimeout: options.ReloadDrainTimeout, Compression: options.Compression,
 		Store:      options.Store,
 		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
-		Bridged: options.Bridged,
+		Bridged: options.Bridged, ParentServes: options.ParentServes,
 	}, ctx)
 	if h == nil {
 		return nil, host.LoadReport{}, err
