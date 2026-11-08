@@ -230,7 +230,9 @@ func TestModelSelectorConfiguresTheConversationCtrlSSavesTheDefaultModelProvider
 		t.Fatalf("setDefault modelId = %v: the current model is preselected", got)
 	}
 	typed(s.Fixture, "/model faux/faux-1")
-	pollContains(t, s.Fixture, "Faux one")
+	// The argument's completion is asynchronous: once its popup shows, the first Enter accepts it and the second submits; Enter before it submits the typed text.
+	pollContains(t, s.Fixture, "→ faux/faux-1")
+	s.Send(enter)
 	s.Send(enter)
 	s.pollCalls(t, "configure", 3)
 	configures := s.calls.get("configure")
