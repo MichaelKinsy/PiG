@@ -28,7 +28,7 @@ import (
 // stay (a crash, a `fatal`, a failed start: no fork for a new hold, holders `failed { waiting }`) until `retry` or a
 // rollout, a running worker's lost link recovered from once a minute (workers_blocked_unix_test.go), idle stops and `busy`,
 // `stop` and its suspension, the per-address queue, `close`, stale lock files cleared, nothing kept of 1,000 addresses, and
-// the worker base (designed out: docs/parity/divergences; a broken entry rejects its creation). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
+// the worker base (designed out: docs/parity/divergences; its build checks that the entry can be started, a start waits for it and fails while it failed). Each Pi test is the Go test of the same name's words, with the same inputs and expectations.
 
 func requireCode(t *testing.T, err error, code data.ChordErrorCode, reason data.ChordErrorReason) {
 	t.Helper()
@@ -736,40 +736,51 @@ func TestGC1000FailedAndRetriedAddressesLeaveNoStateNoRecordAndNoSuspension(t *t
 // (an edit of the entry's imported source after the component was created runs in no worker, `workers.inputs` names the
 // bundled files, the bundle's file is removed by `close`) is a property of Pi's esbuild bundle of a Node entry; a Go worker
 // is this program's own compiled executable, which holds all of its code already (no counterpart, see the worker base note in
-// docs/parity/divergences).
+// docs/parity/divergences). So is Pi 284e63d9's `close keeps the base's files until its workers exited` (a Go worker has no base
+// files, `baseDir` or compile cache); its tests of a start waiting for the build and of a broken entry are the two below.
 
-func TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain(t *testing.T) {
-	dir := t.TempDir()
-	serverAddress := fixtureServer.Address(nil)
-	server, err := host.CreateHost(host.HostOptions{Address: &serverAddress, Principal: delta.JsonObjectOf("kind", "server"), OnError: func(host.HostError) {}})
-	if err != nil {
-		t.Fatal(err)
+// Pi's `a start waits for the base's build, and starts it when nothing did`: the worker base's build is the entry's check here.
+func TestTheWorkerBaseAStartWaitsForTheBasesBuildAndStartsItWhenNothingDid(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	if f.workers.Built() != nil {
+		t.Fatal("built before anything asked for it")
 	}
-	plugs := newPlugins(t, dir)
-	options := WorkersOptions{
-		Kind:      "worker",
-		Entry:     filepath.Join(dir, "no-such-worker"),
-		Env:       fixtureEnvironment("worker"),
-		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Principal: func(contracts.Address) (data.Principal, error) { return delta.JsonObjectOf("kind", "server"), nil },
-		Start:     func(contracts.Address, context.Context) (delta.JsonValue, error) { return delta.JsonObjectOf(), nil },
-		Lock:      func(address contracts.Address) (string, error) { return "chord-test:" + dir + ":" + address.Key, nil },
-		Plugins:   plugs,
-		OnError:   func(WorkersError) {},
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return refKind(notes) == host.RefStateLive })
+	if built := f.workers.Built(); built == nil || built.Err != nil {
+		t.Fatalf("built = %+v, want built", built)
 	}
-	if _, err := CreateWorkers(server, fixtureSession, options, background); err == nil {
-		t.Fatal("CreateWorkers with an entry that is no program: no error")
+	if starts := f.starts.all(); !reflect.DeepEqual(starts, []string{"session|S1"}) {
+		t.Fatalf("starts = %v", starts)
 	}
-	options.Entry = fixtureEntry(t)
-	workers, err := CreateWorkers(server, fixtureSession, options, background)
-	if err != nil {
-		t.Fatalf("CreateWorkers after the failed one: %v", err)
+}
+
+// Pi's `a broken entry fails its build and every start (worker_failed, the public start error); nothing forks`: an entry that is no
+// program that can be started is the Go worker base that does not build.
+func TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks(t *testing.T) {
+	f := newFleet(t, fleetOptions{entry: filepath.Join(t.TempDir(), "no-such-worker")})
+	if built := f.workers.Build(); built.Err == nil || !strings.Contains(built.Err.Error(), "the worker entry cannot be started") {
+		t.Fatalf("build = %+v, want the entry that cannot be started", built)
 	}
-	if err := workers.Close(background); err != nil {
-		t.Fatal(err)
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return refKind(notes) == host.RefStateFailed })
+	cause := failedCause(t, notes)
+	if cause.Kind != data.FailureWaiting || cause.Error.Code != data.CodeUnavailable || cause.Error.Message != "worker failed to start" {
+		t.Fatalf("cause = %+v / %+v", cause, cause.Error)
 	}
-	if err := server.Close(background); err != nil {
-		t.Fatal(err)
+	// The app's start data is not asked for: the base fails the start first.
+	if starts := f.starts.all(); len(starts) != 0 {
+		t.Fatalf("starts = %v, want none", starts)
+	}
+	errs := f.errors.all()
+	failed, ok := errs[0].(WorkerFailedError)
+	if len(errs) != 1 || !ok || failed.Address != "session|S1" {
+		t.Fatalf("errors = %+v, want one worker_failed for session|S1", errs)
+	}
+	if state := f.stateOf("S1"); state == nil || state.Status != WorkerFailed {
+		t.Fatalf("state = %+v, want failed", state)
 	}
 }
 

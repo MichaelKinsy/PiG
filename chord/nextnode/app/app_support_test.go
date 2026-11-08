@@ -137,8 +137,17 @@ func testOptions(t testing.TB, edit func(*AppOptions)) (AppOptions, *appErrors) 
 	return options, errs
 }
 
-// startTestApp starts an app with testOptions; it is closed when the test ends unless a test closed it.
+// startTestApp starts an app with testOptions, its bases built (BasesBuilt: most tests get the app as its first requests see it);
+// it is closed when the test ends unless a test closed it.
 func startTestApp(t testing.TB, plugins map[string]map[string]string, edit func(*AppOptions)) started {
+	t.Helper()
+	s := startUnbuilt(t, plugins, edit)
+	<-s.app.BasesBuilt()
+	return s
+}
+
+// startUnbuilt is startTestApp handing the app out before its bases are built (Pi's test option `unbuilt`).
+func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(*AppOptions)) started {
 	t.Helper()
 	options, errs := testOptions(t, edit)
 	for dir, files := range plugins {

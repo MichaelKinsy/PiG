@@ -31,8 +31,10 @@
 //     (decision "Stale lock files are cleared by the starter"); a taker still fails closed on one it finds.
 //   - Pi bundles the worker's Node entry once with the base code it imports (`base.ts`, `child.ts`: esbuild), so an edit after
 //     the component was created runs in no worker. A Go worker is this program's own compiled executable, which holds its
-//     code already: designed out (a numbered record is drafted in the lane's rows). `CreateWorkers` fails when `Entry` cannot be started, as Pi's rejects when the base
-//     does not build.
+//     code already: designed out (a numbered record is drafted in the lane's rows), with the parts that follow it: no base file written at
+//     the first fork, no `baseDir`, no compile cache. `Build` (run by the kit right after the server listens, and by a start when nothing
+//     did) is the check that `Entry` can be started, as Pi's `build` rejects when the base does not build: a start fails while it
+//     failed (`worker failed to start`).
 //
 // # Async contract (AGENTS.md "TypeScript async/Promise parity")
 //

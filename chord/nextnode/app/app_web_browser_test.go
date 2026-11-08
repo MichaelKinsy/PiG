@@ -176,14 +176,14 @@ func TestAPageReloadsWhenTheServerComesBackWithAnotherBaseBundle(t *testing.T) {
 	first := webBrowserApp(t, entry, port, map[string]map[string]string{"notes": panelPlugin("Notes", "#123456")}, nil)
 	signIn(browser, first.app.OwnerLink())
 	browser.Wait(`globalThis.version === "1" && globalThis.connection === "connected"`)
-	firstBase := first.app.Web.Base
+	firstBase := first.app.Web.Base()
 	if err := first.app.Close(background); err != nil {
 		t.Fatal(err)
 	}
 	browser.Wait(`globalThis.connection === "waiting" || globalThis.connection === "connecting"`)
 	versionedEntry(t, "2", filepath.Dir(entry))
 	second := webBrowserApp(t, entry, port, nil, func(o *AppOptions) { o.DataDir, o.Root = first.dataDir, first.root })
-	if second.app.Web.Base == firstBase {
+	if second.app.Web.Base() == firstBase {
 		t.Fatal("another entry gave the same base hash")
 	}
 	browser.Wait(`globalThis.version === "2" && globalThis.connection === "connected"`)

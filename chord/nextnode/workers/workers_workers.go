@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -133,13 +135,32 @@ func (WorkerExitedError) workersError()    {}
 func (WorkerLinkLostError) workersError()  {}
 func (BatchWorkersError) workersError()    {}
 
-// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`). It fails when
-// options.Entry is no program that can be started (Pi's rejection when the worker base does not build: the server does not
-// start with it).
+// WorkersBuilt is how a worker kind's base build ended. A Go worker's base is its own executable, which holds its code already
+// (no bundle: see the worker base note in doc.go); its build is the check that Entry is a program that can be started. Err is
+// why it is none.
+type WorkersBuilt struct {
+	Err error
+}
+
+// Build checks the worker's entry, once (a start waits for it, and starts it when nothing did); Pi's `build` bundles the worker
+// base. It returns how it ended: every start fails while it failed.
+func (c *Workers) Build() WorkersBuilt {
+	c.buildOnce.Do(func() {
+		_, err := exec.LookPath(c.options.Entry)
+		if err != nil {
+			err = fmt.Errorf("workers: the worker entry cannot be started: %w", err)
+		}
+		c.built.Store(&WorkersBuilt{Err: err})
+	})
+	return *c.built.Load()
+}
+
+// Built is how the build ended, once it did (nil before).
+func (c *Workers) Built() *WorkersBuilt { return c.built.Load() }
+
+// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`). Its worker base is not
+// built yet (Build).
 func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (*Workers, error) {
-	if _, err := exec.LookPath(options.Entry); err != nil {
-		return nil, fmt.Errorf("workers: the worker entry cannot be started: %w", err)
-	}
 	component := newWorkers(options, ctx)
 	route, err := h.Route(kind, host.RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
@@ -263,6 +284,9 @@ type Workers struct {
 	routing   bool
 	idleTimer host.Timer
 	tasks     taskGroup
+	// built is how the build ended, once it did; buildOnce runs it.
+	built     atomic.Pointer[WorkersBuilt]
+	buildOnce sync.Once
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
@@ -509,6 +533,10 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 	}
 	if closing {
 		return host.ResolvedLink{}, closed()
+	}
+	// The kind's worker base: a start builds it when nothing did, and fails while it failed.
+	if built := c.Build(); built.Err != nil {
+		return host.ResolvedLink{}, c.failLocked(record, cause{err: built.Err, public: &startFailed}, "")
 	}
 	// The start's context ends with the route's or with Close, and its registrations on both end with the start.
 	own, release := chordctx.WithCancel(routing)
