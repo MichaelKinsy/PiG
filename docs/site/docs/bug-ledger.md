@@ -133,6 +133,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-16f8d39](#bf-16f8d39) | fix(codingagent): keep the clock allowance on the marker header's time.Now line | PiG's own defect | All platforms | Unreleased |
 | [BF-1724c9e](#bf-1724c9e) | Two pig processes that reach the same `auth.json` through different paths, such as an agent directory whose… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-173060b](#bf-173060b) | fix(chord/next/store): decodeStoreWrite never panics (2500 malformed writes); no recover in the outbox; D3… | PiG's own defect | All platforms | Unreleased |
+| [BF-176542a](#bf-176542a) | fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link… | PiG's own defect | All platforms | Unreleased |
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
@@ -212,6 +213,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-26d302a](#bf-26d302a) | A login flow's `select` prompt opens a selector in the login dialog, as Pi's does, instead of ending the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26d302a-2](#bf-26d302a-2) | A provider object's own `auth.apiKey.login` runs in the login dialog, as Pi's `showApiKeyLoginDialog` runs… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-26d302a-3](#bf-26d302a-3) | A provider object's login that sends a prompt or event type Pi does not define fails with an error that names… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-270da2f](#bf-270da2f) | fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of… | PiG's own defect | All platforms | Unreleased |
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27b7a4e](#bf-27b7a4e) | Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail… | A fix Pi shipped that PiG ported | Windows, WSL | 0.7.0 |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
@@ -431,6 +433,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4a0bc3d](#bf-4a0bc3d) | The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
 | [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-4aaa810](#bf-4aaa810) | fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4b9f5f8](#bf-4b9f5f8) | `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer | PiG's own defect | All platforms | 0.7.0 |
@@ -1703,6 +1706,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f8673e6](#bf-f8673e6) | Tool argument conversion for TypeBox schemas lower-cases with JavaScript rules (an `İ` in `UNDEFİNED` no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f89c404](#bf-f89c404) | fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308… | PiG's own defect | All platforms | Unreleased |
 | [BF-f8d96b7](#bf-f8d96b7) | The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f927290](#bf-f927290) | `durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a… | PiG's own defect | All platforms | Unreleased |
 | [BF-f9648c6](#bf-f9648c6) | On Windows, stopping a terminal reader whose input is a pipe no longer hangs | PiG's own defect | Windows | 0.7.0 |
 | [BF-f98d129](#bf-f98d129) | Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f98d129-2](#bf-f98d129-2) | Omitting a failed retry attempt no longer makes the context usage jump to an estimate of the whole history | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1766,6 +1770,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fce99d4](#bf-fce99d4) | An npm or git `-e` source that fails to install stops startup and `/reload` before any extension factory… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fd4be86](#bf-fd4be86) | OpenAI-compatible Chat Completions keeps the `"text":""` member of a user text part whose text is only a lone… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fd7f660](#bf-fd7f660) | A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fdaba00](#bf-fdaba00) | fix: chord/delta sorts with package slices, customContentChars decodes without any, REUSE and provenance… | PiG's own defect | All platforms | Unreleased |
 | [BF-fdbd6ca](#bf-fdbd6ca) | Automatic `fd` and `rg` downloads no longer fetch x86-64 binaries on ARM32 and other architectures without a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-fdfb748](#bf-fdfb748) | A surrogate pair split across two concatenated string halves is written as its character in session files… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fe16108](#bf-fe16108) | Provider request bodies (OpenAI Completions, OpenAI Responses, Codex, Anthropic, Google and Mistral) write… | PiG's own defect | All platforms | 0.5.0 |
@@ -3357,6 +3362,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `173060bec9` (2026-10-29)
 - **Tests:** `chord/next/store/outbox_decode_test.go::TestDecodeStoreWriteNeverPanicsOnMalformedWrites`, `chord/next/store/outbox_decode_test.go::TestParseRecordedWritesKeepsMalformedElements`
 
+### BF-176542a
+
+**fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: the chord boundary allows internal/sortx, a stdlib-only helper that jsstring and ecmaregex link; chord/delta keeps it
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `176542ac65` (2026-11-08)
+- **Tests:** None recorded.
+
 ### BF-1827831
 
 **The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order…**
@@ -4453,6 +4471,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `26d302a2d7` (2026-10-09, #201)
 - **Tests:** `coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes` and 1 more in docs/bug-ledger.json
 - **Release note:** A provider object's login that sends a prompt or event type Pi does not define fails with an error that names the type, instead of being answered as a text prompt or shown as progress.
+
+### BF-270da2f
+
+**fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: raw content blocks sized without continue or discarded errors, tsruntime in a race group, provenance of the v3 differences list, owner approval on huff0
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `270da2fced` (2026-11-08)
+- **Tests:** None recorded.
 
 ### BF-27a1650
 
@@ -7483,6 +7514,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4a70ed5306` (2026-11-03), `a3a71c520c` (2026-11-03)
 - **Tests:** `coding/extension/host/subprocess/run_signal_stale_read_test.go::TestRunSignalKeepsOneNumberForARunWhenAnotherRuntimesReadIsStale`, `test/extension-conformance/context_abort_signal_test.go::TestContextAbortAbortsTheRunSignalInTheSameTickInEverySDK`
 - **Release note:** `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell or several isolated extensions), a Go, Python, Rust or Lisp handler that held `ctx.signal` and then called `ctx.abort()` could find the signal it held still live while a new read of `ctx.signal` was aborted. The Host numbers each run once for every connection, and a connection's sync that had read the end of the previous run could apply that older state after another connection's sync had numbered the new run, so the live run was numbered again and the runtime replaced the signal the handler held. The Host now reads the run under the lock that numbers it. A Host with one extension connection never raced, and a Node runtime aborts the signal it holds itself.
+
+### BF-4aaa810
+
+**fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4aaa8104e5` (2026-11-08)
+- **Tests:** `coding/extension/host/tsruntime/digestcache_test.go::TestConcurrentStartsLeaveOneWholeRecord`, `coding/extension/host/tsruntime/executable_linux_test.go::TestConcurrentExecLinksDoNotCollide`, `coding/piglet/schema_test.go::TestValidateAgainstSchemaNamesTheRootAndNestedPaths`
 
 ### BF-4ac21c8
 
@@ -25168,6 +25212,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/sqlite/node/statement_cache_test.go::TestNodeSqliteStatementCache`
 - **Release note:** The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every statement it ever prepared, closing the evicted ones, so callers that generate SQL of unbounded shapes no longer grow it without bound.
 
+### BF-f927290
+
+**`durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a transient error (HTTP 408, 429, 5xx).
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f927290d26` (2026-11-08)
+- **Tests:** `coding/cli/stdout_backpressure_test.go::TestRPCUsageProbeFailsWhenTheCLIWritesNoFrame`
+- **Release note:** `durable/core/budget/tinygo-install.sh` retries the TinyGo download when the release host answers with a transient error (HTTP 408, 429, 5xx). A single 504 from GitHub's release CDN made the `wasm-tinygo` row of the Durable contract job fail with "tinygo not found" in CI.
+
 ### BF-f9648c6
 
 **On Windows, stopping a terminal reader whose input is a pipe no longer hangs**
@@ -26054,6 +26112,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `fd7f660ae3` (2026-10-13)
 - **Tests:** `coding/cli/rpc_resume_tools_test.go::TestRPCResumeKeepsDynamicallyActivatedTools`, `coding/session_resume_default_tools_port_test.go::TestResumeRestoresTheRecordedLoadoutPort`
 - **Release note:** A resumed session keeps the tools that were active when it was saved (an optional or deferred tool a command or extension had enabled no longer drops out and gets recorded as removed on the next turn); an explicit `--tools` list, `--no-tools` or `--no-builtin-tools` still wins (pi-mono #10785).
+
+### BF-fdaba00
+
+**fix: chord/delta sorts with package slices, customContentChars decodes without any, REUSE and provenance…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: chord/delta sorts with package slices, customContentChars decodes without any, REUSE and provenance entries for the yaml12 corpus
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fdaba00031` (2026-11-08)
+- **Tests:** None recorded.
 
 ### BF-fdbd6ca
 
