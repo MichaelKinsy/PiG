@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"slices"
 	"strings"
 	"time"
@@ -19,8 +20,9 @@ import (
 
 // Ports packages/chord/src/next-node/workers/workers.ts. The workers component (slice 10 §3, §4; decision "Slice 10's
 // points"): a worker process per address of one host kind, started on demand by the route it owns, stopped when idle,
-// never restarted by itself (R2): a crash, a `fatal`, a link lost while its child lives or a failed start leaves the
-// address failed until `Retry` or a rollout. Per address, a child's events are recorded on that child as they happen;
+// never restarted by itself (R2): a crash, a `fatal` or a failed start leaves the address failed until `Retry` or a rollout.
+// A running worker's lost link is a stop its holders start a new worker after, once a minute (decision "A lost worker link is
+// recovered from"). Per address, a child's events are recorded on that child as they happen;
 // starts and stops run one after another.
 //
 // Forced Go differences. The component's state is Pi's single JavaScript thread: a `Loop` of its own runs every synchronous
@@ -90,7 +92,7 @@ type WorkerState struct {
 }
 
 // WorkersError is what the component reports (and the state's watch listeners that threw): one of WorkerFailedError,
-// AuthorizeFailedError, WorkerExitedError and BatchWorkersError.
+// AuthorizeFailedError, WorkerExitedError, WorkerLinkLostError and BatchWorkersError.
 type WorkersError interface{ workersError() }
 
 // WorkerFailedError (`worker_failed`): Error is the full error (a start's throw, a crash, the child's `fatal`), for the app's
@@ -115,16 +117,29 @@ type WorkerExitedError struct {
 	Signal  *string
 }
 
+// WorkerLinkLostError (`worker_link_lost`): a running worker's link was lost (the heartbeat, a protocol error): it was stopped,
+// its holders start a new worker. Error is the full error.
+type WorkerLinkLostError struct {
+	Address string
+	Error   error
+}
+
 // BatchWorkersError is a `BatchError` of the state's batch.
 type BatchWorkersError struct{ state.BatchError }
 
 func (WorkerFailedError) workersError()    {}
 func (AuthorizeFailedError) workersError() {}
 func (WorkerExitedError) workersError()    {}
+func (WorkerLinkLostError) workersError()  {}
 func (BatchWorkersError) workersError()    {}
 
-// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`).
+// CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`). It fails when
+// options.Entry is no program that can be started (Pi's rejection when the worker base does not build: the server does not
+// start with it; D-WORKER-BASE).
 func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (*Workers, error) {
+	if _, err := exec.LookPath(options.Entry); err != nil {
+		return nil, fmt.Errorf("workers: the worker entry cannot be started: %w", err)
+	}
 	component := newWorkers(options, ctx)
 	route, err := h.Route(kind, host.RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
@@ -159,6 +174,8 @@ type cause struct {
 	public *CrossedError
 	// killed: the component ended the child itself (a failed start): its exit is no `worker_exited`.
 	killed bool
+	// lost: a running child's link was lost: its address may recover (`recovers`) instead of failing.
+	lost bool
 }
 
 // ended is how a child's reloads end once it is gone: stopped cleanly (a stop's exit) or with an error.
@@ -174,6 +191,8 @@ type child struct {
 	// stopping: a stop was asked for: its exit is no crash.
 	stopping bool
 	cause    *cause
+	// lock is the lock its start message named; cleared after its exit when it was killed holding it.
+	lock *string
 	// started: the app's host listens on its link.
 	started *outcome[struct{}]
 	// ready: its load report; rejected when it exits before.
@@ -205,6 +224,8 @@ type routed struct {
 	failure *failure
 	// starting is a start queued and not settled.
 	starting *outcome[host.ResolvedLink]
+	// recovered is when (unix milliseconds) it last recovered from a lost link (`recovers`); nil: never.
+	recovered *int64
 }
 
 const (
@@ -216,10 +237,26 @@ const (
 	idleCheck = time.Second
 	// defaultIdle is how long a worker idles before it is stopped unless `IdleMs` says otherwise: 5 minutes.
 	defaultIdle = 5 * time.Minute
+	// recoveryWindow is how long after a recovered lost link another one fails the address: 1 minute.
+	recoveryWindow = time.Minute
 )
 
 // startFailed is the public error of a start that failed.
 var startFailed = CrossedError{Message: "worker failed to start", Code: "unavailable"}
+
+// linkLostPublic is the public error of a running worker's lost link that fails its address (a second one within the window).
+var linkLostPublic = CrossedError{Message: "worker lost its link", Code: "unavailable"}
+
+// lostLink is the cause of child's lost link (the heartbeat, a protocol error, its own close of its link) while it lives:
+// after `ready`, one its address may recover from; before it, a failed start.
+func lostLink(child *child) *cause {
+	err := errors.New("worker: link lost")
+	if child.status == WorkerRunning {
+		public := linkLostPublic
+		return &cause{err: err, public: &public, lost: true}
+	}
+	return &cause{err: err}
+}
 
 // Workers is the workers component.
 type Workers struct {
@@ -359,7 +396,11 @@ func (c *Workers) Close(ctx context.Context) error {
 }
 
 func (c *Workers) close(ctx context.Context) error {
-	var stops []*outcome[struct{}]
+	type closing struct {
+		record *routed
+		stop   *outcome[struct{}]
+	}
+	var stops []closing
 	c.loop.Run(func() {
 		if !c.isClosing() {
 			c.closing(closed())
@@ -370,12 +411,20 @@ func (c *Workers) close(ctx context.Context) error {
 		}
 		for _, key := range slices.Clone(c.order) {
 			record := c.addresses[key]
-			stops = append(stops, c.enqueue(record, func() (struct{}, error) { return struct{}{}, c.stop(record) }))
+			stops = append(stops, closing{record, c.enqueue(record, func() (struct{}, error) { return struct{}{}, c.stop(record) })})
 		}
 	})
-	for _, stop := range stops {
-		if _, err := stop.await(ctx); err != nil {
+	for _, each := range stops {
+		if _, err := each.stop.await(ctx); err != nil {
 			return err
+		}
+		// Each stop, then what its exit queued (the clear of a killed child's lock file).
+		var queue chan struct{}
+		c.loop.Run(func() { queue = each.record.queue })
+		select {
+		case <-queue:
+		case <-ctx.Done():
+			return context.Cause(ctx)
 		}
 	}
 	return nil
@@ -548,12 +597,20 @@ func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValu
 	if err != nil {
 		return host.ResolvedLink{}, err
 	}
+	c.loop.Run(func() { spawned.shipped = keyOf(scripts) })
 	lock, err := c.options.Lock(address)
 	if err != nil {
 		return host.ResolvedLink{}, err
 	}
+	// A worker killed without its exit hooks (SIGKILL), maybe by an earlier server, left its socket file, which fails its
+	// successors closed. The component is the one clearer of its addresses' locks, in the address's queue: one clear at a
+	// time (decision "Stale lock files are cleared by the starter"). A live holder (an old worker still exiting) is kept and
+	// waited for.
+	if _, err := clearStaleLock(lock, ctx); err != nil {
+		return host.ResolvedLink{}, err
+	}
 	c.loop.Run(func() {
-		spawned.shipped = keyOf(scripts)
+		spawned.lock = &lock
 		spawned.process.Send(ToWorker{Kind: ToWorkerStart, Address: address, Start: data, Scripts: scripts, Lock: lock})
 	})
 	if _, err := spawned.started.await(c.closingCtx); err != nil {
@@ -636,35 +693,37 @@ func (c *Workers) control(record *routed, child *child, message FromWorker) {
 	}
 }
 
-// linkLost: this side closed child's link (the heartbeat, a protocol error): its child is stopped, its exit a crash.
+// linkLost: this side closed child's link (the heartbeat, a protocol error): its child is stopped, its exit a lost link.
 func (c *Workers) linkLost(child *child) {
 	c.ended(child)
 	if child.stopping {
 		return
 	}
 	if child.cause == nil {
-		child.cause = &cause{err: errors.New("worker: link lost")}
+		child.cause = lostLink(child)
 	}
 	c.shutdown(child)
 	c.state.refresh()
 }
 
 // linkClosed: the child's side closed its link (it is exiting, or it closed its IPC and lives on): its reloads end; one
-// that does not exit within the grace is killed, its exit a crash (link lost).
+// that does not exit within the grace is killed, its exit a lost link.
 func (c *Workers) linkClosed(child *child) {
 	c.ended(child)
 	if child.stopping || child.grace != nil {
 		return
 	}
+	lost := lostLink(child)
 	child.grace = c.timer(grace, func() {
 		if child.cause == nil {
-			child.cause = &cause{err: errors.New("worker: link lost")}
+			child.cause = lost
 		}
 		child.process.Kill()
 	})
 }
 
-// exited: child exited: a stop's exit forgets it; any other is a crash that fails the address (`worker_exited` and
+// exited: child exited: a stop's exit forgets it, as does a lost link the address recovers from (`worker_link_lost`: its
+// holders' route resolves again, a start after this exit); any other is a crash that fails the address (`worker_exited` and
 // `worker_failed` once, the full error and stderr tail for the app's logs only), except once the component closes.
 func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	if child.grace != nil {
@@ -682,19 +741,42 @@ func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	child.started.reject(uncrossed(public))
 	child.ready.reject(uncrossed(public))
 	c.ended(child)
+	// A child a signal ended (SIGKILL) ran no exit hooks: its socket file would stay until the address's next start. Cleared
+	// in the queue, like a start's clear; a failure here is the next start's to report (it clears again).
+	if lock := child.lock; lock != nil && exit.Signal != nil {
+		enqueue(c, record, func() (struct{}, error) {
+			_, err := clearStaleLock(*lock, chordctx.Background())
+			return struct{}{}, err
+		}, nil)
+	}
 	if record.child != child {
 		return
 	}
 	record.child = nil
 	if !clean && !c.isClosing() {
-		// A failed start's kill is the component's own act (Opus's second recheck): only `worker_failed`.
-		if !why.killed {
-			c.options.OnError(WorkerExitedError{Address: record.address.Key, Code: exit.Code, Signal: exit.Signal})
+		if why.lost && c.recovers(record) {
+			c.options.OnError(WorkerLinkLostError{Address: record.address.Key, Error: why.err})
+		} else {
+			// A failed start's kill is the component's own act (Opus's second recheck): only `worker_failed`.
+			if !why.killed {
+				c.options.OnError(WorkerExitedError{Address: record.address.Key, Code: exit.Code, Signal: exit.Signal})
+			}
+			c.fail(record, cause{err: why.err, public: &public, killed: why.killed}, child.process.StderrTail())
 		}
-		c.fail(record, cause{err: why.err, public: &public, killed: why.killed}, child.process.StderrTail())
 	}
 	c.state.refresh()
 	c.forget(record)
+}
+
+// recovers is whether record recovers from its running child's lost link, recorded when it does: not within a minute of the
+// last recovery, so a worker that loses every link fails instead of restarting in a loop.
+func (c *Workers) recovers(record *routed) bool {
+	now := c.clock.Now()
+	if record.recovered != nil && time.Duration(now-*record.recovered)*time.Millisecond < recoveryWindow {
+		return false
+	}
+	record.recovered = &now
+	return true
 }
 
 // ended: child's link is gone or it exited (the first of these): its outstanding reload and every one queued behind it
