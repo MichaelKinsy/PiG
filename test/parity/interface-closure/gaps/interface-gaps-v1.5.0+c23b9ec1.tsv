@@ -1,16 +1,5 @@
 pkg:agent/.#ProxyStreamOptions	agent	child-gap	agent/proxy.go#ProxyStreamOptions
 pkg:agent/.#ProxyStreamOptions::property:disableContinuation	agent	not-exercised	agent/proxy.go#ProxyStreamOptions.DisableContinuation
-pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader	ai	no-go-symbol	
-pkg:ai/api/bedrock-converse-stream.lazy#setBedrockProviderLoader::call:0	ai	child-gap	
-pkg:ai/compat#BuiltinProvider	ai	undecidable	ai/known_provider.go#KnownProvider
-pkg:ai/compat#setBedrockProviderLoader	ai	no-go-symbol	
-pkg:ai/compat#setBedrockProviderLoader::call:0	ai	child-gap	
-pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider	ai	no-go-symbol	
-pkg:ai/lazy-bedrock-provider#registerLazyBedrockProvider::call:0	ai	child-gap	
-pkg:ai/lazy-oauth#registerLazyOAuthFlows	ai	no-go-symbol	
-pkg:ai/lazy-oauth#registerLazyOAuthFlows::call:0	ai	child-gap	
-pkg:ai/providers/all#BuiltinProvider	ai	no-go-symbol	
-pkg:ai/providers/compat-schema#ProviderCompat	ai	type-mismatch	internal/codingagent/model_registry.go#providerCompat
 pkg:chord/.#AcceptsTable	chord	undecidable	chord/next/contracts/accepts.go#AcceptsTable
 pkg:chord/.#AddedColumn	chord	no-go-symbol	
 pkg:chord/.#Address	chord	undecidable	chord/next/contracts/host_kind.go#Address
