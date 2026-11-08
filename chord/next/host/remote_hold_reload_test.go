@@ -393,10 +393,13 @@ func TestHoldsAcrossAReload(t *testing.T) {
 			})},
 		}))
 		var declared Self
+		var declaredMu sync.Mutex
 		facet := func(n float64) func(FacetHost) error {
 			return func(h FacetHost) error {
 				return h.Serve(typ, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					declaredMu.Lock()
 					declared = self
+					declaredMu.Unlock()
 					return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"n": rhConst(n)},
 					}}, nil
@@ -410,8 +413,10 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		_, err := server.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return facet(2)(h) })}}, background, ReloadOptions{})
 		must(t, err)
 		peer.Next("bound")
+		declaredMu.Lock()
 		retired := weak.Make(declared.(*attempt))
 		declared = nil
+		declaredMu.Unlock()
 		_, err = server.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return facet(3)(h) })}}, background, ReloadOptions{})
 		must(t, err)
 		rhSync(t, peer)
@@ -420,7 +425,9 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		if got := countKind(peer, "bound"); got != 0 {
 			t.Fatalf("bound messages before the ack = %d, want 0", got)
 		}
+		declaredMu.Lock()
 		declared = nil
+		declaredMu.Unlock()
 		expectCollected(t, retired)
 		peer.Ack(link.Optional[int]{})
 		peer.Next("bound")
