@@ -209,3 +209,47 @@ func TestLingeringReleasesAfterItsDelay(t *testing.T) {
 	l.Release(ref, "p2.chat")
 	eventually(t, "the delayed release", func() bool { return ref.released.Load() == 1 })
 }
+
+// endedSource is a NativeWatchable whose watch has ended when follow gets it: the reference it follows was released between the
+// watch's making and its start. started is closed when follow starts the watch.
+type endedSource struct {
+	value   int
+	started chan struct{}
+}
+
+func (s endedSource) Value() int { return s.value }
+func (s endedSource) Watch(context.Context) (chord.NativeWatchHandle[int], error) {
+	watch := chord.NewNativeWatch(s.value, func() {}, func(error) {}, nil)
+	_, _ = watch.Stop()
+	return startNotice{NativeWatchHandle: watch, started: s.started}, nil
+}
+
+type startNotice struct {
+	chord.NativeWatchHandle[int]
+	started chan struct{}
+}
+
+func (n startNotice) Start(listener func(context.Context, chord.NativeWatchCall[int]) error) {
+	close(n.started)
+	n.NativeWatchHandle.Start(listener)
+}
+
+// A watch that ended before follow started it (Start panics `Watch is stopped`, as Pi's throws) has nothing to follow: follow
+// goes on to its stop, where it used to panic on the goroutine of its watch, which took the process with it.
+func TestFollowOfAWatchThatEndedBeforeItsStartHasNothingToFollow(t *testing.T) {
+	var seen []int
+	var mu sync.Mutex
+	started := make(chan struct{})
+	stop := Follow[int](endedSource{value: 7, started: started}, func(value int) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen = append(seen, value)
+	})
+	<-started
+	stop()
+	mu.Lock()
+	defer mu.Unlock()
+	if len(seen) == 0 || seen[0] != 7 {
+		t.Fatalf("seen = %v, want the source's value first", seen)
+	}
+}
