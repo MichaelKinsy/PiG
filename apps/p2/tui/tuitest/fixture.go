@@ -141,8 +141,9 @@ func (f *Fixture) start(h host.Host, prepare func(*tuiruntime.TuiRuntime)) {
 	})
 	t.Cleanup(func() {
 		f.Do(func() {
-			f.TUI.Stop()
+			// The runtime's scopes stop redrawing (from goroutines of their own) before the TUI stops.
 			f.Runtime.Dispose()
+			f.TUI.Stop()
 		})
 		close(f.stop)
 		f.wg.Wait()

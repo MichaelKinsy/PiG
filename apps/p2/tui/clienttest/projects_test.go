@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/p2test"
+	chattui "github.com/MichaelKinsy/PiG/apps/p2/plugins/chat/tui"
 	envscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
 	projectscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/projects/contract"
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	sessionstui "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/tui"
+	statustui "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/tui"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/tuitest"
@@ -246,7 +248,7 @@ func newProjectsSetup(t *testing.T, facets ...host.Facet) *projectsSetup {
 		}
 	}}
 	s.Topology = tuitest.NewTopology(t, tuitest.TopologyOptions{
-		Server: []p2test.Stub{sessions, envs, projects}, Facets: append([]host.Facet{tui.CoreFacet, sessionstui.Facet}, facets...), Columns: 100,
+		Server: []p2test.Stub{sessions, envs, projects}, Worker: []p2test.Stub{chatWorker()}, Facets: append([]host.Facet{tui.CoreFacet, sessionstui.Facet}, facets...), Columns: 100,
 	})
 	// A probe left waiting would hold the teardown: the cleanups run last-in first, so mac answers before the host closes.
 	t.Cleanup(s.openMac)
@@ -425,5 +427,221 @@ func TestAFailedListingReadsAsNoFolderNoSuchEnvironmentOrUnreachableFromItsMessa
 	refused := "ssh 127.0.0.1 failed with exit code 255: ssh: connect to host 127.0.0.1 port 9: Connection refused"
 	if got := sessionstui.PlaceFailure(place, errors.New(refused)); got != (sessionstui.PlaceState{Kind: sessionstui.PlaceUnreachable, Reason: refused}) {
 		t.Fatalf("refused: %+v", got)
+	}
+}
+
+// newMoveSetup is the setup of the /move tests: the chat and the footer on the session at the project's folder.
+func newMoveSetup(t *testing.T) *projectsSetup {
+	t.Helper()
+	s := newProjectsSetup(t, chattui.Facet, statustui.Facet)
+	s.Do(func() { s.Runtime.Navigate("chat", "s", true, nil) })
+	pollContains(t, s.Fixture, projectsCwd+" • Fixture")
+	return s
+}
+
+func (s *projectsSetup) draft() string {
+	text := ""
+	s.Do(func() { text = s.Runtime.Drafts["s#1"] })
+	return text
+}
+
+func (s *projectsSetup) noticed(text string) func() bool {
+	return func() bool {
+		found := false
+		s.Do(func() {
+			for _, notice := range s.Runtime.Notices {
+				if notice.Text == text {
+					found = true
+				}
+			}
+		})
+		return found
+	}
+}
+
+func (s *projectsSetup) relocateCount() int { return s.calls.count("relocate") }
+
+func (s *projectsSetup) relocated(index int) location {
+	return s.calls.get("relocate")[index].(location)
+}
+
+// surface is the sessions surface; call it on the owner loop (inside Do).
+func (s *projectsSetup) surface() *sessionstui.Surface {
+	return s.Runtime.Ctx.Surface("sessions").(*sessionstui.Surface)
+}
+
+func (s *projectsSetup) projectOf(id string) (name string, ok bool) {
+	s.Do(func() { name, ok = s.surface().ProjectOf(id) })
+	return name, ok
+}
+
+func TestMoveEnvFollowsTheStoredProjectKeepsTheSubfolderWorksWhileTheSessionsMachineIsDown(t *testing.T) {
+	s := newMoveSetup(t)
+	s.openMac()
+	// Completion lists the project's places on other machines.
+	typed(s.Fixture, "/move m")
+	s.Send(tab)
+	tuitest.Poll(t, func() bool { return s.draft() == "/move mac" })
+	s.Send(enter)
+	pollContains(t, s.Fixture, "Move this session to mac:/Users/me/projects/pi/pi/apps?")
+	typed(s.Fixture, "y")
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 1 })
+	if got := s.relocated(0); got != (location{env: "mac", cwd: "/Users/me/projects/pi/pi/apps"}) {
+		t.Fatalf("relocate = %+v", got)
+	}
+	pollContains(t, s.Fixture, "mac:/Users/me/projects/pi/pi/apps • Fixture")
+	// The Mac goes away: back by this device's label, without asking the Mac anything.
+	s.setDown("mac", true)
+	listed := s.calls.count("list")
+	typed(s.Fixture, "/move test-host")
+	s.Send(enter)
+	pollContains(t, s.Fixture, "Move this session to /home/me/projects/pi/pi/apps?")
+	typed(s.Fixture, "y")
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 2 })
+	if got := s.relocated(1); got != (location{env: nil, cwd: "/home/me/projects/pi/pi/apps"}) {
+		t.Fatalf("relocate = %+v", got)
+	}
+	for _, each := range s.calls.get("list")[listed:] {
+		if strings.HasPrefix(fmt.Sprint(each), "mac:") {
+			t.Fatalf("the Mac was asked: %v", each)
+		}
+	}
+	pollScreen(t, s.Fixture, matches(`(?m)^/home/me/projects/pi/pi/apps • Fixture`))
+	for _, each := range [][2]string{
+		{"/move gpu", "Project pi has no place on gpu"},
+		{"/move mac", "mac is unreachable: connect ECONNREFUSED"},
+		{"/move local", "The session is already at /home/me/projects/pi/pi/apps"},
+	} {
+		typed(s.Fixture, each[0])
+		s.Send(enter)
+		tuitest.Poll(t, s.noticed(each[1]))
+	}
+	// A subfolder the target does not have: the target's root, and the notice says so.
+	s.setDown("mac", false)
+	typed(s.Fixture, "/cd /home/me/projects/pi/pi/missing")
+	s.Send(enter)
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 3 })
+	typed(s.Fixture, "/move mac")
+	s.Send(enter)
+	tuitest.Poll(t, s.noticed("missing does not exist on mac; moving to the project's root"))
+	pollContains(t, s.Fixture, "Move this session to mac:/Users/me/projects/pi/pi?")
+	typed(s.Fixture, "y")
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 4 })
+	if got := s.relocated(3); got != (location{env: "mac", cwd: "/Users/me/projects/pi/pi"}) {
+		t.Fatalf("relocate = %+v", got)
+	}
+	// `/cd` outside the project's place keeps the project: `/move` goes to the target place's root.
+	typed(s.Fixture, "/cd /tmp")
+	s.Send(enter)
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 5 })
+	typed(s.Fixture, "/move test-host")
+	s.Send(enter)
+	pollContains(t, s.Fixture, "Move this session to /home/me/projects/pi/pi?")
+	typed(s.Fixture, "y")
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 6 })
+	if got := s.relocated(5); got != (location{env: nil, cwd: "/home/me/projects/pi/pi"}) {
+		t.Fatalf("relocate = %+v", got)
+	}
+	// No project, or one projects.json no longer has: nothing moves.
+	for _, each := range []struct {
+		membership map[string]string
+		notice     string
+	}{
+		{map[string]string{}, "This session belongs to no project: start one from a project's row in /sessions"},
+		{map[string]string{"s": "gone"}, "Project gone is no longer in projects.json"},
+	} {
+		_ = s.members.Replace(membersJSON(each.membership))
+		want, has := each.membership["s"]
+		tuitest.Poll(t, func() bool {
+			name, ok := s.projectOf("s")
+			return ok == has && name == want
+		})
+		typed(s.Fixture, "/move mac")
+		s.Send(enter)
+		tuitest.Poll(t, s.noticed(each.notice))
+	}
+	if s.relocateCount() != 6 {
+		t.Fatalf("relocates = %d", s.relocateCount())
+	}
+	if s.calls.count("assign") != 0 {
+		t.Fatal("a project was assigned")
+	}
+}
+
+func TestMoveWithoutAnArgumentAPickerOfTheProjectsPlacesTheCurrentOneMarkedOnlyReachableOnesMove(t *testing.T) {
+	s := newMoveSetup(t)
+	s.openMac()
+	_ = s.projs.Replace([]any{projectJSON("pi", [2]any{"gpu", "~/projects/pi/pi"}, [2]any{nil, "~/projects/pi/pi"}, [2]any{"mac", "~/projects/pi/pi"})})
+	tuitest.Poll(t, func() bool {
+		places := 0
+		s.Do(func() {
+			if projects := s.surface().Projects(); len(projects) > 0 {
+				places = len(projects[0].Places)
+			}
+		})
+		return places == 3
+	})
+	typed(s.Fixture, "/move")
+	s.Send(enter)
+	// Every place in projects.json's order, this device marked current; the cursor skips gpu (unreachable) for mac.
+	pollScreen(t, s.Fixture, matches(` {2}✗ gpu {2}~/projects/pi/pi +connect ECONNREFUSED *\n {2}• test-host {2}~/projects/pi/pi +current *\n→ ✓ mac {2}~/projects/pi/pi`))
+	if !matches(`Move within pi`)(s.Screen()) {
+		t.Fatal("no picker title")
+	}
+	// An unreachable place cannot be chosen.
+	s.Send(up)
+	s.Send(up)
+	s.Send(enter)
+	pollContains(t, s.Fixture, "gpu cannot be chosen: only ✓ places are reachable")
+	// The current place only closes the picker.
+	s.Send(down)
+	s.Send(enter)
+	tuitest.Poll(t, s.noticed("Already here"))
+	pollScreen(t, s.Fixture, func(screen string) bool { return !strings.Contains(screen, "Move within pi") })
+	if s.relocateCount() != 0 {
+		t.Fatal("the current place moved the session")
+	}
+	// Escape cancels.
+	typed(s.Fixture, "/move")
+	s.Send(enter)
+	pollScreen(t, s.Fixture, matches(`→ ✓ mac`))
+	s.Send("\x1b")
+	pollScreen(t, s.Fixture, func(screen string) bool { return !strings.Contains(screen, "Move within pi") })
+	if s.relocateCount() != 0 {
+		t.Fatal("Escape moved the session")
+	}
+	// Enter on a reachable place is `/move <it>`: the subfolder kept, the move confirmed.
+	typed(s.Fixture, "/move")
+	s.Send(enter)
+	pollScreen(t, s.Fixture, matches(`→ ✓ mac`))
+	s.Send(enter)
+	pollContains(t, s.Fixture, "Move this session to mac:/Users/me/projects/pi/pi/apps?")
+	typed(s.Fixture, "y")
+	tuitest.Poll(t, func() bool { return s.relocateCount() == 1 })
+	if got := s.relocated(0); got != (location{env: "mac", cwd: "/Users/me/projects/pi/pi/apps"}) {
+		t.Fatalf("relocate = %+v", got)
+	}
+	// Only the current place, or no project: today's errors, no picker.
+	_ = s.projs.Replace([]any{projectJSON("pi", [2]any{"mac", "~/projects/pi/pi"})})
+	tuitest.Poll(t, func() bool {
+		places := 0
+		s.Do(func() {
+			if projects := s.surface().Projects(); len(projects) > 0 {
+				places = len(projects[0].Places)
+			}
+		})
+		return places == 1
+	})
+	pollContains(t, s.Fixture, "mac:/Users/me/projects/pi/pi/apps • Fixture")
+	typed(s.Fixture, "/move")
+	s.Send(enter)
+	tuitest.Poll(t, s.noticed("Project pi has no place on another machine"))
+	_ = s.members.Replace(membersJSON(map[string]string{}))
+	tuitest.Poll(t, func() bool { _, ok := s.projectOf("s"); return !ok })
+	typed(s.Fixture, "/move")
+	s.Send(enter)
+	tuitest.Poll(t, s.noticed("This session belongs to no project: start one from a project's row in /sessions"))
+	if strings.Contains(s.Screen(), "Move within") {
+		t.Fatal("a picker shows")
 	}
 }

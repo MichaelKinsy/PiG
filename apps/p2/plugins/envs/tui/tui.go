@@ -224,7 +224,8 @@ func openEnvs(ctx runtime.TuiContext) error {
 				if current.Env != nil && *current.Env != "" {
 					key = *current.Env
 				}
-				ctx.Post(func() {
+				// Rows run inside a render, which holds what Post takes: the post is made from a goroutine.
+				go ctx.Post(func() {
 					if selection := list.Selection(); selection != nil && *selection == local {
 						list.Select(key)
 					}
