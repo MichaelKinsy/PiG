@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 )
 
@@ -46,6 +47,41 @@ func BenchmarkAltScreenPageUpScroll(b *testing.B) {
 				if transcript.ScrollBy(-page) == -page {
 					transcript.ScrollToEnd()
 				}
+				tui.doRender()
+			}
+		})
+	}
+}
+
+// BenchmarkAltScreenStreamingFrameLongTranscript measures one streaming delta at the end of a long fullscreen transcript: a
+// primary follow-end ScrollView over Document(header, chat), the assistant message that streams last in chat, a fixed dock line.
+// What a frame costs must not grow with the length of the transcript.
+func BenchmarkAltScreenStreamingFrameLongTranscript(b *testing.B) {
+	for _, entries := range []int{0, 1000, 4000} {
+		b.Run(fmt.Sprintf("entries-%d", entries), func(b *testing.B) {
+			chat := buildSessionChat(entries)
+			tail := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
+			chat.Add(tail)
+			document := NewContainer(NewText("transcript header"), chat)
+			transcript := NewScrollView(document, ScrollViewOptions{Follow: "end", Primary: true, Overscroll: "chain", Scrollbar: "auto"})
+			b.Cleanup(transcript.Dispose)
+			root := NewVStack([]StackEntry{
+				{Component: transcript, StackEntryOptions: StackEntryOptions{Basis: new(0), Grow: new(1), Shrink: new(1), MinSize: new(1)}},
+				{Component: NewText("\x1b[2m> editor dock\x1b[0m"), StackEntryOptions: StackEntryOptions{Grow: new(0), Shrink: new(1), MinSize: new(1)}},
+			}, StackOptions{})
+			tui := newAltScreenForTest(nil, 200, 50, TuiAltScreenOptions{})
+			tui.out = io.Discard
+			tui.SetLayoutRoot(root)
+			tui.Start()
+			tui.doRender()
+			var text strings.Builder
+			b.ReportAllocs()
+			for b.Loop() {
+				if text.Len() > 4000 {
+					text.Reset()
+				}
+				text.WriteString("token ")
+				tail.SetContent([]AssistantSegment{{Text: text.String()}})
 				tui.doRender()
 			}
 		})
