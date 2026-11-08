@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -153,4 +154,69 @@ func jsString(text string) string {
 	encoder.SetEscapeHTML(false)
 	_ = encoder.Encode(text) // a string always encodes
 	return strings.TrimSuffix(out.String(), "\n")
+}
+
+// decodeUTF8 is what `new TextDecoder().decode(data)` gives (the WHATWG UTF-8 decoder): a byte sequence that is not UTF-8 is
+// U+FFFD, one for each maximal subpart of a valid sequence (a truncated three-byte sequence is one, not three), and a byte
+// order mark at the start is dropped.
+func decodeUTF8(data []byte) string {
+	data = bytes.TrimPrefix(data, []byte("\uFEFF"))
+	if utf8.Valid(data) {
+		return string(data)
+	}
+	var out strings.Builder
+	out.Grow(len(data))
+	var codePoint rune
+	needed, seen := 0, 0
+	lower, upper := byte(0x80), byte(0xBF)
+	for i := 0; i < len(data); {
+		b := data[i]
+		if needed == 0 {
+			i++
+			switch {
+			case b <= 0x7F:
+				out.WriteByte(b)
+			case b >= 0xC2 && b <= 0xDF:
+				needed, codePoint = 1, rune(b&0x1F)
+			case b >= 0xE0 && b <= 0xEF:
+				switch b {
+				case 0xE0:
+					lower = 0xA0
+				case 0xED:
+					upper = 0x9F
+				}
+				needed, codePoint = 2, rune(b&0x0F)
+			case b >= 0xF0 && b <= 0xF4:
+				switch b {
+				case 0xF0:
+					lower = 0x90
+				case 0xF4:
+					upper = 0x8F
+				}
+				needed, codePoint = 3, rune(b&0x07)
+			default:
+				out.WriteRune(utf8.RuneError)
+			}
+			continue
+		}
+		if b < lower || b > upper {
+			// The sequence ends before this byte, which is read again as the start of another.
+			needed, seen, codePoint = 0, 0, 0
+			lower, upper = 0x80, 0xBF
+			out.WriteRune(utf8.RuneError)
+			continue
+		}
+		lower, upper = 0x80, 0xBF
+		codePoint = codePoint<<6 | rune(b&0x3F)
+		seen++
+		i++
+		if seen == needed {
+			out.WriteRune(codePoint)
+			needed, seen, codePoint = 0, 0, 0
+		}
+	}
+	if needed != 0 {
+		out.WriteRune(utf8.RuneError)
+	}
+	return out.String()
 }
