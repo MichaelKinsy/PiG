@@ -62,7 +62,16 @@ const (
 // [McpSignInRedirect] are zero for an "authorized" result and omitted from its JSON.
 type McpSignInStart struct {
 	Kind McpSignInKind `json:"kind"`
-	McpSignInRedirect
+	// AuthorizationURL, RedirectURL, State and Scope are those of [McpSignInRedirect], for Kind "redirect".
+	AuthorizationURL string `json:"authorizationUrl,omitempty"`
+	RedirectURL      string `json:"redirectUrl,omitempty"`
+	State            string `json:"state,omitempty"`
+	Scope            string `json:"scope,omitempty"`
+}
+
+// Redirect is the browser step of a "redirect" result.
+func (s McpSignInStart) Redirect() McpSignInRedirect {
+	return McpSignInRedirect{Kind: s.Kind, AuthorizationURL: s.AuthorizationURL, RedirectURL: s.RedirectURL, State: s.State, Scope: s.Scope}
 }
 
 // McpAuthorizationResponse is an authorization response: from a callback server, a callback route, or [ResponseFromRedirectURL].
@@ -102,7 +111,7 @@ func StartMcpSignIn(ctx context.Context, options McpSignInOptions) (McpSignInSta
 	if err != nil {
 		return McpSignInStart{}, err
 	}
-	return McpSignInStart{Kind: McpSignInKindRedirect, McpSignInRedirect: redirect}, nil
+	return McpSignInStart{Kind: McpSignInKindRedirect, AuthorizationURL: redirect.AuthorizationURL, RedirectURL: redirect.RedirectURL, State: redirect.State, Scope: redirect.Scope}, nil
 }
 
 // refreshBeforeSignIn refreshes the stored tokens, unless `cimd` is to replace a registered client. The refresh uses RedirectURL when the tokens came
