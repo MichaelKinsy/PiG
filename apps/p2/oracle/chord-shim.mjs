@@ -4,7 +4,10 @@
 export * from "../../../chord/nextnode/plugins/node/pi/chord/src/next/index.ts";
 import { ChordError } from "../../../chord/nextnode/plugins/node/pi/chord/src/next/index.ts";
 
-/** Pi main's `forbidden` (packages/chord/src/data/errors.ts): a `forbidden` error without a reason. */
+/** Pi main's `invalid` and `forbidden` (packages/chord/src/data/errors.ts): errors a plugin throws for what it refuses. */
+export function invalid(reason, message, details) {
+	return new ChordError({ code: "invalid", reason, message, details });
+}
 export function forbidden(message, details) {
 	return new ChordError({ code: "forbidden", message, details });
 }
