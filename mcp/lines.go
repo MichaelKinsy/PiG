@@ -113,7 +113,13 @@ type lineSplitter struct {
 	scanned int // bytes before scanned hold no '\n'
 }
 
+// splitterKeepBytes is the largest buffer the splitter keeps while idle: one oversized message must not pin its memory for the transport's life.
+const splitterKeepBytes = 64 * 1024
+
 func (s *lineSplitter) write(p []byte) {
+	if s.start == len(s.buf) {
+		s.reset()
+	}
 	if s.start > 0 && s.start >= len(s.buf)-s.start {
 		n := copy(s.buf, s.buf[s.start:])
 		s.buf = s.buf[:n]
@@ -146,7 +152,12 @@ func (s *lineSplitter) pending() []byte {
 	return s.buf[s.start:]
 }
 
-func (s *lineSplitter) reset() { s.buf, s.start, s.scanned = s.buf[:0], 0, 0 }
+func (s *lineSplitter) reset() {
+	if cap(s.buf) > splitterKeepBytes {
+		s.buf = nil
+	}
+	s.buf, s.start, s.scanned = s.buf[:0], 0, 0
+}
 
 // parseWireMessage parses JSON text and validates it as a JSON-RPC message. A syntax error carries the message JSON.parse throws.
 func parseWireMessage(text []byte) (JSONRPCMessage, error) {

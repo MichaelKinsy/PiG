@@ -60,6 +60,7 @@
   (runtime-remove-runtime-api-key (provider) "removeRuntimeApiKey" :async)
   (runtime-list-credentials () "listCredentials" :async)
   (runtime-logout (provider) "logout" :async)
+  (runtime-settle-credential-writes () "settleCredentialWrites" :async)
   (runtime-register-provider (provider config) "registerProvider")
   (runtime-unregister-provider (provider) "unregisterProvider")
   (runtime-unregister-virtual-model (provider model-id) "unregisterVirtualModel")

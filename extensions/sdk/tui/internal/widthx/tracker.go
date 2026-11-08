@@ -279,6 +279,12 @@ func (t *AnsiCodeTracker) LineEndReset() string {
 // through the tracker. Mirrors upstream `updateTrackerFromText`.
 func (t *AnsiCodeTracker) UpdateFromText(text string) {
 	for i := 0; i < len(text); {
+		// Only an ESC starts a code: jump to the next one.
+		next := strings.IndexByte(text[i:], 0x1B)
+		if next < 0 {
+			return
+		}
+		i += next
 		n := ExtractAnsi(text, i)
 		if n == 0 {
 			i++

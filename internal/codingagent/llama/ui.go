@@ -217,8 +217,8 @@ type HuggingFaceSearch struct {
 	// selectionTouched is whether the user moved the selection since the query last changed.
 	selectionTouched bool
 	query            string
-	status          string
-	debounce        debounceTimer
+	status           string
+	debounce         debounceTimer
 	// afterFunc starts the debounce timer: time.AfterFunc, or a manual clock in tests that compare against Pi on a virtual clock.
 	afterFunc     func(d time.Duration, f func()) debounceTimer
 	cancelRequest context.CancelFunc

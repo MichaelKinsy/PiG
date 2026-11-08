@@ -48,6 +48,10 @@ func ValidateToolArguments(tool ToolSchema, call ToolCall) (map[string]any, erro
 	if err != nil {
 		return nil, err
 	}
+	if validated == nil {
+		// Pi's validateToolArguments returns undefined for a schema of `{"type":"undefined"}` that converted the arguments: no arguments.
+		return nil, nil
+	}
 	var result map[string]any
 	if err := sdkjson.Unmarshal(validated, &result); err != nil {
 		return nil, err

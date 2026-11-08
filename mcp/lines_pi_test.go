@@ -89,3 +89,47 @@ func TestLineReaderReportsAMessageWithoutItsNewlineAtTheEnd(t *testing.T) {
 		t.Fatalf("errors = %q", recorded.errors)
 	}
 }
+
+// A message that has not ended is dropped as soon as the pending bytes pass the cap, not when its newline arrives, and the reader keeps going.
+func TestLineReaderDropsAnUnfinishedMessageOncePendingBytesPassTheCap(t *testing.T) {
+	reader, recorded := startLineReader(64)
+	feedLines(reader, []byte(strings.Repeat("a", 70)), 10)
+	if !reflect.DeepEqual(recorded.errors, []string{"MCP stdio message exceeds 64 bytes"}) {
+		t.Fatalf("errors after the unfinished message = %q", recorded.errors)
+	}
+	next := `{"jsonrpc":"2.0","id":2,"result":{}}`
+	feedLines(reader, []byte("\n"+next+"\n"), 10)
+	if got := messageJSON(recorded); !reflect.DeepEqual(got, []string{next}) {
+		t.Fatalf("messages = %q", got)
+	}
+}
+
+// A complete line over the cap is dropped whole, and the line after it in the same chunk is delivered.
+func TestLineReaderDropsAnOversizedLineThatArrivesInOneChunk(t *testing.T) {
+	reader, recorded := startLineReader(64)
+	next := `{"jsonrpc":"2.0","id":2,"result":{}}`
+	reader.readStdout([]byte(strings.Repeat("a", 100) + "\n" + next + "\n"))
+	if len(recorded.errors) != 1 || recorded.errors[0] != "MCP stdio message exceeds 64 bytes" {
+		t.Fatalf("errors = %q", recorded.errors)
+	}
+	if got := messageJSON(recorded); !reflect.DeepEqual(got, []string{next}) {
+		t.Fatalf("messages = %q", got)
+	}
+}
+
+// An oversized message does not pin its buffer: once it is consumed the splitter keeps at most splitterKeepBytes while idle.
+func TestLineReaderReleasesTheBufferOfAnOversizedMessage(t *testing.T) {
+	reader, recorded := startLineReader(1 << 20)
+	reader.readStdout([]byte(strings.Repeat("a", 4*splitterKeepBytes) + "\n"))
+	if cap(reader.splitter.buf) <= splitterKeepBytes {
+		t.Fatalf("the test message did not outgrow the keep limit: cap %d", cap(reader.splitter.buf))
+	}
+	next := `{"jsonrpc":"2.0","id":2,"result":{}}`
+	reader.readStdout([]byte(next + "\n"))
+	if got := cap(reader.splitter.buf); got > splitterKeepBytes {
+		t.Fatalf("the splitter keeps %d bytes while idle, limit %d", got, splitterKeepBytes)
+	}
+	if got := messageJSON(recorded); !reflect.DeepEqual(got, []string{next}) {
+		t.Fatalf("messages = %q", got)
+	}
+}

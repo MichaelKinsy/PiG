@@ -51,16 +51,18 @@ func isBytes(v any) bool {
 	return ok
 }
 
-// typeChecks maps a `type` name to its check; `bytes` ([]byte) extends JSON Schema for values that never pass through JSON.
+// typeChecks maps a `type` name to its check. `bytes` ([]byte), `bigint` (*big.Int, TypeBox's `Type.BigInt`) and `undefined` (Undefined, TypeBox's `Type.Undefined`) extend JSON Schema for values that never pass through JSON.
 var typeChecks = map[string]Check{
-	"string":  isString,
-	"number":  isNumber,
-	"integer": isIntegerValue,
-	"boolean": isBoolean,
-	"null":    isNull,
-	"array":   isArray,
-	"object":  isObject,
-	"bytes":   isBytes,
+	"string":    isString,
+	"number":    isNumber,
+	"integer":   isIntegerValue,
+	"boolean":   isBoolean,
+	"null":      isNull,
+	"array":     isArray,
+	"object":    isObject,
+	"bytes":     isBytes,
+	"bigint":    isBigInt,
+	"undefined": isUndefined,
 }
 
 // guard says whether a combined object or array check also checks the type: not at all, strictly, or passing other types.
@@ -181,12 +183,64 @@ func stringCheck(strict bool, lo, hi float64, re *ecmaregex.Regexp, format Forma
 	}
 }
 
-// numberCheck is the number keywords. mode 0 passes other types, 1 requires a number, 2 an integer.
-func numberCheck(mode int, lo, hi, xmin, xmax float64, multipleOf *float64) Check {
+// numberBounds is the number keywords' bounds, each a float64 or a *big.Int (a bound is a number or a bigint: TypeBox's `Type.BigInt` writes its bounds as bigints). An absent bound is an infinity, and an absent multipleOf is nil.
+type numberBounds struct {
+	lo, hi, xmin, xmax, multipleOf any
+	// plain is set when every bound is a float64: the number path then compares floats and boxes nothing.
+	plain                  bool
+	flo, fhi, fxmin, fxmax float64
+	fmultipleOf            float64
+	hasMultiple            bool
+}
+
+// newNumberBounds makes the bounds of a node; multipleOf is nil when the node has none.
+func newNumberBounds(lo, hi, xmin, xmax, multipleOf any) *numberBounds {
+	b := &numberBounds{lo: lo, hi: hi, xmin: xmin, xmax: xmax, multipleOf: multipleOf}
+	flo, okLo := lo.(float64)
+	fhi, okHi := hi.(float64)
+	fxmin, okXmin := xmin.(float64)
+	fxmax, okXmax := xmax.(float64)
+	fmultipleOf, hasMultiple := 0.0, multipleOf != nil
+	okMultiple := !hasMultiple
+	if hasMultiple {
+		fmultipleOf, okMultiple = multipleOf.(float64)
+	}
+	if okLo && okHi && okXmin && okXmax && okMultiple {
+		b.plain, b.flo, b.fhi, b.fxmin, b.fxmax, b.fmultipleOf, b.hasMultiple = true, flo, fhi, fxmin, fxmax, fmultipleOf, hasMultiple
+	}
+	return b
+}
+
+// holds is `v >= min && v <= max && v > xmin && v < xmax && (multipleOf === undefined || isMultiple(v, multipleOf))` for a number or a bigint v, with bounds of either kind.
+func (b *numberBounds) holds(v any) bool {
+	if order, ok := compareNumeric(v, b.lo); !ok || order < 0 {
+		return false
+	}
+	if order, ok := compareNumeric(v, b.hi); !ok || order > 0 {
+		return false
+	}
+	if order, ok := compareNumeric(v, b.xmin); !ok || order <= 0 {
+		return false
+	}
+	if order, ok := compareNumeric(v, b.xmax); !ok || order >= 0 {
+		return false
+	}
+	return b.multipleOf == nil || isMultipleOf(v, b.multipleOf)
+}
+
+// numberCheck is the number keywords, for numbers and bigints alike (as TypeBox applies them). mode 0 passes other types, 1 requires a number, 2 an integer, 3 a bigint.
+func numberCheck(mode int, bounds *numberBounds) Check {
+	plain, lo, hi, xmin, xmax, multipleOf, hasMultiple := bounds.plain, bounds.flo, bounds.fhi, bounds.fxmin, bounds.fxmax, bounds.fmultipleOf, bounds.hasMultiple
 	return func(v any) bool {
 		n, ok := asNumber(v)
 		if !ok {
+			if isBigInt(v) {
+				return mode != 1 && mode != 2 && bounds.holds(v)
+			}
 			return mode == 0
+		}
+		if mode == 3 {
+			return false
 		}
 		// mode 1 and 2 require a finite number (Pi main 55a5c6914).
 		if mode != 0 && !isFinite(n) {
@@ -195,8 +249,37 @@ func numberCheck(mode int, lo, hi, xmin, xmax float64, multipleOf *float64) Chec
 		if mode == 2 && !isInteger(n) {
 			return false
 		}
-		return n >= lo && n <= hi && n > xmin && n < xmax && (multipleOf == nil || isMultiple(n, *multipleOf))
+		if !plain {
+			return bounds.holds(n)
+		}
+		return n >= lo && n <= hi && n > xmin && n < xmax && (!hasMultiple || isMultiple(n, multipleOf))
 	}
+}
+
+// isMultipleOf is isMultiple for a number or a bigint on either side: exact integer arithmetic when either is a bigint, and a bigint is no multiple of 0 or of a fraction. Deliberately unlike TypeBox, which throws there (`BigInt(0.5)`, a division by zero): a check answers for every value and never throws (Pi main af79b0c3d).
+func isMultipleOf(v, d any) bool {
+	vf, vIsNumber := asNumber(v)
+	df, dIsNumber := asNumber(d)
+	if vIsNumber && dIsNumber {
+		return isMultiple(vf, df)
+	}
+	if (vIsNumber && !isInteger(vf)) || (dIsNumber && !isInteger(df)) {
+		return false
+	}
+	divisor := bigOf(d, df)
+	if divisor.Sign() == 0 {
+		return false
+	}
+	return new(big.Int).Rem(bigOf(v, vf), divisor).Sign() == 0
+}
+
+// bigOf is BigInt(x) of an integer-valued number or a bigint.
+func bigOf(x any, number float64) *big.Int {
+	if i, ok := x.(*big.Int); ok {
+		return i
+	}
+	i, _ := new(big.Float).SetFloat64(number).Int(nil)
+	return i
 }
 
 // isMultiple reports whether v is a multiple of d, exactly for decimals: 0.0075 / 0.0001 is 74.99999999999999 in floating point.
@@ -276,6 +359,10 @@ func declaredObject(properties []property, closed bool, g guard) Check {
 				continue
 			}
 			present++
+			// An optional property holding undefined counts as absent; a required one is present, and its schema decides whether undefined is a value of it (TypeBox's Type.Undefined, Unknown, Any).
+			if !p.required && isUndefined(x) {
+				continue
+			}
 			if !p.check(x) {
 				return false
 			}
@@ -311,6 +398,10 @@ func openObject(properties []property, keys []string, extraRequired []string, pa
 				if p.required {
 					return false
 				}
+				continue
+			}
+			// Absent, or an optional property holding undefined (which counts as absent); see declaredObject.
+			if !p.required && isUndefined(x) {
 				continue
 			}
 			if !p.check(x) {
@@ -518,6 +609,10 @@ func keyOf(v any) (primitiveKey, bool) {
 		return primitiveKey{kind: 'b'}, true
 	case string:
 		return primitiveKey{kind: 's', text: x}, true
+	case *big.Int:
+		return primitiveKey{kind: 'i', text: x.String()}, true
+	case UndefinedType:
+		return primitiveKey{kind: 'u'}, true
 	}
 	return primitiveKey{}, false
 }
