@@ -435,6 +435,13 @@ export class ModelRuntime {
             await this.synchronizeCredentialState(providerId, "removeRuntimeApiKey", undefined, signal);
         });
     }
+    /**
+     * Wait until credential writes already in progress finish, such as an OAuth refresh started by a
+     * background catalog refresh. Call before the process exits so a rotated token is not lost.
+     */
+    settleCredentialWrites() {
+        return this.credentials.settled();
+    }
     listCredentials(options) {
         return this.credentials.list(options);
     }

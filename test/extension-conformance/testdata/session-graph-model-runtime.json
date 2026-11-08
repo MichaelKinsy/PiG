@@ -189,6 +189,7 @@
 			}
 		}
 	},
+	"settled": true,
 	"stored": {
 		"stored-prov": {
 			"key": "sk-stored",

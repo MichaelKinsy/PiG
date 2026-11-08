@@ -496,7 +496,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-coding-agent: ModelRuntime.removeRuntimeApiKey" = { go = "native:ModelRuntime.RemoveRuntimeAPIKey", rust = "native:ModelRuntime::remove_runtime_api_key", python = "native:ModelRuntime.remove_runtime_api_key", lisp = "native:pig:runtime-remove-runtime-api-key" }
 "pi-coding-agent: ModelRuntime.resolveModel" = { go = "native:ModelRuntime.ResolveModel", rust = "native:ModelRuntime::resolve_model", python = "native:ModelRuntime.resolve_model", lisp = "native:pig:runtime-resolve-model" }
 "pi-coding-agent: ModelRuntime.setRuntimeApiKey" = { go = "native:ModelRuntime.SetRuntimeAPIKey", rust = "native:ModelRuntime::set_runtime_api_key", python = "native:ModelRuntime.set_runtime_api_key", lisp = "native:pig:runtime-set-runtime-api-key" }
-"pi-coding-agent: ModelRuntime.settleCredentialWrites" = { node = "unclassified", go = "unclassified", rust = "unclassified", python = "unclassified", lisp = "unclassified" }
+"pi-coding-agent: ModelRuntime.settleCredentialWrites" = { go = "native:ModelRuntime.SettleCredentialWrites", rust = "native:ModelRuntime::settle_credential_writes", python = "native:ModelRuntime.settle_credential_writes", lisp = "native:pig:runtime-settle-credential-writes" }
 "pi-coding-agent: ModelRuntime.stream" = { go = "native:ModelRuntime.Stream", rust = "native:ModelRuntime::stream", python = "native:ModelRuntime.stream", lisp = "native:pig:runtime-stream" }
 "pi-coding-agent: ModelRuntime.streamDeferred" = { go = "gap:SdkSessionGraph", rust = "gap:SdkSessionGraph", python = "gap:SdkSessionGraph", lisp = "gap:SdkSessionGraph" }
 "pi-coding-agent: ModelRuntime.streamSimple" = { go = "native:ModelRuntime.StreamSimple", rust = "native:ModelRuntime::stream_simple", python = "native:ModelRuntime.stream_simple", lisp = "native:pig:runtime-stream-simple" }
@@ -1600,7 +1600,7 @@ closing = "Pure helpers ported per SDK with vector tests from Pi at the pin (tes
 "pi-ai/compat: resolveTranscriptTools" = { go = "native:ResolveTranscriptTools", rust = "native:resolve_transcript_tools", python = "native:resolve_transcript_tools", lisp = "native:pig:resolve-transcript-tools" }
 "pi-ai/compat: retryAssistantCall" = { go = "gap:SdkPiAiHelpers", rust = "gap:SdkPiAiHelpers", python = "gap:SdkPiAiHelpers", lisp = "gap:SdkPiAiHelpers" }
 "pi-ai/compat: retryDelayMs" = { go = "native:RetryDelayMs", rust = "native:retry_delay_ms", python = "native:retry_delay_ms", lisp = "native:pig:retry-delay-ms" }
-"pi-ai/compat: setBedrockProviderLoader" = { node = "unclassified", go = "unclassified", rust = "unclassified", python = "unclassified", lisp = "unclassified" }
+"pi-ai/compat: setBedrockProviderLoader" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-ai/compat: setBedrockProviderModule" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }
 "pi-ai/compat: stream" = { go = "host:ModelRegistry.Stream", rust = "host:ModelRegistry::stream", python = "host:ModelRegistry.stream", lisp = "host:pig:registry-stream" }
 "pi-ai/compat: streamAnthropic" = { go = "gap:SdkExportsLedger", rust = "gap:SdkExportsLedger", python = "gap:SdkExportsLedger", lisp = "gap:SdkExportsLedger" }

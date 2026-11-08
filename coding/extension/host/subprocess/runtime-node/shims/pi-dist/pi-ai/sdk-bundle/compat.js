@@ -115,7 +115,7 @@ import {
 } from "./chunk-SHUYVCID.js";
 
 // pi-dist/pi-ai/compat.js
-import { setBedrockProviderModule, bedrockConverseStreamApi } from "../api/bedrock-converse-stream.lazy.js";
+import { setBedrockProviderModule, setBedrockProviderLoader, bedrockConverseStreamApi } from "../api/bedrock-converse-stream.lazy.js";
 
 // pi-dist/pi-ai/image-models.js
 var imageModelsByProvider = /* @__PURE__ */ new Map();
@@ -528,6 +528,7 @@ export {
   resolveTranscriptTools,
   retryAssistantCall,
   retryDelayMs,
+  setBedrockProviderLoader,
   setBedrockProviderModule,
   stream,
   streamAnthropic,
