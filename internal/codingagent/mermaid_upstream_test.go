@@ -92,7 +92,7 @@ func TestMermaidRenderingUpstream(t *testing.T) {
 		lacks(t, out, `dropped, expected a link: "also-invalid"`)
 	})
 	// .upstream/v0.87.1/packages/coding-agent/test/mermaid.test.ts:100
-	t.Run("respects rendering modes and skips thinking blocks", func(t *testing.T) {
+	t.Run("respects rendering modes and skips thinking blocks and non-transcript surfaces", func(t *testing.T) {
 		md := "```mermaid\nflowchart LR\n  A --> B\n```"
 		for _, tc := range []struct {
 			mode      string
@@ -104,5 +104,14 @@ func TestMermaidRenderingUpstream(t *testing.T) {
 			}
 		}
 		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageAssistant, nil), "```mermaid")
+		// Pi eebd5d90: diagrams also render in user text and summaries, and stay source in custom messages and changelogs.
+		for _, kind := range []extension.MarkdownMessageType{extension.MarkdownMessageUser, extension.MarkdownMessageSummary} {
+			lacks(t, transform(md, "streaming", false, 100, kind, nil), "```mermaid")
+		}
+		for _, kind := range []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageChangelog} {
+			if out := transform(md, "streaming", false, 100, kind, nil); out != md {
+				t.Fatalf("%s changed source: %q", kind, out)
+			}
+		}
 	})
 }

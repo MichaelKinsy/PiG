@@ -78,7 +78,7 @@ func (m *InteractiveMode) handleEntryAppended(raw json.RawMessage) {
 	case "custom_message":
 		var entry CustomMessageEntry
 		if json.Unmarshal(raw, &entry) == nil && entry.Display {
-			m.appendCustomMessage(entry)
+			m.appendCustomMessage(entry, messageMeta{})
 			m.tuiInst.RequestRender()
 		}
 	case "compaction":
@@ -131,7 +131,7 @@ func (m *InteractiveMode) renderBoundaryCompaction(entry CompactionEntry) {
 		[]SessionEntry{entries[0]},
 		slices.DeleteFunc(slices.Clone(retained), func(candidate SessionEntry) bool { return !isAfter(candidate) }),
 	)
-	m.renderSessionEntryList(ordered, false)
+	m.renderSessionEntryListWithLive(ordered, false, false, entry.ID)
 	if m.entriesRenderedByBoundaryCompaction == nil {
 		m.entriesRenderedByBoundaryCompaction = map[string]struct{}{}
 	}

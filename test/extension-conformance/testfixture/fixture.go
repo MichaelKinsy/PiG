@@ -611,7 +611,7 @@ func Extension() *sdk.Extension {
 	})
 	ext.MarkdownTransformer(func(markdown string, context sdk.MarkdownTransformContext) string {
 		return fmt.Sprintf("md:%s:%s:streaming=%t:width=%d", markdown, context.MessageType, context.IsStreaming, context.AvailableWidth)
-	})
+	}, sdk.MarkdownTransformerOptions{MessageTypes: []string{"user", "assistant", "assistant-thinking", "custom", "summary", "changelog"}})
 	resolvedLine := func(prefix, tool string) sdk.ToolRenderCallFunc {
 		return func(_ sdk.Context, args map[string]any, _ sdk.ToolRenderContext, _ int) ([]string, error) {
 			return []string{fmt.Sprintf("%s:%s:%v", prefix, tool, args["q"])}, nil

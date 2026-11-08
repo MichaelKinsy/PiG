@@ -97,8 +97,8 @@ type EntryRenderOptions struct {
 type EntryRendererFunc func(ctx Context, entry map[string]any, options EntryRenderOptions, width int) ([]string, error)
 
 // MarkdownTransformContext mirrors Pi's MarkdownTransformContext: the
-// transcript message being rendered ("user", "assistant" or
-// "assistant-thinking"), whether it is still streaming, and the width it is
+// message being rendered ("user", "assistant", "assistant-thinking",
+// "custom", "summary" or "changelog"), whether it is still streaming, and the width it is
 // rendered at.
 type MarkdownTransformContext struct {
 	MessageType    string `json:"messageType"`
@@ -113,6 +113,16 @@ type MarkdownTransformContext struct {
 // MarkdownTransformerFunc rewrites Markdown for display only, as Pi's
 // MarkdownTransformer does. A transformer that panics keeps its input.
 type MarkdownTransformerFunc func(markdown string, context MarkdownTransformContext) string
+
+// MarkdownTransformerOptions mirrors Pi's MarkdownTransformerOptions.
+type MarkdownTransformerOptions struct {
+	// MessageTypes lists the surfaces the transformer runs on, by the MarkdownTransformContext.MessageType they carry:
+	// "user", "assistant", "assistant-thinking" (the transcript messages, the default), "custom" (custom messages without a
+	// message renderer, and the content of expanded skill blocks), "summary" (expanded branch and compaction summaries)
+	// and "changelog" (What's New, /changelog, Extension Updates and the Update Available note). Nil selects the default
+	// types; a non-nil empty list runs the transformer nowhere.
+	MessageTypes []string
+}
 
 // Factory constructs an extension instance for generated standalone or packed
 // runners. Factory-style packages should expose a function such as:
@@ -190,6 +200,7 @@ type Extension struct {
 	renderers               []rendererDef
 	entryRenderers          []rendererDef
 	markdownTransform       MarkdownTransformerFunc
+	markdownMessageTypes    []string
 	ownsThinkingRuns        bool // guarded by toolMu
 
 	// toolRenderMu guards toolRenderers and toolRenderCards: render requests
@@ -1016,10 +1027,27 @@ func (e *Extension) declare(late registerMsg, apply func()) {
 
 // MarkdownTransformer registers the extension's display-only Markdown
 // transform (Pi's pi.registerMarkdownTransformer). The host applies it to
-// user and assistant Markdown in the interactive transcript, after its own
-// transformers; a later registration replaces an earlier one.
-func (e *Extension) MarkdownTransformer(transformer MarkdownTransformerFunc) {
+// user, assistant and thinking Markdown in the interactive transcript, after
+// its own transformers, or to the surfaces options.MessageTypes lists; a
+// later registration replaces an earlier one.
+func (e *Extension) MarkdownTransformer(transformer MarkdownTransformerFunc, options ...MarkdownTransformerOptions) {
 	e.markdownTransform = transformer
+	e.markdownMessageTypes = nil
+	if len(options) > 0 && options[0].MessageTypes != nil {
+		e.markdownMessageTypes = slices.Clone(options[0].MessageTypes)
+	}
+}
+
+// markdownMessageTypeList is the surface list the register frame carries: the types of the registration, or Pi's defaults. Nil without a transformer.
+func (e *Extension) markdownMessageTypeList() *[]string {
+	if e.markdownTransform == nil {
+		return nil
+	}
+	types := e.markdownMessageTypes
+	if types == nil {
+		types = []string{"user", "assistant", "assistant-thinking"}
+	}
+	return &types
 }
 
 // OwnThinkingRuns declares that this extension owns the thinking runs of
@@ -1192,6 +1220,7 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			Renderers:               e.renderers,
 			EntryRenderers:          e.entryRenderers,
 			MarkdownTransformer:     e.markdownTransform != nil,
+			MarkdownMessageTypes:    e.markdownMessageTypeList(),
 			OwnsThinkingRuns:        e.ownsThinkingRuns,
 			ToolRenderers:           e.toolRendererCount(),
 			McpServers:              e.mcpServerDecls,

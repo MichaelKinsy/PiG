@@ -17,7 +17,24 @@ const (
 	// MarkdownMessageAssistantThinking marks the reasoning/thinking trace of an assistant turn. Mirrors upstream
 	// MarkdownTransformContext.messageType "assistant-thinking"; the built-in Mermaid transformer skips it.
 	MarkdownMessageAssistantThinking MarkdownMessageType = "assistant-thinking"
+	// MarkdownMessageCustom marks custom messages without a message renderer and the content of expanded skill blocks.
+	MarkdownMessageCustom MarkdownMessageType = "custom"
+	// MarkdownMessageSummary marks the summary of an expanded branch or compaction summary, without Pi's header.
+	MarkdownMessageSummary MarkdownMessageType = "summary"
+	// MarkdownMessageChangelog marks Pi's changelog ("What's New" and /changelog), the "Extension Updates" notice and the release note of the "Update Available" notice.
+	MarkdownMessageChangelog MarkdownMessageType = "changelog"
 )
+
+// DefaultMarkdownMessageTypes are the surfaces a transformer runs on unless its registration lists others: the transcript messages.
+func DefaultMarkdownMessageTypes() []MarkdownMessageType {
+	return []MarkdownMessageType{MarkdownMessageUser, MarkdownMessageAssistant, MarkdownMessageAssistantThinking}
+}
+
+// MarkdownTransformerOptions mirrors Pi's MarkdownTransformerOptions.
+type MarkdownTransformerOptions struct {
+	// MessageTypes lists the surfaces the transformer runs on. Nil selects [DefaultMarkdownMessageTypes]; a non-nil empty list runs it nowhere.
+	MessageTypes []MarkdownMessageType
+}
 
 // MarkdownTransformContext mirrors upstream MarkdownTransformContext.
 type MarkdownTransformContext struct {

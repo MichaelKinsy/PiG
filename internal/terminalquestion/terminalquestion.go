@@ -55,7 +55,7 @@ func (r *Reader) Question(ctx context.Context, message string, output io.Writer,
 	r.mu.Lock()
 	if r.pending == nil {
 		r.pending = make(chan answer, 1)
-		go r.readLine(r.pending)
+		go r.readLine(r.pending) //portlint:allow golifetime the read of the process input cannot be cancelled; it stays in flight and the next question takes it over (see Reader)
 	}
 	pending := r.pending
 	r.mu.Unlock()

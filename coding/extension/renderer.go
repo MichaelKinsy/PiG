@@ -10,7 +10,18 @@ const (
 	MarkdownMessageUser              = markdowntransform.MarkdownMessageUser
 	MarkdownMessageAssistant         = markdowntransform.MarkdownMessageAssistant
 	MarkdownMessageAssistantThinking = markdowntransform.MarkdownMessageAssistantThinking
+	MarkdownMessageCustom            = markdowntransform.MarkdownMessageCustom
+	MarkdownMessageSummary           = markdowntransform.MarkdownMessageSummary
+	MarkdownMessageChangelog         = markdowntransform.MarkdownMessageChangelog
 )
+
+// MarkdownTransformerOptions mirrors Pi's MarkdownTransformerOptions. It is [markdowntransform.MarkdownTransformerOptions].
+type MarkdownTransformerOptions = markdowntransform.MarkdownTransformerOptions
+
+// DefaultMarkdownMessageTypes are the surfaces a transformer runs on unless its registration lists others.
+func DefaultMarkdownMessageTypes() []MarkdownMessageType {
+	return markdowntransform.DefaultMarkdownMessageTypes()
+}
 
 // MarkdownTransformContext mirrors upstream MarkdownTransformContext. It is [markdowntransform.MarkdownTransformContext].
 type MarkdownTransformContext = markdowntransform.MarkdownTransformContext

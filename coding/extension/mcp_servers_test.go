@@ -4,10 +4,11 @@ package extension
 
 import (
 	"encoding/json"
-	"github.com/MichaelKinsy/PiG/mcp"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 )
 
 // Not upstream tests: guards for packages/coding-agent/src/core/mcp-servers.ts.
@@ -241,6 +242,6 @@ func TestValidateMcpServerConfigParsesTheURLAsTheWHATWGParserDoes(t *testing.T) 
 // `oauth.callbackUrl` check of the validation: whether a redirect URI can be served by the loopback callback server.
 func isLoopbackRedirectURI(uri string) bool {
 	quoted, _ := json.Marshal(uri)
-	result := mcp.ValidateMcpServerConfig("s", json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":`+string(quoted)+`}}`), mcp.McpServerConfigOptions{})
+	result := mcpshared.ValidateMcpServerConfig("s", json.RawMessage(`{"url":"https://x.example","oauth":{"callbackUrl":`+string(quoted)+`}}`), mcpshared.McpServerConfigOptions{})
 	return !strings.Contains(result.Error, "oauth.callbackUrl must be an http URI")
 }
