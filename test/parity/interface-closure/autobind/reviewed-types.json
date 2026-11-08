@@ -498,5 +498,9 @@
   "pkg:chord/tui/launcher#terminalFile::call:0": {
     "go": "chord/nextnode/tui/tui_launcher.go#TerminalFile",
     "reason": "Pi launcher.ts terminalFile(path: unknown, server: URL) takes what the sandbox's request carried (unknown: anything) and throws unless it is a string naming a terminal file. Go's pipe has already checked that a fetch or attach request carries a string path (bridgeRequest), so TerminalFile takes a string and the server as its URL text, and returns the same pathname or the same error; the launcher's tests (TestTerminalFile in tui_launcher_test.go) cover the refusals."
+  },
+  "pkg:chord/tui/launcher#TerminalOptions": {
+    "go": "chord/nextnode/tui/tui_launcher.go#TerminalOptions",
+    "reason": "Pi launcher.ts TerminalOptions.input is Node's Readable (with optional setRawMode and isTTY) and output a Writable (with optional columns and rows): Go has the same members as Input io.Reader and Output io.Writer, the optional ones found by interface (SetRawMode(bool) error and IsTTY() bool on the input; Columns(), Rows() and OnResize(func()) func() on the output, which stands for the stream's \"resize\" event), the process's stdin and stdout when nil. The other fields are Pi's (URL, Credentials, Colors, Mode, Locales, Opener) plus Node and Client, which Go's launcher takes where Pi reads process.env and the global fetch. TestLauncher... in tui_kit_upstream_test.go start the launcher through Input and Output (streamsOf)."
   }
 }
