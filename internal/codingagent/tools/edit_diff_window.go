@@ -10,6 +10,7 @@ import (
 
 // diffWindowMarginLines is the unchanged lines diffed on each side of a replacement. Well above the 4 context lines shown, so the line
 // diff aligns a change within its window as it would over the whole file.
+// upstream: packages/coding-agent/src/core/tools/edit-diff.ts:582 DIFF_WINDOW_MARGIN_LINES
 const diffWindowMarginLines = 32
 
 // displaySkipMarker is the display diff line that stands for skipped unchanged lines.
