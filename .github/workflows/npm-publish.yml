@@ -73,8 +73,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release \
-            --pattern SHA256SUMS --pattern 'pig-*.tar.gz' --pattern 'pig-*.zip'
+          # Release-asset downloads answer 5xx now and then; retry, and the sha256sum check below stays mandatory.
+          for attempt in 1 2 3 4 5 6; do
+            if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release --clobber \
+              --pattern SHA256SUMS --pattern 'pig-*.tar.gz' --pattern 'pig-*.zip'; then break; fi
+            if [ "$attempt" = 6 ]; then echo "gh release download failed $attempt times" >&2; exit 1; fi
+            sleep 10
+          done
           cd release
           # Verify every downloaded archive; pack_npm.py re-verifies each one
           # it extracts from.

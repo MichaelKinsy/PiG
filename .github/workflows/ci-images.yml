@@ -179,6 +179,11 @@ jobs:
           IMAGE: ${{ matrix.image }}
           VERIFY_IMAGE_REF: ${{ steps.published.outputs.image-ref }}
         run: ./automation/ci/build-ci-image.sh "$IMAGE"
+      - name: Restore the pinned crane download
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-ci-downloads
+          key: ci-downloads-crane-${{ hashFiles(format('ci-image-{0}/automation/ci/seed-ci-image-bases.sh', matrix.image)) }}
       - name: Seed the SBOM generator
         if: steps.published.outputs.present == 'true'
         shell: bash
@@ -279,6 +284,11 @@ jobs:
           ./automation/ci/check-npm-lock-integrity.py \
             automation/images/ci-parity/package-lock.json \
             automation/images/npm-runtime/package-lock.json
+      - name: Restore the pinned crane download
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-ci-downloads
+          key: ci-downloads-crane-${{ hashFiles(format('ci-image-{0}/automation/ci/seed-ci-image-bases.sh', matrix.image)) }}
       - name: Seed pinned base images
         shell: bash
         working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
