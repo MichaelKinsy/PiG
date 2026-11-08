@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -21,7 +22,7 @@ func PathOnlyEnvironment(tb testing.TB, programs ...string) {
 		if err != nil {
 			tb.Fatal(err)
 		}
-		if dir := filepath.Dir(found); !contains(dirs, dir) {
+		if dir := filepath.Dir(found); !slices.Contains(dirs, dir) {
 			dirs = append(dirs, dir)
 		}
 	}
@@ -38,13 +39,4 @@ func PathOnlyEnvironment(tb testing.TB, programs ...string) {
 			}
 		}
 	})
-}
-
-func contains(list []string, want string) bool {
-	for _, entry := range list {
-		if entry == want {
-			return true
-		}
-	}
-	return false
 }
