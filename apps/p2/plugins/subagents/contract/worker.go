@@ -2,6 +2,7 @@ package contract
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/durable"
 )
@@ -57,7 +58,26 @@ type SubagentState struct {
 	Reporters map[string]durable.TaskId `json:"reporters"`
 	// OneShots are the one-shot agents by the nested call ID that ran them (`<script call ID>/c<n>`).
 	OneShots map[string]OneShot `json:"oneShots,omitempty"`
+	// Order is the agents' names in the document's key order (insertion: a spawn adds at the end), set by readers that
+	// care about it (Pi lists them with Object.entries). Not part of the stored value.
+	Order []string `json:"-"`
 }
+
+// Names are the agents' names in the document's key order, else alphabetical.
+func (s SubagentState) Names() []string {
+	if len(s.Order) == len(s.Agents) {
+		return s.Order
+	}
+	names := make([]string, 0, len(s.Agents))
+	for name := range s.Agents {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+// SubagentsKind is the kind of the registry document.
+const SubagentsKind = "p2.subagents"
 
 // subagentV1 is a version 1 entry: an own cwd instead of an own location.
 type subagentV1 struct {
@@ -75,7 +95,7 @@ type subagentStateV1 struct {
 // conversation and its `/tree` branches): subagents are session-wide and outlive branch switches.
 var SubagentsDoc = durable.DefineDoc(durable.DocDefinition[SubagentState]{
 	CommonDocDefinition: durable.CommonDocDefinition[SubagentState]{
-		Kind: "p2.subagents",
+		Kind: SubagentsKind,
 		// 2: an own location (environment and cwd) instead of an own cwd (version 1's is `unplacedCwd` until placed).
 		Version: 2,
 		Initial: func() SubagentState {
