@@ -236,7 +236,9 @@ func (f *FollowedSource[T]) OpenWatch(ctx context.Context) (*chord.NativeWatch[T
 	}
 	f.follow(start.Kind, start.Value)
 	var watch *chord.NativeWatch[T]
-	watch = chord.NewNativeWatch(value, func() { f.unfollow(watch) }, batch.ReportListener, nil)
+	// A watch ends from the goroutine of its context's listener too: its unfollow runs as a section of the host, with the
+	// other code that touches the source (Pi runs both on one event loop).
+	watch = chord.NewNativeWatch(value, func() { batch.Section(func() { f.unfollow(watch) }) }, batch.ReportListener, nil)
 	if scheduler := batch.deliveries(); scheduler != nil {
 		watch.On(scheduler)
 	}

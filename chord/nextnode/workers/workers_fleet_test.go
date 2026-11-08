@@ -91,6 +91,12 @@ func (b *behaviours) set(id string, behaviour workerBehaviour) {
 	b.byID[id] = behaviour
 }
 
+func (b *behaviours) delete(id string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.byID, id)
+}
+
 func (b *behaviours) get(id string) workerBehaviour {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -255,6 +261,8 @@ func errorKind(err WorkersError) string {
 		return "authorize_failed"
 	case WorkerExitedError:
 		return "worker_exited"
+	case WorkerLinkLostError:
+		return "worker_link_lost"
 	default:
 		return fmt.Sprintf("%T", err)
 	}

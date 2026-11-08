@@ -14,7 +14,7 @@ pkg:ai/providers/compat-schema#ProviderCompat	ai	type-mismatch	internal/codingag
 pkg:chord/.#AcceptsTable	chord	undecidable	chord/next/contracts/accepts.go#AcceptsTable
 pkg:chord/.#AddedColumn	chord	no-go-symbol	
 pkg:chord/.#Address	chord	undecidable	chord/next/contracts/host_kind.go#Address
-pkg:chord/.#ArchiveManifest	chord	no-go-symbol	
+pkg:chord/.#ArchiveManifest	chord	undecidable	chord/nextnode/app/archive.go#ArchiveManifest
 pkg:chord/.#BASE_ROLES	chord	no-go-symbol	
 pkg:chord/.#BaseRole	chord	no-go-symbol	
 pkg:chord/.#BooleanSchema	chord	no-go-symbol	
@@ -419,8 +419,8 @@ pkg:chord/.#coalesce	chord	child-gap	chord/next/store/expression.go#Coalesce
 pkg:chord/.#coalesce::call:0	chord	undecidable	chord/next/store/expression.go#Coalesce
 pkg:chord/.#concat	chord	child-gap	chord/next/store/expression.go#Concat
 pkg:chord/.#concat::call:0	chord	undecidable	chord/next/store/expression.go#Concat
-pkg:chord/.#constant	chord	no-go-symbol	
-pkg:chord/.#constant::call:0	chord	child-gap	
+pkg:chord/.#constant	chord	not-exercised	chord/nextnode/app/info.go#constant
+pkg:chord/.#constant::call:0	chord	signature-mismatch	chord/nextnode/app/info.go#constant
 pkg:chord/.#createLanguage	chord	no-go-symbol	
 pkg:chord/.#createLanguage::call:0	chord	child-gap	
 pkg:chord/.#decodeJsonl	chord	child-gap	chord/next/store/jsonl.go#DecodeJsonl
@@ -529,61 +529,50 @@ pkg:chord/.#webSocketLink	chord	child-gap	chord/host/link.go#NewWebSocketLink
 pkg:chord/.#webSocketLink::call:0	chord	signature-mismatch	chord/host/link.go#NewWebSocketLink
 pkg:chord/.#when	chord	child-gap	chord/next/store/expression.go#When
 pkg:chord/.#when::call:0	chord	undecidable	chord/next/store/expression.go#When
-pkg:chord/app#App	chord	no-go-symbol	
-pkg:chord/app#App::property:applyChanges	chord	child-gap	
-pkg:chord/app#App::property:applyChanges::call:0	chord	child-gap	
-pkg:chord/app#App::property:close	chord	child-gap	
-pkg:chord/app#App::property:close::call:0	chord	child-gap	
-pkg:chord/app#App::property:dataDir	chord	child-gap	
-pkg:chord/app#App::property:exportData	chord	child-gap	
-pkg:chord/app#App::property:exportData::call:0	chord	child-gap	
-pkg:chord/app#App::property:host	chord	child-gap	
-pkg:chord/app#App::property:http	chord	child-gap	
-pkg:chord/app#App::property:importData	chord	child-gap	
-pkg:chord/app#App::property:importData::call:0	chord	child-gap	
-pkg:chord/app#App::property:ownerLink	chord	child-gap	
-pkg:chord/app#App::property:ownerLink::call:0	chord	child-gap	
-pkg:chord/app#App::property:ownerTokenFile	chord	child-gap	
-pkg:chord/app#App::property:plugins	chord	child-gap	
-pkg:chord/app#App::property:tui	chord	child-gap	
-pkg:chord/app#App::property:web	chord	child-gap	
-pkg:chord/app#App::property:workers	chord	child-gap	
-pkg:chord/app#AppApi	chord	no-go-symbol	
-pkg:chord/app#AppError	chord	no-go-symbol	
-pkg:chord/app#AppInfo	chord	no-go-symbol	
-pkg:chord/app#AppKind	chord	no-go-symbol	
-pkg:chord/app#AppOptions	chord	no-go-symbol	
+pkg:chord/app#App	chord	child-gap	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:applyChanges	chord	not-exercised	chord/nextnode/app/app.go#App.ApplyChanges
+pkg:chord/app#App::property:applyChanges::call:0	chord	not-exercised	chord/nextnode/app/app.go#App.ApplyChanges
+pkg:chord/app#App::property:close	chord	not-exercised	chord/nextnode/app/app.go#App.Close
+pkg:chord/app#App::property:close::call:0	chord	not-exercised	chord/nextnode/app/app.go#App.Close
+pkg:chord/app#App::property:dataDir	chord	not-exercised	chord/nextnode/app/app.go#App.DataDir
+pkg:chord/app#App::property:exportData	chord	not-exercised	chord/nextnode/app/app.go#App.ExportData
+pkg:chord/app#App::property:exportData::call:0	chord	not-exercised	chord/nextnode/app/app.go#App.ExportData
+pkg:chord/app#App::property:host	chord	not-exercised	chord/nextnode/app/app.go#App.Host
+pkg:chord/app#App::property:http	chord	not-exercised	chord/nextnode/app/app.go#App.HTTP
+pkg:chord/app#App::property:importData	chord	not-exercised	chord/nextnode/app/app.go#App.ImportData
+pkg:chord/app#App::property:importData::call:0	chord	not-exercised	chord/nextnode/app/app.go#App.ImportData
+pkg:chord/app#App::property:ownerLink	chord	not-exercised	chord/nextnode/app/app.go#App.OwnerLink
+pkg:chord/app#App::property:ownerLink::call:0	chord	not-exercised	chord/nextnode/app/app.go#App.OwnerLink
+pkg:chord/app#App::property:ownerTokenFile	chord	not-exercised	chord/nextnode/app/app.go#App.OwnerTokenFile
+pkg:chord/app#App::property:plugins	chord	type-mismatch	chord/nextnode/app/app.go#App.Plugins
+pkg:chord/app#App::property:tui	chord	member-missing	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:web	chord	member-missing	chord/nextnode/app/app.go#App
+pkg:chord/app#App::property:workers	chord	not-exercised	chord/nextnode/app/app.go#App.Workers
+pkg:chord/app#AppApi	chord	undecidable	chord/nextnode/app/app.go#AppAPI
+pkg:chord/app#AppOptions	chord	type-mismatch	chord/nextnode/app/app.go#AppOptions
 pkg:chord/app#AppPlugins	chord	no-go-symbol	
-pkg:chord/app#AppTimeouts	chord	no-go-symbol	
-pkg:chord/app#AppWorkerKind	chord	no-go-symbol	
-pkg:chord/app#ArchiveManifest	chord	no-go-symbol	
+pkg:chord/app#AppTimeouts	chord	type-mismatch	chord/nextnode/app/app.go#AppTimeouts
+pkg:chord/app#AppWorkerKind	chord	type-mismatch	chord/nextnode/app/app.go#AppWorkerKind
+pkg:chord/app#ArchiveManifest	chord	undecidable	chord/nextnode/app/archive.go#ArchiveManifest
 pkg:chord/app#EphemeralUser	chord	no-go-symbol	
 pkg:chord/app#FileInfo	chord	not-exercised	chord/nextnode/app/files_index.go#FileInfo
 pkg:chord/app#FileWrite	chord	not-exercised	chord/nextnode/app/files_index.go#FileWrite
 pkg:chord/app#FolderEntry	chord	type-mismatch	chord/nextnode/app/files_index.go#FolderEntry
-pkg:chord/app#SESSION_COOKIE	chord	no-go-symbol	
-pkg:chord/app#Server	chord	no-go-symbol	
-pkg:chord/app#Server::call:0	chord	child-gap	
+pkg:chord/app#SESSION_COOKIE	chord	not-exercised	chord/nextnode/app/sessions.go#SessionCookie
+pkg:chord/app#Server	chord	type-mismatch	chord/nextnode/app/app.go#Server
+pkg:chord/app#Server::call:0	chord	child-gap	chord/nextnode/app/app.go#Server
 pkg:chord/app#SessionInfo	chord	no-go-symbol	
-pkg:chord/app#SessionKind	chord	no-go-symbol	
-pkg:chord/app#Sessions	chord	no-go-symbol	
+pkg:chord/app#SessionKind	chord	not-exercised	chord/nextnode/app/sessions.go#SessionKind
 pkg:chord/app#SpaceSummary	chord	no-go-symbol	
-pkg:chord/app#WorkerInfo	chord	no-go-symbol	
-pkg:chord/app#WorkerOptions	chord	no-go-symbol	
-pkg:chord/app#defineUsers	chord	no-go-symbol	
-pkg:chord/app#defineUsers::call:0	chord	child-gap	
+pkg:chord/app#WorkerOptions	chord	type-mismatch	chord/nextnode/app/worker.go#WorkerOptions
 pkg:chord/app#ephemeralLoginFacet	chord	no-go-symbol	
 pkg:chord/app#ephemeralLoginFacet::call:0	chord	child-gap	
-pkg:chord/app#inviteFacet	chord	no-go-symbol	
-pkg:chord/app#inviteFacet::call:0	chord	child-gap	
 pkg:chord/app#privateDirectory	chord	not-exercised	chord/nextnode/app/layout.go#PrivateDirectory
 pkg:chord/app#privateDirectory::call:0	chord	not-exercised	chord/nextnode/app/layout.go#PrivateDirectory
 pkg:chord/app#privateStore	chord	not-exercised	chord/nextnode/app/layout.go#PrivateStore
 pkg:chord/app#privateStore::call:0	chord	not-exercised	chord/nextnode/app/layout.go#PrivateStore
-pkg:chord/app#startServer	chord	no-go-symbol	
-pkg:chord/app#startServer::call:0	chord	child-gap	
-pkg:chord/app#startWorker	chord	no-go-symbol	
-pkg:chord/app#startWorker::call:0	chord	child-gap	
+pkg:chord/app#startWorker	chord	not-exercised	chord/nextnode/app/worker.go#StartWorker
+pkg:chord/app#startWorker::call:0	chord	not-exercised	chord/nextnode/app/worker.go#StartWorker
 pkg:chord/app/files#FileInfo	chord	not-exercised	chord/nextnode/app/files_index.go#FileInfo
 pkg:chord/app/files#FileWrite	chord	not-exercised	chord/nextnode/app/files_index.go#FileWrite
 pkg:chord/app/files#FolderEntry	chord	type-mismatch	chord/nextnode/app/files_index.go#FolderEntry
@@ -595,10 +584,7 @@ pkg:chord/app/files#privateStore::call:0	chord	not-exercised	chord/nextnode/app/
 pkg:chord/http#Authenticator	chord	child-gap	chord/nextnode/http/authenticate.go#Authenticator
 pkg:chord/http#Authenticator::call:0	chord	signature-mismatch	chord/nextnode/http/authenticate.go#Authenticator
 pkg:chord/http#CookieOptions	chord	type-mismatch	chord/nextnode/http/cookies.go#CookieOptions
-pkg:chord/http#HookName	chord	type-mismatch	chord/nextnode/http/http.go#HookName
 pkg:chord/http#HttpComponent	chord	child-gap	chord/nextnode/http/http.go#HttpComponent
-pkg:chord/http#HttpComponent::property:close	chord	not-exercised	chord/nextnode/http/http.go#HttpComponent.Close
-pkg:chord/http#HttpComponent::property:close::call:0	chord	not-exercised	chord/nextnode/http/http.go#HttpComponent.Close
 pkg:chord/http#HttpComponent::property:facet	chord	not-exercised	chord/nextnode/http/http.go#HttpComponent.Facet
 pkg:chord/http#HttpComponent::property:fetch	chord	not-exercised	chord/nextnode/http/http.go#HttpComponent.Fetch
 pkg:chord/http#HttpComponent::property:fetch::call:0	chord	not-exercised	chord/nextnode/http/http.go#HttpComponent.Fetch
@@ -625,25 +611,20 @@ pkg:chord/http#HttpRequest::property:params	chord	not-exercised	chord/nextnode/h
 pkg:chord/http#HttpRequest::property:path	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Path
 pkg:chord/http#HttpRequest::property:provenance	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Provenance
 pkg:chord/http#HttpRequest::property:query	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.Query
-pkg:chord/http#HttpRequest::property:remoteAddress	chord	member-missing	chord/nextnode/http/request.go#HttpRequest
-pkg:chord/http#HttpRouteOptions	chord	type-mismatch	chord/nextnode/http/router.go#HttpRouteOptions
+pkg:chord/http#HttpRequest::property:remoteAddress	chord	not-exercised	chord/nextnode/http/request.go#HttpRequest.RemoteAddress
 pkg:chord/http#HttpSocket	chord	type-mismatch	chord/nextnode/http/router.go#HttpSocket
 pkg:chord/http#HttpSocket::call:0	chord	child-gap	chord/nextnode/http/router.go#HttpSocket
 pkg:chord/http#LinkOptions	chord	undecidable	chord/host/connection.go#LinkOptions
 pkg:chord/http#LinksOptions	chord	type-mismatch	chord/nextnode/http/http.go#LinksOptions
 pkg:chord/http#NodeRequest	chord	type-mismatch	chord/nextnode/http/node.go#NodeRequest
 pkg:chord/http#Router	chord	type-mismatch	chord/nextnode/http/router.go#Router
-pkg:chord/http#createHttp	chord	not-exercised	chord/nextnode/http/http.go#CreateHttp
-pkg:chord/http#createHttp::call:0	chord	not-exercised	chord/nextnode/http/http.go#CreateHttp
 pkg:chord/http#nodeRequest	chord	no-go-symbol	
 pkg:chord/http#nodeRequest::call:0	chord	child-gap	
-pkg:chord/http#readSignedCookie	chord	no-go-symbol	
-pkg:chord/http#readSignedCookie::call:0	chord	child-gap	
 pkg:chord/json#CopyJsonOptions	chord	no-go-symbol	
 pkg:chord/json#JsonRepresentation	chord	no-go-symbol	
 pkg:chord/json#copyJson	chord	child-gap	durable/json.go#CopyJson
 pkg:chord/json#copyJson::call:0	chord	signature-mismatch	durable/json.go#CopyJson
-pkg:chord/plugins#AppApi	chord	no-go-symbol	
+pkg:chord/plugins#AppApi	chord	undecidable	chord/nextnode/app/app.go#AppAPI
 pkg:chord/plugins#BaseInputs	chord	no-go-symbol	
 pkg:chord/plugins#BuildOptions	chord	type-mismatch	chord/nextnode/plugins/plugins_build.go#BuildOptions
 pkg:chord/plugins#BuiltFacet	chord	type-mismatch	chord/nextnode/plugins/plugins_build.go#BuiltFacet
@@ -886,21 +867,7 @@ pkg:chord/sync#storeHead	chord	not-exercised	chord/sync/client.go#StoreHead
 pkg:chord/sync#storeHead::call:0	chord	not-exercised	chord/sync/client.go#StoreHead
 pkg:chord/sync#uploadSession	chord	child-gap	chord/sync/client.go#UploadSession
 pkg:chord/sync#uploadSession::call:0	chord	signature-mismatch	chord/sync/client.go#UploadSession
-pkg:chord/telemetry-sqlite#SqliteTelemetry	chord	child-gap	chord/telemetrysqlite/index.go#SqliteTelemetry
-pkg:chord/telemetry-sqlite#SqliteTelemetry::property:ingest	chord	member-missing	chord/telemetrysqlite/index.go#SqliteTelemetry
-pkg:chord/telemetry-sqlite#SqliteTelemetry::property:ingest::call:0	chord	member-missing	chord/telemetrysqlite/index.go#SqliteTelemetry
 pkg:chord/telemetry-sqlite#TelemetryBatch	chord	no-go-symbol	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore	chord	no-go-symbol	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:close	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:close::call:0	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findMetrics	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findMetrics::call:0	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findTraces	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:findTraces::call:0	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:getTrace	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#SqliteTelemetryStore::property:getTrace::call:0	chord	child-gap	
-pkg:chord/telemetry-sqlite/node#openTelemetryStore	chord	no-go-symbol	
-pkg:chord/telemetry-sqlite/node#openTelemetryStore::call:0	chord	child-gap	
 pkg:chord/tui#AttachedFile	chord	no-go-symbol	
 pkg:chord/tui#Bridge	chord	no-go-symbol	
 pkg:chord/tui#BridgeRequest	chord	no-go-symbol	
@@ -1113,5 +1080,3 @@ pkg:schema/.#bigint	schema	no-go-symbol
 pkg:schema/.#bigint::call:0	schema	child-gap	
 pkg:schema/.#unsafe	schema	no-go-symbol	
 pkg:schema/.#unsafe::call:0	schema	child-gap	
-pkg:telemetry/.#telemetryNow	telemetry	no-go-symbol	
-pkg:telemetry/.#telemetryNow::call:0	telemetry	child-gap	

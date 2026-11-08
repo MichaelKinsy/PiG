@@ -162,7 +162,7 @@ func TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostF
 		}},
 	})
 	port := server.port
-	mustRefused(t, port, "/chord", nil, 403)
+	mustRefused(t, port, "/chord", nil, 401)
 	mustRefused(t, port, "/chord", withHeaders(owner, map[string]string{"origin": "http://evil.com"}), 403)
 	mustRefused(t, port, "/chord", withHeaders(owner, map[string]string{"origin": "null"}), 403)
 	mustRefused(t, port, "/chord", withHeaders(owner, map[string]string{"origin": "HTTP://127.0.0.1:" + strconv.Itoa(port)}), 403)
@@ -230,7 +230,7 @@ func TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondThe
 
 func TestPluginSocketsHandTheSocketAndItsRequestToTheHandlerInAScopeWithItsPrincipalNoPrincipalIsRefused(t *testing.T) {
 	server := serving(t, []plugin{echo()}, servedOptions{})
-	mustRefused(t, server.port, "/echo/lobby", nil, 403)
+	mustRefused(t, server.port, "/echo/lobby", nil, 401)
 	mustRefused(t, server.port, "/nope", owner, 404)
 	socket := mustSocketTo(t, server.port, "/echo/lobby", owner)
 	if got := nextMessage(t, socket); got != "lobby as owner" {
@@ -682,4 +682,65 @@ func TestGCKeepsNothingOfAClosedPluginSocket(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("the socket, its request or its scope is still kept")
+}
+
+func TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefused401(t *testing.T) {
+	seen := make(chan string, 1)
+	handler := &HttpSocket{Handle: func(_ *WebSocketHandle, _ HttpRequest, ctx host.Ctx) error {
+		seen <- httpKindOf(ctx.Principal())
+		return nil
+	}}
+	server := serving(t, []plugin{{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{
+		{Pattern: "/open", Handler: handler, Public: true},
+		{Pattern: "/closed", Handler: noopSocket()},
+	}})}}, servedOptions{})
+	mustRefused(t, server.port, "/closed", nil, 401)
+	socket := mustSocketTo(t, server.port, "/open", nil)
+	socket.Start()
+	select {
+	case kind := <-seen:
+		if kind != "anonymous" {
+			t.Fatalf("kind = %q", kind)
+		}
+	case <-time.After(within):
+		t.Fatal("the public socket's handler did not run")
+	}
+	server.close()
+}
+
+// Ports packages/chord/src/node/http/http.ts `links.opened` (Pi main c23b9ec1): the hook runs once the link is accepted, with the
+// request and the principal; what it returns runs when the socket closes; a hook that fails is reported `hook_failed` and the link
+// stays.
+func TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses(t *testing.T) {
+	opened := make(chan [2]string, 1)
+	closed := make(chan struct{}, 1)
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(request HttpRequest, principal data.Principal) (func(), error) {
+		opened <- [2]string{request.Path(), kindOf(principal)}
+		return func() { closed <- struct{}{} }, nil
+	}}})
+	socket := mustSocketTo(t, server.port, "/chord", owner)
+	if got := <-opened; got != [2]string{"/chord", "owner"} {
+		t.Fatalf("opened = %v", got)
+	}
+	select {
+	case <-closed:
+		t.Fatal("closed ran before the socket closed")
+	default:
+	}
+	socket.Close(1000, "")
+	<-closed
+}
+
+func TestTheLinksEndpointReportsAFailingOpenedAsHookFailedAndKeepsTheLink(t *testing.T) {
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(HttpRequest, data.Principal) (func(), error) {
+		return nil, errors.New("opened")
+	}}})
+	socket := mustSocketTo(t, server.port, "/chord", owner)
+	socket.Close(1000, "")
+	// The hook runs after the handshake, on the upgrade's own goroutine: its failure is reported a moment later.
+	eventually(t, "the failed hook reported", func() bool { return len(server.errors.all()) > 0 })
+	errs := server.errors.all()
+	if len(errs) != 1 || errs[0].Kind != ErrHookFailed || errs[0].Hook != HookLinksOpened || errs[0].Error == nil || errs[0].Error.Error() != "opened" {
+		t.Fatalf("errors = %+v", errs)
+	}
 }
