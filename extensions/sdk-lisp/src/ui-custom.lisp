@@ -220,7 +220,7 @@ drawn and sent as capturesViewportInput when true, and a frame goes out when onl
   (let ((invalidate (custom-component-set-invalidate component)))
     (when invalidate
       (handler-case (funcall invalidate nil)
-        (error (e) (format *error-output* "extension: recovered from error in a component's set-invalidate(nil): ~A~%" e)))))
+        (error (e) (diagnose "extension: recovered from error in a component's set-invalidate(nil): ~A~%" e)))))
   (let ((dispose (custom-component-dispose component)))
     (when dispose (ignore-errors (funcall dispose)))))
 
