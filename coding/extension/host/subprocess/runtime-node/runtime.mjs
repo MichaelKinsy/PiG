@@ -129,6 +129,8 @@ const MESSAGE_ENTRY_LIMIT = 256;
 
 // Pi hands one object to every payload that holds a message: message_end's message is the object agent-session.ts appendMessage stores in the session entry, message_start (system, user, toolResult), turn_end and agent_end carry it too, and extensions of one process share it. The host numbers each message (RequestPayload.message_seqs) and names the entry that persisted it (SessionStatePayload.messageEntries), and this table, one per process so the extensions packed in a cell share it, holds the object the first event gave for each number. The newest message_end handlers hold the object the entry shows.
 const messageObjects = new Map();
+// The session the process holds message objects of. The first runtime to see another session id drops the table (the numbers never repeat, so no later number finds an old object, and the old messages become collectable, as Pi's WeakMap of them is); the other runtimes of the process then see the id the table is already for.
+let messageObjectsSession = "";
 
 // replaceMessageInPlace makes target hold the members of source and no others, as agent-session.ts _replaceMessageInPlace overwrites the object a message_end replacement replaces.
 function replaceMessageInPlace(target, source) {
@@ -3408,6 +3410,11 @@ export class Runtime {
       // A cursor belongs to one session. Even an empty replacement must drop
       // the outgoing log before folding pages from the destination.
       if (snapshot.session.sessionId && snapshot.session.sessionId !== this.state.session.sessionId) {
+        if (snapshot.session.sessionId !== messageObjectsSession) {
+          // The first id the process sees is no switch: events may have numbered messages before the first state arrived.
+          if (messageObjectsSession) messageObjects.clear();
+          messageObjectsSession = snapshot.session.sessionId;
+        }
         this.pendingEntries = [];
         this.contextValues.sessionManager._cachedIndex = undefined;
         this.dropBranchCache();
@@ -5133,6 +5140,25 @@ export class Runtime {
               error = err instanceof Error ? err : new Error(String(err));
             }
             await this.respond(id, { _pigPromptSections: options.sections, _pigPromptSelectedTools: options.selectedTools, _pigPromptOptions: options, _pigPromptResult: result }, error);
+            return;
+          }
+          // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end and the entry hold. The host cannot share the object, so the reply carries the message the handler left, when it differs from the one it received, even if the handler failed (the host writes it into the message, as it does a tool_call's edited input).
+          if (request.event === "message_end") {
+            const message = event.message;
+            const before = message && typeof message === "object" ? JSON.stringify(message) : undefined;
+            let result;
+            let error;
+            try {
+              const pending = selected.handler(event, ctx);
+              // As below: a shutdown the handler asked for in its synchronous prefix closes its window in print, JSON and RPC mode.
+              const shutdownOwner = this.requestContext.getStore();
+              if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
+              result = await pending;
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            const edited = before !== undefined && JSON.stringify(message) !== before;
+            await this.respond(id, { ...(edited ? { _pigMessageEndMessage: message } : {}), _pigMessageEndResult: result }, error);
             return;
           }
           const messages = event.messages;

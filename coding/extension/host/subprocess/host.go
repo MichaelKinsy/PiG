@@ -4529,7 +4529,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				Args:        argsJSON,
 				encodedArgs: !streamed,
 			}
-			if event == "message_start" || event == "message_end" || event == "turn_end" || event == "agent_end" {
+			// Only a Node runtime shares message objects between its payloads; numbering a message for another SDK would cost a Session allocations it has no use for.
+			if (event == "message_start" || event == "message_end" || event == "turn_end" || event == "agent_end") && me.hostsNodeRuntime() {
 				payload.MessageSeqs = extension.MessageSequences(parent)
 			}
 			envelope := &Envelope{Type: MsgRequest, Request: payload}
@@ -4606,6 +4607,20 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					eventWire.Changed()
 					if err := applyToolCallInput(args[0], reply.Input); err != nil {
 						return nil, fmt.Errorf("decode tool_call input: %w", err)
+					}
+				}
+				resp.Response.Result = reply.Result
+			}
+			// upstream: runner.ts emitMessageEnd hands every handler the one event.message and agent-session.ts stores that object, so a handler's in-place edit of it is the message the later handlers, turn_end, agent_end and the saved entry hold. A Node runtime cannot share the object: its reply carries the message it left, when that differs from the one it received, even if the handler failed.
+			if event == "message_end" && len(args) > 0 && me.hostsNodeRuntime() && len(resp.Response.Result) > 0 {
+				var reply MessageEndResponsePayload
+				//portlint:allow hotpathjson one decode per message_end of a Node runtime (a message, not a delta), and only the reply's two members are read
+				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
+					return nil, fmt.Errorf("decode message_end response: %w", err)
+				}
+				if len(reply.Message) > 0 {
+					if err := applyMessageEndEdit(args[0], reply.Message); err != nil {
+						return nil, fmt.Errorf("decode message_end message: %w", err)
 					}
 				}
 				resp.Response.Result = reply.Result

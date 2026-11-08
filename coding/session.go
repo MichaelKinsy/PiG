@@ -832,7 +832,7 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 		} else {
 			id, err = in.AppendMessage(msg)
 			if err == nil {
-				in.NoteMessageEntry(id, s.messageSeqs.Sequence(msg))
+				in.NoteMessageEntry(id, s.messageSeqs.Numbered(msg))
 			}
 		}
 		if err == nil {
@@ -1448,6 +1448,8 @@ func (s *Session) ReplaceInner(sess *icodingagent.Session) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.inner = sess
+	// The messages of the session left are no message of the one installed: the numbering does not hold them.
+	s.messageSeqs.reset()
 	// upstream: runner.ts:889-891. Extensions see the log the Session now owns, and nothing keeps the replaced one alive.
 	if runner := s.currentRunner(); runner != nil {
 		runner.BindSessionManager(sess)

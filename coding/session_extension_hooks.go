@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"maps"
 	"reflect"
 	"time"
 
@@ -337,12 +336,12 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	if !runner.HasHandlers(icodingagent.EventMessageEnd) {
 		return
 	}
-	ctx := extension.WithMessageSequences(icodingagent.AgentEventContext(ev), []uint64{s.messageSeqs.Sequence(end.Message)})
+	ctx := extension.WithMessageSequences(icodingagent.AgentEventContext(ev), func() []uint64 { return []uint64{s.messageSeqs.Sequence(end.Message)} })
 	replacement, err := runner.EmitMessageEnd(ctx, extension.MessageEndEvent{Type: "message_end", Message: end.Message})
 	if err != nil || replacement == nil {
 		return
 	}
-	replaceMessageInPlace(end.Message, normalizeReplacementContent(*replacement))
+	agent.ReplaceMessageInPlace(end.Message, normalizeReplacementContent(*replacement))
 }
 
 // normalizeReplacementContent gives a user, assistant, toolResult or custom
@@ -357,31 +356,6 @@ func normalizeReplacementContent(message agent.AgentMessage) agent.AgentMessage 
 		return message.WithEmptyContent()
 	}
 	return message
-}
-
-// replaceMessageInPlace overwrites target with replacement through the
-// pointers the agent's transcript, the event and persistence share
-// (agent-session.ts _replaceMessageInPlace). A replacement of another shape is
-// ignored.
-func replaceMessageInPlace(target, replacement agent.AgentMessage) {
-	switch {
-	case target.System != nil && replacement.System != nil:
-		*target.System = *replacement.System
-	case target.User != nil && replacement.User != nil:
-		*target.User = *replacement.User
-	case target.Assistant != nil && replacement.Assistant != nil:
-		*target.Assistant = *replacement.Assistant
-	case target.ToolResult != nil && replacement.ToolResult != nil:
-		*target.ToolResult = *replacement.ToolResult
-	case target.Custom != nil && replacement.Custom != nil:
-		// A handler may return the event's own message: snapshot it first,
-		// as upstream returns early when target === replacement.
-		fields := maps.Clone(replacement.Custom)
-		clear(target.Custom)
-		maps.Copy(target.Custom, fields)
-		// The members follow the replacement's order, in every copy of the message.
-		target.AdoptMemberOrder(replacement)
-	}
 }
 
 // QueueAgentStartMessages holds the messages a before_agent_start dispatch

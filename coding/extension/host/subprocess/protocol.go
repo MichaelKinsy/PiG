@@ -754,6 +754,24 @@ func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MessageEndResponsePayload is the result of a Node runtime's message_end handler. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+type MessageEndResponsePayload struct {
+	Message json.RawMessage `json:"_pigMessageEndMessage"`
+	Result  json.RawMessage `json:"_pigMessageEndResult"`
+}
+
+func (p *MessageEndResponsePayload) UnmarshalJSON(data []byte) error {
+	type messageEndResponsePayload MessageEndResponsePayload
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var decoded messageEndResponsePayload
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	*p = MessageEndResponsePayload(decoded)
+	return nil
+}
+
 // ResponsePayload is the extension's reply to a request. For tool_call, Result carries a [ToolCallResponsePayload]. For agent_before_settle and turn_end,
 // Result carries {_pigBoundaryEntries, _pigBoundaryResult}: the mutated input
 // draft list and the explicit handler result. Mutations also accompany Error;

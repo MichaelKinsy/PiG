@@ -57,19 +57,26 @@ func emitAgentStart(runner *inproc.Runner) {
 	}
 }
 
+// withEventSequences carries sequences, which names the messages an event holds, on ctx when the Session numbers its messages (sequence is set).
+func withEventSequences(ctx context.Context, sequence MessageSequencer, sequences func() []uint64) context.Context {
+	if sequence == nil {
+		return ctx
+	}
+	return extension.WithMessageSequences(ctx, sequences)
+}
+
 // emitAgentEnd dispatches an agent_end event.
 // upstream: agent-session.ts:618: includes messages.
 func emitAgentEnd(runner *inproc.Runner, messages []agent.AgentMessage, willRetry bool, sequence MessageSequencer) {
 	if runner != nil && runner.HasHandlers(EventAgentEnd) {
-		ctx := context.Background()
-		if sequence != nil {
+		sequences := func() []uint64 {
 			sequences := make([]uint64, len(messages))
 			for i, message := range messages {
 				sequences[i] = sequence.Known(message)
 			}
-			ctx = extension.WithMessageSequences(ctx, sequences)
+			return sequences
 		}
-		_, _ = runner.Emit(ctx, extension.AgentEndEvent{
+		_, _ = runner.Emit(withEventSequences(context.Background(), sequence, sequences), extension.AgentEndEvent{
 			Type:     EventAgentEnd,
 			Messages: messages,
 		})
@@ -106,19 +113,18 @@ func emitTurnStart(runner *inproc.Runner, turnIndex int) {
 // upstream: agent-session.ts:629-635: includes the persisted message entry IDs.
 func emitTurnEnd(runner *inproc.Runner, event agent.TurnEndEvent, sequence MessageSequencer) {
 	if runner != nil && runner.HasHandlers(EventTurnEnd) {
-		ctx := context.Background()
-		if sequence != nil {
+		sequences := func() []uint64 {
 			sequences := make([]uint64, 1+len(event.ToolResults))
 			sequences[0] = sequence.Known(event.Message)
 			for i := range event.ToolResults {
 				sequences[1+i] = sequence.Known(agent.AgentMessage{ToolResult: &event.ToolResults[i]})
 			}
-			ctx = extension.WithMessageSequences(ctx, sequences)
+			return sequences
 		}
 		// Convert []agent.ToolResultMessage → []any for extension type alias.
 		trs := make([]extension.ToolResultMessage, len(event.ToolResults))
 		copy(trs, event.ToolResults)
-		_, _ = runner.Emit(ctx, extension.TurnEndEvent{
+		_, _ = runner.Emit(withEventSequences(context.Background(), sequence, sequences), extension.TurnEndEvent{
 			Type:               EventTurnEnd,
 			TurnIndex:          event.TurnIndex,
 			Message:            event.Message,
@@ -136,7 +142,7 @@ func emitMessageStart(runner *inproc.Runner, ev agent.AgentEvent, message extens
 		ctx := AgentEventContext(ev)
 		// An assistant message_start carries the partial message, which is no object message_end shares (agent-loop.js streamAssistantResponse).
 		if sequence != nil && message.Assistant == nil {
-			ctx = extension.WithMessageSequences(ctx, []uint64{sequence.Sequence(message)})
+			ctx = extension.WithMessageSequences(ctx, func() []uint64 { return []uint64{sequence.Sequence(message)} })
 		}
 		_, _ = runner.Emit(ctx, extension.MessageStartEvent{
 			Type:    EventMessageStart,
@@ -151,7 +157,7 @@ func emitMessageEnd(runner *inproc.Runner, ev agent.AgentEvent, message extensio
 	if runner != nil && runner.HasHandlers(EventMessageEnd) {
 		ctx := AgentEventContext(ev)
 		if sequence != nil {
-			ctx = extension.WithMessageSequences(ctx, []uint64{sequence.Sequence(message)})
+			ctx = extension.WithMessageSequences(ctx, func() []uint64 { return []uint64{sequence.Sequence(message)} })
 		}
 		_, _ = runner.Emit(ctx, extension.MessageEndEvent{
 			Type:    EventMessageEnd,
