@@ -515,3 +515,5 @@ plugins/terminals/protocol.ts
 plugins/terminals/wasm.d.ts
 plugins/proxy-marker/contract.ts
 plugins/proxy-marker/package.json
+plugins/ports/protocol.ts
+plugins/locations/contract.ts
