@@ -145,7 +145,7 @@ func withStoreFixture(ctx context.Context, factory StoreFixtureFactory, test fun
 }
 
 func settledTraces(ctx context.Context, factory StoreFixtureFactory) error {
-	_, restore := jsclock.MockDateNow(20_000)
+	_, restore := mockWall(20_000)
 	defer restore()
 	return withStoreFixture(ctx, factory, func(f StoreFixture) error {
 		gate := make(chan struct{})
@@ -236,7 +236,7 @@ func settledTraces(ctx context.Context, factory StoreFixtureFactory) error {
 }
 
 func filtersTraces(ctx context.Context, factory StoreFixtureFactory) error {
-	now, restore := jsclock.MockDateNow(10_000)
+	now, restore := mockWall(10_000)
 	defer restore()
 	return withStoreFixture(ctx, factory, func(f StoreFixture) error {
 		if err := f.Context.StartSpan(telemetry.SpanOptions{Name: "old"}, func(root telemetry.TelemetrySpan) error {
@@ -291,7 +291,7 @@ func filtersTraces(ctx context.Context, factory StoreFixtureFactory) error {
 }
 
 func pagesTraces(ctx context.Context, factory StoreFixtureFactory) error {
-	now, restore := jsclock.MockDateNow(20_000)
+	now, restore := mockWall(20_000)
 	defer restore()
 	return withStoreFixture(ctx, factory, func(f StoreFixture) error {
 		for index := range 25 {
@@ -357,7 +357,7 @@ func pagesTraces(ctx context.Context, factory StoreFixtureFactory) error {
 }
 
 func remoteTraces(ctx context.Context, factory StoreFixtureFactory) error {
-	_, restore := jsclock.MockDateNow(20_000)
+	_, restore := mockWall(20_000)
 	defer restore()
 	return withStoreFixture(ctx, factory, func(sender StoreFixture) error {
 		return withStoreFixture(ctx, factory, func(receiver StoreFixture) error {
@@ -499,7 +499,7 @@ func reflectEqual(actual, expected any, what string) error {
 }
 
 func queriesMetrics(ctx context.Context, factory StoreFixtureFactory) error {
-	now, restore := jsclock.MockDateNow(20_001)
+	now, restore := mockWall(20_001)
 	defer restore()
 	return withStoreFixture(ctx, factory, func(f StoreFixture) error {
 		metrics := f.Context.Metrics()
@@ -583,7 +583,7 @@ func attributeNames(attributes telemetry.SpanAttributes) []string {
 // name keeping its position and integer-like names first. Metric rows are checked by name only: a store may report a
 // series' attributes in a canonical order.
 func preservesAttributeOrder(ctx context.Context, factory StoreFixtureFactory) error {
-	now, restore := jsclock.MockDateNow(20_000)
+	now, restore := mockWall(20_000)
 	defer restore()
 	return withStoreFixture(ctx, factory, func(f StoreFixture) error {
 		bag := func(names ...string) telemetry.SpanAttributes {
@@ -639,4 +639,26 @@ func preservesAttributeOrder(ctx context.Context, factory StoreFixtureFactory) e
 			deepStrictEqual(slices.Sorted(slices.Values(attributeNames(rows[0].Attributes))), []string{"metric.a", "metric.z"}, "metric attribute names"),
 		)
 	})
+}
+
+// wallMock is vi.spyOn(Date, "now") in a process whose monotonic clock goes with it: setting the wall clock moves
+// performance.now() by the same step, as time does, so the anchored telemetry clock keeps the exact value set (Pi's cases
+// take the real monotonic clock, whose microseconds JavaScript's speed spreads out; Go's would tie spans of one call).
+type wallMock struct {
+	date, perf     *jsclock.Mock
+	from, perfFrom float64
+}
+
+// Set is mockReturnValue(value): the wall clock is value, the monotonic clock moved by the same step.
+func (w *wallMock) Set(value float64) {
+	w.perf.Set(w.perfFrom + value - w.from)
+	w.date.Set(value)
+}
+
+// mockWall replaces Date.now() with initial and performance.now() with a clock that steps with it; restore reinstalls both.
+func mockWall(initial float64) (*wallMock, func()) {
+	const perfStart = 1000
+	perf, restorePerf := jsclock.MockPerformanceNow(perfStart)
+	date, restoreDate := jsclock.MockDateNow(initial)
+	return &wallMock{date: date, perf: perf, from: initial, perfFrom: perfStart}, func() { restoreDate(); restorePerf() }
 }
