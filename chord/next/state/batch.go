@@ -250,6 +250,9 @@ func (b *Batch) Changed(source Delivered) { b.changed = append(b.changed, source
 // Flushing lists flush to run at the end of the current commit, after its deliveries (a link sending what they fed it).
 func (b *Batch) Flushing(flush func(ctx context.Context) error) { b.flushes = append(b.flushes, flush) }
 
+// Metrics is the host's metrics adapter the batch counts on; nil when the host records none.
+func (b *Batch) Metrics() telemetry.TelemetryMetrics { return b.metrics }
+
 // Count counts one unit of derive or registry work on the host's metrics (a lazy read has no context to count
 // through).
 func (b *Batch) Count(counter BatchCounter) {

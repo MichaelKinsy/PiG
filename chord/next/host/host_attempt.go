@@ -1740,7 +1740,7 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 			a.object.host.enter(func() { admitted = !a.token.Sealed() && a.abandoned == nil })
 			return admitted
 		},
-		Adopt: func(int64, []int64) error { return nil },
+		Adopt: func(int64, []int64, int) error { return nil },
 	}
 	dl.pause()
 	prepared := awaitTask(a.object.host, func() (struct{}, error) {

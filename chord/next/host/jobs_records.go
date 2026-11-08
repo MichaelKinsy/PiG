@@ -874,7 +874,7 @@ func (records *jobRecords) writeAtClose(ctx context.Context) {
 	}
 	fence := store.CommitFence{
 		Admit: func() bool { return true },
-		Adopt: func(int64, []int64) error {
+		Adopt: func(int64, []int64, int) error {
 			records.loop.Run(func() {
 				for _, adopt := range adopts {
 					adopt()
