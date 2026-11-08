@@ -9,6 +9,7 @@ package cli
 
 import (
 	"bytes"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"io"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	codingcompaction "github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
+	"github.com/MichaelKinsy/PiG/internal/jsonopts"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -88,6 +90,11 @@ func (e *RPCCommandEnvelope) UnmarshalJSON(data []byte) error {
 	if json.Unmarshal(data, &members) != nil {
 		return nil
 	}
+	return e.fill(members)
+}
+
+// fill sets ID, TypeValue and Type from the "id" and "type" members.
+func (e *RPCCommandEnvelope) fill(members map[string]rpcMemberSpan) error {
 	if raw, ok := members["id"]; ok {
 		id, err := jsonstringify.Canonicalize(raw)
 		if err != nil {
@@ -648,9 +655,18 @@ func rpcImages(images []RPCImageContent) []ai.ImageContent {
 
 // parseRPCCommand preserves JSON.parse's UTF-16 string units in the envelope and retains the original bytes for typed command decoding.
 // Returns the envelope (with Type and ID) and any parse error.
+//
+// The members are read once by encoding/json/v2 under the JSON.parse option set. A line v2 does not read as an object (a malformed one, or valid JSON that
+// is not an object) takes the sdk decoder, whose error text and empty envelope for a non-object are what the line has always got; the members' text is
+// kept as it is, so a lone UTF-16 unit in an id or a type survives either way.
 func parseRPCCommand(line []byte) (RPCCommandEnvelope, error) {
 	var env RPCCommandEnvelope
-	if err := json.Unmarshal(line, &env); err != nil {
+	var members map[string]rpcMemberSpan
+	if jsonv2.Unmarshal(line, &members, jsonopts.Parse) == nil {
+		if err := env.fill(members); err != nil {
+			return RPCCommandEnvelope{}, err
+		}
+	} else if err := json.Unmarshal(line, &env); err != nil {
 		return RPCCommandEnvelope{}, err
 	}
 	env.Raw = append([]byte(nil), line...) // safe copy
