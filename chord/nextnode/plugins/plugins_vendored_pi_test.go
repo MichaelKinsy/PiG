@@ -53,13 +53,15 @@ func TestNodeHostSnapshotSchemaRefusesSymbolKeysAccessorsAndCyclesNamingThePath(
 	runVendored(t, func(pi func(string) string) string {
 		return strings.Join([]string{
 			fmt.Sprintf(`const { snapshotSchema } = await import(%s);`, pi("contracts/snapshot.ts")),
-			`assert.throws(() => snapshotSchema({ type: "string", [Symbol("x")]: 1 }, "s"), { message: "s: symbol keys are not supported" });`,
+			// vitest's toThrow(string) is a substring match.
+			`const refuses = (fn, text) => assert.throws(fn, (error) => error instanceof Error && error.message.includes(text));`,
+			`refuses(() => snapshotSchema({ type: "string", [Symbol("x")]: 1 }, "s"), "s: symbol keys are not supported");`,
 			`const accessor = Object.defineProperty({ type: "object" }, "properties", { get: () => ({}), enumerable: true });`,
-			`assert.throws(() => snapshotSchema(accessor, "s"), { message: "s.properties: accessors are not supported" });`,
+			`refuses(() => snapshotSchema(accessor, "s"), "s.properties: accessors are not supported");`,
 			`const cyclic = { type: "array" };`,
 			`cyclic.items = cyclic;`,
-			`assert.throws(() => snapshotSchema(cyclic, "s"), { message: "s.items: cyclic schema" });`,
-			`assert.throws(() => snapshotSchema({ type: "object", properties: { a: { type: 1 } } }, "s"), { message: "s.properties.a.type: unsupported type 1" });`,
+			`refuses(() => snapshotSchema(cyclic, "s"), "s.items: cyclic schema");`,
+			`refuses(() => snapshotSchema({ type: "object", properties: { a: { type: 1 } } }, "s"), "s.properties.a.type: unsupported type 1");`,
 		}, "\n")
 	})
 }

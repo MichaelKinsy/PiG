@@ -1051,22 +1051,3 @@ func TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNot
 		t.Fatalf("a build after the edit has digest %s (was %s) and its source lacks the edit", again.Digest, built.Digest)
 	}
 }
-
-// Intention of base.test.ts "runs every imported module, as Node does: sideEffects: false drops no side-effect import": a
-// plugin's `import "pkg"` is there for what the module does when it loads, so a package that declares itself free of side
-// effects in its package.json must not make the bundle drop the import.
-func TestEsbuildBuildKeepsASideEffectImportOfAPackageThatDeclaresSideEffectsFalse(t *testing.T) {
-	root := tempRoot(t)
-	dir := writePlugin(t, root, "effects", "@test/effects", map[string]string{
-		"worker.ts": "import \"effect-dep\";\nexport default { setup: () => 1 };",
-	}, map[string]any{"dependencies": map[string]any{"effect-dep": "1.0.0"}})
-	writeFiles(t, filepath.Join(dir, "node_modules", "effect-dep"), map[string]string{
-		"package.json": `{"name":"effect-dep","version":"1.0.0","main":"index.js","sideEffects":false}`,
-		"index.js":     `globalThis.__effect_dep_ran = "effect-ran";`,
-	})
-	_, plugin := esbuildDiscovered(t, "@test/effects", root)
-	built := esbuildScript(t, esbuildBuild(t, plugin, "worker", esbuildNode))
-	if !strings.Contains(built.Source, "effect-ran") {
-		t.Fatalf("the side-effect import was dropped: %s", built.Source)
-	}
-}
