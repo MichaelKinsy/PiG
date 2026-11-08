@@ -3942,6 +3942,24 @@ Evidence: `TestLiveQuery*` (`chord/next/host/host_live_query_test.go`), `TestQue
 
 Parity allowance: Go limits are int64: Pi's fractional and absent limits cannot be written.
 
+## D470 p2 is its own Go module and binary under apps/p2, outside Stock and Piglets
+
+What: Pi's `apps/p2` (a self-hosted Durable UI: a server, one worker process per session, a web UI and a terminal UI) is ported as `apps/p2`, its own Go module `github.com/MichaelKinsy/PiG/apps/p2` that is a member of `go.work`, with its own binary `p2` (`p2 server`, `p2 worker`, `p2 tui`, ...). It is not part of the Stock `pig` binary, of PiG Standard or of any Piglet, and the root module's `go.mod` does not require it. Pi has no such boundary: `apps/p2` is one more workspace package of the Pi monorepo.
+
+Why: p2 is product behavior (a server, a UI, a Discord bridge), so AGENTS.md "Product-extension boundary" class 3 keeps it out of Stock. A separate module keeps Stock's `go.mod` and supply-chain surface free of a Discord client and SSH/QEMU glue, keeps Stock binaries from linking p2 by accident, and keeps `make lint`, `divergence-guard` and `ci-contracts` scanning the Stock module only.
+
+Owner decision: PLAN.md section 6 (specs/p2), approved by owner Michael Kinsy on 2026-11-07.
+
+Call-site markers: `apps/p2/cmd/p2/main.go` (the package comment); `apps/p2/go.mod` and the `use ./apps/p2` line of `go.work`.
+
+Evidence: `cd apps/p2 && go test ./...` in the workspace runs p2's own tests; the root module's tests do not import it.
+
+Parity allowance: none needed, p2's behavior is Pi's; only where its code lives differs.
+
+Remove when: Pi moves p2 out of the monorepo, or the owner folds p2 into another product.
+
+SCRUTINIZED:approved
+
 ## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
 
 What: Pi's `testPlugin(dir, { kind, modules, stubs, ... })` (`packages/chord/src/node/plugins/testing.ts`) builds the plugin, evaluates it in the test's own process with live JavaScript `modules`, loads it with live `stubs` (`PluginFacet[]`) on one new in-memory host and returns that host. PiG's `TestPlugin` (`chord/nextnode/plugins/plugins_testing.go`) builds with the same `BuildFacet` and options and the same discovery, but a plugin evaluates only in the Node subprocess (AGENTS.md: no embedded JavaScript runtime; `docs/plan/chord-plugins-node-evaluator.md`), so: `Modules` are files the subprocess imports (the app's API as modules on disk, as a production host's `HostPackages`), not instances; a stub is a Go facet on a Go host (`TestPluginOptions.Stubs`, bridged to the plugin's host as `BridgedFacet` is, so it serves local types without keyed members) or a JavaScript module (`TestPluginOptions.Core`, which may also serve or contribute to registries and serve remote types); the result holds two hosts, the plugin's `NodeHost` (`TestedPlugin.Host`, reached through `NodeHost.Get` and `NodeHost.Hold`, the Go forms of `host.get` and `host.hold` for a local type) and the stubs' Go host (`TestedPlugin.Stubs`).

@@ -14,6 +14,8 @@ rest  ./durable/core/driver
 rest  ./durable/core/sqlhost
 rest  ./durable/storage/store
 rest  ./coding/extension/host/subprocess
+rest  ./apps/p2
+rest  ./apps/p2desktop
 host  ./coding/extension
 host  ./coding/extension/host/inproc
 host  ./coding/extension/host/runtimecell

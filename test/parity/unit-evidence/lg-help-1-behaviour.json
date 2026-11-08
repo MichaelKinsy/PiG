@@ -2283,7 +2283,6 @@
       "TestTruncateHeadLineCapBeforeByteCap",
       "TestTruncateLine",
       "TestTruncateMatchesPi",
-      "TestTruncateMiddle",
       "TestTruncateTail_ByteCap",
       "TestTruncateTail_LastLineLargerThanCap",
       "TestTruncateZeroLimitsAreLimits",
@@ -2597,11 +2596,19 @@
     "upstream_reference": "jsonrpc.ts JsonRpcId (:1), isJsonRpcId (:89-91), ProgressNotification progressToken"
   },
   {
+    "mutation": "truncateMiddle and its test moved from internal/codingagent/tools to ./mcp with the MCP package (c407e0ca2); the mutation evidence of the tools-package entry that follows was taken before the move.",
+    "package": "./mcp",
+    "tests": [
+      "TestTruncateMiddle"
+    ],
+    "upstream": "packages/coding-agent/src/core/tools/truncate.ts",
+    "upstream_reference": "truncate.ts truncateMiddle (:292-314)"
+  },
+  {
     "mutation": "The 12 survivors of the 76-mutant internal/codingagent/tools matrix (run with MC_RUN='Edit|Diff|Patch|Truncate|Read|PathUtils|ExpandPath|ByPath|Write|Mutation|Wave|BOM|Queue|GetReplacementLineRange'): 5 killed (truncate.go L291 head walk, edit_diff.go L264 and L267, edit.go L141 and L184). L291 is Go-only robustness: Pi strings never begin with a continuation byte. Left, equivalent by reasoning, not proven by test: truncate.go L121 (strings.Split never returns no lines), L153 (a byte break leaves fewer than maxLines collected, so the line count and byte limit never meet), L206 (itoa returns for 0 before it), L295 (isBoundary is true at len(content)); edit_diff.go L27 (the index of \\r\\n is never the index of the same \\n), L313 (adjacent groups rewrite the same lines whether merged or not); unified_patch.go L120 (context 0 slices an empty tail).",
     "package": "./internal/codingagent/tools",
     "tests": [
       "TestGetReplacementLineRangeRejectsARangeThatEndsPastTheLastLine",
-      "TestTruncateMiddleStopsAtTheEndsOfContentWithoutCharacterStarts",
       "TestPrepareEditArgumentsRawNeedsBothTextsToRepairAnEdit"
     ],
     "upstream": "packages/coding-agent/src/core/tools/edit-diff.ts",

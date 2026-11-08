@@ -3,9 +3,9 @@
 // envs.json. It ports apps/p2/plugins/terminals/daemon.ts and envs.ts and the terminals host's connection logic; the
 // connections themselves (SSH options, sandbox launcher, connection revision, secrets) are package envs.
 //
-// pig additive: Pi finds its daemon among Rust build outputs of packages/env; PiG's pi-env is the Go daemon of ./env/cmd/pi-env,
+// pig divergence (D96): Pi finds its daemon among Rust build outputs of packages/env; PiG's pi-env is the Go daemon of ./env/cmd/pi-env,
 // a separate binary that the env package starts as a child (there is no in-process or embedded daemon behind env.Connection).
-// It is found in the packaged layout `<dir>/pi-env-<platform>-<arch>/pi-env` (`make build-env-daemons`; env.PackagedDaemon,
+// pig additive (D97): it is found in the packaged layout `<dir>/pi-env-<platform>-<arch>/pi-env` (`make build-env-daemons`; env.PackagedDaemon,
 // PI_ENV_DAEMON_DIR), or for this machine at P2_TERMINAL_DAEMON.
 package hostenv
 

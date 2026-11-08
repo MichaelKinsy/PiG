@@ -11,6 +11,11 @@ type allowed struct {
 
 var allowlist = []allowed{
 	{
+		path:   "apps/p2/plugins/terminals/ghostty/testdata/golden.json",
+		code:   codeOpaque,
+		reason: "Pi's own answers (testdata/gen.mjs runs Pi's ghostty.ts over cases.json): the 6,684-character run is the base64 of a synthetic bracketed paste of x characters from the terminal-clipboard case, not a provider capture.",
+	},
+	{
 		path:   "test/parity/scenarios/extensions-runtime/testdata/ext/overlay-qa-tests.ts",
 		code:   codeHomePath,
 		reason: "Pi 1.2.0's packages/coding-agent/examples/extensions/overlay-qa-tests.ts byte for byte (see 84-overlay-focus.toml); the /Users/<name>/ strings are upstream's published example source, not a capture.",
