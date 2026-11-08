@@ -492,27 +492,28 @@ func keepMemento(self host.Self, memento *documents.Singleton, configured, liste
 		})
 	})
 	self.On(listed, func(call chord.WatchCall[delta.JsonValue], ctx host.Ctx) *host.Handled {
+		// The comparison reads the memento here, in the handler's section: only the write is blocking work.
+		current := asList(objectOf(call.Value).Value("instances"))
+		stored, err := memento.Value()
+		if err != nil {
+			return host.Threw(err)
+		}
+		remembered := map[string]string{}
+		for _, each := range asList(stored.Value("instances")) {
+			remembered[stringOf(objectOf(each).Value("id"))] = toolNames(objectOf(each))
+		}
+		changed := false
+		for _, each := range current {
+			names, known := remembered[stringOf(objectOf(each).Value("id"))]
+			if !known || names != toolNames(objectOf(each)) {
+				changed = true
+			}
+		}
+		if !changed {
+			return nil
+		}
 		return host.AwaitingCtx(ctx, func() error {
-			current := asList(objectOf(call.Value).Value("instances"))
-			stored, err := memento.Value()
-			if err != nil {
-				return err
-			}
-			remembered := map[string]string{}
-			for _, each := range asList(stored.Value("instances")) {
-				remembered[stringOf(objectOf(each).Value("id"))] = toolNames(objectOf(each))
-			}
-			changed := false
-			for _, each := range current {
-				names, known := remembered[stringOf(objectOf(each).Value("id"))]
-				if !known || names != toolNames(objectOf(each)) {
-					changed = true
-				}
-			}
-			if !changed {
-				return nil
-			}
-			_, err = memento.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("instances", current) })
+			_, err := memento.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("instances", current) })
 			return err
 		})
 	})
