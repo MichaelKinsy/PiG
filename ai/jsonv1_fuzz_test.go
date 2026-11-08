@@ -128,13 +128,13 @@ func BenchmarkOrderedObjectReaders(b *testing.B) {
 		jsonseed.Bench(b, doc, func(d []byte) { _, _ = orderedJSONObjectV1(d) }, func(d []byte) { _, _ = orderedJSONObject(d) })
 	})
 	b.Run("readJSONObjectMembers", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { readJSONObjectMembersV1(d) }, func(d []byte) { readJSONObjectMembers(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _ = readJSONObjectMembersV1(d) }, func(d []byte) { _, _ = readJSONObjectMembers(d) })
 	})
 	b.Run("readSchemaObjectOrder", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { readSchemaObjectOrderV1(d) }, func(d []byte) { readSchemaObjectOrder(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _ = readSchemaObjectOrderV1(d) }, func(d []byte) { _, _ = readSchemaObjectOrder(d) })
 	})
 	b.Run("orderedCatalogPairs", func(b *testing.B) {
-		jsonseed.Bench(b, doc, func(d []byte) { orderedCatalogPairsV1(d) }, func(d []byte) { orderedCatalogPairs(d) })
+		jsonseed.Bench(b, doc, func(d []byte) { _, _ = orderedCatalogPairsV1(d) }, func(d []byte) { _, _ = orderedCatalogPairs(d) })
 	})
 	b.Run("parseStoredModels", func(b *testing.B) {
 		jsonseed.Bench(b, doc, func(d []byte) { parseStoredModelsV1(d) }, func(d []byte) { parseStoredModels(d) })
