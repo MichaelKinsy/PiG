@@ -1,7 +1,6 @@
 package host_test
 
 import (
-	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -33,6 +32,8 @@ func TestKittyKeyboardTheLaunchersNegotiatedProtocolReachesTheRuntimeWhichDecode
 func TestKeyContextWhileTranscriptSearchHasFocusTheRuntimeSuspendsInterceptionSoCtrlGIsSearchNext(t *testing.T) {
 	var edited atomic.Int32
 	l := startReal(t, launcherOptions{actions: func(base map[string]host.LauncherAction) map[string]host.LauncherAction {
+		// Pi's test passes only this action; two K actions on one key would be picked by map order, so the default editor action goes.
+		delete(base, "editor.external")
 		base["test.editor"] = host.LauncherAction{Kind: host.GrantK, Key: "app.editor.external", RunKey: func(host.ActionContext) error {
 			edited.Add(1)
 			return nil
@@ -41,7 +42,7 @@ func TestKeyContextWhileTranscriptSearchHasFocusTheRuntimeSuspendsInterceptionSo
 	}})
 	l.openNewestSession()
 	l.terminal.SendInput(keyCtrlG)
-	l.until(10*time.Second, fmt.Sprintf("Ctrl+G reaching the launcher action (focus %T)", l.client.TUI().GetFocusedComponent()), func() bool { return edited.Load() == 1 })
+	poll(t, func() bool { return edited.Load() == 1 })
 	// Ctrl+Shift+F (kitty-encoded) opens the transcript search; the runtime reports the suspension.
 	l.terminal.SendInput("\x1b[102;6u")
 	time.Sleep(300 * time.Millisecond)
