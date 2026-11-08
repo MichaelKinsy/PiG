@@ -91,16 +91,15 @@ func FuzzFilterOutput(f *testing.F) {
 	})
 }
 
-// The 64 KiB limit counts UTF-16 code units, as Pi's `output.length` does: 40,000 two-byte characters are 80,000 bytes and 40,000
-// units, within it; 40,000 astral characters are 80,000 units, over it.
-func TestTheFrameLimitCountsUTF16UnitsNotBytes(t *testing.T) {
-	if _, err := FilterOutput(strings.Repeat("é", 40_000)); err != nil {
-		t.Fatalf("40,000 units: %v", err)
+// The 64 KiB limit is Pi's `output.length > MAX_FRAME || Buffer.byteLength(output) > MAX_FRAME`: bytes, never fewer than units.
+func TestTheFrameLimitCountsBytesAndUnitsAsPisFilterDoes(t *testing.T) {
+	if _, err := FilterOutput(strings.Repeat("a", MaxFrame)); err != nil {
+		t.Fatalf("65,536 bytes: %v", err)
 	}
-	if _, err := FilterOutput(strings.Repeat("😀", 40_000)); err == nil {
-		t.Fatal("80,000 units were accepted")
+	if _, err := FilterOutput(strings.Repeat("a", MaxFrame+1)); err == nil {
+		t.Fatal("65,537 bytes were accepted")
 	}
-	if exceedsUnits(strings.Repeat("a", MaxFrame), MaxFrame) || !exceedsUnits(strings.Repeat("a", MaxFrame+1), MaxFrame) {
-		t.Fatal("the limit is not exactly MaxFrame units")
+	if _, err := FilterOutput(strings.Repeat("é", 40_000)); err == nil {
+		t.Fatal("80,000 bytes (40,000 units) were accepted; Pi's Buffer.byteLength refuses them")
 	}
 }

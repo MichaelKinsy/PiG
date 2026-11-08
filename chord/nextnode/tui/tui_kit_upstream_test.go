@@ -271,7 +271,7 @@ func TestATerminalClientSurvivesWhatTheSandboxSendsToBreakItAndGivesTheTerminalB
 	}
 }
 
-func TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreOpusE10(t *testing.T) {
+func TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8(t *testing.T) {
 	s := tuiApp(t, "plugin v1")
 	l := launchWithToken(t, s)
 	l.waitFor(`lines: \[`)
@@ -291,6 +291,11 @@ func TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreOpusE10(t *testing.
 		}
 	}
 	flood()
+	// A signal the sandbox may send its launcher opens no inspector (here: does not end the process).
+	signalInspector(t)
+	if strings.Contains(l.output(), "Debugger listening") {
+		t.Fatalf("an inspector opened: %q", l.output())
+	}
 	flood()
 	l.typeKeys("q")
 	if code := l.exited(); code != 3 {

@@ -166,14 +166,19 @@ type prompt struct {
 	ready  time.Time
 }
 
-// linkSocket is one link socket the launcher relays.
+// linkSocket is one link socket the launcher relays. Its fields but buffered belong to the loop; the writer goroutine reads conn
+// and out, which are set before it starts.
 type linkSocket struct {
-	conn  *websocket.Conn
-	state atomic.Int32
+	conn *websocket.Conn
+	// open is whether the connection was made and the sandbox told; closed whether the socket was closed (only the loop closes
+	// out and the connection, and only once).
+	open   bool
+	closed bool
+	// abort ends the dial.
+	abort context.CancelFunc
 	// buffered is the bytes waiting to go out.
 	buffered atomic.Int64
 	out      chan []byte
-	once     sync.Once
 }
 
 // Launcher is one terminal client's launcher.
@@ -222,11 +227,13 @@ func newLauncher(parent context.Context, base *url.URL, token string, options Te
 	}
 }
 
-// post runs fn on the loop (dropped once the loop ended).
-func (l *Launcher) post(fn func()) {
+// post runs fn on the loop; it reports false when the loop ended (fn is dropped).
+func (l *Launcher) post(fn func()) bool {
 	select {
 	case l.events <- fn:
+		return true
 	case <-l.loopDone:
+		return false
 	}
 }
 
@@ -279,15 +286,15 @@ func (l *Launcher) start(ctx context.Context) error {
 		l.cancel()
 		return err
 	}
-	if l.term.IsTTY() {
-		_ = l.term.SetRaw(true)
-	}
 	//portlint:allow golifetime ends when the terminal's input closes (a stopped launcher closes it) and its posts are dropped once the loop ended
 	go l.readInput()
 	// On the loop: a finish (the sandbox exited meanwhile) reads both, and must not see them half set, nor miss them.
 	l.sync(func() {
 		if l.finished {
 			return
+		}
+		if l.term.IsTTY() {
+			_ = l.term.SetRaw(true)
 		}
 		l.stopResize = l.term.OnResize(func() { l.post(l.onResize) })
 		l.restoreSig = ignoreInspectorSignal()
@@ -464,7 +471,11 @@ func (l *Launcher) startSandbox(ctx context.Context) error {
 	})
 	sandbox, err := StartSandbox(l.options.Node, source, bridge,
 		func(message SandboxMessage) { l.post(func() { l.message(generation, message) }) },
-		func(string) { l.post(func() { l.sandboxEnded(generation) }) },
+		func(string) {
+			// Off the caller: a post the loop makes to the sandbox may end it, and the loop's queue may be full (it would wait for itself).
+			//portlint:allow golifetime the post ends when the loop takes it or the loop ends (loopDone)
+			go l.post(func() { l.sandboxEnded(generation) })
+		},
 	)
 	if err != nil {
 		return err
@@ -545,7 +556,9 @@ func (l *Launcher) write(data string) {
 	}
 }
 
-// openSocket opens socket id to the links endpoint with the launcher's token, relaying it to the sandbox.
+// openSocket opens socket id to the links endpoint with the launcher's token, relaying it to the sandbox. The dial runs off the
+// loop, but every change of the socket's state is made on it (dialed, closeSocket): a close that comes while the dial is under way
+// (Pi: `ws.close()` aborts a CONNECTING socket) is never undone by the dial finishing.
 func (l *Launcher) openSocket(id int) {
 	// A few at a time: the connection loop needs one; a runaway sandbox gets no more.
 	if len(l.sockets) >= maxSockets {
@@ -558,31 +571,38 @@ func (l *Launcher) openSocket(id int) {
 	} else {
 		target.Scheme = "ws"
 	}
-	socket := &linkSocket{out: make(chan []byte, 1024)}
+	dialCtx, abort := context.WithCancel(l.ctx)
+	socket := &linkSocket{out: make(chan []byte, 1024), abort: abort}
 	l.sockets[id] = socket
 	sandbox := l.sandbox
 	headers := http.Header{"Authorization": {"Bearer " + l.token}}
+	//portlint:allow golifetime the dial ends with its context, which close and finish cancel; what it dialed is handed to the loop, which closes it when the loop is gone
 	go func() {
-		conn, _, err := websocket.DefaultDialer.DialContext(l.ctx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
-		closed := func() {
-			l.post(func() {
-				if l.sockets[id] != socket {
-					return
-				}
-				delete(l.sockets, id)
-				sandbox.Post(LauncherMessage{Kind: "socket_closed", Socket: id})
-			})
+		conn, _, err := websocket.DefaultDialer.DialContext(dialCtx, target.String(), headers) //nolint:bodyclose // gorilla/websocket hands back a handshake response whose body is already read and closed
+		if !l.post(func() { l.dialed(id, socket, sandbox, conn, err) }) && conn != nil {
+			_ = conn.Close()
 		}
-		if err != nil {
-			closed()
-			return
+	}()
+}
+
+// dialed is the end of socket id's dial, on the loop: the socket opens unless it was closed meanwhile (then the connection is
+// closed at once); a failed dial ends it.
+func (l *Launcher) dialed(id int, socket *linkSocket, sandbox *Sandbox, conn *websocket.Conn, err error) {
+	if err != nil || socket.closed {
+		if conn != nil {
+			_ = conn.Close()
 		}
-		conn.SetReadLimit(maxSocketsPayload)
-		socket.conn = conn
-		socket.state.Store(socketOpen)
-		sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
-		//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
-		go socket.writeLoop()
+		l.socketEnded(id, socket, sandbox)
+		return
+	}
+	conn.SetReadLimit(maxSocketsPayload)
+	socket.conn = conn
+	socket.open = true
+	sandbox.Post(LauncherMessage{Kind: "socket_opened", Socket: id})
+	//portlint:allow golifetime ends when the socket closes (close ends out and the connection), which the launcher's finish does for every socket
+	go socket.writeLoop()
+	//portlint:allow golifetime ends when the connection closes (close does, and the launcher's finish closes every socket)
+	go func() {
 		for {
 			_, payload, err := conn.ReadMessage()
 			if err != nil {
@@ -590,9 +610,20 @@ func (l *Launcher) openSocket(id int) {
 			}
 			sandbox.Post(LauncherMessage{Kind: "socket_message", Socket: id, Bytes: payload})
 		}
-		socket.close()
-		closed()
+		l.post(func() {
+			socket.close()
+			l.socketEnded(id, socket, sandbox)
+		})
 	}()
+}
+
+// socketEnded forgets socket id and tells the sandbox, once (a finished launcher has no sockets left to end).
+func (l *Launcher) socketEnded(id int, socket *linkSocket, sandbox *Sandbox) {
+	if l.sockets[id] != socket {
+		return
+	}
+	delete(l.sockets, id)
+	sandbox.Post(LauncherMessage{Kind: "socket_closed", Socket: id})
 }
 
 // writeLoop sends the queued messages in order.
@@ -606,22 +637,24 @@ func (s *linkSocket) writeLoop() {
 	}
 }
 
-// close closes the socket (once).
+// close closes the socket (once), on the loop: an unfinished dial is aborted, an open connection closed, and the writer ended.
 func (s *linkSocket) close() {
-	s.once.Do(func() {
-		s.state.Store(socketClosedStatus)
-		if s.conn != nil {
-			_ = s.conn.Close()
-		}
-		close(s.out)
-	})
+	if s.closed {
+		return
+	}
+	s.closed = true
+	s.abort()
+	if s.conn != nil {
+		_ = s.conn.Close()
+	}
+	close(s.out)
 }
 
 // send sends bytes on socket id once it is open (before, the sandbox's link holds its messages; a send then is dropped: Opus E3); a
 // socket with more than 16 MiB waiting is closed.
 func (l *Launcher) send(id int, bytes []byte) {
 	socket := l.sockets[id]
-	if socket == nil || socket.state.Load() != socketOpen {
+	if socket == nil || !socket.open || socket.closed {
 		return
 	}
 	if socket.buffered.Load()+int64(len(bytes)) > maxSocketBuffer {
