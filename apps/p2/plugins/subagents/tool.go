@@ -135,7 +135,7 @@ func stringsAny(values []string) []any {
 
 func newSubagentTool(environment subagentEnvironment) p2runtime.P2Tool {
 	registration := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: p2runtime.MustToolSchemaOf("subagent", subagentDescription, subagentParameters),
+		ToolSchema: p2runtime.MustToolSchema("subagent", subagentDescription, subagentParameters),
 		// A crash-interrupted stop must not be repeated against newer work.
 		Replay: durable.ReplayUnsafe,
 		Execute: func(ctx context.Context, raw any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {

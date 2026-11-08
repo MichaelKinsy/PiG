@@ -1,8 +1,6 @@
 package runtime
 
 import (
-	"encoding/json"
-
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/schema"
@@ -27,19 +25,10 @@ func ToolsByName(extensions *KeyedTable[*P2Extension]) map[string]P2Tool {
 	return byName
 }
 
-// MustToolSchemaOf is ToolSchemaOf for a tool whose declaration is a program constant: it panics on the error ToolSchemaOf returns.
-func MustToolSchemaOf(name, description string, parameters schema.Schema) ai.ToolSchema {
-	declared, err := json.Marshal(struct {
-		Name        string        `json:"name"`
-		Description string        `json:"description"`
-		Parameters  schema.Schema `json:"parameters"`
-	}{name, description, parameters})
+// MustToolSchema is ToolSchemaOf for a constant declaration: a failure is a program error.
+func MustToolSchema(name, description string, parameters schema.Schema) ai.ToolSchema {
+	tool, err := ToolSchemaOf(name, description, parameters)
 	if err != nil {
-		panic(err)
-	}
-	var tool ai.ToolSchema
-	//perf:ok a tool's schema is built once per worker start (cold)
-	if err := json.Unmarshal(declared, &tool); err != nil { //portlint:allow jsonclone a typed value converted from its stored JSON form, cold (see the perf:ok above)
 		panic(err)
 	}
 	return tool

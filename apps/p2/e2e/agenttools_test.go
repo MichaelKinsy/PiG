@@ -61,19 +61,8 @@ func hasText(view delta.JsonValue, wanted func(string) bool) bool {
 	return false
 }
 
-// messageToolResults are the tool result messages of the tool name in a conversation view's messages.
-func messageToolResults(view delta.JsonValue, name string) []*delta.JsonObject {
-	var out []*delta.JsonObject
-	for _, message := range messages(view) {
-		if message.Value("role") == "toolResult" && message.Value("toolName") == name {
-			out = append(out, message)
-		}
-	}
-	return out
-}
-
-// resultText is a tool result's text.
-func resultText(result *delta.JsonObject) string {
+// agentResultText is a tool result's text.
+func agentResultText(result *delta.JsonObject) string {
 	if result == nil {
 		return ""
 	}
@@ -90,7 +79,7 @@ func resultText(result *delta.JsonObject) string {
 // subagentResult is the newest result of the subagent tool's action.
 func subagentResult(view delta.JsonValue, action string) *delta.JsonObject {
 	var found *delta.JsonObject
-	for _, result := range messageToolResults(view, "subagent") {
+	for _, result := range toolResults(view, "subagent") {
 		if object(result.Value("details")).Value("action") == action {
 			found = result
 		}

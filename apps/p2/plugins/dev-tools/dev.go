@@ -36,7 +36,7 @@ func NewExtension(reload func(ctx context.Context, plugins []string) (p2runtime.
 		return p2runtime.ToolText(message, delta.JsonObjectOf("ok", ok), !ok)
 	}
 	registration := harness.DefineTool(durable.ToolRegistration{
-		ToolSchema: p2runtime.MustToolSchemaOf("reload_plugins", toolDescription, toolParameters),
+		ToolSchema: p2runtime.MustToolSchema("reload_plugins", toolDescription, toolParameters),
 		// Do not replay a code upgrade after a crash; the caller can explicitly request another reload.
 		Replay: durable.ReplayUnsafe,
 		Execute: func(ctx context.Context, raw any, _ durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
