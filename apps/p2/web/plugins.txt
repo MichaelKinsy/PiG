@@ -23,4 +23,3 @@ terminals
 voice
 web-shell
 workspace
-mcp
