@@ -122137,9 +122137,8 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:load::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e"
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload",
@@ -122166,9 +122165,8 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginRuntime::property:reload::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7"
     },
     {
       "id": "pkg:chord/plugins/runtime#PluginScript",
@@ -122194,9 +122192,8 @@
     },
     {
       "id": "pkg:chord/plugins/runtime#RuntimeLoad",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:eeb432ddebc2adb516c4c80d9abf3edc5ca4ab2ecbbb43290fa1623f614ea047",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:eeb432ddebc2adb516c4c80d9abf3edc5ca4ab2ecbbb43290fa1623f614ea047"
     },
     {
       "id": "pkg:chord/plugins#AppApi",
@@ -123064,9 +123061,8 @@
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:load::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0ffbdcab3e4861f304e69fdbed30b899bcca8cab0c2f2467ddcf3cc6f6b0f82e"
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload",
@@ -123093,9 +123089,8 @@
     },
     {
       "id": "pkg:chord/plugins#PluginRuntime::property:reload::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:0b895689aedfd414ca773587b615637942b5c6590bf4a430150da1c0ff8057f7"
     },
     {
       "id": "pkg:chord/plugins#Plugins",
@@ -123385,9 +123380,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:load::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:2921880d44f68eca3694c43d3cbef31ac7334a0ea256b41d0c03e6ead0bcefd5",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:2921880d44f68eca3694c43d3cbef31ac7334a0ea256b41d0c03e6ead0bcefd5"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload",
@@ -123414,9 +123408,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:reload::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:c910862c11d67d2ac83e2dd1794d748ef1d39748e9eadb6a3cd61892321995f8",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:c910862c11d67d2ac83e2dd1794d748ef1d39748e9eadb6a3cd61892321995f8"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:rollout",
@@ -123556,9 +123549,8 @@
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:step::call:0",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:b4a3fb09bfd459c2204a36fbd65bc0f12eca393546e572f2c6bbbdfd02daa6ec",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:b4a3fb09bfd459c2204a36fbd65bc0f12eca393546e572f2c6bbbdfd02daa6ec"
     },
     {
       "id": "pkg:chord/plugins#Plugins::property:watchBase",
@@ -123739,15 +123731,13 @@
     },
     {
       "id": "pkg:chord/plugins#RolloutStep",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:686f8c81c2d841221cdcbe5d9f014784f5196e2397e735756239e43347beff93",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:686f8c81c2d841221cdcbe5d9f014784f5196e2397e735756239e43347beff93"
     },
     {
       "id": "pkg:chord/plugins#RuntimeLoad",
-      "disposition": "designed-out",
-      "upstreamShapeHash": "sha256:6a1b5be0ff3ca465bc981b2c092fbe9e5e489e9fb3c3d6692f137448de0d2aef",
-      "rationale": "Pi 1.5.0+c23b9ec1 packages/chord/src/node/plugins/runtime.ts and plugins.ts takes a live Host (and core PluginFacets and module values) that the runtime loads and reloads in its own process. A Go process cannot hand a JavaScript plugin host those, so PluginRuntime and Plugins start the Node subprocess host themselves (NodeHost) and take the data of that start (RuntimeLoad: module files, Go packages, the host's options); the host is returned, reloads address it by the Go handle. Designed out under D607 (docs/parity/divergences/D607.md); runtime.test.ts and plugins.test.ts are ported through the subprocess (plugins_runtime_test.go, plugins_plugins_test.go)."
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:6a1b5be0ff3ca465bc981b2c092fbe9e5e489e9fb3c3d6692f137448de0d2aef"
     },
     {
       "id": "pkg:chord/plugins#TestedPlugin",
