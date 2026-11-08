@@ -18,7 +18,7 @@ func TestNodeSqliteStatementCache(t *testing.T) {
 		mustDo(t, err)
 		prepared := 0
 		raw.ObservePrepare(func(string) { prepared++ })
-		database := NewNodeSqliteDatabase(raw)
+		database := NewNodeSqliteDatabase(raw, "")
 		defer func() { mustDo(t, database.Close()) }()
 		for i := range 300 {
 			_, err := database.Get(fmt.Sprintf("SELECT %d AS n", i))

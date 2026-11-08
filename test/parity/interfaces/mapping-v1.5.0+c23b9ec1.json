@@ -33904,7 +33904,7 @@
       "evidence": [
         "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:coding/thinking_budgets_settings_test.go#TestSessionThinkingBudgetsKeepConfiguredZeroFromSettings",
-        "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi"
+        "test:durable/harness/harness_generation_test.go#TestGeneration"
       ]
     },
     {
@@ -80194,7 +80194,7 @@
       "evidence": [
         "test:ai/providers/bedrock/bedrock_payload_oracle_test.go#TestBedrockConversePayloadMatchesPi",
         "test:coding/thinking_budgets_settings_test.go#TestSessionThinkingBudgetsKeepConfiguredZeroFromSettings",
-        "test:ai/google_generative_ai_payload_oracle_test.go#TestGoogleGenerativeAIPayloadMatchesPi"
+        "test:durable/harness/harness_generation_test.go#TestGeneration"
       ]
     },
     {
@@ -108918,7 +108918,7 @@
       "id": "pkg:chord/.#Optional::property:%5BSymbol.OPTIONAL_TYPE%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:4ea09369253b605cf77577af80a76c2f57537e7f165c646028b48c104f7398ce",
-      "rationale": "Pi declares [Symbol.OPTIONAL_TYPE] as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle).",
+      "rationale": "Pi declares [Symbol.OPTIONAL_TYPE] as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it is a compile-time brand that only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle).",
       "pigTargets": [
         "chord/next/link/message.go#Optional"
       ]
@@ -120212,13 +120212,47 @@
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:61e29b78e022a7a97db6f94d2c872a2e4a623ae0c9d25e1f55c00f548226eeea"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:61e29b78e022a7a97db6f94d2c872a2e4a623ae0c9d25e1f55c00f548226eeea",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase is Go chord/sqlite/node/node.go#NodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabase::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::construct:0 is Go chord/sqlite/node/node.go#NewNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/statement_cache_test.go#TestNodeSqliteStatementCache"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabase::property:all",
@@ -120283,9 +120317,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120306,9 +120340,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120329,9 +120363,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120352,9 +120386,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120421,9 +120455,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120444,9 +120478,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120540,13 +120574,46 @@
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabaseOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:65b0bcdda95490c9b782abccb00524bea69fec264dce484e26722051fb0cb403"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:65b0bcdda95490c9b782abccb00524bea69fec264dce484e26722051fb0cb403",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabaseOptions is Go chord/sqlite/node/node.go#NodeSqliteDatabaseOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabaseOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteMode",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:387c484ac66e3ddf99ac21fa288a7bb395f8444d27cfafe0da2583c95d9407f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:387c484ac66e3ddf99ac21fa288a7bb395f8444d27cfafe0da2583c95d9407f4",
+      "rationale": "Derived by the interface gap detector: NodeSqliteMode is Go chord/sqlite/node/node.go#NodeSqliteMode (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteMode"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/node#openNodeSqliteDatabase",
@@ -120565,9 +120632,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/catalog_test.go#TestCatalog"
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120588,9 +120655,9 @@
         "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/catalog_test.go#TestCatalog"
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -217005,13 +217072,47 @@
     },
     {
       "id": "pkg:durable/.#Agent",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:980a0a22c3bc226154244289ce8b40b6e32dc08a1bcc9275d452722399f28d1f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:980a0a22c3bc226154244289ce8b40b6e32dc08a1bcc9275d452722399f28d1f",
+      "rationale": "Derived by the interface gap detector: Agent is Go durable/harness_types.go#Agent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness_types.go#Agent"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/codemode/call.go#call.execute"
+      ],
+      "evidence": [
+        "test:durable/codemode/codemode_pi_oracle_test.go#TestCodemodeDeclarationsMatchPi",
+        "test:durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
+        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi"
+      ]
     },
     {
       "id": "pkg:durable/.#AgentChange",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:abb7bc3aaeb5d77cafb490d976c679545d44e5374d7f3e5c8b893df01c487605"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:abb7bc3aaeb5d77cafb490d976c679545d44e5374d7f3e5c8b893df01c487605",
+      "rationale": "Derived by the interface gap detector: AgentChange is Go durable/harness/agent.go#AgentChange (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/agent.go#AgentChange"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/agent.go#Configure"
+      ],
+      "evidence": [
+        "test:coding/model_runtime_durable_models_test.go#TestModelRuntimeAnswersDurableHarnessGeneration",
+        "test:durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool",
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAConversationThatTurnsCompactionOffIsNeverCompacted"
+      ]
     },
     {
       "id": "pkg:durable/.#AgentDoc",
@@ -217037,8 +217138,25 @@
     },
     {
       "id": "pkg:durable/.#AgentState",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f69d15ba324c7720fdeb408a7ee8f876843c46a4f98762abaea05cba56bf278"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f69d15ba324c7720fdeb408a7ee8f876843c46a4f98762abaea05cba56bf278",
+      "rationale": "Derived by the interface gap detector: AgentState is Go durable/harness/agent.go#AgentState (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/agent.go#AgentState"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/agent.go#AddTools"
+      ],
+      "evidence": [
+        "test:durable/harness/agent_resolve_pi_oracle_test.go#TestResolveAgentMatchesPi",
+        "test:durable/examples/harness_examples_test.go#TestExample05Harness",
+        "test:durable/examples/harness_examples_test.go#TestExample06Configuration"
+      ]
     },
     {
       "id": "pkg:durable/.#AnyTask",
@@ -217276,7 +217394,7 @@
       "evidence": [
         "test:durable/session/cached_storage_test.go#TestCachedStorageAppliesBatchStoredWithCommitWhenPublishedNotAtReceipt",
         "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
-        "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions"
       ]
     },
     {
@@ -217536,9 +217654,9 @@
         "call:durable/harness/agent.go#ResolveSettings"
       ],
       "evidence": [
+        "test:durable/core/driver/compaction_failure_core_test.go#TestCoreAConversationThatTurnsCompactionOffIsNeverCompacted",
         "test:durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
-        "test:durable/examples/tasks_compaction_examples_test.go#TestExample24Compaction",
-        "test:durable/harness/agent_regression_test.go#TestDefaultPoliciesAndResolveSettingsMergeLikePi"
+        "test:durable/examples/tasks_compaction_examples_test.go#TestExample24Compaction"
       ]
     },
     {
@@ -218933,8 +219051,25 @@
     },
     {
       "id": "pkg:durable/.#ConversationStreamOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:92d0e4cf163e857e89729fd5a115fd856b20e7bf0fb31a8d3a1f68ea8b16e7f9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:92d0e4cf163e857e89729fd5a115fd856b20e7bf0fb31a8d3a1f68ea8b16e7f9",
+      "rationale": "Derived by the interface gap detector: ConversationStreamOptions is Go durable/harness_types.go#ConversationStreamOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness_types.go#ConversationStreamOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/compaction.go#compactionSummarizeHandler"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
+        "test:durable/core/driver/host_inputs_core_test.go#TestCoreHostInputsAreReadAtEachUse",
+        "test:durable/core/driver/settings_text_test.go#TestSettingsTextFollowsTheSettingsTheHostReturns"
+      ]
     },
     {
       "id": "pkg:durable/.#ConversationTranscript",
@@ -219926,7 +220061,7 @@
       "id": "pkg:durable/.#DocFamilyToken::property:%5BSymbol.docType%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6eedb5f6c48d32204bf6d1b95539bf1af34f2a3051ec8a77bba0f6aacb739700",
-      "rationale": "Pi declares [Symbol.docType] as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle).",
+      "rationale": "Pi declares [Symbol.docType] as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it is a compile-time brand that only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle).",
       "pigTargets": [
         "durable/types.go#DocFamilyToken"
       ]
@@ -219979,7 +220114,7 @@
       "id": "pkg:durable/.#DocToken::property:%5BSymbol.docType%5D",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6eedb5f6c48d32204bf6d1b95539bf1af34f2a3051ec8a77bba0f6aacb739700",
-      "rationale": "Pi declares [Symbol.docType] as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle).",
+      "rationale": "Pi declares [Symbol.docType] as an optional readonly property keyed by a `declare const ...: unique symbol`, which has no run-time value: it is a compile-time brand that only lets the compiler carry a type parameter through the type. No code sets or reads it, and the Go type parameter carries the same type, so no Go member exists or is needed (language mechanic, LEAD-RULINGS-1520 principle).",
       "pigTargets": [
         "durable/types.go#DocToken"
       ]
@@ -224776,7 +224911,7 @@
       "evidence": [
         "test:durable/codecs_test.go#TestDocumentRecordMarshalsInPiStorageOrder",
         "test:durable/storage/prepared_commit_apply_test.go#TestPrepareCommitAtRejectsASequenceBeyondTheSafeIntegers",
-        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitsAgainstMemoryReference"
       ]
     },
     {
@@ -225909,6 +226044,7 @@
         "call:durable/session/cached_storage.go#CachedStorage.Commit"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"
       ],
@@ -225931,6 +226067,7 @@
         "call:durable/session/cached_storage.go#CachedStorage.Commit"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
         "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"
       ],
@@ -230490,8 +230627,26 @@
     },
     {
       "id": "pkg:durable/.#Tx",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1a9836d1ac244a15dfda162e3c39eb538fdc897a7a0aae12ec529bad9e52297a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1a9836d1ac244a15dfda162e3c39eb538fdc897a7a0aae12ec529bad9e52297a",
+      "rationale": "Derived by the interface gap detector: Tx is Go durable/types.go#Tx (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Tx"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/codemode/call.go#call.checkFingerprint"
+      ],
+      "evidence": [
+        "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Tx::property:appendEntry",
@@ -231457,13 +231612,45 @@
     },
     {
       "id": "pkg:durable/.#Tx::property:submission",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e23e911d0fd7f55ca6086c22fc8cc294ddb5e2a793c9d6c9e300ff8a168c5e11"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e23e911d0fd7f55ca6086c22fc8cc294ddb5e2a793c9d6c9e300ff8a168c5e11",
+      "rationale": "Derived by the interface gap detector: Tx::property:submission is Go durable/types.go#Tx.Submission (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Tx.Submission"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/types.go#Tx.Submission"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Tx::property:submission::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f5b4ecfa8f7f48efc71636060b33f92eb44f7e016a4212acddfaa217e9156acd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f5b4ecfa8f7f48efc71636060b33f92eb44f7e016a4212acddfaa217e9156acd",
+      "rationale": "Derived by the interface gap detector: Tx::property:submission::call:0 is Go durable/types.go#Tx.Submission (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Tx.Submission"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/types.go#Tx.Submission"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Tx::property:submissionByRequest",
@@ -238807,210 +238994,213 @@
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a801c92517afafc2198d09b803f61dcd8d9505756ec2ffd81d80019f0bb2af54"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a801c92517afafc2198d09b803f61dcd8d9505756ec2ffd81d80019f0bb2af54",
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The class implements Pi's Storage interface over IndexedDB; the Go Storage contract is implemented by durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi c23b9ec1, where this member's shape hash changed: commit(batches, receive, _context) (indexeddb.ts:457-461) commits several batches in one IndexedDB transaction, each with its own seq, and reports each seq through receive, the same arguments as Go's durable.Storage.Commit(ctx, batches, receive); the header, the dom reference and IndexedDbStorage implements Storage (now at :409) stand, so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:213d94733ac6bd5066f3c3b15f75aad7969587c993bdc6f33ce76ce8f2c65772",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0fc4c7e097a3243f969510a69e35ecdf4b52b1a581fc88959f2bf9fcdf0e9fd6",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. close is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi c23b9ec1, where this member's shape hash changed: commit(batches, receive, _context) (indexeddb.ts:457-461) commits several batches in one IndexedDB transaction, each with its own seq, and reports each seq through receive, the same arguments as Go's durable.Storage.Commit(ctx, batches, receive); the header, the dom reference and IndexedDbStorage implements Storage (now at :409) stand, so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi c23b9ec1, where this member's shape hash changed: commit(batches, receive, _context) (indexeddb.ts:457-461) commits several batches in one IndexedDB transaction, each with its own seq, and reports each seq through receive, the same arguments as Go's durable.Storage.Commit(ctx, batches, receive); the header, the dom reference and IndexedDbStorage implements Storage (now at :409) stand, so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:776e7c4fce7dce538f8a66f255fb514dbe27851333b16557b43dd185bd77667e",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c57dad45f9720daa945c148c855590e3f016a2ace5d65dcd5e5091e59750a78b",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. conversation is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:document",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c5f9658e4951abedfd6ed8bb4e3f5fdf1ee790d90aaa0d33d485f0f9dc98ad22",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:document::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:a0b624f6294ef31f08c528e7114aeac81599c53637380693782f39d2f56d6c11",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. document is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:5e206af481213cf3df6dc19321fb0ba14f26046c80a8a83681ab26e3f924f63a",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:0b4d63eae08cb0d71be9818db74bac13e2e7c1cc0a48414488196934f4169c9b",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:1",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:ba18ba5287b9f377c4a7c7237784a974d1bf82689d8d91ab117b5145d9afa501",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. entry is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:af6df4a2c2848ea5e36e2dc991c7663ff3b3e5a7ee87dd1b5ecdb04fd49038e5",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:1b2fef09bc1a3de2f9c62fa3f92ecde759878bd0dc5c5fbad489d09047570e26",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findDocument is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8439d8bfb4af870b3391be8cf8e43c2d7282cdff6eda5d595efc568ab8d932eb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b63a79b2367e60d38767969bd2bfa6f76f393f1a4f794643d8bd706c72fe2ea5",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. findLatestHeadMarker is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. mintId is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:00c85136cc9372b9d5258d44c612d5e7ec444383a72bced09ddcdc191b5c9cc1",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:fe2fab4b855eb0cd51f66f24b038a2d8e82327ff03778359820965bb750cfb88",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanConversations is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:1b5cef48a8d490ed248e40fc48d47d182622a22a9d83cc4929b8a6f0189214d8",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b1331577616ff53934b819d024d9e5a3b4e792f3573f7078c3075a29d09884c9",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanDocuments is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d639e7e2c4392b85af035c881198ea209ba469e9f8fad844f8dcd9498c61cb86",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:dd53c0cbe8a3fe5a6d7569ee9fc9dce971fb95607ba520a4eebdcfee66ef6831",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanEntries is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:85a803dfd0accce520f3aa10f7078ac48356fe4b3933134693d82f4e341bb1fa",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:a00bb1538eae98af57b1abf6fef5fef38a5a3c5d74c0ffa25f5cc8799bae262f",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanSubmissions is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:7f89609b1fa4814501156e4ecbf2e5e27571ee0779d3def871c3bcbcdf773bf6",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c599f81352cd06a6497881eb7299df14b7e83ac175c57cb90fc74b4ef7bf990e",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. scanTasks is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e25756f187b0b85dac665be77d56927cd587f1db6e171a93ee35962c3374c4fb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8c42348226d2bfa44ea73ef18e68d88fbc0755bb44d2bc828b40d926a45917b7",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submission is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88cc011560c22a92a962865ec5ca5066a432d98924c249e78a3832f75d5f690",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:62370d5266007297868f66f05f7ca414eae772ae00ff9253af31c1f6d49bcbeb",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. submissionByRequest is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:task",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:b88f2957d612b3485979ba395d9e92dc67bbdefb4bda475454a31a80fec54291",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:task::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e4de47192a104aa8e4bdd065c073314f095650de40d7f9896bc3e67aeff66c7d",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. task is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorageOptions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:81b8be63847b81014eb2290dd1322101ea0093ce89c3525bcc12ffbc8d9cb645",
-      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The options type carries one field, indexedDB?: IDBFactory (indexeddb.ts:137-139), the browser factory the storage opens its database through; Go has no IDBFactory to pass. PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.5.0) is the browser-only IndexedDbStorage: the file opens with /// \u003creference lib=\"dom\" /\u003e and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The options type carries one field, indexedDB?: IDBFactory (indexeddb.ts:137-139), the browser factory the storage opens its database through; Go has no IDBFactory to pass. PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at Pi 1.5.0: storage/indexeddb.ts is unchanged since 2c8d1feb (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds. A probe of the pinned Pi tree (c23b9ec1) for IndexedDbStorage and storage/indexeddb finds them only in storage/indexeddb.ts, durable's package.json export ./storage/indexeddb, its README and CHANGELOG, and test/indexeddb-storage.test.ts (run on fake-indexeddb): no other Pi package imports the class, so no Pi reader outside a browser sees this member."
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage",
@@ -242274,13 +242464,47 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fc1812c9289978df0dffa37dfb4eec70b42d71979cecfc64eca0e3f3878f7e52"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fc1812c9289978df0dffa37dfb4eec70b42d71979cecfc64eca0e3f3878f7e52",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase is Go durable/storage/sqlite/node/node.go#NodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::construct:0 is Go durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestNewNodeSqliteDatabaseAdaptsADatabaseSync",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestPortableSQLiteFacadeSettlement"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabase::property:all",
@@ -242345,9 +242569,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242368,9 +242592,9 @@
         "call:chord/sqlite/node/node.go#NodeSqliteDatabase.Close"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242391,9 +242615,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242414,9 +242638,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Exec"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242483,9 +242707,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242506,9 +242730,9 @@
         "call:chord/sqlite/node/node.go#nodeSqliteExecutor.Run"
       ],
       "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
-        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/outbox_test.go#TestOutbox"
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242602,13 +242826,47 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabaseOptions is Go durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestNewNodeSqliteDatabaseTakesPisModeAndDefaultsToReadWrite",
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:357ec1b884dd0a9b2496cfe8f7a7039445b080312cf5fc5d3be845940557494d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:357ec1b884dd0a9b2496cfe8f7a7039445b080312cf5fc5d3be845940557494d",
+      "rationale": "Derived by the interface gap detector: NodeSqliteStorageOptions is Go durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipDerivesMarksACrashLeftUnappliedBelowACancelledOwnerAtOpen",
+        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
+        "test:durable/examples/lifecycle_examples_test.go#TestExample30ReloadAndRestart"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase",
@@ -243146,7 +243404,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
+        "call:durable/storage/sqlite/commit.go#SqliteStorage.readCommitState"
       ],
       "evidence": [
         "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
@@ -243490,6 +243748,8 @@
         "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions",
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements",
         "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -243511,6 +243771,8 @@
         "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
       ],
       "evidence": [
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitRegressions",
+        "test:durable/storage/sqlite/sqlite_commit_test.go#TestSqliteStorageBatchCommitStatements",
         "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -244216,7 +244478,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/storage/sqlite/storage.go#SqliteStorage.FindDocument"
+        "call:durable/storage/sqlite/statements.go#insertBound"
       ],
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
@@ -245518,7 +245780,7 @@
       "id": "pkg:durable/testing#ExpectLike::call:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:4a7fac3d99acc7dc88c774a7574b73c4010df92de730b0e9846a70b30a89041b",
-      "rationale": "The call row belongs to ExpectLike (durable/src/testing/assertions.ts:3), the injected assertion hook, which Go replaces with testing.T assertions (durabletest.CreateTestingAssertions).",
+      "rationale": "The call row belongs to ExpectLike (durable/src/testing/assertions.ts:3), the injected TypeScript assertion hook, which Go replaces with testing.T assertions (durabletest.CreateTestingAssertions).",
       "pigTargets": [
         "durable/durabletest/durabletest.go#CreateTestingAssertions"
       ]

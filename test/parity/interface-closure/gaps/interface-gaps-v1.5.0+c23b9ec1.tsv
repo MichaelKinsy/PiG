@@ -723,10 +723,6 @@ pkg:chord/react#useWatch	chord	no-go-symbol
 pkg:chord/react#useWatch::call:0	chord	child-gap	
 pkg:chord/react#watchStore	chord	no-go-symbol	
 pkg:chord/react#watchStore::call:0	chord	child-gap	
-pkg:chord/sqlite/node#NodeSqliteDatabase	chord	child-gap	chord/sqlite/node/node.go#NodeSqliteDatabase
-pkg:chord/sqlite/node#NodeSqliteDatabase::construct:0	chord	signature-mismatch	chord/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:chord/sqlite/node#NodeSqliteDatabaseOptions	chord	type-mismatch	chord/sqlite/node/node.go#NodeSqliteDatabaseOptions
-pkg:chord/sqlite/node#NodeSqliteMode	chord	no-go-symbol	
 pkg:chord/surfaces#BaseBundle	chord	no-go-symbol	
 pkg:chord/surfaces#PageAssets	chord	no-go-symbol	
 pkg:chord/surfaces#ServedFile	chord	no-go-symbol	
@@ -988,20 +984,6 @@ pkg:coding-agent/.#ReadOperations	coding-agent	child-gap	internal/codingagent/to
 pkg:coding-agent/.#ReadOperations::property:createReadStream	coding-agent	signature-mismatch	internal/codingagent/tools/read.go#ReadOperations.CreateReadStream
 pkg:coding-agent/.#SkillInvocationMessageComponent	coding-agent	child-gap	tui/skill_invocation.go#SkillInvocationMessageComponent
 pkg:coding-agent/.#SkillInvocationMessageComponent::construct:0	coding-agent	signature-mismatch	tui/skill_invocation.go#NewSkillInvocationMessageComponent
-pkg:durable/.#Agent	durable	type-mismatch	durable/harness_types.go#Agent
-pkg:durable/.#AgentChange	durable	type-mismatch	durable/harness/agent.go#AgentChange
-pkg:durable/.#AgentState	durable	type-mismatch	durable/harness/agent.go#AgentState
-pkg:durable/.#ConversationStreamOptions	durable	type-mismatch	durable/harness_types.go#ConversationStreamOptions
-pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
-pkg:durable/.#Tx::property:submission	durable	member-missing	durable/types.go#Tx
-pkg:durable/.#Tx::property:submission::call:0	durable	member-missing	durable/types.go#Tx
-pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
-pkg:durable/storage/sqlite/node#NodeSqliteDatabase	durable	child-gap	durable/storage/sqlite/node/node.go#NodeSqliteDatabase
-pkg:durable/storage/sqlite/node#NodeSqliteDatabase::construct:0	durable	signature-mismatch	durable/storage/sqlite/node/node.go#NewNodeSqliteDatabase
-pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions
-pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions	durable	type-mismatch	durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions
 pkg:mcp/.#McpHttpServerConfig	mcp	no-go-symbol	
 pkg:mcp/.#McpHttpServerConfig::property:description	mcp	child-gap	
 pkg:mcp/.#McpHttpServerConfig::property:enabled	mcp	child-gap	
