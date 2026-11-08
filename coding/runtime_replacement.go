@@ -186,7 +186,7 @@ func (rt *Runtime) EmitQuitShutdown() {
 		return
 	}
 	if session := rt.Session(); session != nil {
-		// pig divergence (D247): dispose awaits the interrupted run's settlement before session_shutdown (Pi main 7a53c310a, #9126).
+		// dispose awaits the interrupted run's settlement before session_shutdown (Pi main 7a53c310a, #9126).
 		//portlint:allow ctxbackground Pi's dispose awaits session.abort() with no signal and no timeout (agent-session-runtime.ts dispose); the mode's quit has no caller context
 		_ = session.Abort(context.Background())
 		session.EmitSessionShutdown("quit")

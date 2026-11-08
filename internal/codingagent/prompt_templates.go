@@ -31,38 +31,57 @@ type PromptTemplate struct {
 
 // ─── Argument parsing ────────────────────────────────────────────────────────
 
-// ParsePromptArgs splits arguments using ECMAScript whitespace outside single- and double-quoted runs. Empty quoted strings are omitted, and backslashes are literal.
-// Upstream: packages/coding-agent/src/core/prompt-templates.ts:24-55.
+// ParsePromptArgs splits arguments using ECMAScript whitespace outside single- and double-quoted runs. A quote only opens a quoted
+// argument at the start of an argument, so an apostrophe inside a word stays text; a quote with no closing match is kept as text and the
+// rest is parsed normally. Inside a quoted argument a backslash before that argument's quote character gives a literal quote, and every
+// other backslash is kept as typed. Empty quoted strings are arguments.
+// Upstream: packages/coding-agent/src/core/prompt-templates.ts parseCommandArgs (Pi main 96667f342).
 func ParsePromptArgs(s string) []string {
+	runes := []rune(s)
 	args := make([]string, 0, 4)
 	var cur strings.Builder
 	var quote rune // 0 = not in quotes
+	// quoteStart is where the open quote started, so an unclosed quote can be re-read as literal text.
+	quoteStart := 0
 	// hasToken records that a token has started, so quoted empty strings ("" or '') are kept as arguments (Pi 9fe3f371).
 	hasToken := false
-	for _, char := range s {
-		if quote != 0 {
-			if char == quote {
+	for i := 0; i < len(runes); i++ {
+		char := runes[i]
+		switch {
+		case quote != 0:
+			switch {
+			case char == '\\' && i+1 < len(runes) && runes[i+1] == quote:
+				// A backslash before the open quote's character keeps it as text: "say \"hi\"" gives say "hi".
+				cur.WriteRune(quote)
+				i++
+			case char == quote:
 				quote = 0
-				continue
+			default:
+				cur.WriteRune(char)
 			}
-			cur.WriteRune(char)
-			continue
-		}
-		if char == '"' || char == '\'' {
+		case (char == '"' || char == '\'') && !hasToken:
+			// Quotes only open at the start of an argument, so apostrophes inside words stay literal.
 			quote = char
+			quoteStart = i
 			hasToken = true
-			continue
-		}
-		if isJSWhitespace(char) {
+		case isJSWhitespace(char):
 			if hasToken {
 				args = append(args, cur.String())
 				cur.Reset()
 				hasToken = false
 			}
-			continue
+		default:
+			cur.WriteRune(char)
+			hasToken = true
 		}
-		cur.WriteRune(char)
-		hasToken = true
+		if quote != 0 && i == len(runes)-1 {
+			// Unclosed quote: keep the quote character as text and parse the rest normally (cur was empty when the quote opened,
+			// because quotes only open a new argument).
+			quote = 0
+			cur.Reset()
+			cur.WriteRune(runes[quoteStart])
+			i = quoteStart
+		}
 	}
 	if hasToken {
 		args = append(args, cur.String())

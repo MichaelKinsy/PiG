@@ -25,7 +25,9 @@ import { createCompactionSummaryMessage, createCustomMessage } from "../../core/
 import { defaultModelPerProvider, findExactModelReferenceMatch, resolveModelScopeFromModels, } from "../../core/model-resolver.js";
 import { CredentialSynchronizationError } from "../../core/model-runtime.js";
 import { DefaultPackageManager } from "../../core/package-manager.js";
-import { RADIUS_MCP_URL, RADIUS_PROVIDER_ID } from "../../core/radius.js";
+import { findMatchingProviders } from "../../core/provider-matching.js";
+import { RADIUS_PROVIDER_ID } from "../../core/radius.js";
+import { planRadiusMcpServer } from "../../core/radius-mcp.js";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.js";
 import { SessionManager, sessionEntryToContextMessages, } from "../../core/session-manager.js";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.js";
@@ -34,7 +36,7 @@ import { isInstallTelemetryEnabled } from "../../core/telemetry.js";
 import { withBuiltInRenderers } from "../../core/tools/renderers/index.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.js";
 import { getUsageCostBreakdown } from "../../core/usage-totals.js";
-import { addMcpServerConfig, loadMcpConfig } from "../../extensions/mcp/config.js";
+import { addMcpServerConfig } from "../../extensions/mcp/config.js";
 import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelog } from "../../utils/changelog.js";
 import { copyToClipboard, readClipboardFilePaths, readClipboardText } from "../../utils/clipboard.js";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
@@ -66,6 +68,7 @@ import { ExtensionSelectorComponent } from "./components/extension-selector.js";
 import { FooterComponent, formatTokens } from "./components/footer.js";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.js";
 import { LoginDialogComponent } from "./components/login-dialog.js";
+import { createMarkdownTransform } from "./components/markdown-transform.js";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.js";
 import { ModelSelectorComponent } from "./components/model-selector.js";
 import { formatAuthSelectorProviderStatus, formatAuthSelectorProviderType, OAuthSelectorComponent, } from "./components/oauth-selector.js";
@@ -278,6 +281,8 @@ export class InteractiveMode {
     changelogMarkdown = undefined;
     extensionChangelogUpdates = [];
     startupNoticesShown = false;
+    /** Last cache-warming notice, extended in place while it is the last chat line. */
+    cacheWarmingNotice;
     anthropicSubscriptionWarningShown = false;
     // Status line tracking (for mutating immediately-sequential status updates)
     lastStatusSpacer = undefined;
@@ -327,6 +332,13 @@ export class InteractiveMode {
     // Extension dialogs shown in the editor slot (select, confirm, input, editor, inline custom).
     // The last entry is visible; see pushExtensionDialog().
     extensionDialogs = [];
+    /** Numbers the program status sources of blocking overlays, so closing one keeps the others. */
+    nextBlockingOverlayId = 0;
+    /**
+     * Open extension overlays (custom with overlay: true) and the function that removes each, in opening
+     * order. Reset removes only these, not pi's own overlays.
+     */
+    extensionOverlays = new Map();
     extensionTerminalInputSubscriptions = new Set();
     // Extension widgets (components rendered above/below the editor)
     extensionWidgetsAbove = new Map();
@@ -583,7 +595,7 @@ export class InteractiveMode {
             else {
                 this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
                 this.chatContainer.addChild(new Spacer(1));
-                this.chatContainer.addChild(new Markdown(this.changelogMarkdown.trim(), 1, 0, this.getMarkdownThemeWithSettings()));
+                this.chatContainer.addChild(this.createChangelogMarkdown(this.changelogMarkdown.trim(), 1, 0));
                 this.chatContainer.addChild(new Spacer(1));
             }
         }
@@ -601,7 +613,7 @@ export class InteractiveMode {
                 this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "Extension Updates")), 1, 0));
                 this.chatContainer.addChild(new Spacer(1));
                 const markdown = this.extensionChangelogUpdates.map((update) => update.markdown).join("\n\n");
-                this.chatContainer.addChild(new Markdown(markdown, 1, 0, this.getMarkdownThemeWithSettings()));
+                this.chatContainer.addChild(this.createChangelogMarkdown(markdown, 1, 0));
                 this.chatContainer.addChild(new Spacer(1));
             }
         }
@@ -1020,6 +1032,11 @@ export class InteractiveMode {
             return undefined;
         }
         const newEntries = getNewEntries(entries, lastVersion);
+        if (!newEntries) {
+            // Unreadable saved version: show nothing and record the current one so later updates compare again
+            this.settingsManager.setLastChangelogVersion(VERSION);
+            return undefined;
+        }
         if (newEntries.length > 0) {
             this.settingsManager.setLastChangelogVersion(VERSION);
             this.reportInstallTelemetry(VERSION);
@@ -1054,6 +1071,11 @@ export class InteractiveMode {
                 continue;
             }
             const newEntries = getNewEntries(parseChangelog(sourceInfo.changelogPath), lastVersion);
+            if (!newEntries) {
+                // Unreadable saved version: show nothing and record the current one so later updates compare again
+                this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
+                continue;
+            }
             if (newEntries.length > 0) {
                 this.settingsManager.setExtensionChangelogVersion(key, pkg.version);
                 const name = pkg.name || sourceInfo.source;
@@ -1776,6 +1798,7 @@ export class InteractiveMode {
         this.loadedResourcesContainer.clear();
         this.chatContainer.clear();
         this.pendingMessagesContainer.clear();
+        this.pendingBashComponents = [];
         this.compactionQueuedMessages = [];
         this.streamingComponent = undefined;
         this.streamingMessage = undefined;
@@ -1794,6 +1817,12 @@ export class InteractiveMode {
     }
     getMarkdownTransformers() {
         return [this.mermaidMarkdownTransformer, ...this.session.extensionRunner.getMarkdownTransformers()];
+    }
+    /** Markdown of a changelog or release note that runs the Markdown transformers of the `changelog` type. */
+    createChangelogMarkdown(markdown, paddingX, paddingY, defaultTextStyle) {
+        return new Markdown(markdown, paddingX, paddingY, this.getMarkdownThemeWithSettings(), defaultTextStyle, {
+            transform: createMarkdownTransform("changelog", () => false, this.getMarkdownTransformers()),
+        });
     }
     /**
      * Set up keyboard shortcuts registered by extensions.
@@ -1990,7 +2019,10 @@ export class InteractiveMode {
             this.extensionDialogs = [];
             this.showTopExtensionDialog();
         }
-        this.ui.hideOverlay();
+        // Reload and session switches replace every extension without calling done(): remove their overlays,
+        // newest first, the same way done() does, but leave the promises pending as for inline dialogs.
+        for (const removeOverlay of [...this.extensionOverlays.values()].reverse())
+            removeOverlay();
         this.clearExtensionTerminalInputListeners();
         this.setExtensionFooter(undefined);
         this.setExtensionHeader(undefined);
@@ -2293,7 +2325,7 @@ export class InteractiveMode {
     setCustomEditorComponent(factory) {
         this.editorComponentFactory = factory;
         // Save text from current editor before switching
-        const currentText = this.editor.getText();
+        const currentText = this.editor.getExpandedText?.() ?? this.editor.getText();
         // An open extension dialog keeps the editor slot; the new editor is shown when the last dialog closes.
         const dialogOpen = this.extensionDialogs.length > 0;
         if (!dialogOpen) {
@@ -2379,11 +2411,13 @@ export class InteractiveMode {
     }
     /** Show a custom component with keyboard focus. Overlay mode renders on top of existing content. */
     async showExtensionCustom(factory, options) {
-        const savedText = this.editor.getText();
+        const savedText = this.editor.getExpandedText?.() ?? this.editor.getText();
         const isOverlay = options?.overlay ?? false;
         return new Promise((resolve, reject) => {
             let component;
             let overlayHandle;
+            // An overlay stays blocked until its interaction ends, also while setHidden() hides it.
+            const overlayStatusSource = isOverlay && options?.blocked ? `extension-overlay:${this.nextBlockingOverlayId++}` : undefined;
             let closed = false;
             const restoreEditor = () => {
                 if (component)
@@ -2391,22 +2425,36 @@ export class InteractiveMode {
                 this.editor.setText(savedText);
                 this.ui.requestRender();
             };
-            const close = (result) => {
-                if (closed)
-                    return;
-                closed = true;
-                // Remove this overlay, not the topmost one: another overlay may have opened above it.
-                if (isOverlay)
-                    overlayHandle?.hide();
-                else
-                    restoreEditor();
-                // Note: both branches above already call requestRender
-                resolve(result);
+            const disposeComponent = () => {
                 try {
                     component?.dispose?.();
                 }
                 catch {
                     /* ignore dispose errors */
+                }
+            };
+            // Shared by done() and resetExtensionUI(). Removing the map entry first makes a second call a no-op.
+            const removeOverlay = () => {
+                if (!overlayHandle || !this.extensionOverlays.delete(overlayHandle))
+                    return;
+                // Remove this overlay, not the topmost one: another overlay may have opened above it.
+                overlayHandle.hide();
+                if (overlayStatusSource)
+                    this.programStatus.setBlocked(overlayStatusSource, undefined);
+                disposeComponent();
+            };
+            const close = (result) => {
+                if (closed)
+                    return;
+                closed = true;
+                if (isOverlay) {
+                    removeOverlay();
+                    resolve(result);
+                }
+                else {
+                    restoreEditor();
+                    resolve(result);
+                    disposeComponent();
                 }
             };
             Promise.resolve(factory(this.ui, theme, this.keybindings, close))
@@ -2428,6 +2476,9 @@ export class InteractiveMode {
                         return w ? { width: w } : undefined;
                     };
                     overlayHandle = this.ui.showOverlay(c, resolveOptions());
+                    this.extensionOverlays.set(overlayHandle, removeOverlay);
+                    if (overlayStatusSource)
+                        this.programStatus.setBlocked(overlayStatusSource, options?.blocked);
                     // Expose handle to caller for visibility control
                     options?.onHandle?.(overlayHandle);
                 }
@@ -3018,6 +3069,9 @@ export class InteractiveMode {
                 this.ui.requestRender();
                 break;
             case "agent_settled":
+                // The session records deferred user bash results when the run settles; show them there too.
+                this.flushPendingBashComponents();
+                this.ui.requestRender();
                 await this.checkShutdownRequested();
                 break;
             case "compaction_start": {
@@ -3216,7 +3270,7 @@ export class InteractiveMode {
             case "custom": {
                 if (message.display) {
                     const renderer = this.session.extensionRunner.getMessageRenderer(message.customType);
-                    const component = new CustomMessageComponent(message, renderer, this.getMarkdownThemeWithSettings(), this.outputPad);
+                    const component = new CustomMessageComponent(message, renderer, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                     component.setExpanded(this.toolOutputExpanded);
                     this.chatContainer.addChild(component);
                 }
@@ -3224,14 +3278,14 @@ export class InteractiveMode {
             }
             case "compactionSummary": {
                 this.chatContainer.addChild(new Spacer(1));
-                const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
+                const component = new CompactionSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                 component.setExpanded(this.toolOutputExpanded);
                 this.chatContainer.addChild(component);
                 break;
             }
             case "branchSummary": {
                 this.chatContainer.addChild(new Spacer(1));
-                const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad);
+                const component = new BranchSummaryMessageComponent(message, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                 component.setExpanded(this.toolOutputExpanded);
                 this.chatContainer.addChild(component);
                 break;
@@ -3247,7 +3301,7 @@ export class InteractiveMode {
                     const skillBlock = parseSkillBlock(textContent);
                     if (skillBlock) {
                         // Render skill block (collapsible)
-                        const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings(), this.outputPad);
+                        const component = new SkillInvocationMessageComponent(skillBlock, this.getMarkdownThemeWithSettings(), this.outputPad, this.getMarkdownTransformers(), options?.messageId, options?.timestamp);
                         component.setExpanded(this.toolOutputExpanded);
                         this.chatContainer.addChild(component);
                         // Render user message separately if present
@@ -3401,9 +3455,18 @@ export class InteractiveMode {
     addCacheWarmingUsage(entry) {
         if (!this.settingsManager.getShowCacheMissNotices())
             return;
+        // Back-to-back warms collapse into one line with the cumulative cost.
+        const previous = this.cacheWarmingNotice;
+        if (previous && this.chatContainer.children.at(-1) === previous.component && previous.note === entry.note) {
+            previous.total.cost += entry.usage.cost.total;
+            previous.component.invalidate();
+            return;
+        }
+        const total = { cost: entry.usage.cost.total };
+        const component = new ThemedText(() => theme.fg("dim", formatCacheWarmingUsage(total.cost, entry.note)), 1, 0);
+        this.cacheWarmingNotice = { component, total, note: entry.note };
         this.chatContainer.addChild(new Spacer(1));
-        const usage = formatCacheWarmingUsage(entry);
-        this.chatContainer.addChild(new ThemedText(() => theme.fg("dim", usage), 1, 0));
+        this.chatContainer.addChild(component);
     }
     /**
      * Render billing usage for a compaction or branch summary. The notice is derived
@@ -3809,7 +3872,7 @@ export class InteractiveMode {
         if (isExpandable(activeHeader)) {
             activeHeader.setExpanded(expanded);
         }
-        for (const container of [this.loadedResourcesContainer, this.chatContainer]) {
+        for (const container of [this.loadedResourcesContainer, this.chatContainer, this.pendingMessagesContainer]) {
             for (const child of container.children) {
                 if (isExpandable(child)) {
                     child.setExpanded(expanded);
@@ -3887,9 +3950,7 @@ export class InteractiveMode {
         this.chatContainer.addChild(new ThemedText(() => `${theme.bold(theme.fg("warning", "Update Available"))}\n${updateInstruction()}`, 1, 0));
         if (note) {
             this.chatContainer.addChild(new Spacer(1));
-            this.chatContainer.addChild(new Markdown(note, 1, 0, this.getMarkdownThemeWithSettings(), {
-                color: (text) => theme.fg("muted", text),
-            }));
+            this.chatContainer.addChild(this.createChangelogMarkdown(note, 1, 0, { color: (text) => theme.fg("muted", text) }));
             this.chatContainer.addChild(new Spacer(1));
         }
         this.chatContainer.addChild(new ThemedText(changelogLine, 1, 0));
@@ -3942,6 +4003,10 @@ export class InteractiveMode {
     }
     updatePendingMessagesDisplay() {
         this.pendingMessagesContainer.clear();
+        // User bash output shown while the agent works lives here until it moves to the chat.
+        for (const component of this.pendingBashComponents) {
+            this.pendingMessagesContainer.addChild(component);
+        }
         const { steering: steeringMessages, followUp: followUpMessages } = this.getAllQueuedMessages();
         if (steeringMessages.length > 0 || followUpMessages.length > 0) {
             this.pendingMessagesContainer.addChild(new Spacer(1));
@@ -3969,7 +4034,7 @@ export class InteractiveMode {
             return 0;
         }
         const queuedText = allQueued.join("\n\n");
-        const currentText = options?.currentText ?? this.editor.getText();
+        const currentText = options?.currentText ?? this.editor.getExpandedText?.() ?? this.editor.getText();
         const combinedText = [queuedText, currentText].filter((t) => t.trim()).join("\n\n");
         this.editor.setText(combinedText);
         this.updatePendingMessagesDisplay();
@@ -4938,20 +5003,12 @@ export class InteractiveMode {
         })
             .sort((a, b) => a.name.localeCompare(b.name));
     }
-    findLoginProviderOptions(providerRef) {
-        const normalizedProviderRef = providerRef.trim().toLowerCase();
-        if (!normalizedProviderRef) {
-            return [];
-        }
-        return this.getLoginProviderOptions().filter((provider) => provider.id.toLowerCase() === normalizedProviderRef ||
-            provider.name.toLowerCase() === normalizedProviderRef);
-    }
     async handleLoginCommand(providerRef) {
         if (!providerRef) {
             this.showLoginAuthTypeSelector();
             return;
         }
-        const providerOptions = this.findLoginProviderOptions(providerRef);
+        const providerOptions = findMatchingProviders(this.getLoginProviderOptions(), providerRef);
         if (providerOptions.length === 1) {
             await this.startProviderLogin(providerOptions[0]);
             return;
@@ -5392,24 +5449,10 @@ export class InteractiveMode {
      * when missing. Nothing is asked when a global server already uses this login.
      */
     offerRadiusMcpServer(providerId, providerName) {
-        const mcpPath = path.join(getAgentDir(), "mcp.json");
-        const normalizeUrl = (url) => url.replace(/\/+$/u, "");
-        const { servers } = loadMcpConfig({
-            agentDir: getAgentDir(),
-            cwd: this.sessionManager.getCwd(),
-            projectTrusted: false,
-        });
-        const existing = servers.find((server) => "url" in server.config && normalizeUrl(server.config.url) === normalizeUrl(RADIUS_MCP_URL));
-        if (existing && "url" in existing.config && existing.config.auth?.provider === providerId)
+        const plan = planRadiusMcpServer(providerId, getAgentDir(), this.sessionManager.getCwd());
+        if (!plan)
             return;
-        let name = existing?.name ?? "radius";
-        if (!existing && servers.some((server) => server.name === name))
-            name = "radius-mcp";
-        const config = existing && "url" in existing.config
-            ? { ...existing.config, auth: { provider: providerId } }
-            : { url: RADIUS_MCP_URL, auth: { provider: providerId } };
-        // `auth` replaces the MCP OAuth sign-in.
-        delete config.oauth;
+        const { mcpPath, name, config } = plan;
         this.showSelector((done) => {
             const selector = new ExtensionSelectorComponent(`Configure ${providerName} MCP in ${mcpPath}?`, ["Yes", "No"], (option) => {
                 done();
@@ -5753,7 +5796,7 @@ export class InteractiveMode {
         this.chatContainer.addChild(new DynamicBorder());
         this.chatContainer.addChild(new ThemedText(() => theme.bold(theme.fg("accent", "What's New")), 1, 0));
         this.chatContainer.addChild(new Spacer(1));
-        this.chatContainer.addChild(new Markdown(changelogMarkdown, 1, 1, this.getMarkdownThemeWithSettings()));
+        this.chatContainer.addChild(this.createChangelogMarkdown(changelogMarkdown, 1, 1));
         this.chatContainer.addChild(new DynamicBorder());
         this.ui.requestRender();
     }
@@ -5955,6 +5998,7 @@ export class InteractiveMode {
             const result = eventResult.result;
             // Create UI component for display
             this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
+            this.bashComponent.setExpanded(this.toolOutputExpanded);
             if (this.session.isStreaming) {
                 this.pendingMessagesContainer.addChild(this.bashComponent);
                 this.pendingBashComponents.push(this.bashComponent);
@@ -5976,6 +6020,7 @@ export class InteractiveMode {
         // Normal execution path (possibly with custom operations)
         const isDeferred = this.session.isStreaming;
         this.bashComponent = new BashExecutionComponent(command, this.ui, excludeFromContext, this.outputPad);
+        this.bashComponent.setExpanded(this.toolOutputExpanded);
         if (isDeferred) {
             // Show in pending area when agent is streaming
             this.pendingMessagesContainer.addChild(this.bashComponent);
