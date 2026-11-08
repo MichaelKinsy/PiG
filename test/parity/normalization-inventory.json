@@ -4541,12 +4541,6 @@
       "scenario": "test/parity/scenarios/interactive-rendering/65-app-action-keys.toml",
       "transforms": [
         {
-          "kind": "normalize_replace",
-          "pattern": "(Type to search:\\x1b\\[39m) \\x1b\\[7m \\x1b\\[0m",
-          "with": "$1",
-          "reason": "D248: Pig draws the /tree search cursor cell that the pinned Pi does not; Pi main 2cfab7c26 draws it too."
-        },
-        {
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Session Tree",
@@ -8955,7 +8949,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "Select provider to configure",
-            "capture_end_regex": "OpenAI Codex \\(legacy\\)(?:\\x1b\\[[0-9;]*m)* • not configured"
+            "capture_end_regex": "OpenAI Codex(?:\\x1b\\[[0-9;]*m)* • not configured"
           },
           "reason": "Owned visible surface: /login subscription provider picker includes GitHub Copilot and Kimi For Coding with upstream labels.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
@@ -10898,12 +10892,6 @@
     {
       "scenario": "test/parity/scenarios/tree/06-tree-header-spacing.toml",
       "transforms": [
-        {
-          "kind": "normalize_replace",
-          "pattern": "(Type to search:\\x1b\\[0m) \\x1b\\[7m \\x1b\\[0m",
-          "with": "$1",
-          "reason": "D248: Pig draws the /tree search cursor cell that the pinned Pi does not; Pi main 2cfab7c26 draws it too."
-        },
         {
           "kind": "terminal_crop",
           "configuration": {
