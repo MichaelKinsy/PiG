@@ -505,6 +505,22 @@ func TestAuthLoginReportsCancellation(t *testing.T) {
 	}
 }
 
+func TestAuthLoginReportsAProviderOwnLoginCancelledErrorAsCancelledWhileTheContextIsLive(t *testing.T) {
+	// upstream: auth-login.ts:78 compares the message; ai providers create their own errors.New("Login cancelled").
+	auth := oauthOnly(func(context.Context, ai.AuthInteraction, ai.LoginOptions) (ai.Credential, error) {
+		return ai.Credential{}, errors.New("Login cancelled")
+	})
+	runtime, store := authTestRuntime(t, nil, authTestProvider(auth, authLoginTestProviderID))
+	terminal := newScriptedTerminal()
+	code := runAuthLoginForTest(t.Context(), []string{authLoginTestProviderID}, runtime, terminal, nonexistentAgentDir)
+	if code != 1 || !reflect.DeepEqual(terminal.errors, []string{"Login cancelled."}) {
+		t.Fatalf("code %d, errors %q", code, terminal.errors)
+	}
+	if got := readStoredCredential(t, store, authLoginTestProviderID); got != nil {
+		t.Fatalf("stored %+v", got)
+	}
+}
+
 func TestAuthLoginKeepsUnrelatedMCPServersWhenTheFallbackNameIsOccupied(t *testing.T) {
 	for _, fallback := range []string{"radius-mcp", "radius_mcp"} {
 		t.Run(fallback, func(t *testing.T) {

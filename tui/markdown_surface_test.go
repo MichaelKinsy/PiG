@@ -25,25 +25,19 @@ func TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisH
 			Component
 			SetExpanded(bool)
 		} {
-			c := NewCompactionSummaryMessageComponent(CompactionSummaryMessage{Summary: "details", TokensBefore: 1234}, nil, 1)
-			c.SetMarkdownTransform(transform, nil)
-			return c
+			return NewCompactionSummaryMessageComponentWithSurface(CompactionSummaryMessage{Summary: "details", TokensBefore: 1234}, nil, 1, MarkdownSurface{Transform: transform})
 		}},
 		{"branch summary", "summary", "Branch Summary", func(transform func(string, int) string) interface {
 			Component
 			SetExpanded(bool)
 		} {
-			c := NewBranchSummaryMessageComponent(BranchSummaryMessage{Summary: "details"}, nil, 1)
-			c.SetMarkdownTransform(transform, nil)
-			return c
+			return NewBranchSummaryMessageComponentWithSurface(BranchSummaryMessage{Summary: "details"}, nil, 1, MarkdownSurface{Transform: transform})
 		}},
 		{"skill", "custom", "example-skill", func(transform func(string, int) string) interface {
 			Component
 			SetExpanded(bool)
 		} {
-			c := NewSkillInvocationMessageComponent(ParsedSkillBlock{Name: "example-skill", Content: "details"}, nil, 1)
-			c.SetMarkdownTransform(transform, nil)
-			return c
+			return NewSkillInvocationMessageComponentWithSurface(ParsedSkillBlock{Name: "example-skill", Content: "details"}, nil, 1, MarkdownSurface{Transform: transform})
 		}},
 	} {
 		t.Run(tc.kind, func(t *testing.T) {
@@ -72,8 +66,7 @@ func TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent(t *testin
 		contexts = append(contexts, ctx)
 		return strings.Replace(markdown, "original", "transformed", 1)
 	}}
-	component := NewCustomMessageComponent(&CustomMessage{CustomType: "test", Content: "original"}, nil, nil, 1)
-	component.SetMarkdownTransform(markdowntransform.CreateMarkdownTransform(markdowntransform.MarkdownMessageCustom, false, transformers, "entry-1", "2025-01-15T10:30:00.000Z"), nil)
+	component := NewCustomMessageComponentWithSurface(&CustomMessage{CustomType: "test", Content: "original"}, nil, nil, 1, MarkdownSurface{Transform: markdowntransform.CreateMarkdownTransform(markdowntransform.MarkdownMessageCustom, false, transformers, "entry-1", "2025-01-15T10:30:00.000Z")})
 	rendered := stripANSI(strings.Join(component.Render(40), "\n"))
 	if !strings.Contains(rendered, "transformed") || strings.Contains(rendered, "original") {
 		t.Fatalf("rendered %q", rendered)

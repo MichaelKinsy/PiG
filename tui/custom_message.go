@@ -36,7 +36,14 @@ type CustomMessageComponent struct {
 // NewCustomMessageComponent mirrors the upstream constructor (custom-message.ts:23): customRenderer may be nil, a nil
 // markdownTheme selects the active theme's, and outputPad is the horizontal padding handed to customRenderer (upstream default 1).
 func NewCustomMessageComponent(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int) *CustomMessageComponent {
+	return NewCustomMessageComponentWithSurface(message, customRenderer, markdownTheme, outputPad, MarkdownSurface{})
+}
+
+// NewCustomMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad. The surface
+// transforms the default body only: a custom renderer's component stays, and the renderer is not called again.
+func NewCustomMessageComponentWithSurface(message *CustomMessage, customRenderer MessageRenderer, markdownTheme *MarkdownTheme, outputPad int, surface MarkdownSurface) *CustomMessageComponent {
 	c := &CustomMessageComponent{message: message, customRenderer: customRenderer, markdownTheme: markdownTheme, outputPad: outputPad}
+	c.surface.install(surface, &c.invalidatable)
 	c.Add(NewSpacer(1))
 	// Box with the custom message background (used for default rendering).
 	c.box = NewPaddedBox(1, 1, func(text string) string { return paintBgWith(ActiveTheme().CustomMessageBg, text, 0) })
@@ -119,14 +126,8 @@ func (c *CustomMessageComponent) buildDefault() {
 	}))
 }
 
-// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the message text without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the custom message component; a nil transform shows the Markdown as it is.
-func (c *CustomMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
-	c.surface.transform, c.surface.state = transform, state
-	// Only the default body reads the transform: a custom renderer's component stays, and the renderer is not called again.
-	if c.customComponent == nil {
-		c.buildDefault()
-	}
-}
+// Dispose releases the default body's pending Markdown generation.
+func (c *CustomMessageComponent) Dispose() { c.surface.Dispose() }
 
 // renderCustom returns the custom renderer's component, or nil when it returns none or panics (custom-message.ts:68-83 falls
 // through to the default rendering on a throw).

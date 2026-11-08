@@ -15,10 +15,10 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/text"
-	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 // RadiusMcpURL is the MCP endpoint of the gateway the built-in Radius provider signs in to (core/radius.ts:6).
@@ -53,9 +53,9 @@ func PlanRadiusMcpServer(providerID, agentDir, cwd string) (*RadiusMcpServerPlan
 	} else {
 		namespaces := make(map[string]bool, len(servers))
 		for _, server := range servers {
-			namespaces[mcp.McpNamespace(server.Name)] = true
+			namespaces[mcpshared.McpNamespace(server.Name)] = true
 		}
-		for suffix := 1; namespaces[mcp.McpNamespace(name)]; suffix++ {
+		for suffix := 1; namespaces[mcpshared.McpNamespace(name)]; suffix++ {
 			if suffix == 1 {
 				name = "radius-mcp"
 			} else {

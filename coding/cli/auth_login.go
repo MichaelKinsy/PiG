@@ -91,9 +91,11 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 		ai.LoginOptions{GetDeviceID: options.GetDeviceID})
 	if err != nil {
 		message := err.Error()
+		//portlint:allow erroridentity auth-login.ts:78 compares the message, and ai providers create their own "Login cancelled" errors
+		cancelled := ctx.Err() != nil || message == errLoginCancelled.Error()
 		if _, ok := errors.AsType[*codingagent.CredentialSynchronizationError](err); ok {
 			terminal.Error("Logged in to " + provider.Name + ", but local model state could not be synchronized: " + message)
-		} else if ctx.Err() != nil || errors.Is(err, errLoginCancelled) {
+		} else if cancelled {
 			terminal.Error("Login cancelled.")
 		} else {
 			terminal.Error("Failed to log in to " + provider.Name + ": " + message)

@@ -31172,27 +31172,6 @@
       ]
     },
     {
-      "id": "BF-D312",
-      "title": "The model selectors keep the row the user browsed to when a catalog refresh lands",
-      "symptom": "1.5.0 discards the user's selection when the catalog refresh lands (#9109).",
-      "rootCause": "browsing the list during the refresh lost the user's place.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D312",
-      "removeWhen": "the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "b1333a0834",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
-    },
-    {
       "id": "BF-D350",
       "title": "OpenCode Zen and Go Claude models send per-message effort",
       "symptom": "1.5.0 omits both for OpenCode Claude models.",
@@ -51303,11 +51282,6 @@
       "id": "D311",
       "title": "`ctrl+o` applies to user bash output shown while the agent is working",
       "entry": "BF-D311"
-    },
-    {
-      "id": "D312",
-      "title": "The model selectors keep the row the user browsed to when a catalog refresh lands",
-      "entry": "BF-D312"
     },
     {
       "id": "D350",

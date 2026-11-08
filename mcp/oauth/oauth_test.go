@@ -1238,3 +1238,30 @@ func TestAuthorizeMcpDropsTheVerifierAfterTheExchange(t *testing.T) {
 		t.Fatalf("state = %#v", state)
 	}
 }
+
+type failingVerifierInvalidation struct{ *testOAuthProvider }
+
+func (p failingVerifierInvalidation) InvalidateCredentials(context.Context, string) error {
+	return errors.New("state file is read-only")
+}
+
+// D373 is best effort: the tokens are saved, so a sign-in whose verifier cleanup failed is still a success.
+func TestAuthorizeMcpSucceedsWhenDroppingTheVerifierFails(t *testing.T) {
+	origin := listen(t, func(w http.ResponseWriter, r *http.Request, serverOrigin string) {
+		jsonResponse(w, 200, map[string]any{"access_token": "a1", "token_type": "Bearer"})
+	})
+	base := newTestOAuthProvider("http://localhost/callback")
+	base.client = &oauth.OAuthClientInformationMixed{ClientID: "client"}
+	base.verifier = "verifier"
+	base.discovery = &oauth.OAuthDiscoveryState{
+		AuthorizationServerURL: origin,
+		AuthorizationServerMetadata: &oauth.AuthorizationServerMetadata{
+			Issuer: origin, AuthorizationEndpoint: origin + "/authorize", TokenEndpoint: origin + "/token",
+			ResponseTypesSupported: []string{"code"}, CodeChallengeMethodsSupported: []string{"S256"},
+		},
+	}
+	result, err := oauth.AuthorizeMcp(t.Context(), failingVerifierInvalidation{base}, oauth.OAuthFlowOptions{ServerURL: origin + "/mcp", AuthorizationCode: "code"})
+	if err != nil || result != oauth.OAuthAuthorized || base.tokenSet == nil || base.tokenSet.AccessToken != "a1" {
+		t.Fatalf("result %q, error %v, tokens %+v", result, err, base.tokenSet)
+	}
+}

@@ -39,12 +39,18 @@ func NewCompactionSummaryMessageComponent(message CompactionSummaryMessage, mark
 	if len(outputPad) > 0 {
 		padX = outputPad[0]
 	}
+	return NewCompactionSummaryMessageComponentWithSurface(message, markdownTheme, padX, MarkdownSurface{})
+}
+
+// NewCompactionSummaryMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+func NewCompactionSummaryMessageComponentWithSurface(message CompactionSummaryMessage, markdownTheme *MarkdownTheme, padX int, surface MarkdownSurface) *CompactionSummaryMessageComponent {
 	component := &CompactionSummaryMessageComponent{
 		Box:           NewPaddedBox(padX, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
 		summary:       message.Summary,
 		tokensBefore:  message.TokensBefore,
 		markdownTheme: markdownTheme,
 	}
+	component.surface.install(surface, &component.Box.invalidatable)
 	component.updateDisplay()
 	return component
 }
@@ -114,8 +120,5 @@ func (c *CompactionSummaryMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
 }
 
-// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the summary without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the compaction summary component; a nil transform shows the Markdown as it is.
-func (c *CompactionSummaryMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
-	c.surface.transform, c.surface.state = transform, state
-	c.updateDisplay()
-}
+// Dispose releases the expanded body's pending Markdown generation.
+func (c *CompactionSummaryMessageComponent) Dispose() { c.surface.Dispose() }

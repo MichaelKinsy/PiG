@@ -296,7 +296,7 @@ func mcpEditDistance(a, b string) int {
 	return previous[len(ub)]
 }
 
-// exposureBeforeURL reports a probe with a command that gives both an invalid exposure and a url that is not http(s): Pi 1.5.0 (the pin) reports the exposure first, PiG follows Pi main 76c040a2a and reports the url first (D372).
+// exposureBeforeURL reports a probe with a command that gives both an invalid exposure and a url that is not http(s): the Pi 1.5.0 oracle reports the exposure first, while the pin (76c040a2a) reports the url first.
 func exposureBeforeURL(commands [][]string) bool {
 	for _, args := range commands {
 		badExposure, badURL := false, false
