@@ -43599,6 +43599,17 @@
       "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#idleTimeoutConn.ReadFrom",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "idleTimeoutConn.ReadFrom",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(r io.Reader) (int64, error)"
+      },
+      "shapeHash": "sha256:76ce66cd98ab715b7f45a26f398fb0c4341997a5612d7173e9eb6ab043b188d7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#idleTimeoutConn.RemoteAddr",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "idleTimeoutConn.RemoteAddr",
@@ -56117,6 +56128,28 @@
       "shapeHash": "sha256:c8ce0cb8a710a927c0a9eafe45e698c5341929803e6bf45e7bcade784dac1e82"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#plainWriter",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "plainWriter",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "plainWriter"
+      },
+      "shapeHash": "sha256:8084a92f172290fbb04754840ef08eb06e25bce26c67e2152e49adbf22abf8d7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#plainWriter.Write",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "plainWriter.Write",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p []byte) (n int, err error)"
+      },
+      "shapeHash": "sha256:a53011a1ff068fa64f19d96a5c186623578e9655c76d7bc1d8d8f2b97a53173f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#planOf",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "planOf",
@@ -56876,6 +56909,17 @@
       "shapeHash": "sha256:2c6acf8c42423897b8da37d5d831bc84a727963dfcecabd59dcab10d02289af3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#quotedStringCache.addCopy",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "quotedStringCache.addCopy",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(element *container/list.Element, entry *quotedString, s string)"
+      },
+      "shapeHash": "sha256:970bab3538131406c36d57e815ac8c5c20daf8cbb8961e12323ae0a775401714"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#quotedStringCache.beginRequest",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "quotedStringCache.beginRequest",
@@ -56992,9 +57036,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(element *container/list.Element)"
+        "type": "func(entry *quotedString, element *container/list.Element)"
       },
-      "shapeHash": "sha256:f29b58046b79770fceba2740341425ea4f7cec3160904fa85c5867a42c2890ad"
+      "shapeHash": "sha256:fedbdb99fa0e3e5642cddfae825f66d5afd0bee28e97f9571dcda3bdc390bfbe"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#quotedStringKey",
@@ -58372,6 +58416,39 @@
       "shapeHash": "sha256:47e307cdf22277d78885429f7514706fba6fea1de61d7711c139515915b863ce"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#requestBatchWriter",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "requestBatchWriter",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "requestBatchWriter"
+      },
+      "shapeHash": "sha256:1697314e9e2de41efd2e73c0403c02778189496bc08fa3353d4ae91f50c42605"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#requestBatchWriter.Write",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "requestBatchWriter.Write",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(p []byte) (int, error)"
+      },
+      "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#requestBatchWriter.flush",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "requestBatchWriter.flush",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#requestBody",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "requestBody",
@@ -58447,6 +58524,17 @@
         "type": "requestBodyReader"
       },
       "shapeHash": "sha256:31c2567e1a1172cd22f696414406219ebec135642e56832af107db460bfac9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#requestBodyReader.Close",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "requestBodyReader.Close",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#requestBodyReader.Read",
@@ -58592,6 +58680,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#requestSpliceMaxCopies",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "requestSpliceMaxCopies",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#requestSpliceMinBytes",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "requestSpliceMinBytes",
@@ -58645,6 +58744,17 @@
         "type": "*quotedStringCache"
       },
       "shapeHash": "sha256:5a1b619e9b7f837341741c9f0d637645f13ade5dcd71d02d903704b443f06458"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#requestWriteBatch",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "requestWriteBatch",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#requireChatGPTTokenString",
@@ -381695,6 +381805,94 @@
       "shapeHash": "sha256:6a4dc70c2f8a9ab24a06891e9fab34f5bedc960198cee6f0bab9c2fd3c97f46b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardAngle",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardAngle",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "guardSet"
+      },
+      "shapeHash": "sha256:02100d659912a77c120f903e3b15e8ef6cee1c7af0179c7631e91068b2921ac4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardParens",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardParens",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "guardSet"
+      },
+      "shapeHash": "sha256:02100d659912a77c120f903e3b15e8ef6cee1c7af0179c7631e91068b2921ac4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardPoints",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardPoints",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(points []ResumePoint, code string, g guardSet) []ResumePoint"
+      },
+      "shapeHash": "sha256:c1cdf35147b81e8d6e5f62dca41ea7a1f32c2457f21d17f0e6e1baa30978f2b5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardSet",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardSet",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "guardSet"
+      },
+      "shapeHash": "sha256:02100d659912a77c120f903e3b15e8ef6cee1c7af0179c7631e91068b2921ac4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardTokens",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardTokens",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardTrivia",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardTrivia",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "guardSet"
+      },
+      "shapeHash": "sha256:02100d659912a77c120f903e3b15e8ef6cee1c7af0179c7631e91068b2921ac4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardTriviaBudget",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardTriviaBudget",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#guardedSources",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "guardedSources",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]guardSet"
+      },
+      "shapeHash": "sha256:3050134d05f89f6fd077de10f8aa0e6b68ad38b2e0632de6eaf3c5c8918c1057"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#gunzip",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "gunzip",
@@ -381948,6 +382146,17 @@
       "shapeHash": "sha256:0f1d4755d6f84775e48970c64e9065ce058268cdc056ae2d421cf0e08e990ef5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#isGuardSpace",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "isGuardSpace",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c byte) bool"
+      },
+      "shapeHash": "sha256:ddee310485d8cb330136843bd197df952280076e599df8b9fa4911341282355d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#isHex",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "isHex",
@@ -381979,6 +382188,17 @@
         "type": "func(u rune) bool"
       },
       "shapeHash": "sha256:dd5a2e661e3a568259cf787acf03b956db80fafe9d69213771ac9a04ca3e8348"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#isXMLNameByte",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "isXMLNameByte",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c byte) bool"
+      },
+      "shapeHash": "sha256:ddee310485d8cb330136843bd197df952280076e599df8b9fa4911341282355d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#join",
@@ -384148,6 +384368,17 @@
       "shapeHash": "sha256:f95bb0784b3a538caa028ecbd58397b5343b4270aa84144ac4c16d3e06856c83"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#triviaTailLeavesRoom",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "triviaTailLeavesRoom",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(code string, from int) (ok bool, read int)"
+      },
+      "shapeHash": "sha256:8891dc268cd17ceeda68bf9209f62d21079becfc6b0610de6d946eee0630282e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#unitsByteLen",
       "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
       "name": "unitsByteLen",
@@ -384311,6 +384542,17 @@
         "type": "func(out *strings.Builder, unit rune)"
       },
       "shapeHash": "sha256:9abcdfa48614ead4014d4da5cca733e31fb5ee1a52da9a460756592d994af827"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#xmlTagBegin",
+      "package": "github.com/MichaelKinsy/PiG/tui/internal/hljs",
+      "name": "xmlTagBegin",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#AnsiCodeTracker",

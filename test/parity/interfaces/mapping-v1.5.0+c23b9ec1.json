@@ -1872,7 +1872,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -6103,7 +6104,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -8956,7 +8958,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -9816,7 +9819,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -16517,7 +16521,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -17071,7 +17076,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -19816,7 +19822,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -25761,7 +25768,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -26758,7 +26766,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
       ]
     },
     {
@@ -27367,7 +27376,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -27899,7 +27909,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
       ]
     },
     {
@@ -28226,7 +28237,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -29320,7 +29332,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -32147,7 +32160,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -32921,7 +32935,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -35662,7 +35677,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -36502,7 +36518,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -37274,7 +37291,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -38032,7 +38050,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -40253,7 +40272,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -41647,7 +41667,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -42981,7 +43002,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -43771,7 +43793,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -44962,7 +44985,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -46384,7 +46408,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -47246,7 +47271,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -49800,7 +49826,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -52897,7 +52924,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -53801,7 +53829,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -61269,7 +61298,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -61867,7 +61897,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -64793,7 +64824,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -70818,7 +70850,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -71859,7 +71892,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
       ]
     },
     {
@@ -72468,7 +72502,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -73044,7 +73079,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
       ]
     },
     {
@@ -73371,7 +73407,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -74509,7 +74546,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -77620,7 +77658,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -78790,7 +78829,8 @@
         "call:ai/anthropic.go#anthropicProvider.prepareParams"
       ],
       "evidence": [
-        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread"
+        "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCacheWarmingReplayKeepsTheThread",
+        "test:internal/codingagent/cache_warmer_test.go#TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions"
       ]
     },
     {
@@ -89269,7 +89309,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
       ]
     },
     {
@@ -89856,7 +89897,8 @@
       ],
       "evidence": [
         "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream",
-        "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryBuiltInModelsInheritPromptCacheKeyMode",
+        "test:internal/codingagent/model_registry_test.go#TestModelRegistryCustomModelsInheritAndOverridePromptCacheKeyMode"
       ]
     },
     {
