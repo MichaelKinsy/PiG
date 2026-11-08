@@ -4,7 +4,7 @@
 set -euo pipefail
 bin=$(readlink -f "$1") modules=$2
 docker run --rm --network host --cpus 6 --user "$(id -u):$(id -g)" -e HOME=/tmp \
-  -e P2_UI_NODE_PATH=/pw/node_modules -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+  -e P2_UI_TITLE="${P2_UI_TITLE:-Pi}" -e P2_UI_NODE_PATH=/pw/node_modules -e PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
   -v "$modules:/pw/node_modules:ro" -v "$bin:/p2:ro" -v "$(cd "$(dirname "$0")" && pwd):/ui:ro" --entrypoint "" \
   mcr.microsoft.com/playwright:v1.64.1-noble bash -c '
     export P2_FAKE=1 P2_DATA_DIR=$(mktemp -d) PORT=8792

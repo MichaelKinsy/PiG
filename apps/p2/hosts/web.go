@@ -46,7 +46,7 @@ func guestPage(path string, guest p2runtime.GuestPrincipal) bool {
 // webPage is the app page. The inline style and theme script run before any CSS so the first paint has the right
 // background; the bundle's stylesheet follows them, so its rules win. The module script runs after parsing, wherever it
 // stands.
-func webPage(nonce string, manifest web.Manifest) string {
+func webPage(nonce string, manifest web.Manifest, brand web.Brand) string {
 	style := ""
 	if manifest.Style != nil {
 		style = "\n\t\t<link rel=\"stylesheet\" href=\"" + *manifest.Style + "\" />"
@@ -57,24 +57,24 @@ func webPage(nonce string, manifest web.Manifest) string {
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
 		<meta name="color-scheme" content="light dark" />
-		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfaf8" />
-		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#151413" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="` + brand.Light + `" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="` + brand.Dark + `" />
 		<!-- Installable as a home-screen app; no service worker, so nothing is cached offline. -->
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
 		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-		<meta name="apple-mobile-web-app-title" content="Pi" />
+		<meta name="apple-mobile-web-app-title" content="` + brand.Name + `" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<title>Pi</title>
+		<title>` + brand.Name + `</title>
 		<style>
 			:root {
 				color-scheme: light;
-				background: #fbfaf8;
+				background: ` + brand.Light + `;
 			}
 			:root[data-theme="dark"] {
 				color-scheme: dark;
-				background: #151413;
+				background: ` + brand.Dark + `;
 			}
 		</style>
 		<script nonce="` + nonce + `">
@@ -153,7 +153,7 @@ func (w *Web) Handle(response http.ResponseWriter, request *http.Request) {
 	if path == "/" || pagePath.MatchString(path) {
 		header.Set("Content-Type", "text/html; charset=utf-8")
 		response.WriteHeader(http.StatusOK)
-		write([]byte(webPage(w.Nonce, w.Bundle.Manifest())))
+		write([]byte(webPage(w.Nonce, w.Bundle.Manifest(), w.Bundle.Brand)))
 		return
 	}
 	if path == web.ManifestPath {
@@ -179,7 +179,7 @@ func (w *Web) Handle(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 	if found, ok := web.LookupPublicFile(path); ok {
-		body, err := web.ReadPublicFile(found)
+		body, err := w.Bundle.ReadPublicFile(found)
 		if err != nil {
 			sendText(response, http.StatusInternalServerError, "Could not load the UI")
 			return
