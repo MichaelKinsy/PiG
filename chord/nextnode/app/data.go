@@ -25,7 +25,7 @@ import (
 // it reads: one consistent point) and its finished files into the archive at the path the server names. Only the server may ask (its
 // principal); the worker's plugins never see it.
 //
-// Go forced differences: the generic principal parameter is designed out (a principal is a JSON object). The worker's plugins run in a
+// Go forced differences (D460): the generic principal parameter is designed out (a principal is a JSON object). The worker's plugins run in a
 // Node subprocess that serves the worker's address, so HostData is a JavaScript core facet (host_data.mjs) forwarding to a Go local
 // object (HostDataExport) through the bridge.
 
@@ -104,7 +104,7 @@ var hostDataModuleText string
 // to HostDataExport with token.
 func hostDataModule(server data.Principal, token string) string {
 	encoded, _ := chordjson.Marshal(server)
-	quoted, _ := json.Marshal(token)
+	quoted, _ := json.Marshal(token) //portlint:allow jsonescape the token is random hex, with no <, > or &
 	return strings.NewReplacer("__SERVER__", string(encoded), "__TOKEN__", string(quoted)).Replace(hostDataModuleText)
 }
 

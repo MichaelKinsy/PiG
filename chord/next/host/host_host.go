@@ -372,7 +372,9 @@ type chordHost struct {
 	// telemetry is the telemetry adapter (root spans start on it, carriers from links are extracted with it), spanHost
 	// the `chord.host` attribute of this host's spans, principalHook the options' PrincipalAttributes.
 	telemetry telemetry.TelemetryContext
-	spanHost  string
+	// metrics are Chord's instruments on the adapter's metrics: the host's own counts (links, holds, calls, commits).
+	metrics  *chordtelemetry.Instruments
+	spanHost string
 	// counting is the telemetry of this host's work under a context without a span (counted); nil without an adapter that
 	// records.
 	counting      telemetry.TelemetrySpan
@@ -478,6 +480,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	}
 	h.batch = state.NewBatch(func(err state.BatchError) { h.report(BatchHostError(err)) }, metrics).
 		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run)
+	h.metrics = chordtelemetry.Metrics(metrics)
 	if !chordtelemetry.Untraced(adapter) && metrics != nil {
 		h.counting = chordtelemetry.CountingOnly(metrics)
 	}

@@ -972,8 +972,10 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	handlerCtx := newCallContext(callContext, acting, host, a)
 	// Admitted to the drain before the handler runs: the handler may end its own object before it returns.
 	host.count(activityCalls, 1)
+	host.metrics.UpDownCounter("chord.calls.in_flight").Add(1, nil)
 	settle := a.admit(func() {
 		host.count(activityCalls, -1)
+		host.metrics.UpDownCounter("chord.calls.in_flight").Add(-1, nil)
 		linked.release()
 		handlerCtx.settle()
 	})

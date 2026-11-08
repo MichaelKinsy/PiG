@@ -100,13 +100,18 @@ func tarHeader(path string, size int64) ([]byte, error) {
 		prefix, name = []byte(path[:at]), []byte(path[at+1:])
 	}
 	copy(block[0:], name)
-	tarField(block, 100, 8, "0000644")
-	tarField(block, 108, 8, "0000000")
-	tarField(block, 116, 8, "0000000")
-	if err := tarField(block, 124, 12, leftPad(strconv.FormatInt(size, 8), 11)); err != nil {
-		return nil, err
+	for _, field := range []struct {
+		offset, length int
+		text           string
+	}{
+		{100, 8, "0000644"}, {108, 8, "0000000"}, {116, 8, "0000000"},
+		{124, 12, leftPad(strconv.FormatInt(size, 8), 11)},
+		{136, 12, leftPad(strconv.FormatInt(time.Now().Unix(), 8), 11)},
+	} {
+		if err := tarField(block, field.offset, field.length, field.text); err != nil {
+			return nil, err
+		}
 	}
-	tarField(block, 136, 12, leftPad(strconv.FormatInt(time.Now().Unix(), 8), 11))
 	for i := 148; i < 156; i++ {
 		block[i] = 0x20
 	}
@@ -117,7 +122,9 @@ func tarHeader(path string, size int64) ([]byte, error) {
 	for _, b := range block {
 		sum += int(b)
 	}
-	tarField(block, 148, 8, leftPad(strconv.FormatInt(int64(sum), 8), 6)+"\x00 ")
+	if err := tarField(block, 148, 8, leftPad(strconv.FormatInt(int64(sum), 8), 6)+"\x00 "); err != nil {
+		return nil, err
+	}
 	return block, nil
 }
 

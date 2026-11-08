@@ -2024,7 +2024,12 @@ func TestRoutineSpansTraceEachRoutineCallAsARootItsCommitsEventsOfItAThrowRoutin
 			}
 			return nil
 		})
-		self.OnLive(func(ctx Ctx) *Handled { return Threw(bumpDoc(doc, ctx)) })
+		self.OnLive(func(ctx Ctx) *Handled {
+			if err := bumpDoc(doc, ctx); err != nil {
+				return Threw(err)
+			}
+			return nil
+		})
 	})
 	e.quiet()
 	mu.Lock()

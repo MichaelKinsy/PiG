@@ -12,13 +12,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports packages/chord/test/node/app/app.test.ts (Pi main c23b9ec1): `StartServer`: the layout and the start-data object, start and
 // close, a second server on one data directory, the private modes, an owner refused, a plugin of the root failing, and the owner link.
-// Workers, export and import are in app_workers_test.go. Not ported: the `@ts-expect-error` type test (a nil `Principal.Worker` with
-// worker kinds is refused at start instead), the base-code tests (the plugins component's `Base` marks have their own tests),
-// installs (`installPlugin` is not in the Go plugins component) and the web and terminal surfaces (T11).
+// Workers, export and import are in app_workers_test.go; applying changes and the base marks in app_changes_test.go. Not ported: the
+// `@ts-expect-error` type test (a nil `Principal.Worker` with worker kinds is refused at start instead), installs (`installPlugin` is
+// not in the Go plugins component yet: T9) and the web and terminal surfaces (T11).
 
 func TestAppLaysOutTheDataDirectoryServesAppInfoAndTheServersPluginsAndClosesEverything(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"echo": {"server.ts": echoServer}}, nil)
@@ -92,9 +93,7 @@ func TestAppRefusesASecondServerOnTheSameDataDirectoryWhileTheFirstRuns(t *testi
 func TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink(t *testing.T) {
 	first := startTestApp(t, nil, nil)
 	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(first.dataDir, link); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, first.dataDir, link)
 	_, err := StartServer(optionsFor(t, link, first.root), background)
 	if err == nil || !strings.Contains(err.Error(), "another server runs on") {
 		t.Fatalf("second start: %v", err)
@@ -143,10 +142,10 @@ func TestAppMakesTheDataDirectoryPrivateAtEveryStartAlsoWhenItExistedLooser(t *t
 }
 
 func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThroughALink(t *testing.T) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The kit refuses the home directory: a home of this test's own, so that the real one is neither read nor touched.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	start := func(dir string) error {
 		options, _ := testOptions(t, func(o *AppOptions) { o.DataDir = dir })
 		app, err := StartServer(options, background)
@@ -163,9 +162,7 @@ func TestAppRefusesADataDirectoryTheKitMustNotTightenHomeRootAnotherUsersAlsoThr
 		t.Fatalf("root: %v", err)
 	}
 	link := filepath.Join(t.TempDir(), "home-link")
-	if err := os.Symlink(home, link); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, home, link)
 	if err := start(link); err == nil || !strings.Contains(err.Error(), "is the home directory") {
 		t.Fatalf("link to home: %v", err)
 	}

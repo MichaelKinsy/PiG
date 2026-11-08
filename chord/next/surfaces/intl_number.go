@@ -2,6 +2,7 @@ package surfaces
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 )
@@ -19,6 +20,11 @@ func numberFormatOf(tag string) (*numberFormat, error) {
 	i, err := resolveLocale(tag, intlNumberLocales[:], intlNumberExceptions[:])
 	if err != nil {
 		return nil, err
+	}
+	if i < 0 {
+		// ICU's root locale: its numbers are en-US's (the generator checks it against Node's default locale under LANG=xx_YY and the empty
+		// platform locale).
+		i, _ = slices.BinarySearch(intlNumberLocales[:], "en-US")
 	}
 	return &intlNumberFormats[intlNumberLocaleFormat[i]], nil
 }
@@ -149,9 +155,9 @@ func shortestDigits(scratch []byte, value float64) ([]byte, int) {
 	n := 0
 	exp := 0
 	for i := 0; i < len(e); i++ {
-		switch c := e[i]; {
-		case c == '.':
-		case c == 'e':
+		switch c := e[i]; c {
+		case '.':
+		case 'e':
 			exp, _ = strconv.Atoi(string(e[i+1:]))
 			i = len(e)
 		default:

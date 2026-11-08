@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -70,6 +71,8 @@ type providerSide struct {
 	touchedHolds []*hold
 	// waiting are the holds whose ops wait in their pending queues for a slot.
 	waiting orderedTable[*hold, struct{}]
+	// waitingSince is when the first hold started waiting for a slot; zero while none waits.
+	waitingSince time.Time
 	// binding are the holds waiting for a slot to send their first binding.
 	binding orderedTable[*hold, struct{}]
 	// bindingTurn: the waiting bindings take the next slot: the last one went to waiting state while they waited.
@@ -372,6 +375,10 @@ func (p *providerSide) bind(h *hold, ctx context.Context) {
 func (p *providerSide) unbind(h *hold) {
 	p.waiting.delete(h)
 	p.binding.delete(h)
+	// Nothing waits any more: no wait to record.
+	if p.waiting.len() == 0 {
+		p.waitingSince = time.Time{}
+	}
 }
 
 // touched: a hold's members changed in the current batch; its flush sends or queues it.
@@ -675,6 +682,9 @@ func (p *providerSide) flush(ctx context.Context) {
 		}
 		h.queue()
 		p.waiting.set(h, struct{}{})
+		if p.waitingSince.IsZero() {
+			p.waitingSince = time.Now()
+		}
 	}
 }
 
@@ -713,12 +723,22 @@ func (p *providerSide) slotFreed() {
 func (p *providerSide) sendWaiting(ctx context.Context) {
 	holds := p.waiting.keys()
 	p.waiting.clear()
+	p.waited()
 	p.bindingTurn = p.binding.len() > 0
 	entries := make([]link.StateEntry, len(holds))
 	for index, h := range holds {
 		entries[index] = h.pendingEntry(ctx)
 	}
 	p.sendOwn(&link.StateMessage{Holds: entries})
+}
+
+// waited: the waiting state went out (or its holds left): how long it waited for its slot is recorded.
+func (p *providerSide) waited() {
+	if p.waitingSince.IsZero() {
+		return
+	}
+	p.link.host.metrics.Histogram("chord.backpressure.wait").Record(float64(time.Since(p.waitingSince))/float64(time.Millisecond), nil, nil)
+	p.waitingSince = time.Time{}
 }
 
 // result is a call's result message, its part deflated above the threshold when this host compresses; with byte segments
@@ -737,6 +757,9 @@ func (p *providerSide) sendOwn(message link.OriginMessage) {
 	p.inFlight++
 	p.ownSent++
 	p.sent = append(p.sent, nil)
+	if _, ok := message.(*link.StateMessage); ok {
+		p.link.host.metrics.Counter("chord.link.state_messages").Add(1, nil)
+	}
 	p.send(message)
 }
 

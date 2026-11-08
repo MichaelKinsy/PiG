@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"slices"
@@ -1673,6 +1674,7 @@ func TestPersistedTraceRunsResumedAfterACrashInANewAttemptAndHostAndFinishesUnde
 		_, ok := stored["trace"]
 		return ok
 	})
+	waitRecord(t, jobs.Store, run.ID(), map[string]any{"phase": "running"})
 	jobs.Crash()
 	jobs = openedRecorded(t, open(), recorder, func(any, JobCtx) (any, error) { return countResult(1), nil }, nil, nil)
 	finished := jobs.expectFinished(1)
@@ -1690,7 +1692,12 @@ func TestPersistedTraceRunsResumedAfterACrashInANewAttemptAndHostAndFinishesUnde
 	request := spanWhere(t, recorder, "request", nil)
 	phases := spansNamed(recorder, "chord.job")
 	if len(phases) != 4 {
-		t.Fatalf("chord.job spans = %d, want 4 (intent, cut-off run, rerun, finish)", len(phases))
+		var seen []string
+		for _, span := range phases {
+			phase, _ := span.Attributes.Get("phase")
+			seen = append(seen, fmt.Sprint(phase, " settled=", span.Settled))
+		}
+		t.Fatalf("chord.job spans = %v, want 4 (intent, cut-off run, rerun, finish)", seen)
 	}
 	intent := phases[0]
 	spanAttributesAre(t, intent, telemetry.SpanAttributes{
