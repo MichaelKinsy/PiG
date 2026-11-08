@@ -47,7 +47,7 @@ RENDER-SHELL is \"default\" or \"self\"."
 (defstruct (rd-state (:conc-name rd-))
   (message-declarations '()) (message-handlers (make-hash-table :test 'equal)) (message-views (make-hash-table :test 'equal))
   (entry-declarations '()) (entry-handlers (make-hash-table :test 'equal)) (entry-views (make-hash-table :test 'equal))
-  (markdown nil) (owns-thinking-runs nil)
+  (markdown nil) (markdown-message-types :default) (owns-thinking-runs nil)
   (resolvers '()) (resolved (make-hash-table :test 'equal))
   (cards (make-hash-table :test 'equal))      ; card -> (lock . state)
   (lock (sb-thread:make-mutex :name "pig renderers")))
@@ -104,10 +104,14 @@ RENDER-SHELL is \"default\" or \"self\"."
 (def-request "render_message" (ext ctx req) (rd-render ext ctx req :message "message"))
 (def-request "render_entry" (ext ctx req) (rd-render ext ctx req :entry "entry"))
 
-(defun markdown-transformer (ext transformer)
+(defun markdown-transformer (ext transformer &key (message-types nil message-types-p))
   "Register the extension's display-only Markdown transform: TRANSFORMER is (lambda (markdown context)) -> string; any other value, or
-a signalled condition, keeps the input. A later registration replaces an earlier one."
-  (setf (rd-markdown (rd-of ext)) transformer)
+a signalled condition, keeps the input. A later registration replaces an earlier one. MESSAGE-TYPES (Pi's options.messageTypes) is a list of the
+surfaces it runs on: \"user\", \"assistant\", \"assistant-thinking\" (the default), \"custom\" (custom messages without a message renderer,
+expanded skill blocks), \"summary\" (expanded branch and compaction summaries) and \"changelog\" (What's New, /changelog, Extension Updates,
+the Update Available note); NIL means none."
+  (setf (rd-markdown (rd-of ext)) transformer
+        (rd-markdown-message-types (rd-of ext)) (if message-types-p (or message-types :none) :default))
   nil)
 
 ; pig additive (D214)
@@ -246,7 +250,13 @@ functions: returning it keeps them. Resolvers run in extension load order, an ex
   (let ((rd (rd-of ext)))
     (setf (gethash "message_renderers" payload) (prov-vec (rd-message-declarations rd))
           (gethash "entry_renderers" payload) (prov-vec (rd-entry-declarations rd)))
-    (when (rd-markdown rd) (setf (gethash "markdown_transformer" payload) t))
+    (when (rd-markdown rd)
+      (setf (gethash "markdown_transformer" payload) t
+            (gethash "markdown_message_types" payload)
+            (let ((types (rd-markdown-message-types rd)))
+              (cond ((eq types :none) (prov-vec nil))
+                    ((listp types) (prov-vec types))
+                    (t (prov-vec (list "user" "assistant" "assistant-thinking")))))))
     (when (rd-owns-thinking-runs rd) (setf (gethash "owns_thinking_runs" payload) t))
     (when (rd-resolvers rd) (setf (gethash "tool_renderers" payload) (length (rd-resolvers rd))))))
 
