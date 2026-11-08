@@ -7,10 +7,10 @@ package tui
 
 import (
 	"context"
-	"sync"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/subagents/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
