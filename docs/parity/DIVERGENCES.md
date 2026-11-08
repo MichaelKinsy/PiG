@@ -3998,7 +3998,7 @@ Why: a live JavaScript closure, module instance or `Host` cannot cross the proce
 
 Scope: `TestPlugin`, `TestPluginOptions`, `TestStub`, `TestedPlugin.Host` and `Stubs`; the cases of `testing.test.ts` and example 52 give the same inputs (plugin files, API, contracts) and the same expectations (values read, contributions, names listed, errors) through these forms. Behaviour that is Pi's: a facet that throws while it evaluates rejects with that error as it is (`*NodeError`), and a setup that throws is `testPlugin: setup failed: ...` (`TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError`); the build and its refusals (`failed to build`), the versioned-API check, the root and kind derivation (single-file and checkout plugins, kinds named by files, `*.test.*`/`*.d.ts` naming none), the collecting facet and its fixed point, the wait for activations bounded by `timeouts.ready`, an in-memory store.
 
-Owner decision: pending sign-off (option (a), port with a Go `TestPlugin`, 2026-11-08 00:36Z; this record is the residue).
+Owner decision: approved 2026-11-08 (option (a), port with a Go `TestPlugin`, 2026-11-08 00:36Z; this record is the residue). One two-host effect: a Go stub whose setup fails makes `TestPlugin` fail on the stubs' Go host before the plugin loads, so the error lists only the stub's failure; Pi loads stubs and plugin in one `host.load` and joins both failures in one "setup failed" message.
 
 Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`TestStub`, `TestPlugin`), `chord/nextnode/plugins/node/testing.mjs`.
 
@@ -4008,6 +4008,8 @@ Parity allowance: none needed beyond the forms above; the Pi cases pass with Go 
 
 Remove when: Pi evaluates plugins out of process (its stubs then need a wire form too) or PiG gets an in-process evaluator.
 
+SCRUTINIZED:approved
+
 ## D503 `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript closure or registry token crosses
 
 What: Pi's `TestedPlugin.contributions(R)` takes the registry token `R` and returns its entries with their live values, and `root(fn, context, options)` runs the closure `fn` as the host's principal or `options.principal`. PiG's `TestedPlugin.Contributions(name, ctx)` takes the registry's name and returns `[]Contribution{Plugin, Type, Version, Value}` with each value as JSON data (a function or other non-data value in a contribution does not cross; the control channel's value form carries `bytes()` leaves), and `RootPrincipal(principal, ctx)` runs the fixed closure `async (ctx) => ctx.principal` of Pi's own test on the plugin's host and answers the principal its context has (the host's own for nil). The error for a registry that is not collected is Pi's message (`testPlugin: registry <name> is not collected ...`).
@@ -4016,7 +4018,7 @@ Why: the plugin's host is in the Node subprocess; a Go function cannot run there
 
 Scope: `TestedPlugin.Contributions`, `RootPrincipal`, `Unserved`. A test that needs `ctx.get` of other objects as another principal has no Go form of `root` yet; it reads through `NodeHost.Get` as the host's principal.
 
-Owner decision: pending sign-off (same option as D502).
+Owner decision: approved 2026-11-08 (same option as D502).
 
 Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`Contributions`, `RootPrincipal`), `chord/nextnode/plugins/node/testing.mjs`.
 
@@ -4025,6 +4027,8 @@ Evidence: `TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsC
 Parity allowance: none needed.
 
 Remove when: PiG's plugin host can run a Go closure in the plugin's host process, or Pi's `root` takes data.
+
+SCRUTINIZED:approved
 
 ## D540 The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for
 
