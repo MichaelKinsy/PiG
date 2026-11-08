@@ -488,10 +488,11 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 			{Name: "chord.app.sessions", Host: h, Contracts: []*contracts.Contract{Sessions}},
 		},
 	}, ctx)
+	// A required root's failure returns the loaded host with the error: it is the app's to stop (Close).
+	a.Node = node
 	if err != nil {
 		return err
 	}
-	a.Node = node
 	if err := failedPlugins(nodeReport); err != nil {
 		return err
 	}
