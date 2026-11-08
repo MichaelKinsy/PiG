@@ -958,6 +958,15 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next-node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
 | `packages/chord/src/next-node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
 | `packages/chord/src/next-node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
+| `packages/chord/src/node/app/secrets.ts` | `chord/nextnode/app/secrets.go` | ✅ |
+| `packages/chord/src/node/app/layout.ts` | `chord/nextnode/app/layout.go` | ✅ |
+| `packages/chord/src/node/app/blobs.ts` | `chord/nextnode/app/blobs.go` | ✅ |
+| `packages/chord/src/node/app/uploads.ts` | `chord/nextnode/app/uploads.go (Accept is the synchronous half of Pi's append, D430)` | ✅ |
+| `packages/chord/src/node/app/files-index.ts` | `chord/nextnode/app/files_index.go` | ✅ |
+| `packages/chord/src/node/app/folder-views.ts` | `chord/nextnode/app/folder_views.go` | ✅ |
+| `packages/chord/src/node/app/files.ts` | `chord/nextnode/app/files.go (handlers suspend before their first wait and `turn` is a mutex, D430)` | ✅ |
+| `packages/chord/src/node/app/files-copy.ts` | `chord/nextnode/app/files_copy.go` | ✅ |
+| `packages/chord/src/node/app/files-entry.ts` | `(barrel: Go imports the package; the files-entry exports are FilesFacet, Files, FilesFolder, CopyFiles, PrivateDirectory, PrivateStore and the types)` | n/a |
 
 ## `packages/protocol/src/`
 

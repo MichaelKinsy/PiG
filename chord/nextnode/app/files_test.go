@@ -654,7 +654,9 @@ func TestChunkedUploadsDropTheUploadsAPreviousRunLeft(t *testing.T) {
 
 func TestCapsRefuseAFileOverThePerFileCapAndWritesOverTheTotalACopyAddsNoBytes(t *testing.T) {
 	f := filesOf(t, fixtureOptions{Caps: FilesCaps{MaxFile: 1000, MaxTotal: 1500}})
-	putSized := func(path string, size int) (delta.JsonValue, error) { return f.putErr("shared", path, make([]byte, size)) }
+	putSized := func(path string, size int) (delta.JsonValue, error) {
+		return f.putErr("shared", path, make([]byte, size))
+	}
 	_, err := putSized("a", 1001)
 	wantCode(t, err, data.CodeTooLarge)
 	big, err := putSized("a", 1000)
