@@ -152,10 +152,7 @@ func TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop(t 
 	gone := make(chan struct{})
 	close(gone)
 	sandbox := &Sandbox{cmd: cmd, exited: gone, queued: maxUnread + MaxPipeFrame, onMessage: func(SandboxMessage) {},
-		onEnd: func(string) {
-			//portlint:allow golifetime the post ends when the loop takes it or the loop ends (loopDone)
-			go l.post(func() { l.sandboxEnded(generation) })
-		}}
+		onEnd: func(string) { l.sandboxEndPost(generation) }}
 	sandbox.ready = sync.NewCond(&sandbox.mu)
 	l.sandbox = sandbox
 	l.confirming = true
