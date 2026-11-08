@@ -118,7 +118,7 @@ func FuzzFrameReader(f *testing.F) {
 		if (wholeErr == nil) != (chunkedErr == nil) {
 			t.Fatalf("whole error %v, chunked error %v", wholeErr, chunkedErr)
 		}
-		if wholeErr == nil && chunkedErr == nil && !reflect.DeepEqual(whole, chunked) && !(len(whole) == 0 && len(chunked) == 0) {
+		if wholeErr == nil && chunkedErr == nil && !reflect.DeepEqual(whole, chunked) && (len(whole) != 0 || len(chunked) != 0) {
 			t.Fatalf("whole %+v != chunked %+v", whole, chunked)
 		}
 	})

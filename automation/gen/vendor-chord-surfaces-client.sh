@@ -7,6 +7,7 @@
 #                  manifest then names it as `catchup`, the one commit the manifest may differ from the pin by (the Go test
 #                  TestNodeVendoredFilesAreExactlyTheManifests reads both), and records the pin it was made against.
 #   PI_TELEMETRY   the @earendil-works/pi-telemetry package dir (default: the one extensions/sdk-ts installed)
+# React (the version Pi chord tests with, production builds) and its scheduler come from npm (`npm pack`).
 # @earendil-works/pi-schema is a package of the Pi tree (packages/schema), copied from PI_TREE; its version and
 # pi-telemetry's must be the versions Pi's chord pins.
 set -euo pipefail

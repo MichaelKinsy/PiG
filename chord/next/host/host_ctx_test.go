@@ -499,3 +499,67 @@ func TestMethodCallsOfACallerWithoutASignalLeaveNothingOnTheAttemptWhenTheyEnd(t
 	runtime.KeepAlive(host)
 	runtime.KeepAlive(ref)
 }
+
+// Mirrors "the call chain (decision \"Reload restarts every affected object\": old work) › a method's ctx is its own chain node, above it the chain of the call that made it; a root's has none".
+func TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone(t *testing.T) {
+	run := func() contracts.LocalEntry {
+		return contracts.Mem("run", contracts.NewMethod())
+	}
+	inner := mustContract(declareLocal("app.inner", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{run()}}))
+	outer := mustContract(declareLocal("app.outer", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{run()}}))
+	var mu sync.Mutex
+	var seenInner, seenOuter context.Context
+	impl := func(record func(context.Context), next func(Ctx) error) func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+		return func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"run": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					mu.Lock()
+					record(ctx)
+					mu.Unlock()
+					if next != nil {
+						return nil, next(ctx.(Ctx))
+					}
+					return nil, nil
+				},
+			}}}, nil
+		}
+	}
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(inner, impl(func(c context.Context) { seenInner = c }, nil), ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(outer, impl(func(c context.Context) { seenOuter = c }, func(ctx Ctx) error {
+			ref, err := ctx.Get(inner, jsonObject(), GetOptions{})
+			if err != nil {
+				return err
+			}
+			_, err = ref.Call("run", nil, ctx)
+			return err
+		}), ServeOptions{})
+	}, loadedOptions{})
+	defer closeHosts(t, host)
+	var seenRoot Ctx
+	_, err := host.Root(func(root Ctx) (any, error) {
+		seenRoot = root
+		ref, err := root.Get(outer, jsonObject(), GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return ref.Call("run", nil, root)
+	}, background, RootOptions{})
+	must(t, err)
+	node := chainOf(seenInner)
+	if node == nil || node != callNode(seenInner.(*callContext)) {
+		t.Fatalf("the inner ctx's chain node = %v, want the inner ctx itself", node)
+	}
+	up := node.up()
+	if up == nil || up != callNode(seenOuter.(*callContext)) {
+		t.Fatalf("the node above the inner's = %v, want the outer ctx", up)
+	}
+	if above := up.up(); above != nil {
+		t.Fatalf("the node above the outer's = %v, want none", above)
+	}
+	if got := chainOf(seenRoot); got != nil {
+		t.Fatalf("a root's chain = %v, want none", got)
+	}
+}

@@ -900,8 +900,8 @@ func TestReloadAnOlderConsumersReadsWhileItsTypeIsRemovedReadsItsLastMappedValue
 	old.Release()
 }
 
-// Mirrors "reload: an older consumer's first read during a parked swap (fix round 2) › maps with the provider whose attempt is shown until the new one goes live (Sol)".
-func TestReloadAnOlderConsumersFirstReadDuringAParkedSwapMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive(t *testing.T) {
+// Mirrors "reload: an older consumer's first read during a parked restart (fix round 2) › maps with the provider whose attempt is shown until the new one goes live (Sol)".
+func TestReloadAnOlderConsumersFirstReadDuringAParkedRestartMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive(t *testing.T) {
 	v1 := adaptedLocal("app.lazy", contracts.Mem("x", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })
 	missing := adaptedLocal("app.lazy.missing")
@@ -1199,10 +1199,10 @@ func TestReloadStoppingAKeyedWatchDropsItsPinAndLastValueWhileItsReferenceWaitsD
 	ref.Release()
 }
 
-// --- reload: a reference that never had values reads none during a parked swap (fix round 4) --------------------------------
+// --- reload: a reference that never had values reads none during a parked restart (fix round 4) --------------------------------
 
-// Mirrors "reload: a reference that never had values reads none during a parked swap (fix round 4) › has a newer reference read nothing during a parked swap, its watch waiting, then the new instance's values (Sol)".
-func TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedSwapHasANewerReferenceReadNothingDuringAParkedSwapItsWatchWaitingThenTheNewInstancesValues(t *testing.T) {
+// Mirrors "reload: a reference that never had values reads none during a parked restart (fix round 4) › has a newer reference read nothing during a parked restart, its watch waiting, then the new instance's values (Sol)".
+func TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues(t *testing.T) {
 	n1 := adaptedLocal("app.unshown", contracts.Mem("x", contracts.Int()))
 	n2 := adaptedEvolve(n1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })
 	missing := adaptedLocal("app.unshown.missing")
@@ -1217,7 +1217,7 @@ func TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedSwapHasANewerRe
 	newer := mustHold(t, host, n2, jsonObject())
 	adaptedWantWaiting(t, newer)
 	// The swap parks: the shown values are v1's; a v2 reference never had values, never v1's shape: its read throws the
-	// parked swap's failure.
+	// parked restart's failure.
 	if got := memberOf(t, old, "x"); got != 1.0 {
 		t.Fatalf("old x = %v, want 1", got)
 	}
