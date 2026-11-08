@@ -147,6 +147,8 @@ func (e *PluginError) Error() string {
 	return "required plugin failed at load: " + strings.Join(named, "; ")
 }
 
+// pig divergence (D607): Pi's runtime is handed a Host and evaluates in its own process; this one starts the Node subprocess that does.
+//
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
 // scripts. It is Pi's `createPluginRuntime()`.
 type PluginRuntime struct {
