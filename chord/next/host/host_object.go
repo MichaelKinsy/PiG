@@ -366,6 +366,9 @@ func (d *objectDocuments) Fail(err *data.ChordError) {
 // Do runs work as one section of the host's loop (the scheduler held, as every section of the host).
 func (d *objectDocuments) Do(work func()) { d.object.host.enter(work) }
 
+// InSection implements documents.DocumentsOwner.
+func (d *objectDocuments) InSection() bool { return d.object.host.batch.InSection() }
+
 // refState is the object's state as its references show it (Pi's `state` getter).
 func (o *chordObject) refState() *RefState {
 	st := o.phase

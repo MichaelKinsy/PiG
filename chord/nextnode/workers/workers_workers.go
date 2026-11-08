@@ -324,7 +324,7 @@ func newWorkers(options WorkersOptions, baseDir string, ctx context.Context) *Wo
 	}
 	c.closingCtx, c.closing = chordctx.WithCancel(chordctx.Background())
 	batch := state.NewBatch(func(err state.BatchError) { options.OnError(BatchWorkersError{err}) }, nil).
-		UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run)
+		UseMicrotasks(c.loop.Queue).UseSection(c.loop.Run, c.loop.InSection)
 	c.state = newWorkersState(c, batch)
 	c.closeWith(ctx)
 	return c

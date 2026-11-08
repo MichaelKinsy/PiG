@@ -501,7 +501,7 @@ func createHost(options HostOptions) (*chordHost, error) {
 	})
 	h.unbound = newUnboundIndex(h.clock)
 	h.batch = state.NewBatch(func(err state.BatchError) { h.report(BatchHostError(err)) }, metrics).
-		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run)
+		UseScheduler(h.scheduler).UseMicrotasks(events.Queue).UseSection(events.Run, onLoopOf(events))
 	h.metrics = chordtelemetry.Metrics(metrics)
 	if !chordtelemetry.Untraced(adapter) && metrics != nil {
 		h.counting = chordtelemetry.CountingOnly(metrics)
@@ -542,6 +542,15 @@ func durationOr(value *time.Duration, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return *value
+}
+
+// onLoopOf is how loop tells whether the caller runs one of its sections: nil for a loop that cannot tell (a test's
+// virtual-time loop).
+func onLoopOf(loop sectionLoop) func() bool {
+	if inside, ok := loop.(interface{ onLoop() bool }); ok {
+		return inside.onLoop
+	}
+	return nil
 }
 
 // loop is the host's event loop.
