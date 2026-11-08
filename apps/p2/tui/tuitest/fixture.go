@@ -120,6 +120,13 @@ func (f *Fixture) start(h host.Host, prepare func(*tuiruntime.TuiRuntime)) {
 			return ctx.Err()
 		}
 	})
+	// Timer-scheduled renders run on the owner loop too: components are not safe for a renderer goroutine of their own.
+	f.TUI.SetRenderDispatcher(func(render func()) {
+		select {
+		case f.queue <- render:
+		case <-f.stop:
+		}
+	})
 	f.wg.Add(1)
 	go f.loop()
 	f.Do(func() {
