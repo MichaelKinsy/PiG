@@ -55,19 +55,19 @@ type MarkdownSettings struct {
 // TuiSettings is TuiSettingsSchema's Static type: pi `settings.json` keys marked G in section 1.14, spelled (and nested) as pi spells them, plus
 // p2's plugin settings. A nil pointer is an absent key.
 type TuiSettings struct {
-	QuietStartup               *QuietStartup                           `json:"quietStartup,omitempty"`
-	EditorPaddingX             *int                                    `json:"editorPaddingX,omitempty"`
-	OutputPad                  *int                                    `json:"outputPad,omitempty"`
-	AutocompleteMaxVisible     *int                                    `json:"autocompleteMaxVisible,omitempty"`
-	ShowHardwareCursor         *bool                                   `json:"showHardwareCursor,omitempty"`
-	HideThinkingBlock          *bool                                   `json:"hideThinkingBlock,omitempty"`
-	DoubleEscapeAction         *string                                 `json:"doubleEscapeAction,omitempty"`
-	Terminal                   *TerminalSettings                       `json:"terminal,omitempty"`
-	Markdown                   *MarkdownSettings                       `json:"markdown,omitempty"`
-	FullscreenExitOutput       *string                                 `json:"fullscreenExitOutput,omitempty"`
-	FullscreenScrollbar        *string                                 `json:"fullscreenScrollbar,omitempty"`
-	FullscreenCopyOnSelect     *bool                                   `json:"fullscreenCopyOnSelect,omitempty"`
-	FullscreenWheelScrollLines *WheelLines                             `json:"fullscreenWheelScrollLines,omitempty"`
+	QuietStartup               *QuietStartup                            `json:"quietStartup,omitempty"`
+	EditorPaddingX             *int                                     `json:"editorPaddingX,omitempty"`
+	OutputPad                  *int                                     `json:"outputPad,omitempty"`
+	AutocompleteMaxVisible     *int                                     `json:"autocompleteMaxVisible,omitempty"`
+	ShowHardwareCursor         *bool                                    `json:"showHardwareCursor,omitempty"`
+	HideThinkingBlock          *bool                                    `json:"hideThinkingBlock,omitempty"`
+	DoubleEscapeAction         *string                                  `json:"doubleEscapeAction,omitempty"`
+	Terminal                   *TerminalSettings                        `json:"terminal,omitempty"`
+	Markdown                   *MarkdownSettings                        `json:"markdown,omitempty"`
+	FullscreenExitOutput       *string                                  `json:"fullscreenExitOutput,omitempty"`
+	FullscreenScrollbar        *string                                  `json:"fullscreenScrollbar,omitempty"`
+	FullscreenCopyOnSelect     *bool                                    `json:"fullscreenCopyOnSelect,omitempty"`
+	FullscreenWheelScrollLines *WheelLines                              `json:"fullscreenWheelScrollLines,omitempty"`
 	Plugins                    map[string]map[string]PluginSettingValue `json:"plugins,omitempty"`
 }
 

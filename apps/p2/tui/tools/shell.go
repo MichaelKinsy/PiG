@@ -169,4 +169,3 @@ func startTicker(period time.Duration, fn func()) (stop func()) {
 		}
 	}
 }
-

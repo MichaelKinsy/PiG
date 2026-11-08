@@ -79,7 +79,6 @@ var ThemeTokens = []ThemeTokenDescriptor{
 	{Name: "bashMode", Slot: SlotForeground, Description: "Editor border color in bash mode"},
 }
 
-
 // ThemeToken, ThemeColor and ThemeBg are theme-tokens.ts ThemeToken, ThemeColor (a foreground token) and ThemeBg (a background token): token
 // names are the strings of THEME_TOKENS.
 type (
