@@ -61,13 +61,28 @@ func openSearch(t *testing.T) *pendingSearch {
 			return nil, ctx.Err()
 		}
 	}
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		model, ok := s.view.SearchModels(search)
 		s.selected <- struct {
 			model string
 			ok    bool
 		}{model, ok}
 	}()
+	// A test that does not pick a model closes the search, so its goroutine does not outlive the test.
+	t.Cleanup(func() {
+		select {
+		case <-done:
+		default:
+			s.press("\x1b")
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Error("the search did not close on escape")
+			}
+		}
+	})
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		s.view.mu.Lock()
@@ -145,17 +160,31 @@ func (s *pendingSearch) requireSelected(want string) {
 	}
 }
 
+// requireListed polls until the model's row is listed, which is when the results of a finished search have landed (Pi's `await finishSearch`).
+func (s *pendingSearch) requireListed(id string) {
+	s.t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !strings.Contains(widthx.StripAnsi(strings.Join(s.view.Render(120), "\n")), id) {
+		if time.Now().After(deadline) {
+			s.t.Fatalf("%q was never listed", id)
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands(t *testing.T) {
 	s := openSearch(t)
 	first := []string{"qwen/a-GGUF", "qwen/b-GGUF", "qwen/c-GGUF"}
 	s.typeText("qw")
 	s.finishSearch("qw", models(first...))
+	s.requireSelected("qwen/a-GGUF")
 	s.typeText("e")
 	s.press(searchDown)
 	s.press(searchDown)
 	s.requireSelected("qwen/c-GGUF")
 
 	s.finishSearch("qwe", models(append([]string{"qwen/new-GGUF"}, first...)...))
+	s.requireListed("qwen/new-GGUF")
 
 	s.requireSelected("qwen/c-GGUF")
 	s.press(searchEnter)

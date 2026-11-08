@@ -127,6 +127,71 @@ func TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejecte
 	}
 }
 
+// recordingStore reports the end of each of its sign-in's waits for the refresh lock.
+type recordingStore struct {
+	oauth.McpOAuthServerStore
+	waited chan error
+}
+
+func (r *recordingStore) WithRefreshLock(ctx context.Context, fn func(context.Context) error) error {
+	err := r.McpOAuthServerStore.WithRefreshLock(ctx, fn)
+	r.waited <- err
+	return err
+}
+
+// mcp-oauth-refresh.test.ts "cancels a sign-in that waits for another process's refresh" (Pi 797e122cb): ending the sign-in while another
+// process holds the refresh lock ends it with oauth.McpSignInCancelledError at once; the lock it then takes runs no refresh and is released.
+func TestMCPOAuthSignInCancelsWhileAnotherProcessHoldsTheRefreshLock(t *testing.T) {
+	h := signedIn(t)
+	holder, _ := h.process()
+	held := make(chan struct{})
+	release := make(chan struct{})
+	holderDone := make(chan error, 1)
+	go func() {
+		holderDone <- holder.WithRefreshLock(t.Context(), func(context.Context) error {
+			close(held)
+			<-release
+			return nil
+		})
+	}()
+	<-held
+	inner, _ := h.process()
+	store := &recordingStore{McpOAuthServerStore: inner, waited: make(chan error, 1)}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	time.AfterFunc(200*time.Millisecond, cancel)
+	err := mcpext.SignInMcpServer(ctx, mcpext.SignInOptions{ServerURL: h.server.URL, Store: store, Prompt: followPrompt{}})
+	if !isSignInCancelled(err) {
+		t.Fatalf("sign-in error = %v, want oauth.McpSignInCancelledError", err)
+	}
+
+	close(release)
+	if err := <-holderDone; err != nil {
+		t.Fatal(err)
+	}
+	// The cancelled sign-in takes the lock once it is free and releases it without refreshing.
+	select {
+	case err := <-store.waited:
+		if err != nil {
+			t.Fatalf("lock wait = %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the cancelled sign-in never took the lock")
+	}
+	for _, entry := range h.server.logEntries() {
+		if entry == "token refresh" {
+			t.Fatalf("a cancelled sign-in refreshed: %v", h.server.logEntries())
+		}
+	}
+	entries, err := os.ReadDir(h.lockDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("lock dir = %v", entries)
+	}
+}
+
 // hookFetch reports the first request a refresh sends, which proves the refresh is running.
 type hookFetch struct {
 	once    sync.Once
