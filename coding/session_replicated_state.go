@@ -17,3 +17,22 @@ func (s *Session) ObserveReplicatedState(observe func()) func() {
 
 // notifyReplicatedState reports a change of the Session state an extension runtime replicates (ObserveReplicatedState). The settings report their own.
 func (s *Session) notifyReplicatedState() { s.replicatedState.Notify() }
+
+// ObserveReplicatedStateScope registers begin to run before a change to the Session's identity state (the active model, the session id, name and file) becomes visible, and end to run after the observers of ObserveReplicatedState reported it. A reader on another goroutine can see the new state between the two, before any observer ran; the extension host uses the bracket to flush the state before it replies to a call in that stretch. begin and end run on the goroutine that makes the change, hold the same restrictions as an observer, and are called in pairs. The returned function removes them.
+func (s *Session) ObserveReplicatedStateScope(begin, end func()) func() {
+	stopBegin := s.replicatedBegin.Add(begin)
+	stopEnd := s.replicatedEnd.Add(end)
+	return func() {
+		stopBegin()
+		stopEnd()
+	}
+}
+
+// beginReplicatedChange announces a change of the identity state before it is made, and returns the function that reports it made.
+func (s *Session) beginReplicatedChange() (changed func()) {
+	s.replicatedBegin.Notify()
+	return func() {
+		s.replicatedState.Notify()
+		s.replicatedEnd.Notify()
+	}
+}

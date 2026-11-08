@@ -29,7 +29,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-LM2GRTGA.js";
+} from "./chunk-LQVC3VYH.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -53,11 +53,11 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-DH6PKDEX.js";
+} from "./chunk-JIT7QO52.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-57EFHYMA.js";
+} from "./chunk-X3XF7POE.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -109,13 +109,13 @@ import {
   toToolDeclaration,
   withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-YGHTO7GP.js";
+} from "./chunk-DQ3IPTWT.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
 
 // pi-dist/pi-ai/compat.js
-import { setBedrockProviderModule, bedrockConverseStreamApi } from "../api/bedrock-converse-stream.lazy.js";
+import { setBedrockProviderModule, setBedrockProviderLoader, bedrockConverseStreamApi } from "../api/bedrock-converse-stream.lazy.js";
 
 // pi-dist/pi-ai/image-models.js
 var imageModelsByProvider = /* @__PURE__ */ new Map();
@@ -528,6 +528,7 @@ export {
   resolveTranscriptTools,
   retryAssistantCall,
   retryDelayMs,
+  setBedrockProviderLoader,
   setBedrockProviderModule,
   stream,
   streamAnthropic,

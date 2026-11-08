@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -307,7 +306,7 @@ func (t *childSessions) deliver(args json.RawMessage) {
 	full, err := session.applyUpdate(event.Stream, event.Event)
 	if err != nil {
 		// The event is not delivered; its number still counts, so a prompt does not wait for it.
-		fmt.Fprintf(os.Stderr, "pig: child session %s: %v\n", session.id, err)
+		diagnosticf("pig: child session %s: %v\n", session.id, err)
 		session.enqueue(queuedEvent{seq: event.Seq})
 		return
 	}
@@ -495,7 +494,7 @@ func (s *AgentSession) Prompt(ctx context.Context, text string, options ...Promp
 	if ctx.Done() != nil {
 		stop := context.AfterFunc(ctx, func() {
 			if err := s.Abort(); err != nil && !s.disposed.Load() {
-				fmt.Fprintf(os.Stderr, "pig: abort of child session %s failed: %v\n", s.id, err)
+				diagnosticf("pig: abort of child session %s failed: %v\n", s.id, err)
 			}
 		})
 		defer stop()
@@ -591,7 +590,7 @@ func (s *AgentSession) Dispose() {
 	}
 	s.stop()
 	if _, err := s.call(callChildSessionDispose, sessionRef{s.id}); err != nil {
-		fmt.Fprintf(os.Stderr, "pig: dispose of child session %s failed: %v\n", s.id, err)
+		diagnosticf("pig: dispose of child session %s failed: %v\n", s.id, err)
 	}
 }
 
@@ -660,7 +659,7 @@ func (s *AgentSession) deliverLoop() {
 func (s *AgentSession) call1(listener *childListener, event map[string]any) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "pig: child session %s listener panicked: %v\n", s.id, r)
+			diagnosticf("pig: child session %s listener panicked: %v\n", s.id, r)
 		}
 	}()
 	listener.fn(event)

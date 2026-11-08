@@ -3,6 +3,7 @@ package hosts
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
@@ -81,3 +82,32 @@ func TestGuestMayLoadRefusesEncodedAndUnnormalisedPathsThatWouldMatch(t *testing
 		}
 	}
 }
+
+// The sprite hook is for the branded bundle only: with Pi's own bundle (no upstream version recorded) or no source it stays
+// off, so the oracle build is Pi's server unchanged.
+func TestSpriteHookAppliesOnlyToABrandedBundle(t *testing.T) {
+	branded := &web.Bundle{UpstreamVersion: strings.Repeat("a", 64)}
+	upstream := &web.Bundle{}
+	source := &stubSprite{}
+	for _, c := range []struct {
+		name   string
+		source SpriteSource
+		bundle *web.Bundle
+		want   bool
+	}{
+		{"source and branded bundle", source, branded, true},
+		{"source and Pi's own bundle", source, upstream, false},
+		{"no source", nil, branded, false},
+		{"no bundle", source, nil, false},
+	} {
+		if got := spriteApplies(c.source, c.bundle); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+type stubSprite struct{}
+
+func (*stubSprite) Current() (SpriteAsset, bool) { return SpriteAsset{}, false }
+func (*stubSprite) OnChange(func()) func()       { return func() {} }
+func (*stubSprite) Close()                       {}
