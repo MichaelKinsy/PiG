@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/mcp"
 )
 
 // RadiusMcpURL is the MCP endpoint of the gateway the built-in Radius provider signs in to (core/radius.ts:6).
@@ -51,9 +52,9 @@ func PlanRadiusMcpServer(providerID, agentDir, cwd string) (*RadiusMcpServerPlan
 	} else {
 		namespaces := make(map[string]bool, len(servers))
 		for _, server := range servers {
-			namespaces[mcpNamespace(server.Name)] = true
+			namespaces[mcp.McpNamespace(server.Name)] = true
 		}
-		for suffix := 1; namespaces[mcpNamespace(name)]; suffix++ {
+		for suffix := 1; namespaces[mcp.McpNamespace(name)]; suffix++ {
 			if suffix == 1 {
 				name = "radius-mcp"
 			} else {
@@ -72,11 +73,6 @@ func PlanRadiusMcpServer(providerID, agentDir, cwd string) (*RadiusMcpServerPlan
 // Apply writes the plan to its mcp.json and reports whether it replaced an existing server (addMcpServerConfig).
 func (plan *RadiusMcpServerPlan) Apply() (bool, error) {
 	return mcpext.AddMcpServerConfigJSON(plan.McpPath, plan.Name, plan.Config)
-}
-
-// mcpNamespace is packages/mcp/src/naming.ts mcpNamespace: `mcp__<server>` with `-` replaced by `_`.
-func mcpNamespace(server string) string {
-	return "mcp__" + strings.ReplaceAll(server, "-", "_")
 }
 
 // radiusMcpServerConfig is the server entry that uses the Radius login: an existing entry keeps its members in order
