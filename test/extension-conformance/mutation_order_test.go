@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 )
@@ -100,6 +101,86 @@ func TestFileMutationOrderAcrossSDKs(t *testing.T) {
 					}
 					if string(got) != b.want {
 						t.Errorf("%s, round %d: the file holds %q, want %q\n  Pi: %s", b.name, round, got, b.want, b.upstream)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestFileMutationOrderOfTheContextFormAcrossSDKs is the shape of PortPosthorse's notes tool: two tool calls of one parallel batch, a write and an append of one note,
+// that reach withFileMutationQueue after different numbers of host round trips. In Pi both run to the queue in their synchronous prefixes (a getter is no await), so
+// the registrations follow call order whatever the getters cost. A native SDK's free function registers in the order the calls reach the host, which the round
+// trips decide; the Context form names its tool call and the host holds its registration behind the start windows of the tools before it in the batch (D187), so the
+// file shows the append after the write in every realization, isolated, packed and fused. The first call makes four getter calls and the second none: without the
+// hold the second registers first (the file reads "B" then "A"). The Node realizations run Pi's one thread, where the order is Pi's own.
+func TestFileMutationOrderOfTheContextFormAcrossSDKs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	for _, tc := range orderingCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			dir := t.TempDir()
+			services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: dir, AgentDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			tools, errs := coding.BridgeNewRunnerTools(h.runner.Tools())
+			if len(errs) != 0 {
+				t.Fatal(errs)
+			}
+			provider := ai.NewFauxProvider(ai.FauxConfig{})
+			session, err := coding.NewSession(services, coding.SessionOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Runner: h.runner, Tools: tools, NoSession: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				for range session.Events() {
+				}
+			}()
+			t.Cleanup(func() { _ = session.Close(); <-done })
+			unsubscribe := session.Subscribe(func(event agent.AgentEvent) {
+				if end, ok := event.(agent.ToolExecutionEndEvent); ok && end.IsError {
+					t.Errorf("%s failed: %+v", end.ToolCallID, end.Result)
+				}
+			})
+			t.Cleanup(unsubscribe)
+			for _, shape := range []struct {
+				name           string
+				first, second  int
+				wantFirstOrder string
+			}{{"the first call makes four getter calls and the second none", 4, 0, "A\nB\n"}, {"the first call makes none and the second four", 0, 4, "A\nB\n"}, {"both make two", 2, 2, "A\nB\n"}} {
+				for round := range 6 {
+					file := filepath.Join(dir, fmt.Sprintf("%s-%d.txt", tc.name, round))
+					if err := os.WriteFile(file, nil, 0o600); err != nil {
+						t.Fatal(err)
+					}
+					first := ai.FauxToolCall("mutation_order_ctx_probe", map[string]any{"file": file, "tag": "A", "calls": shape.first}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("ctx-a-%d", round)})
+					second := ai.FauxToolCall("mutation_order_ctx_probe", map[string]any{"file": file, "tag": "B", "calls": shape.second}, &ai.FauxToolCallOptions{ID: fmt.Sprintf("ctx-b-%d", round)})
+					provider.SetResponses([]ai.FauxResponseStep{
+						ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{first, second}, StopReason: "toolUse"}),
+						ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+					})
+					if _, err := session.Send(t.Context(), "go"); err != nil {
+						t.Fatal(err)
+					}
+					got, err := os.ReadFile(file)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if string(got) != shape.wantFirstOrder {
+						t.Errorf("%s, round %d: the file holds %q, want %q (Pi registers the calls in call order: a getter call is no await)", shape.name, round, got, shape.wantFirstOrder)
 					}
 				}
 			}

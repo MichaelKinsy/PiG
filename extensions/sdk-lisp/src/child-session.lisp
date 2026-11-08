@@ -222,12 +222,12 @@ function unsubscribes it, the session is disposed or the connection ends."
     (sb-thread:condition-broadcast (agent-session-queue session))))
 
 (defun agent-session-dispose (session)
-  "Abort the run, release the session in the host and remove its listeners. Idempotent; a failure is reported on stderr, as Pi's dispose never fails."
+  "Abort the run, release the session in the host and remove its listeners. Idempotent; a failure is reported in the extension's log, as Pi's dispose never fails."
   (unless (sb-thread:with-mutex ((agent-session-lock session))
             (prog1 (agent-session-disposed session) (setf (agent-session-disposed session) t)))
     (child-stop session)
     (handler-case (child-call session "childSession.dispose")
-      (error (e) (format *error-output* "pig: dispose of child session ~A failed: ~A~%" (agent-session-id session) e)))))
+      (error (e) (diagnose "pig: dispose of child session ~A failed: ~A~%" (agent-session-id session) e)))))
 
 (defun child-apply-update (session stream keyframe)
   "The full message_update event the stream member produces, or NIL when it cannot be: the event is then not delivered, but its number still counts."
@@ -242,7 +242,7 @@ function unsubscribes it, the session is disposed or the connection ends."
         (clone-stream-value root))
     (error (e)
       (setf (agent-session-replica session) nil)
-      (format *error-output* "pig: child session ~A: ~A~%" (agent-session-id session) e)
+      (diagnose "pig: child session ~A: ~A~%" (agent-session-id session) e)
       nil)))
 
 (defun child-deliver-loop (session)
@@ -257,7 +257,7 @@ function unsubscribes it, the session is disposed or the connection ends."
       (when event
         (dolist (listener listeners)
           (handler-case (funcall listener event)
-            (error (e) (format *error-output* "pig: child session ~A listener raised: ~A~%" (agent-session-id session) e)))))
+            (error (e) (diagnose "pig: child session ~A listener raised: ~A~%" (agent-session-id session) e)))))
       (sb-thread:with-mutex ((agent-session-lock session))
         (setf (agent-session-delivered session) seq)
         (sb-thread:condition-broadcast (agent-session-queue session))))))

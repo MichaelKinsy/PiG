@@ -124,10 +124,11 @@ func (m *Models) lazyStream(ctx context.Context, model *Model, setup func() (*As
 	}, m.operations.Go, observation)
 }
 
-// pushModelsSetupError ends stream with lazy.ts createSetupErrorMessage's message, errorMessage before timestamp.
-func pushModelsSetupError(stream *AssistantMessageEventStream, model *Model, err error) {
-	message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: StopReasonError, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}
-	_ = stream.Push(ErrorEvent{Reason: StopReasonError, Error: message})
+// pushModelsSetupError ends stream with lazy.ts createSetupErrorMessage's message, errorMessage before timestamp; ctx is the request signal (lazy.ts:83).
+func pushModelsSetupError(ctx context.Context, stream *AssistantMessageEventStream, model *Model, err error) {
+	reason := lazySetupStopReason(ctx)
+	message := &AssistantMessage{API: model.ProviderMeta.API, Provider: modelProviderID(model), Model: model.ID, Content: []AssistantContentBlock{}, StopReason: reason, ErrorMessage: err.Error(), ErrorBeforeTimestamp: true, Timestamp: time.Now().UnixMilli()}
+	_ = stream.Push(ErrorEvent{Reason: reason, Error: message})
 }
 
 func (m *Models) Stream(ctx context.Context, model *Model, request Context, options ...StreamOptions) *AssistantMessageEventStream {

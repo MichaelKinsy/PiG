@@ -1,6 +1,7 @@
 import { Box, Container, Markdown, MouseRegion, Text } from "../../../../../pi-tui.mjs";
 import { getMarkdownTheme, theme } from "../theme/theme.js";
 import { keyText } from "./keybinding-hints.js";
+import { createMarkdownTransform } from "./markdown-transform.js";
 /**
  * Component that renders a skill invocation message with collapsed/expanded state.
  * Uses same background color as custom messages for visual consistency.
@@ -10,10 +11,16 @@ export class SkillInvocationMessageComponent extends Box {
     expanded = false;
     skillBlock;
     markdownTheme;
-    constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1) {
+    markdownTransformers;
+    messageId;
+    timestamp;
+    constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super(outputPad, 1, (t) => theme.bg("customMessageBg", t));
         this.skillBlock = skillBlock;
         this.markdownTheme = markdownTheme;
+        this.markdownTransformers = markdownTransformers;
+        this.messageId = messageId;
+        this.timestamp = timestamp;
         this.updateDisplay();
     }
     setExpanded(expanded) {
@@ -35,9 +42,10 @@ export class SkillInvocationMessageComponent extends Box {
             const label = theme.fg("customMessageLabel", `\x1b[1m[skill]\x1b[22m`);
             content.addChild(new Text(label, 0, 0));
             const header = `**${this.skillBlock.name}**\n\n`;
-            content.addChild(new Markdown(header + this.skillBlock.content, 0, 0, this.markdownTheme, {
-                color: (text) => theme.fg("customMessageText", text),
-            }));
+            const transform = createMarkdownTransform("custom", () => false, this.markdownTransformers, this.messageId, this.timestamp);
+            content.addChild(new Markdown(this.skillBlock.content, 0, 0, this.markdownTheme, { color: (text) => theme.fg("customMessageText", text) }, 
+            // Transformers see only the skill content, not Pi's header.
+            { transform: (markdown, width) => header + transform(markdown, width) }));
         }
         else {
             // Collapsed: single line - [skill] name (hint to expand)

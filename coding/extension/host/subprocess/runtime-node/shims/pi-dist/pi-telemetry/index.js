@@ -15,5 +15,5 @@ function bindTypedSpanStarter(telemetryContext) {
 export function createTypedSpanStarter(telemetryContext, _schemas) {
     return bindTypedSpanStarter(telemetryContext);
 }
-export { InMemoryTelemetryContext } from "./memory.js";
+export { InMemoryTelemetryContext, telemetryNow } from "./memory.js";
 //# sourceMappingURL=index.js.map
