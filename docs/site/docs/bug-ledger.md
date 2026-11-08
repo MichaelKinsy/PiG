@@ -482,6 +482,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5229b7d](#bf-5229b7d) | fix(durable/core): unloadDocuments with held changes is an api read job, memory notice shares the publish… | PiG's own defect | All platforms | Unreleased |
 | [BF-5260e5c](#bf-5260e5c) | The Rust SDK's `get_model_info()` reads Pi's `maxTokens` and `cost` (it reported 0 for the output limit and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-52858aa](#bf-52858aa) | `setWorkingMessage` with no message restores the default working label and an empty string shows an empty… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5291c92](#bf-5291c92) | A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store… | PiG's own defect | All platforms | Unreleased |
+| [BF-5291c92-2](#bf-5291c92-2) | `StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at… | PiG's own defect | All platforms | Unreleased |
+| [BF-5291c92-3](#bf-5291c92-3) | A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes | PiG's own defect | All platforms | Unreleased |
+| [BF-5291c92-4](#bf-5291c92-4) | The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends… | PiG's own defect | All platforms | Unreleased |
 | [BF-530bf3e](#bf-530bf3e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-532a009](#bf-532a009) | Accepting an autocomplete suggestion after the cursor moved off the typed text (a word move, Home or End)… | PiG's own defect | All platforms | Unreleased |
 | [BF-53312d8](#bf-53312d8) | `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -8210,6 +8214,62 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8cc072521` (2026-10-08), `682f5d7578` (2026-10-09), `a5d58095b0` (2026-10-09), `d2b0ada190` (2026-10-09), `da99854d1b` (2026-10-09), `45254d4a39` (2026-10-10), `52858aa12e` (2026-10-10), `5f93ef7f8c` (2026-10-10)
 - **Tests:** `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder`, `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `coding/extension/host/inproc/ui_working_message_test.go::TestUIPrompt_HiddenThinkingLabelClearerReachesTheBoundUI`, `coding/extension/host/subprocess/ui_bridge_test.go::TestUIBridge_HandleCall_SetHiddenThinkingLabelDistinguishesAbsentFromEmpty`, `coding/extension/host/subprocess/ui_bridge_test.go::TestUIBridge_HandleCall_SetWorkingMessageDistinguishesAbsentFromEmpty`, `coding/extension/host/subprocess/ui_bridge_test.go::TestUIBridge_HandleCall_SetWorkingMessageWithoutAClearerFallsBackToEmpty`, `coding/extension/ui_test.go::TestNoopUIContext_AllMethodsReturnUpstreamDefaults`, `extensions/sdk/truncate_test.go::TestFormatSizeRoundsHalfUpLikeToFixed` and 15 more in docs/bug-ledger.json
 - **Release note:** `setWorkingMessage` with no message restores the default working label and an empty string shows an empty label, as in Pi (`message ?? defaultWorkingMessage`). Both used to show the default. The Go, Rust and Python extension SDKs gain `ClearWorkingMessage()`, `clear_working_message()` and `set_working_message(None)` for the no-argument form; `SetWorkingMessage(message)` still takes a string. A `UIContext` can implement the new `extension.WorkingMessageClearer` interface to tell the two apart; one that does not keeps the old behavior, so existing implementations still compile. `setHiddenThinkingLabel` follows the same rule (`ClearHiddenThinkingLabel()`, `clear_hidden_thinking_label()`, `set_hidden_thinking_label(None)`; `extension.HiddenThinkingLabelClearer`). A Session replacement now also resets the working message, visibility and indicator an extension set, as Pi does.
+
+### BF-5291c92
+
+**A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store (`kit.sqlite`) keeps its commit queue from before the plugins' store (`store.sqlite`) is copied, SQLite copies that file at one instant, and both archives are written from those.
+- **Root cause:** Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5291c9268f` (2026-11-08)
+- **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
+- **Release note:** A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store (`kit.sqlite`) keeps its commit queue from before the plugins' store (`store.sqlite`) is copied, SQLite copies that file at one instant, and both archives are written from those. It packed `store.sqlite` through a second handle and `kit.sqlite` after it, holding neither, so a write between the two showed in one archive only.
+
+### BF-5291c92-2
+
+**`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at the first worker start.
+- **Root cause:** Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5291c9268f` (2026-11-08)
+- **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
+- **Release note:** `StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at the first worker start.
+
+### BF-5291c92-3
+
+**A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes**
+
+- **Source:** PiG's own defect
+- **Symptom:** A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes.
+- **Root cause:** Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5291c9268f` (2026-11-08)
+- **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
+- **Release note:** A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes.
+
+### BF-5291c92-4
+
+**The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.
+- **Root cause:** Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5291c9268f` (2026-11-08)
+- **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
+- **Release note:** The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.
 
 ### BF-530bf3e
 

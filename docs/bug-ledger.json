@@ -13499,6 +13499,126 @@
       ]
     },
     {
+      "id": "BF-5291c92",
+      "title": "A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store…",
+      "symptom": "A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store (`kit.sqlite`) keeps its commit queue from before the plugins' store (`store.sqlite`) is copied, SQLite copies that file at one instant, and both archives are written from those.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store (`kit.sqlite`) keeps its commit queue from before the plugins' store (`store.sqlite`) is copied, SQLite copies that file at one instant, and both archives are written from those. It packed `store.sqlite` through a second handle and `kit.sqlite` after it, holding neither, so a write between the two showed in one archive only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
+      "id": "BF-5291c92-2",
+      "title": "`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at…",
+      "symptom": "`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at the first worker start.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at the first worker start.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
+      "id": "BF-5291c92-3",
+      "title": "A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes",
+      "symptom": "A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
+      "id": "BF-5291c92-4",
+      "title": "The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends…",
+      "symptom": "The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
       "id": "BF-530bf3e",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
