@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 )
 
 // MarshalJSON emits the upstream Usage wire shape. A provider creates cacheWrite1h and reasoning on a usage object that already holds
@@ -26,7 +27,10 @@ func (usage Usage) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	// JSON.stringify writes a negative zero as 0, as MarshalJSONTo does.
-	return sdkjson.AppendJSNormalized(encoded[:0], encoded)
+	if jsonwire.MayHaveJSForms(encoded) {
+		return sdkjson.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (sdkjson.StringifyAppender). A non-finite cost is the error MarshalJSON reports.

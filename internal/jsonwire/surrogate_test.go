@@ -13,6 +13,7 @@ func TestHasLoneSurrogateEscape(t *testing.T) {
 		// An escaped backslash starts nothing: the "ud800" after it is text, not an escape.
 		`"\\ud800"`: false, `"\\\\ud800"`: false, `"\\ud83d\ude00"`: true, `"\\ud800\udc00"`: true, `"\\\\ud800\udc00"`: true,
 		`"a\\ud800\udfff"`: true, `"\\\ud800"`: true, `"\\\ud83d\ude00"`: false, `"\\u0041"`: false, `"\n\ud800"`: true,
+		`"\uDC00"`: true, `"\uD800x"`: true, `"\ud83dxudc00"`: true,
 		// The three-byte form of a surrogate, which is not UTF-8, is a lone surrogate too.
 		"\"\xed\xa0\x80\"": true, "\"\xed\xbf\xbf\"": true, "\"a\xed\xaf\xbfb\"": true, "\"\xed\x9f\xbf\"": false, "\"\xee\x80\x80\"": false,
 		"\"\xed\"": false, "\xed": false, "\"\xc3\xa9\xed\x80\x80\"": false,

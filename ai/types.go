@@ -14,6 +14,7 @@ import (
 
 	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/allocsize"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/jsparity"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -291,7 +292,10 @@ func marshalContent(contentType string, content any) ([]byte, error) {
 		encoded = append(encoded, '}')
 	}
 	// JSON.stringify writes a negative zero as 0 and an ill-formed byte as the replacement character, as MarshalJSONTo does.
-	return sdkjson.AppendJSNormalized(encoded[:0], encoded)
+	if jsonwire.MayHaveJSForms(encoded) {
+		return sdkjson.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // appendContent appends the JSON.stringify text of marshalContent(contentType, content) to dst: content is encoded in place after the type

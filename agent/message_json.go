@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsonwire"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
@@ -65,7 +66,10 @@ func (m AssistantMessage) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.AppendJSNormalized(encoded[:0], encoded)
+	if jsonwire.MayHaveJSForms(encoded) {
+		return json.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
@@ -91,6 +95,9 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	if text, ok := value.(json.RawMessage); ok {
+		if !jsonwire.MayHaveJSForms(text) {
+			return text, nil
+		}
 		return json.AppendJSNormalized(text[:0], text)
 	}
 	encoded, err := json.Marshal(value)
@@ -98,7 +105,10 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	// JSON.stringify writes a negative zero as 0 and an ill-formed byte as the replacement character, as MarshalJSONTo does.
-	return json.AppendJSNormalized(encoded[:0], encoded)
+	if jsonwire.MayHaveJSForms(encoded) {
+		return json.AppendJSNormalized(encoded[:0], encoded)
+	}
+	return encoded, nil
 }
 
 // AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender), encoding the message's members

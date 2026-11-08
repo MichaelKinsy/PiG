@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"math"
@@ -67,7 +68,7 @@ func TestMarshalJSONToWritesWhatMarshalJSONWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("json.Marshal\n got: %s\nwant: %s", got, want)
 			}
 			want, err = jsonv2.Marshal(viaMarshalJSON{message}, jsonopts.Stringify)
@@ -78,7 +79,7 @@ func TestMarshalJSONToWritesWhatMarshalJSONWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("jsonv2.Marshal(Stringify)\n got: %s\nwant: %s", got, want)
 			}
 			// As a member and as an element, where the encoder reaches the message without a copy.
@@ -98,7 +99,7 @@ func TestMarshalJSONToWritesWhatMarshalJSONWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(got) != string(want) {
+			if !bytes.Equal(got, want) {
 				t.Fatalf("nested\n got: %s\nwant: %s", got, want)
 			}
 		})
@@ -154,7 +155,15 @@ func TestMessageMarshalJSONWritesWhatJSONStringifyWrites(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for form, text := range map[string]string{"MarshalJSON": string(direct), "json.Marshal": string(viaJSON), "Stringify": string(viaStringify)} {
+			forms := map[string]string{"MarshalJSON": string(direct), "json.Marshal": string(viaJSON), "Stringify": string(viaStringify)}
+			if message.Assistant != nil {
+				assistant, err := message.Assistant.MarshalJSON()
+				if err != nil {
+					t.Fatal(err)
+				}
+				forms["AssistantMessage.MarshalJSON"] = string(assistant)
+			}
+			for form, text := range forms {
 				if negativeZero.MatchString(text) {
 					t.Errorf("%s writes a negative zero: %s", form, text)
 				}
