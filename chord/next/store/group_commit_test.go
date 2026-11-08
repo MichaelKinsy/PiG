@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/test/store/store.test.ts, "group commit" (Pi main 8889e623d, decision S18): the commits queued
@@ -23,13 +24,43 @@ import (
 // Go forms: Pi holds the next commit's step with `holdNextCommit`; here a gate holds the next backend transaction at its
 // first statement (`controlledStore`, `arm`), and a commit's place in the queue is taken by `enlist` on the test's
 // goroutine, as Pi's `store.commit(...)` call takes it, then waited for on a goroutine of its own. Go callbacks do not
-// throw: an Adopt returns an error, and a panic out of a callback is the Go form of Pi's "a metrics adapter throws" and
-// "a listener throws" cases (the store stops, nothing hangs, the panic goes on in the commit's caller). Pi's "a grouped
-// commit whose admission throws" has no Go form (Admit returns a bool; a panic is the case above). Pi's int() key typing
+// throw: an Adopt returns an error, and the Go form of what a callback throws is a panic, which stops the store and goes
+// on in the caller that ran the turn (Pi rejects that commit's promise instead). Pi's three cases that assert a throw
+// have no exact Go form and are drafted as designed out in the test mapping, for owner review: "a grouped commit whose
+// admission throws" (Admit returns a bool; a panic out of it is the unknown outcome tested below) and the two
+// "metrics adapter throws" ones, whose closest forms are the panicking metrics adapter cases below. Pi's int() key typing
 // (d7704516e) is TypeScript typing: designed out.
 
 // groupOutcome is what a commit settled with.
 type groupOutcome = chordctx.Settled[int64]
+
+// panickingMetrics is a telemetry context whose metrics adapter panics when a counter adds: Go's form of a metrics
+// adapter that throws (its instruments return nothing, so a failure of one is a panic).
+func panickingMetrics(thrown any) context.Context {
+	return chordctx.WithTelemetry(background, panickingTelemetry{TelemetrySpan: telemetry.NoopTelemetryContext, thrown: thrown})
+}
+
+type panickingTelemetry struct {
+	telemetry.TelemetrySpan
+	thrown any
+}
+
+func (adapter panickingTelemetry) Metrics() telemetry.TelemetryMetrics {
+	return panickingInstruments{TelemetryMetrics: telemetry.NoopTelemetryMetrics, thrown: adapter.thrown}
+}
+
+type panickingInstruments struct {
+	telemetry.TelemetryMetrics
+	thrown any
+}
+
+func (instruments panickingInstruments) Counter(string, telemetry.InstrumentOptions) telemetry.TelemetryCounter {
+	return panickingCounter{thrown: instruments.thrown}
+}
+
+type panickingCounter struct{ thrown any }
+
+func (counter panickingCounter) Add(float64, telemetry.SpanAttributes) { panic(counter.thrown) }
 
 // startCommit enlists a commit of writes and waits for it on a goroutine: the commit has its place in the queue when it
 // returns.
@@ -607,6 +638,85 @@ func TestGroupCommit(t *testing.T) {
 			t.Fatalf("lastSeq = %d, want 1", store.LastSeq())
 		}
 		_, err := Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
+		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+	})
+
+	t.Run("stops the store when a metrics adapter panics after a group's COMMIT: memory takes the whole group, no seq repeats", func(t *testing.T) {
+		ctl := controlledStore(t)
+		thrown := errors.New("metrics threw")
+		gate := ctl.arm()
+		_, fence := recording()
+		running := startCommit(ctl.store, fence, created("a"))
+		<-gate.Entered()
+		leader := ctl.store.enlist([]StagedWrite{created("b")}, fence, panickingMetrics(thrown))
+		panicked := make(chan any, 1)
+		go func() {
+			defer func() { panicked <- recover() }()
+			_, _ = leader.Wait()
+		}()
+		follower := startCommit(ctl.store, fence, created("c"))
+		gate.Release()
+		if seqOf(t, running) != 1 {
+			t.Fatal("the running commit did not take seq 1")
+		}
+		if got := <-panicked; got != thrown {
+			t.Fatalf("the leader's caller recovered %v, want the metrics adapter's panic", got)
+		}
+		_ = rejected(t, failureOf(t, follower), data.CodeUnavailable, data.ReasonStorageFailed)
+		if ctl.store.LastSeq() != 3 {
+			t.Fatalf("lastSeq = %d, want 3", ctl.store.LastSeq())
+		}
+		_, err := ctl.store.Commit([]StagedWrite{created("d")}, fence, background)
+		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+	})
+
+	t.Run("stops the store when a metrics adapter panics after a lone commit's COMMIT too", func(t *testing.T) {
+		store := memoryStore(t)
+		thrown := errors.New("metrics threw")
+		adopted, fence := recording()
+		pending := store.enlist([]StagedWrite{created("a")}, fence, panickingMetrics(thrown))
+		panicked := make(chan any, 1)
+		go func() {
+			defer func() { panicked <- recover() }()
+			_, _ = pending.Wait()
+		}()
+		if got := <-panicked; got != thrown {
+			t.Fatalf("recovered %v, want the metrics adapter's panic", got)
+		}
+		if len(*adopted) != 0 || store.LastSeq() != 1 {
+			t.Fatalf("adopted %v, lastSeq %d, want none adopted and lastSeq 1", *adopted, store.LastSeq())
+		}
+		_, err := Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
+		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+	})
+
+	t.Run("a panic out of a fence's Admit at a group's entry stops the store: nothing of the group is written, the panic goes on in the leader's caller", func(t *testing.T) {
+		ctl := controlledStore(t)
+		thrown := errors.New("admit threw")
+		throwing := CommitFence{Admit: func() bool { panic(thrown) }, Adopt: func(int64, []int64) error { return nil }}
+		gate := ctl.arm()
+		_, fence := recording()
+		running := startCommit(ctl.store, fence, created("a"))
+		<-gate.Entered()
+		leader := ctl.store.enlist([]StagedWrite{created("x")}, throwing, background)
+		panicked := make(chan any, 1)
+		go func() {
+			defer func() { panicked <- recover() }()
+			_, _ = leader.Wait()
+		}()
+		follower := startCommit(ctl.store, fence, created("b"))
+		gate.Release()
+		if seqOf(t, running) != 1 {
+			t.Fatal("the running commit did not take seq 1")
+		}
+		if got := <-panicked; got != thrown {
+			t.Fatalf("the leader's caller recovered %v, want Admit's panic", got)
+		}
+		_ = rejected(t, failureOf(t, follower), data.CodeUnavailable, data.ReasonStorageFailed)
+		if ctl.store.LastSeq() != 1 {
+			t.Fatalf("lastSeq = %d, want 1: the group wrote nothing", ctl.store.LastSeq())
+		}
+		_, err := ctl.store.Commit([]StagedWrite{created("c")}, fence, background)
 		_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
 	})
 }
