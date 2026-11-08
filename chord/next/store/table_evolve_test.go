@@ -245,3 +245,22 @@ func TestEvolveChecks(t *testing.T) {
 		})
 	}
 }
+
+// Cites packages/chord/src/store/table-evolve.ts:28 (TableTailEditor.drop), :30 (index) and :32 (dropIndex): the edits after the
+// data step are made through the TableTailEditor the data step returns, which has no rename, add or json.
+func TestTableTailEditorTakesTheEditsAfterTheDataStepThroughItsInterface(t *testing.T) {
+	EditsV1 := evolveEditsV1(t)
+	V2 := qEvolve(t, EditsV1, func(e *TableEditor) TableTailEditor {
+		var tail TableTailEditor = e.Add("dir", Str(contracts.Default(""))).Rows(noPatch)
+		tail = tail.DropIndex("by_file")
+		tail = tail.Drop("at")
+		return tail.Index("by_dir", []string{"dir"})
+	})
+	qEqual(t, V2.Evolution.Migration.After, []TableEdit{
+		{Kind: EditDropIndex, Name: "by_file"},
+		{Kind: EditDrop, Name: "at"},
+		{Kind: EditIndex, Name: "by_dir", Columns: []string{"dir"}},
+	})
+	qEqual(t, columnNames(V2), []string{"id", "file", "meta", "dir"})
+	qEqual(t, V2.Indexes, IndexRecords{{Name: "by_dir", Columns: []string{"dir"}}})
+}

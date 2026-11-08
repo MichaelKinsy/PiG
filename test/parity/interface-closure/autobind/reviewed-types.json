@@ -574,5 +574,41 @@
   "pkg:chord/.#when::call:0": {
     "go": "chord/next/store/expression.go#When",
     "reason": "Pi `when(condition, a: Operand<T, K>, b)` takes an Expression or a plain value (Operand<T, K> = Expression<T, K> | T); Go's When(condition Condition, a, b any) takes an *Expression or a Go value and compiles each by its dynamic type. Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
+  },
+  "pkg:chord/.#Tx::property:get::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Get",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:update::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Update",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Update takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:delete::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Delete",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Delete takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionDeleteTheRowWhenTheTransactionCommits (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Table::property:get::call:0": {
+    "go": "chord/next/store/table_handle.go#Table.Get",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Table.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/.#Tx::property:updateWhere::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.UpdateWhere",
+    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.UpdateWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:deleteWhere::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.DeleteWhere",
+    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.DeleteWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:rows::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Rows",
+    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Tx.Rows (*documents.TxRows) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#Table::property:rows::call:0": {
+    "go": "chord/next/store/table_handle.go#Table.Rows",
+    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Table.Rows (*store.RowsIterator) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/.#ScriptsContract": {
+    "go": "chord/next/surfaces/surfaces_scripts.go#ScriptsContract",
+    "reason": "Pi packages/chord/src/surfaces/scripts.ts:43 `type ScriptsContract = typeof WebScripts | typeof TuiScripts` is the type of the two scripts contracts, each a remote contract made by scriptsContract(name); Go's WebScripts and TuiScripts are both *contracts.Contract (surfaces_scripts.go), so `type ScriptsContract = *contracts.Contract` is the union of their types, and ClientOptions.Scripts (Pi's `scripts: ScriptsContract`) has it. Exercised by TestLoadsTheInitialScriptsWithTheCoreFacets (chord/next/surfaces/surfaces_client_test.go: the client starts with Scripts: WebScripts)."
   }
 }
