@@ -454,7 +454,7 @@ SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND Licens
 
 # The QuickJS WebAssembly module and the codemode prelude are Pi's, embedded byte for byte.
 [[annotations]]
-path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.zst"]
+path = ["codemode/assets/quickjs.wasm", "codemode/assets/quickjs.wasm.gz"]
 precedence = "closest"
 SPDX-FileCopyrightText = [
   "Copyright (c) 2026 Vercel, Inc.",

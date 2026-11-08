@@ -20,10 +20,11 @@ func TestCatalogListingsExpandNoRecordChunk(t *testing.T) {
 		models = append(models, all[i].ToModel())
 		all[i].ToCapabilities()
 	}
-	withVariants := WithOpenRouterRoutingVariantModels(models)
-	if len(withVariants) <= len(models) {
-		t.Fatalf("no OpenRouter variants listed: %d of %d", len(withVariants), len(models))
+	// ListModels lists OpenRouter's routing variants already; deriving them again over the converted models finds them listed.
+	if len(all) <= len(GeneratedModels) {
+		t.Fatalf("ListModels lists %d models, the catalog holds %d: no OpenRouter variants", len(all), len(GeneratedModels))
 	}
+	_ = WithOpenRouterRoutingVariantModels(models)
 	if got := CatalogChunksExpanded() - before; got != 0 {
 		t.Fatalf("%d record chunks expanded by listings", got)
 	}
