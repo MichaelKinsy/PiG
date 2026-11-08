@@ -757,6 +757,12 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 		if err := provider.SaveTokens(ctx, withScope(*tokens, scope)); err != nil {
 			return "", err
 		}
+		// pig divergence (D373): the verifier is single use, so the exchange that consumed it drops it from the stored state.
+		if invalidator, ok := provider.(CredentialInvalidator); ok {
+			if err := invalidator.InvalidateCredentials(ctx, "verifier"); err != nil {
+				return "", err
+			}
+		}
 		return OAuthAuthorized, nil
 	}
 	var existing *OAuthTokens

@@ -2077,14 +2077,6 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 
 [[hit]]
 file = "coding/extension/mcp_servers.go"
-func = "ValidateMcpServerConfig"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/extension/mcp_servers.go"
 func = "resolveExposureAliases"
 pattern = "json-roundtrip"
 detail = "marshal+unmarshal"

@@ -130,6 +130,10 @@ class ModelRuntime(_GraphObject):
     def logout(self, provider: str) -> None:
         self._invoke_async("logout", provider)
 
+    def settle_credential_writes(self) -> None:
+        """Wait until the credential writes already in progress finish (Pi's ``settleCredentialWrites``), e.g. an OAuth refresh a background catalog refresh started; it waits only for writes started before the call and takes no cancellation."""
+        self._invoke_async("settleCredentialWrites")
+
     def refresh(self, options: dict[str, Any] | None = None) -> dict[str, Any]:
         """``{"aborted", "errors"}``; ``options`` are Pi's ``allowNetwork``, ``providers`` and ``force``."""
         return self._invoke_async("refresh", options or {})

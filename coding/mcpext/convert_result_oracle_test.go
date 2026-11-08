@@ -155,6 +155,7 @@ func TestConvertMcpResultMatchesPi(t *testing.T) {
 	input := map[string]any{"probes": jsProbes, "names": jsNames}
 	pioracle.Run(t, `
 const m = await load("pi-coding-agent/extensions/mcp/tools.js");
+const mcp = await load("pi-mcp/index.js");
 const { createHash } = await import("node:crypto");
 const saver = (fail) => async (data, ext) => {
 	if (fail) throw new Error("disk full");
@@ -167,7 +168,7 @@ for (const p of input.probes) {
 		results.push({ content: r.content, details: r.details, structured: JSON.stringify(r.structuredContent), isError: r.isError === true, err: "" });
 	} catch (e) { results.push({ content: [], details: {}, structured: "", isError: false, err: String(e && e.message) }); }
 }
-const names = input.names.map((n) => m.createMcpToolName(n.server, n.tool, (name) => (n.taken !== "" && name === n.taken) || (n.takeSuffix && name.endsWith("_x"))));
+const names = input.names.map((n) => mcp.createMcpToolName(n.server, n.tool, (name) => (n.taken !== "" && name === n.taken) || (n.takeSuffix && name.endsWith("_x"))));
 emit({ results, names });
 `, input, &want)
 	bad := 0
