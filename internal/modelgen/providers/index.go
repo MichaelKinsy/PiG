@@ -39,6 +39,7 @@ func All() []ProviderDefinition {
 		openrouter(),
 		qwenTokenPlanCn(),
 		qwenTokenPlanIndividual(),
+		qwenTokenPlanIndividualCn(),
 		qwenTokenPlan(),
 		radius(),
 		together(),
