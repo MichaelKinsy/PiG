@@ -84,6 +84,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0b85f55](#bf-0b85f55) | The Rust SDK keeps every session entry when one entry of the session file holds an unpaired surrogate (it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0bbe365](#bf-0bbe365) | fix(codingagent): footer context usage refreshes on a context_edit entry (Pi getContextUsage) | PiG's own defect | All platforms | Unreleased |
 | [BF-0bc05bf](#bf-0bc05bf) | Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0bed50c](#bf-0bed50c) | fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs… | PiG's own defect | All platforms | Unreleased |
 | [BF-0c7d23f](#bf-0c7d23f) | A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi… | PiG's own defect | Windows | Unreleased |
 | [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-0cd1934](#bf-0cd1934) | fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed | PiG's own defect | All platforms | Unreleased |
@@ -1117,6 +1118,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9be7181](#bf-9be7181) | Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the… | PiG's own defect | Linux | 0.5.2 |
 | [BF-9c1a0e9](#bf-9c1a0e9) | An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
+| [BF-9cf54d7](#bf-9cf54d7) | fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-9d02a48](#bf-9d02a48) | Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9d2095f](#bf-9d2095f) | fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -1622,6 +1624,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-e9332c8](#bf-e9332c8) | fix(codingagent): session search re: reads patterns as V8 does | PiG's own defect | All platforms | Unreleased |
 | [BF-e9392fd](#bf-e9392fd) | A Google Generative AI or Vertex request with no `contents` (a history of system messages only, or one user… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e99791b](#bf-e99791b) | A Node extension's `message_end` event now carries the same message object that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-e9ca222](#bf-e9ca222) | fix(durable/host/cf): adopt Pi's address-following watches and observers (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-e9e4fc5](#bf-e9e4fc5) | Markdown rendering matches Pi for five more shapes of text | PiG's own defect | All platforms | Unreleased |
 | [BF-e9e9cf8](#bf-e9e9cf8) | An extension that calls a pi-ai function such as `completeSimple` at top level or in its factory no longer… | PiG's own defect | All platforms | 0.5.0 |
@@ -2705,6 +2708,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0bc05bf8de` (2026-10-07)
 - **Tests:** `coding/session_bash_persistence_upstream_test.go::TestUpstreamBashEscapeSequencesSplitAcrossChunks`, `internal/codingagent/tools/sanitize_split_ansi_test.go::TestExecuteBashWithOperationsFlushesPendingANSIAtExit`
 - **Release note:** Fixed `!` and RPC `bash` output keeping fragments of color codes, such as a stray `m`, when a code was split across output chunks.
+
+### BF-0bed50c
+
+**fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs nothing without a Node extension
+- **Root cause:** A session switch clears the Session's message numbering (the counter goes on) and the Node process's object table, so the messages of the session left are collectable, as Pi's WeakMap of them is. A Node message_end handler's in-place edit of event.message goes back to the host in the reply, and the host writes it into the message (agent.ReplaceMessageInPlace, moved from the Session), as the tool_call edited input does: later handlers, turn_end, agent_end and the saved entry hold the edit, as in Pi. Messages are numbered when a Node handler receives them (lazily, for a Node runtime only), a message nobody numbered names no entry, and noting an entry is a ring that copies nothing. Regenerated…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0bed50c8ff` (2026-11-07)
+- **Tests:** `coding/session_message_sequence_test.go::TestReplaceInnerReleasesTheNumberedMessages`, `test/extension-conformance/event_payload_test.go::TestConformance_EventPayloadsReachEverySDKUnchanged`
 
 ### BF-0c7d23f
 
@@ -17020,6 +17036,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/markdown_latex_table_test.go::TestMarkdownContainsTableStart`, `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTables`, `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi`
 - **Release note:** An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159).
 
+### BF-9cf54d7
+
+**fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi
+- **Root cause:** Pi emits message_end to the extensions and then appends event.message to the session, so the entry's message is the event's own object and every handler of the event shares it. The Node runtime received the event and the session log as separate payloads, so an extension that finds an entry by entry.message === message found none. Paseo's Pi integration does exactly that to learn the entry id of the prompt it sent, so through PiG its timeline lacked the user message until a restart and a conversation rewind was refused. The runtime now makes the two one object, matching by role, timestamp and tool call id and then by value, in either arrival order. Regenerated runtime-node.pack and its…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9cf54d7b97` (2026-11-07)
+- **Tests:** None recorded.
+
 ### BF-9d02a48
 
 **Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…**
@@ -24047,6 +24076,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/google_empty_contents_test.go::TestGoogleEmptyContentsChecksThePayloadOnPayloadReturned`, `ai/google_empty_contents_test.go::TestGoogleEmptyContentsFailsBeforeSending`, `ai/tool_flow_result_reset_test.go::TestTransformMessagesResultBeforeCallDoesNotAnswerIt`, `ai/transform_messages_allocs_test.go::TestTransformMessagesDoesNotReboxUnchangedMessages`, `test/pipeline-diff/system_only_test.go::TestSystemOnlyHistoryFailsBeforeSendingLikePi`
 - **Release note:** A Google Generative AI or Vertex request with no `contents` (a history of system messages only, or one user message without content) now fails with `contents are required` before it is sent, as Pi's `@google/genai` SDK does, instead of reaching the API and failing with HTTP 400. An `onPayload` hook that adds or removes `contents` is checked as sent.
 
+### BF-e99791b
+
+**A Node extension's `message_end` event now carries the same message object that…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D541)
+- **Symptom:** A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object.
+- **Root cause:** Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Node extensions share one process or realm (the isolated placement goes), the Go, Python and Rust SDKs pass messages by reference to an object the host holds (a handle API), or a `message_end` handler's in-place edit goes back to the host of a graph emit and a message edited outside `message_end` is sent back and saved. Then the call-site markers and this record go.
+- **Fix commits:** `e99791bd8b` (2026-11-07), `55afdd2772` (2026-11-08), `6716c788a5` (2026-11-08), `b5a5ec14e6` (2026-11-08)
+- **Tests:** `agent/message_identity_test.go::TestIdentityOfAStartEnvelopeIsTheMessageItWasCopiedFrom`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEntryBindWithReorderedMembersKeepsAnEdit`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityAcrossAReplacement`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityInOtherEvents`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityPaths`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIsTheSessionEntryMessage`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeKeepsAnEditMadeOutsideMessageEnd`, `coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestXrefMessageCrossesByNumberToTheReceiversOwnObject` and 6 more in docs/bug-ledger.json
+- **Release note:** A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object. A handler that edits `event.message` in place (a redaction extension) now has the edit kept, as in Pi: later handlers, `turn_end`, `agent_end` and the saved entry hold the edited message, where before the edit was never saved. The `message` of `message_start` (system, user and tool result messages), the `message` and `toolResults` of `turn_end` and the `messages` of `agent_end` are those same objects, and extensions packed in one process hold one object for one message. This holds for the events of the session's own run, and for the handlers of one emit of an `ExtensionRunner` that a Go, Rust or Python extension drives (every handler of one emit holds one message object, as in Pi). A message an extension passes on `pi.events` to a Node extension in another process is the object that extension holds for the message when it holds it. Extensions in different processes (isolated) otherwise each hold their own object for a message, and a Go, Rust or Python caller's own message object is not the one a Node handler holds (D541). An edit made outside a `message_end` handler (in `message_start`, `turn_end` or `agent_end`) stays in the extension's own object and is not saved to the session. An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.
+
 ### BF-e9ca222
 
 **fix(durable/host/cf): adopt Pi's address-following watches and observers (Pi)**
@@ -26690,6 +26735,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
 | D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |
+| D541 | A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all… | [BF-e99791b](#bf-e99791b) |
 
 ## Fix-titled commits that are not bugs in a release
 

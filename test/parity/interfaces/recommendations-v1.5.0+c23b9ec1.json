@@ -153432,7 +153432,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "82 normalized-name Pig candidates are ambiguous."
+        "83 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158385,7 +158385,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "106 normalized-name Pig candidates are ambiguous."
+        "107 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -158549,7 +158549,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "22 normalized-name Pig candidates are ambiguous."
+        "23 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -162743,7 +162743,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "26 normalized-name Pig candidates are ambiguous."
+        "27 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",

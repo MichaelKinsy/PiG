@@ -1865,6 +1865,28 @@
       ]
     },
     {
+      "id": "BF-0bed50c",
+      "title": "fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs…",
+      "symptom": "fix(extensions): message identity survives a session switch and a handler's in-place edit; numbering costs nothing without a Node extension",
+      "rootCause": "A session switch clears the Session's message numbering (the counter goes on) and the Node process's object table, so the messages of the session left are collectable, as Pi's WeakMap of them is. A Node message_end handler's in-place edit of event.message goes back to the host in the reply, and the host writes it into the message (agent.ReplaceMessageInPlace, moved from the Session), as the tool_call edited input does: later handlers, turn_end, agent_end and the saved entry hold the edit, as in Pi. Messages are numbered when a Node handler receives them (lazily, for a Node runtime only), a message nobody numbered names no entry, and noting an entry is a ring that copies nothing. Regenerated…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0bed50c8ff",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/session_message_sequence_test.go::TestReplaceInnerReleasesTheNumberedMessages",
+        "test/extension-conformance/event_payload_test.go::TestConformance_EventPayloadsReachEverySDKUnchanged"
+      ]
+    },
+    {
       "id": "BF-0c7d23f",
       "title": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi…",
       "symptom": "A model's `bash`, `powershell`, `grep`, `find` or `ls` call is now drawn by the tool's built-in card, as Pi does and as `read`, `write` and `edit` already were.",
@@ -30985,6 +31007,25 @@
       ]
     },
     {
+      "id": "BF-9cf54d7",
+      "title": "fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi",
+      "symptom": "fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi",
+      "rootCause": "Pi emits message_end to the extensions and then appends event.message to the session, so the entry's message is the event's own object and every handler of the event shares it. The Node runtime received the event and the session log as separate payloads, so an extension that finds an entry by entry.message === message found none. Paseo's Pi integration does exactly that to learn the entry id of the prompt it sent, so through PiG its timeline lacked the user message until a restart and a conversation rewind was refused. The runtime now makes the two one object, matching by role, timestamp and tool call id and then by value, in either arrival order. Regenerated runtime-node.pack and its…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9cf54d7b97",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9d02a48",
       "title": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…",
       "symptom": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where it ignores `const`; literal data such as `default` and `examples` is left as written.",
@@ -46527,6 +46568,55 @@
       ]
     },
     {
+      "id": "BF-e99791b",
+      "title": "A Node extension's `message_end` event now carries the same message object that…",
+      "symptom": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object.",
+      "rootCause": "Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D541",
+      "removeWhen": "Node extensions share one process or realm (the isolated placement goes), the Go, Python and Rust SDKs pass messages by reference to an object the host holds (a handle API), or a `message_end` handler's in-place edit goes back to the host of a graph emit and a message edited outside `message_end` is sent back and saved. Then the call-site markers and this record go.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object. A handler that edits `event.message` in place (a redaction extension) now has the edit kept, as in Pi: later handlers, `turn_end`, `agent_end` and the saved entry hold the edited message, where before the edit was never saved. The `message` of `message_start` (system, user and tool result messages), the `message` and `toolResults` of `turn_end` and the `messages` of `agent_end` are those same objects, and extensions packed in one process hold one object for one message. This holds for the events of the session's own run, and for the handlers of one emit of an `ExtensionRunner` that a Go, Rust or Python extension drives (every handler of one emit holds one message object, as in Pi). A message an extension passes on `pi.events` to a Node extension in another process is the object that extension holds for the message when it holds it. Extensions in different processes (isolated) otherwise each hold their own object for a message, and a Go, Rust or Python caller's own message object is not the one a Node handler holds (D541). An edit made outside a `message_end` handler (in `message_start`, `turn_end` or `agent_end`) stays in the extension's own object and is not saved to the session. An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e99791bd8b",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "55afdd2772",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "6716c788a5",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "b5a5ec14e6",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "agent/message_identity_test.go::TestIdentityOfAStartEnvelopeIsTheMessageItWasCopiedFrom",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEntryBindWithReorderedMembersKeepsAnEdit",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityAcrossAReplacement",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityInOtherEvents",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityPaths",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIsTheSessionEntryMessage",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeKeepsAnEditMadeOutsideMessageEnd",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestXrefMessageCrossesByNumberToTheReceiversOwnObject",
+        "coding/extension/host/subprocess/state_push_message_entries_test.go::TestPushStateToSendsMessageEntriesToANodeRuntimeOnce",
+        "coding/extension/host/subprocess/xref_message_identity_test.go::TestPiEventsMessageIsTheReceiversOwnObject",
+        "coding/session_message_identity_node_test.go::TestNodeExtensionFindsTheEntryOfItsMessagesAfterAnInPlaceEdit",
+        "coding/session_message_sequence_test.go::TestMessageSequencesNumberMessagesByIdentity",
+        "coding/session_message_sequence_test.go::TestSessionNumbersTheMessagesExtensionEventsShare",
+        "internal/codingagent/session_message_entries_test.go::TestMessageEntriesAfterACursor"
+      ]
+    },
+    {
       "id": "BF-e9ca222",
       "title": "fix(durable/host/cf): adopt Pi's address-following watches and observers (Pi)",
       "symptom": "fix(durable/host/cf): adopt Pi's address-following watches and observers (Pi)",
@@ -52775,6 +52865,11 @@
       "id": "D520",
       "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
       "entry": "BF-D520"
+    },
+    {
+      "id": "D541",
+      "title": "A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all…",
+      "entry": "BF-e99791b"
     }
   ],
   "exemptCommits": {
