@@ -3261,12 +3261,12 @@ allocs = 458945
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongStreamingAssistantMessage/default"
-allocs = 141024
+allocs = 99875
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkLongStreamingAssistantMessage/foreign"
-allocs = 5984269
+allocs = 3378634
 
 [[benchmark]]
 package = "./tui"
@@ -3832,6 +3832,36 @@ allocs = 4046
 package = "./tui"
 benchmark = "BenchmarkToolDefinitionRender"
 allocs = 8
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTranscriptCachedRender/messages=100"
+allocs = 1
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTranscriptCachedRender/messages=1000"
+allocs = 1
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTranscriptClickRedraw/messages=100"
+allocs = 13
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTranscriptClickRedraw/messages=1000"
+allocs = 14
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTranscriptSetExpandedRedraw/messages=100"
+allocs = 8
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkTranscriptSetExpandedRedraw/messages=1000"
+allocs = 9
 
 [[benchmark]]
 package = "./tui"
