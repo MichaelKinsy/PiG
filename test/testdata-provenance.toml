@@ -68,6 +68,11 @@ owner = "pi"
 generator = "test/parity/testdata/mermaid-transform-pi.mjs"
 
 [[golden]]
+paths = ["internal/codingagent/testdata/mermaid-transform-themed-golden.jsonl"]
+owner = "pi"
+generator = "test/parity/testdata/mermaid-transform-pi.mjs"
+
+[[golden]]
 paths = ["internal/codingagent/testdata/pi104-render-probe/builtin-renderers.golden.json"]
 owner = "pi"
 generator = "internal/codingagent/testdata/pi104-render-probe/regen.sh"
