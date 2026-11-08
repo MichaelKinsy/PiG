@@ -2368,17 +2368,21 @@
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/lists/worker.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:22afbe9db3be1818842f466e76b8dc06c5d5213e0dd31ceaa65777d6ae9bca51",
-      "evidence": [],
-      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
+      "evidence": [
+        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialListsPluginOnAListsWorker)."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/plugins/traces/clock.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:bb8c1305e4727dd134487975daeaa72cb0eef45306b6cbbb24ce5d48a5cf6098",
-      "evidence": [],
-      "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
+      "evidence": [
+        "chord/nextnode/plugins/plugins_examples_tutorial_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in plugins_examples_tutorial_test.go (TestTutorialTracesClockClamped)."
     },
     {
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
