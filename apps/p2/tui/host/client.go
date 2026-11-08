@@ -63,6 +63,8 @@ type ClientOptions struct {
 	// Preferences are sent to the runtime as data.
 	Preferences  *PreferenceSource
 	Capabilities *Capabilities
+	// InputTap observes every input the launcher forwards to the runtime (tests).
+	InputTap func(data string)
 	// ColorQuery is the terminal color query's deadline.
 	ColorQuery  time.Duration
 	Credentials Credentials
@@ -284,6 +286,9 @@ func (c *Client) Do(fn func()) {
 // Runtime is the TuiRuntime (use it on the owner loop: Do, Post).
 func (c *Client) Runtime() *tuiruntime.TuiRuntime { return c.rt }
 
+// Terminal is the terminal the runtime draws on: its output passes the launcher's mode filter and its title, progress and status are launcher-sanitized.
+func (c *Client) Terminal() pitui.Terminal { return c.term }
+
 // TUI is the alternate-screen renderer.
 func (c *Client) TUI() *pitui.TuiAltScreen { return c.tui }
 
@@ -477,6 +482,9 @@ func (c *Client) onInput(data string) {
 		c.mu.Unlock()
 	}
 	if len(data) <= MaxTerminalFrame {
+		if c.options.InputTap != nil {
+			c.options.InputTap(data)
+		}
 		c.Post(func() {
 			c.tui.HandleTerminalInput(data)
 			c.report()

@@ -55,7 +55,7 @@ type Grant struct {
 // ActionContext is what a launcher action may use. Worker data arrives through Ask, bound to the grant.
 type ActionContext struct {
 	Grant  *Grant
-	UI     *TrustedUi
+	UI     UI
 	Origin *url.URL
 	// Ask asks the worker that holds the grant for data (e.g. the text to copy); it fails once the grant is cancelled.
 	Ask func(kind string, payload any) (any, error)
@@ -65,6 +65,16 @@ type ActionContext struct {
 	SendInput func(data string)
 	// ReleaseTerminal lends the real terminal to a local program; worker IO stays suspended until run returns.
 	ReleaseTerminal func(run func() error) error
+}
+
+// UI is the launcher-drawn UI an action uses (TrustedUi; a test's recorder).
+type UI interface {
+	// Confirm shows a consent screen and reports whether it was confirmed.
+	Confirm(request ConsentRequest) bool
+	// Notice shows a one-line summary for d.
+	Notice(text string, d time.Duration)
+	// Pick is the local file picker.
+	Pick(title, start string) (string, bool)
 }
 
 // ConsentContext is what a C action's consent sees.
