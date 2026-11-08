@@ -5174,13 +5174,27 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-command.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d6ff9aaedeeeea8a457810bc45a3b85e76c60ed376213d4e818097942aeae50d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d6ff9aaedeeeea8a457810bc45a3b85e76c60ed376213d4e818097942aeae50d",
+      "evidence": [
+        "coding/mcpext/cli_upstream_test.go",
+        "coding/mcpext/cli_carry_test.go",
+        "coding/mcpext/cli_test.go"
+      ],
+      "rationale": "All 12 cases of `pi mcp` run through mcpext.RunMcpCommand with Pi's arguments, servers and expected output (cli_upstream_test.go cites each Pi line; the three cases of Pi be15fe3c and the auth.provider case of Pi 4d72d05bc are in cli_carry_test.go and cli_test.go). Checked case by case against the Pi source at c23b9ec1: every expected literal is present; the Pi `spawn ... ENOENT` text is produced by mcp/stdio_spawn_test.go's Node-style spawn error."
     },
     {
       "path": "packages/coding-agent/test/mcp-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1c19068515f76a7b089accf09c554eb3b117955e0d383b733c36188ea9352463"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1c19068515f76a7b089accf09c554eb3b117955e0d383b733c36188ea9352463",
+      "evidence": [
+        "coding/mcpext/config_test.go",
+        "coding/mcpext/connection_test.go",
+        "coding/mcpext/servers_section_test.go",
+        "coding/mcpext/tools_test.go",
+        "coding/mcpext/extension_test.go"
+      ],
+      "rationale": "All 28 cases run in coding/mcpext (config, connections, servers section, tools, resources) with Pi's inputs and expectations; each Go case cites its Pi title. Checked against the Pi source at c23b9ec1: every case title has a Go counterpart and every short expected literal is present."
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
@@ -5195,8 +5209,14 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-refresh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4da6b73debf1bc4d48d4ebc38521123f6553263854987fc7a80f5a0a6626e7b3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4da6b73debf1bc4d48d4ebc38521123f6553263854987fc7a80f5a0a6626e7b3",
+      "evidence": [
+        "coding/mcpext/oauth_refresh_test.go",
+        "coding/mcpext/oauth_cimd_test.go",
+        "mcp/oauth/sign_in_pi_test.go"
+      ],
+      "rationale": "All 15 cases run in coding/mcpext (refresh once across processes, waiting for a running refresh, issuer check, scope, metadata URL, the client ID metadata document cases) and mcp/oauth/sign_in_pi_test.go (cancelling a sign-in that waits for another process's refresh), against the CompleteMcpSignIn and McpSignInKind API of fix/mcp-gaps."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-store.test.ts",
