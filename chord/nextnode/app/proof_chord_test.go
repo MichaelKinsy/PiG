@@ -78,6 +78,7 @@ func TestStartWorkerMakesItsDirectoryAndStoresPrivate(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("modes are not enforced on Windows")
 	}
+	var _ func(WorkerOptions) = StartWorker
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
 	p1 := holdNotes(t, s, "p1")
 	defer p1.Release()

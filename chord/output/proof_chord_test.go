@@ -35,7 +35,7 @@ func TestOutputBufferKeepsTheHeadOrTheTailWholeLinesAndCountsWhatItDropped(t *te
 }
 
 func TestOutputBufferJoinsACharacterSplitAcrossByteChunks(t *testing.T) {
-	buffer := NewOutputBuffer(OutputLimits{MaxBytes: 100, MaxLines: 10, Retain: "head"})
+	var buffer *OutputBuffer = NewOutputBuffer(OutputLimits{MaxBytes: 100, MaxLines: 10, Retain: "head"})
 	buffer.PushBytes([]byte{0xc3})
 	buffer.PushBytes([]byte{0xa9, 'x'})
 	buffer.End()

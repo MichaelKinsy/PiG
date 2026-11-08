@@ -74,6 +74,7 @@ func TestLoadedFacetsLeavesAFailedPluginOutAndReloadsOnlyWhatChanged(t *testing.
 		}}
 	}
 	broken := errors.New("script failed")
+	var loaded *LoadedFacets
 	loaded, report, err := LoadFacets(h, nil, []SetEntry{entry("a", "d1", nil), entry("b", "d1", broken)}, bg)
 	if err != nil {
 		t.Fatal(err)

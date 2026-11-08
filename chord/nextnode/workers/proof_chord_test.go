@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 // entry is WorkerMain), the start message reaches the app's function, and the worker answers its load and goes idle.
 
 func TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall(t *testing.T) {
+	var _ func(func(WorkerStart, context.Context) (*WorkerResult, error), WorkerMainOptions) = WorkerMain
 	f := newFleet(t, fleetOptions{})
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()

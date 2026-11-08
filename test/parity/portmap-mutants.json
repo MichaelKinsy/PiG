@@ -5517,6 +5517,16 @@
    "file": "chord/watch_impl.go",
    "old": "\tif call.Kind == WatchCallFailed {\n",
    "new": "\tif call.Kind != WatchCallFailed {\n"
+  },
+  {
+   "file": "chord/watch.go",
+   "old": "\tWatchEnded         WatchEndKind = \"ended\"\n",
+   "new": "\tWatchEnded         WatchEndKind = \"ended \"\n"
+  },
+  {
+   "file": "chord/watch.go",
+   "old": "\tWatchCallFailed WatchCallKind = \"failed\"\n",
+   "new": "\tWatchCallFailed WatchCallKind = \"failed \"\n"
   }
  ],
  "packages/chord/src/sync/remote.ts": [
@@ -5847,6 +5857,90 @@
    "file": "chord/nextnode/tui/tui_launcher.go",
    "old": "\tif l.sockets[id] != socket {\n",
    "new": "\tif l.sockets[id] == socket {\n"
+  }
+ ],
+ "packages/chord/src/store/outbox.ts": [
+  {
+   "file": "chord/next/store/outbox.go",
+   "old": "\t\t\t`SELECT seq, format, next_id, writes FROM `+TableOutbox+` WHERE seq > ? ORDER BY seq LIMIT ?`,\n",
+   "new": "\t\t\t`SELECT seq, format, next_id, writes FROM `+TableOutbox+` WHERE seq >= ? ORDER BY seq LIMIT ?`,\n"
+  }
+ ],
+ "packages/chord/src/store/expression.ts": [
+  {
+   "file": "chord/next/store/expression.go",
+   "old": "\t\treturn typed, true\n",
+   "new": "\t\treturn typed, false\n"
+  }
+ ],
+ "packages/chord/src/store/adapter.ts": [
+  {
+   "file": "chord/next/store/adapter.go",
+   "old": "\tif err != nil || stored == nil {\n",
+   "new": "\tif err != nil && stored == nil {\n"
+  }
+ ],
+ "packages/chord/src/node/http/router.ts": [
+  {
+   "file": "chord/nextnode/http/router.go",
+   "old": "\t\t\t\tcontributed = true\n",
+   "new": "\t\t\t\tcontributed = false\n"
+  }
+ ],
+ "packages/chord/src/contracts/schema.ts": [
+  {
+   "file": "chord/next/contracts/schema.go",
+   "old": "\t\t\tok = ok || name == option.name\n",
+   "new": "\t\t\tok = ok || name != option.name\n"
+  }
+ ],
+ "packages/chord/src/surfaces/loaded.ts": [
+  {
+   "file": "chord/next/surfaces/surfaces_loaded.go",
+   "old": "\t\tif entry.Digest != nil && has && *entry.Digest == loaded.digest {\n",
+   "new": "\t\tif entry.Digest != nil || has && *entry.Digest == loaded.digest {\n"
+  }
+ ],
+ "packages/chord/src/node/app/files.ts": [
+  {
+   "file": "chord/nextnode/app/files.go",
+   "old": "\t\tuploads = 64\n",
+   "new": "\t\tuploads = 63\n"
+  }
+ ],
+ "packages/chord/src/node/surfaces/web.ts": [
+  {
+   "file": "chord/nextnode/surfaces/surfaces_web.go",
+   "old": "`<link rel=\"stylesheet\" href=\"`+href+`\">`",
+   "new": "`<link rel=stylesheet href=\"`+href+`\">`"
+  }
+ ],
+ "packages/chord/src/node/app/worker.ts": [
+  {
+   "file": "chord/nextnode/app/worker.go",
+   "old": "\tif err := PrivateStore(storePath); err != nil {\n",
+   "new": "\tif err := error(nil); err != nil {\n"
+  }
+ ],
+ "packages/chord/src/node/workers/main.ts": [
+  {
+   "file": "chord/nextnode/workers/workers_main.go",
+   "old": "\tw.port.sendControlThen(payload, func() { exitProcess(1) })\n",
+   "new": "\tw.port.sendControlThen(payload, func() { exitProcess(2) })\n"
+  }
+ ],
+ "packages/chord/src/node/plugins/plugins.ts": [
+  {
+   "file": "chord/nextnode/plugins/plugins_plugins.go",
+   "old": "\t\t\tscripts, ok = set.values(), true\n",
+   "new": "\t\t\tscripts, ok = set.values(), false\n"
+  }
+ ],
+ "packages/chord/src/node/app/layout.ts": [
+  {
+   "file": "chord/nextnode/app/layout.go",
+   "old": "\tfor _, name := range []string{path, path + \"-wal\", path + \"-shm\"} {\n",
+   "new": "\tfor _, name := range []string{path, path + \"-shm\"} {\n"
   }
  ]
 }

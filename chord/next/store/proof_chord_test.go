@@ -132,9 +132,23 @@ func TestStepRunCountedReturnsTheRowsAStatementChangedAndCountsIt(t *testing.T) 
 	if statements != 1 {
 		t.Fatalf("the step counted %d statements after one RunCounted, want 1", statements)
 	}
-	step := NewStep(nil, 1, nil, nil)
-	if step.Statements != 0 {
-		t.Fatalf("a new step has run %d statements", step.Statements)
+	database := memoryStore(t).db
+	err := database.Transaction(func(executor sqlite.SqliteExecutor) error {
+		step := NewStep(executor, 1, nil, nil)
+		if step.Statements != 0 {
+			t.Fatalf("a new step has run %d statements", step.Statements)
+		}
+		if _, err := step.RunCounted("CREATE TABLE z (n INTEGER)"); err != nil {
+			return err
+		}
+		inserted, err := step.RunCounted("INSERT INTO z VALUES (1), (2), (3)")
+		if err != nil || inserted != 3 || step.Statements != 2 {
+			t.Fatalf("RunCounted of an insert of three rows = %d, %v after %d statements; want 3 after 2", inserted, err, step.Statements)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
