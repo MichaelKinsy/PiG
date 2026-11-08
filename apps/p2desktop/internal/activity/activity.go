@@ -77,6 +77,8 @@ type Answer struct {
 	Text      string
 	Message   *ai.AssistantMessage
 	Streaming bool
+	// Entry is the committed entry of the answer (nil while it streams): what `/tree` branches from.
+	Entry *int
 }
 
 // ItemKey names the item.
@@ -319,7 +321,7 @@ func runItems(run []transcript.Item, working bool, after string) []Item {
 	notice := response != nil && response.Message != nil && !response.Streaming &&
 		(response.Message.StopReason == ai.StopReasonError || response.Message.StopReason == ai.StopReasonAborted || response.Message.StopReason == ai.StopReasonLength)
 	if response != nil && (answer != nil || notice) {
-		ans := Answer{Key: "answer:" + response.Key, Message: response.Message, Streaming: response.Streaming}
+		ans := Answer{Key: "answer:" + response.Key, Message: response.Message, Streaming: response.Streaming, Entry: response.EntryID}
 		if answer != nil {
 			ans.Key, ans.Text = answer.key, answer.text
 		}

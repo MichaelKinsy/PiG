@@ -44,10 +44,12 @@ type Group struct {
 	Count int
 }
 
-// Item is one line of the sessions list: a group's header (Group set) or a session (Row set).
+// Item is one line of the sessions list: a group's header (Group set), a session (Row set) or a branch under its session
+// (Branch set, ExpandBranches).
 type Item struct {
-	Group *Group
-	Row   *Row
+	Group  *Group
+	Row    *Row
+	Branch *BranchItem
 }
 
 // ShortPath is the web's shortPath: the home directory as `~`.

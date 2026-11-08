@@ -202,3 +202,39 @@ func TestErrorsOffTheFrameAreToastedByTheFrame(t *testing.T) {
 	go app.toastError(errors.New("sign-in refused"))
 	until(t, tt, "the toast", func() bool { return tt.HasText("sign-in refused") })
 }
+
+// TestBranchFromAMessage: "Branch from here" on the user's message puts its text back in the prompt, the session then has two
+// branches, the drawer lists them behind the count, and choosing the first switches the chat back to the full conversation.
+func TestBranchFromAMessage(t *testing.T) {
+	app, tt := startApp(t)
+	until(t, tt, "the empty list", func() bool { return tt.HasText("No sessions yet.") })
+	id, err := app.sessions.Create(t.TempDir(), "branching")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.setSel(id)
+	until(t, tt, "the chat", func() bool { return tt.HasText("Say something to start.") })
+	app.draftText = "first words"
+	tt.Frame()
+	if err := tt.Click("Send"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the answer", func() bool { return tt.HasText("Echo: first words") && !tt.HasText("Stop") && !tt.HasText("Working…") })
+	if err := tt.Click("Branch from here"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the message back in the prompt, the session on a new branch", func() bool {
+		app.mu.Lock()
+		draft := app.draftText
+		app.mu.Unlock()
+		return draft == "first words" && tt.HasText("Say something to start.") && tt.HasText("2 branches")
+	})
+	if err := tt.Click("2 branches"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "the branches", func() bool { return tt.HasText("current") })
+	if err := app.treeOf(app.host).Select(id, 1); err != nil {
+		t.Fatal(err)
+	}
+	until(t, tt, "back on the full conversation", func() bool { return tt.HasText("Echo: first words") })
+}
