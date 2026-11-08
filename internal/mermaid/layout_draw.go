@@ -57,12 +57,7 @@ func drawBox(c *canvas, p placed, lines []string, sh shape, mirrored bool) {
 		for cx := x; cx <= right; cx++ {
 			i := c.idx(cx, cy)
 			c.occupied[i] = 1
-			if c.curTag != "" {
-				c.tag[i] = c.curTag
-			}
-			if c.curHref != "" {
-				c.href[i] = c.curHref
-			}
+			c.stamp(i)
 		}
 	}
 
