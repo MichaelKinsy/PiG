@@ -4,6 +4,7 @@ package daemon
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,7 +27,16 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 	if read.SetReadDeadline(time.Now()) == nil {
 		t.Fatal("a blocking inherited pipe is already in the poller; the test has nothing to prove")
 	}
+	// A second holder of the open file description, as a parent shell is: it sees the mode the daemon sets.
+	holder, err := unix.FcntlInt(uintptr(fds[0]), unix.F_DUPFD_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unix.Close(holder)
 	moved, restore := pollable(read)
+	if flags, err := unix.FcntlInt(uintptr(holder), unix.F_GETFL, 0); err != nil || flags&unix.O_NONBLOCK == 0 {
+		t.Fatalf("the other holder does not see the description non-blocking: flags %#x, %v", flags, err)
+	}
 	if err := moved.SetReadDeadline(time.Now().Add(20 * time.Millisecond)); err != nil {
 		t.Fatalf("the moved descriptor is not in the poller: %v", err)
 	}
@@ -44,8 +54,10 @@ func TestPollableMovesInheritedPipesIntoThePoller(t *testing.T) {
 		t.Fatalf("read through the moved descriptor: %d %v %q", n, err, buffer)
 	}
 	restore()
-	if flags, err := unix.FcntlInt(uintptr(fds[0]), unix.F_GETFL, 0); err != nil || flags&unix.O_NONBLOCK != 0 {
-		t.Fatalf("the inherited descriptor was left non-blocking: flags %#x, %v", flags, err)
+	for name, fd := range map[string]int{"the inherited descriptor": fds[0], "the other holder": holder} {
+		if flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFL, 0); err != nil || flags&unix.O_NONBLOCK != 0 {
+			t.Fatalf("%s was left non-blocking: flags %#x, %v", name, flags, err)
+		}
 	}
 }
 
@@ -61,4 +73,48 @@ func TestPollableLeavesOtherFilesAlone(t *testing.T) {
 	if moved != file {
 		t.Fatal("a regular file was duplicated")
 	}
+}
+
+// TestWriteStderrWaitsOnAFullPipe: with 2>&1 the daemon's stderr is the description Serve made non-blocking, and Go's
+// stderr (a blocking-mode file) answers a full pipe with EAGAIN. A message must wait for room, as Pi's eprintln does.
+func TestWriteStderrWaitsOnAFullPipe(t *testing.T) {
+	var fds [2]int
+	if err := unix.Pipe(fds[:]); err != nil {
+		t.Fatal(err)
+	}
+	// Blocking-mode files, as os.Stderr is, on a description that is then made non-blocking by the other holder.
+	read, write := os.NewFile(uintptr(fds[0]), "read"), os.NewFile(uintptr(fds[1]), "write")
+	defer read.Close()
+	defer write.Close()
+	if err := unix.SetNonblock(fds[1], true); err != nil {
+		t.Fatal(err)
+	}
+	filler := make([]byte, 4096)
+	for {
+		if _, err := unix.Write(fds[1], filler); err != nil {
+			break
+		}
+	}
+	const message = "thread panicked: boom\n"
+	done := make(chan struct{})
+	go func() {
+		writeStderr(write, message)
+		close(done)
+	}()
+	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-done:
+		t.Fatal("the message was dropped while the pipe was full")
+	default:
+	}
+	var got []byte
+	buffer := make([]byte, 1<<16)
+	for !strings.HasSuffix(string(got), message) {
+		n, err := read.Read(buffer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, buffer[:n]...)
+	}
+	<-done
 }
