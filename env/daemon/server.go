@@ -804,6 +804,10 @@ func (s seen) Read(buffer []byte) (int, error) {
 // refuses with EMFILE at about 1020 handles on a default shell succeeds here up to the hard limit or maxHandles.
 func Serve(input io.Reader, output io.Writer, token string, options Options) error {
 	defaultChildSignals()
+	input, closeInput := pollableReader(input)
+	defer closeInput()
+	output, closeOutput := pollableWriter(output)
+	defer closeOutput()
 	// A client that stops the daemon (Node's `child.kill()`), or a hangup, leaves nothing running either. The signals are
 	// taken before anything starts, so none is lost to their default action.
 	exitSignals, stopExitSignals := notifyExitSignals()
