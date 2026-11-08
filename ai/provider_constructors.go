@@ -88,6 +88,11 @@ func QwenTokenPlanIndividualProvider() *ModelsProvider {
 	return builtinProvider("qwen-token-plan-individual")
 }
 
+// QwenTokenPlanIndividualCnProvider is the built-in "qwen-token-plan-individual-cn" provider.
+func QwenTokenPlanIndividualCnProvider() *ModelsProvider {
+	return builtinProvider("qwen-token-plan-individual-cn")
+}
+
 // VercelAIGatewayProvider is the built-in "vercel-ai-gateway" provider.
 func VercelAIGatewayProvider() *ModelsProvider { return builtinProvider("vercel-ai-gateway") }
 

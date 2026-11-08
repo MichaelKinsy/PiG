@@ -562,6 +562,8 @@ func (w *CacheWarmer) sendRefresh(run *cacheWarmingRun, extensionOverride bool) 
 	}()
 	options := run.Options
 	options.MaxTokens = 1
+	// The warm request repeats the last request; it must not replace the conversation's continuation state (cache-warmer.ts:336).
+	options.DisableContinuation = true
 	stream, err := w.stream(ai.WithProviderMaxRetries(run.ctx, 0), run.Model, run.Context, options)
 	if err != nil {
 		return true

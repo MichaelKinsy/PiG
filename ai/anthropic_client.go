@@ -273,6 +273,8 @@ type anthropicBetaInputs struct {
 	// nativeToolChanges reports that the request carries tool_addition or
 	// tool_removal blocks and deferred tool declarations.
 	nativeToolChanges bool
+	// messageThreads reports that the session uses message threads.
+	messageThreads bool
 }
 
 // getBetaFeatures mirrors upstream getBetaFeatures. A configured anthropic-beta
@@ -320,6 +322,9 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 	}
 	if inputs.nativeToolChanges {
 		features = append(features, inlineToolsBeta)
+	}
+	if inputs.messageThreads {
+		features = append(features, messageThreadsBeta)
 	}
 	return uniqueStrings(features)
 }
