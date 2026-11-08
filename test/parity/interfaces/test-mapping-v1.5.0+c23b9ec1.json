@@ -3529,8 +3529,8 @@
       ],
       "rationale": "42 of the 44 upstream cases run in store_test.go and the group commit cases in group_commit_test.go, among them 'rejects a grouped commit whose admission throws with that error' (Admit is recovered per commit; only that commit rejects, with the panic value, an error itself or a ThrownError) and 'rejects a group's commits with what its turn throws after COMMIT' (the host listener's panic rejects the commits not settled, with that error itself). The other two are drafted as designed out, DRAFT FOR OWNER REVIEW (no owner approval recorded yet; they stay open until the owner decides), because each asserts what a TypeScript metrics adapter throws and Go's callbacks do not throw: Both 'stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats' and '... after a lone commit's COMMIT too': telemetry.TelemetryCounter.Add returns nothing, so an adapter's failure is a panic; the store stops, memory takes the whole group or the lone commit (it is durable), no seq repeats, and later commits and reads reject storage_failed, as in Pi. The differences are the caller of the commit whose turn it was: Pi rejects its promise with storage_failed, Go re-panics in the caller of the group's first commit (or the lone commit), and the others of the group reject storage_failed. The panicking-adapter cases 'stops the store when a metrics adapter panics after a group's COMMIT' and '... after a lone commit's COMMIT too' in group_commit_test.go assert the Go form. Pi's int() key typing (d7704516e) is TypeScript typing and has no case.",
       "designedOutCases": [
-        "group commit \u203a stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
-        "group commit \u203a stops the store when a metrics adapter throws after a lone commit's COMMIT too"
+        "group commit › stops the store when a metrics adapter throws after a group's COMMIT: memory takes the whole group, no seq repeats",
+        "group commit › stops the store when a metrics adapter throws after a lone commit's COMMIT too"
       ]
     },
     {
@@ -7720,13 +7720,23 @@
     },
     {
       "path": "packages/durable/test/codemode-models.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:773033a5f53a098436affe8cc9af98b589f8ac221951a73f9dfb86a9ff997b1a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:773033a5f53a098436affe8cc9af98b589f8ac221951a73f9dfb86a9ff997b1a",
+      "evidence": [
+        "durable/codemode/models_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e6266a8517742be4bbd53b18e72e11a00f1d2fa14132fd93c25714c3b3b9d38d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e6266a8517742be4bbd53b18e72e11a00f1d2fa14132fd93c25714c3b3b9d38d",
+      "evidence": [
+        "codemode/memlimit_bench_test.go",
+        "coding/codemode_output_summary_test.go",
+        "coding/codemode_session_harness_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/conversation-transcript.test.ts",
@@ -7791,8 +7801,13 @@
     },
     {
       "path": "packages/durable/test/harness-after-run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a5139218d51a01a5035b351fe8f9af768d618b11ba4c2dac821fb36d675eb590"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a5139218d51a01a5035b351fe8f9af768d618b11ba4c2dac821fb36d675eb590",
+      "evidence": [
+        "durable/core/driver/harness_lanec_core_test.go",
+        "durable/harness/harness_after_run_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-blocked.test.ts",
@@ -7821,8 +7836,13 @@
     },
     {
       "path": "packages/durable/test/harness-cancellation-barrier.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4ecfb6d2eb98e9b072c558d11b7b22f763ad11a48ee6ef201b53328d4ca66ed2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4ecfb6d2eb98e9b072c558d11b7b22f763ad11a48ee6ef201b53328d4ca66ed2",
+      "evidence": [
+        "durable/core/session/sched_restart_test.go",
+        "durable/harness/harness_cancellation_barrier_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-compaction.test.ts",
@@ -7868,8 +7888,14 @@
     },
     {
       "path": "packages/durable/test/harness-context.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ddb45ba6d40d139f20bd9d5b31ecf0e6614c1b94614c9ddebb799bb06bc908c2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ddb45ba6d40d139f20bd9d5b31ecf0e6614c1b94614c9ddebb799bb06bc908c2",
+      "evidence": [
+        "durable/harness/context_extend_test.go",
+        "durable/harness/context_lead_test.go",
+        "durable/harness/harness_context_at_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-continue.test.ts",
@@ -7951,8 +7977,14 @@
     },
     {
       "path": "packages/durable/test/harness-group-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:980be6fc6b5ec19dfaaac0fa860f43104e95089f28d97ad3d409946464d18718"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:980be6fc6b5ec19dfaaac0fa860f43104e95089f28d97ad3d409946464d18718",
+      "evidence": [
+        "durable/core/group_commit_test.go",
+        "durable/harness/harness_group_commit_support_test.go",
+        "durable/harness/harness_group_commit_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-hook-reads.test.ts",
@@ -8031,8 +8063,13 @@
     },
     {
       "path": "packages/durable/test/harness-lifecycle.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ed0a3bd2725a64ad77a004b2202c0f4565a8f92dbdc9e235bffa676c6e406283"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ed0a3bd2725a64ad77a004b2202c0f4565a8f92dbdc9e235bffa676c6e406283",
+      "evidence": [
+        "durable/core/driver/harness_lifecycle_core_test.go",
+        "durable/harness/harness_lifecycle_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-live-deltas.test.ts",
@@ -8045,18 +8082,35 @@
     },
     {
       "path": "packages/durable/test/harness-nested-tools-restart.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d7fde5c0423cb5f2339ad056ecdc629db37d897c7c5f0e6d7e2133ba7332e843"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d7fde5c0423cb5f2339ad056ecdc629db37d897c7c5f0e6d7e2133ba7332e843",
+      "evidence": [
+        "durable/core/driver/tool_nested_restart_core_test.go",
+        "durable/harness/tool_nested_records_test.go",
+        "durable/harness/tool_nested_restart_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-nested-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d16b5719851e89d329cf2a46ecd82857b59e17ae5cf77448afc7951a0b558503"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d16b5719851e89d329cf2a46ecd82857b59e17ae5cf77448afc7951a0b558503",
+      "evidence": [
+        "durable/core/driver/harness_nested_core_test.go",
+        "durable/core/driver/harness_nested_slots_core_test.go",
+        "durable/harness/tool_nested_calls_doc_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-observers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:10da283d7ad1e19f2c904161bd4b4abee2ebbcd18f017c0d3a51388fda7ea899"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:10da283d7ad1e19f2c904161bd4b4abee2ebbcd18f017c0d3a51388fda7ea899",
+      "evidence": [
+        "durable/core/session/sched_registry_blocked_test.go",
+        "durable/harness/harness_observers_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-ownership.test.ts",
@@ -8075,8 +8129,12 @@
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4f5cb1a0e08ffe0dcd677110be43044d7fcfd89455610adfea3d8bde22061648"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4f5cb1a0e08ffe0dcd677110be43044d7fcfd89455610adfea3d8bde22061648",
+      "evidence": [
+        "durable/harness/partial_changes_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-prompt.test.ts",
@@ -8101,8 +8159,13 @@
     },
     {
       "path": "packages/durable/test/harness-registry-reader.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:64f6a318f5d6aee865438ef9fd595d7f65c5f81a29d0c5011b84d06d8fbf124f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:64f6a318f5d6aee865438ef9fd595d7f65c5f81a29d0c5011b84d06d8fbf124f",
+      "evidence": [
+        "durable/harness/registry_reader_host_test.go",
+        "durable/harness/registry_reader_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-registry.test.ts",
@@ -8188,18 +8251,35 @@
     },
     {
       "path": "packages/durable/test/harness-storage-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f4c1922d9e535d84242bfc35cff145854f4ec2cd134d40df06d56d0d7035a4f7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f4c1922d9e535d84242bfc35cff145854f4ec2cd134d40df06d56d0d7035a4f7",
+      "evidence": [
+        "durable/core/driver/safe_report_core_test.go",
+        "durable/harness/harness_listener_errors_test.go",
+        "durable/harness/harness_storage_failure_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:71123331205e591a6a8fe2a7b9e77e40aef0be85311cb9082e0a3de0e995a7ab"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:71123331205e591a6a8fe2a7b9e77e40aef0be85311cb9082e0a3de0e995a7ab",
+      "evidence": [
+        "durable/core/driver/harness_nested_core_test.go",
+        "durable/core/driver/tool_structured_callers_core_test.go",
+        "durable/harness/tool_nested_records_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-structured.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:85abeebf6da8e8ad12cfdf2b567ff96b16120bd13b3df90bfc5afe908bf78b39"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:85abeebf6da8e8ad12cfdf2b567ff96b16120bd13b3df90bfc5afe908bf78b39",
+      "evidence": [
+        "durable/core/session/sched_wait_test.go",
+        "durable/harness/harness_structured_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-submissions.test.ts",
@@ -8223,18 +8303,34 @@
     },
     {
       "path": "packages/durable/test/harness-task-graph.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f85efe1cb87822776192c8d94b5efe59f20a53fd823b2241ab1ea7a45612a21c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f85efe1cb87822776192c8d94b5efe59f20a53fd823b2241ab1ea7a45612a21c",
+      "evidence": [
+        "durable/core/driver/harness_task_graph_core_test.go",
+        "durable/harness/harness_task_graph_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-tasks-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:eef85fe01325a3aaae6e5813a134674f5998f3bcdd9db82d3e1deed696e37550"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:eef85fe01325a3aaae6e5813a134674f5998f3bcdd9db82d3e1deed696e37550",
+      "evidence": [
+        "durable/harness/harness_tasks_recovery_test.go",
+        "durable/harness/harness_tasks_times_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-tasks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:167fa91d055d3660832344cf54c4afa5af7e732e7e8af021f59976262f82c8b6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:167fa91d055d3660832344cf54c4afa5af7e732e7e8af021f59976262f82c8b6",
+      "evidence": [
+        "durable/core/driver/fault_tasks_core_test.go",
+        "durable/core/driver/harness_tasks_core_test.go",
+        "durable/core/driver/harness_tasks_more_core_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-telemetry-options.test.ts",
@@ -8287,18 +8383,33 @@
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2bfa027a92ffdff6b3740711db496d58d3285883340f1988d5e1cde1c79dfe59"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2bfa027a92ffdff6b3740711db496d58d3285883340f1988d5e1cde1c79dfe59",
+      "evidence": [
+        "durable/harness/harness_tool_hooks_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-tools-recovery.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:73a8fc473b398463c50dbba0a9efc0cf1f251a37a0a0b7c6f40dc7978e48d230"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:73a8fc473b398463c50dbba0a9efc0cf1f251a37a0a0b7c6f40dc7978e48d230",
+      "evidence": [
+        "durable/core/turn/commit_progress_test.go",
+        "durable/harness/harness_coding_tools_test.go",
+        "durable/harness/harness_tools_recovery_group_commit_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a52bf251b091be766000210bbda10bc42c8b7f9c2021f4063d01451e4490ae6f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a52bf251b091be766000210bbda10bc42c8b7f9c2021f4063d01451e4490ae6f",
+      "evidence": [
+        "durable/core/driver/harness_provider_request_core_test.go",
+        "durable/harness/agent_regression_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-turn-limit.test.ts",
@@ -8311,8 +8422,14 @@
     },
     {
       "path": "packages/durable/test/harness-view-run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a920a476102f878f220836b5afce32c57ccb926decf23d1e2ecad001dcfaed70"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a920a476102f878f220836b5afce32c57ccb926decf23d1e2ecad001dcfaed70",
+      "evidence": [
+        "durable/core/driver/generation_abort_core_test.go",
+        "durable/core/driver/tool_structured_callers_core_test.go",
+        "durable/harness/harness_view_run_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/harness-view.test.ts",
@@ -8338,13 +8455,21 @@
     },
     {
       "path": "packages/durable/test/indexeddb-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f5ae29607626d01d79dcde877b6d0fb65272a17bcb796abf3d176c6a4e3202e8"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:f5ae29607626d01d79dcde877b6d0fb65272a17bcb796abf3d176c6a4e3202e8",
+      "evidence": [],
+      "rationale": "Pi c23b9ec1 changes only this file's Chord import lines. The suite runs the IndexedDB storage in a browser, which Go has no counterpart for (designed out with durable/src/storage/indexeddb.ts); the storage conformance cases it shares run on every Go storage."
     },
     {
       "path": "packages/durable/test/jsonl-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8ec8e4026789901469a2cc1ef63564a975bbb98ac5c6d06c162d01a626e21359"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8ec8e4026789901469a2cc1ef63564a975bbb98ac5c6d06c162d01a626e21359",
+      "evidence": [
+        "durable/storage/backend_reads_test.go",
+        "durable/storage/jsonl/jsonl_storage_test.go",
+        "durable/storage/jsonl/poisoned_storage_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/memory-storage.test.ts",
@@ -8384,13 +8509,23 @@
     },
     {
       "path": "packages/durable/test/session-adoption.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3d185c615fa6e39d8fea1276b0497430d8c86f22123904435608981db5945181"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3d185c615fa6e39d8fea1276b0497430d8c86f22123904435608981db5945181",
+      "evidence": [
+        "durable/session/session_adoption_internal_test.go",
+        "durable/session/session_adoption_jsonl_test.go",
+        "durable/session/session_adoption_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-cached-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:27699ec2e3b09b8ce92c49c7c98822758d1fd3245eadcfed8ccc01750622f1c0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:27699ec2e3b09b8ce92c49c7c98822758d1fd3245eadcfed8ccc01750622f1c0",
+      "evidence": [
+        "durable/session/cached_storage_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-checkpoints-migrations.test.ts",
@@ -8423,13 +8558,23 @@
     },
     {
       "path": "packages/durable/test/session-deferred-commits.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e3d7b5132cf5192e0b0ff69aa5356024769eb1359ef2a85a740deb7cd93d54e7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e3d7b5132cf5192e0b0ff69aa5356024769eb1359ef2a85a740deb7cd93d54e7",
+      "evidence": [
+        "durable/core/driver/session_deferred_commits_core_test.go",
+        "durable/core/session/held_test.go",
+        "durable/session/session_deferred_commits_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-definitions.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b7347699bc946373ca9bb2dcb788df63439e7ae730474fbf63a16efaf7e01158"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b7347699bc946373ca9bb2dcb788df63439e7ae730474fbf63a16efaf7e01158",
+      "evidence": [
+        "durable/session/session_definitions_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-document-retention.test.ts",
@@ -8447,8 +8592,14 @@
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0fdbef87e9a65600f81a7df30d755a5448331e141869448285e51995bc5c951c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0fdbef87e9a65600f81a7df30d755a5448331e141869448285e51995bc5c951c",
+      "evidence": [
+        "durable/core/driver/docs_core_test.go",
+        "durable/session/session_documents_test.go",
+        "durable/session/subscribe_close_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-forks.test.ts",
@@ -8475,28 +8626,55 @@
     },
     {
       "path": "packages/durable/test/session-group-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d7bc4cd24c9e08493c5434172fa28f022c0d6b490208730111375872b4b17511"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d7bc4cd24c9e08493c5434172fa28f022c0d6b490208730111375872b4b17511",
+      "evidence": [
+        "durable/core/group_commit_test.go",
+        "durable/core/session/writer_fanout_test.go",
+        "durable/session/group_commit_support_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:15f5844f84d68aa987f73df505260d6240954b27b01744e444eaa1c1363cc1a3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:15f5844f84d68aa987f73df505260d6240954b27b01744e444eaa1c1363cc1a3",
+      "evidence": [
+        "durable/core/driver/docs_core_watches_test.go",
+        "durable/session/session_observers_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f6a4bc2d2ffd571641a593795bfcdb5ba2f9e5281733f535541ed6f4cd34c031"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f6a4bc2d2ffd571641a593795bfcdb5ba2f9e5281733f535541ed6f4cd34c031",
+      "evidence": [
+        "durable/core/driver/docs_core_tables_test.go",
+        "durable/core/hops_host_refused_test.go",
+        "durable/session/session_tables_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/session-watches.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e38a489b35e796c88786db61868e621d831d93140f17dc1180c2555e20540a35"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e38a489b35e796c88786db61868e621d831d93140f17dc1180c2555e20540a35",
+      "evidence": [
+        "durable/core/driver/docs_core_watches_test.go",
+        "durable/session/session_watches_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/spec-usage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b83baf391825d0e65207d7ad6c8078d77375f0fe0afd843f56a884343bb139d4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b83baf391825d0e65207d7ad6c8078d77375f0fe0afd843f56a884343bb139d4",
+      "evidence": [
+        "durable/examples/spec_usage_upstream_test.go",
+        "durable/spec_usage_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/sqlite-cloudflare.test.ts",
@@ -8561,13 +8739,23 @@
     },
     {
       "path": "packages/durable/test/store-storage-commit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0c9a27e4a2e30a46081fe3b19e72b00ef81ef3667a04da20ce5eddf8ca3cf73a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0c9a27e4a2e30a46081fe3b19e72b00ef81ef3667a04da20ce5eddf8ca3cf73a",
+      "evidence": [
+        "durable/session/store_storage_publication_test.go",
+        "durable/storage/store/store_storage_commit_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/store-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9f06e4301173e03ca35ab2396357a73d7540b33370249e942764ec900c5d35a9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9f06e4301173e03ca35ab2396357a73d7540b33370249e942764ec900c5d35a9",
+      "evidence": [
+        "durable/storage/store/store_storage_host_test.go",
+        "durable/storage/store/store_storage_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/system-order-cache-e2e.test.ts",
@@ -8589,8 +8777,12 @@
     },
     {
       "path": "packages/durable/test/tool-search.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:228174069bea809e7a008c4d6f8bd245447f9f669909fd1bad79e41a1d8f42f4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:228174069bea809e7a008c4d6f8bd245447f9f669909fd1bad79e41a1d8f42f4",
+      "evidence": [
+        "durable/toolsearch/toolsearch_test.go#TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions"
+      ],
+      "rationale": "Pi 6d3e342b2 (#11850) adds one case, 'finds a tool by a parameter description behind a local reference, and not by unreferenced definitions'; ported under that name's Go form TestFindsAToolByAParameterDescriptionBehindALocalReferenceAndNotByUnreferencedDefinitions. The other change is the Chord import split."
     },
     {
       "path": "packages/durable/test/tools-images.test.ts",
@@ -8622,13 +8814,24 @@
     },
     {
       "path": "packages/durable/test/tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:44265beb50c2e905ac87d635b17ad7c1e7569c4b25a18e7e3ba1f38afb93e4f7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:44265beb50c2e905ac87d635b17ad7c1e7569c4b25a18e7e3ba1f38afb93e4f7",
+      "evidence": [
+        "ai/google_convert_tools_upstream_test.go",
+        "ai/openai_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/durable/test/types.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f49ef246a342a8f08112aa996413eac1ac54e26bf5bb655cbb052dd898295071"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f49ef246a342a8f08112aa996413eac1ac54e26bf5bb655cbb052dd898295071",
+      "evidence": [
+        "ai/catalog_options_upstream_test.go",
+        "ai/message_types_upstream_test.go",
+        "ai/models_typed_upstream_test.go"
+      ],
+      "rationale": "Pi c23b9ec1 changes only this test file's import lines (e9c0ff4d8, Chord v2 is the package's root: `@earendil-works/chord` names come from its `/context`, `/json`, `/delta` and `/watch` subpaths); no case, input or expectation changes. The Go twins named in evidence cover its cases and run green unchanged."
     },
     {
       "path": "packages/env/test/conformance.test.ts",
