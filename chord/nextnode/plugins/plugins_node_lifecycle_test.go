@@ -114,7 +114,7 @@ func TestNodeAnUncaughtExceptionIsPrintedOnStderrWithItsMappedStackAndEndsWithCo
 func TestNodeAThrownStringIsPrintedAsNodePrintsIt(t *testing.T) {
 	var out lifecycleOutput
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { throw "just text"; }, 0); }) };
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { setTimeout(() => { throw "just text"; }, 0); }) };
 	})`)
 	node := loadLifecycle(t, out.options(), script)
 	exit := exitOf(t, node)
@@ -154,7 +154,7 @@ func TestNodeAnUnhandledRejectionIsAnUncaughtExceptionAsNodesDefaultMakesIt(t *t
 		t.Run(each.name, func(t *testing.T) {
 			var out lifecycleOutput
 			script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-				module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { Promise.reject(`+each.reject+`); }, 0); }) };
+				module.exports = { default: require("@earendil-works/chord").defineFacet(() => { setTimeout(() => { Promise.reject(`+each.reject+`); }, 0); }) };
 			})`)
 			node := loadLifecycle(t, out.options(), script)
 			exit := exitOf(t, node)
@@ -175,7 +175,7 @@ func TestNodeAnUnhandledRejectionIsAnUncaughtExceptionAsNodesDefaultMakesIt(t *t
 func TestNodeAPluginsProcessExitEndsOnlyTheHostWithItsCode(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
 		const go = require("@acme/go");
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { go.gate().then(() => { process.exit(7); }); }) };
+		module.exports = { default: require("@earendil-works/chord").defineFacet(() => { go.gate().then(() => { process.exit(7); }); }) };
 	})`)
 	gate := make(chan struct{})
 	node, _, err := NewPluginRuntime(NodeOptions{OnOutput: func(NodeStream, []byte) {}}).Load(RuntimeLoad{
@@ -245,12 +245,11 @@ func TestNodeAPluginsInfiniteLoopEndsWithTheGoHostsHeartbeatOnTheLink(t *testing
 }
 
 // Not Pi's: Pi's `await reload()` is followed by `transported()` and `delivered()` (event-loop hops) before a test reads what a
-// host's watchers saw. Here the process boundary has no shared loop, so Reload waits itself: when it returns, every frame
-// the reload caused has been handled by the Go host the link is attached to and its watch listener entered, with no waiting by
-// the caller. The frames carry a 40 KiB label deflated by the Node host (RuntimeLoad.Compression) to a Go host without a
+// host's watchers saw. Here the process boundary has no shared loop, so the test waits for the frame of the restarted object
+// (Reload itself waits for the frames written before its reply). The frame carries a 40 KiB label deflated by the Node host (RuntimeLoad.Compression) to a Go host without a
 // compressor, which inflates asynchronously and holds the later messages of the link meanwhile: the case where the frames
 // are far behind the reply.
-func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenTheirPartsInflateAsynchronously(t *testing.T) {
+func TestEndToEndTheFramesAReloadCausedAreDeliveredAlsoWhenTheirPartsInflateAsynchronously(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes")
 	c := pcNew(t, root)
 	address := workerKind.Address(nil)
@@ -278,8 +277,10 @@ func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenThei
 	pcWrite(t, root, "notes", "label.ts", "export const label = \""+label+"\";\n")
 	c.waitMarks(t, "dirty notes", pcDirty("@test/notes"))
 	c.rollout(t, []RolloutStep{step}, c.build(t, c.Marks().Dirty...))
+	// The restarted object's new snapshot comes after the report (Pi's reload does not wait for the new attempt).
+	frames.count(t, 1)
 	if got := frames.all(); !reflect.DeepEqual(got, []delta.JsonValue{label}) {
-		t.Fatalf("frames when Rollout returned = %d frames, want the one with the new label (%d bytes)", len(got), len(label))
+		t.Fatalf("frames when the snapshot arrived = %d frames, want the one with the new label (%d bytes)", len(got), len(label))
 	}
 }
 
