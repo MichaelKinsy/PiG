@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // here is this directory: the API's modules are files of it.
@@ -47,8 +48,8 @@ func api() app.AppAPI {
 // kinds are the app's facet kinds: a plugin has one file per kind it runs on (`server.ts`, `worker.ts`).
 func kinds() []app.AppKindEntry {
 	return []app.AppKindEntry{
-		{Name: "server", Kind: app.AppKind{Platform: plugins.PlatformNode}},
-		{Name: "worker", Kind: app.AppKind{Platform: plugins.PlatformNode}},
+		{Name: "server", Kind: app.AppKind{Platform: model.PlatformNode}},
+		{Name: "worker", Kind: app.AppKind{Platform: model.PlatformNode}},
 	}
 }
 
@@ -90,7 +91,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return err
 	}
 	origin := link.Scheme + "://" + link.Host
-	fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
+	_, _ = fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return err
@@ -100,13 +101,13 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		names = append(names, entry.Name())
 	}
 	slices.Sort(names)
-	fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
-	signedOut, err := http.Get(origin)
+	_, _ = fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
+	signedOut, err := http.Get(origin) //nolint:gosec // G107: origin is the loopback address of the server this program just started
 	if err != nil {
 		return err
 	}
 	_ = signedOut.Body.Close()
-	fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
 	signIn, err := http.Post(origin+app.OwnerPath, "application/json", strings.NewReader(`{"token":"`+link.Fragment+`"}`))
 	if err != nil {
 		return err
@@ -117,7 +118,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return fmt.Errorf("the owner's sign-in set no cookie (status %d)", signIn.StatusCode)
 	}
 	cookie := cookies[0]
-	fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
+	_, _ = fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
 	request, err := http.NewRequest(http.MethodGet, origin, nil)
 	if err != nil {
 		return err
@@ -128,10 +129,10 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return err
 	}
 	_ = signedIn.Body.Close()
-	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 
 	if serve {
-		fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
+		_, _ = fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
 		interrupted, stop := signal.NotifyContext(ctx, os.Interrupt)
 		defer stop()
 		<-interrupted.Done()
@@ -140,14 +141,18 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 }
 
 func main() {
+	if err := runInTempDir(); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "todo:", err)
+		os.Exit(1)
+	}
+}
+
+// runInTempDir runs the example in a data directory of its own, removed when it ends.
+func runInTempDir() error {
 	base, err := os.MkdirTemp("", "todo-")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "todo:", err)
-		os.Exit(1)
+		return err
 	}
 	defer func() { _ = os.RemoveAll(base) }()
-	if err := run(context.Background(), base, os.Stdout, len(os.Args) > 1 && os.Args[1] == "--serve"); err != nil {
-		fmt.Fprintln(os.Stderr, "todo:", err)
-		os.Exit(1)
-	}
+	return run(context.Background(), base, os.Stdout, len(os.Args) > 1 && os.Args[1] == "--serve")
 }

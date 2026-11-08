@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -57,7 +57,7 @@ func chordish() map[string]string {
 // scriptOf is the bundle's script text.
 func scriptOf(bundle *BaseBundle) string { return string(bundle.Files[bundle.Script].Bytes) }
 
-func sortedKeys(inputs plugins.BaseInputs) []string {
+func sortedKeys(inputs model.BaseInputs) []string {
 	keys := make([]string, 0, len(inputs))
 	for key := range inputs {
 		keys = append(keys, key)
@@ -83,8 +83,8 @@ func TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWith
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := bundle.Inputs[source]; got != plugins.ContentHash(bytes) {
-			t.Fatalf("%s: hash = %s, want %s", platform, got, plugins.ContentHash(bytes))
+		if got := bundle.Inputs[source]; got != model.ContentHash(bytes) {
+			t.Fatalf("%s: hash = %s, want %s", platform, got, model.ContentHash(bytes))
 		}
 		if !strings.Contains(scriptOf(bundle), `"source"`) {
 			t.Fatalf("%s: the script does not contain the source: %s", platform, scriptOf(bundle))

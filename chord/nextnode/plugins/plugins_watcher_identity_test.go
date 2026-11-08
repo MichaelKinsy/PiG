@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Not a port of a case of upstream's tests, cases of its behavior (the review of this slice ran them on Pi's `PluginWatcher`):
@@ -34,7 +36,7 @@ func TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsThe
 	dir := filepath.Join(top, "d")
 	file := filepath.Join(dir, "entry.ts")
 	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
-	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.recordBase(model.BaseInputs{file: hashOf("A")})
 	f.settled()
 	if err := os.Link(file, filepath.Join(top, "g.ts")); err != nil {
 		t.Fatal(err)
@@ -77,7 +79,7 @@ func TestTheBaseMarkIsNotSetByADirectoryMovedAwayAndBackAndItsWatchesGoOn(t *tes
 	dir := filepath.Join(top, "d")
 	file := filepath.Join(dir, "entry.ts")
 	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
-	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.recordBase(model.BaseInputs{file: hashOf("A")})
 	f.settled()
 	f.run(func() {
 		if err := os.Rename(dir, filepath.Join(top, "x")); err != nil {
@@ -136,7 +138,7 @@ func TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName(t
 	dir := filepath.Join(top, "d")
 	file := filepath.Join(dir, "entry.ts")
 	writeFiles(t, dir, map[string]string{"entry.ts": "A"})
-	f.recordBase(BaseInputs{file: hashOf("A")})
+	f.recordBase(model.BaseInputs{file: hashOf("A")})
 	f.settled()
 	f.run(func() {
 		if err := os.Rename(dir, filepath.Join(top, "old")); err != nil {

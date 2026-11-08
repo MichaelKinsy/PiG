@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	nodesurfaces "github.com/MichaelKinsy/PiG/chord/nextnode/surfaces"
 )
 
@@ -37,7 +37,7 @@ func plainPage(_ chordhttp.HttpRequest, assets nodesurfaces.PageAssets) (string,
 
 func withPublicWeb(entry string, page func(chordhttp.HttpRequest, nodesurfaces.PageAssets) (string, error)) func(*AppOptions) {
 	return func(o *AppOptions) {
-		o.Kinds = append(o.Kinds, AppKindEntry{Name: "web", Kind: AppKind{Platform: plugins.PlatformBrowser}})
+		o.Kinds = append(o.Kinds, AppKindEntry{Name: "web", Kind: AppKind{Platform: model.PlatformBrowser}})
 		o.Web = &AppWeb{Entry: entry, Page: page, Public: true}
 	}
 }

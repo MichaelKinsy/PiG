@@ -19,6 +19,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/test/next-node/workers/support.ts: a server routing `Session` to forked fixture workers, the
@@ -413,8 +415,8 @@ func newPlugins(t testing.TB, root string) *plugins.Plugins {
 		t.Fatal(err)
 	}
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots:   []plugins.PluginRoot{{Path: root}},
-		Kinds:   []plugins.KindEntry{{Name: "worker", Definition: plugins.KindDefinition{Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}}},
+		Build: build.BuildFacet, Roots: []model.PluginRoot{{Path: root}},
+		Kinds:   []plugins.KindEntry{{Name: "worker", Definition: plugins.KindDefinition{Platform: model.PlatformNode, HostPackages: []string{"@earendil-works/chord"}}}},
 		OnError: func(plugins.PluginsError) {},
 	}, background)
 	t.Cleanup(component.Close)

@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/next-node/workers/workers.ts. The workers component (slice 10 §3, §4; decision "Slice 10's
@@ -155,7 +156,7 @@ func (BatchWorkersError) workersError()    {}
 type WorkersBuilt struct {
 	// Inputs is the file the base was built from with the hash of the bytes copied: the app's base code for its workers, an edit
 	// of it outdates the base. Nil when it failed.
-	Inputs plugins.BaseInputs
+	Inputs model.BaseInputs
 	// Err is why it did not build.
 	Err error
 }
@@ -174,7 +175,7 @@ func (c *Workers) Build() WorkersBuilt {
 			built.Err = err
 		} else {
 			c.entryPath = found
-			built.Inputs = plugins.BaseInputs{found: hash}
+			built.Inputs = model.BaseInputs{found: hash}
 		}
 		c.built.Store(&built)
 	})
@@ -435,7 +436,7 @@ func (c *Workers) State() chord.Watchable[delta.JsonValue] { return host.Expose(
 // Inputs are the files its worker base was built from, with their bytes' hashes: the app's base code for its workers (Pi's
 // `inputs`, `base.inputs` of the base `createWorkers` built before it returned). Go builds the base lazily (Build): it is built
 // here when nothing did, and none when the build failed (Pi's `createWorkers` rejects then).
-func (c *Workers) Inputs() plugins.BaseInputs { return c.Build().Inputs }
+func (c *Workers) Inputs() model.BaseInputs { return c.Build().Inputs }
 
 // isClosing reports whether `Close` was called.
 func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }
@@ -1343,7 +1344,7 @@ func stateOf(component *Workers) delta.JsonValue {
 // scriptKey is one script's identity: its plugin and its digest.
 func scriptKey(script plugins.PluginScript) string {
 	digest := "failed"
-	if script.Built.Kind == plugins.BuiltFacetScript {
+	if script.Built.Kind == model.BuiltFacetScript {
 		digest = script.Built.Digest
 	}
 	return script.Plugin.Name + "@" + digest

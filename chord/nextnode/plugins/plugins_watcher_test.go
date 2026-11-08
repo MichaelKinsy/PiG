@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -137,21 +138,21 @@ func watched(t *testing.T) *watcherFixture {
 	writePlugin(t, root, "a", "@test/a", map[string]string{"worker.ts": "", "own.ts": ""}, nil)
 	writePlugin(t, root, "b", "@test/b", map[string]string{"server.ts": ""}, nil)
 	f := watcherOn(t, root, base)
-	discovery, err := DiscoverPlugins([]PluginRoot{{Path: root}}, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: root}}, model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.run(func() { f.watcher.know(discovery, f.watcher.discoverySnapshot()) })
 	contract := filepath.Join(root, "contracts", "contract.ts")
-	used := func(plugin, facet string, files ...string) BuiltFacet {
-		inputs := make([]BuildInput, len(files))
+	used := func(plugin, facet string, files ...string) model.BuiltFacet {
+		inputs := make([]model.BuildInput, len(files))
 		for i, file := range files {
-			inputs[i] = BuildInput{File: file}
+			inputs[i] = model.BuildInput{File: file}
 		}
-		return BuiltFacet{Kind: BuiltFacetScript, Plugin: plugin, Facet: facet, Inputs: inputs, Copied: []string{contract}, Assets: []Asset{}}
+		return model.BuiltFacet{Kind: model.BuiltFacetScript, Plugin: plugin, Facet: facet, Inputs: inputs, Copied: []string{contract}, Assets: []model.Asset{}}
 	}
 	f.run(func() {
-		f.watcher.used([]BuiltFacet{
+		f.watcher.used([]model.BuiltFacet{
 			used("@test/a", "worker", filepath.Join(root, "a", "worker.ts"), contract),
 			used("@test/b", "server", filepath.Join(root, "b", "server.ts"), contract),
 		})
@@ -234,7 +235,7 @@ func (f *watcherFixture) mark(path string) { f.run(func() { f.watcher.mark(path)
 // know has the watcher learn a new discovery of the root, as the component does after discovering again.
 func (f *watcherFixture) know(seen DiscoverySnapshot) {
 	f.t.Helper()
-	discovery, err := DiscoverPlugins([]PluginRoot{{Path: f.root}}, DiscoveryOptions{Kinds: kinds}, background)
+	discovery, err := model.DiscoverPlugins([]model.PluginRoot{{Path: f.root}}, model.DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		f.t.Fatal(err)
 	}

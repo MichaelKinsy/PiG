@@ -70,8 +70,8 @@ and starts the server with its API, kinds and principals:
 // kinds are the app's facet kinds: a plugin has one file per kind it runs on (`server.ts`, `worker.ts`).
 func kinds() []app.AppKind {
 	return []app.AppKind{
-		{Name: "server", Platform: plugins.PlatformNode},
-		{Name: "worker", Platform: plugins.PlatformNode},
+		{Name: "server", Platform: model.PlatformNode},
+		{Name: "worker", Platform: model.PlatformNode},
 	}
 }
 ```
@@ -114,7 +114,7 @@ Step 1 of `run` starts the app, tries the page without signing in, then does wha
 		return err
 	}
 	origin := link.Scheme + "://" + link.Host
-	fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
+	_, _ = fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return err
@@ -124,13 +124,13 @@ Step 1 of `run` starts the app, tries the page without signing in, then does wha
 		names = append(names, entry.Name())
 	}
 	slices.Sort(names)
-	fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
-	signedOut, err := http.Get(origin)
+	_, _ = fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
+	signedOut, err := http.Get(origin) //nolint:gosec // G107: origin is the loopback address of the server this program just started
 	if err != nil {
 		return err
 	}
 	_ = signedOut.Body.Close()
-	fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
 	signIn, err := http.Post(origin+app.OwnerPath, "application/json", strings.NewReader(`{"token":"`+link.Fragment+`"}`))
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ Step 1 of `run` starts the app, tries the page without signing in, then does wha
 		return fmt.Errorf("the owner's sign-in set no cookie (status %d)", signIn.StatusCode)
 	}
 	cookie := cookies[0]
-	fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
+	_, _ = fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
 	request, err := http.NewRequest(http.MethodGet, origin, nil)
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ Step 1 of `run` starts the app, tries the page without signing in, then does wha
 		return err
 	}
 	_ = signedIn.Body.Close()
-	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 ```
 
 <!-- output: main -->

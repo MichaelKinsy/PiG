@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	chordhttp "github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Test support for StartServer and StartWorker (Pi's test/node/app/support.ts): an app started in a temporary data directory with a
@@ -52,7 +53,7 @@ func apiModules() AppAPI {
 }
 
 func testKinds() []AppKindEntry {
-	node := AppKind{Platform: plugins.PlatformNode}
+	node := AppKind{Platform: model.PlatformNode}
 	return []AppKindEntry{{Name: "server", Kind: node}, {Name: "worker", Kind: node}, {Name: "teamworker", Kind: node}}
 }
 

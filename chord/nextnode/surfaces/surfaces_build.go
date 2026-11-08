@@ -9,6 +9,7 @@ import (
 	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/http"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Ports packages/chord/src/node/surfaces/surface-build.ts. A client surface's build (owner decision "A" on startup cost): its base
@@ -26,7 +27,7 @@ import (
 type SurfaceBuilt struct {
 	// Base is the base bundle's hash; Inputs the files it was built from, with their bytes' hashes.
 	Base   string
-	Inputs plugins.BaseInputs
+	Inputs model.BaseInputs
 	// Err is why it failed: none built.
 	Err error
 }

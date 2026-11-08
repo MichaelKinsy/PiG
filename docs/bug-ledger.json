@@ -36114,7 +36114,7 @@
         }
       ],
       "tests": [
-        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
+        "chord/nextnode/plugins/build/build_nodeerror_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
         "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
         "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess",
         "chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause",

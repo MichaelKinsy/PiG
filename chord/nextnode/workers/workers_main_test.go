@@ -15,6 +15,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // pi: packages/chord/src/next-node/workers/main.ts
@@ -259,7 +260,7 @@ func TestTheWorkersSideAppliesAReloadThroughTheReloadHookWhenNoPluginRuntimeWasL
 	worker := started(t, workerBehaviour{Log: log, GoReload: true})
 	until(t, func() bool { return worker.has(FromWorkerReady) })
 	script := func(digest string) plugins.PluginScript {
-		return plugins.PluginScript{Plugin: plugins.Plugin{Name: "@test/a"}, Built: plugins.BuiltFacet{Kind: plugins.BuiltFacetScript, Digest: digest}}
+		return plugins.PluginScript{Plugin: model.Plugin{Name: "@test/a"}, Built: model.BuiltFacet{Kind: model.BuiltFacetScript, Digest: digest}}
 	}
 	for _, digest := range []string{"d1", "d2"} {
 		worker.child.Send(ToWorker{Kind: ToWorkerReload, Scripts: []plugins.PluginScript{script(digest)}})

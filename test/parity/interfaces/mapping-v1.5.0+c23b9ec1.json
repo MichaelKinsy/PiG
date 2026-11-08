@@ -121615,9 +121615,9 @@
       "id": "pkg:chord/app#AppApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303",
-      "rationale": "Derived by the interface gap detector: AppApi is Go chord/nextnode/plugins/plugins_build.go#AppApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: AppApi is Go chord/nextnode/plugins/model/model_built.go#AppApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#AppApi"
+        "chord/nextnode/plugins/model/model_built.go#AppApi"
       ],
       "layers": {
         "behavior": "complete",
@@ -121625,7 +121625,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin",
@@ -127444,9 +127444,9 @@
       "id": "pkg:chord/plugins#AppApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c8d7f3f010ee23ddd4b37f363b9978eee0107bb302a2661fd379c245379cd303",
-      "rationale": "Derived by the interface gap detector: AppApi is Go chord/nextnode/plugins/plugins_build.go#AppApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: AppApi is Go chord/nextnode/plugins/model/model_built.go#AppApi (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#AppApi"
+        "chord/nextnode/plugins/model/model_built.go#AppApi"
       ],
       "layers": {
         "behavior": "complete",
@@ -127454,7 +127454,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateAComputedRequireRefusesWhatTheBuildRefusesAnotherVersionOfTheAppsAPIChordItselfAndBuiltinsInASingleFilePlugin",
@@ -127466,9 +127466,9 @@
       "id": "pkg:chord/plugins#BaseInputs",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cb90d7c3c757ac610ba3b57c99c13c4e6f78f06764b3982bb889020b1f6e5c57",
-      "rationale": "Derived by the interface gap detector: BaseInputs is Go chord/nextnode/plugins/plugins_baseinputs.go#BaseInputs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: BaseInputs is Go chord/nextnode/plugins/model/model_baseinputs.go#BaseInputs (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_baseinputs.go#BaseInputs"
+        "chord/nextnode/plugins/model/model_baseinputs.go#BaseInputs"
       ],
       "layers": {
         "behavior": "complete",
@@ -127476,7 +127476,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_baseinputs.go#NewRecorder"
+        "call:chord/nextnode/app/app_bases.go#App.baseBuilds"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem",
@@ -127488,9 +127488,9 @@
       "id": "pkg:chord/plugins#buildFacet",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9815259d882eb8cb33bfbc87d15fbb769ee70f8500acd8d13177788fafcf004a",
-      "rationale": "Derived by the interface gap detector: buildFacet is Go chord/nextnode/plugins/plugins_build.go#BuildFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: buildFacet is Go chord/nextnode/plugins/build/build_facet.go#BuildFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "chord/nextnode/plugins/build/build_facet.go#BuildFacet"
       ],
       "layers": {
         "behavior": "complete",
@@ -127498,7 +127498,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127511,9 +127511,9 @@
       "id": "pkg:chord/plugins#buildFacet::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1fcb20ad7d4e8c1df9c71f4c2d649eb3554fa46b9aee767f795a179f9c9bf50a",
-      "rationale": "Derived by the interface gap detector: buildFacet::call:0 is Go chord/nextnode/plugins/plugins_build.go#BuildFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: buildFacet::call:0 is Go chord/nextnode/plugins/build/build_facet.go#BuildFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "chord/nextnode/plugins/build/build_facet.go#BuildFacet"
       ],
       "layers": {
         "behavior": "complete",
@@ -127521,7 +127521,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127534,9 +127534,9 @@
       "id": "pkg:chord/plugins#BuildInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:088520f1e5dda2c18a768518c2fa08a95b35d4c112bd4e2e896c20e9b232e38f",
-      "rationale": "Derived by the interface gap detector: BuildInput is Go chord/nextnode/plugins/plugins_build.go#BuildInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: BuildInput is Go chord/nextnode/plugins/model/model_built.go#BuildInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#BuildInput"
+        "chord/nextnode/plugins/model/model_built.go#BuildInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -127544,7 +127544,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#importRules.inputs"
+        "call:chord/nextnode/plugins/build/build_facet.go#importRules.inputs"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildBundlesAFacetAndItsImportsOnceAnEditAfterTheBuildChangesNothingInputsNameBothFiles",
@@ -127556,9 +127556,9 @@
       "id": "pkg:chord/plugins#BuildOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:36789f1d09137ed985ba0d847bf1cc50cbfcf560082d697a89c3f2fed2af8c11",
-      "rationale": "Derived by the interface gap detector: BuildOptions is Go chord/nextnode/plugins/plugins_build.go#BuildOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: BuildOptions is Go chord/nextnode/plugins/model/model_built.go#BuildOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#BuildOptions"
+        "chord/nextnode/plugins/model/model_built.go#BuildOptions"
       ],
       "layers": {
         "behavior": "complete",
@@ -127566,7 +127566,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127600,9 +127600,9 @@
       "id": "pkg:chord/plugins#BuiltFacet",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2f131b6691e134547837b5d14ff3ddea69cede23a658743bb4299ff3b1cf2e2b",
-      "rationale": "Derived by the interface gap detector: BuiltFacet is Go chord/nextnode/plugins/plugins_build.go#BuiltFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: BuiltFacet is Go chord/nextnode/plugins/model/model_built.go#BuiltFacet (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_build.go#BuiltFacet"
+        "chord/nextnode/plugins/model/model_built.go#BuiltFacet"
       ],
       "layers": {
         "behavior": "complete",
@@ -127610,7 +127610,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/plugins/build/build_facet.go#BuildFacet"
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScriptsTheBaseHashToAnyone",
@@ -127716,9 +127716,9 @@
       "id": "pkg:chord/plugins#discoverPlugins",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:741f55fa007b2ad86982f98343bc7459c9ece2d5588d7dab6134931fc8be4355",
-      "rationale": "Derived by the interface gap detector: discoverPlugins is Go chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: discoverPlugins is Go chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+        "chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "layers": {
         "behavior": "complete",
@@ -127726,7 +127726,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127739,9 +127739,9 @@
       "id": "pkg:chord/plugins#discoverPlugins::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:01b1c2f5c66a41ce776e3e849e1ebc28181c52165594b36ced81f68b973c727c",
-      "rationale": "Derived by the interface gap detector: discoverPlugins::call:0 is Go chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: discoverPlugins::call:0 is Go chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+        "chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "layers": {
         "behavior": "complete",
@@ -127749,7 +127749,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127762,9 +127762,9 @@
       "id": "pkg:chord/plugins#Discovery",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5cd342f7b34c6f7e550af4b1e2b2f995f13a899cc6814da9342ff56c83bdb4ae",
-      "rationale": "Derived by the interface gap detector: Discovery is Go chord/nextnode/plugins/plugins_discover.go#Discovery (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Discovery is Go chord/nextnode/plugins/model/model_discover.go#Discovery (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#Discovery"
+        "chord/nextnode/plugins/model/model_discover.go#Discovery"
       ],
       "layers": {
         "behavior": "complete",
@@ -127772,7 +127772,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#importRules.listedIn"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPackage"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127784,9 +127784,9 @@
       "id": "pkg:chord/plugins#DiscoveryOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:07a6c83fb7a142c72ad6280c04b66d5b69ddcc0f1d422ec28b9f8f0ab8f41584",
-      "rationale": "Derived by the interface gap detector: DiscoveryOptions is Go chord/nextnode/plugins/plugins_discover.go#DiscoveryOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: DiscoveryOptions is Go chord/nextnode/plugins/model/model_discover.go#DiscoveryOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#DiscoveryOptions"
+        "chord/nextnode/plugins/model/model_discover.go#DiscoveryOptions"
       ],
       "layers": {
         "behavior": "complete",
@@ -127794,7 +127794,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -127806,9 +127806,9 @@
       "id": "pkg:chord/plugins#DiscoveryProblem",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4bba9cbda13456b70d26e105dc657cced817513e678b8e7e380c561594d1dfcc",
-      "rationale": "Derived by the interface gap detector: DiscoveryProblem is Go chord/nextnode/plugins/plugins_discover.go#DiscoveryProblem (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: DiscoveryProblem is Go chord/nextnode/plugins/model/model_discover.go#DiscoveryProblem (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#DiscoveryProblem"
+        "chord/nextnode/plugins/model/model_discover.go#DiscoveryProblem"
       ],
       "layers": {
         "behavior": "complete",
@@ -127816,7 +127816,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_discover.go#DiscoverPackage"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPackage"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryListsThePackageItselfAsDotAndReportsAListedFolderInsideAnotherListedOneOpusN5",
@@ -128022,9 +128022,9 @@
       "id": "pkg:chord/plugins#Plugin",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6e3f1c063d85bbe21c254fc2ee2a76f39ca86d6b3a1ea0f925169f77a65e1adf",
-      "rationale": "Derived by the interface gap detector: Plugin is Go chord/nextnode/plugins/plugins_discover.go#Plugin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Plugin is Go chord/nextnode/plugins/model/model_discover.go#Plugin (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#Plugin"
+        "chord/nextnode/plugins/model/model_discover.go#Plugin"
       ],
       "layers": {
         "behavior": "complete",
@@ -128032,7 +128032,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_build.go#BuildFacet"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPackage"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures",
@@ -128240,9 +128240,9 @@
       "id": "pkg:chord/plugins#PluginRoot",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1cead0e990f3ceaca40381327d9bfaef388012ef46cb11c202b1003c4b0d7e52",
-      "rationale": "Derived by the interface gap detector: PluginRoot is Go chord/nextnode/plugins/plugins_discover.go#PluginRoot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: PluginRoot is Go chord/nextnode/plugins/model/model_discover.go#PluginRoot (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/nextnode/plugins/plugins_discover.go#PluginRoot"
+        "chord/nextnode/plugins/model/model_discover.go#PluginRoot"
       ],
       "layers": {
         "behavior": "complete",
@@ -128250,7 +128250,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/plugins/plugins_discover.go#DiscoverPlugins"
+        "call:chord/nextnode/plugins/model/model_discover.go#DiscoverPlugins"
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",

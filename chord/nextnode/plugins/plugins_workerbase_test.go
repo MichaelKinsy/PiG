@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Intention checks for packages/chord/test/node/workers/base.test.ts. Pi's worker base bundles a Node entry for a forked
@@ -176,8 +178,8 @@ func TestWorkerBaseAFacetsInputsAreItsFileAndThePluginFilesItImportsNoPackageNot
 		if err != nil {
 			t.Fatal(err)
 		}
-		if input.Hash != ContentHash(bytes) {
-			t.Errorf("%s: hash %s is not the bytes' (%s)", input.File, input.Hash, ContentHash(bytes))
+		if input.Hash != model.ContentHash(bytes) {
+			t.Errorf("%s: hash %s is not the bytes' (%s)", input.File, input.Hash, model.ContentHash(bytes))
 		}
 	}
 	slices.Sort(inputs)

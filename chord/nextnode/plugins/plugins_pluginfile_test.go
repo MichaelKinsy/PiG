@@ -2,7 +2,11 @@ package plugins
 
 // pi: packages/chord/src/next-node/plugins/evaluate.ts
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
+)
 
 // Ports evaluate.ts `pluginFile`: imported anywhere but a facet script it throws, naming the path it was given.
 func TestPluginFileOutsideAFacetScriptThrows(t *testing.T) {
@@ -19,7 +23,7 @@ func TestPluginFileOutsideAFacetScriptThrows(t *testing.T) {
 // Ports runtime.ts `new PluginError(required, failed, problems = [])`: the message names each required plugin, then each problem, and
 // the lists are the ones given.
 func TestNewPluginErrorNamesRequiredPluginsThenProblems(t *testing.T) {
-	err := NewPluginError(nil, nil, DiscoveryProblem{Path: "/roots/a", Error: "missing"})
+	err := NewPluginError(nil, nil, model.DiscoveryProblem{Path: "/roots/a", Error: "missing"})
 	if got, want := err.Error(), "required plugin failed at load: /roots/a: missing"; got != want {
 		t.Fatalf("message = %q, want %q", got, want)
 	}

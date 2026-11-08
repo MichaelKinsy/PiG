@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Pi's base.test.ts:221 and :249 (`nodeBaseInputs` records the entry's own code with its bytes' hash; what cannot be scanned is no
@@ -21,7 +21,7 @@ func TestNodeBaseInputsRecordsTheEntrysCodeWithItsBytesHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (plugins.BaseInputs{entry: plugins.ContentHash([]byte("program one"))}); len(inputs) != 1 || inputs[entry] != want[entry] {
+	if want := (model.BaseInputs{entry: model.ContentHash([]byte("program one"))}); len(inputs) != 1 || inputs[entry] != want[entry] {
 		t.Fatalf("inputs = %v, want %v", inputs, want)
 	}
 	// An edit of the entry is a different record: the base it outdates is detected by comparing them.
@@ -58,7 +58,7 @@ func TestNodeBaseInputsNamesTheEntryByItsAbsolutePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(inputs) != 1 || inputs[want] != plugins.ContentHash([]byte("program")) {
+	if len(inputs) != 1 || inputs[want] != model.ContentHash([]byte("program")) {
 		t.Fatalf("inputs = %v, want %s with the program's hash", inputs, want)
 	}
 }

@@ -1163,16 +1163,16 @@
  ],
  "packages/chord/src/next-node/plugins/build.ts": [
   {
-   "file": "chord/nextnode/plugins/plugins_build.go",
+   "file": "chord/nextnode/plugins/build/build_facet.go",
    "old": "entry.originalLine+1",
    "new": "entry.originalLine"
   }
  ],
  "packages/chord/src/next-node/plugins/discover.ts": [
   {
-   "file": "chord/nextnode/plugins/plugins_discover.go",
-   "old": "return compareUTF16(a.Name, b.Name) })",
-   "new": "return compareUTF16(b.Name, a.Name) })"
+   "file": "chord/nextnode/plugins/model/model_discover.go",
+   "old": "return CompareUTF16(a.Name, b.Name) })",
+   "new": "return CompareUTF16(b.Name, a.Name) })"
   }
  ],
  "packages/chord/src/next-node/plugins/evaluate.ts": [
@@ -1192,8 +1192,8 @@
  "packages/chord/src/next-node/plugins/plugins.ts": [
   {
    "file": "chord/nextnode/plugins/plugins_plugins.go",
-   "old": "if !slices.ContainsFunc(plugins, func(plugin Plugin) bool { return plugin.Name == name }) {",
-   "new": "if slices.ContainsFunc(plugins, func(plugin Plugin) bool { return plugin.Name == name }) {"
+   "old": "if !slices.ContainsFunc(plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {",
+   "new": "if slices.ContainsFunc(plugins, func(plugin model.Plugin) bool { return plugin.Name == name }) {"
   }
  ],
  "packages/chord/src/next-node/plugins/runtime.ts": [

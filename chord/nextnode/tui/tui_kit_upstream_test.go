@@ -17,6 +17,7 @@ import (
 	next "github.com/MichaelKinsy/PiG/chord/next/surfaces"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
 
 // Tests of the terminal launcher (slice 11 §4, decision "Slice 11, P8") with a kit app's terminal surface: it signs in with the
@@ -132,7 +133,7 @@ func TestTheTerminalSurfaceServesASignedInLauncherItsStartTheBaseBundleAndTheScr
 	}
 	for _, facet := range built.Facets {
 		if facet.Plugin == "@test/pictured" {
-			if facet.Kind != plugins.BuiltFacetFailed || len(facet.Errors) == 0 || !strings.Contains(facet.Errors[0], "assets by URL are for browser builds") {
+			if facet.Kind != model.BuiltFacetFailed || len(facet.Errors) == 0 || !strings.Contains(facet.Errors[0], "assets by URL are for browser builds") {
 				t.Fatalf("facet = %+v, want a failed build refusing assets by URL", facet)
 			}
 			return
