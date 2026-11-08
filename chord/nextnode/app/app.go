@@ -369,6 +369,13 @@ func (a *App) serverExecutable() (string, bool) {
 			err = fmt.Errorf("%s is not a regular file", exe)
 		}
 	}
+	if err == nil {
+		// Readable now: the watcher hashes it, and its failure would come as a plugins error instead.
+		var file *os.File
+		if file, err = os.Open(exe); err == nil {
+			err = file.Close()
+		}
+	}
 	if err != nil {
 		a.report(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err))
 		return "", false
@@ -379,10 +386,11 @@ func (a *App) serverExecutable() (string, bool) {
 	return exe, true
 }
 
-// inGoBuildCache is whether path lies under a `go-build` work directory, where `go run` and `go test` put the programs they build.
+// inGoBuildCache is whether path lies under a work directory `go run` and `go test` build their programs in: `go-build` and the
+// digits the go command appends to it.
 func inGoBuildCache(path string) bool {
 	for element := range strings.SplitSeq(filepath.ToSlash(path), "/") {
-		if strings.HasPrefix(element, "go-build") {
+		if digits, ok := strings.CutPrefix(element, "go-build"); ok && strings.Trim(digits, "0123456789") == "" {
 			return true
 		}
 	}
