@@ -138,7 +138,7 @@ func withTerminal(t *testing.T, touch bool, run func(page *terminalPage)) {
 			var state string
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 10*time.Second)
 			defer cancel()
-			_ = page.Evaluate(ctx, `JSON.stringify({text: document.body.innerText.slice(0, 1500), sockets: (window.terminalSockets||[]).map(s => [s.url.replace(/token=[^&]*/, 'token=…'), s.readyState])})`, &state)
+			_ = page.Evaluate(ctx, `JSON.stringify({text: document.body.innerText.slice(0, 1500), html: [...document.querySelectorAll('[class*=terminal], [aria-label*=erminal]')].map(e => e.outerHTML.slice(0, 400)), sockets: (window.terminalSockets||[]).map(s => [s.url.replace(/token=[^&]*/, 'token=…'), s.readyState])})`, &state)
 			t.Logf("the page: %s", state)
 		}
 	})
