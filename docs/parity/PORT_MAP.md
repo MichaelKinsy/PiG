@@ -554,6 +554,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/bun/sandbox-env-setup.ts` | `(Bun-only sandbox helper)` | n/a |
 | `packages/coding-agent/src/cli/auth-check.ts` | `coding/cli/auth_check.go (the main.ts runAuthCommand dispatch is mapped under main.ts)` | ✅ |
 | `packages/coding-agent/src/cli/auth-command.ts` | `coding/cli/auth_command.go (resolveCliModel for --model is mapped under core/model-resolver.ts)` | ✅ |
+| `packages/coding-agent/src/cli/auth-login.ts` | `coding/cli/auth_login.go (RunAuthLogin; every auth-login.test.ts case in coding/cli/auth_login_test.go; the main.ts runAuthLoginCommand dispatch is coding/cli/auth_run.go)` | ✅ |
+| `packages/coding-agent/src/cli/auth-logout.ts` | `coding/cli/auth_logout.go (RunAuthLogout; every auth-logout.test.ts case in coding/cli/auth_logout_test.go; the main.ts runAuthLogoutCommand dispatch is coding/cli/auth_run.go)` | ✅ |
+| `packages/coding-agent/src/cli/auth-terminal.ts` | `coding/cli/auth_terminal.go (LoginTerminal, CreateProcessLoginTerminal; auth-terminal.test.ts cases in coding/cli/auth_terminal_test.go)` | ✅ |
+| `packages/coding-agent/src/core/provider-matching.ts` | `internal/codingagent/provider_matching.go (FindMatchingProviders; provider_matching_test.go)` | ✅ |
+| `packages/coding-agent/src/core/radius-mcp.ts` | `internal/codingagent/radius_mcp.go (PlanRadiusMcpServer; radius_mcp_stripped.go for a build without built-in MCP)` | ✅ |
+| `packages/coding-agent/src/utils/terminal-question.ts` | `internal/terminalquestion/terminalquestion.go (Reader.Question; terminalquestion_test.go)` | ✅ |
+| `packages/coding-agent/src/utils/web-url.ts` | `internal/weburl/weburl.go (WebURL, DisplayURL)` | ✅ |
 | `packages/coding-agent/src/cli/setup.ts` | `coding/cli/setup_cli.go (PI_CODING_AGENT/AI_AGENT process markers; process.title is the executable name, Node warning suppression has no Go analogue, configureHttpDispatcher is mapped under core/http-dispatcher.ts)` | ✅ |
 | `packages/coding-agent/src/core/bug-report-upload.ts` | `(designed out: D62, PiG never uploads bug reports)` | n/a |
 | `packages/coding-agent/src/core/bug-report.ts` | `internal/codingagent/bug_report.go (export subset: metadata, redaction, diagnostics, archive; D62) + internal/codingagent/compaction/bug_report_summary.go (coding/bug_report.go; internal/codingagent/compaction/bug_report_summary_test.go)` | ✅ |
@@ -1089,6 +1096,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/env/src/remote-env.ts` | `env/remote_env.go + env/paths.go` | ✅ |
 | `packages/env/src/ssh.ts` | `env/ssh.go` | ✅ |
 | `packages/env/src/terminal.ts` | `env/terminal.go` | ✅ |
+| `packages/env/src/process.ts` | `env/process.go` (the tests of packages/env/test/process.test.ts are in env/process_test.go and run against Pi's own daemon as oracle once the pin has the `process` operation) | ✅ |
 | `packages/env/src/watch.ts` | `env/watch.go` | ✅ |
 | `packages/env/src/list-files.ts` | `env/list_files.go` | ✅ |
 
@@ -1107,6 +1115,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/env/daemon/src/main.rs` | `env/daemon/server.go`, `env/cmd/pi-env/main.go` (tests in env/daemon/server_test.go and env/cmd/pi-env/main_test.go) | ✅ |
 | `packages/env/daemon/src/output.rs` | `env/daemon/output.go` (tests in env/daemon/output_test.go) | ✅ |
 | `packages/env/daemon/src/pty.rs` | `env/daemon/pty.go + env/daemon/pty_unix.go + env/daemon/pty_linux.go (Linux, Android and macOS terminals through /dev/ptmx and x/sys/unix, no cgo, macOS in pty_darwin; other systems answer ENOTSUP from pty_other; the client tests in env/terminal_test.go and env/terminal_linux_test.go run against Pi's own daemon as oracle)` | ✅ |
+| `packages/env/daemon/src/process.rs` | `env/daemon/process.go + env/daemon/process_start.go + env/daemon/process_group.go + env/daemon/process_group_unix.go + env/daemon/process_group_windows.go + env/daemon/process_wait_linux.go + env/daemon/process_wait_darwin.go + env/daemon/process_unix.go + env/daemon/process_windows.go` (stdin queue and target lookup shared with pty in env/daemon/pty.go; tests in env/process_test.go and env/daemon/process_unix_test.go) | ✅ |
 | `packages/env/daemon/src/scan.rs` | `durable/env/line_scan.go` (LineScanner; tests in env/daemon/scan_test.go) | ✅ |
 | `packages/env/daemon/src/sys/mod.rs` | `(Rust module barrel: Go selects sys_unix.go or sys_windows.go by build constraint)` | n/a |
 | `packages/env/daemon/src/sys/unix.rs` | `env/daemon/sys_unix.go` | ✅ |
@@ -1135,9 +1144,9 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | Upstream | PiG | Status |
 |---|---|---|
 | `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
-| `packages/schema/src/builders.ts` | `schema/builders.go` | ✅ |
-| `packages/schema/src/checks.ts` | `schema/checks.go` | ✅ |
-| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}))` | ✅ |
+| `packages/schema/src/builders.ts` | `schema/builders.go (Recursive; unsafe and the bigint builder are designed out: unsafe only types a schema, and Go has no bigint value; Pi main af79b0c3d)` | ✅ |
+| `packages/schema/src/checks.ts` | `schema/checks.go (a number is finite, D303; Equal is deepEqual; the leaf codes of Pi main 20c637b1a that object and array loops run inline are a JavaScript closure-call optimization with no observable effect, designed out: Go's closures keep their one shape and TestPiMainLeafChecksAgreeWithTheStandaloneCheck ports the test that pins the results; bigint and undefined checks have no Go value)` | ✅ |
+| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}); the base of an unindexed node goes through baseFor, D302; a number is finite, D303; the bigint and undefined conversions have no Go value)` | ✅ |
 | `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
 | `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
 | `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |
