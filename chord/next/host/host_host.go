@@ -162,6 +162,9 @@ type CommittedReload struct {
 
 // Host is a host.
 type Host interface {
+	// Incarnation is this run of the host, sent in every handshake (R20): a link's peer sees it as its calls'
+	// `ctx.Incarnation()` (Pi's `readonly incarnation`).
+	Incarnation() string
 	// Load runs every facet's setup and publishes what they declared in one batch (the types and registries served, the
 	// registries composed once, the contributions); requests that waited for the publication are placed after that batch.
 	// Then activates every served type with empty params and returns when each has had its first outcome (the start
@@ -507,7 +510,7 @@ func (h *chordHost) enter(work func()) {
 	})
 }
 
-// Incarnation is this run of the host (R20).
+// Incarnation implements Host.
 func (h *chordHost) Incarnation() string { return h.incarnation }
 
 // Load implements Host.
