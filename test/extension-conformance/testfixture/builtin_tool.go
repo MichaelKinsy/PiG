@@ -174,7 +174,7 @@ func builtinProbeSpec(c builtinProbeCase, log *builtinCallLog) (definition func(
 	case "find":
 		options := &sdk.FindToolOptions{}
 		if c.Ops == "globlimit" {
-			// Pi main 676af1d77 (pig divergence (D253)): the tool asks glob for one result past its limit.
+			// Pi main 676af1d77 (#11747): the tool asks glob for one result past its limit.
 			options.Operations = &sdk.FindOperations{
 				Exists: func(path string) (bool, error) { log.add("exists:%s", path); return true, nil },
 				Glob: func(pattern, cwd string, o sdk.FindGlobOptions) ([]string, error) {

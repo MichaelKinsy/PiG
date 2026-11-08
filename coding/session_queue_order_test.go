@@ -105,7 +105,7 @@ func TestSessionQueueRemovalPrecedesExtensionMessageStart(t *testing.T) {
 	}
 }
 
-// pig divergence (D250): Pi 1.5.0 (agent-session.ts:896-909) guarded the queue match with a truthy contentText and retained an empty queued string in pending metadata; Pi main a63c4ec5c (#8612) removes it at delivery.
+// Pi 1.5.0 (agent-session.ts:896-909) guarded the queue match with a truthy contentText and retained an empty queued string in pending metadata; Pi main a63c4ec5c (#8612, in the pin) removes it at delivery.
 func TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true}, fauxReply("done", ai.StopReasonStop, 0))
 	if _, err := h.session.Steer(t.Context(), "", nil, nil); err != nil {
@@ -133,9 +133,9 @@ func TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery(t *testing.T) {
 	}
 }
 
-// pig divergence (D250): delivering an empty queued message removes its entry and publishes the queue it leaves, an event Pi 1.5.0 never emits
-// for it. RPC mode forwards session events, so the RPC stream carries these records ('20-rpc-runtime-boundary-values' and
-// '35-rpc-queue-prompt-await' name them under json_pig_only_records).
+// Delivering an empty queued message removes its entry and publishes the queue it leaves (Pi main a63c4ec5c, #8612; Pi 1.5.0 emitted nothing).
+// RPC mode forwards session events, so the RPC stream carries these records; '20-rpc-runtime-boundary-values' and '35-rpc-queue-prompt-await'
+// compare them against the pin's Pi.
 func TestSessionEmptyQueuedMessagesPublishTheQueueTheyLeaveAtDelivery(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{emptySessionManager: true}, fauxReply("done", ai.StopReasonStop, 0))
 	var updates []agent.QueueUpdateEvent

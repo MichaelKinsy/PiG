@@ -1207,7 +1207,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D238](#bf-d238) | The output limit leaves 15% of the estimated input unused | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D240](#bf-d240) | Claude Sonnet 5 takes no temperature | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D249](#bf-d249) | Images in queued steering and follow-up messages are resized when the message is delivered | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D250](#bf-d250) | A delivered image-only queued message leaves the pending queue | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D254](#bf-d254) | `pig config` loads the user's keybindings | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D255](#bf-d255) | `pig mcp list` sends the provider's token | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D256](#bf-d256) | An unreachable llama.cpp server error names the server and the cause | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -2182,16 +2181,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find`…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D253)
+- **Source:** PiG's own defect
 - **Symptom:** The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find` and `ls` no longer returns every result or an empty listing; a limit below 1 means 1 and a fractional limit is floored.
 - **Root cause:** Ports Pi main (#11747). find and ls read a limit below 1 as 1 and floor fractions; find asks fd and a custom glob for limit+1 and reports the limit only when more results exist. Conformance row: globlimit. D253.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 676af1d77. Then the call-site markers and this record go.
-- **Fix commits:** `04a8c5e9d3` (2026-11-05), `3cf1ce8466` (2026-11-05), `e2e5706337` (2026-11-05)
-- **Tests:** `internal/codingagent/tools/find_ls_limit_test.go::TestFindLimitEdgeCases7121`, `internal/codingagent/tools/find_ls_limit_test.go::TestLsLimitEdgeCases7121`, `test/extension-conformance/builtin_tool_delegate_test.go::TestConformance_BuiltinToolDelegationAcrossSDKs`
+- **Fix commits:** `04a8c5e9d3` (2026-11-05)
+- **Tests:** `internal/codingagent/tools/find_ls_limit_test.go::TestFindLimitEdgeCases7121`, `internal/codingagent/tools/find_ls_limit_test.go::TestLsLimitEdgeCases7121`
 - **Release note:** The `find` tool no longer reports the result limit when exactly `limit` files match, and `limit: 0` in `find` and `ls` no longer returns every result or an empty listing; a limit below 1 means 1 and a fractional limit is floored. A custom `FindOperations.glob` receives `limit + 1` in the Go, Python, Rust and Lisp SDKs, and a glob that ignores the limit has its results cut to it with the notice (D253).
 
 ### BF-04e6229
@@ -18367,21 +18364,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `00d787634a` (2026-11-05), `1584ac1082` (2026-11-05), `5b637b1097` (2026-11-05), `7056d2d9e1` (2026-11-05)
 - **Tests:** `coding/session_queue_images_test.go::TestSessionQueuedUserMessageBuiltForAgentQueueIsResizedAtDelivery`, `coding/session_queue_images_test.go::TestSessionResizesImagesInQueuedSteeringAndFollowUpMessages`, `internal/codingagent/queued_message_status_test.go::TestInteractiveQueuedMessagesAreBuiltBySessionForImageNormalization`
 
-### BF-D250
-
-**A delivered image-only queued message leaves the pending queue**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D250)
-- **Symptom:** After an image-only (or empty-text) queued message is delivered, it stays in the pending message display and count.
-- **Root cause:** Not recorded.
-- **User impact:** Wrong display
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pin reaches a Pi release containing a63c4ec5c.
-- **Fix commits:** `00d787634a` (2026-11-05), `7056d2d9e1` (2026-11-05)
-- **Tests:** `coding/session_queue_images_test.go::TestSessionRemovesAnImageOnlySteeringMessageAfterDelivery`, `coding/session_queue_order_test.go::TestSessionEmptyQueuedTextLeavesPendingStateAtDelivery`
-
 ### BF-D254
 
 **`pig config` loads the user's keybindings**
@@ -28113,10 +28095,8 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D244 | A user bash result whose earlier output was discarded is reported as truncated | [BF-2544a44](#bf-2544a44) |
 | D245 | The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and… | [BF-3b696c8](#bf-3b696c8) |
 | D249 | Images in queued steering and follow-up messages are resized when the message is delivered | [BF-D249](#bf-d249) |
-| D250 | A delivered image-only queued message leaves the pending queue | [BF-D250](#bf-d250) |
 | D251 | A draft moved out of and back into the editor keeps its collapsed paste content | [BF-f43fb00](#bf-f43fb00) |
 | D252 | Truncating text never splits a surrogate pair | [BF-a808864](#bf-a808864) |
-| D253 | find and ls read a limit below 1 as 1, and find reports the limit only when more results exist | [BF-04a8c5e](#bf-04a8c5e) |
 | D254 | `pig config` loads the user's keybindings | [BF-D254](#bf-d254) |
 | D255 | `pig mcp list` sends the provider's token | [BF-D255](#bf-d255) |
 | D256 | An unreachable llama.cpp server error names the server and the cause | [BF-D256](#bf-d256) |

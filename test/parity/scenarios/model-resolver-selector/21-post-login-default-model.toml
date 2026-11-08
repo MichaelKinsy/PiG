@@ -2,7 +2,9 @@
 # interactive-mode.ts:5934-5978 and model-resolver.ts:50 select and persist
 # opencode-go/kimi-k3 (0.87.1 selected kimi-k2.6). Its catalog entry has a 1048576-token window and
 # thinkingLevelMap {max: "max"}, so the saved medium level clamps to max. The final stats row is:
-#   0.0%/1.0M (auto) ... kimi-k3 • max
+#   0.0%/1.0M (auto) ... kimi-k3.1-pro • high
+# Pi 1.5.0+c23b9ec1 (the pin, probed 2026-11-08, both binaries): both binaries select kimi-k3.1-pro after the OpenCode Go login and
+# the final row ends "kimi-k3.1-pro • high" with the same 1.0M window (the catalog moved since the 0.99.2 probe above).
 # The compiling mutation that negates isUnknownModel in finishAuthentication
 # leaves PiG's footer at unknown and fails the selection wait and escaped comparator.
 # Offline mode prevents catalog requests; the synthetic key is never sent.
@@ -40,7 +42,7 @@ wait_contains = ["API key"]
 
 [[tmux.steps]]
 keys = ["fake-opencode-key", "Enter"]
-wait_contains = ["Saved API key for OpenCode Go. Selected kimi-k3."]
+wait_contains = ["Saved API key for OpenCode Go. Selected kimi-k3.1-pro."]
 
 [env]
 pig = ["PIG_CODING_AGENT_DIR=testdata/post-login-agent", "HOME={{TEMP}}/home", "PIG_OFFLINE=1"]
@@ -50,6 +52,6 @@ pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["0.0%/1.0M (auto)", "kimi-k3 • max"]
+both_contain = ["0.0%/1.0M (auto)", "kimi-k3.1-pro • high"]
 escaped_output_equal = true
 runs = 3
