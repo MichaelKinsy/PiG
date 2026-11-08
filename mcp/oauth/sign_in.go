@@ -31,21 +31,47 @@ type McpSignInOptions struct {
 }
 
 // McpSignInRedirect is the browser step of a sign-in, from [StartMcpSignIn].
+//
+// Plain data, so an application can persist it: its JSON is Pi's.
 type McpSignInRedirect struct {
+	// Kind is "redirect" ([McpSignInKindRedirect]).
+	Kind McpSignInKind `json:"kind"`
 	// AuthorizationURL is opened in the user's browser.
-	AuthorizationURL string
+	AuthorizationURL string `json:"authorizationUrl,omitempty"`
 	// RedirectURL is the redirect URI of the authorization request; the authorization response must arrive on it.
-	RedirectURL string
+	RedirectURL string `json:"redirectUrl,omitempty"`
 	// State is the `state` parameter the authorization response must carry.
-	State string
+	State string `json:"state,omitempty"`
 	// Scope is the scope requested, or "". Saved with the tokens when the token response names none.
-	Scope string
+	Scope string `json:"scope,omitempty"`
 }
 
-// McpSignInStart is the result of [StartMcpSignIn]: signed in by refreshing the stored tokens (Authorized), or the browser step (Redirect).
+// McpSignInKind is the `kind` of a [McpSignInStart] or a [McpSignInRedirect].
+type McpSignInKind string
+
+// The kinds of a [McpSignInStart].
+const (
+	McpSignInKindAuthorized McpSignInKind = "authorized"
+	McpSignInKindRedirect   McpSignInKind = "redirect"
+)
+
+// McpSignInStart is the result of [StartMcpSignIn]: signed in by refreshing the stored tokens (Kind "authorized"), or the browser step (Kind
+// "redirect", with the fields of [McpSignInRedirect]).
+//
+// Go mechanic: Pi's `{ kind: "authorized" } | McpSignInRedirect` is a struct that carries both members, told apart by Kind. The members of
+// [McpSignInRedirect] are zero for an "authorized" result and omitted from its JSON.
 type McpSignInStart struct {
-	Authorized bool
-	Redirect   McpSignInRedirect
+	Kind McpSignInKind `json:"kind"`
+	// AuthorizationURL, RedirectURL, State and Scope are those of [McpSignInRedirect], for Kind "redirect".
+	AuthorizationURL string `json:"authorizationUrl,omitempty"`
+	RedirectURL      string `json:"redirectUrl,omitempty"`
+	State            string `json:"state,omitempty"`
+	Scope            string `json:"scope,omitempty"`
+}
+
+// Redirect is the browser step of a "redirect" result.
+func (s McpSignInStart) Redirect() McpSignInRedirect {
+	return McpSignInRedirect(s)
 }
 
 // McpAuthorizationResponse is an authorization response: from a callback server, a callback route, or [ResponseFromRedirectURL].
@@ -78,11 +104,14 @@ func StartMcpSignIn(ctx context.Context, options McpSignInOptions) (McpSignInSta
 			return McpSignInStart{}, err
 		}
 		if result == OAuthAuthorized {
-			return McpSignInStart{Authorized: true}, nil
+			return McpSignInStart{Kind: McpSignInKindAuthorized}, nil
 		}
 	}
 	redirect, err := cancellable(ctx, func() (McpSignInRedirect, error) { return startBrowserStep(ctx, options, stepUp) })
-	return McpSignInStart{Redirect: redirect}, err
+	if err != nil {
+		return McpSignInStart{}, err
+	}
+	return McpSignInStart{Kind: McpSignInKindRedirect, AuthorizationURL: redirect.AuthorizationURL, RedirectURL: redirect.RedirectURL, State: redirect.State, Scope: redirect.Scope}, nil
 }
 
 // refreshBeforeSignIn refreshes the stored tokens, unless `cimd` is to replace a registered client. The refresh uses RedirectURL when the tokens came
@@ -180,7 +209,7 @@ func startBrowserStep(ctx context.Context, options McpSignInOptions, stepUp bool
 	if query.Has("redirect_uri") {
 		redirectURL = query.Get("redirect_uri")
 	}
-	return McpSignInRedirect{AuthorizationURL: authorizationURL.Href(), RedirectURL: redirectURL, State: state, Scope: query.Get("scope")}, nil
+	return McpSignInRedirect{Kind: McpSignInKindRedirect, AuthorizationURL: authorizationURL.Href(), RedirectURL: redirectURL, State: state, Scope: query.Get("scope")}, nil
 }
 
 // stateForSignIn is the stored state for a browser step: without the last sign-in's `state`, and without a client that cannot use the redirect
@@ -219,11 +248,22 @@ func mergeScopes(scopes ...string) string {
 	return strings.Join(merged, " ")
 }
 
+// McpCompleteSignInOptions are the options of [CompleteMcpSignIn]: those of [StartMcpSignIn] and the two results of the first half. Pi types them
+// as an inline intersection of McpSignInOptions with `authorization` and `response`.
+type McpCompleteSignInOptions struct {
+	McpSignInOptions
+	// Authorization is the `redirect` result of [StartMcpSignIn].
+	Authorization McpSignInRedirect
+	// Response is the authorization response.
+	Response McpAuthorizationResponse
+}
+
 // CompleteMcpSignIn is the second half of a sign-in: it exchanges the authorization code of response and saves the tokens. Pass the options
 // given to [StartMcpSignIn], including its RedirectURL (not authorization.RedirectURL). It fails when the response carries another `state`,
 // when another sign-in started with the store since, or when the exchange would use another redirect URI than the authorization request (the
 // options changed). A redirect URL the user pasted goes through [ResponseFromRedirectURL] first, which checks its path.
-func CompleteMcpSignIn(ctx context.Context, options McpSignInOptions, authorization McpSignInRedirect, response McpAuthorizationResponse) error {
+func CompleteMcpSignIn(ctx context.Context, completion McpCompleteSignInOptions) error {
+	options, authorization, response := completion.McpSignInOptions, completion.Authorization, completion.Response
 	_, err := cancellable(ctx, func() (struct{}, error) {
 		if response.State != authorization.State {
 			return struct{}{}, errors.New("The authorization response belongs to a different sign-in")

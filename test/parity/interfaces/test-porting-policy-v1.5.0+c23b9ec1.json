@@ -7305,7 +7305,7 @@
       "upstreamTestHash": "sha256:dd9999f2aa1acb109208dff5630ba49c91e720e95beea7f465996fa02ef0e19a",
       "area": "extensions",
       "tags": [],
-      "rationale": "Production-path review at Pi main c158fa2ee: the Go tests drive mcp.PipeTransport with a scripted McpPipe, as Pi's test does. PipeTransport is a published pi-mcp export with no caller in PiG or in Pi's packages (coding turns reach MCP through StdioTransport and the HTTP transport), so it is not tagged hot-path."
+      "rationale": "Production-path review at Pi main c23b9ec1: no production path in Pi or PiG: PipeTransport is a library export (packages/mcp/src/index.ts) that no package of Pi or PiG constructs; pi-env's openProcess is the pipe it is meant for. Proven by its ported tests alone."
     },
     {
       "path": "packages/mcp/test/sign-in.test.ts",

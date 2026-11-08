@@ -73,7 +73,7 @@ func TestAuthProviderLeavesAPendingSignInUsableWhenTheRefreshFails(t *testing.T)
 		t.Fatalf("state = %+v, pending = %+v, registrations = %d", state, pending, len(server.registered()))
 	}
 	response := routeResponse(t, authorizeInBrowser(t, authorization.AuthorizationURL))
-	if err := oauth.CompleteMcpSignIn(t.Context(), stepUp, authorization, response); err != nil {
+	if err := oauth.CompleteMcpSignIn(t.Context(), oauth.McpCompleteSignInOptions{McpSignInOptions: stepUp, Authorization: authorization, Response: response}); err != nil {
 		t.Fatal(err)
 	}
 	if got := loadState(t, options).Tokens.AccessToken; got != "access-2" {
@@ -163,7 +163,7 @@ func (offlineFetch) Do(request *http.Request) (*http.Response, error) {
 	if strings.HasSuffix(request.URL.Path, "/token") {
 		return nil, errors.New("fetch failed")
 	}
-	return http.DefaultClient.Do(request)
+	return http.DefaultClient.Do(request) //nolint:gosec // G704: test-only fixture that reaches the loopback authorization server; no external request.
 }
 
 func TestAuthProviderKeepsTheTokensAndThePendingSignInAfterANetworkError(t *testing.T) {
