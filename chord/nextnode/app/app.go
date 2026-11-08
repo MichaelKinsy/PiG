@@ -53,8 +53,6 @@ import (
 //
 // Not ported yet (pending, no divergence): the `principalAttributes` hook (T6 host spans: the Go host has none).
 
-// pig divergence (D606): the reload suite (reload_*_test.go) drives a Go tab host on the links endpoint where Pi's drives a Chromium page, until T11's
-// Chromium harness is on follow/chord-int.
 // pig divergence (D600): a Go worker is the program's own executable, so Pi's esbuild bundle of the worker's Node entry (base.ts, child.ts) has no Go form.
 
 // Server is the server's host kind: the kit's server host is Server().
