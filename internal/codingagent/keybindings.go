@@ -77,7 +77,6 @@ var appKeybindingRows = [...]appKeybindingRow{
 	{id: "app.message.followUp", description: "Queue follow-up message", platform: &tui.PlatformKeys{Other: []KeyID{"alt+enter"}, Windows: []KeyID{"ctrl+q"}}},
 	{id: "app.message.copy", description: "Copy selection or last assistant message", keys: []KeyID{"ctrl+x"}},
 	{id: "app.message.dequeue", description: "Restore queued messages", platform: &tui.PlatformKeys{Other: []KeyID{"alt+up"}, Windows: []KeyID{"alt+q"}}},
-	// pig divergence (D241): Pi 37b38e9f6 adds ctrl+v beside alt+v on Windows and WSL (Pi 1.5.0: alt+v only).
 	{id: "app.clipboard.pasteImage", description: "Paste files on macOS, images, or text from clipboard", platform: &tui.PlatformKeys{Other: []KeyID{"ctrl+v"}, Windows: []KeyID{"alt+v", "ctrl+v"}}},
 	{id: "app.session.new", description: "Start a new session"},
 	{id: "app.session.tree", description: "Open session tree"},

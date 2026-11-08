@@ -1122,7 +1122,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D235](#bf-d235) | A session-graph client's two live runs with no "no run" read between them are one context | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D238](#bf-d238) | The output limit leaves 15% of the estimated input unused | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D240](#bf-d240) | Claude Sonnet 5 takes no temperature | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D241](#bf-d241) | Ctrl+V also pastes on Windows and WSL | A Pi defect that PiG fixed first | Windows, WSL | Unreleased |
 | [BF-D242](#bf-d242) | Reload is rejected while the session is running or compacting | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D246](#bf-d246) | OpenAI Responses sends session-id, not session_id | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D249](#bf-d249) | Images in queued steering and follow-up messages are resized when the message is delivered | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -17082,21 +17081,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `787c3547c4` (2026-11-05), `bfe1b032a7` (2026-11-05)
 - **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_model_json_oracle_test.go::TestCatalogModelJSONMatchesPiForEveryBuiltinModel`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `ai/registry_test.go::TestCodegenByteIdentical`, `cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi`, `coding/extension/model_object_oracle_test.go::TestModelObjectsMatchPisModelObjects`
 
-### BF-D241
-
-**Ctrl+V also pastes on Windows and WSL**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D241)
-- **Symptom:** 1.5.0 binds no key to `ctrl+v` on Windows and WSL (#11765).
-- **Root cause:** Most Windows terminals handle Ctrl+V themselves and send a bracketed paste, but some pass Ctrl+V to the program as the raw `0x16` key. With only `alt+v` bound, nothing happened and no message was shown. In a terminal that handles Ctrl+V itself the program never receives the key, so the extra binding changes nothing there.
-- **User impact:** Behavior differed from Pi
-- **Platform:** Windows, WSL
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 37b38e9f6. Then the call-site markers and this record go.
-- **Fix commits:** `8b792f9bd1` (2026-11-05), `bfe1b032a7` (2026-11-05)
-- **Tests:** `internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory`, `internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults`, `internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys`
-
 ### BF-D242
 
 **Reload is rejected while the session is running or compacting**
@@ -26259,7 +26243,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D237 | Exit waits for a started OAuth refresh to be saved | [BF-7febcec](#bf-7febcec) |
 | D238 | The output limit leaves 15% of the estimated input unused | [BF-D238](#bf-d238) |
 | D240 | Claude Sonnet 5 takes no temperature | [BF-D240](#bf-d240) |
-| D241 | Ctrl+V also pastes on Windows and WSL | [BF-D241](#bf-d241) |
 | D242 | Reload is rejected while the session is running or compacting | [BF-D242](#bf-d242) |
 | D243 | A bash or PowerShell timeout after the shell already exited reports the shell's exit code | [BF-3fe717a](#bf-3fe717a) |
 | D244 | A user bash result whose earlier output was discarded is reported as truncated | [BF-2544a44](#bf-2544a44) |

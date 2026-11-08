@@ -65,10 +65,6 @@ func TestAppKeybindingDefinitionsMatchUpstreamInventory(t *testing.T) {
 			}
 			upstream[binding.ID] = true
 			expected := KeybindingDefinition{DefaultKeys: binding.Defaults[string(platform)], Description: binding.Description}
-			// pig divergence (D241): Pi 37b38e9f6 keeps ctrl+v as a paste key beside alt+v on Windows and WSL; the pinned 1.5.0 inventory lists alt+v only.
-			if binding.ID == "app.clipboard.pasteImage" && platform.UsesWindowsKeybindings() {
-				expected.DefaultKeys = append(slices.Clone(expected.DefaultKeys), "ctrl+v")
-			}
 			got, exists := gotDefinitions[binding.ID]
 			switch {
 			case !exists:
