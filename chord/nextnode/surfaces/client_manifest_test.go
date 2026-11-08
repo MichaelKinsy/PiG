@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// client/manifest.json records the Pi commit and the hash of every file vendored under client/pi (D476): a file edited by
+// client/manifest.json records the Pi commit and the hash of every file vendored under client/pi (D601): a file edited by
 // hand, or one the manifest does not list, fails here (automation/gen/vendor-chord-surfaces-client.sh regenerates both). The
 // commit is the pin's (`.upstream/pin`), unless the manifest names it as an explicit `catchup`, as the plugins component's
 // vendored tree is checked.

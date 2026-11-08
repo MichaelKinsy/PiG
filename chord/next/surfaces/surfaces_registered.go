@@ -7,7 +7,7 @@ import "github.com/MichaelKinsy/PiG/internal/jsstring"
 // function (require, module, exports) { … })`, loaded with `<script src>` (a page under a `'self'` CSP: no `eval`, no
 // `new Function`) or run by the terminal's runtime. Evaluating a registered function (`evaluateRegistered`, `interop`, the
 // RegisteredScript and ClientModules types) happens where the script runs, in the client: it is the vendored TypeScript of
-// nextnode/surfaces/client (D476).
+// nextnode/surfaces/client (D601).
 
 // Register is the global function a registered script calls: defined by the client before any plugin script runs (Pi's
 // `REGISTER`).

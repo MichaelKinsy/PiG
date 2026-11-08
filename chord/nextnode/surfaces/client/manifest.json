@@ -903,6 +903,10 @@
 		{
 			"path": "pi/schema/src/validator.ts",
 			"sha256": "173734355e3c770dad137503635e87e2438fc2769f37800470cb0b555ea182cd"
+		},
+		{
+			"path": "tui/bootstrap.cjs.in",
+			"sha256": "672169f0cfc352af0a892970abdb099cfede277e93a72dce2ed31171a126e944"
 		}
 	]
 }

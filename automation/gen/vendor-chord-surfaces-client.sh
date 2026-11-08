@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Regenerate chord/nextnode/surfaces/client/pi: Pi's own chord sources of the client surfaces (the page's and the terminal's runtimes, the React
 # bindings) with the test fixtures the Go tests build base bundles from, and the two packages they run on (pi-schema, pi-telemetry), and
-# client/manifest.json (D476).
+# client/manifest.json (D601).
 #   PI_TREE        the Pi tree (default: the mirror of the pin, .upstream/current; make upstream-mirror)
 #   PI_COMMIT      the commit of PI_TREE for the manifest (default: the pin's). A commit other than the pin's is a catch-up: the
 #                  manifest then names it as `catchup`, the one commit the manifest may differ from the pin by (the Go test

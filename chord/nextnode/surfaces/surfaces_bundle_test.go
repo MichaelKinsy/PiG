@@ -3,7 +3,6 @@ package surfaces
 // pi: packages/chord/src/node/surfaces/bundle.ts
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -45,23 +44,11 @@ func project(t *testing.T, files map[string]string, linked ...string) string {
 	return dir
 }
 
-// jsonText is v as JSON text.
-func jsonText(t *testing.T, v any) string {
-	t.Helper()
-	text, err := json.Marshal(v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(text)
-}
-
 // chordish is a workspace package `chordish` exporting its source under the `source` condition and its build otherwise.
-func chordish(t *testing.T) map[string]string {
+func chordish() map[string]string {
 	return map[string]string{
-		"workspace/chordish/package.json": jsonText(t, map[string]any{
-			"name": "chordish", "type": "module",
-			"exports": map[string]any{".": map[string]any{"source": "./src/index.ts", "default": "./dist/index.js"}},
-		}),
+		// Written as text: the order of an `exports` object's conditions matters.
+		"workspace/chordish/package.json": `{"name":"chordish","type":"module","exports":{".":{"source":"./src/index.ts","default":"./dist/index.js"}}}`,
 		"workspace/chordish/src/index.ts":  "export const from: string = \"source\";\n",
 		"workspace/chordish/dist/index.js": "export const from = \"dist\";\n",
 		"main.ts":                          "import { from } from \"chordish\";\nconsole.log(from);\n",
@@ -81,7 +68,7 @@ func sortedKeys(inputs plugins.BaseInputs) []string {
 }
 
 func TestConditionsResolvesWithTheGivenConditionsTheSourceAsInputNotDistEachWithItsBytesHash(t *testing.T) {
-	dir := project(t, chordish(t), "chordish")
+	dir := project(t, chordish(), "chordish")
 	for _, platform := range []BasePlatform{PlatformBrowser, PlatformSandbox} {
 		bundle, err := BuildBase(filepath.Join(dir, "main.ts"), platform, "/p/", []string{"source"})
 		if err != nil {
@@ -124,7 +111,7 @@ func TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedN
 	if got := ProcessConditions(nil, ""); len(got) != 0 {
 		t.Fatalf("conditions = %q, want none", got)
 	}
-	dir := project(t, chordish(t), "chordish")
+	dir := project(t, chordish(), "chordish")
 	t.Setenv("NODE_OPTIONS", `--conditions "source"`)
 	bundle, err := BuildBase(filepath.Join(dir, "main.ts"), PlatformBrowser, "/p/", nil)
 	if err != nil {
@@ -137,14 +124,10 @@ func TestConditionsTakesTheServerProcessesConditionsByDefaultItsFlagsAndAQuotedN
 
 func TestConditionsKeepsABrowserBuildsModuleConditionAndBrowserFieldWithCustomConditions(t *testing.T) {
 	dir := project(t, map[string]string{
-		"workspace/dual/package.json": jsonText(t, map[string]any{
-			"name": "dual", "exports": map[string]any{".": map[string]any{"module": "./esm.js", "default": "./cjs.js"}},
-		}),
+		"workspace/dual/package.json": `{"name":"dual","exports":{".":{"module":"./esm.js","default":"./cjs.js"}}}`,
 		"workspace/dual/esm.js": "export const dual = \"module\";\n",
 		"workspace/dual/cjs.js": "exports.dual = \"default\";\n",
-		"workspace/fielded/package.json": jsonText(t, map[string]any{
-			"name": "fielded", "main": "./node.js", "browser": map[string]any{"./node.js": "./browser.js"},
-		}),
+		"workspace/fielded/package.json": `{"name":"fielded","main":"./node.js","browser":{"./node.js":"./browser.js"}}`,
 		"workspace/fielded/node.js":    "exports.fielded = \"node\";\n",
 		"workspace/fielded/browser.js": "exports.fielded = \"browser\";\n",
 		"main.ts":                      "import { dual } from \"dual\";\nimport { fielded } from \"fielded\";\nconsole.log(dual, fielded);\n",
