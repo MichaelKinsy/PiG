@@ -269,7 +269,11 @@ func (t *TuiAltScreen) applyMouseDispatchResult(event TuiMouseEvent, result *Tui
 	if focusTarget == nil {
 		focusTarget = result.Target.Component
 	}
-	focusTarget = t.resolveMouseFocusTarget(focusTarget)
+	resolved := t.resolveMouseFocusTarget(focusTarget)
+	if t.resolveMouseFocus != nil {
+		resolved = t.resolveMouseFocus(focusTarget, resolved)
+	}
+	focusTarget = resolved
 	focusChanged := result.Focus && t.GetFocusedComponent() != focusTarget
 	if result.Focus {
 		t.SetFocus(focusTarget)

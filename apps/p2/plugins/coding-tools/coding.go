@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/hosts"
+	codingtui "github.com/MichaelKinsy/PiG/apps/p2/plugins/coding-tools/tui"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/durable"
@@ -76,7 +77,8 @@ func init() {
 			return nil
 		})
 	})
-	hosts.RegisterPlugin(hosts.Plugin{Name: "coding-tools", Worker: &workerFacet})
+	tuiFacet := codingtui.Facet
+	hosts.RegisterPlugin(hosts.Plugin{Name: "coding-tools", Worker: &workerFacet, TUI: &tuiFacet})
 }
 
 // plain is an extension whose tools declare no requirements.

@@ -59,3 +59,4 @@ D350: OpenCode Zen and Go Claude models send per-message effort (Pi main 9ee7586
 D351: Anthropic non-strict tool schemas keep root $defs (Pi main 4a6a58eb, not in Pi 1.5.0; see docs/parity/divergences/D351.md); owner sign-off pending.
 D352: Anthropic message threads (Pi main a758f3ae4, not in Pi 1.5.0; see docs/parity/divergences/D352.md); owner sign-off pending.
 D540: the plugins watcher's directory identity has no birth time on a Unix whose stat Go does not expose it for (see docs/parity/divergences/D540.md); owner sign-off pending.
+D611: the TUI launcher runs the plugins' TUI facets in its own process: no sandbox worker, bundle, version or swap (see docs/parity/divergences/D611.md); approved by owner Michael Kinsy 2026-11-08.

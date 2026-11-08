@@ -162,7 +162,7 @@ func (t *tuiBase) SetTerminalColorSchemeNotifications(enabled bool) {
 	}
 	t.input.schemeNotifications = enabled
 	t.input.mu.Unlock()
-	if !t.stopped {
+	if !t.stopped.Load() {
 		writeColorSchemeNotifications(t.out, enabled)
 	}
 }

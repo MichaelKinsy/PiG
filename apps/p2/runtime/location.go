@@ -154,3 +154,12 @@ func contains(list []string, item string) bool {
 	}
 	return false
 }
+
+// EnvPrefix splits `env:rest` (ENV_PREFIX): the environment-shaped prefix and the rest, ok false when text has none.
+func EnvPrefix(text string) (env, rest string, ok bool) {
+	match := envPrefix.FindStringSubmatch(text)
+	if match == nil {
+		return "", "", false
+	}
+	return match[1], match[2], true
+}
