@@ -303,3 +303,56 @@ func skipIf(ok bool, i int) int {
 	}
 	return -1
 }
+
+// appendCompacted appends raw without the whitespace between its tokens when that text is canonical, which is then what Canonicalize(raw) returns: whitespace around a structural character is insignificant, so raw and the compacted text parse to one value, and a value that IsCanonical accepts is its own rewrite. Pretty-printed or spaced JSON (a writer that is not JSON.stringify) therefore skips the full rewrite when nothing but its spacing differs. dst is returned unchanged, with false, when raw has no such whitespace or the compacted text is not canonical (raw may be invalid or need the rewrite).
+//
+// Whitespace is dropped only beside a structural character or a string's end, never between two token bytes ("tr ue", "1 2", "- 1" stay as they are and fail the scan), so no invalid text becomes valid.
+func appendCompacted(dst, raw []byte) ([]byte, bool) {
+	start := len(dst)
+	run, prev := 0, byte(0) // raw[run:i] is held back to be copied; prev is the last byte of the previous token
+	for i := 0; i < len(raw); {
+		switch c := raw[i]; c {
+		case '"':
+			for i++; i < len(raw) && raw[i] != '"'; i++ {
+				if raw[i] == '\\' {
+					i++
+				}
+			}
+			if i >= len(raw) {
+				return dst[:start], false
+			}
+			i++
+			prev = '"'
+		case ' ', '\t', '\n', '\r':
+			j := i + 1
+			for j < len(raw) && (raw[j] == ' ' || raw[j] == '\t' || raw[j] == '\n' || raw[j] == '\r') {
+				j++
+			}
+			if structuralOrQuote(prev) || j < len(raw) && structuralOrQuote(raw[j]) && raw[j] != '"' {
+				dst = append(dst, raw[run:i]...)
+				run = j
+			}
+			i = j
+		default:
+			prev = c
+			i++
+		}
+	}
+	if run == 0 {
+		return dst, false
+	}
+	dst = append(dst, raw[run:]...)
+	if !IsCanonical(dst[start:]) {
+		return dst[:start], false
+	}
+	return dst, true
+}
+
+// structuralOrQuote reports a byte that may touch insignificant whitespace: a structural character or a quote (the end of a string when it is prev, the start of one when it follows whitespace).
+func structuralOrQuote(c byte) bool {
+	switch c {
+	case '{', '}', '[', ']', ',', ':', '"':
+		return true
+	}
+	return false
+}
