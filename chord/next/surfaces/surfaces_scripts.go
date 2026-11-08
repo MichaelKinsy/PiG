@@ -76,10 +76,6 @@ var WebScripts = scriptsContract("chord.web.scripts")
 // TuiScripts is the current terminal scripts (ScriptSet), served by the server's terminal surface as WebScripts is.
 var TuiScripts = scriptsContract("chord.tui.scripts")
 
-// DesktopScripts is the current scripts of the native desktop host (a Go client: its scripts are compiled in, its set tells it
-// what the server runs), served as WebScripts is. Not in Pi: a third surface beside web and terminal.
-var DesktopScripts = scriptsContract("chord.desktop.scripts")
-
 // scriptsContract is the contract of a client kind's current scripts, named name: a remote object on the server, its state
 // the set.
 func scriptsContract(name string) *contracts.Contract {

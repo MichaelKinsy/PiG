@@ -15,7 +15,7 @@ import (
 // A Go client's script is the Go function a plugin built into the client registers (RegisteredScript.Run): what Pi's client
 // holds as the function a JavaScript script passed to `chordFacet`. The script text itself (RegisteredSource) is what the
 // server serves to JavaScript clients. Pi's `interop` (an ES module namespace wrapped for a CommonJS import, with
-// `__esModule`) has no Go form: a module is the value ClientModules holds, as it is (D478).
+// `__esModule`) has no Go form: a module is the value ClientModules holds, as it is (D550).
 
 // Register is the global function a registered script calls: defined by the client before any plugin script runs.
 const Register = "chordFacet"
