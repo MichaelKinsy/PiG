@@ -1,6 +1,6 @@
 package ai_test
 
-// Ports packages/ai/test/validation-probes.test.ts (Pi b556cfe5): the reviewers' probes of the schema switch, TypeBox-built and plain JSON
+// Ports packages/ai/test/validation-probes.test.ts (Pi c23b9ec1): the reviewers' probes of the schema switch, TypeBox-built and plain JSON
 // (MCP-shaped) tool schemas with arguments through validateToolArguments. testdata/validation-probes.json holds every `expect(outcome(...)).toBe(...)` of that file
 // with the schema as the JSON text a tool declaration carries (TypeBox values serialize to their JSON Schema; Refine, Codec and the other
 // non-JSON constructs leave no mark), the arguments as JSON text and Pi's expected outcome. testdata/validation_probes_corpus.mjs regenerates it from the Pi test file.
