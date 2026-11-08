@@ -445,7 +445,7 @@ func entriesKit(t *testing.T) *engineKit {
 	return kit
 }
 
-func metaOf(entry DocumentEntry) string {
+func entryMeta(entry DocumentEntry) string {
 	if entry.Meta == nil {
 		return "<none>"
 	}
@@ -478,7 +478,7 @@ func TestEngineEntries(t *testing.T) {
 			t.Fatalf("current a = %+v, want none: it is retired", entry)
 		}
 		entry := find("a", AtSeq(2))
-		if entry == nil || metaOf(*entry) != "m-a" || entry.RetiredAt == nil || *entry.RetiredAt != 3 {
+		if entry == nil || entryMeta(*entry) != "m-a" || entry.RetiredAt == nil || *entry.RetiredAt != 3 {
 			t.Fatalf("a at 2 = %+v, want m-a retired at 3", entry)
 		}
 		if entry := find("a", AtSeq(3)); entry != nil {
@@ -492,18 +492,18 @@ func TestEngineEntries(t *testing.T) {
 	t.Run("list entries of a scope by id, live now or at a point, from a cursor, by kind, up to a limit", func(t *testing.T) {
 		kit := entriesKit(t)
 		current := list(t, kit, scope, CurrentPoint, 0, 10)
-		if len(current) != 2 || current[0].Meta != nil || metaOf(current[1]) != "m-c" || current[0].RetiredAt != nil || current[1].RetiredAt != nil {
+		if len(current) != 2 || current[0].Meta != nil || entryMeta(current[1]) != "m-c" || current[0].RetiredAt != nil || current[1].RetiredAt != nil {
 			t.Fatalf("current = %+v, want b (no meta) and c (m-c), neither retired", current)
 		}
 		atTwo := list(t, kit, scope, AtSeq(2), 0, 10)
-		if len(atTwo) != 3 || metaOf(atTwo[0]) != "m-a" || atTwo[0].RetiredAt == nil || *atTwo[0].RetiredAt != 3 || atTwo[1].RetiredAt != nil {
+		if len(atTwo) != 3 || entryMeta(atTwo[0]) != "m-a" || atTwo[0].RetiredAt == nil || *atTwo[0].RetiredAt != 3 || atTwo[1].RetiredAt != nil {
 			t.Fatalf("at 2 = %+v, want a (m-a, retired at 3), b and c", atTwo)
 		}
 		if atOne := list(t, kit, scope, AtSeq(1), 0, 10); len(atOne) != 2 {
 			t.Fatalf("at 1 = %+v, want a and b: c was created at 2", atOne)
 		}
 		other := "other"
-		if byKind := list(t, kit, DocumentScope{Owner: scope.Owner, Namespace: scope.Namespace, Kind: &other}, CurrentPoint, 0, 10); len(byKind) != 1 || metaOf(byKind[0]) != "m-c" {
+		if byKind := list(t, kit, DocumentScope{Owner: scope.Owner, Namespace: scope.Namespace, Kind: &other}, CurrentPoint, 0, 10); len(byKind) != 1 || entryMeta(byKind[0]) != "m-c" {
 			t.Fatalf("kind other = %+v", byKind)
 		}
 		if page := list(t, kit, scope, AtSeq(2), 10, 1); len(page) != 1 || page[0].Meta != nil {
@@ -524,7 +524,7 @@ func TestEngineEntries(t *testing.T) {
 			return entry
 		}
 		retired := read(10)
-		if retired == nil || metaOf(retired.DocumentEntry) != "m-a" || retired.RetiredAt == nil || *retired.RetiredAt != 3 ||
+		if retired == nil || entryMeta(retired.DocumentEntry) != "m-a" || retired.RetiredAt == nil || *retired.RetiredAt != 3 ||
 			retired.Owner != engineOwner.Owner || retired.Namespace != engineOwner.Namespace || retired.History != "rewindable" {
 			t.Fatalf("entry 10 = %+v", retired)
 		}
