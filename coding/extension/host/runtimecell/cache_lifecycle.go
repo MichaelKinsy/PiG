@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/filelock"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 const (
@@ -317,7 +318,7 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 			}
 		}
 		candidates := slices.Clone(report.Entries)
-		slices.SortFunc(candidates, func(a, b CacheEntry) int {
+		sortx.Func(candidates, func(a, b CacheEntry) int {
 			if a.LastUsed < b.LastUsed {
 				return -1
 			}

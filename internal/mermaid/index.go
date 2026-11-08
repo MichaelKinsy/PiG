@@ -6,101 +6,56 @@ package mermaid
 
 import "strings"
 
-// Render pipeline, ported from grok-mermaid index.ts. render → attempt
-// (one-line-retry for the stricter grammars) → draw (dispatch on kind).
-
-// Render renders a Mermaid source block as Unicode box-drawing art, or ok=false
-// for blank input, a syntax error, an unsupported diagram type, or a layout
-// refused as too large. The diagram is laid out at whatever size it needs;
-// Art.Width reports the columns it turned out to be; deciding what to do when
-// that exceeds the space is the caller's (the Mermaid transformer falls back to
-// the raw source, matching upstream mermaid.ts).
+// Render renders a Mermaid source block as Unicode box-drawing art, ported from
+// lovely-mermaid index.ts render(). Supported: graph/flowchart (including
+// subgraph), stateDiagram, classDiagram, erDiagram, sequenceDiagram, pie,
+// mindmap, timeline and gitGraph.
+//
+// The diagram is laid out at whatever size it needs; Art.Width reports the
+// columns it turned out to be. Deciding what to do when that exceeds the space
+// is the caller's (the Mermaid transformer falls back to the raw source,
+// matching upstream mermaid.ts).
+//
+// ok=false (upstream `null`) means there is no art to show: blank input, a
+// diagram type this renderer does not draw, a source in which not one statement
+// parsed, or a diagram large enough that laying it out is refused. Rendering is
+// best-effort in every grammar: a statement either contributes what parsed or is
+// dropped, and a diagram over a size cap renders its prefix. Everything given up
+// on is listed in Art.Warnings, advisory only.
 func Render(src string) (Art, bool) {
 	src = stripControls(src)
 	if trimJS(src) == "" {
 		return Art{}, false
 	}
-	c, warnings, ok := attempt(src, wrapWidth)
+	d := diagramFor(src)
+	if d == nil {
+		return Art{}, false
+	}
+	c, meta, ok := d.render(src)
 	if !ok {
 		return Art{}, false
 	}
 	plain, styled, width := c.toLines()
+
+	// A frontmatter `title:` is centred above the art, in the `title` role.
+	if title, ok := frontmatterTitle(src); ok {
+		tw := stringWidth(title)
+		width = max(width, tw)
+		pad := strings.Repeat(" ", (width-tw)/2)
+		plain = append([]string{pad + title, ""}, plain...)
+		titleRow := []Span{{Text: title, Role: RoleTitle}}
+		if pad != "" {
+			titleRow = []Span{{Text: pad, Role: RoleNone}, {Text: title, Role: RoleTitle}}
+		}
+		styled = append([][]Span{titleRow, nil}, styled...)
+	}
+	warnings := meta.warnings
 	if warnings == nil {
 		warnings = []string{}
 	}
-	return Art{Plain: plain, Styled: styled, Width: width, Warnings: warnings}, true
-}
-
-// attempt draws src, retrying once without its last line if the grammar rejects
-// it (keeps a streaming diagram on screen while its final line is half-typed).
-func attempt(src string, wrap int) (*canvas, []string, bool) {
-	if c, warnings, ok := draw(src, wrap); ok {
-		return c, warnings, true
+	classDefs := meta.classDefs
+	if classDefs == nil {
+		classDefs = map[string]map[string]string{}
 	}
-
-	body := trimEndJS(src)
-	cut := strings.LastIndex(body, "\n")
-	if cut == -1 {
-		return nil, nil, false
-	}
-	c, warnings, ok := draw(body[:cut], wrap)
-	if !ok {
-		return nil, nil, false
-	}
-	dropped := trimJS(body[cut+1:])
-	warnings = append(append([]string(nil), warnings...), "dropped, unreadable final line: \""+dropped+"\"")
-	return c, warnings, true
-}
-
-// draw dispatches on the declared diagram type; ok=false means nothing drawn.
-func draw(src string, wrap int) (*canvas, []string, bool) {
-	switch diagramKind(src) {
-	case "flowchart":
-		g := parseGraph(src)
-		if g == nil {
-			return nil, nil, false
-		}
-		var c *canvas
-		if len(g.groups) == 0 {
-			c = layoutFlowchart(g, wrap)
-		} else {
-			c = layoutGrouped(g, wrap)
-		}
-		if c == nil {
-			return nil, nil, false
-		}
-		return c, g.warnings, true
-	case "state":
-		g := parseState(src)
-		if g == nil {
-			return nil, nil, false
-		}
-		return plainDraw(layoutFlowchart(g, wrap))
-	case "class":
-		g, infos, ok := parseClass(src)
-		if !ok {
-			return nil, nil, false
-		}
-		return plainDraw(layoutClass(g, infos, wrap))
-	case "er":
-		g, infos, ok := parseEr(src)
-		if !ok {
-			return nil, nil, false
-		}
-		return plainDraw(layoutClass(g, infos, wrap))
-	case "sequence":
-		s := parseSequence(src)
-		if s == nil {
-			return nil, nil, false
-		}
-		return plainDraw(layoutSequence(s, wrap))
-	}
-	return nil, nil, false
-}
-
-func plainDraw(c *canvas) (*canvas, []string, bool) {
-	if c == nil {
-		return nil, nil, false
-	}
-	return c, nil, true
+	return Art{Plain: plain, Styled: styled, Width: width, ClassDefs: classDefs, Warnings: warnings}, true
 }

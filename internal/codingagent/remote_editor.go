@@ -59,6 +59,9 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	if editor == nil {
 		m.remoteEditor = nil
 		m.editor.SetRemote(nil)
+		// Pi's setCustomEditorComponent(undefined) puts the expanded draft into the default editor (defaultEditor.setText(currentText)); a replacement's
+		// collapsed marker means nothing to the default editor, which holds none of its content.
+		m.editor.SetText(text)
 		if len(m.autocompleteFactories) == 0 {
 			m.editor.SetAutocompleteChanged(nil)
 			m.autocompleteProvider = nil

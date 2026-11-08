@@ -66,11 +66,7 @@ func ownGoSDKDir(t *testing.T, root string) string {
 	if !ok {
 		t.Skip("this build strips the Go extension SDK")
 	}
-	hash, err := b.hash()
-	if err != nil {
-		t.Fatal(err)
-	}
-	name, err := contentdirs.Name("sdk", hash)
+	name, err := contentdirs.Name("sdk", b.stagedHash)
 	if err != nil {
 		t.Fatal(err)
 	}

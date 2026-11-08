@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -572,7 +573,7 @@ func (t *TuiAltScreen) applySearchHighlights(screen []string, layout *LayoutFram
 			continue
 		}
 		lineWidth := widthx.VisibleWidth(line)
-		slices.SortStableFunc(ranges, func(a, b searchHighlightRange) int { return b.startCol - a.startCol })
+		sortx.Stable(ranges, func(a, b searchHighlightRange) int { return b.startCol - a.startCol })
 		for _, r := range ranges {
 			startCol, endCol := min(r.startCol, lineWidth), min(r.endCol, lineWidth)
 			if endCol <= startCol {

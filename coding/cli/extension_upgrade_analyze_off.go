@@ -10,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
 )
 
-// pig additive (D92): a Piglet Binary that compiled out the embedded Go SDK cannot type check a Go extension against it, and linking the type checker (go/types, go/importer) only for this analysis would keep about 1 MiB of code in a Binary that stripped the Go SDK.
+// pig additive (D92): a Piglet Binary that compiled out the embedded Go SDK has no staged SDK to build the analysis driver from (extension_upgrade_analyze.go), so it cannot type check a Go extension against it.
 func (u *extensionUpgrader) analyzeExtension(context.Context, subprocess.ExtConfig) (*upgrade.Result, error) {
 	return nil, errors.New("this Piglet Binary compiled out the Go extension SDK, so it cannot analyze a Go extension for an upgrade")
 }

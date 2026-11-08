@@ -6,7 +6,7 @@ package mermaid
 
 import "sort"
 
-// Sequence diagram layout, ported from grok-mermaid layout-seq.ts. Participants
+// Sequence diagram layout, ported from lovely-mermaid layout-seq.ts. Participants
 // get one column each with lifelines the full height and a box at top and
 // bottom; column gaps solve from the widest thing between any two columns.
 
@@ -35,12 +35,12 @@ func itemTextW(text *string) int {
 	return stringWidth(*text)
 }
 
-func layoutSequence(seq *sequence, wrap int) *canvas {
+func layoutSequence(seq *sequence) *canvas {
 	n := len(seq.labels)
 	labels := make([]string, n)
 	boxW := make([]int, n)
 	for i, l := range seq.labels {
-		labels[i] = fitLabel(l, wrap)
+		labels[i] = fitLabel(l, wrapWidth)
 		boxW[i] = max(1, stringWidth(labels[i])) + 2*pad + 2
 	}
 	const boxH = 3
@@ -103,6 +103,21 @@ func layoutSequence(seq *sequence, wrap int) *canvas {
 		xs[i] = xs[i-1] + gaps[i-1]
 	}
 
+	// A note left of the first participant has no gap to grow; shift the whole
+	// diagram right instead so the note box lands beside the lifeline, not on it.
+	leftPad := 0
+	for _, item := range seq.items {
+		if item.kind == seqNote && item.anchor.kind == noteLeft && item.anchor.at == 0 {
+			w := stringWidth(item.str) + 2*pad + 2
+			leftPad = max(leftPad, satSub(w+1, xs[0]))
+		}
+	}
+	if leftPad > 0 {
+		for i := range n {
+			xs[i] += leftPad
+		}
+	}
+
 	canvasW := xs[n-1] + ceilDiv2(boxW[n-1]) + 1
 	for _, item := range seq.items {
 		switch item.kind {
@@ -135,7 +150,7 @@ func layoutSequence(seq *sequence, wrap int) *canvas {
 
 	for i := range n {
 		for _, by := range []int{0, bottomTop} {
-			drawBox(c, seqBox(satSub(xs[i], half(boxW[i])), by, boxW[i], boxH), []string{labels[i]}, shapeRect)
+			drawBox(c, seqBox(satSub(xs[i], half(boxW[i])), by, boxW[i], boxH), []string{labels[i]}, shapeRect, false)
 		}
 	}
 	for k, item := range seq.items {
@@ -143,7 +158,7 @@ func layoutSequence(seq *sequence, wrap int) *canvas {
 			continue
 		}
 		gx, gw := noteGeometry(xs, item.anchor, stringWidth(item.str))
-		drawBox(c, seqBox(gx, rows[k], gw, 3), []string{item.str}, shapeRect)
+		drawBox(c, seqBox(gx, rows[k], gw, 3), []string{item.str}, shapeRect, false)
 	}
 
 	for _, x := range xs {
@@ -159,6 +174,40 @@ func layoutSequence(seq *sequence, wrap int) *canvas {
 			drawMessage(c, item, xs, r)
 		case seqDivider:
 			drawDivider(c, item.str, r, canvasW)
+		}
+	}
+
+	// Activations turn the lifeline into a double line from the activating
+	// message's arrow row to the deactivating one's (to the bottom while still
+	// open): two rails, echoing mermaid's slim activation rectangle. Setting the
+	// glyph directly leaves the mask bits for finalizeMask, whose double-tee pass
+	// resolves message junctions on the run (║ -> ╟ ╢ ╫).
+	startRow := func(k int) int {
+		item := seq.items[k]
+		labeled := item.kind == seqMessage && item.from != item.to && item.text != nil
+		if labeled {
+			return rows[k] + 1
+		}
+		return rows[k]
+	}
+	endRow := func(k int) int {
+		item := seq.items[k]
+		// A self-message stub returns two rows below where it left.
+		if item.kind == seqMessage && item.from == item.to {
+			return rows[k] + 2
+		}
+		return startRow(k)
+	}
+	for _, a := range seq.activations {
+		y1 := bottomTop - 1
+		if a.to != activationOpen {
+			y1 = endRow(a.to)
+		}
+		for y := startRow(a.from); y <= y1; y++ {
+			i := c.idx(xs[a.at], y)
+			if c.mask[i] != 0 {
+				c.ch[i] = "║"
+			}
 		}
 	}
 
@@ -196,19 +245,19 @@ func drawMessage(c *canvas, item seqItem, xs []int, r int) {
 	if item.from == item.to {
 		x := xs[item.from]
 		c.junction(x, r, bitR)
-		c.set(x+1, r, lineCh, ClsEdge)
-		c.set(x+2, r, lineCh, ClsEdge)
-		c.set(x+3, r, "╮", ClsEdge)
-		c.set(x+3, r+1, "│", ClsEdge)
+		c.set(x+1, r, lineCh, RoleEdge)
+		c.set(x+2, r, lineCh, RoleEdge)
+		c.set(x+3, r, "╮", RoleEdge)
+		c.set(x+3, r+1, "│", RoleEdge)
 		headCh := "◄"
-		if item.head == seqHeadCross {
+		if item.head == seqCross {
 			headCh = "×"
 		}
-		c.set(x+1, r+2, headCh, ClsEdge)
-		c.set(x+2, r+2, lineCh, ClsEdge)
-		c.set(x+3, r+2, "╯", ClsEdge)
+		c.set(x+1, r+2, headCh, RoleEdge)
+		c.set(x+2, r+2, lineCh, RoleEdge)
+		c.set(x+3, r+2, "╯", RoleEdge)
 		if item.text != nil {
-			drawTextOverEdges(c, *item.text, x+5, r+1, ClsText)
+			drawTextOverEdges(c, *item.text, x+5, r+1, RoleText)
 		}
 		return
 	}
@@ -229,32 +278,32 @@ func drawMessage(c *canvas, item seqItem, xs []int, r int) {
 		c.junction(x0, arrowRow, bitL)
 	}
 	for x := lo + 1; x < hi; x++ {
-		c.set(x, arrowRow, lineCh, ClsEdge)
+		c.set(x, arrowRow, lineCh, RoleEdge)
 	}
 	headCh := "◄"
 	if rightward {
 		headCh = "▶"
 	}
-	if item.head == seqHeadCross {
+	if item.head == seqCross {
 		headCh = "×"
 	}
 	if rightward {
-		c.set(x1-1, arrowRow, headCh, ClsEdge)
+		c.set(x1-1, arrowRow, headCh, RoleEdge)
 	} else {
-		c.set(x1+1, arrowRow, headCh, ClsEdge)
+		c.set(x1+1, arrowRow, headCh, RoleEdge)
 	}
 
 	if item.text != nil {
 		span := hi - lo - 1
 		t := fitLabel(*item.text, max(1, span))
-		drawTextOverEdges(c, t, lo+1+half(satSub(span, stringWidth(t))), r, ClsText)
+		drawTextOverEdges(c, t, lo+1+half(satSub(span, stringWidth(t))), r, RoleText)
 	}
 }
 
 // drawDivider draws a full-width rule labelling a loop/alt/opt block boundary.
 func drawDivider(c *canvas, text string, r, canvasW int) {
 	for x := range canvasW {
-		c.set(x, r, "─", ClsEdge)
+		c.set(x, r, "─", RoleEdge)
 	}
-	drawTextOverEdges(c, " "+fitLabel(text, satSub(canvasW, 4))+" ", 2, r, ClsEdgeLabel)
+	drawTextOverEdges(c, " "+fitLabel(text, satSub(canvasW, 4))+" ", 2, r, RoleEdgeLabel)
 }

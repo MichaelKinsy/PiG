@@ -181,7 +181,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// upstream: interactive-mode.ts handleEvent message_start renders every displayed custom message through addMessageToChat,
 			// whichever path delivered it (before_agent_start handler messages, queued steer/follow-up, nextTurn, a triggerTurn start).
 			if entry, display := customMessageEntryOf(custom); display {
-				m.appendCustomMessage(entry)
+				m.appendCustomMessage(entry, messageMeta{})
 				m.tuiInst.RequestRender()
 			}
 		}

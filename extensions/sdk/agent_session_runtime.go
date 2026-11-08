@@ -634,9 +634,12 @@ func copyFileExclusive(source, destination string) error {
 	return out.Close()
 }
 
-// Dispose is `dispose()`: it emits session_shutdown with the reason "quit" to the current session's extensions, runs the before-invalidate callback and disposes the session.
+// Dispose is `dispose()`: it settles the active response, emits session_shutdown with the reason "quit" to the current session's extensions, runs the before-invalidate callback and disposes the session.
 func (r *AgentSessionRuntime) Dispose() error {
 	session := r.Session()
+	if err := session.Abort(); err != nil {
+		return err
+	}
 	if _, _, err := session.emitExtensionEvent(map[string]any{"type": "session_shutdown", "reason": "quit"}); err != nil {
 		return err
 	}

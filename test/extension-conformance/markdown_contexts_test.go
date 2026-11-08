@@ -42,6 +42,17 @@ func TestMarkdownContextsAcrossSDKs(t *testing.T) {
 					}
 				}
 			}
+			// Pi eebd5d90: the fixture lists the custom, summary and changelog surfaces in options.messageTypes. An SDK that ignores the option leaves them
+			// to the default types, and the wrapper passes the Markdown of those surfaces through unchanged.
+			for _, messageType := range []extension.MarkdownMessageType{extension.MarkdownMessageCustom, extension.MarkdownMessageSummary, extension.MarkdownMessageChangelog} {
+				ctx := extension.MarkdownTransformContext{Context: t.Context(), MessageType: messageType, AvailableWidth: 40}
+				want := fmt.Sprintf("md:surface *text*:%s:streaming=false:width=40", messageType)
+				for j, transform := range transforms {
+					if got := transform("surface *text*", ctx); got != want {
+						t.Fatalf("registerMarkdownTransformer options.messageTypes transform%d on %s: got %q; want %q (the SDK ignored the option)", j, messageType, got, want)
+					}
+				}
+			}
 		})
 	}
 }

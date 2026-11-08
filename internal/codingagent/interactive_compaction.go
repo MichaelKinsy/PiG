@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -30,8 +31,9 @@ func (m *InteractiveMode) addCompactionCostNotice(kind string, usage *ai.Usage) 
 	m.chatContainer.Add(themedNotice("warning", fmt.Sprintf("%s: %s tokens billed%s", label, formatTokens(tokens), cost), 1))
 }
 
-func (m *InteractiveMode) addCompactionSummary(summary string, tokensBefore int, usage *ai.Usage) {
-	component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: summary, TokensBefore: tokensBefore}, m.markdownThemeWithSettings(), m.outputPad)
+func (m *InteractiveMode) addCompactionSummary(summary string, tokensBefore int, usage *ai.Usage, meta messageMeta) {
+	component := tui.NewCompactionSummaryMessageComponentWithSurface(tui.CompactionSummaryMessage{Summary: summary, TokensBefore: tokensBefore}, m.markdownThemeWithSettings(), m.outputPad, m.surfaceMarkdownTransform(extension.MarkdownMessageSummary, meta))
+	m.markdownBlocks = append(m.markdownBlocks, component)
 	if m.toolsExpanded {
 		component.SetExpanded(true)
 	}
@@ -49,5 +51,5 @@ func (m *InteractiveMode) renderCompactionResult(event agent.CompactionEndEvent,
 		entries = entries[1:]
 	}
 	m.renderSessionEntryList(entries, false)
-	m.addCompactionSummary(event.Summary, event.TokensBefore, event.Usage)
+	m.addCompactionSummary(event.Summary, event.TokensBefore, event.Usage, messageMeta{})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -33,6 +35,13 @@ type renderProxyComponent struct {
 	invalidate func()
 	fallback   []string
 
+	// key is the host's name for the message or entry the component draws (renderKeys); "" when the renderer call is not for a displayed one.
+	key string
+	// takesMouse is the extension's report that the component it returned takes the mouse (RenderResult.Mouse).
+	takesMouse atomic.Bool
+	// regions are the rectangles of the Node component's MouseRegions (RenderResult.Regions), which HandleMouse hit-tests.
+	regions atomic.Pointer[[]RenderMouseRegion]
+
 	mu         sync.Mutex
 	lines      []string
 	linesWidth int // width the cached lines were rendered at
@@ -41,6 +50,12 @@ type renderProxyComponent struct {
 	generation uint64
 	requesting bool
 	retry      renderRetry
+	// rerender is whether the next request runs the renderer. Pi runs it when it builds the component (first draw, a new expansion or padding, an
+	// invalidation) and draws the component it returned on every other frame (a resize, a click), so only those three set it; an answer to a request
+	// that ran the renderer clears it.
+	rerender bool
+	// events are the mouse events the view took since the last request; the next request carries them, so the extension applies them before it draws.
+	events []ViewEventPayload
 	// view is the view of the renderer's results (D107).
 	view rendererView
 }
@@ -65,6 +80,8 @@ func newRenderProxyComponent(
 		invalidate: invalidate,
 		fallback:   []string{fmt.Sprintf("[%s]", customType)},
 		options:    options,
+		key:        renderKeys.key(conn, options.Identity),
+		rerender:   true,
 	}
 }
 
@@ -93,7 +110,9 @@ func newEntryRenderProxyComponent(
 		inactivity: inactivity,
 		invalidate: invalidate,
 		fallback:   []string{fmt.Sprintf("[%s]", customType)},
-		options:    extension.MessageRenderOptions{Expanded: options.Expanded},
+		options:    extension.MessageRenderOptions{Expanded: options.Expanded, Identity: options.Identity},
+		key:        renderKeys.key(conn, options.Identity),
+		rerender:   true,
 	}
 }
 
@@ -141,6 +160,7 @@ func (c *renderProxyComponent) NeedsRedraw() bool { return c.changed.Swap(false)
 
 func (c *renderProxyComponent) Invalidate() {
 	c.mu.Lock()
+	c.rerender = true
 	if c.width <= 0 || c.conn == nil {
 		c.mu.Unlock()
 		return
@@ -162,6 +182,7 @@ func (c *renderProxyComponent) SetExpanded(expanded bool) {
 		return
 	}
 	c.options.Expanded = expanded
+	c.rerender = true
 	if c.width <= 0 || c.conn == nil {
 		c.mu.Unlock()
 		return
@@ -183,6 +204,7 @@ func (c *renderProxyComponent) SetOutputPad(padding int) {
 		return
 	}
 	c.options.OutputPad = padding
+	c.rerender = true
 	if c.width <= 0 || c.conn == nil {
 		c.mu.Unlock()
 		return
@@ -202,13 +224,18 @@ func (c *renderProxyComponent) requestLoop() {
 		generation := c.generation
 		width := c.width
 		options := c.options
+		rerender := c.rerender
+		events := c.events
+		c.events = nil
 		c.mu.Unlock()
 
-		lines, ok, stall := c.request(width, options)
+		lines, ok, stall := c.request(width, options, rerender, events)
 
 		c.mu.Lock()
 		current := generation == c.generation
 		if current && ok {
+			// The answer ran the renderer when it was asked to, and the next frame draws the component it returned.
+			c.rerender = false
 			c.lines = append([]string(nil), lines...)
 			c.linesWidth = width
 			c.changed.Store(true)
@@ -253,17 +280,27 @@ func (c *renderProxyComponent) retryDue(epoch uint64) {
 
 // request runs one render in the extension. stall is set when the renderer
 // inactivity boundary abandoned the request.
-func (c *renderProxyComponent) request(width int, options extension.MessageRenderOptions) (lines []string, ok bool, stall *HandlerStalledError) {
+func (c *renderProxyComponent) request(width int, options extension.MessageRenderOptions, rerender bool, events []ViewEventPayload) (lines []string, ok bool, stall *HandlerStalledError) {
 	ctx := context.Background()
 	var wireOptions any = options
 	if c.method == "render_entry" {
 		wireOptions = extension.EntryRenderOptions{Expanded: options.Expanded}
 	}
-	args, err := json.Marshal(map[string]any{
+	fields := map[string]any{
 		c.payloadKey: c.payload,
 		"options":    wireOptions,
 		"width":      width,
-	})
+	}
+	if c.key != "" {
+		fields["key"] = c.key
+	}
+	if rerender {
+		fields["rerender"] = true
+	}
+	if len(events) > 0 {
+		fields["events"] = events
+	}
+	args, err := json.Marshal(fields)
 	if err != nil {
 		return nil, false, nil
 	}
@@ -285,8 +322,74 @@ func (c *renderProxyComponent) request(width int, options extension.MessageRende
 	if err := json.Unmarshal(resp.Response.Result, &result); err != nil {
 		return nil, false, nil
 	}
-	lines, ok = c.view.apply(c.conn, c.invalidate, result, width)
+	c.takesMouse.Store(result.Mouse)
+	c.regions.Store(&result.Regions)
+	lines, ok = c.view.apply(c.conn, c.invalidate, c.key, c.enqueueEvent, result, width)
 	return lines, ok, nil
+}
+
+// enqueueEvent queues a mouse event for the extension and asks for the request that carries it. It performs no IPC and takes no view lock, so a view
+// delivers its events from the TUI loop.
+func (c *renderProxyComponent) enqueueEvent(ev ViewEventPayload) {
+	c.mu.Lock()
+	c.events = append(c.events, ev)
+	if c.width <= 0 || c.conn == nil {
+		c.mu.Unlock()
+		return
+	}
+	c.generation++
+	start := !c.requesting
+	c.requesting = true
+	c.mu.Unlock()
+	if start {
+		//portlint:allow golifetime requestLoop ends when its answer is current: it clears c.requesting under c.mu, and only the component's next frame starts another; one loop per component
+		go c.requestLoop()
+	}
+}
+
+// HandleMouse gives a fullscreen mouse event to the component the extension drew, as Pi's Container gives it to the component the renderer returned
+// (a MouseRegion in the posthorse and built-in cards). Nothing runs in the extension while the terminal waits: a kit view's mouse regions answer
+// from their description, and the extension hears of the events they took in the next request, which draws the card again. A component the extension
+// keeps (Node's) takes the click only, answered as handled at once; its press, drag, wheel and move stay with the host's selection and scrolling,
+// which Pi's component would have left unhandled in the same places.
+func (c *renderProxyComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult {
+	if c.key == "" || c.conn == nil {
+		return nil
+	}
+	result := c.view.handleMouse(*remoteMouse(event))
+	if !result.Handled && !result.Capture && !result.Focus {
+		if event.Type != tui.MouseClick {
+			return nil
+		}
+		var regions []RenderMouseRegion
+		if p := c.regions.Load(); p != nil {
+			regions = *p
+		}
+		if len(regions) > 0 {
+			// The component's MouseRegions answer where Pi's hit test finds them; a click outside them is left unhandled, as in Pi.
+			if !slices.ContainsFunc(regions, func(r RenderMouseRegion) bool {
+				return event.X >= r.X && event.X < r.X+r.Width && event.Y >= r.Y && event.Y < r.Y+r.Height
+			}) {
+				return nil
+			}
+		} else if !c.takesMouse.Load() {
+			// pig divergence (D277): a component that handles the mouse itself answers for itself, which the host cannot ask before it answers the terminal, so it gets the clicks inside it and no other event.
+			return nil
+		}
+		c.enqueueEvent(ViewEventPayload{Key: c.key, Type: ViewEventMouse, ViewEventExtras: ViewEventExtras{Mouse: remoteMouse(event)}})
+		result = extension.ViewMouseResult{Handled: true}
+	}
+	dispatched := &tui.TuiMouseDispatchResult{
+		TuiMouseEventResult: tui.TuiMouseEventResult{Handled: true, Capture: result.Capture, Focus: result.Focus, Render: result.Render},
+		Target: tui.TuiMouseDispatchTarget{
+			Component: c, OriginX: event.ScreenX - event.X, OriginY: event.ScreenY - event.Y,
+			Width: event.Width, Height: event.Height,
+		},
+	}
+	if result.Focus {
+		dispatched.FocusTarget = c
+	}
+	return dispatched
 }
 
 // FrontendView reports the structure of the renderer's result to a D91

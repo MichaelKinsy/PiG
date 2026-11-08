@@ -1,0 +1,3 @@
+### Changed
+
+- A streamed delta in a long session costs less. Each frame used to ask every message and tool card of the transcript whether it had changed, which at 4,000 entries took about 75 microseconds of a 190-microsecond frame. A container now reads the invalidations of its children of the transcript's own types (spacers, text, user and assistant messages, and tool cards whose tool has finished) and asks only the others, so the frame at 4,000 entries costs 114 instead of 188 microseconds (a 1,000-entry transcript: 98 instead of 118; an empty one is unchanged). What the frame draws is unchanged.

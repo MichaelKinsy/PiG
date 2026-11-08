@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// pig additive (D102): exit.log names the cause that ended the process. In RPC mode a single signal during a shutdown that stdin's end started does not end the process (Pi main ace560c30, D234), so it does not claim the line as "received SIGTERM" before an exit 0; the exit that ends the process writes a line that says the shutdown completed after the signal.
+// pig additive (D102): exit.log names the cause that ended the process. In RPC mode a single signal during a shutdown that stdin's end started does not end the process (Pi main ace560c30), so it does not claim the line as "received SIGTERM" before an exit 0; the exit that ends the process writes a line that says the shutdown completed after the signal.
 func TestRPCExitLogNamesWhatEndedTheProcess(t *testing.T) {
 	for _, tc := range []struct {
 		name    string

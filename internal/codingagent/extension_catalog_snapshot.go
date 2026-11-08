@@ -13,13 +13,13 @@ var catalogProviderField = func() int {
 	return field.Index[0]
 }()
 
-// equalCatalogRecords reports whether each model was made from the catalog record records holds for it (ai.CatalogRecordOf).
+// equalCatalogRecords reports whether each model was made from the catalog record records holds for it (ai.CatalogRecordRefOf).
 func equalCatalogRecords(records []string, models []*ai.Model) bool {
 	if len(records) != len(models) {
 		return false
 	}
 	for i, model := range models {
-		if records[i] != ai.CatalogRecordOf(model) {
+		if records[i] != ai.CatalogRecordRefOf(model) {
 			return false
 		}
 	}

@@ -12,6 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/jobs/job.ts
@@ -130,9 +132,6 @@ const (
 	// jobDeclared until the attempt is live (starts are refused).
 	jobDeclared jobState = iota
 	jobLive
-	// jobHanded once a reload's swap gave its records to the new attempt's job (starts refused, its invocations finish
-	// here).
-	jobHanded
 	// jobSealed once it is sealed.
 	jobSealed
 )
@@ -179,16 +178,52 @@ func (handle *job) Running() state.SourceHandle { return handle.records.running 
 // Start implements JobHandle.
 func (handle *job) Start(args any, ctx context.Context, options StartOptions) (Run, error) {
 	owner := handle.owner
+	traced := ctx
+	// The intent: the start's transaction, in its span (the run keeps it: its later phases are its children).
+	var span *chordtelemetry.OpenSpan
+	if parent := chordctx.Telemetry(ctx); !chordtelemetry.Untraced(parent) {
+		span = chordtelemetry.NewOpenSpan(parent, "chord.job", telemetry.SpanAttributes{
+			telemetry.Attr("chord.host", owner.host.spanHost),
+			telemetry.Attr("job", handle.definition.Name),
+			telemetry.Attr("phase", "intent"),
+			telemetry.Attr("object", chordtelemetry.Capped(owner.documents.Label())),
+		})
+		traced = chordctx.WithTelemetry(ctx, span.Span())
+	}
 	run, err := owner.documents.Tx(func(tx *documents.Transaction) (any, error) {
 		var staged Run
 		var err error
-		owner.documents.Do(func() { staged, err = handle.Stage(tx, args, ctx, options) })
+		owner.documents.Do(func() { staged, err = handle.Stage(tx, args, traced, options) })
 		return staged, err
-	}, owner.token, ctx)
+	}, owner.token, traced)
 	if err != nil {
+		if span != nil {
+			span.SetOutcome(chordtelemetry.Ended(span.Span(), "job_failed", err, ctx))
+		}
 		return nil, err
 	}
+	if span != nil {
+		span.Span().SetAttributes(telemetry.SpanAttributes{telemetry.Attr("job.id", run.(Run).ID())})
+		span.SetOutcome("ok")
+	}
 	return run.(Run), nil
+}
+
+// phaseSpan is the span of run's phase, under its start's carrier (a persisted run resumed in a new attempt or process
+// too: the same trace; without one the adapter's root); nil when nothing records.
+func (handle *job) phaseSpan(run *jobRun, phase string) *chordtelemetry.OpenSpan {
+	owner := handle.owner
+	parent := chordtelemetry.ParentOf(run.trace, owner.host.telemetry)
+	if chordtelemetry.Untraced(parent) {
+		return nil
+	}
+	return chordtelemetry.NewOpenSpan(parent, "chord.job", telemetry.SpanAttributes{
+		telemetry.Attr("chord.host", owner.host.spanHost),
+		telemetry.Attr("job", handle.definition.Name),
+		telemetry.Attr("phase", phase),
+		telemetry.Attr("object", chordtelemetry.Capped(owner.documents.Label())),
+		telemetry.Attr("job.id", run.id),
+	})
 }
 
 // Outcome implements JobHandle.
@@ -225,7 +260,7 @@ func (handle *job) Stage(tx *documents.Transaction, args any, ctx context.Contex
 	if tx.Documents() != handle.owner.documents {
 		return nil, fmt.Errorf("%s: a transaction starts only its own object's jobs", handle.owner.documents.Label())
 	}
-	if handle.state == jobSealed || handle.state == jobHanded {
+	if handle.state == jobSealed {
 		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: handle.records.name() + ": its attempt ended"}, nil)
 	}
 	if handle.state == jobDeclared {
@@ -241,30 +276,14 @@ func (handle *job) seal(err *data.ChordError, reason cutReason) {
 	if handle.state == jobSealed {
 		return
 	}
-	handed := handle.state == jobHanded
 	handle.state = jobSealed
 	handle.sealed = &sealedWith{err: err, reason: reason}
 	handle.records.detach(handle, handle.finishing.snapshot())
 	handle.finishing.clear()
-	// A handed-over job's invocations finish on its code; their outcomes go to the new attempt's job.
-	if !handed {
-		for _, run := range handle.invocations.snapshot() {
-			handle.records.cut(run, err, reason)
-		}
+	for _, run := range handle.invocations.snapshot() {
+		handle.records.cut(run, err, reason)
 	}
 	handle.invocations.clear()
-}
-
-// handOver is: a reload swapped its attempt out (slice 7b section 8): starts are refused, the records go to the new
-// attempt's job once it is live, the runs it invokes finish on this code (their outcome is finished by the new code), a
-// finish running here completes here.
-func (handle *job) handOver() {
-	if handle.state != jobLive && handle.state != jobDeclared {
-		return
-	}
-	handle.state = jobHanded
-	// Runs needing a live attempt meanwhile wait for the new one.
-	handle.records.detach(handle, nil)
 }
 
 // invoke runs `run` for a committed run (with its signal aborted already after an early abort); a persisted run's
@@ -311,20 +330,29 @@ func (handle *job) invoke(run *jobRun) {
 // start starts `current` invocation of `run` on this attempt: its ctx and its settling act for this invocation only.
 func (handle *job) start(run *jobRun, current *invocation) {
 	owner, records := handle.owner, handle.records
+	// In its run phase's span.
+	span := handle.phaseSpan(run, "run")
+	scope := chordctx.WithAbortSignal(owner.context, current.signal)
+	if span != nil {
+		scope = chordctx.WithTelemetry(scope, span.Span())
+	}
 	ctx := &jobContext{
-		callContext: newCallContext(chordctx.WithAbortSignal(owner.context, current.signal), owner.caller, owner.host),
+		callContext: newCallContext(scope, owner.caller, owner.host, nil),
 		jobID:       run.id,
 		state:       handle.stateOf(run, current),
 	}
 	settle := owner.admitRun(ctx.settle)
 	handle.invocations.add(run)
-	// Its own version's args: a handed-over attempt's late start runs its own code (Sol, reservation).
+	// Its own version's args: a run started by old work during a restart runs on the old code (its definition).
 	args, argsErr := records.argsOf(run, handle.definition)
 	records.loop.Go(func() {
 		var result any
 		err := argsErr
 		if err == nil {
 			result, err = handle.implementation.Run(args, ctx)
+		}
+		if span != nil {
+			span.EndWith(err, "job_failed", current.signal)
 		}
 		records.loop.Run(func() {
 			// The fence closes as `run` settles: a change made later is refused.
@@ -386,9 +414,28 @@ func (handle *job) settled(run *jobRun, current *invocation, ctx *jobContext, en
 
 // finishRun is `#finish`: it blocks until the run is finished, blocked or the attempt is sealed.
 func (handle *job) finishRun(run *jobRun) {
-	owner, records := handle.owner, handle.records
+	records := handle.records
+	// In its finish phase's span: each failed try a `chord.retry` event with its backoff; ends `ok`, `error` (blocked) or
+	// `aborted` (the attempt's seal).
+	span := handle.phaseSpan(run, "finish")
+	outcome := "error"
+	ctx := handle.owner.context
+	if span != nil {
+		ctx = chordctx.WithTelemetry(ctx, span.Span())
+	}
 	records.loop.Run(func() { handle.finishing.add(run) })
 	defer records.loop.Run(func() { handle.finishing.delete(run) })
+	defer func() {
+		if span != nil {
+			span.SetOutcome(outcome)
+		}
+	}()
+	outcome = handle.finishTries(run, span, ctx)
+}
+
+// finishTries is the tries of run's finish under ctx, retried with backoff; how the phase ended.
+func (handle *job) finishTries(run *jobRun, span *chordtelemetry.OpenSpan, ctx context.Context) string {
+	owner, records := handle.owner, handle.records
 	var delay time.Duration
 	for {
 		_, err := owner.documents.Tx(func(tx *documents.Transaction) (any, error) {
@@ -412,9 +459,9 @@ func (handle *job) finishRun(run *jobRun) {
 			}
 			owner.documents.Do(func() { err = records.change(tx, recordChange{kind: changeDelete, run: run}) })
 			return nil, err
-		}, owner.token, owner.context)
+		}, owner.token, ctx)
 		if err == nil {
-			return
+			return "ok"
 		}
 		var sealed bool
 		var failures int
@@ -427,16 +474,22 @@ func (handle *job) finishRun(run *jobRun) {
 			failures = run.finishFailures + 1
 		})
 		if sealed {
-			return
+			return "aborted"
 		}
 		if failures >= finishAttempts {
+			if span != nil {
+				chordtelemetry.SpanFailed(span.Span(), "job_failed", err)
+			}
 			records.record(run, recordChange{kind: changeBlock, run: run, reason: BlockedFinishFailed})
-			return
+			return "error"
 		}
 		records.record(run, recordChange{kind: changeUpdate, run: run, fields: runFields{finishFailures: &failures}})
 		delay = nextDelay(delay)
-		if sleepOn(records.loop, delay, chordctx.WithAbortSignal(owner.context, owner.signal)) != nil {
-			return
+		if span != nil {
+			span.Span().AddEvent("chord.retry", telemetry.SpanAttributes{telemetry.Attr("backoff", float64(delay.Milliseconds()))})
+		}
+		if sleepOn(records.loop, delay, chordctx.WithAbortSignal(ctx, owner.signal)) != nil {
+			return "aborted"
 		}
 	}
 }

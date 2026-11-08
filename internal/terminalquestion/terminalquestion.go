@@ -54,8 +54,9 @@ func (r *Reader) Question(ctx context.Context, message string, output io.Writer,
 	}
 	r.mu.Lock()
 	if r.pending == nil {
-		r.pending = make(chan answer, 1)
-		go r.readLine(r.pending)
+		pending := make(chan answer, 1)
+		r.pending = pending
+		go func() { pending <- r.readLine() }()
 	}
 	pending := r.pending
 	r.mu.Unlock()
@@ -78,7 +79,7 @@ func (r *Reader) Question(ctx context.Context, message string, output io.Writer,
 
 // readLine reads up to the next line feed, or end of input. A line that has text before the end of input is an answer; Ctrl+C anywhere in the line, which
 // a terminal in raw mode delivers as a byte, is an interrupt.
-func (r *Reader) readLine(into chan<- answer) {
+func (r *Reader) readLine() answer {
 	var line []byte
 	buf := make([]byte, 1)
 	for {
@@ -86,21 +87,17 @@ func (r *Reader) readLine(into chan<- answer) {
 		if n == 1 {
 			switch buf[0] {
 			case 0x03:
-				into <- answer{err: ErrInterrupted}
-				return
+				return answer{err: ErrInterrupted}
 			case '\n':
-				into <- answer{line: strings.TrimSuffix(string(line), "\r")}
-				return
+				return answer{line: strings.TrimSuffix(string(line), "\r")}
 			}
 			line = append(line, buf[0])
 		}
 		if err != nil {
 			if len(line) > 0 {
-				into <- answer{line: string(bytes.TrimSuffix(line, []byte("\r")))}
-			} else {
-				into <- answer{err: ErrInterrupted}
+				return answer{line: string(bytes.TrimSuffix(line, []byte("\r")))}
 			}
-			return
+			return answer{err: ErrInterrupted}
 		}
 	}
 }

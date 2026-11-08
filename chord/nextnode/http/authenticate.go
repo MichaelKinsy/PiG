@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
-// Ports packages/chord/src/next-node/http/authenticate.ts. Who someone is (decision "The HTTP server is a native object",
+// Ports packages/chord/src/node/http/authenticate.ts. Who someone is (decision "The HTTP server is a native object",
 // replacing the `authenticate` option): the registry `Authenticators`, one function per contributor, asked in contributor
 // order (plugin name: an order with no meaning, so an app needing precedence between credentials contributes one
 // authenticator that decides); the first principal returned wins, a throwing one is reported and skipped.

@@ -332,3 +332,23 @@ func TestDispatchFramesHandlesSplitAndMalformedEvents(t *testing.T) {
 		t.Fatalf("split multibyte payload = %q", x)
 	}
 }
+
+// Pi ea0f49a36 (#11745): fetchServer also wraps the connection error of the models SSE request (`watch()`), naming the server and the cause; an aborted request
+// is rethrown unchanged.
+func TestWatchNamesTheServerAndTheCauseWhenTheSSEConnectionFails(t *testing.T) {
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closedURL := closed.URL
+	closed.Close()
+	offline, _ := NewLlamaClient(closedURL, "")
+	var failure *fetchError
+	err := offline.Watch(context.Background(), func(LlamaModelEvent) {})
+	host := strings.TrimPrefix(closedURL, "http://")
+	if want := "Could not reach llama.cpp server at " + closedURL + ": dial tcp " + host + ": connect: connection refused"; err == nil || err.Error() != want || !errors.As(err, &failure) {
+		t.Fatalf("watch error = %v, want %q wrapping the fetch error", err, want)
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := offline.Watch(cancelled, func(LlamaModelEvent) {}); err == nil || strings.Contains(err.Error(), "Could not reach") {
+		t.Fatalf("aborted watch error = %v, want the abort rethrown unchanged", err)
+	}
+}

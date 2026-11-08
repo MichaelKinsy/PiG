@@ -862,3 +862,14 @@ def test_own_thinking_runs_runtime_call() -> None:
         conn.close()
         listener.close()
         thread.join(timeout=2)
+
+
+def test_markdown_transformer_message_types_register_payload() -> None:
+    """Pi eebd5d90: options.messageTypes is message_types; None lists the three transcript types, an empty list none."""
+    default = ["user", "assistant", "assistant-thinking"]
+    assert _register_payload_for(lambda ext: ext.markdown_transformer(lambda md, ctx: md))["markdown_message_types"] == default
+    surfaces = ["assistant", "custom", "summary", "changelog"]
+    payload = _register_payload_for(lambda ext: ext.markdown_transformer(lambda md, ctx: md, message_types=surfaces))
+    assert payload["markdown_transformer"] is True and payload["markdown_message_types"] == surfaces
+    assert _register_payload_for(lambda ext: ext.markdown_transformer(lambda md, ctx: md, message_types=[]))["markdown_message_types"] == []
+    assert "markdown_message_types" not in _register_payload_for(lambda ext: None)

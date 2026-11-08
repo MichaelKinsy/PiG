@@ -3,9 +3,9 @@ package toolsearch_test
 // pi: packages/coding-agent/src/extensions/tool-search/tool.ts
 
 import (
-	_ "embed"
 	"encoding/json"
 	"math"
+	"os"
 	"reflect"
 	"slices"
 	"testing"
@@ -83,8 +83,15 @@ func TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst(t *testing.T) {
 	}
 }
 
-//go:embed testdata/ranker_goldens.json
-var rankerGoldens []byte
+// goldens reads a golden file of testdata, a data-only module that go:embed cannot reach.
+func goldens(t *testing.T, name string) []byte {
+	t.Helper()
+	data, err := os.ReadFile("testdata/" + name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
 
 // maxScoreULPs is how many units in the last place a score may be from Pi's golden. V8's Math.log, which gives the IDF, differs between platforms by up to one unit in the last place: Node's
 // arm64 build contracts the multiply-adds of fdlibm's log, its x64 build rounds every operation, and jsmath.Log reproduces each (it equals the Node of the same platform bit for bit,
@@ -146,7 +153,7 @@ func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 		Limit  int           `json:"limit"`
 		Ranked []goldenMatch `json:"ranked"`
 	}
-	if err := json.Unmarshal(rankerGoldens, &probes); err != nil {
+	if err := json.Unmarshal(goldens(t, "ranker_goldens.json"), &probes); err != nil {
 		t.Fatal(err)
 	}
 	ranked := 0

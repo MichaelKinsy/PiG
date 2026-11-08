@@ -41,10 +41,3 @@ both_contain = ["Session Tree", "Type to search:", "No entries found"]
 output_equal = true
 escaped_output_equal = true
 runs = 3
-
-# normalize-rationale: D248 (Pi main 2cfab7c26, #9157) draws a cursor cell, a space in reverse video, at the end of the focused /tree search line; Pi 1.5.0 draws none.
-# The rule removes exactly that cell (and the space the empty query gains before it) from the escaped capture; every other byte of the overlay, including the search line's label, stays compared.
-[[assert.normalize_replace]]
-pattern = '(Type to search:\x1b\[0m) \x1b\[7m \x1b\[0m'
-with = '$1'
-reason = "D248: Pig draws the /tree search cursor cell that the pinned Pi does not; Pi main 2cfab7c26 draws it too."

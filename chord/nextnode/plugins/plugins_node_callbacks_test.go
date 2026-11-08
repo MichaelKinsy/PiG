@@ -26,7 +26,7 @@ import (
 func cbProbePlugin(t *testing.T, ops string) PluginScript {
 	t.Helper()
 	return handmade(t, "@test/cb", "worker", `(function (require, module, exports) {
-const next = require("@earendil-works/chord/next");
+const next = require("@earendil-works/chord");
 const { defineFacet, remote, method, str, hostKind } = next;
 const go = () => require("@acme/go");
 const file = () => require("@acme/file");
@@ -122,7 +122,7 @@ nothing: async () => go().nothing,
 func TestGoPackageAnAppModuleImportsItBySpecifier(t *testing.T) {
 	module := filepath.Join(t.TempDir(), "core.mjs")
 	if err := os.WriteFile(module, []byte(`import { answer, twice } from "@acme/go";
-import * as next from "@earendil-works/chord/next";
+import * as next from "@earendil-works/chord";
 if (answer !== 7) throw new Error("answer is " + answer);
 if ((await twice(21)) !== 42) throw new Error("twice(21) is not 42");
 export default next.defineFacet(() => {});
@@ -358,7 +358,7 @@ func TestGoPackageThatCannotBeOfferedFailsTheLoad(t *testing.T) {
 	}{
 		"no specifier":  {packages: []GoPackage{{}}, want: "has no Specifier"},
 		"twice":         {packages: []GoPackage{{Specifier: "@a/b"}, {Specifier: "@a/b"}}, want: `"@a/b" is offered twice`},
-		"host's own":    {packages: []GoPackage{{Specifier: "@earendil-works/chord/next"}}, want: "the host's own package"},
+		"host's own":    {packages: []GoPackage{{Specifier: "@earendil-works/chord"}}, want: "the host's own package"},
 		"a file's":      {packages: []GoPackage{{Specifier: "@a/b"}}, modules: HostPackages{"@a/b": "/x.mjs"}, want: "both a GoPackage and a HostPackages file"},
 		"no export":     {packages: []GoPackage{{Specifier: "@a/b", Exports: map[string]GoExport{"x": {}}}}, want: "neither GoFunc nor GoValue"},
 		"unnamed":       {packages: []GoPackage{{Specifier: "@a/b", Exports: map[string]GoExport{"": function}}}, want: "export with no name"},

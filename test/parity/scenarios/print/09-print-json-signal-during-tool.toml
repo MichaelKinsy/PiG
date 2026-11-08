@@ -1,16 +1,14 @@
 # Pi print-mode.ts:50-63: SIGTERM/SIGHUP kill tracked children and run disposeRuntime (unsubscribe the JSON writer, then
-# runtimeHost.dispose: session_shutdown and AgentSession.dispose, which disconnects the Session from the Agent,
-# agent-session.ts:1393-1414), then process.exit(128+signum). A bash tool that is running when the signal lands therefore
-# leaves stdout ending at its tool_execution_update and the session file at the toolUse assistant message; no second
-# provider request starts. PiG kept writing and persisting the aborted run's tail (tool result, aborted turn, agent_end).
+# runtimeHost.dispose: session.abort(), session_shutdown and AgentSession.dispose; agent-session-runtime.ts:409-417, Pi
+# main 7a53c310a), then process.exit(128+signum). dispose awaits the abort first, so the event loop turns while the Session
+# is still connected: a bash tool that is running when the signal lands leaves stdout ending at its tool_execution_update
+# (the writer is gone) and the session file at the toolUse assistant message, the tool result and the aborted assistant
+# message; no second provider request starts. PiG used to stop the run at the tool.
 # The probe compares event types, session record roles/stop reasons, request count, exit status and stderr.
 # The *-shutdown cases add an extension whose session_shutdown handler throws at once or waits 1.5 s on a timer, in JSON
 # and text mode, and compare exit status, stdout (events or text), stderr, session records and the provider request
-# count. Pi runs the disposal on its one event loop: a throwing handler ends it within microtasks, before the killed
-# tool's exit is seen, so the run stops at the tool (1 request) and stderr has the handler's error; a timer lets the loop
-# turn, so the run settles the tool, makes its second request, persists the answer and, in text mode, prints it before
-# the exit. PiG used to let the run go on during the handler's IPC round trip (2 requests where Pi made 1), to report a
-# throwing handler as "connection closed", and to print nothing in text mode after any signal.
+# count. The run settles before the handler runs, so both handlers leave the same records and one request; a throwing
+# handler reports its error before text mode prints the aborted result, a timer lets the result print while it waits.
 name = "09-print-json-signal-during-tool"
 description = "SIGTERM and SIGHUP during a tool stop output, persistence and the run where Pi does, with and without a session_shutdown handler"
 covers = ["packages/coding-agent/src/modes/print-mode.ts"]

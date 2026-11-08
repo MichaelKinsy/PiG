@@ -517,7 +517,7 @@ func (p *toolRenderProxy) request(payload RenderToolPayload) (lines []string, fa
 		return nil, true, true, nil
 	}
 	// A rejected view keeps the last frame, as a missing answer does.
-	lines, ok = p.view.apply(p.session.conn, p.repaint, result, payload.Width)
+	lines, ok = p.view.apply(p.session.conn, p.repaint, "", nil, result, payload.Width)
 	return lines, false, ok, nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
+	"github.com/MichaelKinsy/PiG/internal/sortx"
 )
 
 // CurrentSessionVersion mirrors upstream `CURRENT_SESSION_VERSION = 3`.
@@ -136,6 +137,8 @@ func (s *Session) UndecodableCount() int {
 // become orphaned subtrees in the same file).
 type Session struct {
 	mu sync.RWMutex
+	// messageEntries records the entries message_end persisted, with the sequence their message was numbered by (NoteMessageEntry).
+	messageEntries messageEntryLog
 	// appendMu makes writing an entry's record and adding the entry one step, so the file and memory hold the same entries in the same order.
 	appendMu sync.Mutex
 	// projectionCalls counts BuildSessionProjection calls.
@@ -227,6 +230,10 @@ type Session struct {
 
 	// name is the name of the newest session_info entry that parses, maintained as entries are appended or loaded, so getSessionName, which every extension event's state carries, does not scan the log.
 	name string
+
+	// renderIdentities holds the identity each custom entry an extension renders is handed, so its renderer's state survives the transcript's
+	// rebuilds as it does in Pi; replaceSessionLog drops them with the entries.
+	renderIdentities entryRenderIdentities
 
 	// revision changes, under mu, whenever the entries or the leaf change, so a caller can reuse a value derived from the branch until the log moves.
 	revision uint64
@@ -1464,7 +1471,7 @@ func (s *Session) treeOfLocked(entries []SessionEntry) []*SessionTreeNode {
 			continue
 		}
 		// getTree sorts each node's children oldest first by Date.parse of their timestamps, keeping the order of unparsable ones.
-		slices.SortStableFunc(kids, func(a, b int32) int { return cmpDates(s.slots[a].ts, s.slots[b].ts) })
+		sortx.Stable(kids, func(a, b int32) int { return cmpDates(s.slots[a].ts, s.slots[b].ts) })
 		out := pointers[start[p]:start[p+1]:start[p+1]]
 		for k, c := range kids {
 			out[k] = &all[c]
