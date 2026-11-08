@@ -344,3 +344,14 @@ export const clampedThinkingLevel: string = clampThinkingLevel(
   { reasoning: false } as Parameters<typeof clampThinkingLevel>[0],
   "high",
 );
+
+// Pi eebd5d90: a Markdown transformer lists the surfaces it runs on and sees their message types.
+export function markdownTransformerSurfaces(pi: ExtensionAPI): void {
+  pi.registerMarkdownTransformer(
+    (markdown, context) => (context.messageType === "changelog" ? markdown.trim() : markdown),
+    { messageTypes: ["custom", "summary", "changelog"] },
+  );
+  pi.registerMarkdownTransformer((markdown) => markdown, { messageTypes: [] });
+  // @ts-expect-error messageTypes names the closed set of surfaces
+  pi.registerMarkdownTransformer((markdown) => markdown, { messageTypes: ["footer"] });
+}

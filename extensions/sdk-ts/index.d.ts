@@ -122,6 +122,23 @@ declare module "@earendil-works/pi-coding-agent" {
     /** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
     truncated: boolean;
   }
+  // Pi eebd5d90 adds registerMarkdownTransformer's options and the "custom", "summary" and "changelog" surfaces (types.ts MarkdownMessageType). PiG's host implements them and this augmentation declares them.
+  interface ExtensionAPI {
+    /**
+     * Register a display-only Markdown transformer. `options.messageTypes` lists the surfaces it runs on: "user", "assistant" and "assistant-thinking"
+     * (the transcript messages, the default), "custom" (custom messages without a renderer and expanded skill blocks), "summary" (expanded branch and
+     * compaction summaries) and "changelog" (What's New, /changelog, Extension Updates). An empty list runs it nowhere.
+     */
+    registerMarkdownTransformer(
+      transformer: (
+        markdown: string,
+        context: Omit<MarkdownTransformContext, "messageType"> & {
+          messageType: "user" | "assistant" | "assistant-thinking" | "custom" | "summary" | "changelog";
+        },
+      ) => string,
+      options?: { messageTypes?: readonly ("user" | "assistant" | "assistant-thinking" | "custom" | "summary" | "changelog")[] },
+    ): void;
+  }
   interface ExtensionUIContext {
     /** Subscribe to changes of the host's theme; the handler receives `ui.theme` after it took the new palette. Returns the unsubscribe function. */
     onThemeChange(handler: (theme: Theme) => void): () => void;

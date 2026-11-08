@@ -23,11 +23,17 @@ type BranchSummaryMessage struct {
 // (branch-summary-message.ts:15). The expanded body renders the summary with markdownTheme (nil selects the active theme's
 // markdown theme) and the Box pads its rows by outputPad columns.
 func NewBranchSummaryMessageComponent(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int) *BranchSummaryMessageComponent {
+	return NewBranchSummaryMessageComponentWithSurface(message, markdownTheme, outputPad, MarkdownSurface{})
+}
+
+// NewBranchSummaryMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+func NewBranchSummaryMessageComponentWithSurface(message BranchSummaryMessage, markdownTheme *MarkdownTheme, outputPad int, surface MarkdownSurface) *BranchSummaryMessageComponent {
 	component := &BranchSummaryMessageComponent{
 		Box:           NewPaddedBox(outputPad, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
 		summary:       message.Summary,
 		markdownTheme: markdownTheme,
 	}
+	component.surface.install(surface, &component.Box.invalidatable)
 	component.updateDisplay()
 	return component
 }
@@ -73,8 +79,5 @@ func (c *BranchSummaryMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
 }
 
-// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the summary without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the branch summary component; a nil transform shows the Markdown as it is.
-func (c *BranchSummaryMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
-	c.surface.transform, c.surface.state = transform, state
-	c.updateDisplay()
-}
+// Dispose releases the expanded body's pending Markdown generation.
+func (c *BranchSummaryMessageComponent) Dispose() { c.surface.Dispose() }

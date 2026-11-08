@@ -86,6 +86,13 @@ func readSecret(ctx context.Context, input *os.File, output io.Writer, message s
 		buf := make([]byte, 4096)
 		for {
 			n, err := input.Read(buf)
+			// A read that was blocked when the context ended returns on the next typed byte, after the terminal is cooked again: the byte is not ours, so it is dropped
+			// and onInterrupt is not called. The goroutine itself stays until that read returns; input has no deadline.
+			select {
+			case <-stop:
+				return
+			default:
+			}
 			if n > 0 {
 				chunk := string(buf[:n])
 				// Ignore escape sequences such as arrow keys.

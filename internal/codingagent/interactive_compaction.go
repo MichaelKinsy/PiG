@@ -32,8 +32,8 @@ func (m *InteractiveMode) addCompactionCostNotice(kind string, usage *ai.Usage) 
 }
 
 func (m *InteractiveMode) addCompactionSummary(summary string, tokensBefore int, usage *ai.Usage, meta messageMeta) {
-	component := tui.NewCompactionSummaryMessageComponent(tui.CompactionSummaryMessage{Summary: summary, TokensBefore: tokensBefore}, m.markdownThemeWithSettings(), m.outputPad)
-	component.SetMarkdownTransform(m.surfaceMarkdownTransform(extension.MarkdownMessageSummary, meta))
+	component := tui.NewCompactionSummaryMessageComponentWithSurface(tui.CompactionSummaryMessage{Summary: summary, TokensBefore: tokensBefore}, m.markdownThemeWithSettings(), m.outputPad, m.surfaceMarkdownTransform(extension.MarkdownMessageSummary, meta))
+	m.markdownBlocks = append(m.markdownBlocks, component)
 	if m.toolsExpanded {
 		component.SetExpanded(true)
 	}

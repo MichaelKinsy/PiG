@@ -4423,7 +4423,7 @@ path = "packages/mcp/src/config.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven", "test:mcp/config_pi_test.go#TestValidateMcpServerConfigPicksTheTransportFromTypeURLAndCommand", "test:mcp/config_pi_test.go#TestValidateMcpServerConfigReportsInvalidNamesAndFields"]
-rationale = "Pi main 76c040a2a moves the mcpServers validation into the mcp package. Ported as internal/mcpshared/config.go (ValidateMcpServerConfig, IsMcpServerOverride), re-exported by mcp/config.go because coding/extension validates entries in a pig_strip_mcp build that links neither mcp nor mcp/oauth. The shared fields are checked before the exposure and auth checks, as Pi main (D372 against the pin)."
+rationale = "Pi main 76c040a2a moves the mcpServers validation into the mcp package. Ported as internal/mcpshared/config.go (ValidateMcpServerConfig, IsMcpServerOverride), re-exported by mcp/config.go because coding/extension validates entries in a pig_strip_mcp build that links neither mcp nor mcp/oauth. The shared fields are checked before the exposure and auth checks, as Pi main."
 
 [[files]]
 path = "packages/mcp/src/index.ts"

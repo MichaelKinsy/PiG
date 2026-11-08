@@ -25,11 +25,17 @@ type SkillInvocationMessageComponent struct {
 
 // NewSkillInvocationMessageComponent creates a skill invocation component (constructor(skillBlock, markdownTheme = getMarkdownTheme(), outputPad = 1), skill-invocation-message.ts:16). A nil markdownTheme is the default markdown theme; outputPad is the horizontal padding of the Box.
 func NewSkillInvocationMessageComponent(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int) *SkillInvocationMessageComponent {
+	return NewSkillInvocationMessageComponentWithSurface(block, markdownTheme, outputPad, MarkdownSurface{})
+}
+
+// NewSkillInvocationMessageComponentWithSurface is the constructor with the transformers, messageId and timestamp Pi's takes after outputPad.
+func NewSkillInvocationMessageComponentWithSurface(block ParsedSkillBlock, markdownTheme *MarkdownTheme, outputPad int, surface MarkdownSurface) *SkillInvocationMessageComponent {
 	component := &SkillInvocationMessageComponent{
 		Box:           NewPaddedBox(outputPad, 1, func(text string) string { return ActiveTheme().Bg("customMessageBg", text) }),
 		skillBlock:    block,
 		markdownTheme: markdownTheme,
 	}
+	component.surface.install(surface, &component.Box.invalidatable)
 	component.updateDisplay()
 	return component
 }
@@ -77,8 +83,5 @@ func (c *SkillInvocationMessageComponent) SetOutputPad(outputPad int) {
 	c.SetPaddingX(outputPad)
 }
 
-// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the skill content without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the skill block component; a nil transform shows the Markdown as it is.
-func (c *SkillInvocationMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
-	c.surface.transform, c.surface.state = transform, state
-	c.updateDisplay()
-}
+// Dispose releases the expanded body's pending Markdown generation.
+func (c *SkillInvocationMessageComponent) Dispose() { c.surface.Dispose() }

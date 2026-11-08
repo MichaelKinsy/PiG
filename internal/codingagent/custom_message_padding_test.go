@@ -31,7 +31,7 @@ func TestCustomMessageOutputPadProduction(t *testing.T) {
 		chatContainer: tui.NewContainer(),
 		outputPad:     1,
 	}
-	m.appendCustomMessage(CustomMessageEntry{CustomType: "test", Content: "custom", Display: true})
+	m.appendCustomMessage(CustomMessageEntry{CustomType: "test", Content: "custom", Display: true}, messageMeta{})
 	if !reflect.DeepEqual(seen, []string{`{"expanded":false,"outputPad":1}`}) {
 		t.Fatalf("initial options = %q", seen)
 	}
@@ -71,11 +71,11 @@ func TestCustomMessageOutputPadProduction(t *testing.T) {
 func TestCustomMessageFallbackOutputPadProduction(t *testing.T) {
 	m := &InteractiveMode{chatContainer: tui.NewContainer(), outputPad: 1}
 	message := CustomMessageEntry{CustomType: "notice", Content: "custom", Display: true}
-	m.appendCustomMessage(message)
+	m.appendCustomMessage(message, messageMeta{})
 	before := m.chatContainer.Render(40)
 	m.chatContainer.Clear()
 	m.outputPad = 0
-	m.appendCustomMessage(message)
+	m.appendCustomMessage(message, messageMeta{})
 	after := m.chatContainer.Render(40)
 	if reflect.DeepEqual(before, after) {
 		t.Fatalf("default box ignored outputPad: %q", after)

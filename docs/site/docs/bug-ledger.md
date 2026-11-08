@@ -1119,7 +1119,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D270](#bf-d270) | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D310](#bf-d310) | `/reload` and a session switch remove every extension overlay | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D311](#bf-d311) | `ctrl+o` applies to user bash output shown while the agent is working | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D312](#bf-d312) | The model selectors keep the row the user browsed to when a catalog refresh lands | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D350](#bf-d350) | OpenCode Zen and Go Claude models send per-message effort | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D351](#bf-d351) | Anthropic non-strict tool schemas keep root $defs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -17034,21 +17033,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4934c8242a` (2026-11-07)
 - **Tests:** `internal/codingagent/interactive_pending_bash_test.go::TestCtrlOExpandsUserBashOutputInThePendingArea`, `internal/codingagent/interactive_pending_bash_test.go::TestInteractiveBashDuringRunStaysPendingUntilTheRunSettles`, `internal/codingagent/interactive_pending_bash_test.go::TestNewUserBashOutputStartsInTheCurrentExpandState`, `internal/codingagent/interactive_pending_bash_test.go::TestQueuedMessageUpdatesKeepUserBashOutputInThePendingArea`, `internal/codingagent/interactive_pending_bash_test.go::TestSettlingTheRunMovesUserBashOutputToTheChat`
 
-### BF-D312
-
-**The model selectors keep the row the user browsed to when a catalog refresh lands**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D312)
-- **Symptom:** 1.5.0 discards the user's selection when the catalog refresh lands (#9109).
-- **Root cause:** browsing the list during the refresh lost the user's place.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
-- **Fix commits:** `b1333a0834` (2026-11-07)
-- **Tests:** None recorded.
-
 ### BF-D350
 
 **OpenCode Zen and Go Claude models send per-message effort**
@@ -25865,7 +25849,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D270 | After a /tree choice PiG holds its frames until the navigation returns; Pi paints the old transcript first | [BF-D270](#bf-d270) |
 | D310 | `/reload` and a session switch remove every extension overlay | [BF-D310](#bf-d310) |
 | D311 | `ctrl+o` applies to user bash output shown while the agent is working | [BF-D311](#bf-d311) |
-| D312 | The model selectors keep the row the user browsed to when a catalog refresh lands | [BF-D312](#bf-d312) |
 | D350 | OpenCode Zen and Go Claude models send per-message effort | [BF-D350](#bf-d350) |
 | D351 | Anthropic non-strict tool schemas keep root $defs | [BF-D351](#bf-d351) |
 | D352 | Anthropic message threads | [BF-D352](#bf-d352) |
