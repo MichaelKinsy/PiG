@@ -536,13 +536,13 @@ func (r *Relay) deliver(ctx context.Context, channelID string, trigger Message, 
 	case thread == nil:
 		header = fmt.Sprintf("[Discord %s (%s): %s since the last delivery%s]", channelName, binding.GuildName, plural(window.total()), left)
 	case before == "":
-		header = fmt.Sprintf("[Discord thread "%s" in %s (%s): %s since the last delivery%s]", thread.Name, channelName, binding.GuildName, plural(window.total()), left)
+		header = fmt.Sprintf("[Discord thread \"%s\" in %s (%s): %s since the last delivery%s]", thread.Name, channelName, binding.GuildName, plural(window.total()), left)
 	default:
 		earlier := ""
 		if window.count(partChannel) > 0 {
 			earlier = fmt.Sprintf("%s of %s before the thread, then ", plural(window.count(partChannel)), channelName)
 		}
-		header = fmt.Sprintf("[Discord thread "%s" in %s (%s), its first delivery: %s%s of the thread%s]", thread.Name, channelName, binding.GuildName, earlier, plural(window.count(partHere)), left)
+		header = fmt.Sprintf("[Discord thread \"%s\" in %s (%s), its first delivery: %s%s of the thread%s]", thread.Name, channelName, binding.GuildName, earlier, plural(window.count(partHere)), left)
 	}
 	titles := map[part]*string{}
 	channelTitle := "[" + channelName + ", before the thread]"
