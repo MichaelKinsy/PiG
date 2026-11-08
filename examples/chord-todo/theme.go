@@ -28,7 +28,7 @@ func (s *session) themeStep() error {
 	for _, step := range added.Steps {
 		steps = append(steps, step.Name)
 	}
-	fmt.Fprintln(s.out, "6. harbor added, rolled out to:", strings.Join(steps, ", "))
+	_, _ = fmt.Fprintln(s.out, "6. harbor added, rolled out to:", strings.Join(steps, ", "))
 	scripts, err := s.app.Host.Get(s.ctx, nextsurfaces.WebScripts, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		return err
@@ -42,13 +42,13 @@ func (s *session) themeStep() error {
 	for _, plugin := range nextsurfaces.ScriptSetOf(set).Plugins {
 		names = append(names, plugin.Name)
 	}
-	fmt.Fprintln(s.out, "   the page's plugins:", strings.Join(names, ", "))
+	_, _ = fmt.Fprintln(s.out, "   the page's plugins:", strings.Join(names, ", "))
 	if s.terminal != nil {
 		const accent = "\x1b[38;2;242;166;90mGroceries"
 		if err := until(func() (bool, error) { return strings.Contains(s.terminal.frames(), accent), nil }); err != nil {
 			return err
 		}
-		fmt.Fprintf(s.out, "   the terminal redraws its title in Harbor's accent: %q\n", accent)
+		_, _ = fmt.Fprintf(s.out, "   the terminal redraws its title in Harbor's accent: %q\n", accent)
 	}
 	return nil
 }

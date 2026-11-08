@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/chord/delta"
 	"io"
 	"net/http"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/app"
@@ -129,6 +129,6 @@ func (s *session) showLast(label string, ctx host.Ctx) error {
 		return err
 	}
 	items, err := itemsUntil(list, func(items []todo) bool { return len(items) > 0 })
-	fmt.Fprintln(s.out, label, show(items[len(items)-1:]))
+	_, _ = fmt.Fprintln(s.out, label, show(items[len(items)-1:]))
 	return err
 }

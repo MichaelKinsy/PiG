@@ -63,7 +63,7 @@ func (s *session) routesStep() error {
 	if err := json.Unmarshal(posted, &answer); err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "3. POST /api/lists/groceries:", answer)
+	_, _ = fmt.Fprintln(s.out, "3. POST /api/lists/groceries:", answer)
 	_, listed, err := s.request(http.MethodGet, "/api/lists/groceries", nil, cli)
 	if err != nil {
 		return err
@@ -72,8 +72,8 @@ func (s *session) routesStep() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   GET /api/lists/groceries:", show(items))
+	_, _ = fmt.Fprintln(s.out, "   GET /api/lists/groceries:", show(items))
 	status, _, err := s.request(http.MethodGet, "/api/lists/groceries", nil, nil)
-	fmt.Fprintln(s.out, "   GET without a token:", status)
+	_, _ = fmt.Fprintln(s.out, "   GET without a token:", status)
 	return err
 }

@@ -33,7 +33,7 @@ func (s *session) listsStep() error {
 			return err
 		}
 		variant, _, err := todos.Variant()
-		fmt.Fprintln(s.out, "2. as the owner:", variant, "|", show(items))
+		_, _ = fmt.Fprintln(s.out, "2. as the owner:", variant, "|", show(items))
 		return err
 	})
 	if err != nil {
@@ -52,7 +52,7 @@ func (s *session) listsStep() error {
 			return err
 		}
 		variant, _, err := todos.Variant()
-		fmt.Fprintln(s.out, "   as the server:", variant, "|", show(items[2:]))
+		_, _ = fmt.Fprintln(s.out, "   as the server:", variant, "|", show(items[2:]))
 		return err
 	})
 	if err != nil {
@@ -62,11 +62,8 @@ func (s *session) listsStep() error {
 	if err != nil {
 		return err
 	}
-	var addresses []string
-	for _, address := range state.(*delta.JsonObject).Keys() {
-		addresses = append(addresses, address)
-	}
-	fmt.Fprintln(s.out, "   workers:", strings.Join(addresses, ", "))
+	addresses := state.(*delta.JsonObject).Keys()
+	_, _ = fmt.Fprintln(s.out, "   workers:", strings.Join(addresses, ", "))
 	workers := filepath.Join(s.dataDir, "workers", "list")
 	directories, err := os.ReadDir(workers)
 	if err != nil {
@@ -82,7 +79,7 @@ func (s *session) listsStep() error {
 			names = append(names, file.Name())
 		}
 		slices.Sort(names)
-		fmt.Fprintf(s.out, "   workers/list/%s: %s\n", directory.Name(), strings.Join(names, ", "))
+		_, _ = fmt.Fprintf(s.out, "   workers/list/%s: %s\n", directory.Name(), strings.Join(names, ", "))
 	}
 	return nil
 }

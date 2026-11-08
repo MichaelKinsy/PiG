@@ -205,7 +205,7 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 		return err
 	}
 	origin := link.Scheme + "://" + link.Host
-	fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
+	_, _ = fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return err
@@ -215,13 +215,13 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 		names = append(names, entry.Name())
 	}
 	slices.Sort(names)
-	fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
-	signedOut, err := http.Get(origin)
+	_, _ = fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
+	signedOut, err := http.Get(origin) //nolint:gosec // G107: origin is the loopback address the server just listened on
 	if err != nil {
 		return err
 	}
 	_ = signedOut.Body.Close()
-	fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
 	signIn, err := http.Post(origin+app.OwnerPath, "application/json", strings.NewReader(`{"token":"`+link.Fragment+`"}`))
 	if err != nil {
 		return err
@@ -232,7 +232,7 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 		return fmt.Errorf("the owner's sign-in set no cookie (status %d)", signIn.StatusCode)
 	}
 	cookie := cookies[0]
-	fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
+	_, _ = fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
 	request, err := http.NewRequest(http.MethodGet, origin, nil)
 	if err != nil {
 		return err
@@ -243,7 +243,7 @@ Step 1 of `run` opens the telemetry store (chapter XI), starts the app, tries th
 		return err
 	}
 	_ = signedIn.Body.Close()
-	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 ```
 
 <!-- output: main -->
@@ -478,7 +478,7 @@ Step 2 asks for the groceries list twice, from a root acting as the owner and fr
 			return err
 		}
 		variant, _, err := todos.Variant()
-		fmt.Fprintln(s.out, "2. as the owner:", variant, "|", show(items))
+		_, _ = fmt.Fprintln(s.out, "2. as the owner:", variant, "|", show(items))
 		return err
 	})
 	if err != nil {
@@ -497,7 +497,7 @@ Step 2 asks for the groceries list twice, from a root acting as the owner and fr
 			return err
 		}
 		variant, _, err := todos.Variant()
-		fmt.Fprintln(s.out, "   as the server:", variant, "|", show(items[2:]))
+		_, _ = fmt.Fprintln(s.out, "   as the server:", variant, "|", show(items[2:]))
 ```
 
 <!-- output: main -->
@@ -574,7 +574,7 @@ Step 3 is a command-line client with the owner token file:
 	if err := json.Unmarshal(posted, &answer); err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "3. POST /api/lists/groceries:", answer)
+	_, _ = fmt.Fprintln(s.out, "3. POST /api/lists/groceries:", answer)
 	_, listed, err := s.request(http.MethodGet, "/api/lists/groceries", nil, cli)
 	if err != nil {
 		return err
@@ -583,9 +583,9 @@ Step 3 is a command-line client with the owner token file:
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   GET /api/lists/groceries:", show(items))
+	_, _ = fmt.Fprintln(s.out, "   GET /api/lists/groceries:", show(items))
 	status, _, err := s.request(http.MethodGet, "/api/lists/groceries", nil, nil)
-	fmt.Fprintln(s.out, "   GET without a token:", status)
+	_, _ = fmt.Fprintln(s.out, "   GET without a token:", status)
 ```
 
 <!-- output: main -->
@@ -742,14 +742,14 @@ Step 4 reads the page as a browser gets it and watches the list from the server:
 	if status != http.StatusOK {
 		return fmt.Errorf("the page answered %d", status)
 	}
-	fmt.Fprintln(s.out, "4. the page loads:")
+	_, _ = fmt.Fprintln(s.out, "4. the page loads:")
 	for _, asset := range assetPattern.FindAllStringSubmatch(string(page), -1) {
 		masked := asset[1]
 		// Twice: neighbouring hashes share their dot.
 		for range 2 {
 			masked = hashless.ReplaceAllString(masked, ".<hash>$1")
 		}
-		fmt.Fprintln(s.out, "  ", masked)
+		_, _ = fmt.Fprintln(s.out, "  ", masked)
 	}
 	groceries, err := s.app.Host.Get(s.ctx, todos, delta.JsonObjectOf("list", "groceries"), host.GetOptions{})
 	if err != nil {
@@ -768,7 +768,7 @@ Step 4 reads the page as a browser gets it and watches the list from the server:
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   watch.value:", doneCount(current), "done")
+	_, _ = fmt.Fprintln(s.out, "   watch.value:", doneCount(current), "done")
 	changed := make(chan []todo, 1)
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 		if call.Kind != chord.WatchCallValue {
@@ -791,7 +791,7 @@ Step 4 reads the page as a browser gets it and watches the list from the server:
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   the listener's first call:", doneCount(<-changed), "done")
+	_, _ = fmt.Fprintln(s.out, "   the listener's first call:", doneCount(<-changed), "done")
 ```
 
 <!-- output: main -->
@@ -889,7 +889,7 @@ export default defineFacet((_host, self) => {
 	if err := until(func() (bool, error) { return s.terminal.showsScreen("butter"), nil }); err != nil {
 		return fmt.Errorf("the terminal shows no butter: %w\n%q", err, s.terminal.frames())
 	}
-	fmt.Fprintln(s.out, "5. the terminal shows:")
+	_, _ = fmt.Fprintln(s.out, "5. the terminal shows:")
 ```
 
 <!-- output: tui -->
@@ -951,7 +951,7 @@ A web facet and a terminal facet each contribute the same data (registries are p
 	for _, step := range added.Steps {
 		steps = append(steps, step.Name)
 	}
-	fmt.Fprintln(s.out, "6. harbor added, rolled out to:", strings.Join(steps, ", "))
+	_, _ = fmt.Fprintln(s.out, "6. harbor added, rolled out to:", strings.Join(steps, ", "))
 	scripts, err := s.app.Host.Get(s.ctx, nextsurfaces.WebScripts, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		return err
@@ -965,13 +965,13 @@ A web facet and a terminal facet each contribute the same data (registries are p
 	for _, plugin := range nextsurfaces.ScriptSetOf(set).Plugins {
 		names = append(names, plugin.Name)
 	}
-	fmt.Fprintln(s.out, "   the page's plugins:", strings.Join(names, ", "))
+	_, _ = fmt.Fprintln(s.out, "   the page's plugins:", strings.Join(names, ", "))
 	if s.terminal != nil {
 		const accent = "\x1b[38;2;242;166;90mGroceries"
 		if err := until(func() (bool, error) { return strings.Contains(s.terminal.frames(), accent), nil }); err != nil {
 			return err
 		}
-		fmt.Fprintf(s.out, "   the terminal redraws its title in Harbor's accent: %q\n", accent)
+		_, _ = fmt.Fprintf(s.out, "   the terminal redraws its title in Harbor's accent: %q\n", accent)
 ```
 
 <!-- output: main -->
@@ -1024,14 +1024,14 @@ type socket struct {
 	if len(login.Cookies()) == 0 {
 		return fmt.Errorf("ada's login set no cookie (status %d)", login.StatusCode)
 	}
-	ada, err := host.CreateHost(host.HostOptions{OnError: func(err host.HostError) { fmt.Fprintln(s.out, "ada:", err.Kind) }})
+	ada, err := host.CreateHost(host.HostOptions{OnError: func(err host.HostError) { _, _ = fmt.Fprintln(s.out, "ada:", err.Kind) }})
 	if err != nil {
 		return err
 	}
 	s.ada = ada
 	groceries := delta.JsonObjectOf("list", "groceries")
 	if _, err := ada.Hold(s.ctx, todos, groceries, host.GetOptions{}); err != nil {
-		fmt.Fprintln(s.out, "7. ada's hold before load:", err)
+		_, _ = fmt.Fprintln(s.out, "7. ada's hold before load:", err)
 	}
 	if _, err := ada.Load(nil, s.ctx); err != nil {
 		return err
@@ -1051,13 +1051,13 @@ type socket struct {
 		return err
 	}
 	variant, _, err := s.adas.Variant()
-	fmt.Fprintln(s.out, "   ada's variant:", variant)
+	_, _ = fmt.Fprintln(s.out, "   ada's variant:", variant)
 	if err != nil {
 		return err
 	}
 	// `clear` is the owner's: Ada's reference has no such member, and the worker would refuse her too.
 	if _, err := s.adas.Call("clear", nil, s.ctx); err != nil {
-		fmt.Fprintln(s.out, "   ada's clear:", describe(err))
+		_, _ = fmt.Fprintln(s.out, "   ada's clear:", describe(err))
 	}
 	if err := s.untilGroceries(func(items []todo) bool { return len(items) > 0 && items[len(items)-1].By == "ada" }); err != nil {
 		return err
@@ -1172,14 +1172,14 @@ func (s *session) chooses(principal data.Principal, locale string) error {
 	if err := s.chooses(ownerPrincipal, "de"); err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "8. the owner chooses German")
+	_, _ = fmt.Fprintln(s.out, "8. the owner chooses German")
 	if s.terminal != nil {
 		if err := until(func() (bool, error) { return s.terminal.showsScreen("Einkäufe"), nil }); err != nil {
 			return err
 		}
-		fmt.Fprintln(s.out, "   the terminal shows:")
+		_, _ = fmt.Fprintln(s.out, "   the terminal shows:")
 		for _, line := range s.terminal.screen() {
-			fmt.Fprintln(s.out, "  ", line)
+			_, _ = fmt.Fprintln(s.out, "  ", line)
 		}
 	}
 	choice, err := s.ada.Get(s.ctx, surfaces.LocaleChoice, delta.NewJsonObject(0), host.GetOptions{})
@@ -1194,7 +1194,7 @@ func (s *session) chooses(principal data.Principal, locale string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   ada's pick:", pick)
+	_, _ = fmt.Fprintln(s.out, "   ada's pick:", pick)
 ```
 
 <!-- output: main -->
@@ -1285,8 +1285,8 @@ var messages = func() *surfaces.Messages {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   the notice:", string(text))
-	fmt.Fprintln(s.out, "   the server renders it:", messages.Render(notice))
+	_, _ = fmt.Fprintln(s.out, "   the notice:", string(text))
+	_, _ = fmt.Fprintln(s.out, "   the server renders it:", messages.Render(notice))
 ```
 
 <!-- output: main -->
@@ -1363,7 +1363,7 @@ Ada typed "  tea  " with spaces, and a blank todo should be refused like an empt
 	for _, step := range applied.Steps {
 		steps = append(steps, step.Name)
 	}
-	fmt.Fprintln(s.out, "9. lists changed, rolled out to:", strings.Join(steps, ", "))
+	_, _ = fmt.Fprintln(s.out, "9. lists changed, rolled out to:", strings.Join(steps, ", "))
 	for _, step := range applied.Steps {
 		if step.Name != "list" {
 			continue
@@ -1375,7 +1375,7 @@ Ada typed "  tea  " with spaces, and a blank todo should be refused like an empt
 					fates = append(fates, fate)
 				}
 			}
-			fmt.Fprintf(s.out, "   on %s: %s\n", rolled.Host, strings.Join(fates, ", "))
+			_, _ = fmt.Fprintf(s.out, "   on %s: %s\n", rolled.Host, strings.Join(fates, ", "))
 		}
 	}
 	if _, err := s.adas.Call("add", "  tea  ", s.ctx); err != nil {
@@ -1389,7 +1389,7 @@ Ada typed "  tea  " with spaces, and a blank todo should be refused like an empt
 		return err
 	}
 	_, err = s.adas.Call("add", " ", s.ctx)
-	fmt.Fprintln(s.out, "   ada adds ' ':", describe(err))
+	_, _ = fmt.Fprintln(s.out, "   ada adds ' ':", describe(err))
 ```
 
 <!-- output: main -->
@@ -1467,7 +1467,7 @@ A list's data is what its worker created: its store and its files. Step 10 expor
 	if info.Size() > 0 {
 		exported = "an archive"
 	}
-	fmt.Fprintln(s.out, "10. exported groceries:", exported)
+	_, _ = fmt.Fprintln(s.out, "10. exported groceries:", exported)
 	if err := s.app.ImportData(archive, listKind.Address(address("picnic").(*delta.JsonObject)), s.ctx); err != nil {
 		return err
 	}
@@ -1477,7 +1477,7 @@ A list's data is what its worker created: its store and its files. Step 10 expor
 			return err
 		}
 		items, err := itemsUntil(picnic, func(items []todo) bool { return len(items) > 0 })
-		fmt.Fprintln(s.out, "   imported as picnic:", show(items))
+		_, _ = fmt.Fprintln(s.out, "   imported as picnic:", show(items))
 		return err
 	})
 	if err != nil {
@@ -1485,7 +1485,7 @@ A list's data is what its worker created: its store and its files. Step 10 expor
 	}
 	err = s.app.ImportData(archive, listKind.Address(address("groceries").(*delta.JsonObject)), s.ctx)
 	if err != nil {
-		fmt.Fprintln(s.out, "   importing over groceries:", strings.ReplaceAll(err.Error(), s.base, "…"))
+		_, _ = fmt.Fprintln(s.out, "   importing over groceries:", strings.ReplaceAll(err.Error(), s.base, "…"))
 ```
 
 <!-- output: main -->
@@ -1732,7 +1732,7 @@ The store is read through the `TelemetryStore` read interface, modeled on Jaeger
 				failed = "  error"
 			}
 		}
-		fmt.Fprintf(out, "%s  %s  %d spans  %s ms%s\n", trace.TraceID, trace.Spans[0].Name, len(trace.Spans), strconv.FormatFloat(end-start, 'f', 2, 64), failed)
+		_, _ = fmt.Fprintf(out, "%s  %s  %d spans  %s ms%s\n", trace.TraceID, trace.Spans[0].Name, len(trace.Spans), strconv.FormatFloat(end-start, 'f', 2, 64), failed)
 	}
 	// Metrics are stored per series and 10 s: a series is one set of attributes, here the direction.
 	for _, direction := range []string{"sent", "received"} {
@@ -1744,7 +1744,7 @@ The store is read through the `TelemetryStore` read interface, modeled on Jaeger
 		for _, row := range rows {
 			bytes, messages = bytes+row.Sum, messages+row.Count
 		}
-		fmt.Fprintf(out, "chord.link.bytes %s: %d bytes in %d messages\n", direction, int64(bytes), int64(messages))
+		_, _ = fmt.Fprintf(out, "chord.link.bytes %s: %d bytes in %d messages\n", direction, int64(bytes), int64(messages))
 ```
 
 The steps run it twice on the app's data directory while the app runs, once for the newest `chord.http` traces with a span for the owner and once for the refused one by its id (ids, lengths and counts masked):

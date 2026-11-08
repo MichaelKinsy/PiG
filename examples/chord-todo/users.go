@@ -28,14 +28,14 @@ func (s *session) userStep() error {
 	if len(login.Cookies()) == 0 {
 		return fmt.Errorf("ada's login set no cookie (status %d)", login.StatusCode)
 	}
-	ada, err := host.CreateHost(host.HostOptions{OnError: func(err host.HostError) { fmt.Fprintln(s.out, "ada:", err.Kind) }})
+	ada, err := host.CreateHost(host.HostOptions{OnError: func(err host.HostError) { _, _ = fmt.Fprintln(s.out, "ada:", err.Kind) }})
 	if err != nil {
 		return err
 	}
 	s.ada = ada
 	groceries := delta.JsonObjectOf("list", "groceries")
 	if _, err := ada.Hold(s.ctx, todos, groceries, host.GetOptions{}); err != nil {
-		fmt.Fprintln(s.out, "7. ada's hold before load:", err)
+		_, _ = fmt.Fprintln(s.out, "7. ada's hold before load:", err)
 	}
 	if _, err := ada.Load(nil, s.ctx); err != nil {
 		return err
@@ -55,13 +55,13 @@ func (s *session) userStep() error {
 		return err
 	}
 	variant, _, err := s.adas.Variant()
-	fmt.Fprintln(s.out, "   ada's variant:", variant)
+	_, _ = fmt.Fprintln(s.out, "   ada's variant:", variant)
 	if err != nil {
 		return err
 	}
 	// `clear` is the owner's: Ada's reference has no such member, and the worker would refuse her too.
 	if _, err := s.adas.Call("clear", nil, s.ctx); err != nil {
-		fmt.Fprintln(s.out, "   ada's clear:", describe(err))
+		_, _ = fmt.Fprintln(s.out, "   ada's clear:", describe(err))
 	}
 	if err := s.untilGroceries(func(items []todo) bool { return len(items) > 0 && items[len(items)-1].By == "ada" }); err != nil {
 		return err

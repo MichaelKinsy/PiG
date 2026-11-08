@@ -159,7 +159,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return err
 	}
 	origin := link.Scheme + "://" + link.Host
-	fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
+	_, _ = fmt.Fprintln(out, "1. owner link:", "http://127.0.0.1:<port>"+link.Path+"#<token>")
 	entries, err := os.ReadDir(dataDir)
 	if err != nil {
 		return err
@@ -169,13 +169,13 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		names = append(names, entry.Name())
 	}
 	slices.Sort(names)
-	fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
-	signedOut, err := http.Get(origin)
+	_, _ = fmt.Fprintln(out, "   data directory:", strings.Join(names, ", "))
+	signedOut, err := http.Get(origin) //nolint:gosec // G107: origin is the loopback address the server just listened on
 	if err != nil {
 		return err
 	}
 	_ = signedOut.Body.Close()
-	fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed out:", signedOut.StatusCode)
 	signIn, err := http.Post(origin+app.OwnerPath, "application/json", strings.NewReader(`{"token":"`+link.Fragment+`"}`))
 	if err != nil {
 		return err
@@ -186,7 +186,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return fmt.Errorf("the owner's sign-in set no cookie (status %d)", signIn.StatusCode)
 	}
 	cookie := cookies[0]
-	fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
+	_, _ = fmt.Fprintln(out, "   the owner signs in:", signIn.StatusCode, cookie.Name+"=…")
 	request, err := http.NewRequest(http.MethodGet, origin, nil)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 		return err
 	}
 	_ = signedIn.Body.Close()
-	fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
+	_, _ = fmt.Fprintln(out, "   GET / signed in:", signedIn.StatusCode)
 
 	s := &session{ctx: ctx, out: out, app: server, dataDir: dataDir, store: store, root: root, base: base, origin: origin}
 	defer s.stop()
@@ -208,7 +208,7 @@ func run(ctx context.Context, base string, out io.Writer, serve bool) error {
 	}
 
 	if serve {
-		fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
+		_, _ = fmt.Fprintln(out, "serving; the owner link:", server.OwnerLink())
 		interrupted, stop := signal.NotifyContext(ctx, os.Interrupt)
 		defer stop()
 		<-interrupted.Done()
@@ -223,19 +223,23 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "trace" {
 		if err := traceCommand(os.Args[2:], os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, "todo:", err)
+			_, _ = fmt.Fprintln(os.Stderr, "todo:", err)
 			os.Exit(1)
 		}
 		return
 	}
+	if err := runInTemporaryDirectory(len(os.Args) > 1 && os.Args[1] == "--serve"); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "todo:", err)
+		os.Exit(1)
+	}
+}
+
+// runInTemporaryDirectory runs the steps with the app's directories in a new temporary directory, removed after.
+func runInTemporaryDirectory(serve bool) error {
 	base, err := os.MkdirTemp("", "todo-")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "todo:", err)
-		os.Exit(1)
+		return err
 	}
 	defer func() { _ = os.RemoveAll(base) }()
-	if err := run(context.Background(), base, os.Stdout, len(os.Args) > 1 && os.Args[1] == "--serve"); err != nil {
-		fmt.Fprintln(os.Stderr, "todo:", err)
-		os.Exit(1)
-	}
+	return run(context.Background(), base, os.Stdout, serve)
 }

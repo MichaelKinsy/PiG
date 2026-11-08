@@ -77,7 +77,7 @@ func terminalNode() string {
 func (s *session) terminalStep() error {
 	ctx := s.ctx
 	if err := tui.CheckSandboxNode(terminalNode()); err != nil {
-		fmt.Fprintln(s.out, "5. (the terminal client needs Node 26.5.1 or later for its sandbox)")
+		_, _ = fmt.Fprintln(s.out, "5. (the terminal client needs Node 26.5.1 or later for its sandbox)")
 		return nil
 	}
 	s.terminal = newScripted()
@@ -97,9 +97,9 @@ func (s *session) terminalStep() error {
 	if err := until(func() (bool, error) { return s.terminal.showsScreen("butter"), nil }); err != nil {
 		return fmt.Errorf("the terminal shows no butter: %w\n%q", err, s.terminal.frames())
 	}
-	fmt.Fprintln(s.out, "5. the terminal shows:")
+	_, _ = fmt.Fprintln(s.out, "5. the terminal shows:")
 	for _, line := range s.terminal.screen() {
-		fmt.Fprintln(s.out, "  ", line)
+		_, _ = fmt.Fprintln(s.out, "  ", line)
 	}
 	return nil
 }

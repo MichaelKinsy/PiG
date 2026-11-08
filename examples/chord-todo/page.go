@@ -38,14 +38,14 @@ func (s *session) pageStep() error {
 	if status != http.StatusOK {
 		return fmt.Errorf("the page answered %d", status)
 	}
-	fmt.Fprintln(s.out, "4. the page loads:")
+	_, _ = fmt.Fprintln(s.out, "4. the page loads:")
 	for _, asset := range assetPattern.FindAllStringSubmatch(string(page), -1) {
 		masked := asset[1]
 		// Twice: neighbouring hashes share their dot.
 		for range 2 {
 			masked = hashless.ReplaceAllString(masked, ".<hash>$1")
 		}
-		fmt.Fprintln(s.out, "  ", masked)
+		_, _ = fmt.Fprintln(s.out, "  ", masked)
 	}
 	groceries, err := s.app.Host.Get(s.ctx, todos, delta.JsonObjectOf("list", "groceries"), host.GetOptions{})
 	if err != nil {
@@ -64,7 +64,7 @@ func (s *session) pageStep() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   watch.value:", doneCount(current), "done")
+	_, _ = fmt.Fprintln(s.out, "   watch.value:", doneCount(current), "done")
 	changed := make(chan []todo, 1)
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 		if call.Kind != chord.WatchCallValue {
@@ -87,6 +87,6 @@ func (s *session) pageStep() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   the listener's first call:", doneCount(<-changed), "done")
+	_, _ = fmt.Fprintln(s.out, "   the listener's first call:", doneCount(<-changed), "done")
 	return nil
 }

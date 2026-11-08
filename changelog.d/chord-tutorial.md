@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server.
+- The app kit gives the HTTP component the app's telemetry store (as Pi's `startServer` does), so each request is recorded as a `chord.http` trace of the server. <!-- fix: d06b3d225b9 -->

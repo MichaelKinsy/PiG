@@ -117,7 +117,7 @@ func traceCommand(args []string, out interface{ Write([]byte) (int, error) }) er
 				failed = "  error"
 			}
 		}
-		fmt.Fprintf(out, "%s  %s  %d spans  %s ms%s\n", trace.TraceID, trace.Spans[0].Name, len(trace.Spans), strconv.FormatFloat(end-start, 'f', 2, 64), failed)
+		_, _ = fmt.Fprintf(out, "%s  %s  %d spans  %s ms%s\n", trace.TraceID, trace.Spans[0].Name, len(trace.Spans), strconv.FormatFloat(end-start, 'f', 2, 64), failed)
 	}
 	// Metrics are stored per series and 10 s: a series is one set of attributes, here the direction.
 	for _, direction := range []string{"sent", "received"} {
@@ -129,7 +129,7 @@ func traceCommand(args []string, out interface{ Write([]byte) (int, error) }) er
 		for _, row := range rows {
 			bytes, messages = bytes+row.Sum, messages+row.Count
 		}
-		fmt.Fprintf(out, "chord.link.bytes %s: %d bytes in %d messages\n", direction, int64(bytes), int64(messages))
+		_, _ = fmt.Fprintf(out, "chord.link.bytes %s: %d bytes in %d messages\n", direction, int64(bytes), int64(messages))
 	}
 	return nil
 }
@@ -150,7 +150,7 @@ func (s *session) printTelemetry(text string) {
 	text = spent.ReplaceAllString(text, " <ms>")
 	text = counts.ReplaceAllString(text, "<n> bytes in <n> messages")
 	for _, line := range strings.Split(strings.TrimSpace(text), "\n") {
-		fmt.Fprintln(s.out, "  ", line)
+		_, _ = fmt.Fprintln(s.out, "  ", line)
 	}
 }
 
@@ -195,7 +195,7 @@ func (s *session) telemetryStep() error {
 		return err
 	}
 	refused, honey := traces[0], traces[1]
-	fmt.Fprintln(s.out, "11. adding honey from the command line:")
+	_, _ = fmt.Fprintln(s.out, "11. adding honey from the command line:")
 	s.printTelemetry(telemetry.RenderTrace(honey.Spans))
 	// `trace` reads the same file from a process of its own: the newest traces, then one by its id.
 	read := func(args ...string) (string, error) {
@@ -203,13 +203,13 @@ func (s *session) telemetryStep() error {
 		err := traceCommand(args, &out)
 		return out.String(), err
 	}
-	fmt.Fprintln(s.out, "   trace <data directory> --name chord.http --principal owner:")
+	_, _ = fmt.Fprintln(s.out, "   trace <data directory> --name chord.http --principal owner:")
 	listed, err := read(s.dataDir, "--name", "chord.http", "--principal", "owner")
 	if err != nil {
 		return err
 	}
 	s.printTelemetry(listed)
-	fmt.Fprintln(s.out, "   trace <data directory> <the refused one's id>:")
+	_, _ = fmt.Fprintln(s.out, "   trace <data directory> <the refused one's id>:")
 	one, err := read(s.dataDir, refused.TraceID)
 	if err != nil {
 		return err

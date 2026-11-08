@@ -38,7 +38,7 @@ func (s *session) reloadStep() error {
 	for _, step := range applied.Steps {
 		steps = append(steps, step.Name)
 	}
-	fmt.Fprintln(s.out, "9. lists changed, rolled out to:", strings.Join(steps, ", "))
+	_, _ = fmt.Fprintln(s.out, "9. lists changed, rolled out to:", strings.Join(steps, ", "))
 	for _, step := range applied.Steps {
 		if step.Name != "list" {
 			continue
@@ -50,7 +50,7 @@ func (s *session) reloadStep() error {
 					fates = append(fates, fate)
 				}
 			}
-			fmt.Fprintf(s.out, "   on %s: %s\n", rolled.Host, strings.Join(fates, ", "))
+			_, _ = fmt.Fprintf(s.out, "   on %s: %s\n", rolled.Host, strings.Join(fates, ", "))
 		}
 	}
 	if _, err := s.adas.Call("add", "  tea  ", s.ctx); err != nil {
@@ -64,7 +64,7 @@ func (s *session) reloadStep() error {
 		return err
 	}
 	_, err = s.adas.Call("add", " ", s.ctx)
-	fmt.Fprintln(s.out, "   ada adds ' ':", describe(err))
+	_, _ = fmt.Fprintln(s.out, "   ada adds ' ':", describe(err))
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (s *session) exportStep() error {
 	if info.Size() > 0 {
 		exported = "an archive"
 	}
-	fmt.Fprintln(s.out, "10. exported groceries:", exported)
+	_, _ = fmt.Fprintln(s.out, "10. exported groceries:", exported)
 	if err := s.app.ImportData(archive, listKind.Address(address("picnic").(*delta.JsonObject)), s.ctx); err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (s *session) exportStep() error {
 			return err
 		}
 		items, err := itemsUntil(picnic, func(items []todo) bool { return len(items) > 0 })
-		fmt.Fprintln(s.out, "   imported as picnic:", show(items))
+		_, _ = fmt.Fprintln(s.out, "   imported as picnic:", show(items))
 		return err
 	})
 	if err != nil {
@@ -102,7 +102,7 @@ func (s *session) exportStep() error {
 	}
 	err = s.app.ImportData(archive, listKind.Address(address("groceries").(*delta.JsonObject)), s.ctx)
 	if err != nil {
-		fmt.Fprintln(s.out, "   importing over groceries:", strings.ReplaceAll(err.Error(), s.base, "…"))
+		_, _ = fmt.Fprintln(s.out, "   importing over groceries:", strings.ReplaceAll(err.Error(), s.base, "…"))
 	}
 	return nil
 }

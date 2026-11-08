@@ -45,14 +45,14 @@ func (s *session) languagesStep() error {
 	if err := s.chooses(ownerPrincipal, "de"); err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "8. the owner chooses German")
+	_, _ = fmt.Fprintln(s.out, "8. the owner chooses German")
 	if s.terminal != nil {
 		if err := until(func() (bool, error) { return s.terminal.showsScreen("Einkäufe"), nil }); err != nil {
 			return err
 		}
-		fmt.Fprintln(s.out, "   the terminal shows:")
+		_, _ = fmt.Fprintln(s.out, "   the terminal shows:")
 		for _, line := range s.terminal.screen() {
-			fmt.Fprintln(s.out, "  ", line)
+			_, _ = fmt.Fprintln(s.out, "  ", line)
 		}
 	}
 	choice, err := s.ada.Get(s.ctx, surfaces.LocaleChoice, delta.NewJsonObject(0), host.GetOptions{})
@@ -67,7 +67,7 @@ func (s *session) languagesStep() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   ada's pick:", pick)
+	_, _ = fmt.Fprintln(s.out, "   ada's pick:", pick)
 	err = s.asRoot(ownerPrincipal, func(ctx host.Ctx) error {
 		list, err := ctx.Get(todos, delta.JsonObjectOf("list", "groceries"), host.GetOptions{})
 		if err != nil {
@@ -104,14 +104,14 @@ func (s *session) languagesStep() error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(s.out, "   the notice:", string(text))
-	fmt.Fprintln(s.out, "   the server renders it:", messages.Render(notice))
+	_, _ = fmt.Fprintln(s.out, "   the notice:", string(text))
+	_, _ = fmt.Fprintln(s.out, "   the server renders it:", messages.Render(notice))
 	if s.terminal != nil {
 		if err := until(func() (bool, error) { return s.terminal.showsScreen("entfernt"), nil }); err != nil {
 			return err
 		}
 		lines := s.terminal.screen()
-		fmt.Fprintln(s.out, "   the terminal renders it:", lines[len(lines)-1])
+		_, _ = fmt.Fprintln(s.out, "   the terminal renders it:", lines[len(lines)-1])
 	}
 	return nil
 }
