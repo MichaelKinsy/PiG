@@ -868,7 +868,7 @@ func (c *mcpCLI) login(ctx context.Context, entry McpServerEntry, connection *Co
 	})
 	cancelSignIn()
 	if err != nil {
-		if _, ok := errors.AsType[*McpSignInCancelledError](err); ok {
+		if _, ok := errors.AsType[*oauth.McpSignInCancelledError](err); ok {
 			c.error(fmt.Sprintf(`Sign-in to MCP server "%s" was cancelled or not completed within %d seconds.`, name, int64(jsnumber.Round(timeoutMs/1000))))
 		} else {
 			c.error(fmt.Sprintf(`Sign-in to MCP server "%s" failed: %s`, name, err))
