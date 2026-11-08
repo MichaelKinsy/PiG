@@ -54,7 +54,7 @@ func httpGet(t *testing.T, port int, path string, options p2test.HTTPOptions) p2
 	return result
 }
 
-func status(t *testing.T, port int, path string, headers map[string]string) int {
+func statusOf(t *testing.T, port int, path string, headers map[string]string) int {
 	t.Helper()
 	return httpGet(t, port, path, p2test.HTTPOptions{Headers: headers}).Status
 }
@@ -164,7 +164,7 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	}
 	cookie := cookieOf(t, accepted)
 	headers := merged(ownerTunnel, map[string]string{"Cookie": cookie})
-	if got := status(t, port, "/", headers); got != 200 {
+	if got := statusOf(t, port, "/", headers); got != 200 {
 		t.Fatalf("/ with the cookie: %d", got)
 	}
 	var manifest web.Manifest
@@ -175,31 +175,31 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	if err := json.Unmarshal([]byte(manifestResponse.Body), &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if got := status(t, port, manifest.Script, headers); got != 200 {
+	if got := statusOf(t, port, manifest.Script, headers); got != 200 {
 		t.Fatalf("bundle script: %d", got)
 	}
-	if got := status(t, port, "/owner-token", headers); got != 403 {
+	if got := statusOf(t, port, "/owner-token", headers); got != 403 {
 		t.Fatalf("/owner-token with a remote cookie: %d", got)
 	}
-	if got := status(t, port, "/owner-token", map[string]string{"Sec-Fetch-Site": "cross-site"}); got != 403 {
+	if got := statusOf(t, port, "/owner-token", map[string]string{"Sec-Fetch-Site": "cross-site"}); got != 403 {
 		t.Fatalf("/owner-token cross-site: %d", got)
 	}
-	if got := status(t, port, "/owner-token", nil); got != 200 {
+	if got := statusOf(t, port, "/owner-token", nil); got != 200 {
 		t.Fatalf("/owner-token on loopback: %d", got)
 	}
-	if got := status(t, port, "/", merged(headers, map[string]string{"Cookie": "wrong"})); got != 401 {
+	if got := statusOf(t, port, "/", merged(headers, map[string]string{"Cookie": "wrong"})); got != 401 {
 		t.Fatalf("/ with a wrong cookie: %d", got)
 	}
-	if got := status(t, port, "/", merged(headers, map[string]string{"Host": "wrong.test"})); got != 403 {
+	if got := statusOf(t, port, "/", merged(headers, map[string]string{"Host": "wrong.test"})); got != 403 {
 		t.Fatalf("/ on a wrong host: %d", got)
 	}
-	if got := status(t, port, "/", map[string]string{"X-Forwarded-For": "203.0.113.7"}); got != 403 {
+	if got := statusOf(t, port, "/", map[string]string{"X-Forwarded-For": "203.0.113.7"}); got != 403 {
 		t.Fatalf("/ forwarded: %d", got)
 	}
-	if got := status(t, port, "/owner-key", headers); got != 404 {
+	if got := statusOf(t, port, "/owner-key", headers); got != 404 {
 		t.Fatalf("/owner-key: %d", got)
 	}
-	if got := status(t, port, "/@fs"+filepath.Join(fixture.DataDir, "owner-token.txt"), headers); got == 200 {
+	if got := statusOf(t, port, "/@fs"+filepath.Join(fixture.DataDir, "owner-token.txt"), headers); got == 200 {
 		t.Fatal("the startup token file is served")
 	}
 	remote, _ := fixture.Client(headers)
@@ -268,7 +268,7 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 	guest, _ := fixture.Client(merged(ownerTunnel, map[string]string{"Cookie": guestCookie}))
 	_, err = p2test.HoldIn(guest, devicescontract.Devices, delta.NewJsonObject(0), "owner")
 	p2test.ExpectChord(t, err, data.CodeForbidden)
-	if got := status(t, port, "/owner-token", merged(ownerTunnel, map[string]string{"Cookie": guestCookie})); got != 403 {
+	if got := statusOf(t, port, "/owner-token", merged(ownerTunnel, map[string]string{"Cookie": guestCookie})); got != 403 {
 		t.Fatalf("/owner-token as a guest: %d", got)
 	}
 	both, _ := fixture.Client(merged(ownerTunnel, map[string]string{"Cookie": guestCookie + "; " + cookie}))
@@ -298,10 +298,10 @@ func TestDevicesPluginSignsInARemoteOwnerOverHTTPAndWSNeverGrantsRemoteOrGuestTo
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = restarted.Close(p2test.Background) })
-	if got := status(t, port, "/owner-token", headers); got != 403 {
+	if got := statusOf(t, port, "/owner-token", headers); got != 403 {
 		t.Fatalf("the old cookie remains a remote owner after restart: %d", got)
 	}
-	if got := status(t, port, "/", headers); got != 404 {
+	if got := statusOf(t, port, "/", headers); got != 404 {
 		t.Fatalf("an authorized owner reaches the UI-less server: %d", got)
 	}
 	freshText, err := os.ReadFile(filepath.Join(fixture.DataDir, "owner-token.txt"))
@@ -362,7 +362,7 @@ func TestSignOutThisDeviceAndAllDevicesRevokeLiveSocketsAsWellAsCookies(t *testi
 		t.Fatal(err)
 	}
 	check := func(cookie string) int {
-		return status(t, port, "/owner/check", merged(ownerTunnel, map[string]string{"Cookie": cookie}))
+		return statusOf(t, port, "/owner/check", merged(ownerTunnel, map[string]string{"Cookie": cookie}))
 	}
 	if got := check(one); got != 401 {
 		t.Fatalf("a signed-out device: %d", got)

@@ -163,10 +163,10 @@ func TestProxyMarkingIsNeverAuthenticationIncludingTheLoopbackUnixSocketBridge(t
 	})
 	t.Run("a forged marker can only remove localhost/device trust", func(t *testing.T) {
 		for _, marker := range []string{"1", "forged", ""} {
-			if got := status(t, port, "/owner-token", map[string]string{proxycontract.ProxyMarkerHeader: marker}); got != 403 {
+			if got := statusOf(t, port, "/owner-token", map[string]string{proxycontract.ProxyMarkerHeader: marker}); got != 403 {
 				t.Fatalf("/owner-token with marker %q: %d", marker, got)
 			}
-			if got := status(t, port, "/", merged(proxied, map[string]string{proxycontract.ProxyMarkerHeader: marker})); got != 401 {
+			if got := statusOf(t, port, "/", merged(proxied, map[string]string{proxycontract.ProxyMarkerHeader: marker})); got != 401 {
 				t.Fatalf("/ with marker %q: %d", marker, got)
 			}
 		}
@@ -212,7 +212,7 @@ func TestProxyMarkingIsNeverAuthenticationIncludingTheLoopbackUnixSocketBridge(t
 		if _, err := p2test.HoldIn(remote, logincontract.ProviderLogin, delta.NewJsonObject(0), "owner"); err != nil {
 			t.Fatal(err)
 		}
-		if got := status(t, port, "/owner-token", merged(proxied, map[string]string{"Cookie": cookie})); got != 403 {
+		if got := statusOf(t, port, "/owner-token", merged(proxied, map[string]string{"Cookie": cookie})); got != 403 {
 			t.Fatalf("/owner-token with a proxied cookie: %d", got)
 		}
 	})
@@ -234,10 +234,10 @@ func TestProxyMarkingIsNeverAuthenticationIncludingTheLoopbackUnixSocketBridge(t
 			t.Fatalf("join: %d %s", joined.Status, joined.Body)
 		}
 		guestCookie := cookieOf(t, joined)
-		if got := status(t, port, "/download?session="+session+"&id="+file, merged(proxied, map[string]string{"Cookie": guestCookie})); got != 200 {
+		if got := statusOf(t, port, "/download?session="+session+"&id="+file, merged(proxied, map[string]string{"Cookie": guestCookie})); got != 200 {
 			t.Fatalf("a guest's download: %d", got)
 		}
-		if got := status(t, port, "/owner-token", merged(proxied, map[string]string{"Cookie": guestCookie})); got != 403 {
+		if got := statusOf(t, port, "/owner-token", merged(proxied, map[string]string{"Cookie": guestCookie})); got != 403 {
 			t.Fatalf("/owner-token as a guest: %d", got)
 		}
 	})
