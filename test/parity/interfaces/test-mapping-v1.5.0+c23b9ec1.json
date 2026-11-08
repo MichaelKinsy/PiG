@@ -2105,6 +2105,8 @@
       "path": "packages/chord/test/contracts/snapshot.test.ts",
       "disposition": "ported",
       "protects": "The snapshot vocabulary refuses values it cannot carry and names the offending path. A Go test for the symbol-keys case is impossible: Go has no symbol keys, accessors or undefined, and the cycle case is covered by the ported cycle cases, so the designed-out case protects nothing a Go caller can reach.",
+      "pigTest": "A Go test of the refused-key case was considered; the ported cycle and vocabulary cases cover what a Go value can express.",
+      "whyNot": "Go has no symbol keys, accessors or undefined, so the case has no Go form.",
       "upstreamTestHash": "sha256:a708093d51b16658f44fe0993b4d3d83b65857b3d87ca348d817da8d00cc3e38",
       "evidence": [
         "chord/next/contracts/snapshot_test.go"
@@ -2447,6 +2449,8 @@
       "path": "packages/chord/test/examples/61-tutorial/tutorial.test.ts",
       "disposition": "designed-out",
       "protects": "That Pi's tutorial program and its book blocks agree. A Go-shaped test was considered (running the Go tutorial against its book); it cannot be a port because the test quotes a TypeScript program on Pi's TS app kit, which the Go kit has no server for.",
+      "pigTest": "A Go test running the Go tutorial against its book was considered.",
+      "whyNot": "The upstream test quotes a TypeScript program on Pi's TS app kit; the Go kit has no TS server to run it under.",
       "upstreamTestHash": "sha256:80138fbe8d042d39d7aec298c286f32a580e97d98bd7524e50e35e003f13b0d1",
       "evidence": [],
       "rationale": "Designed out by D604 (draft, owner sign-off pending; rows/chord-t11.md): Pi's tutorial is a TypeScript program on Pi's TS app kit (main.ts calls the TS startServer, worker.ts is a Node entry) plus a book whose blocks the test quotes, so the Go kit has no TS server to run it under."
@@ -2901,6 +2905,8 @@
       "path": "packages/chord/test/node/app/app.test.ts",
       "disposition": "ported",
       "protects": "The app's base-code comparison and its tolerance of a failing import scan. A Go-shaped test was considered; it is impossible for the 3 designed-out cases because the Go server is one executable with no import graph to scan, so there is no scan to fail or entry to compare.",
+      "pigTest": "A Go test of the entry comparison was considered.",
+      "whyNot": "The Go server is one executable with no import graph to scan, so the 3 designed-out cases have nothing to scan or compare.",
       "upstreamTestHash": "sha256:f37461c6de1d420c72b433c29f3012ffa117b441ed39bbc44c5cedec6c43cc28",
       "evidence": [
         "chord/nextnode/app/app_test.go",
@@ -3507,6 +3513,8 @@
       "path": "packages/chord/test/node/workers/base.test.ts",
       "disposition": "designed-out",
       "protects": "The esbuild worker base is built and compared correctly. A Go test was considered and is impossible: a Go worker is the program's own executable, so no worker base exists to build.",
+      "pigTest": "A Go test of a worker base was considered.",
+      "whyNot": "A Go worker is the program's own executable; there is no esbuild worker base.",
       "upstreamTestHash": "sha256:c81aa14f3f9a3cff377c94ce876bc4cd572b048b38109fc3963979c785ff5b7b",
       "evidence": [],
       "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
@@ -3515,6 +3523,8 @@
       "path": "packages/chord/test/node/workers/child.test.ts",
       "disposition": "designed-out",
       "protects": "The worker child entry behaves as the esbuild worker base expects. A Go test was considered and is impossible: a Go worker is the program's own executable, so there is no child entry built from a base.",
+      "pigTest": "A Go test of a worker child entry was considered.",
+      "whyNot": "A Go worker is the program's own executable; there is no child entry built from a base.",
       "upstreamTestHash": "sha256:547c8c230bba723cdd50963d49ead7d846cc4f6e944e2eaf0e1829b203c9fa41",
       "evidence": [],
       "rationale": "Designed out by D600 (draft, owner sign-off pending; rows/chord-reload-workers.md): a Go worker is the program's own executable, so there is no esbuild worker base to test."
@@ -4113,6 +4123,8 @@
       "path": "packages/chord/test/store/table.test.ts",
       "disposition": "ported",
       "protects": "An int() key column is typed as a number and a str() one as a string. A Go test was considered and is worthless: Go key columns carry their static Go type, so a JS number-versus-string runtime distinction cannot occur.",
+      "pigTest": "A Go test of key-column typing was considered.",
+      "whyNot": "Go key columns carry their static Go type; the JS number-versus-string runtime distinction cannot occur.",
       "upstreamTestHash": "sha256:a5c2f09931f05e2e160cf332bd2a1408cdab703fbfa606cd1a55467563119a2a",
       "evidence": [
         "chord/next/store/table_test.go"
@@ -4180,6 +4192,8 @@
       "path": "packages/chord/test/surfaces/language.test.ts",
       "disposition": "ported",
       "protects": "The render scope is current only while a render runs and a nested render restores the outer. A Go test was considered and is impossible: Go has no goroutine-local render scope, and a message function receives its language explicitly, so there is no ambient scope to leak.",
+      "pigTest": "A Go test of a goroutine-local render scope was considered.",
+      "whyNot": "Go has no goroutine-local render scope; a message function receives its language explicitly.",
       "upstreamTestHash": "sha256:30d6d83b3c2fef27e9512e79ebad8edfff7d23067426cde4917bd4da581c915c",
       "evidence": [
         "chord/next/surfaces/surfaces_active_language_test.go",
@@ -9175,6 +9189,8 @@
       "path": "packages/durable/test/indexeddb-storage.test.ts",
       "disposition": "designed-out",
       "protects": "The Storage contract holds on IndexedDbStorage. A Go test is impossible: IndexedDB exists only in a browser and PiG has no browser or WebAssembly build; the same contract is exercised by the Go memory, jsonl and sqlite drivers' conformance tests.",
+      "pigTest": "The Go memory, jsonl and sqlite drivers' conformance tests exercise the same Storage contract.",
+      "whyNot": "IndexedDB exists only in a browser and PiG has no browser or WebAssembly build.",
       "upstreamTestHash": "sha256:f5ae29607626d01d79dcde877b6d0fb65272a17bcb796abf3d176c6a4e3202e8",
       "rationale": "Browser-only: the test opens with /// <reference lib=\"dom\" /> and runs the Storage conformance suite against IndexedDbStorage (packages/durable/src/storage/indexeddb.ts) on fake-indexeddb's IDBFactory, an IndexedDB API that exists only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can reach the backend (PORT_MAP records the source row as designed-out); the Storage contract it implements is exercised by the Go memory, jsonl and sqlite drivers' conformance tests. Pi 16f5f0af4d changes 3 lines of the test."
     },
