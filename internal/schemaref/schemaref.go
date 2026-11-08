@@ -21,6 +21,7 @@ func Segments(ref string) ([]string, bool) {
 		return nil, true
 	}
 	var segments []string
+	//portlint:allow utf16units ref[2:] drops the two ASCII characters `#/` (declarations.ts resolveSchemaRef)
 	for segment := range strings.SplitSeq(ref[2:], "/") {
 		if segment == "" {
 			continue
