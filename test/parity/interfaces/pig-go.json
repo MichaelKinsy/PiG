@@ -41048,6 +41048,17 @@
       "shapeHash": "sha256:a87a2cf96b5ee721ddee53404df61b83b215ecf03a38a641159b08458568e61b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#firstJSONByte",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "firstJSONByte",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value encoding/json.RawMessage) byte"
+      },
+      "shapeHash": "sha256:e62cfc616193ba4bff427fa2ed74f14e9704ca23150a268376638fd5afc1332f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#firstNonEmptyString",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "firstNonEmptyString",
@@ -51856,9 +51867,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(value any) any"
+        "type": "func(value encoding/json.RawMessage) (encoding/json.RawMessage, error)"
       },
-      "shapeHash": "sha256:58494e9647d2e04ac6624b3e7b553df18c673f71b808e18583a8cfccf6bf88b4"
+      "shapeHash": "sha256:ed2ded40659e17ded45dd364536e22fa8ea1e64d92fe39d2fff746dbf7169a68"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#normalizeToolCallId",

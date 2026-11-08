@@ -34548,6 +34548,30 @@
       "tests": []
     },
     {
+      "id": "BF-a28d69b",
+      "title": "Fix merge-gate reds: anthropic thread normalization decodes through RawMessage (no any decode), drop stale…",
+      "symptom": "Fix merge-gate reds: anthropic thread normalization decodes through RawMessage (no any decode), drop stale any-trap entry, env daemon tests: errcheck/AsType",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a28d69b201",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone",
+        "env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller",
+        "env/daemon/pollable_unix_test.go::TestWriteStderrWaitsOnAFullPipe",
+        "env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit"
+      ]
+    },
+    {
       "id": "BF-a2fad25",
       "title": "The footer's context percentage includes the prompt as soon as it is sent, for the whole reply, as Pi shows…",
       "symptom": "The footer's context percentage includes the prompt as soon as it is sent, for the whole reply, as Pi shows it; it was stuck at the previous value until the reply finished.",
