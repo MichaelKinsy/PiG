@@ -172,128 +172,128 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/cell.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/cell.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/cluster.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/cluster.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/connection.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/connection.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/contract.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/contract.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/contracts/accepts.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/accepts_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/accepts.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/accepts.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/contract.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/contract.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/contract.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/declare.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/declare_test.go#TestDeclarationChecks", "test:chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants", "test:chord/next/contracts/declare_test.go#TestReservedMemberNames", "test:chord/next/contracts/declare_test.go#TestKeyedMembers"]
+rationale = "Moved from packages/chord/src/next/contracts/declare.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/declare.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/evolve.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/evolve_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/evolve.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/evolve.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/fingerprint.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/fingerprint_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/fingerprint.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/fingerprint.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/history.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/history_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/history.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/history.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/host-kind.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/host_kind_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/host-kind.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/host_kind.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/contracts/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/contracts/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/contracts/internal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/contracts/names.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/names_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/names.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/names.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/params.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/params_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/params.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/params.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/schema_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/schema.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/schema.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/contracts/snapshot.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/snapshot_test.go"]
+rationale = "Moved from packages/chord/src/next/contracts/snapshot.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/contracts/snapshot.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/data/args.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/args_test.go#TestBindProvider", "test:chord/next/data/args_test.go#TestCheckArgs", "test:chord/next/data/args_test.go#TestMemory", "test:chord/next/data/typelevel_test.go#TestCallReplacementArgumentsAreValues"]
+rationale = "Moved from packages/chord/src/next/data/args.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/data/args.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/data/errors.ts"
@@ -312,23 +312,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/data/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/data/index.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 4 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/data/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/data/internal.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 1 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/data/params.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/params_test.go"]
+rationale = "Moved from packages/chord/src/next/data/params.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/data/params.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/data/principal.ts"
@@ -347,16 +347,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/declare.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/declare.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/documents/address-source.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/address_source_test.go"]
+rationale = "Moved from packages/chord/src/next/documents/address-source.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/documents/address_source.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/documents/definition.ts"
@@ -375,30 +375,30 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/documents/fence.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/fence_test.go"]
+rationale = "Moved from packages/chord/src/next/documents/fence.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/documents/fence.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/documents/handles.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/handles_test.go"]
+rationale = "Moved from packages/chord/src/next/documents/handles.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/documents/handles.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/documents/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/documents/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/documents/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/documents/internal.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 1 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/documents/keyed-slot.ts"
@@ -410,9 +410,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/documents/line.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/line_test.go"]
+rationale = "Moved from packages/chord/src/next/documents/line.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/documents/line.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/documents/persistence.ts"
@@ -424,9 +424,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/documents/residency.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/residency_test.go"]
+rationale = "Moved from packages/chord/src/next/documents/residency.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/documents/residency.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/documents/slot.ts"
@@ -445,23 +445,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/errors.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/errors.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/host.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/host.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/host/activity.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_activity_test.go"]
+rationale = "Moved from packages/chord/src/next/host/activity.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_activity.go) ported at v1.5.0 stays the port, its PORT_MAP row is 🟡."
 
 [[files]]
 path = "packages/chord/src/host/adapted.ts"
@@ -480,9 +480,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/backoff.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_backoff_test.go"]
+rationale = "Moved from packages/chord/src/next/host/backoff.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_backoff.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/ctx.ts"
@@ -494,23 +494,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/deadline.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_deadline_test.go"]
+rationale = "Moved from packages/chord/src/next/host/deadline.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_deadline.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/dependencies.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_dependencies_test.go"]
+rationale = "Moved from packages/chord/src/next/host/dependencies.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_dependencies.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/destination.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_destination_test.go"]
+rationale = "Moved from packages/chord/src/next/host/destination.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_destination.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/facet.ts"
@@ -536,23 +536,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/host/index.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 1 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/host/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/host/internal.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 5 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/host/members.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_members_test.go"]
+rationale = "Moved from packages/chord/src/next/host/members.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_members.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/native.ts"
@@ -578,9 +578,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/parked.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_parked_test.go"]
+rationale = "Moved from packages/chord/src/next/host/parked.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_parked.go) ported at v1.5.0 stays the port, its PORT_MAP row is 🟡."
 
 [[files]]
 path = "packages/chord/src/host/presence.ts"
@@ -634,9 +634,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/retry-on.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_retry_on_test.go"]
+rationale = "Moved from packages/chord/src/next/host/retry-on.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_retry_on.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/revocation.ts"
@@ -669,9 +669,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/sleep.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_sleep_test.go"]
+rationale = "Moved from packages/chord/src/next/host/sleep.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_sleep.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/host/staging.ts"
@@ -697,37 +697,37 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/host/uuid.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_uuid_test.go"]
+rationale = "Moved from packages/chord/src/next/host/uuid.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/host_uuid.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/index.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/index.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 5 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/jobs/definition.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_definition_test.go"]
+rationale = "Moved from packages/chord/src/next/jobs/definition.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/jobs_definition.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/jobs/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/jobs/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/jobs/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/jobs/internal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/jobs/job.ts"
@@ -739,9 +739,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/jobs/persisted.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_persisted_test.go"]
+rationale = "Moved from packages/chord/src/next/jobs/persisted.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/jobs_persisted.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/jobs/records.ts"
@@ -781,9 +781,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/link.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/link.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/link/binary.ts"
@@ -809,30 +809,30 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/link/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/link/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/link/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/link/internal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/link/ipc.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/ipc_test.go"]
+rationale = "Moved from packages/chord/src/next/link/ipc.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/link/ipc.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/link/link.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/link_test.go"]
+rationale = "Moved from packages/chord/src/next/link/link.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/link/link.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/link/message.ts"
@@ -865,1255 +865,1255 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/link/websocket.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/websocket_test.go"]
+rationale = "Moved from packages/chord/src/next/link/websocket.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/link/websocket.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/loader.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/loader.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/manager.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/manager.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/next-node/compression.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/compression_test.go"]
+rationale = "Moved to packages/chord/src/node/compression.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/nextnode/compression.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/admission.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/admission_test.go"]
+rationale = "Moved to packages/chord/src/node/http/admission.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/nextnode/http/admission.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/authenticate.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/authenticate_test.go"]
+rationale = "Moved to packages/chord/src/node/http/authenticate.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/nextnode/http/authenticate.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/cookies.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/cookies_test.go"]
+rationale = "Moved to packages/chord/src/node/http/cookies.ts by the root move (Pi e9c0ff4d8; 17 changed lines since v1.5.0). The Go port (chord/nextnode/http/cookies.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/file.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/file_test.go"]
+rationale = "Moved to packages/chord/src/node/http/file.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/nextnode/http/file.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/headers.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/headers_test.go"]
+rationale = "Moved to packages/chord/src/node/http/headers.ts by the root move (Pi e9c0ff4d8; 7 changed lines since v1.5.0). The Go port (chord/nextnode/http/headers.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/http.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/http_test.go", "test:chord/nextnode/http/review_test.go"]
+rationale = "Moved to packages/chord/src/node/http/http.ts by the root move (Pi e9c0ff4d8; 86 changed lines since v1.5.0). The Go port (chord/nextnode/http/http.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/incoming.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/request_test.go"]
+rationale = "Moved to packages/chord/src/node/http/incoming.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/nextnode/http/incoming.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/node/http/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/node.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/node_test.go"]
+rationale = "Moved to packages/chord/src/node/http/node.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/nextnode/http/node.go, chord/nextnode/http/url.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/request.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/request_test.go"]
+rationale = "Moved to packages/chord/src/node/http/request.ts by the root move (Pi e9c0ff4d8; 8 changed lines since v1.5.0). The Go port (chord/nextnode/http/request.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/response.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/response_test.go"]
+rationale = "Moved to packages/chord/src/node/http/response.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/router.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/router_test.go"]
+rationale = "Moved to packages/chord/src/node/http/router.ts by the root move (Pi e9c0ff4d8; 29 changed lines since v1.5.0). The Go port (chord/nextnode/http/router.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/http/upgrades.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go"]
+rationale = "Moved to packages/chord/src/node/http/upgrades.ts by the root move (Pi e9c0ff4d8; 11 changed lines since v1.5.0). The Go port (chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/build.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go", "test:chord/nextnode/plugins/plugins_sourcemap_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/build.ts by the root move (Pi e9c0ff4d8; 334 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/discover.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_discover_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/discover.ts by the root move (Pi e9c0ff4d8; 345 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_discover.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/evaluate.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_evaluate_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/evaluate.ts by the root move (Pi e9c0ff4d8; 62 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_runtime.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/node/plugins/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/install.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/install.ts by the root move (Pi e9c0ff4d8; 201 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_install.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/plugins.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go", "test:chord/nextnode/plugins/plugins_endtoend_test.go", "test:chord/nextnode/plugins/plugins_examples_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/plugins.ts by the root move (Pi e9c0ff4d8; 80 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_plugins.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/runtime.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_runtime_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/runtime.ts by the root move (Pi e9c0ff4d8; 156 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_node.go, chord/nextnode/plugins/plugins_runtime.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/stack.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_stack_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/stack.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/nextnode/plugins/plugins_node.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/watcher.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_watcher_test.go", "test:chord/nextnode/plugins/plugins_watcher_linux_test.go"]
+rationale = "Moved to packages/chord/src/node/plugins/watcher.ts by the root move (Pi e9c0ff4d8; 326 changed lines since v1.5.0). The Go port (chord/nextnode/plugins/plugins_watcher.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/control.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_control_test.go"]
+rationale = "Moved to packages/chord/src/node/workers/control.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/nextnode/workers/workers_control.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/node/workers/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/lock.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_lock_test.go"]
+rationale = "Moved to packages/chord/src/node/workers/lock.ts by the root move (Pi e9c0ff4d8; 49 changed lines since v1.5.0). The Go port (chord/nextnode/workers/workers_lock.go, workers_lock_unix.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/main.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_main_test.go"]
+rationale = "Moved to packages/chord/src/node/workers/main.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/nextnode/workers/workers_main.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/process.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_process_test.go"]
+rationale = "Moved to packages/chord/src/node/workers/process.ts by the root move (Pi e9c0ff4d8; 1 changed lines since v1.5.0). The Go port (chord/nextnode/workers/workers_process.go, workers_channel.go, workers_channel_unix.go, workers_process_unix.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/workers.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go", "test:chord/nextnode/workers/workers_rollout_test.go", "test:chord/nextnode/workers/workers_fleet_test.go", "test:chord/nextnode/workers/workers_alive_unix_test.go", "test:chord/nextnode/workers/workers_blocked_unix_test.go", "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go", "test:chord/nextnode/workers/workers_signal_unix_test.go"]
+rationale = "Moved to packages/chord/src/node/workers/workers.ts by the root move (Pi e9c0ff4d8; 107 changed lines since v1.5.0). The Go port (chord/nextnode/workers/workers_workers.go, workers_outcome.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/accepts_test.go"]
+rationale = "Moved to packages/chord/src/contracts/accepts.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/accepts.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go"]
+rationale = "Moved to packages/chord/src/contracts/contract.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/contract.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/declare.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/declare_test.go#TestDeclarationChecks", "test:chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants", "test:chord/next/contracts/declare_test.go#TestReservedMemberNames", "test:chord/next/contracts/declare_test.go#TestKeyedMembers"]
+rationale = "Moved to packages/chord/src/contracts/declare.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/declare.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/evolve.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/evolve_test.go"]
+rationale = "Moved to packages/chord/src/contracts/evolve.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/evolve.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/fingerprint.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/fingerprint_test.go"]
+rationale = "Moved to packages/chord/src/contracts/fingerprint.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/fingerprint.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/history.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/history_test.go"]
+rationale = "Moved to packages/chord/src/contracts/history.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/history.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/host-kind.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/host_kind_test.go"]
+rationale = "Moved to packages/chord/src/contracts/host-kind.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/host_kind.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/contracts/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/contracts/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/names.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/names_test.go"]
+rationale = "Moved to packages/chord/src/contracts/names.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/names.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/params.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/params_test.go"]
+rationale = "Moved to packages/chord/src/contracts/params.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/params.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/schema.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/schema_test.go"]
+rationale = "Moved to packages/chord/src/contracts/schema.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/schema.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/contracts/snapshot.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/snapshot_test.go"]
+rationale = "Moved to packages/chord/src/contracts/snapshot.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/contracts/snapshot.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/args_test.go#TestBindProvider", "test:chord/next/data/args_test.go#TestCheckArgs", "test:chord/next/data/args_test.go#TestMemory", "test:chord/next/data/typelevel_test.go#TestCallReplacementArgumentsAreValues"]
+rationale = "Moved to packages/chord/src/data/args.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/data/args.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/data/errors.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/errors_test.go"]
+rationale = "Moved to packages/chord/src/data/errors.ts by the root move (Pi e9c0ff4d8; 12 changed lines since v1.5.0). The Go port (chord/next/data/errors.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/data/failure.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/failure_test.go"]
+rationale = "Moved to packages/chord/src/data/failure.ts by the root move (Pi e9c0ff4d8; 6 changed lines since v1.5.0). The Go port (chord/next/data/failure.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/data/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/data/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/data/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/data/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/data/params.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/params_test.go"]
+rationale = "Moved to packages/chord/src/data/params.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/data/params.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/data/principal.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/principal_test.go"]
+rationale = "Moved to packages/chord/src/data/principal.ts by the root move (Pi e9c0ff4d8; 9 changed lines since v1.5.0). The Go port (chord/next/data/principal.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/data/validator.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/validator_test.go"]
+rationale = "Moved to packages/chord/src/data/validator.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/data/validator.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/address-source.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/address_source_test.go"]
+rationale = "Moved to packages/chord/src/documents/address-source.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/documents/address_source.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/definition.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/definition_test.go"]
+rationale = "Moved to packages/chord/src/documents/definition.ts by the root move (Pi e9c0ff4d8; 6 changed lines since v1.5.0). The Go port (chord/next/documents/definition.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/documents_test.go"]
+rationale = "Moved to packages/chord/src/documents/documents.ts by the root move (Pi e9c0ff4d8; 44 changed lines since v1.5.0). The Go port (chord/next/documents/documents.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/fence.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/fence_test.go"]
+rationale = "Moved to packages/chord/src/documents/fence.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/documents/fence.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/handles.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/handles_test.go"]
+rationale = "Moved to packages/chord/src/documents/handles.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/documents/handles.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/documents/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/documents/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/documents/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/documents/keyed-slot.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_keyed_slot_host_test.go"]
+rationale = "Moved to packages/chord/src/documents/keyed-slot.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/documents/keyed_slot.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/line.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/line_test.go"]
+rationale = "Moved to packages/chord/src/documents/line.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/documents/line.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/persistence.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/persistence_test.go"]
+rationale = "Moved to packages/chord/src/documents/persistence.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/documents/persistence.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/residency.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/residency_test.go"]
+rationale = "Moved to packages/chord/src/documents/residency.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/documents/residency.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/slot.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_documents_host_test.go"]
+rationale = "Moved to packages/chord/src/documents/slot.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/documents/slot.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/documents/transaction.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_documents_host_test.go"]
+rationale = "Moved to packages/chord/src/documents/transaction.ts by the root move (Pi e9c0ff4d8; 33 changed lines since v1.5.0). The Go port (chord/next/documents/job.go, chord/next/documents/transaction.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/activity.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_activity_test.go"]
+rationale = "Moved to packages/chord/src/host/activity.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_activity.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/adapted.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_adapted_test.go"]
+rationale = "Moved to packages/chord/src/host/adapted.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/host_adapted.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/attempt.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_attempt_test.go"]
+rationale = "Moved to packages/chord/src/host/attempt.ts by the root move (Pi e9c0ff4d8; 276 changed lines since v1.5.0). The Go port (chord/next/host/host_attempt.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/backoff.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_backoff_test.go"]
+rationale = "Moved to packages/chord/src/host/backoff.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_backoff.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/ctx.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_ctx_test.go"]
+rationale = "Moved to packages/chord/src/host/ctx.ts by the root move (Pi e9c0ff4d8; 114 changed lines since v1.5.0). The Go port (chord/next/host/host_ctx.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/deadline.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_deadline_test.go"]
+rationale = "Moved to packages/chord/src/host/deadline.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_deadline.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/dependencies.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_dependencies_test.go"]
+rationale = "Moved to packages/chord/src/host/dependencies.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_dependencies.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/destination.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_destination_test.go"]
+rationale = "Moved to packages/chord/src/host/destination.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_destination.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/facet.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_facet_test.go"]
+rationale = "Moved to packages/chord/src/host/facet.ts by the root move (Pi e9c0ff4d8; 7 changed lines since v1.5.0). The Go port (chord/next/host/host_facet.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/follow.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_follow_test.go"]
+rationale = "Moved to packages/chord/src/host/follow.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/host/host_follow.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/host.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_host_test.go", "test:chord/next/host/host_examples_test.go"]
+rationale = "Moved to packages/chord/src/host/host.ts by the root move (Pi e9c0ff4d8; 413 changed lines since v1.5.0). The Go port (chord/next/host/host_error.go, chord/next/host/host_host.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/host/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/host/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/host/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/host/members.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_members_test.go"]
+rationale = "Moved to packages/chord/src/host/members.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_members.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/native.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_native_test.go"]
+rationale = "Moved to packages/chord/src/host/native.ts by the root move (Pi e9c0ff4d8; 44 changed lines since v1.5.0). The Go port (chord/next/host/host_native.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/object.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_object_test.go", "test:chord/next/host/host_object_reload_test.go", "test:chord/next/host/host_object_cycles_test.go"]
+rationale = "Moved to packages/chord/src/host/object.ts by the root move (Pi e9c0ff4d8; 444 changed lines since v1.5.0). The Go port (chord/next/host/host_object.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/parked.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_parked_test.go"]
+rationale = "Moved to packages/chord/src/host/parked.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_parked.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/presence.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_presence_test.go"]
+rationale = "Moved to packages/chord/src/host/presence.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/host/host_presence.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/ref-state.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_ref_state_test.go"]
+rationale = "Moved to packages/chord/src/host/ref-state.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/host_ref_state.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/reference-keys.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_keys_test.go"]
+rationale = "Moved to packages/chord/src/host/reference-keys.ts by the root move (Pi e9c0ff4d8; 1 changed lines since v1.5.0). The Go port (chord/next/host/host_reference_keys.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/reference-source.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_source_test.go"]
+rationale = "Moved to packages/chord/src/host/reference-source.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/host/host_reference_source.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/reference.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_test.go"]
+rationale = "Moved to packages/chord/src/host/reference.ts by the root move (Pi e9c0ff4d8; 38 changed lines since v1.5.0). The Go port (chord/next/host/host_reference.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/retry-on.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_retry_on_test.go"]
+rationale = "Moved to packages/chord/src/host/retry-on.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_retry_on.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/revocation.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_revocation_test.go"]
+rationale = "Moved to packages/chord/src/host/revocation.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/host_revocation.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/root.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_root_test.go", "test:chord/next/host/host_root_anonymous_test.go"]
+rationale = "Moved to packages/chord/src/host/root.ts by the root move (Pi e9c0ff4d8; 7 changed lines since v1.5.0). The Go port (chord/next/host/host_root.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/route.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_test.go"]
+rationale = "Moved to packages/chord/src/host/route.ts by the root move (Pi e9c0ff4d8; 50 changed lines since v1.5.0). The Go port (chord/next/host/host_route.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/routines.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_routines_test.go", "test:chord/next/host/remote_host_link_test.go"]
+rationale = "Moved to packages/chord/src/host/routines.ts by the root move (Pi e9c0ff4d8; 78 changed lines since v1.5.0). The Go port (chord/next/host/host_routines.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/sleep.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_sleep_test.go"]
+rationale = "Moved to packages/chord/src/host/sleep.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_sleep.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/staging.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_staging_test.go"]
+rationale = "Moved to packages/chord/src/host/staging.ts by the root move (Pi e9c0ff4d8; 46 changed lines since v1.5.0). The Go port (chord/next/host/host_host.go, chord/next/host/host_staging.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/unbound.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_unbound_test.go"]
+rationale = "Moved to packages/chord/src/host/unbound.ts by the root move (Pi e9c0ff4d8; 26 changed lines since v1.5.0). The Go port (chord/next/host/host_unbound.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/host/uuid.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_uuid_test.go"]
+rationale = "Moved to packages/chord/src/host/uuid.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/host_uuid.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/definition.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_definition_test.go"]
+rationale = "Moved to packages/chord/src/jobs/definition.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/jobs_definition.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/jobs/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/jobs/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/job.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_job_test.go", "test:chord/next/host/jobs_job_runs_test.go", "test:chord/next/host/jobs_job_end_test.go"]
+rationale = "Moved to packages/chord/src/jobs/job.ts by the root move (Pi e9c0ff4d8; 129 changed lines since v1.5.0). The Go port (chord/next/host/jobs_job.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/persisted.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_persisted_test.go"]
+rationale = "Moved to packages/chord/src/jobs/persisted.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/jobs_persisted.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/records.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_records_test.go"]
+rationale = "Moved to packages/chord/src/jobs/records.ts by the root move (Pi e9c0ff4d8; 7 changed lines since v1.5.0). The Go port (chord/next/host/jobs_records.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/run-states.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_attempt_test.go"]
+rationale = "Moved to packages/chord/src/jobs/run-states.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/jobs_run_states.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/run.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_run_test.go"]
+rationale = "Moved to packages/chord/src/jobs/run.ts by the root move (Pi e9c0ff4d8; 7 changed lines since v1.5.0). The Go port (chord/next/documents/job.go, chord/next/host/jobs_run.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/running.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_running_test.go"]
+rationale = "Moved to packages/chord/src/jobs/running.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/jobs_running.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/jobs/stored.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_persisted_test.go"]
+rationale = "Moved to packages/chord/src/jobs/stored.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/jobs_stored.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/binary.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/bench_test.go"]
+rationale = "Moved to packages/chord/src/link/binary.ts by the root move (Pi e9c0ff4d8; 20 changed lines since v1.5.0). The Go port (chord/next/link/binary.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/channel.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/channel_test.go"]
+rationale = "Moved to packages/chord/src/link/channel.ts by the root move (Pi e9c0ff4d8; 18 changed lines since v1.5.0). The Go port (chord/next/link/channel.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/errors.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/errors_test.go"]
+rationale = "Moved to packages/chord/src/link/errors.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/link/errors.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/link/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/link/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/link/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/link/ipc.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/ipc_test.go"]
+rationale = "Moved to packages/chord/src/link/ipc.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/link/ipc.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/link.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/link_test.go"]
+rationale = "Moved to packages/chord/src/link/link.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/link/link.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/message.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go", "test:chord/next/link/oracle_test.go"]
+rationale = "Moved to packages/chord/src/link/message.ts by the root move (Pi e9c0ff4d8; 38 changed lines since v1.5.0). The Go port (chord/next/link/message.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/part.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/part_test.go"]
+rationale = "Moved to packages/chord/src/link/part.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/link/part.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/text.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/bench_test.go"]
+rationale = "Moved to packages/chord/src/link/text.ts by the root move (Pi e9c0ff4d8; 33 changed lines since v1.5.0). The Go port (chord/next/link/text.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/values.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/values_test.go"]
+rationale = "Moved to packages/chord/src/link/values.ts by the root move (Pi e9c0ff4d8; 10 changed lines since v1.5.0). The Go port (chord/next/link/values.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/link/websocket.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/websocket_test.go"]
+rationale = "Moved to packages/chord/src/link/websocket.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/link/websocket.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/registries/contribution.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go"]
+rationale = "Moved to packages/chord/src/registries/contribution.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/registries/contribution.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/registries/entries.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/entries_test.go"]
+rationale = "Moved to packages/chord/src/registries/entries.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/registries/entries.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/registries/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/registries/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/registries/internal.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/entries_test.go"]
+rationale = "Moved to packages/chord/src/registries/internal.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/registries/internal.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/registries/record.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go"]
+rationale = "Moved to packages/chord/src/registries/record.ts by the root move (Pi e9c0ff4d8; 38 changed lines since v1.5.0). The Go port (chord/next/registries/record.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/registries/registry.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/registry_test.go"]
+rationale = "Moved to packages/chord/src/registries/registry.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/registries/registry.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/registries/value.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/value_test.go"]
+rationale = "Moved to packages/chord/src/registries/value.ts by the root move (Pi e9c0ff4d8; 27 changed lines since v1.5.0). The Go port (chord/next/registries/value.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/calls.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_calls_test.go"]
+rationale = "Moved to packages/chord/src/remote/calls.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/remote_calls.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/consumer.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_consumer_test.go"]
+rationale = "Moved to packages/chord/src/remote/consumer.ts by the root move (Pi e9c0ff4d8; 18 changed lines since v1.5.0). The Go port (chord/next/host/remote_consumer.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/hold.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_hold_test.go", "test:chord/next/host/remote_hold_reload_test.go"]
+rationale = "Moved to packages/chord/src/remote/hold.ts by the root move (Pi e9c0ff4d8; 141 changed lines since v1.5.0). The Go port (chord/next/host/remote_hold.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/host-link.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_host_link_test.go"]
+rationale = "Moved to packages/chord/src/remote/host-link.ts by the root move (Pi e9c0ff4d8; 7 changed lines since v1.5.0). The Go port (chord/next/host/remote_host_link.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/remote/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/remote/path.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_path_test.go"]
+rationale = "Moved to packages/chord/src/remote/path.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/host/remote_path.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/provider.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_test.go"]
+rationale = "Moved to packages/chord/src/remote/provider.ts by the root move (Pi e9c0ff4d8; 140 changed lines since v1.5.0). The Go port (chord/next/host/remote_provider.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/relay.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_test.go"]
+rationale = "Moved to packages/chord/src/remote/relay.ts by the root move (Pi e9c0ff4d8; 120 changed lines since v1.5.0). The Go port (chord/next/host/remote_relay.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/remote-object.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_remote_object_test.go"]
+rationale = "Moved to packages/chord/src/remote/remote-object.ts by the root move (Pi e9c0ff4d8; 88 changed lines since v1.5.0). The Go port (chord/next/host/remote_remote_object.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/remote/replica.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_replica_test.go"]
+rationale = "Moved to packages/chord/src/remote/replica.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/host/remote_replica.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/state/batch.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/batch_own_test.go", "test:chord/next/state/batch_test.go"]
+rationale = "Moved to packages/chord/src/state/batch.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/state/batch.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/state/derive.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/derive_own_test.go", "test:chord/next/state/derive_sources_own_test.go", "test:chord/next/state/derive_test.go"]
+rationale = "Moved to packages/chord/src/state/derive.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/state/derive.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/state/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/state/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/state/internal.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/state/internal.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/state/native-source.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/native_own_test.go"]
+rationale = "Moved to packages/chord/src/state/native-source.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/state/native_source.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/state/watchable.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/watchable_own_test.go", "test:chord/next/state/watchable_test.go"]
+rationale = "Moved to packages/chord/src/state/watchable.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/state/set.go, chord/next/state/watchable.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/state/writable.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/writable_own_test.go"]
+rationale = "Moved to packages/chord/src/state/writable.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/state/writable.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/adapter.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/evidence_storeB_adapter_test.go"]
+rationale = "Moved to packages/chord/src/store/adapter.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/adapter.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/allocator.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/allocator_test.go"]
+rationale = "Moved to packages/chord/src/store/allocator.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/allocator.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/applier.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/applier_test.go"]
+rationale = "Moved to packages/chord/src/store/applier.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/applier.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/apply-batch.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/apply_batch_test.go"]
+rationale = "Moved to packages/chord/src/store/apply-batch.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/apply_batch.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/archive.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/archive_support_test.go", "test:chord/next/store/archive_test.go"]
+rationale = "Moved to packages/chord/src/store/archive.ts by the root move (Pi e9c0ff4d8; 3 changed lines since v1.5.0). The Go port (chord/next/store/archive.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/backend.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/evidence_storeB_backend_test.go"]
+rationale = "Moved to packages/chord/src/store/backend.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/backend.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/catalog.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/catalog_test.go"]
+rationale = "Moved to packages/chord/src/store/catalog.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/catalog.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/claims.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/claims_test.go"]
+rationale = "Moved to packages/chord/src/store/claims.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/claims.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/columns.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/columns_test.go"]
+rationale = "Moved to packages/chord/src/store/columns.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/columns.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/engine.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/engine_test.go"]
+rationale = "Moved to packages/chord/src/store/engine.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/engine.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/evaluate.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/evaluate_test.go"]
+rationale = "Moved to packages/chord/src/store/evaluate.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/evaluate.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/export.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/export_test.go"]
+rationale = "Moved to packages/chord/src/store/export.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/export.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/expression.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/expression_test.go"]
+rationale = "Moved to packages/chord/src/store/expression.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/expression.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/import.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/import_test.go"]
+rationale = "Moved to packages/chord/src/store/import.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/import.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/index.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/store/index.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/next/store/json-column.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/json_column_test.go"]
+rationale = "Moved to packages/chord/src/store/json-column.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/store/json_column.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/jsonl.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/jsonl_test.go"]
+rationale = "Moved to packages/chord/src/store/jsonl.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/jsonl.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/outbox.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/outbox_decode_test.go", "test:chord/next/store/outbox_test.go"]
+rationale = "Moved to packages/chord/src/store/outbox.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/outbox.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/query.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/query_test.go"]
+rationale = "Moved to packages/chord/src/store/query.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/expression.go, chord/next/store/query.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/refusal.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/refusal_check_code_test.go", "test:chord/next/store/refusal_test.go"]
+rationale = "Moved to packages/chord/src/store/refusal.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/refusal.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/rows.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/rows_test.go"]
+rationale = "Moved to packages/chord/src/store/rows.ts by the root move (Pi e9c0ff4d8; 2 changed lines since v1.5.0). The Go port (chord/next/store/rows.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/schema.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/schema_test.go"]
+rationale = "Moved to packages/chord/src/store/schema.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/schema.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/sql.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/sql_test.go"]
+rationale = "Moved to packages/chord/src/store/sql.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/sql.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/step.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/applier_test.go"]
+rationale = "Moved to packages/chord/src/store/step.ts by the root move (Pi e9c0ff4d8; 4 changed lines since v1.5.0). The Go port (chord/next/store/step.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/store.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go"]
+rationale = "Moved to packages/chord/src/store/store.ts by the root move (Pi e9c0ff4d8; 256 changed lines since v1.5.0). The Go port (chord/next/store/store.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table-changes.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_changes_test.go"]
+rationale = "Moved to packages/chord/src/store/table-changes.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/table_changes.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table-evolve.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_evolve_test.go"]
+rationale = "Moved to packages/chord/src/store/table-evolve.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/table_evolve.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table-handle.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_handle_test.go"]
+rationale = "Moved to packages/chord/src/store/table-handle.ts by the root move (Pi e9c0ff4d8; 12 changed lines since v1.5.0). The Go port (chord/next/store/table_handle.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table-history.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_history_test.go"]
+rationale = "Moved to packages/chord/src/store/table-history.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/table_history.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table-migration.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_migration_test.go", "test:chord/next/store/evidence_storeB_test.go#TestMigrationYieldsBetweenChunksOfAThreeChunkMigration", "test:chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"]
+rationale = "Moved to packages/chord/src/store/table-migration.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/table_migration.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table-writes.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_writes_test.go"]
+rationale = "Moved to packages/chord/src/store/table-writes.ts by the root move (Pi e9c0ff4d8; 6 changed lines since v1.5.0). The Go port (chord/next/store/table_writes.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/table.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_changes_test.go", "test:chord/next/store/table_evolve_test.go", "test:chord/next/store/table_handle_test.go", "test:chord/next/store/table_history_test.go", "test:chord/next/store/table_migration_test.go", "test:chord/next/store/table_test.go", "test:chord/next/store/table_writes_test.go"]
+rationale = "Moved to packages/chord/src/store/table.ts by the root move (Pi e9c0ff4d8; 5 changed lines since v1.5.0). The Go port (chord/next/store/table.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/text.ts"
 change = "removed"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/text_test.go"]
+rationale = "Moved to packages/chord/src/store/text.ts by the root move (Pi e9c0ff4d8; identical modulo import paths). The Go port (chord/next/store/text.go) is unchanged by the move; the content delta since v1.5.0, if any, is audited on the new path's row."
 
 [[files]]
 path = "packages/chord/src/next/store/writes.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved to packages/chord/src/store/writes.ts by the root move (Pi e9c0ff4d8). The file is a re-export or type-only module with no Go form (PORT_MAP n/a at its new path); the new path carries its row."
 
 [[files]]
 path = "packages/chord/src/node.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/node.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/node/app/app.ts"
@@ -2286,16 +2286,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/http/admission.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/admission_test.go"]
+rationale = "Moved from packages/chord/src/next-node/http/admission.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/nextnode/http/admission.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/node/http/authenticate.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/authenticate_test.go"]
+rationale = "Moved from packages/chord/src/next-node/http/authenticate.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/nextnode/http/authenticate.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/node/http/cookies.ts"
@@ -2307,9 +2307,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/http/file.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/file_test.go"]
+rationale = "Moved from packages/chord/src/next-node/http/file.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/nextnode/http/file.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/node/http/headers.ts"
@@ -2328,23 +2328,23 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/http/incoming.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/request_test.go"]
+rationale = "Moved from packages/chord/src/next-node/http/incoming.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/nextnode/http/incoming.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/node/http/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next-node/http/index.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 2 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/node/http/node.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/node_test.go"]
+rationale = "Moved from packages/chord/src/next-node/http/node.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/nextnode/http/node.go, chord/nextnode/http/url.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/node/http/request.ts"
@@ -2412,9 +2412,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/plugins/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next-node/plugins/index.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 22 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/node/plugins/install.ts"
@@ -2440,9 +2440,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/plugins/stack.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_stack_test.go"]
+rationale = "Moved from packages/chord/src/next-node/plugins/stack.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/nextnode/plugins/plugins_node.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/node/plugins/testing.ts"
@@ -2580,9 +2580,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/node/workers/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next-node/workers/index.ts by the root move (Pi e9c0ff4d8). Re-export or type-only module with no Go form (PORT_MAP n/a); 11 changed lines are export-list edits whose symbols are ported or audited on the rows of the files that define them."
 
 [[files]]
 path = "packages/chord/src/node/workers/lock.ts"
@@ -2615,16 +2615,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/object.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/object.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/publish.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/publish.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/react/hooks.ts"
@@ -2650,30 +2650,30 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/registries/contribution.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go"]
+rationale = "Moved from packages/chord/src/next/registries/contribution.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/registries/contribution.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/registries/entries.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/entries_test.go"]
+rationale = "Moved from packages/chord/src/next/registries/entries.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/registries/entries.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/registries/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/registries/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/registries/internal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/entries_test.go"]
+rationale = "Moved from packages/chord/src/next/registries/internal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/registries/internal.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/registries/record.ts"
@@ -2699,30 +2699,30 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/registry.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/registry.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/reload.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/reload.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/remote.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/remote.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/remote/calls.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_calls_test.go"]
+rationale = "Moved from packages/chord/src/next/remote/calls.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/remote_calls.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/remote/consumer.ts"
@@ -2748,16 +2748,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/remote/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/remote/internal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/remote/path.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_path_test.go"]
+rationale = "Moved from packages/chord/src/next/remote/path.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/host/remote_path.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/remote/provider.ts"
@@ -2790,9 +2790,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/schema.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/schema.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/sqlite/node.ts"
@@ -2804,9 +2804,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/state.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/state.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/state/batch.ts"
@@ -2818,44 +2818,44 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/state/derive.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/derive_own_test.go", "test:chord/next/state/derive_sources_own_test.go", "test:chord/next/state/derive_test.go"]
+rationale = "Moved from packages/chord/src/next/state/derive.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/state/derive.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/state/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/state/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/state/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/state/internal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/state/native-source.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/native_own_test.go"]
+rationale = "Moved from packages/chord/src/next/state/native-source.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/state/native_source.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/state/watchable.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/watchable_own_test.go", "test:chord/next/state/watchable_test.go"]
+rationale = "Moved from packages/chord/src/next/state/watchable.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/state/set.go, chord/next/state/watchable.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/state/writable.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/writable_own_test.go"]
+rationale = "Moved from packages/chord/src/next/state/writable.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/state/writable.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/adapter.ts"
@@ -2867,9 +2867,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/allocator.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/allocator_test.go"]
+rationale = "Moved from packages/chord/src/next/store/allocator.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/allocator.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/applier.ts"
@@ -2895,37 +2895,37 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/backend.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/evidence_storeB_backend_test.go"]
+rationale = "Moved from packages/chord/src/next/store/backend.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/backend.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/catalog.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/catalog_test.go"]
+rationale = "Moved from packages/chord/src/next/store/catalog.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/catalog.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/claims.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/claims_test.go"]
+rationale = "Moved from packages/chord/src/next/store/claims.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/claims.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/columns.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/columns_test.go"]
+rationale = "Moved from packages/chord/src/next/store/columns.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/columns.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/engine.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/engine_test.go"]
+rationale = "Moved from packages/chord/src/next/store/engine.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/engine.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/evaluate.ts"
@@ -2958,9 +2958,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/store/index.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/store/json-column.ts"
@@ -2972,9 +2972,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/jsonl.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/jsonl_test.go"]
+rationale = "Moved from packages/chord/src/next/store/jsonl.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/jsonl.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/live-query.ts"
@@ -2986,9 +2986,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/outbox.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/outbox_decode_test.go", "test:chord/next/store/outbox_test.go"]
+rationale = "Moved from packages/chord/src/next/store/outbox.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/outbox.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/query.ts"
@@ -3000,9 +3000,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/refusal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/refusal_check_code_test.go", "test:chord/next/store/refusal_test.go"]
+rationale = "Moved from packages/chord/src/next/store/refusal.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/refusal.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/rows.ts"
@@ -3014,16 +3014,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/schema_test.go"]
+rationale = "Moved from packages/chord/src/next/store/schema.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/schema.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/sql.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/sql_test.go"]
+rationale = "Moved from packages/chord/src/next/store/sql.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/sql.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/step.ts"
@@ -3042,16 +3042,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/table-changes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_changes_test.go"]
+rationale = "Moved from packages/chord/src/next/store/table-changes.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/table_changes.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/table-evolve.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_evolve_test.go"]
+rationale = "Moved from packages/chord/src/next/store/table-evolve.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/table_evolve.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/table-handle.ts"
@@ -3063,16 +3063,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/table-history.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_history_test.go"]
+rationale = "Moved from packages/chord/src/next/store/table-history.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/table_history.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/table-migration.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_migration_test.go", "test:chord/next/store/evidence_storeB_test.go#TestMigrationYieldsBetweenChunksOfAThreeChunkMigration", "test:chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"]
+rationale = "Moved from packages/chord/src/next/store/table-migration.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/table_migration.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/table-writes.ts"
@@ -3091,16 +3091,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/store/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/text_test.go"]
+rationale = "Moved from packages/chord/src/next/store/text.ts by the root move (Pi e9c0ff4d8), identical modulo import paths: the Go port (chord/next/store/text.go) ported at v1.5.0 stays the port, its PORT_MAP row is ✅."
 
 [[files]]
 path = "packages/chord/src/store/writes.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Moved from packages/chord/src/next/store/writes.ts by the root move (Pi e9c0ff4d8), identical modulo import paths. Re-export or type-only module with no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/chord/src/surfaces/active-language.ts"
@@ -3406,9 +3406,9 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/types.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/types.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/web/environment.ts"
@@ -3462,16 +3462,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/websocket.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/websocket.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/chord/src/wire.ts"
 change = "removed"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi deletes the v1 chord layer (src/wire.ts is the pre-next root file, replaced by the next-layer files that Pi moved to the package root in e9c0ff4d8). The Go v1 port chord/host is deleted by follow/chord a62a4018e2 (FollowChord T1); nothing in the Go tree stays keyed to this path."
 
 [[files]]
 path = "packages/codemode/src/declarations.ts"
