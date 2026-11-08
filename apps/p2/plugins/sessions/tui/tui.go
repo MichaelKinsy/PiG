@@ -38,7 +38,6 @@ import (
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	p2tui "github.com/MichaelKinsy/PiG/apps/p2/tui"
-	"github.com/MichaelKinsy/PiG/apps/p2/tui/components"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/render"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/runtime"
 	"github.com/MichaelKinsy/PiG/apps/p2/tui/theme"
