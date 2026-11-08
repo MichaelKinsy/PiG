@@ -386,3 +386,50 @@ func BenchmarkPluginsReload(b *testing.B) {
 	}
 	b.ReportMetric((after-warm)/1024, "KiB-heap-after-100")
 }
+
+// benchCSSModules adds a CSS module to every worker facet and builds for a browser (a Node build refuses CSS).
+func benchCSSModules(b *testing.B) benchSetup {
+	b.Helper()
+	setup := benchDiscovered(b)
+	for index, plugin := range setup.facets {
+		entry := plugin.Facets["worker"]
+		text, err := os.ReadFile(entry)
+		if err != nil {
+			b.Fatal(err)
+		}
+		text = append(text, "\nimport styles from \"./styles.module.css\";\nexport const classes = styles;\n"...)
+		if err := os.WriteFile(entry, text, 0o644); err != nil {
+			b.Fatal(err)
+		}
+		css := fmt.Sprintf(".card%d{color:red}.title{composes:card%d;color:blue}.\\31 {color:green}", index, index)
+		if err := os.WriteFile(filepath.Join(plugin.Dir, "styles.module.css"), []byte(css), 0o644); err != nil {
+			b.Fatal(err)
+		}
+	}
+	setup.options.Platform = PlatformBrowser
+	return setup
+}
+
+// BenchmarkPluginsColdBuildWithCSSModules is the cold build of every worker facet when each has a CSS module: the component's
+// builds share one Node subprocess for the mappings ("shared"), where a build on its own starts one ("alone").
+func BenchmarkPluginsColdBuildWithCSSModules(b *testing.B) {
+	for _, shared := range []bool{true, false} {
+		name := "alone"
+		if shared {
+			name = "shared"
+		}
+		b.Run(name, func(b *testing.B) {
+			setup := benchCSSModules(b)
+			if shared {
+				evaluator := newMappingEvaluator(setup.options.Node)
+				defer evaluator.close()
+				setup.options.mappings = evaluator
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				setup.buildAll(b)
+			}
+		})
+	}
+}
