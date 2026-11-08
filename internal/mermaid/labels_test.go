@@ -17,10 +17,11 @@ type labelsGolden struct {
 	Upper    string   `json:"upper"`
 	Wrap     []string `json:"wrap"`
 	Fit      string   `json:"fit"`
+	Generics string   `json:"generics"`
 	SrcLines []string `json:"srcLines"`
 }
 
-// TestLabelsMatchUpstream diffs pig's label helpers against grok-mermaid's own
+// TestLabelsMatchUpstream diffs pig's label helpers against lovely-mermaid@0.3.3's own
 // exported functions (labels.js) over an entity/tag/markdown/wrapping corpus.
 func TestLabelsMatchUpstream(t *testing.T) {
 	f, err := os.Open("testdata/labels-golden.jsonl")
@@ -53,6 +54,7 @@ func TestLabelsMatchUpstream(t *testing.T) {
 		eq("asciiLower", asciiLower(g.Input), g.Lower)
 		eq("asciiUpper", asciiUpper(g.Input), g.Upper)
 		eq("fitLabel", fitLabel(g.Input, 28), g.Fit)
+		eq("displayGenerics", displayGenerics(g.Input), g.Generics)
 		if got := wrapLabel(g.Input, 24, 4); !equalStrs(got, g.Wrap) {
 			t.Errorf("wrapLabel(%q,24,4) = %#v, want %#v", g.Input, got, g.Wrap)
 		}
@@ -66,7 +68,7 @@ func TestLabelsMatchUpstream(t *testing.T) {
 	if total == 0 {
 		t.Fatal("no goldens")
 	}
-	t.Logf("checked %d label inputs across 9 helpers", total)
+	t.Logf("checked %d label inputs across 10 helpers", total)
 }
 
 func equalStrs(a, b []string) bool {
