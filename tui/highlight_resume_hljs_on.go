@@ -79,6 +79,12 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([
 	return lines, true
 }
 
+// highlightResumeHeld reports whether a resume state continues a text that starts with code: the state the last highlight of code left, or an earlier one the run of code did not replace.
+func highlightResumeHeld(code, lang string, t *Theme) bool {
+	found, _ := hlFindResume(code, lang, t)
+	return len(found.prefix) > 0
+}
+
 // hlFindResume is the state with the longest prefix of code for the block among those whose whole code code starts with, or the zero state, and the generation of the loaded languages it was found under.
 func hlFindResume(code, lang string, t *Theme) (found hlResume, generation int) {
 	hlMu.Lock()
