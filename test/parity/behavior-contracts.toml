@@ -83,6 +83,7 @@ end = "\tprivate async handleOpenExternalEditor(): Promise<void> {"
 sha256 = "574dd4d83f03bdbb8f2cf9770c598f0a10029970fb68314af801951b6e39d68d"
 keybindings = ["app.editor.external", "tui.select.cancel"]
 
+# Re-reviewed at c23b9ec1: setToolsExpanded also walks pendingMessagesContainer; the startup header transition is unchanged.
 # The generated startup owner is init. Its ExpandableText header receives subsequent expansion changes through setToolsExpanded; this contract closes that transition, not the complete init surface.
 [[contract]]
 id = "coding-agent/startup/verbose-header-collapse"
@@ -106,7 +107,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 start = "\tprivate setToolsExpanded(expanded: boolean): void {"
 end = "\t/** Update rendered assistant messages without rebuilding live tool components. */"
-sha256 = "c616d5de55de545f831efc875a3271f7323b003ebe8e806d2d6347f41cfd1839"
+sha256 = "de33262eac93ce9e3304a32bd6bb4e5a3df609570727faec2b37b4f16dd1f1f4"
 keybindings = ["app.clear"]
 
 [[contract]]
