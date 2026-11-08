@@ -48,7 +48,7 @@ func (r *benchRegistry) composes() float64 {
 	return total
 }
 
-func benchRegistryOf(b *testing.B, contributors int) *benchRegistry {
+func benchRegistryOf(b testing.TB, contributors int) *benchRegistry {
 	b.Helper()
 	recorder := telemetry.NewInMemoryTelemetryContext()
 	result := &benchRegistry{telemetry: recorder}

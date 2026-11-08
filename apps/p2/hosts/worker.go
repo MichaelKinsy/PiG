@@ -124,11 +124,11 @@ func runWorker(start workers.WorkerStart, ctx context.Context) (*workers.WorkerR
 	}
 	// Every plugin is loaded (its extensions contributed): scheduling may start. An archived session started only to
 	// rebuild its search index is scanned without resuming its work.
-	source, err := worker.Registry(ctx, p2runtime.HarnessNative, host.GetOptions{})
+	value, err := worker.RegistryValue(ctx, p2runtime.HarnessNative, host.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	if parts, _ := source.Value().(*p2runtime.HarnessParts); parts != nil && (session.Resume == nil || *session.Resume) {
+	if parts, _ := value.(*p2runtime.HarnessParts); parts != nil && (session.Resume == nil || *session.Resume) {
 		durable, err := parts.Durable()
 		if err != nil {
 			return nil, err

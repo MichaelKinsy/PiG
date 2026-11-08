@@ -769,10 +769,9 @@ fn execute(
         let callback = callback.clone();
         std::thread::spawn(move || {
             for (update, answer) in receiver {
-                let failure =
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| callback(update)))
-                        .err()
-                        .map(|payload| crate::context::panic_message(payload.as_ref()));
+                let failure = crate::diagnostic::recover(|| callback(update))
+                    .err()
+                    .map(|payload| crate::context::panic_message(payload.as_ref()));
                 let _ = answer.send(failure);
             }
         })
@@ -920,7 +919,7 @@ pub(crate) fn dispatch_callback(args: &Value) -> Result<Value, String> {
     });
     let function = function.ok_or_else(|| format!("no built-in tool callback {member}"))?;
     let arguments = args.get("args").cloned().unwrap_or(Value::Null);
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| function(&arguments)))
+    crate::diagnostic::recover(|| function(&arguments))
         .map_err(|payload| crate::context::panic_message(payload.as_ref()))?
 }
 
@@ -955,12 +954,11 @@ fn local_exec(shell: &'static str, shell_path: Option<String>) -> BashOperations
                         if let Some(message) = locked(&sink_failure).clone() {
                             return Err(message);
                         }
-                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| on_data(data)))
-                            .map_err(|payload| {
-                                let message = crate::context::panic_message(payload.as_ref());
-                                *locked(&sink_failure) = Some(message.clone());
-                                message
-                            })
+                        crate::diagnostic::recover(|| on_data(data)).map_err(|payload| {
+                            let message = crate::context::panic_message(payload.as_ref());
+                            *locked(&sink_failure) = Some(message.clone());
+                            message
+                        })
                     }),
                 );
             });

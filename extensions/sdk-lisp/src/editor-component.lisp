@@ -213,7 +213,7 @@ each through the handler the component set for it, then the editing."
          (loop (let ((event (edcomp-next-event session)))
                  (when (eq event :stop) (return))
                  (handler-case (edcomp-handle-event session event)
-                   (error (e) (format *error-output* "~A: editor ~A: ~A~%" (extension-name ext) (edcomp-session-key session) e)))))
+                   (error (e) (diagnose "~A: editor ~A: ~A~%" (extension-name ext) (edcomp-session-key session) e)))))
       (sb-thread:with-mutex ((extension-state-lock ext))
         (setf (extension-request-threads ext) (remove self (extension-request-threads ext)))))))
 

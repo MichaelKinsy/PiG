@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -71,6 +72,13 @@ type statePushRig struct {
 	services     *coding.AgentSessionServices
 	runtime      *extension.ExtensionRuntime
 	small, large *ai.Model
+	// usageTokens is the token count of the context usage the host reports.
+	usageTokens atomic.Int64
+}
+
+func (r *statePushRig) contextUsage() *extension.ContextUsage {
+	tokens := int(r.usageTokens.Load())
+	return &extension.ContextUsage{Tokens: &tokens, ContextWindow: 1000}
 }
 
 // newStatePushRig builds the Session the harness's host state comes from and binds the host's replicated accessors and change reports to it.
@@ -113,16 +121,23 @@ func newStatePushRig(t *testing.T, h *harness) *statePushRig {
 	// The host's accessors read the Session, as the binary's do (internal/codingagent/interactive_extensions.go, coding/cli).
 	codingagent.WireModelOperations(h.bridge, codingagent.ModelOperationBindings{CurrentModel: session.Model})
 	h.bridge.SetHostAction("getSessionName", session.SessionName)
+	h.bridge.SetHostAction("getSessionID", session.ID)
 	h.bridge.SetHostAction("getSettingsJSON", services.SettingsManager().ExtensionSettingsJSON)
 	h.bridge.SetHostAction("getThinkingLevel", func() string { return string(session.Agent().ThinkingLevel()) })
 	// The report the binary's modes install (coding/cli watchHostState, internal/codingagent watchReplicatedState).
 	stop := session.ObserveReplicatedState(h.bridge.HostStateChanged)
 	t.Cleanup(stop)
+	stopScope := session.ObserveReplicatedStateScope(h.bridge.HostStateChanging, h.bridge.HostStateSettled)
+	t.Cleanup(stopScope)
 	// The theme the binary hands its extensions (coding/cli/extensions.go), and the report of its changes.
 	h.bridge.SetThemeFunc(codingagent.ActiveExtensionThemeWire)
 	stopTheme := tui.ObserveActiveTheme(h.bridge.HostStateChanged)
 	t.Cleanup(stopTheme)
-	return &statePushRig{session: session, services: services, runtime: h.host.Runtime(), small: small, large: large}
+	rig := &statePushRig{session: session, services: services, runtime: h.host.Runtime(), small: small, large: large}
+	rig.usageTokens.Store(100)
+	// The context usage is a host call in the SDKs: Pi computes it live from the branch, so it moves with no push and no event, as every message the Session commits does.
+	h.bridge.SetHostAction("getContextUsage", rig.contextUsage)
+	return rig
 }
 
 // kinds are the accessors language's SDK replicates. Every SDK replicates the session name; the Go, Python and Rust thinking level is a host call, which is live, and only the Node runtime answers it from the replicated state.
@@ -135,6 +150,26 @@ func (r *statePushRig) kinds(language string) []statePushKind {
 		name:   "model",
 		change: func(t *testing.T) { mustSucceed(t, r.session.SetModel(r.large)) },
 		armed:  identity(r.small), read: identity(r.large),
+	}
+	// The model object, not only its identity, and the id of the Session: the SDKs answer GetModelInfo and GetSessionID from the replicated state.
+	modelName := statePushKind{
+		name:   "model-name",
+		setup:  func(t *testing.T) { mustSucceed(t, r.session.SetModel(r.small)) },
+		change: func(t *testing.T) { mustSucceed(t, r.session.SetModel(r.large)) },
+		armed:  equal(r.small.DisplayName), read: equal(r.large.DisplayName),
+	}
+	sessionID := statePushKind{
+		name: "session-id",
+		change: func(*testing.T) {
+			r.session.ReplaceInner(codingagent.NewSession("state-push-replaced", r.session.CWD()))
+		},
+		armed: func(got string) bool { return got != "" && got != "state-push-replaced" }, read: equal("state-push-replaced"),
+	}
+	// The context usage moves with no push, so a reader between requests sees it only by asking the host.
+	contextUsage := statePushKind{
+		name:   "context-usage",
+		change: func(*testing.T) { r.usageTokens.Store(250) },
+		armed:  equal("tokens=100"), read: equal("tokens=250"),
 	}
 	settings := statePushKind{
 		name:   "settings:editorPaddingX",
@@ -175,9 +210,9 @@ func (r *statePushRig) kinds(language string) []statePushKind {
 		armed:  equal("dark"), read: equal("light"),
 	}
 	if language == "node" {
-		return []statePushKind{model, settings, sessionName, thinking, mcp, theme}
+		return []statePushKind{model, modelName, sessionID, contextUsage, settings, sessionName, thinking, mcp, theme}
 	}
-	return []statePushKind{model, settings, sessionName, mcp, theme}
+	return []statePushKind{model, modelName, sessionID, contextUsage, settings, sessionName, mcp, theme}
 }
 
 func mustSucceed(t *testing.T, err error) {
