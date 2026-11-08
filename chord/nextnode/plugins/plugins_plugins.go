@@ -190,7 +190,7 @@ type PluginsLoad struct {
 	PrincipalKey *data.PrincipalKeyFunction
 	// PrincipalAttributes is RuntimeLoad.PrincipalAttributes.
 	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
-	RevokedBy    host.RevokedBy[delta.JsonValue]
+	RevokedBy           host.RevokedBy[delta.JsonValue]
 	// Bridged are the app's Go core facets whose local types the plugins use (RuntimeLoad.Bridged); ParentServes is the remote
 	// types the Go host serves that the plugins use (RuntimeLoad.ParentServes).
 	Bridged      []BridgedFacet

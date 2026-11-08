@@ -386,7 +386,7 @@ type callbacksWire struct {
 	RevokedBy    bool           `json:"revokedBy,omitempty"`
 	// PrincipalAttributes is set when the host has a `principalAttributes` hook (called synchronously).
 	PrincipalAttributes bool `json:"principalAttributes,omitempty"`
-	ParentServes bool           `json:"parentServes,omitempty"`
+	ParentServes        bool `json:"parentServes,omitempty"`
 }
 
 // enableCallbacks registers the app's callbacks of options on h (the Go packages' functions, the synchronous `principalKey`

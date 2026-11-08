@@ -13,8 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -630,7 +630,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
 		PrincipalAttributes: options.PrincipalAttributes,
-		Store: &plugins.StoreOptions{Path: pluginsStore},
+		Store:               &plugins.StoreOptions{Path: pluginsStore},
 		// The delegation the other way: what the Go server host serves (the choices, the telemetry ingest, the app's Go facets) is
 		// bound there when a plugin holds it, as Pi's one server host binds it (D605).
 		ParentServes: h.Serves,
