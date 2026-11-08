@@ -5,6 +5,7 @@ package plugins
 import (
 	"bufio"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -51,12 +52,12 @@ func cssModuleGoldens(t *testing.T) []cssModuleGolden {
 
 // scopedOf is the CSS module css scoped as plugin "p" at `/d/x.module.css`: its stylesheet and its mapping as the facet's
 // module embeds it, or the failure's text.
-func scopedOf(css string) (sheet, mapping, failure string) {
-	scoped, err := ScopeCSSModule("p", "/d", "/d/x.module.css", css)
+func scopedOf(evaluator *mappingEvaluator, css string) (sheet, mapping, failure string) {
+	scoped, err := scopeCSSModule("p", "/d", "/d/x.module.css", css, evaluator)
 	if err != nil {
 		return "", "", err.Error()
 	}
-	return scoped.CSS, classMapObject(scoped.Classes), ""
+	return scoped.CSS, scoped.Classes, ""
 }
 
 // The scoping is Pi's, case by case: the stylesheet and the mapping Pi's `vm` evaluation gives, in its key order (JavaScript
@@ -67,9 +68,11 @@ func TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase(t *test
 	if len(goldens) < 3000 {
 		t.Fatalf("%d golden cases, want 3000 or more", len(goldens))
 	}
+	evaluator := newMappingEvaluator(NodeOptions{}, context.Background())
+	defer evaluator.close()
 	differing := 0
 	for i, golden := range goldens {
-		sheet, mapping, failure := scopedOf(golden.CSS)
+		sheet, mapping, failure := scopedOf(evaluator, golden.CSS)
 		if sheet == golden.Out && mapping == golden.Module && failure == golden.Error {
 			continue
 		}
@@ -99,3 +102,15 @@ func TestCSSModuleGoldensAreTheGeneratorsCases(t *testing.T) {
 
 // cssModuleHandCases is how many cases of the golden the review of this slice wrote by hand, before the generated ones.
 const cssModuleHandCases = 23
+
+// ScopeCSSModule on its own starts a Node of its own for the one module and ends it.
+func TestScopeCSSModuleStartsANodeOfItsOwnForTheOneModule(t *testing.T) {
+	golden := cssModuleGoldens(t)[0]
+	scoped, err := ScopeCSSModule("p", "/d", "/d/x.module.css", golden.CSS, NodeOptions{}, context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scoped.CSS != golden.Out || scoped.Classes != golden.Module {
+		t.Fatalf("scoped = %+v, want %q and %s", scoped, golden.Out, golden.Module)
+	}
+}
