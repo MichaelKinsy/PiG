@@ -640,3 +640,6 @@ func CallArguments(call ai.ToolCall) *jsvalue.Object {
 	}
 	return jsvalue.NewObject()
 }
+
+// DocOf is the document of kind in docs (a view's `pi.live`, `pi.agent`), nil when absent.
+func DocOf[T any](docs harness.ViewDocs, kind string) *T { return doc[T](docs, kind) }
