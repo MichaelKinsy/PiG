@@ -85,35 +85,52 @@ func StartMcpSignIn(ctx context.Context, options McpSignInOptions) (McpSignInSta
 	return McpSignInStart{Redirect: redirect}, err
 }
 
-// refreshBeforeSignIn refreshes the stored tokens, unless `cimd` is to replace a registered client.
+// refreshBeforeSignIn refreshes the stored tokens, unless `cimd` is to replace a registered client. The refresh uses RedirectURL when the tokens came
+// from a Client ID Metadata Document whose documents list it.
+//
+// Ending ctx stops the wait for the refresh lock at once ([McpSignInCancelledError]). A lock that arrives after that runs nothing and is released, and
+// a refresh already sent still completes and saves its tokens (Pi 797e122cb).
 func refreshBeforeSignIn(ctx context.Context, options McpSignInOptions) (OAuthFlowResult, error) {
-	var result OAuthFlowResult
-	locked := false
-	err := options.Store.WithRefreshLock(ctx, func(lockCtx context.Context) error {
-		locked = true
-		result = OAuthRedirect
-		state, err := options.Store.Load(lockCtx)
-		if err != nil {
+	type outcome struct {
+		result OAuthFlowResult
+		err    error
+	}
+	done := make(chan outcome, 1)
+	go func() {
+		var result OAuthFlowResult
+		// The lock wait is not tied to ctx: it ends when the lock is taken (or fails) and releases it at once for a sign-in that was cancelled.
+		err := options.Store.WithRefreshLock(context.WithoutCancel(ctx), func(lockCtx context.Context) error {
+			result = OAuthRedirect
+			// The lock may arrive after the sign-in was cancelled: return at once, so it is released.
+			if ctx.Err() != nil {
+				return nil
+			}
+			state, err := options.Store.Load(lockCtx)
+			if err != nil {
+				return err
+			}
+			if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == "" {
+				return nil
+			}
+			if options.Settings.ClientRegistration == "cimd" && state.ClientInformation != nil && options.Settings.ClientID == "" {
+				return nil
+			}
+			// A refresh the server answered may have rotated the refresh token, so its answer must be saved.
+			result, err = RefreshStoredTokens(lockCtx, options.McpOAuthClientOptions, *state, RefreshStoredTokensOptions{Challenge: options.Challenge, RedirectURL: options.RedirectURL})
 			return err
-		}
-		if state == nil || state.Tokens == nil || state.Tokens.RefreshToken == "" {
-			return nil
-		}
-		if options.Settings.ClientRegistration == "cimd" && state.ClientInformation != nil && options.Settings.ClientID == "" {
-			return nil
-		}
-		// A refresh the server answered may have rotated the refresh token, so its answer must be saved.
-		result, err = RefreshStoredTokens(context.WithoutCancel(lockCtx), options.McpOAuthClientOptions, *state, RefreshStoredTokensOptions{Challenge: options.Challenge})
-		return err
-	})
-	if err != nil {
-		// The lock's own failure: another process holds it too long. The user signs in instead.
-		if !locked {
+		})
+		done <- outcome{result, err}
+	}()
+	select {
+	case <-ctx.Done():
+		return "", NewMcpSignInCancelledError()
+	case o := <-done:
+		// Another process is refreshing and took too long. The user signs in instead.
+		if _, busy := errors.AsType[*McpRefreshLockBusyError](o.err); busy {
 			return OAuthRedirect, nil
 		}
-		return "", err
+		return o.result, o.err
 	}
-	return result, nil
 }
 
 func startBrowserStep(ctx context.Context, options McpSignInOptions, stepUp bool) (McpSignInRedirect, error) {
