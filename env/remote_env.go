@@ -1123,7 +1123,7 @@ func (e *RemoteExecutionEnv) Exec(ctx context.Context, command any, options *dur
 	defer cancel()
 	stopForwarding := context.AfterFunc(ctx, cancel)
 	defer stopForwarding()
-	// pig divergence (D304): the daemon enforces the timeout once it runs the command. This timer also covers starting the connection and a daemon that
+	// the daemon enforces the timeout once it runs the command. This timer also covers starting the connection and a daemon that
 	// stopped answering (a rebooting host), so the call ends on time whatever the remote host does (Pi main c96e368e2).
 	var timedOut atomic.Bool
 	if options.Timeout != nil {
