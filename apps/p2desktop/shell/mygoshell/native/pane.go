@@ -65,7 +65,7 @@ func (a *App) emptyState(c *ui.Context, h *surfacehost.Host, sessions *screens.S
 		ui.Column(c).Grow(1).Center().Gap(14).Children(func() { a.hero(c, sessions, v, scale) })
 		a.promptBar(c, promptBar{
 			Model: "",
-			Send: func(text string) {
+			Send: func(text string, _ []string) {
 				cwd := sessions.DefaultCwd()
 				go func() {
 					id, err := sessions.Create(cwd, "")
