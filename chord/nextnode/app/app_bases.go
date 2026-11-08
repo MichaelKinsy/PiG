@@ -102,7 +102,7 @@ func (a *App) startBases(bases []baseBuild) {
 					a.reportLate(AppErrorBaseBuild, err, each.name)
 					return
 				}
-				compared.add(a.Plugins.WatchBase(inputs))
+				compared.add(a.Plugins.WatchBaseCompared(inputs))
 			})
 		}
 		builds.Wait()
@@ -125,7 +125,7 @@ func (a *App) watchBaseCode(compared *comparisons) {
 		return
 	}
 	if ok {
-		compared.add(a.Plugins.WatchBase(a.editedSinceStart(exe)))
+		compared.add(a.Plugins.WatchBaseCompared(a.editedSinceStart(exe)))
 	}
 	compared.wait()
 }

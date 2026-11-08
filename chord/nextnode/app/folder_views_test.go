@@ -17,7 +17,7 @@ import (
 
 // listing names n, for telling reads apart.
 func listing(n int) FolderListing {
-	return FolderListing{Entries: []FolderEntry{{Kind: "folder", Folder: &FolderInfo{Space: "s", Path: "f" + string(rune('0'+n)), Created: int64(n)}}}}
+	return FolderListing{Entries: []FolderEntry{{Kind: FolderEntryFolder, Folder: &FolderInfo{Space: "s", Path: "f" + string(rune('0'+n)), Created: int64(n)}}}}
 }
 
 // recorder is an observer recording the values it is told.
