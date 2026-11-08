@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/mcp"
 	"maps"
 	"slices"
 	"sync"
@@ -296,9 +297,18 @@ func (a *api) RegisterToolRenderer(resolver extension.ToolRendererResolver) {
 	a.ext.ToolRenderers = append(a.ext.ToolRenderers, resolver)
 }
 
-func (a *api) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer) {
+func (a *api) RegisterMarkdownTransformer(transformer extension.MarkdownTransformer, options ...extension.MarkdownTransformerOptions) {
 	a.assertActive()
 	a.ext.MarkdownTransformer = transformer
+	a.ext.MarkdownMessageTypes = markdownMessageTypes(options)
+}
+
+// markdownMessageTypes is the registration's surface list, copied: the listed types, or the defaults without options (Pi: options?.messageTypes ?? DEFAULT).
+func markdownMessageTypes(options []extension.MarkdownTransformerOptions) []extension.MarkdownMessageType {
+	if len(options) > 0 && options[0].MessageTypes != nil {
+		return slices.Clone(options[0].MessageTypes)
+	}
+	return extension.DefaultMarkdownMessageTypes()
 }
 
 // OwnThinkingRuns declares or withdraws this extension's ownership of thinking runs; it takes effect at once, also after loading.
@@ -488,7 +498,7 @@ func (a *api) RegisterMcpServer(name string, config extension.McpServerConfig) e
 	}
 	// Names that differ only in `-` and `_` would share a namespace.
 	for _, server := range a.runtime.McpServers().List() {
-		if server.Name != name && extension.McpNamespace(server.Name) == extension.McpNamespace(name) {
+		if server.Name != name && mcp.McpNamespace(server.Name) == mcp.McpNamespace(name) {
 			return fmt.Errorf(`MCP server "%s" conflicts with registered server "%s"`, name, server.Name)
 		}
 	}

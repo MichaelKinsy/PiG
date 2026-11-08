@@ -2119,6 +2119,7 @@ export class Runtime {
     this.extensionRuntime = createExtensionRuntime();
     this.hostReady = false;
     this.markdownTransformer = undefined;
+    this.markdownMessageTypes = undefined;
     // PiG-only: whether this extension owns the thinking runs of assistant messages. Recorded during load, carried by the register frame; later calls go to the host.
     this.ownsThinkingRuns = false;
     this.requestContext = new AsyncLocalStorage();
@@ -2302,8 +2303,10 @@ export class Runtime {
       },
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
-      registerMarkdownTransformer: (transformer) => {
+      registerMarkdownTransformer: (transformer, options) => {
         this.markdownTransformer = transformer;
+        // Pi eebd5d90: options?.messageTypes ?? the default transcript types.
+        this.markdownMessageTypes = options?.messageTypes ? [...options.messageTypes] : undefined;
       },
       // pig additive (D214): the extension owns the thinking runs of assistant messages; recorded while loading, a host call afterwards.
       ownThinkingRuns: (enabled = true) => {
@@ -3002,6 +3005,7 @@ export class Runtime {
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
         markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
+        markdown_message_types: typeof this.markdownTransformer === "function" ? (this.markdownMessageTypes ?? ["user", "assistant", "assistant-thinking"]) : undefined,
         owns_thinking_runs: this.ownsThinkingRuns || undefined,
         tool_renderers: this.toolRendererResolvers.length || undefined,
         mcp_servers: this.mcpServersPending.size > 0 ? [...this.mcpServersPending].map(([name, config]) => ({ name, config })) : undefined,

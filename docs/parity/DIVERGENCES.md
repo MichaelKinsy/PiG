@@ -3997,15 +3997,15 @@ Evidence: `TestCtrlOExpandsUserBashOutputInThePendingArea`, `TestQueuedMessageUp
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 
-## D312 The model selectors keep the row the user browsed to when a catalog refresh lands
+## D312 The model selector and the Hugging Face search keep the row the user browsed to
 
-What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep model selector selection when the catalog refresh lands`, #11810, closing #9109), which is not in Pi 1.5.0. Opening the model selector or the llama model search starts a background refresh. When the refresh finished, Pi 1.5.0 moved the selection back to the current model, or to the top row when a search query was typed, discarding any browsing done meanwhile. The selectors now pass the selected model into the filter so the refresh keeps it selected by provider and ID; when it is gone the earlier fallback applies, and the list is rebuilt once.
+What: PiG ports Pi main df0d88aac (`fix(coding-agent): keep the model selector selection when results refresh`, #11810, #9109), which is not in Pi 1.5.0. When the catalog refreshes behind the model selector, or a Hugging Face search lands while the user has moved the cursor, the selector keeps the browsed model selected if it is still listed. Otherwise the best match (top row) is highlighted. Pi 1.5.0 reset the selection to the first row on every refresh.
 
-Why: browsing the list during the refresh lost the user's place.
+Why: the cursor jumped away from the row the user was about to pick whenever results arrived.
 
-Pi bug: 1.5.0 discards the user's selection when the catalog refresh lands (#9109).
+Pi bug: 1.5.0 moves the model selector selection when results refresh (#11810, #9109).
 
-Scope: the model selector (`tui/model_select.go` `applyFilterPreferring`) and the llama model search (`internal/codingagent/llama/ui.go`).
+Scope: `ModelSelectorComponent` (`tui/model_select.go` `applyFilterPreferring`) and the llama model browser (`internal/codingagent/llama/ui.go` search result handling).
 
 Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
 
@@ -4013,9 +4013,31 @@ SCRUTINIZED:approved
 
 Remove when: the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
 
-Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results).
+Call-site markers: `tui/model_select.go` (`applyFilterPreferring`), `internal/codingagent/llama/ui.go` (search results applied).
 
-Evidence: the ported `model-selector.test.ts` and `llama-ui.test.ts` cases of Pi df0d88aac.
+Evidence: `TestModelSelectorUpdateModels`, `TestModelSelectorUpdateModelsKeepsTheSelectionWhileASearchQueryIsActive` (`tui/model_select_refresh_test.go`, port Pi's `model-selector.test.ts` "when the catalog refresh lands"); `TestHuggingFaceSearchKeepsTheBrowsedModelSelectedWhenTheNextSearchLands`, `TestHuggingFaceSearchSelectsTheBestMatchWhenTheUserDidNotBrowse`, `TestHuggingFaceSearchSelectsTheBestMatchWhenTheBrowsedModelIsNotInTheNewResults` (`internal/codingagent/llama/ui_selection_test.go`, port Pi's `llama-ui.test.ts`).
+
+Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
+
+## D313 Markdown transformers opt into custom, summary and changelog surfaces
+
+What: PiG ports Pi main eebd5d90c (`feat(coding-agent): let Markdown transformers opt into more surfaces`, #11756), which is not in Pi 1.5.0. `registerMarkdownTransformer(transformer, { messageTypes })` lists the surfaces a transformer runs on; without options it runs on user, assistant and assistant-thinking Markdown as before. New types: `custom` (custom messages without a message renderer, and the content of expanded skill blocks), `summary` (expanded branch and compaction summaries) and `changelog` (What's New, `/changelog`, Extension Updates and the Update Available note). The runner wraps each transformer so Markdown of an unlisted type passes through unchanged. Skill blocks and summaries hand the transformers their content only; Pi's bold header is put in front of the result. Custom, skill and summary messages drawn from a session entry carry its `messageId` and `timestamp`; changelog notices carry neither. The built-in Mermaid transformer also renders in summaries, and still skips thinking, custom messages and changelogs. The Go SDK takes `MarkdownTransformerOptions` (`Extension.MarkdownTransformer(fn, opts...)`), the Go in-process API takes the same as a variadic argument, and the Node extension runtime reads `options.messageTypes`.
+
+Why: Pi renders other Markdown that extensions could not reach, and running every transformer everywhere would break existing ones.
+
+Pi bug: none; Pi 1.5.0 predates the option.
+
+Scope: `extension.API.RegisterMarkdownTransformer`, `Extension.MarkdownMessageTypes`, `Runner.GetMarkdownTransformers` (`coding/extension`, `coding/extension/host/inproc`), the subprocess register frame (`markdown_message_types`), the Go SDK and the Node runtime, the tui message components (`tui/markdown_surface.go`), `InteractiveMode` (`interactive_chat.go`, `interactive_transcript.go`, `interactive_compaction.go`, `interactive_changelog.go`) and the Mermaid transformer.
+
+Owner decision: owner sign-off pending (draft; Pi main follow of 2026-11-07).
+
+SCRUTINIZED:approved
+
+Remove when: the pinned Pi release contains eebd5d90c. Then the call-site markers and this record go.
+
+Call-site markers: `coding/extension/markdowntransform/markdowntransform.go` (new message types), `coding/extension/host/inproc/runner.go` (`restrictMarkdownTransformer`), `internal/codingagent/interactive_chat.go` (`surfaceMarkdownTransform`), `internal/codingagent/mermaid_transform.go` (surfaces), `tui/markdown_surface.go`.
+
+Evidence: `TestRunnerMarkdownTransformersRunOnlyOnTheirMessageTypes` (`coding/extension/host/inproc/upstream_markdown_collection_test.go`, port Pi's `extensions-runner.test.ts`); `TestExpandedMessageComponentsRunMarkdownTransformersOnTheContentWithoutPisHeader`, `TestCustomMessageRunsMarkdownTransformersOnDefaultRenderedContent` (`tui/markdown_surface_test.go`, port Pi's `collapsible-message-components.test.ts` and `custom-message.test.ts`); `TestStartupChangelogRunsTheChangelogMarkdownTransformers` (`internal/codingagent/interactive_extension_changelog_test.go`, port Pi's `interactive-mode-extension-changelog.test.ts`); the surfaces case of "respects rendering modes and skips thinking blocks and non-transcript surfaces" (`internal/codingagent/mermaid_upstream_test.go`, port Pi's `mermaid.test.ts`).
 
 Parity allowance: none needed; Pi 1.5.0 has no test of this behavior.
 

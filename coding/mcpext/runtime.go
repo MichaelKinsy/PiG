@@ -378,26 +378,26 @@ func (c *Connection) OAuthURL() string {
 
 // OAuthSettings resolves the server's OAuth settings. A client secret that
 // fails to resolve is an error.
-func (c *Connection) OAuthSettings() (McpOAuthSettings, error) {
+func (c *Connection) OAuthSettings() (oauth.McpOAuthSettings, error) {
 	oauthConfig := c.Entry.Config.OAuth
 	if !c.Entry.Config.IsHTTP() || oauthConfig == nil {
-		return McpOAuthSettings{}, nil
+		return oauth.McpOAuthSettings{}, nil
 	}
-	settings := McpOAuthSettings{
+	settings := oauth.McpOAuthSettings{
 		ClientID: oauthConfig.ClientID, CallbackPort: oauthConfig.CallbackPort, CallbackURL: oauthConfig.CallbackURL, Scope: oauthConfig.Scope, ClientName: oauthConfig.ClientName, ClientRegistration: oauthConfig.ClientRegistration,
 	}
 	if oauthConfig.AuthServerMetadataURL != "" {
 		// Config validation accepted the URL; this is its `new URL()`.
 		metadataURL, err := nodeurl.ParseURL(oauthConfig.AuthServerMetadataURL)
 		if err != nil {
-			return McpOAuthSettings{}, err
+			return oauth.McpOAuthSettings{}, err
 		}
 		settings.AuthServerMetadataURL = &metadataURL
 	}
 	if oauthConfig.ClientSecret != "" {
 		secret, err := configvalue.ResolveOrError(oauthConfig.ClientSecret, fmt.Sprintf(`MCP server "%s" oauth.clientSecret`, c.Entry.Name), nil)
 		if err != nil {
-			return McpOAuthSettings{}, err
+			return oauth.McpOAuthSettings{}, err
 		}
 		settings.ClientSecret = secret
 	}

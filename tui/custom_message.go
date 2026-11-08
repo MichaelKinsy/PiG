@@ -30,6 +30,7 @@ type CustomMessageComponent struct {
 	markdownTheme   *MarkdownTheme
 	expanded        bool
 	outputPad       int
+	surface         markdownSurface
 }
 
 // NewCustomMessageComponent mirrors the upstream constructor (custom-message.ts:23): customRenderer may be nil, a nil
@@ -108,11 +109,15 @@ func (c *CustomMessageComponent) rebuild() {
 	c.box.AddChild(NewText(label))
 	c.box.AddChild(NewSpacer(1))
 
-	markdown := NewMarkdownWithOptions(CustomMessageText(c.message), 0, 0, c.markdownTheme, &DefaultTextStyle{
+	c.box.AddChild(c.surface.markdown("", CustomMessageText(c.message), c.markdownTheme, &DefaultTextStyle{
 		Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-	}, nil)
-	markdown.FinishStreaming()
-	c.box.AddChild(markdown)
+	}))
+}
+
+// SetMarkdownTransform installs the display-only Markdown transform of the expanded body, which sees the message text without the header, and the state it reads for the Markdown render cache key. It is Pi's markdownTransformers, messageId and timestamp of the custom message component; a nil transform shows the Markdown as it is.
+func (c *CustomMessageComponent) SetMarkdownTransform(transform func(markdown string, availableWidth int) string, state func() string) {
+	c.surface.transform, c.surface.state = transform, state
+	c.rebuild()
 }
 
 // renderCustom returns the custom renderer's component, or nil when it returns none or panics (custom-message.ts:68-83 falls

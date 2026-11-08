@@ -107,17 +107,13 @@ func callableTools(tools []extension.AgentTool) []extension.AgentTool {
 }
 
 // renderToolSection is `### \`id\` (\`raw name\`)` followed by the tool's description and declaration.
-func renderToolSection(declaration sandbox.Tool) (string, error) {
+func renderToolSection(declaration sandbox.Tool) string {
 	id := sandbox.ToCodemodeIdentifier(declaration.Name)
 	heading := "### `" + id + "` (`" + declaration.Name + "`)"
 	if id == declaration.Name {
 		heading = "### `" + id + "`"
 	}
-	sample, err := sandbox.RenderToolSample(declaration, sandbox.ToolRenderOptions{})
-	if err != nil {
-		return "", err
-	}
-	return heading + "\n" + jsstring.Trim(sample), nil
+	return heading + "\n" + jsstring.Trim(sandbox.RenderToolSample(declaration, sandbox.ToolRenderOptions{}))
 }
 
 type catalogEntry struct {
@@ -176,7 +172,7 @@ func selectCatalog(groups []*catalogGroup, budget *int) map[string]bool {
 // options.Models is set), and one section per listed tool, grouped by namespace. Deferred tools are never listed and do
 // not affect the description at all, so it stays the same while tools are registered late (for example by MCP servers
 // that connect). Tool sections are limited to the inline budget.
-func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) (string, error) {
+func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) string {
 	var declarations []sandbox.Tool
 	for _, tool := range callableTools(tools) {
 		if !options.Deferred[tool.Name] {
@@ -200,10 +196,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 			groups[key] = group
 			order = append(order, key)
 		}
-		section, err := renderToolSection(declaration)
-		if err != nil {
-			return "", err
-		}
+		section := renderToolSection(declaration)
 		group.entries = append(group.entries, catalogEntry{
 			name: declaration.Name, section: section,
 			cost: int(math.Ceil(float64(jsstring.Length(section)) / charsPerToken)),
@@ -228,7 +221,7 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 
 	sections := []string{descriptionIntro, describeGlobals(options.Models)}
 	if len(declarations) == 0 {
-		return strings.Join(sections, "\n\n"), nil
+		return strings.Join(sections, "\n\n")
 	}
 
 	toolSections := []string{"Nested tools:"}
@@ -260,5 +253,5 @@ func CreateDescription(tools []extension.AgentTool, options DescriptionOptions) 
 		}
 	}
 	sections = append(sections, strings.Join(toolSections, "\n\n"))
-	return strings.Join(sections, "\n\n"), nil
+	return strings.Join(sections, "\n\n")
 }

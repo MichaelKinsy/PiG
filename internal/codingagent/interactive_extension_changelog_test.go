@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -253,5 +255,38 @@ func TestStartupExtensionChangelogBlock(t *testing.T) {
 	want = []string{border, " What's New", "", " [0.3.0]", "", " Newest", "", "", " Extension Updates", "", " demo [1.2.0]", "", " Added B", "", border}
 	if got := render(false, own, updates[:1]); !slices.Equal(got, want) {
 		t.Fatalf("expanded own and extension blocks\ngot:  %q\nwant: %q", got, want)
+	}
+}
+
+// Pi eebd5d90 interactive-mode-extension-changelog.test.ts "InteractiveMode startup notices": the What's New and Extension Updates blocks run the transformers
+// registered for the changelog type, and skip those that did not list it.
+func TestStartupChangelogRunsTheChangelogMarkdownTransformers(t *testing.T) {
+	tui.SetCapabilityOverrides(tui.CapabilityOverrides{Hyperlinks: new(false)})
+	t.Cleanup(func() { tui.SetCapabilityOverrides(tui.CapabilityOverrides{}); tui.ResetCapabilitiesCache() })
+	replaceWarning := func(markdown string, _ extension.MarkdownTransformContext) string {
+		return strings.ReplaceAll(markdown, ":warning:", "WARN")
+	}
+	for _, tc := range []struct {
+		name       string
+		extensions []extension.Extension
+		want       string
+	}{
+		{"changelog opt-in", []extension.Extension{{MarkdownTransformer: replaceWarning, MarkdownMessageTypes: []extension.MarkdownMessageType{extension.MarkdownMessageChangelog}}}, "WARN"},
+		{"default types", []extension.Extension{{MarkdownTransformer: replaceWarning}}, ":warning:"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mode := &InteractiveMode{
+				chatContainer: tui.NewContainer(),
+				tuiInst:       tui.NewWithOutput(io.Discard, 80, 24),
+				opts:          InteractiveModeOptions{SettingsManager: &SettingsManager{merged: Settings{}}, AppVersion: "9.9.9"},
+			}
+			mode.newRunner = inproc.NewRunner(tc.extensions, t.TempDir())
+			own, _ := GetNewEntries(ParseChangelog("## [0.3.0]\n- :warning: Pi change\n\n## [0.2.0]\nMiddle"), "0.2.0")
+			mode.showStartupChangelog(own, []extensionChangelogUpdate{{Name: "demo", Version: "1.2.0", Markdown: "## demo [1.2.0]\n\n- :warning: Demo change"}})
+			rendered := stripANSI(strings.Join(mode.chatContainer.Render(80), "\n"))
+			if got := strings.Count(rendered, tc.want); got != 2 {
+				t.Fatalf("%q appears %d times, want 2 (What's New and Extension Updates):\n%s", tc.want, got, rendered)
+			}
+		})
 	}
 }

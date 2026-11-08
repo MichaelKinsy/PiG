@@ -1,6 +1,7 @@
 package piglet
 
 import (
+	"github.com/MichaelKinsy/PiG/mcp"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -83,7 +84,7 @@ func scopeRows() []scopeRow {
 func probe(name string) extension.ToolInfo {
 	info := extension.ToolInfo{Name: name}
 	if strings.HasPrefix(name, "mcp__docs__") {
-		info.Namespace = &extension.ToolNamespace{Name: extension.McpNamespace("docs")}
+		info.Namespace = &extension.ToolNamespace{Name: mcp.McpNamespace("docs")}
 	}
 	return info
 }

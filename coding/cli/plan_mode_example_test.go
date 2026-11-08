@@ -128,7 +128,7 @@ func TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers(t *testing.T) {
 	if _, err := session.AppendCustomMessageEntry("plan-mode-execute", "Execute the plan.", true, nil); err != nil {
 		t.Fatal(err)
 	}
-	appendAssistant("[DONE:", "1]", "[DONE:2]")
+	appendAssistant("[DO", "NE:1]", "[DONE:2]")
 	if _, err := session.AppendCustomEntry("plan-mode", map[string]any{"enabled": false, "executing": true, "todos": []map[string]any{
 		{"step": 1, "text": "Inspect the implementation", "completed": false},
 		{"step": 2, "text": "Verify the result", "completed": false},
