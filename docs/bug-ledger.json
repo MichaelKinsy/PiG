@@ -29674,16 +29674,15 @@
     },
     {
       "id": "BF-9cf54d7",
-      "title": "A Node extension's `message_end` event now carries the same message object that…",
-      "symptom": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, where the extensions see the event first and the entry then holds `event.message` itself.",
-      "rootCause": "Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
-      "rootCauseSource": "release note",
-      "userImpact": "Lost or altered data",
+      "title": "fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi",
+      "symptom": "fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi",
+      "rootCause": "Pi emits message_end to the extensions and then appends event.message to the session, so the entry's message is the event's own object and every handler of the event shares it. The Node runtime received the event and the session log as separate payloads, so an extension that finds an entry by entry.message === message found none. Paseo's Pi integration does exactly that to learn the entry id of the prompt it sent, so through PiG its timeline lacked the user message until a restart and a conversation rewind was refused. The runtime now makes the two one object, matching by role, timestamp and tool call id and then by value, in either arrival order. Regenerated runtime-node.pack and its…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, where the extensions see the event first and the entry then holds `event.message` itself. This holds when no `message_end` handler returns a replacement message; Pi's overwrite of the original object in place when one does is not reproduced (D420 draft). An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
-      "origin": "release note",
+      "origin": "commit",
       "commits": [
         {
           "hash": "9cf54d7b97",
@@ -44801,6 +44800,36 @@
         "ai/tool_flow_result_reset_test.go::TestTransformMessagesResultBeforeCallDoesNotAnswerIt",
         "ai/transform_messages_allocs_test.go::TestTransformMessagesDoesNotReboxUnchangedMessages",
         "test/pipeline-diff/system_only_test.go::TestSystemOnlyHistoryFailsBeforeSendingLikePi"
+      ]
+    },
+    {
+      "id": "BF-e99791b",
+      "title": "A Node extension's `message_end` event now carries the same message object that…",
+      "symptom": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object.",
+      "rootCause": "Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `message_end` event now carries the same message object that `ctx.sessionManager.getEntries()` returns in the matching session entry, as in Pi, also when a `message_end` handler returns a replacement: the object then holds the stored, replaced message, as Pi writes the replacement into the original object, and only a handler that ran after the replacement holds another object. The `message` of `message_start` (system, user and tool result messages), the `message` and `toolResults` of `turn_end` and the `messages` of `agent_end` are those same objects, and extensions packed in one process hold one object for one message. An extension that finds an entry with `entry.message === message` found none in PiG. Paseo's Pi integration depends on that lookup: through PiG its timeline did not show the user's prompt until the session was reopened, and a conversation rewind was refused.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e99791bd8b",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "agent/message_identity_test.go::TestIdentityOfAStartEnvelopeIsTheMessageItWasCopiedFrom",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityAcrossAReplacement",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityInOtherEvents",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIdentityPaths",
+        "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go::TestNodeRuntimeEventMessageIsTheSessionEntryMessage",
+        "coding/extension/host/subprocess/state_push_message_entries_test.go::TestPushStateToSendsMessageEntriesToANodeRuntimeOnce",
+        "coding/session_message_sequence_test.go::TestMessageSequencesNumberMessagesByIdentity",
+        "coding/session_message_sequence_test.go::TestSessionNumbersTheMessagesExtensionEventsShare",
+        "internal/codingagent/session_message_entries_test.go::TestMessageEntriesAfterACursor"
       ]
     },
     {
