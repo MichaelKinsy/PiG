@@ -30764,36 +30764,6 @@
       ]
     },
     {
-      "id": "BF-D246",
-      "title": "OpenAI Responses sends session-id, not session_id",
-      "symptom": "1.5.0 sends `session_id` on Responses (#11639).",
-      "rootCause": "Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D246",
-      "removeWhen": "the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "bf094afb3e",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "bfe1b032a7",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "ai/cache_affinity_e2e_upstream_test.go::TestOpenAIResponsesCacheAffinityE2EUpstream",
-        "ai/openai_completions_session_affinity_upstream_test.go::TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat",
-        "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream",
-        "ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream"
-      ]
-    },
-    {
       "id": "BF-D249",
       "title": "Images in queued steering and follow-up messages are resized when the message is delivered",
       "symptom": "A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.",
@@ -31191,77 +31161,6 @@
         }
       ],
       "tests": []
-    },
-    {
-      "id": "BF-D350",
-      "title": "OpenCode Zen and Go Claude models send per-message effort",
-      "symptom": "1.5.0 omits both for OpenCode Claude models.",
-      "rootCause": "OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D350",
-      "removeWhen": "the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi",
-        "cmd/gen-models/opencode_model_generation_test.go::TestOpencodeModelGeneration"
-      ]
-    },
-    {
-      "id": "BF-D351",
-      "title": "Anthropic non-strict tool schemas keep root $defs",
-      "symptom": "1.5.0 drops root `$defs` in non-strict mode.",
-      "rootCause": "A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D351",
-      "removeWhen": "the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
-        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas"
-      ]
-    },
-    {
-      "id": "BF-D352",
-      "title": "Anthropic message threads",
-      "symptom": "Not a Pi bug: a feature ahead of the pin.",
-      "rootCause": "Smaller requests and cache continuity on long Anthropic sessions.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D352",
-      "removeWhen": "the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue"
-      ]
     },
     {
       "id": "BF-D430",
@@ -46448,9 +46347,7 @@
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "ahead-of-pi",
-      "divergence": "D144",
       "piIssue": "https://github.com/earendil-works/pi/issues/10697",
-      "removeWhen": "Pi includes `error.cause` in the message of a transport failure.",
       "fixedIn": "0.5.0",
       "releaseNote": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).",
       "origin": "release note",
@@ -50904,11 +50801,6 @@
       "entry": "BF-0225a43"
     },
     {
-      "id": "D144",
-      "title": "A dropped response stream keeps its cause in the error message (Pi #10697)",
-      "entry": "BF-f07d033"
-    },
-    {
       "id": "D145",
       "title": "Nested Errors keep their name and message in codemode output (Pi #10650)",
       "entry": "BF-35e46b1"
@@ -51185,11 +51077,6 @@
       "entry": "BF-3b696c8"
     },
     {
-      "id": "D246",
-      "title": "OpenAI Responses sends session-id, not session_id",
-      "entry": "BF-D246"
-    },
-    {
       "id": "D247",
       "title": "Quit settles the interrupted run before session_shutdown and disposal",
       "entry": "BF-bd8849d"
@@ -51308,21 +51195,6 @@
       "id": "D312",
       "title": "The model selectors keep the row the user browsed to when a catalog refresh lands",
       "entry": "BF-D312"
-    },
-    {
-      "id": "D350",
-      "title": "OpenCode Zen and Go Claude models send per-message effort",
-      "entry": "BF-D350"
-    },
-    {
-      "id": "D351",
-      "title": "Anthropic non-strict tool schemas keep root $defs",
-      "entry": "BF-D351"
-    },
-    {
-      "id": "D352",
-      "title": "Anthropic message threads",
-      "entry": "BF-D352"
     },
     {
       "id": "D430",

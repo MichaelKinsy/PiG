@@ -1105,7 +1105,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D240](#bf-d240) | Claude Sonnet 5 takes no temperature | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D241](#bf-d241) | Ctrl+V also pastes on Windows and WSL | A Pi defect that PiG fixed first | Windows, WSL | Unreleased |
 | [BF-D242](#bf-d242) | Reload is rejected while the session is running or compacting | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D246](#bf-d246) | OpenAI Responses sends session-id, not session_id | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D249](#bf-d249) | Images in queued steering and follow-up messages are resized when the message is delivered | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D250](#bf-d250) | A delivered image-only queued message leaves the pending queue | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D254](#bf-d254) | `pig config` loads the user's keybindings | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1120,9 +1119,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D310](#bf-d310) | `/reload` and a session switch remove every extension overlay | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D311](#bf-d311) | `ctrl+o` applies to user bash output shown while the agent is working | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D312](#bf-d312) | The model selectors keep the row the user browsed to when a catalog refresh lands | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D350](#bf-d350) | OpenCode Zen and Go Claude models send per-message effort | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D351](#bf-d351) | Anthropic non-strict tool schemas keep root $defs | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D352](#bf-d352) | Anthropic message threads | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D431](#bf-d431) | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
@@ -16824,21 +16820,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0f8bc0f0de` (2026-11-05), `bfe1b032a7` (2026-11-05)
 - **Tests:** `coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive`, `coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting`, `test/extension-conformance/sdkscenario_test.go::TestSDKScenarios`
 
-### BF-D246
-
-**OpenAI Responses sends session-id, not session_id**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D246)
-- **Symptom:** 1.5.0 sends `session_id` on Responses (#11639).
-- **Root cause:** Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.
-- **Fix commits:** `bf094afb3e` (2026-11-05), `bfe1b032a7` (2026-11-05)
-- **Tests:** `ai/cache_affinity_e2e_upstream_test.go::TestOpenAIResponsesCacheAffinityE2EUpstream`, `ai/openai_completions_session_affinity_upstream_test.go::TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat`, `ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream`, `ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream`
-
 ### BF-D249
 
 **Images in queued steering and follow-up messages are resized when the message is delivered**
@@ -17048,51 +17029,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** the pinned Pi release contains df0d88aac. Then the call-site markers and this record go.
 - **Fix commits:** `b1333a0834` (2026-11-07)
 - **Tests:** None recorded.
-
-### BF-D350
-
-**OpenCode Zen and Go Claude models send per-message effort**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D350)
-- **Symptom:** 1.5.0 omits both for OpenCode Claude models.
-- **Root cause:** OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.
-- **Fix commits:** `c21b1370e5` (2026-11-07)
-- **Tests:** `cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi`, `cmd/gen-models/opencode_model_generation_test.go::TestOpencodeModelGeneration`
-
-### BF-D351
-
-**Anthropic non-strict tool schemas keep root $defs**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D351)
-- **Symptom:** 1.5.0 drops root `$defs` in non-strict mode.
-- **Root cause:** A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.
-- **Fix commits:** `c21b1370e5` (2026-11-07)
-- **Tests:** `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema`, `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas`
-
-### BF-D352
-
-**Anthropic message threads**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D352)
-- **Symptom:** Not a Pi bug: a feature ahead of the pin.
-- **Root cause:** Smaller requests and cache continuity on long Anthropic sessions.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.
-- **Fix commits:** `c21b1370e5` (2026-11-07)
-- **Tests:** `ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue`
 
 ### BF-D430
 
@@ -23856,14 +23792,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D144)
+- **Source:** A Pi defect that PiG fixed first
 - **Symptom:** A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).
 - **Root cause:** A user cannot tell a server disconnect from a client timeout without instrumenting the process.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Pi issue:** https://github.com/earendil-works/pi/issues/10697
-- **Removed when Pi fixes it:** Pi includes `error.cause` in the message of a transport failure.
 - **Fix commits:** `f07d033aac` (2026-10-10)
 - **Tests:** `ai/transport_error_test.go::TestProviderTransportFailureMidStreamKeepsTheCause`, `ai/transport_error_test.go::TestProviderTransportFailureMidStreamMatchesTerminated`
 - **Release note:** A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).
@@ -25780,7 +25715,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D138 | session_compact custom messages reach the overflow retry (Pi #9051) | [BF-f19efb1](#bf-f19efb1) |
 | D142 | Settlement keeps idle waiters pending and abort discards deferred prompts (Pi #10704, #10705) | [BF-31740ec](#bf-31740ec) |
 | D143 | A device-attributes reply split across slow reads is not forwarded as input (Pi #10657) | [BF-0225a43](#bf-0225a43) |
-| D144 | A dropped response stream keeps its cause in the error message (Pi #10697) | [BF-f07d033](#bf-f07d033) |
 | D145 | Nested Errors keep their name and message in codemode output (Pi #10650) | [BF-35e46b1](#bf-35e46b1) |
 | D146 | RPC stdin end answers a Session-replacing command that Pi leaves unanswered | deliberate difference |
 | D147 | Compactions requested in one input batch run one after another | deliberate difference |
@@ -25841,7 +25775,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D243 | A bash or PowerShell timeout after the shell already exited reports the shell's exit code | [BF-3fe717a](#bf-3fe717a) |
 | D244 | A user bash result whose earlier output was discarded is reported as truncated | [BF-2544a44](#bf-2544a44) |
 | D245 | The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and… | [BF-3b696c8](#bf-3b696c8) |
-| D246 | OpenAI Responses sends session-id, not session_id | [BF-D246](#bf-d246) |
 | D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-bd8849d](#bf-bd8849d) |
 | D248 | The /tree search line draws a cursor while the selector is focused | [BF-01a63b9](#bf-01a63b9) |
 | D249 | Images in queued steering and follow-up messages are resized when the message is delivered | [BF-D249](#bf-d249) |
@@ -25866,9 +25799,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D310 | `/reload` and a session switch remove every extension overlay | [BF-D310](#bf-d310) |
 | D311 | `ctrl+o` applies to user bash output shown while the agent is working | [BF-D311](#bf-d311) |
 | D312 | The model selectors keep the row the user browsed to when a catalog refresh lands | [BF-D312](#bf-d312) |
-| D350 | OpenCode Zen and Go Claude models send per-message effort | [BF-D350](#bf-d350) |
-| D351 | Anthropic non-strict tool schemas keep root $defs | [BF-D351](#bf-d351) |
-| D352 | Anthropic message threads | [BF-D352](#bf-d352) |
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D431 | PiG follows Pi main 2439933cf ahead of the v1.5.0 pin: live queries over an object's own tables (self.Query) | [BF-D431](#bf-d431) |
 
