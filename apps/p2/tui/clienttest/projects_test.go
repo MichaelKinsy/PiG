@@ -97,6 +97,12 @@ func (c *calls) get(name string) []any {
 	return append([]any(nil), c.data[name]...)
 }
 
+func (c *calls) reset(name string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.data, name)
+}
+
 func (c *calls) count(name string) int { return len(c.get(name)) }
 
 // location is a {env, cwd} a create or relocate was called with.
