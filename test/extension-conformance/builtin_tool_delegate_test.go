@@ -238,6 +238,12 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		}
 		return strings.Join(parts, "\n")
 	}
+	// calls lists what the tool called of the options' operations. Pi's grep calls isDirectory only: the reference's extension also passes a readFile (Pi main
+	// 8da141c2a removed it from GrepOperations), and no SDK has the member, so an equal list across SDKs shows the host never asks an extension for it.
+	calls := func(report map[string]any) string {
+		encoded, _ := json.Marshal(report["calls"])
+		return string(encoded)
+	}
 	errorOf := func(report map[string]any) string { s, _ := report["error"].(string); return s }
 	definitionField := func(field string) func(map[string]any) string {
 		return func(report map[string]any) string {
@@ -258,6 +264,7 @@ func TestConformance_BuiltinToolDelegationAcrossSDKs(t *testing.T) {
 		{5, errorOf, "Offset 99 is beyond end of file (31 lines total)"},
 		{6, errorOf, "Operation aborted"},
 		{7, text, "OPS:<host>/anything.txt"},
+		{11, calls, `["isDirectory:<host>/gone"]`}, // grep never calls a readFile an extension passes
 		{16, text, "sentinel-42\n<host>\n"},
 		{17, text, "sentinel-42\n<factory>\n"},
 		{20, errorOf, "Command aborted"},

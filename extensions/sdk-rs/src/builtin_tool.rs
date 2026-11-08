@@ -106,12 +106,11 @@ pub struct EditToolOptions {
     pub operations: Option<EditOperations>,
 }
 
-/// Pi's `GrepOperations`. `is_directory` fails when the path does not exist; `read_file` is optional and, without it, matched files are streamed from the local
-/// file system.
+/// Pi's `GrepOperations`. `is_directory` fails when the path does not exist. Pi main (8da141c2a) takes grep's context lines from ripgrep and no longer has a
+/// `readFile` member, so there is none here.
 #[derive(Clone)]
 pub struct GrepOperations {
     pub is_directory: PathOperation<bool>,
-    pub read_file: Option<PathOperation<String>>,
 }
 
 /// Pi's `GrepToolOptions`.
@@ -342,15 +341,7 @@ fn grep_spec(cwd: &str, options: Option<GrepToolOptions>) -> Spec {
             "operations.isDirectory",
             path_callback(ops.is_directory.clone(), Value::Bool),
         );
-        let mut names = vec!["isDirectory"];
-        if let Some(read_file) = ops.read_file.clone() {
-            names.push("readFile");
-            spec.callback(
-                "operations.readFile",
-                path_callback(read_file, Value::String),
-            );
-        }
-        spec.operations(&names);
+        spec.operations(&["isDirectory"]);
     }
     spec
 }
@@ -1203,25 +1194,17 @@ mod tests {
     }
 
     #[test]
-    fn optional_members_are_announced_only_when_given() {
-        let grep = |read_file: Option<PathOperation<String>>| {
-            grep_spec(
-                "/c",
-                Some(GrepToolOptions {
-                    operations: Some(GrepOperations {
-                        is_directory: Arc::new(|_| Ok(true)),
-                        read_file,
-                    }),
+    fn grep_announces_only_is_directory() {
+        let spec = grep_spec(
+            "/c",
+            Some(GrepToolOptions {
+                operations: Some(GrepOperations {
+                    is_directory: Arc::new(|_| Ok(true)),
                 }),
-            )
-            .options["operations"]
-                .clone()
-        };
-        assert_eq!(grep(None), json!(["isDirectory"]));
-        assert_eq!(
-            grep(Some(Arc::new(|_| Ok(String::new())))),
-            json!(["isDirectory", "readFile"])
+            }),
         );
+        assert_eq!(spec.options["operations"], json!(["isDirectory"]));
+        assert!(!spec.callbacks.contains_key("operations.readFile"));
     }
 
     #[test]

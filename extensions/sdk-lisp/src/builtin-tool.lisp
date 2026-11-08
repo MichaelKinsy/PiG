@@ -22,7 +22,7 @@
 (def-tool-options write-tool-options operations)
 (def-tool-options edit-operations read-file write-file access)
 (def-tool-options edit-tool-options operations)
-(def-tool-options grep-operations is-directory read-file)
+(def-tool-options grep-operations is-directory)
 (def-tool-options grep-tool-options operations)
 (def-tool-options find-operations exists glob)
 (def-tool-options find-tool-options operations)
@@ -123,13 +123,10 @@
 (defun bt-grep-spec (cwd options)
   (let ((spec (make-bt-spec "grep" cwd)) (ops (and options (grep-tool-options-operations options))))
     (when ops
-      (let ((is-directory (grep-operations-is-directory ops)) (read-file (grep-operations-read-file ops)) (names (list "isDirectory")))
+      (let ((is-directory (grep-operations-is-directory ops)))
         (bt-require "grep" "is-directory" is-directory)
         (bt-callback spec "operations.isDirectory" (lambda (args) (graph-bool-arg (funcall is-directory (jget args "path")))))
-        (when read-file
-          (setf names (append names (list "readFile")))
-          (bt-callback spec "operations.readFile" (lambda (args) (funcall read-file (jget args "path")))))
-        (bt-set-operations spec names)))
+        (bt-set-operations spec (list "isDirectory"))))
     spec))
 
 (defun bt-find-spec (cwd options)
