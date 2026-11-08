@@ -33,7 +33,7 @@ import (
 // an app with project workers, short host timeouts, its root holding the suite's plugins (Pi's TypeScript, as testdata/reload
 // templates); the test's hands (edit a plugin on disk and apply the changes, the latches of calls in flight); and the page.
 //
-// Go forced differences (D603): Pi's page is a Chromium tab running the base bundle and the web plugins' React components, driven
+// Go forced differences (D606): Pi's page is a Chromium tab running the base bundle and the web plugins' React components, driven
 // through CDP. Its Go form is a tab host connected to the server's links endpoint as the owner (a device session's token), which
 // holds the counter and the other objects through its own references, tracks each reference's states and the values of its
 // members, and calls from them: what a web plugin's component shows is the reference's last label, count and state. Page-only
