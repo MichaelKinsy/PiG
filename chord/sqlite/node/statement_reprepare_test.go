@@ -24,15 +24,13 @@ INSERT INTO entries (conversation_id, head, record) VALUES (1, 1, 'one'), (2, 1,
 	compiles := 0
 	conn, err := raw.connection()
 	mustDo(t, err)
-	mustDo(t, conn.Raw(func(driverConn any) error {
-		return driverConn.(sqlite.AuthorizerRegisterer).RegisterAuthorizer(
-			func(action sqlite.AuthorizerActionCode, table, column, _, _ string) sqlite.AuthorizerReturnCode {
-				if action == sqlite.AuthRead && table == "entries" && column == "record" {
-					compiles++
-				}
-				return sqlite.AuthorizerOK
-			})
-	}))
+	mustDo(t, conn.(sqlite.AuthorizerRegisterer).RegisterAuthorizer(
+		func(action sqlite.AuthorizerActionCode, table, column, _, _ string) sqlite.AuthorizerReturnCode {
+			if action == sqlite.AuthRead && table == "entries" && column == "record" {
+				compiles++
+			}
+			return sqlite.AuthorizerOK
+		}))
 	return raw, func() int { return compiles }
 }
 

@@ -8,18 +8,21 @@ package node
 import (
 	"container/list"
 	"context"
-	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
-	// Registers the pure-Go "sqlite" database/sql driver.
-	_ "modernc.org/sqlite"
+	// The pure-Go SQLite driver. The connection is opened through its driver.Connector and driven directly: one
+	// dedicated connection needs none of database/sql's pooling, argument conversion or row scanning.
+	"modernc.org/sqlite"
 
 	chordsqlite "github.com/MichaelKinsy/PiG/chord/sqlite"
 )
@@ -38,8 +41,7 @@ var errDatabaseNotOpen = errors.New("database is not open")
 // node:sqlite's DatabaseSync.
 type DatabaseSync struct {
 	mu   sync.Mutex
-	db   *sql.DB
-	conn *sql.Conn
+	conn driver.Conn
 	// prepared is called with the SQL text of every statement Prepare compiles (ObservePrepare).
 	prepared func(sqlText string)
 }
@@ -55,20 +57,16 @@ func (database *DatabaseSync) ObservePrepare(observe func(sqlText string)) {
 
 // NewDatabaseSync opens path (or ":memory:") as one dedicated connection.
 func NewDatabaseSync(path string, options DatabaseSyncOptions) (*DatabaseSync, error) {
-	db, err := sql.Open("sqlite", dataSourceName(path, options.ReadOnly))
+	connector, err := sqlite.NewConnector(dataSourceName(path, options.ReadOnly))
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	conn, err := db.Conn(context.Background())
+	conn, err := connector.Connect(context.Background())
 	if err != nil {
-		_ = db.Close()
 		return nil, err
 	}
-	database := &DatabaseSync{db: db, conn: conn}
-	if _, err := conn.ExecContext(
-		context.Background(), fmt.Sprintf("PRAGMA busy_timeout = %d", max(options.TimeoutMs, 0)),
-	); err != nil {
+	database := &DatabaseSync{conn: conn}
+	if err := database.Exec(fmt.Sprintf("PRAGMA busy_timeout = %d", max(options.TimeoutMs, 0))); err != nil {
 		_ = database.Close()
 		return nil, err
 	}
@@ -88,7 +86,7 @@ func dataSourceName(path string, readOnly bool) string {
 	return location.String()
 }
 
-func (database *DatabaseSync) connection() (*sql.Conn, error) {
+func (database *DatabaseSync) connection() (driver.Conn, error) {
 	database.mu.Lock()
 	defer database.mu.Unlock()
 	if database.conn == nil {
@@ -103,7 +101,7 @@ func (database *DatabaseSync) Exec(sqlText string) error {
 	if err != nil {
 		return err
 	}
-	_, err = conn.ExecContext(context.Background(), sqlText)
+	_, err = conn.(driver.ExecerContext).ExecContext(context.Background(), sqlText, nil)
 	return err
 }
 
@@ -119,7 +117,7 @@ func (database *DatabaseSync) Prepare(sqlText string) (*StatementSync, error) {
 	if observe != nil {
 		observe(sqlText)
 	}
-	statement, err := conn.PrepareContext(context.Background(), sqlText)
+	statement, err := conn.(driver.ConnPrepareContext).PrepareContext(context.Background(), sqlText)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +133,7 @@ func (database *DatabaseSync) Close() error {
 	if conn == nil {
 		return errDatabaseNotOpen
 	}
-	return errors.Join(conn.Close(), database.db.Close())
+	return conn.Close()
 }
 
 // StatementSync is one prepared statement of a DatabaseSync.
@@ -156,14 +154,17 @@ func (database *DatabaseSync) Close() error {
 type StatementSync struct {
 	database  *DatabaseSync
 	sqlText   string
-	statement *sql.Stmt
+	statement driver.Stmt
 	// statementMask is the smallIntegerMask statement is bound with; statementUsed reports whether it was decided.
 	statementMask uint32
 	statementUsed bool
-	variants      map[uint32]*sql.Stmt
+	variants      map[uint32]driver.Stmt
 	// tracksSmallIntegers is set for a statement that reads (SELECT or WITH), the kind the copies were
 	// measured on; an INSERT of integer columns would only pay for them.
 	tracksSmallIntegers bool
+	// bindings is the argument list of the call in progress, reused across calls (operations on a connection are
+	// serial and the driver copies every argument at bind time).
+	bindings []driver.NamedValue
 }
 
 // maxStatementVariants bounds the extra compiled copies of one statement; past it the statement runs as before.
@@ -205,7 +206,7 @@ func smallIntegerMask(params []any) (mask uint32) {
 }
 
 // open returns the compiled copy of the statement to run with params.
-func (statement *StatementSync) open(params []any) (*sql.Stmt, error) {
+func (statement *StatementSync) open(params []any) (driver.Stmt, error) {
 	conn, err := statement.database.connection()
 	if err != nil {
 		return nil, err
@@ -226,108 +227,163 @@ func (statement *StatementSync) open(params []any) (*sql.Stmt, error) {
 	if len(statement.variants) >= maxStatementVariants {
 		return statement.statement, nil
 	}
-	variant, err := conn.PrepareContext(context.Background(), statement.sqlText) //portlint:allow ctxbackground the same synchronous prepare as DatabaseSync.Prepare: node:sqlite takes no signal
+	variant, err := conn.(driver.ConnPrepareContext).PrepareContext(context.Background(), statement.sqlText) //portlint:allow ctxbackground the same synchronous prepare as DatabaseSync.Prepare: node:sqlite takes no signal
 	if err != nil {
 		return nil, err
 	}
 	if statement.variants == nil {
-		statement.variants = map[uint32]*sql.Stmt{}
+		statement.variants = map[uint32]driver.Stmt{}
 	}
 	statement.variants[mask] = variant
 	return variant, nil
 }
 
+// bind converts params to the driver's arguments, as database/sql's default argument converter does: integers widen
+// to int64, and a value of another type goes through driver.DefaultParameterConverter.
+func (statement *StatementSync) bind(params []any) ([]driver.NamedValue, error) {
+	arguments := statement.bindings[:0]
+	for index, param := range params {
+		var value driver.Value
+		switch typed := param.(type) {
+		case nil, int64, float64, bool, string, []byte:
+			value = typed
+		case int:
+			value = int64(typed)
+		default:
+			converted, err := driver.DefaultParameterConverter.ConvertValue(param)
+			if err != nil {
+				return nil, fmt.Errorf("sql: converting argument $%d type: %w", index+1, err)
+			}
+			value = converted
+		}
+		arguments = append(arguments, driver.NamedValue{Ordinal: index + 1, Value: value})
+	}
+	statement.bindings = arguments
+	return arguments, nil
+}
+
 // Run executes the statement with positional bindings.
 func (statement *StatementSync) Run(params ...any) error {
+	_, err := statement.exec(params)
+	return err
+}
+
+func (statement *StatementSync) exec(params []any) (driver.Result, error) {
 	prepared, err := statement.open(params)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = prepared.ExecContext(context.Background(), params...)
-	return err
+	arguments, err := statement.bind(params)
+	if err != nil {
+		return nil, err
+	}
+	return prepared.(driver.StmtExecContext).ExecContext(context.Background(), arguments) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists
 }
 
 // RunCounted executes the statement and returns the rows it changed.
 func (statement *StatementSync) RunCounted(params ...any) (int64, error) {
-	prepared, err := statement.open(params)
-	if err != nil {
-		return 0, err
-	}
-	result, err := prepared.ExecContext(context.Background(), params...) //portlint:allow ctxbackground node:sqlite StatementSync.run (node.ts:102) is synchronous and takes no signal; no caller context exists, as in Run
+	result, err := statement.exec(params)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
 }
 
-// EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns.
-func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) (err error) {
+// each runs the statement and calls fn with the column names and the values of every result row, as the row is read,
+// until fn returns false or the rows end. The values slice is reused for the next row.
+func (statement *StatementSync) each(params []any, fn func(columns []string, values []driver.Value) (bool, error)) (err error) {
 	prepared, err := statement.open(params)
 	if err != nil {
 		return err
 	}
-	rows, err := prepared.QueryContext(context.Background(), params...)
+	arguments, err := statement.bind(params)
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	for rows.Next() {
-		var text sql.RawBytes
-		if err := rows.Scan(&text); err != nil {
+	rows, err := prepared.(driver.StmtQueryContext).QueryContext(context.Background(), arguments) //portlint:allow ctxbackground node:sqlite StatementSync.all (node.ts) is synchronous and takes no signal
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
+	columns := rows.Columns()
+	values := make([]driver.Value, len(columns))
+	for {
+		if err := rows.Next(values); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
-		if err := fn(text); err != nil {
+		more, err := fn(columns, values)
+		if err != nil || !more {
 			return err
 		}
 	}
-	return rows.Err()
+}
+
+// EachText passes the first column of every result row to fn as it is read; the bytes are valid until fn returns and
+// must not be modified.
+func (statement *StatementSync) EachText(params []any, fn func(text []byte) error) error {
+	return statement.each(params, func(_ []string, values []driver.Value) (bool, error) {
+		var text []byte
+		switch value := values[0].(type) {
+		case string:
+			// The driver made the string for this row alone, so its bytes are read in place instead of copied again.
+			text = unsafe.Slice(unsafe.StringData(value), len(value)) //nolint:gosec // G103: a read-only view of a string the driver made for this row alone, valid until fn returns
+		case []byte:
+			text = value
+		default:
+			return false, fmt.Errorf("sql: Scan error on column index 0: unsupported Scan, storing driver.Value type %T into type *sql.RawBytes", value)
+		}
+		return true, fn(text)
+	})
+}
+
+// EachRow passes the values of every result row to fn as it is read, in column order, as All would put them in the
+// row's map; the slice is reused for the next row and the values it holds are the caller's to keep.
+// pig additive (D104): row reading without per-row maps has no Pi counterpart.
+func (statement *StatementSync) EachRow(params []any, fn func(values []any) error) error {
+	return statement.each(params, func(_ []string, values []driver.Value) (bool, error) {
+		// driver.Value is an interface{} too: the same memory, read as []any.
+		return true, fn(unsafe.Slice((*any)(unsafe.SliceData(values)), len(values))) //nolint:gosec // G103: driver.Value and any are the same interface type, so the slice's memory is read as it is
+	})
 }
 
 // Get returns the first result row, or nil when there is none.
-func (statement *StatementSync) Get(params ...any) (map[string]any, error) {
-	rows, err := statement.query(params, 1)
-	if err != nil || len(rows) == 0 {
+func (statement *StatementSync) Get(params ...any) (row map[string]any, err error) {
+	err = statement.each(params, func(columns []string, values []driver.Value) (bool, error) {
+		row = rowMap(columns, values)
+		return false, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	return rows[0], nil
+	return row, nil
 }
 
 // All returns every result row.
 func (statement *StatementSync) All(params ...any) ([]map[string]any, error) {
-	return statement.query(params, -1)
+	result := []map[string]any{}
+	err := statement.each(params, func(columns []string, values []driver.Value) (bool, error) {
+		result = append(result, rowMap(columns, values))
+		return true, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
-func (statement *StatementSync) query(params []any, limit int) (result []map[string]any, err error) {
-	prepared, err := statement.open(params)
-	if err != nil {
-		return nil, err
+func rowMap(columns []string, values []driver.Value) map[string]any {
+	row := make(map[string]any, len(columns))
+	for index, column := range columns {
+		row[column] = values[index]
 	}
-	rows, err := prepared.QueryContext(context.Background(), params...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { err = errors.Join(err, rows.Close()) }()
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-	result = []map[string]any{}
-	for (limit < 0 || len(result) < limit) && rows.Next() {
-		values := make([]any, len(columns))
-		targets := make([]any, len(columns))
-		for index := range values {
-			targets[index] = &values[index]
-		}
-		if err := rows.Scan(targets...); err != nil {
-			return nil, err
-		}
-		row := make(map[string]any, len(columns))
-		for index, column := range columns {
-			row[column] = values[index]
-		}
-		result = append(result, row)
-	}
-	return result, rows.Err()
+	return row
 }
 
 func (statement *StatementSync) close() error {
@@ -349,36 +405,47 @@ type connection interface {
 // waiting; otherwise it waits for everything before it. A transaction holds the queue until it settles.
 type serialOperationQueue struct {
 	mu      sync.Mutex
-	tail    chan struct{}
-	waiting int
+	running bool
+	// waiting holds the turns behind the running one, oldest first; release hands the queue to the first.
+	waiting []chan struct{}
 }
 
-func newSerialOperationQueue() *serialOperationQueue {
-	ready := make(chan struct{})
-	close(ready)
-	return &serialOperationQueue{tail: ready}
-}
+func newSerialOperationQueue() *serialOperationQueue { return &serialOperationQueue{} }
 
 // acquire takes the next turn and blocks until every earlier turn has been released.
-func (queue *serialOperationQueue) acquire() (release func()) {
+func (queue *serialOperationQueue) acquire() {
 	queue.mu.Lock()
-	previous := queue.tail
+	if !queue.running {
+		queue.running = true
+		queue.mu.Unlock()
+		return
+	}
 	turn := make(chan struct{})
-	queue.tail = turn
-	queue.waiting++
+	queue.waiting = append(queue.waiting, turn)
 	queue.mu.Unlock()
-	<-previous
+	<-turn
+}
+
+// release ends the running turn and starts the oldest waiting one.
+func (queue *serialOperationQueue) release() {
 	queue.mu.Lock()
-	queue.waiting--
+	if len(queue.waiting) == 0 {
+		queue.running = false
+		queue.mu.Unlock()
+		return
+	}
+	turn := queue.waiting[0]
+	queue.waiting[0] = nil
+	queue.waiting = queue.waiting[1:]
 	queue.mu.Unlock()
-	return func() { close(turn) }
+	close(turn)
 }
 
 // queued reports how many turns wait behind the running one.
 func (queue *serialOperationQueue) queued() int {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
-	return queue.waiting
+	return len(queue.waiting)
 }
 
 // nodeSqliteExecutor executes SQL on one connection. Prepared statements are cached per connection by SQL text, so the
@@ -475,6 +542,18 @@ func (executor *nodeSqliteExecutor) EachText(sqlText string, params []chordsqlit
 	})
 }
 
+// EachRow runs a query and passes the values of each result row to fn, in column order, without building result rows.
+// pig additive (D104): row reading without per-row maps has no Pi counterpart.
+func (executor *nodeSqliteExecutor) EachRow(sqlText string, params []chordsqlite.SqliteValue, fn func(values []chordsqlite.SqliteValue) error) error {
+	return executor.runOperation(func() error {
+		statement, err := executor.statement(sqlText)
+		if err != nil {
+			return err
+		}
+		return statement.EachRow(params, fn)
+	})
+}
+
 func (executor *nodeSqliteExecutor) Get(
 	sqlText string, params ...chordsqlite.SqliteValue,
 ) (row chordsqlite.SqliteRow, err error) {
@@ -541,8 +620,8 @@ func newNodeSqliteDatabase(database connection) *NodeSqliteDatabase {
 }
 
 func (adapter *NodeSqliteDatabase) run(operation func() error) error {
-	release := adapter.access.acquire()
-	defer release()
+	adapter.access.acquire()
+	defer adapter.access.release()
 	return operation()
 }
 
@@ -551,8 +630,8 @@ func (adapter *NodeSqliteDatabase) run(operation func() error) error {
 func (adapter *NodeSqliteDatabase) Transaction(
 	callback func(transaction chordsqlite.SqliteExecutor) error,
 ) (err error) {
-	release := adapter.access.acquire()
-	defer release()
+	adapter.access.acquire()
+	defer adapter.access.release()
 	begin := "BEGIN IMMEDIATE"
 	if adapter.readOnly {
 		begin = "BEGIN"
@@ -601,8 +680,8 @@ func (adapter *NodeSqliteDatabase) Transaction(
 
 // Close truncates the WAL and closes the connection. Repeated calls do nothing.
 func (adapter *NodeSqliteDatabase) Close() error {
-	release := adapter.access.acquire()
-	defer release()
+	adapter.access.acquire()
+	defer adapter.access.release()
 	if adapter.closed {
 		return nil
 	}
