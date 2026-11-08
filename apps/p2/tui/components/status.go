@@ -4,8 +4,8 @@ package components
 // (section 5.4). The editor keeps pi's embedded working status in its top border and its empty-editor Ctrl+D rule; the paste-image hook and
 // extension shortcuts are gone (launcher-owned, section 3).
 //
-// The TypeScript CustomEditor overrides Editor.renderTopBorder. Go has no virtual dispatch, so PiG's tui.Editor owns that override: with
-// EmbedWorkingStatus set it draws the indicator set by SetWorkingStatusIndicator in the top border (tui/editor_status.go renderStatusBorder).
+// The TypeScript CustomEditor overrides Editor.renderTopBorder. Go has no virtual dispatch, so CustomEditor.Render (status_border.go) draws
+// the indicator over the top row of the embedded tui.Editor, as that override does; PiG's Editor keeps no p2-only state for it.
 //
 // pi: apps/p2/src/tui/components/status.ts
 
@@ -122,7 +122,10 @@ func NewCompactionStatusIndicator(ui tui.TUI, ctx render.RenderContext, trigger 
 // CustomEditor is pi's CustomEditor: app actions by binding id, Escape and the empty-editor exit rule, embedded working status.
 type CustomEditor struct {
 	*tui.Editor
-	actions []customEditorAction
+	// indicator is drawn by Render in the top border; borderColor colors the dashes around it (the theme's editor border).
+	indicator   *StatusIndicator
+	borderColor func(string) string
+	actions     []customEditorAction
 	// OnEscape and OnCtrlD replace the handlers registered for app.interrupt and app.exit while set.
 	OnEscape func()
 	OnCtrlD  func()
@@ -135,20 +138,15 @@ type customEditorAction struct {
 
 // NewCustomEditor builds the editor with the ref's editor theme (`super(tui, ctx.theme.editor, options)`).
 func NewCustomEditor(ui tui.TUI, ctx render.RenderContext, options tui.EditorOptions) *CustomEditor {
-	editor := tui.NewEditorWithTUI(ui, ctx.Theme().Editor, options)
-	editor.EmbedWorkingStatus = true
-	// p2's status.ts colors the indicators accent and muted itself; the editor must not recolor them with its border.
-	editor.KeepIndicatorColors = true
-	return &CustomEditor{Editor: editor}
+	theme := ctx.Theme().Editor
+	return &CustomEditor{Editor: tui.NewEditorWithTUI(ui, theme, options), borderColor: theme.BorderColor}
 }
 
-// SetWorkingStatusIndicator embeds an indicator in the top border; nil clears it.
+// SetWorkingStatusIndicator shows an indicator in the top border; nil clears it. The indicator keeps its own colors (accent and muted, or
+// warning and muted for a retry): only the dashes around it take the border color.
 func (e *CustomEditor) SetWorkingStatusIndicator(indicator *StatusIndicator) {
-	if indicator == nil {
-		e.Editor.SetWorkingStatusIndicator(nil)
-		return
-	}
-	e.Editor.SetWorkingStatusIndicator(indicator.StatusIndicator)
+	e.indicator = indicator
+	e.Editor.Invalidate()
 }
 
 // OnAction registers the handler of an app action; registering an action again replaces its handler and keeps its place (a Map).

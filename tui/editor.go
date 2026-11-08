@@ -32,10 +32,6 @@ type Editor struct {
 	invalidatable
 	// EmbedWorkingStatus opts into the coding-agent status border.
 	EmbedWorkingStatus     bool
-	// KeepIndicatorColors keeps the embedded indicator's own spinner and message colors instead of recoloring working and
-	// compaction indicators with the editor border (the coding agent's Pi 1.2.0 behavior). p2 sets it: its status.ts
-	// colors them accent and muted itself.
-	KeepIndicatorColors bool
 	workingStatusIndicator *StatusIndicator
 	// BorderColor colors a complete border after layout and truncation. Nil selects the application-derived default.
 	BorderColor func(string) string
