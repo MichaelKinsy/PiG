@@ -70,6 +70,10 @@ for (const fixture of FIXTURES) visit(join(tests, fixture));
 // The package chord imports by name: its root entry (chord's closure imports nothing of its subpaths, which the manifest's
 // closure would otherwise name).
 visit(join(schemaSrc, "index.ts"), schemaClosure);
+// pi-telemetry's sources too, beside its dist (the package's `source` condition names them: a base bundle resolves with it).
+const telemetrySrc = join(piTree, "packages/telemetry/src");
+const telemetryClosure = new Set();
+for (const entry of ["index.ts", "render.ts"]) visit(join(telemetrySrc, entry), telemetryClosure);
 
 const pi = join(outDir, "pi");
 rmSync(pi, { recursive: true, force: true });
@@ -92,6 +96,7 @@ function walk(dir) {
 for (const file of [...schemaClosure].sort()) copy(file, join(pi, "node_modules/@earendil-works/pi-schema/src", relative(schemaSrc, file)));
 copy(join(schemaDir, "package.json"), join(pi, "node_modules/@earendil-works/pi-schema/package.json"));
 for (const file of walk(join(schemaDir, "THIRD_PARTY_NOTICES")).sort()) copy(file, join(pi, "node_modules/@earendil-works/pi-schema/THIRD_PARTY_NOTICES", relative(join(schemaDir, "THIRD_PARTY_NOTICES"), file)));
+for (const file of [...telemetryClosure].sort()) copy(file, join(pi, "node_modules/@earendil-works/pi-telemetry/src", relative(telemetrySrc, file)));
 copy(join(telemetryDir, "package.json"), join(pi, "node_modules/@earendil-works/pi-telemetry/package.json"));
 for (const file of walk(join(telemetryDir, "dist")).sort()) {
 	const name = relative(telemetryDir, file).split(sep).join("/");
