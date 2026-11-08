@@ -305,9 +305,7 @@ func TestWorkspaceFakeProvider(t *testing.T) {
 		if _, err := fixture.Server.Reload([]string{"workspace"}, p2test.Background); err != nil {
 			t.Fatal(err)
 		}
-		// A reload restarts the backend (Chord restarts every affected object): the viewers follow its new watch, whose count
-		// starts again. The revision is the one the restarted backend settles at, once its watch is up.
-		revision, err := p2test.Settled(workspace.Member("changes"), 600*time.Millisecond, 20*time.Second)
+		revision, err := p2test.Until(workspace.Member("changes"), after(nil), 0)
 		if err != nil {
 			t.Fatal(err)
 		}
