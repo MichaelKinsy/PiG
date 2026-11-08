@@ -320,7 +320,7 @@ func whenLive(ref *chordhost.Reference) <-chan error {
 // relocate moves the session in place (the Harness's move) and reports its failure.
 func (w *workerHost) relocate(next p2runtime.Location) error {
 	w.t.Helper()
-	_, err := w.host.Root(func(ctx chordhost.Ctx) (any, error) { return nil, w.parts.Relocate(ctx, next) }, p2test.Background, chordhost.RootOptions{})
+	_, err := w.host.Root(func(ctx chordhost.Ctx) (any, error) { return nil, w.parts.Relocate(ctx, next, nil) }, p2test.Background, chordhost.RootOptions{})
 	return err
 }
 
