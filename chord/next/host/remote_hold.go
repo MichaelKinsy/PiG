@@ -35,6 +35,8 @@ type holdRequest struct {
 	Address     link.WireAddress
 	Chain       []string
 	Limit       link.Optional[int]
+	// Trace is the carrier of the caller's span (absent: none).
+	Trace map[string]string
 }
 
 // holdFollowed is a state member a bound hold follows: its index in the bound version, its source and subscription (which

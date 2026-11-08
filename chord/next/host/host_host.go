@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -44,6 +45,9 @@ type HostOptions struct {
 	PrincipalKey *data.PrincipalKeyFunction
 	// Telemetry is the telemetry adapter; none is the no-op one.
 	Telemetry telemetry.TelemetryContext
+	// PrincipalAttributes are the span attributes recorded for a principal: synchronous and cheap; caching, if any, is
+	// the hook's own. Without it a span records `chord.principal`, the principal's key. The same function on every host.
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// OnError is everything that fails in the background; every app handles it.
 	OnError func(err HostError)
 	// CloseTimeout is how long a native's close, and an ending object's running calls, are waited for; 30 s by default.
@@ -362,6 +366,11 @@ type chordHost struct {
 	backoff      *backoff
 	address      *contracts.Address
 	principal    data.Principal
+	// telemetry is the telemetry adapter (root spans start on it, carriers from links are extracted with it), spanHost
+	// the `chord.host` attribute of this host's spans, principalHook the options' PrincipalAttributes.
+	telemetry     telemetry.TelemetryContext
+	spanHost      string
+	principalHook func(principal data.Principal) telemetry.SpanAttributes
 	// incarnation is this run of the host, sent in every handshake (R20).
 	incarnation string
 	compression link.Compression
@@ -424,30 +433,37 @@ type chordHost struct {
 var _ Host = (*chordHost)(nil)
 
 func createHost(options HostOptions) (*chordHost, error) {
+	var adapter telemetry.TelemetryContext = telemetry.NoopTelemetryContext
+	if options.Telemetry != nil {
+		adapter = options.Telemetry
+	}
 	events := options.loop
 	if events == nil {
 		events = NewLoop()
 	}
 	h := &chordHost{
-		events:       events,
-		scheduler:    chord.NewDeliveryScheduler(),
-		address:      options.Address,
-		principal:    options.Principal,
-		principalKey: options.PrincipalKey,
-		onError:      options.OnError,
-		incarnation:  uuidv7(),
-		compression:  options.Compression,
-		refs:         map[string]*references{},
-		types:        newNamedMap[*served](),
-		plugins:      newNamedMap[*loadedPlugin](),
-		objects:      map[string]*chordObject{},
-		endings:      map[string]*keyedPromise[struct{}]{},
-		unbound:      newUnboundIndex(),
-		publication:  make(chan struct{}),
-		relays:       &relayMap{},
-		routes:       map[string]*route{},
-		registries:   map[string]*registries.RegistryRecord{},
-		nextOrigin:   1,
+		events:        events,
+		scheduler:     chord.NewDeliveryScheduler(),
+		address:       options.Address,
+		principal:     options.Principal,
+		principalKey:  options.PrincipalKey,
+		telemetry:     adapter,
+		spanHost:      chordtelemetry.HostAttribute(options.Address),
+		principalHook: options.PrincipalAttributes,
+		onError:       options.OnError,
+		incarnation:   uuidv7(),
+		compression:   options.Compression,
+		refs:          map[string]*references{},
+		types:         newNamedMap[*served](),
+		plugins:       newNamedMap[*loadedPlugin](),
+		objects:       map[string]*chordObject{},
+		endings:       map[string]*keyedPromise[struct{}]{},
+		unbound:       newUnboundIndex(),
+		publication:   make(chan struct{}),
+		relays:        &relayMap{},
+		routes:        map[string]*route{},
+		registries:    map[string]*registries.RegistryRecord{},
+		nextOrigin:    1,
 	}
 	var metrics telemetry.TelemetryMetrics
 	if options.Telemetry != nil {
@@ -1087,7 +1103,7 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 		return nil, err
 	}
 	if placed.kind == placedPath {
-		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent())
+		remote := newRemoteObject(h, typ, params, placed.address, from, placed.path, b.dependent(), chordctx.Telemetry(ctx))
 		placed.path.attach(remote)
 		b.bind(remote)
 		return remote, nil
@@ -1122,6 +1138,10 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 	// Checked above: served here at the caller's version.
 	object := h.objectFor(entry, params, from.principal, ctx, noChain, b.dependent())
 	b.bind(object)
+	// A getter waiting for a shared activation links to it (decision "Shared work").
+	if activation := object.activationSpan(); activation != nil && !chordtelemetry.Untraced(chordctx.Telemetry(ctx)) {
+		chordctx.Telemetry(ctx).AddLink(telemetry.SpanLink{Context: activation})
+	}
 	return object, nil
 }
 
@@ -1155,7 +1175,12 @@ func (h *chordHost) serving(request holdRequest, params any, principal data.Prin
 	if misplaced != nil {
 		return Serving{Kind: ServingWaiting, Cause: data.FailureCause{Kind: data.FailureWaiting, Error: misplaced}}, nil
 	}
-	object := h.objectFor(entry, checked, principal, ctx, chain, nil)
+	// The hold's carrier with this host's adapter: the first trigger of an object it creates.
+	created := ctx
+	if trigger := chordtelemetry.ParentOf(request.Trace, h.telemetry); !chordtelemetry.Untraced(trigger) {
+		created = chordctx.WithTelemetry(ctx, chordtelemetry.AsSpan(trigger))
+	}
+	object := h.objectFor(entry, checked, principal, created, chain, nil)
 	if activation := object.activationId(); activation != "" && slices.Contains(chain, activation) {
 		return Serving{}, h.cycle(chain, activation, []string{object.label()})
 	}
@@ -1378,6 +1403,18 @@ func (h *chordHost) newBindingFor(typ *contracts.Contract, dependent *chordObjec
 
 // own is this host as the maker of its own references: its principal and incarnation.
 func (h *chordHost) own() caller { return caller{principal: h.principal, incarnation: h.incarnation} }
+
+// principalAttributes are the attributes this host's spans record for principal: its PrincipalAttributes hook's, else
+// `chord.principal`, its principal key; none without a principal.
+func (h *chordHost) principalAttributes(principal data.Principal, ctx context.Context) telemetry.SpanAttributes {
+	if principal == nil {
+		return nil
+	}
+	if h.principalHook != nil {
+		return h.principalHook(principal)
+	}
+	return telemetry.SpanAttributes{telemetry.Attr("chord.principal", chordtelemetry.Capped(data.PrincipalKey(principal, ctx, h.principalKey)))}
+}
 
 // isOwn is whether principal is this host's own (by principal key): revocation never touches it.
 func (h *chordHost) isOwn(principal data.Principal, ctx context.Context) bool {

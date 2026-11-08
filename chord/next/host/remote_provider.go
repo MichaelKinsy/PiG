@@ -8,6 +8,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 )
 
 // Ports packages/chord/src/next/remote/provider.ts. The provider side of one origin on a link (§3, §22, W1; decision
@@ -425,7 +426,7 @@ func (p *providerSide) hold(message *link.HoldMessage) error {
 	// Whom it acts for is decided here once (callerOf), never passed on: a relay names it only on a route link.
 	request := holdRequest{
 		Type: message.Type, Version: message.Version, Fingerprint: message.Fingerprint, Params: message.Params,
-		Address: message.Address,
+		Address: message.Address, Trace: message.Trace,
 	}
 	if message.Chain != nil && l.trusted {
 		request.Chain = message.Chain
@@ -554,6 +555,10 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 	if old {
 		scope = asRemoteOldWork(scope)
 		p.link.host.oldWork.open()
+	}
+	// The caller's span over the link: its carrier with this host's adapter (absent or unknown: the adapter's root).
+	if parent := chordtelemetry.ParentOf(message.Trace, p.link.host.telemetry); !chordtelemetry.Untraced(parent) {
+		scope = chordctx.WithTelemetry(scope, chordtelemetry.AsSpan(parent))
 	}
 	// A link's context has no abort signal, so this is the call's own signal: no combined signal per call.
 	p.run(message.Call, call, name, args, chordctx.WithAbortSignal(scope, signal), old)

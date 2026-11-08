@@ -221,6 +221,21 @@ func ParentOf(carrier pitelemetry.TelemetryCarrier, adapter pitelemetry.Telemetr
 	return parent
 }
 
+// parentSpan is a parent context (a carrier's, extracted by an adapter) as the span a ctx carries: it starts children and
+// propagates as it does; setting attributes, links or events on it, which Pi's context (a TelemetryContext without those
+// members) cannot, does nothing.
+type parentSpan struct{ pitelemetry.TelemetryContext }
+
+func (parentSpan) AddLink(pitelemetry.SpanLink)                {}
+func (parentSpan) AddEvent(string, pitelemetry.SpanAttributes) {}
+func (parentSpan) SetAttributes(pitelemetry.SpanAttributes)    {}
+func (parentSpan) SetStatus(pitelemetry.SpanStatus)            {}
+
+// AsSpan is parent as the span a ctx carries (`chordctx.WithTelemetry`). parent is traced: not the no-op context.
+func AsSpan(parent pitelemetry.TelemetryContext) pitelemetry.TelemetrySpan {
+	return parentSpan{parent}
+}
+
 // Instruments are Chord's instruments on one adapter's metrics, each made once per name.
 type Instruments struct {
 	typed *pitelemetry.TypedTelemetryMetrics
