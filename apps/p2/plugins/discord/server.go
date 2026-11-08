@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/apps/p2/plugins/discord/contract"
+	envcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
 	sessioncontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/sessions/contract"
 	statuscontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/status/contract"
-	envcontract "github.com/MichaelKinsy/PiG/apps/p2/plugins/envs/contract"
 	p2runtime "github.com/MichaelKinsy/PiG/apps/p2/runtime"
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -222,7 +222,9 @@ func serveDiscord(_ *delta.JsonObject, principal data.Principal, self host.Self)
 	}
 	store := self.Get(contract.DiscordStore, delta.NewJsonObject(0))
 	forward := func(name string) contracts.MethodFunction {
-		return func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return store.Call(name, args, ctx) }
+		return func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+			return store.Call(name, args, ctx)
+		}
 	}
 	return contracts.Implementation{Variant: "owner", Members: contracts.VariantImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{

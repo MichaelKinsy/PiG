@@ -32,8 +32,10 @@ func message(text string, patch ...func(*Message)) Message {
 	return m
 }
 
-func by(id, name string) func(*Message) { return func(m *Message) { m.Author = Author{ID: id, Name: name} } }
-func roles(r ...string) func(*Message)   { return func(m *Message) { m.Roles = r } }
+func by(id, name string) func(*Message) {
+	return func(m *Message) { m.Author = Author{ID: id, Name: name} }
+}
+func roles(r ...string) func(*Message) { return func(m *Message) { m.Roles = r } }
 
 type post struct {
 	Channel, ReplyTo, Text string
@@ -212,9 +214,17 @@ func (s *fakeSessions) Thread(_ context.Context, _ string, name string, before f
 	s.before = append(s.before, before)
 	return 40 + len(s.threads), nil
 }
-func (s *fakeSessions) setTurn(id int, turn TurnState) { s.mu.Lock(); s.turns[id] = turn; s.mu.Unlock() }
-func (s *fakeSessions) delivery(i int) Delivery        { s.mu.Lock(); defer s.mu.Unlock(); return s.delivered[i] }
-func (s *fakeSessions) count() int                     { s.mu.Lock(); defer s.mu.Unlock(); return len(s.delivered) }
+func (s *fakeSessions) setTurn(id int, turn TurnState) {
+	s.mu.Lock()
+	s.turns[id] = turn
+	s.mu.Unlock()
+}
+func (s *fakeSessions) delivery(i int) Delivery {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.delivered[i]
+}
+func (s *fakeSessions) count() int { s.mu.Lock(); defer s.mu.Unlock(); return len(s.delivered) }
 
 type fakeState struct {
 	mu    sync.Mutex
@@ -648,7 +658,11 @@ func TestATurnWithFilesAndNoTextInAThreadPostsThemAsTheReplyThere(t *testing.T) 
 	eq(t, "uploaded", string(r.discord.uploaded["build.log"]), "log line\n")
 }
 
-func (d *fakeDiscord) snapshotEvents() []string { d.mu.Lock(); defer d.mu.Unlock(); return slices.Clone(d.events) }
+func (d *fakeDiscord) snapshotEvents() []string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return slices.Clone(d.events)
+}
 
 func TestTypingAtOnceBeforeTheHistoryIsReadRefreshedThroughASlowDelivery(t *testing.T) {
 	r := setup(t, binding(func(b *Binding) { b.Cursor = sp("1") }))
