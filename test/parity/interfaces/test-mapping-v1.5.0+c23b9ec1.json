@@ -4434,8 +4434,13 @@
     },
     {
       "path": "packages/coding-agent/test/diff.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c7d4921060edff6016a81e959a847d7ab8b1e226c160375e66c80477d8ebb52b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c7d4921060edff6016a81e959a847d7ab8b1e226c160375e66c80477d8ebb52b",
+      "evidence": [
+        "tui/diff_render_test.go#TestRenderDiffPreservesIndentation",
+        "tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion"
+      ],
+      "rationale": "Both cases are ported (Pi dca1f5552, #9274): indentation is preserved for each indentation style, and shared indentation is not highlighted as an insertion."
     },
     {
       "path": "packages/coding-agent/test/documentation.test.ts",
@@ -4449,13 +4454,21 @@
     },
     {
       "path": "packages/coding-agent/test/edit-diff-window.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ace73451ee80dc7d71d64e3e1d0b3203d9ad433869069ad335d0001d20c6ff53"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ace73451ee80dc7d71d64e3e1d0b3203d9ad433869069ad335d0001d20c6ff53",
+      "evidence": [
+        "internal/codingagent/tools/edit_window_test.go"
+      ],
+      "rationale": "All 4 cases are ported (Pi d448c51e2, #11751): the windowed diff and patch equal the whole-file ones when lines are distinct, the patch applies when lines repeat, a replacement of many lines, and a small change in a 20 MB file allocates little."
     },
     {
       "path": "packages/coding-agent/test/edit-tool-diff-before-write.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a6b90da624e7ddae6bff8593b597264f27427321f708a4642e3acad76c775c17"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a6b90da624e7ddae6bff8593b597264f27427321f708a4642e3acad76c775c17",
+      "evidence": [
+        "internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged"
+      ],
+      "rationale": "The one case is ported (Pi d448c51e2, #11751): a diff failure leaves the file unchanged because the diff is computed before the write."
     },
     {
       "path": "packages/coding-agent/test/edit-tool-legacy-input.test.ts",
@@ -4751,8 +4764,17 @@
     },
     {
       "path": "packages/coding-agent/test/git-update.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a2b9278f4f7b484bcbb3ca1844472b1add2467dd75d5bb36f9816a1558496491"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a2b9278f4f7b484bcbb3ca1844472b1add2467dd75d5bb36f9816a1558496491",
+      "evidence": [
+        "coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
+        "coding/cli/package_temporary_upstream_test.go#TestTemporaryGitRefreshWhenResolvingUpstream",
+        "coding/cli/package_temporary_upstream_test.go#TestTemporaryGitCacheBoundaries",
+        "coding/cli/package_temporary_upstream_test.go#TestTemporaryGitInstallAndCleanup",
+        "coding/cli/package_temporary_refresh_test.go#TestTemporaryGitSourceWithABranchRefIsRefreshed",
+        "internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"
+      ],
+      "rationale": "All 6 cases are ported: the 5 of the previous pin through the cited temporary-git tests, and the Git update result event of Pi 342514bdf (#11707), which reports the commit the checkout moved from and to and nothing for an up-to-date checkout."
     },
     {
       "path": "packages/coding-agent/test/http-dispatcher.test.ts",
@@ -4810,8 +4832,12 @@
     },
     {
       "path": "packages/coding-agent/test/image-resize-worker-teardown.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:10455714557bd1f8f83782a2bbe32eb65c807b5d3004521cad5d7f24b28a20e8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:10455714557bd1f8f83782a2bbe32eb65c807b5d3004521cad5d7f24b28a20e8",
+      "evidence": [
+        "internal/imageprocessing/resize_worker_teardown_test.go"
+      ],
+      "rationale": "The one case is ported as the obligation it states (Pi 1f7c685b8, #10695): resizeImage must not return while something it started is still running. Go resizes in the calling goroutine and starts no worker, so the test runs serial resizes and checks that the goroutine count is the same after each."
     },
     {
       "path": "packages/coding-agent/test/initial-message.test.ts",
@@ -5400,8 +5426,16 @@
     },
     {
       "path": "packages/coding-agent/test/prompt-templates.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b3600e2d17f3c27fc2e07ff1eaf2c8b00c95ae214cce2071cc90d1083cebf12a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b3600e2d17f3c27fc2e07ff1eaf2c8b00c95ae214cce2071cc90d1083cebf12a",
+      "evidence": [
+        "internal/codingagent/upstream_prompt_templates_test.go#TestUpstreamPromptTemplatesArguments",
+        "internal/codingagent/upstream_prompt_templates_test.go#TestUpstreamPromptTemplateArgumentHints",
+        "internal/codingagent/prompt_whitespace_test.go#TestPromptTemplateECMAScriptWhitespace",
+        "internal/codingagent/upstream_prompt_diagnostic_test.go#TestUpstreamPromptTemplateInvalidYAMLDiagnostic",
+        "internal/codingagent/prompt_templates_quotes_test.go#TestParsePromptArgsQuoting"
+      ],
+      "rationale": "All 96 cases are ported: the previous pin's through the cited tests, and the two added by Pi 96667f342 (#11873), an apostrophe inside a word and an unclosed quote, through the quoting table."
     },
     {
       "path": "packages/coding-agent/test/provider-matching.test.ts",
@@ -5433,8 +5467,13 @@
     },
     {
       "path": "packages/coding-agent/test/read-streaming.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0cfc40a0f2899ce8193af328bdfbe0992ac135d39dc6b43438c8400667ffb7a5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0cfc40a0f2899ce8193af328bdfbe0992ac135d39dc6b43438c8400667ffb7a5",
+      "evidence": [
+        "internal/codingagent/tools/read_streaming_test.go",
+        "internal/codingagent/tools/read_streaming_fuzz_test.go#FuzzReadStreamingMatchesTheWholeFileAlgorithm"
+      ],
+      "rationale": "All 8 cases are ported (Pi 3a7bb6f48, #11750): the same output as the whole-file algorithm for chunks of 1 and 4096 bytes, details key order, characters split across chunks and invalid UTF-8, readFile for operations without createReadStream and for fractional or negative ranges, the default stream of a local file, a file read up to its size when opened, a 200 MB line under a 64 MB heap, and an abort that stops consuming the stream. A fuzz target compares the streamed read with the whole-file reference for arbitrary bytes, chunk sizes, offsets and limits."
     },
     {
       "path": "packages/coding-agent/test/references.test.ts",
@@ -6287,8 +6326,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11451-thinking-level-after-tree-navigation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:897ab0ea229d7f90613eadc2f2ec4aa628fa1c7bd49a28880d057595bb492001"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:897ab0ea229d7f90613eadc2f2ec4aa628fa1c7bd49a28880d057595bb492001",
+      "evidence": [
+        "coding/session_tree_prompt_overlap_test.go#TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt",
+        "coding/session_tree_prompt_overlap_test.go#TestThinkingLevelThatOnlyDiffersFromTheBranchByClampingIsNotRecorded"
+      ],
+      "rationale": "Both cases are ported (Pi 7860ff528, #11888): the live thinking level is recorded on the new branch before the next prompt, and a level that only differs from the branch by clamping is not."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/11520-sdk-summary-oauth-auth.test.ts",
@@ -6939,8 +6983,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/8092-extension-realpath-jiti.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:faadf855f4a763e36834a1a8e3f5763ca3c76682140c3fc24af7daeb5149fb73"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:faadf855f4a763e36834a1a8e3f5763ca3c76682140c3fc24af7daeb5149fb73",
+      "evidence": [
+        "coding/extension/host/subprocess/extension_realpath_jiti_test.go"
+      ],
+      "rationale": "The one case is ported (Pi e6865ec7e): an extension entry is realpath'd before the node import, so an extension whose declared dependency lives beside it in the pnpm virtual store loads through the symlink; the test links a junction on Windows as Pi's does."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/8237-node-sea-extension-loading.test.ts",
@@ -6983,8 +7031,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/8409-aborted-tool-auth-setup.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:80e979de273c970c01a1a2a2a08eb3e48adc1268f798934730ef4d65542ca4ce"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:80e979de273c970c01a1a2a2a08eb3e48adc1268f798934730ef4d65542ca4ce",
+      "evidence": [
+        "coding/session_aborted_tool_auth_setup_test.go",
+        "coding/model_runtime_setup_abort_upstream_test.go"
+      ],
+      "rationale": "The one case is ported (Pi f3a64af07, #8635): the turn after an aborted tool ends as aborted when the auth setup sees the aborted signal; the model runtime tests cover the setup rejection under a cancelled signal."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/8423-extension-factory-failure.test.ts",
@@ -7080,8 +7133,12 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9154-prompt-during-tree-navigation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3cdab06ca9ec5c19b4bd863b90ef04b7b0f604a60f3d5468330c17b84ac87fdb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3cdab06ca9ec5c19b4bd863b90ef04b7b0f604a60f3d5468330c17b84ac87fdb",
+      "evidence": [
+        "coding/session_tree_prompt_overlap_test.go"
+      ],
+      "rationale": "All 7 cases are ported (Pi 8a3e163b0, #9155): a prompt during branch summarization is rejected, navigation during an awaited input hook is rejected, navigation after a handled or rejected prompt is allowed, navigation stays blocked when another prompt finishes preflight first, a prompt from session_tree runs on the selected branch, a navigation started from session_tree keeps its own state, and a command handler and an agent_settled handler may navigate."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9178-tree-during-compaction.test.ts",
@@ -7389,8 +7446,32 @@
     },
     {
       "path": "packages/coding-agent/test/tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1c25e117e5ccd1df1d572f1300995a9dc458ac4d5e454ed0511da32069f14457"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1c25e117e5ccd1df1d572f1300995a9dc458ac4d5e454ed0511da32069f14457",
+      "evidence": [
+        "internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsWritePort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditPort",
+        "internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditCRLFPort",
+        "internal/codingagent/tools/edit_fuzzy_test.go#TestEditFuzzyMatchingUpstreamCases",
+        "internal/codingagent/tools/tools_cwd_port_test.go#TestToolsContextCWDPort",
+        "internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort",
+        "internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsBashSignalsPort",
+        "internal/codingagent/tools/tools_bash_port_unix_test.go#TestToolsLegacyWSLTransportPort",
+        "internal/codingagent/tools/tools_bash_port_test.go#TestToolsLsPort",
+        "internal/codingagent/tools/tools_search_port_test.go#TestToolsGrepPort",
+        "internal/codingagent/tools/tools_search_port_test.go#TestToolsFindPort",
+        "test/parity/scenarios/tools/16-tool-context-cwd.toml",
+        "test/parity/scenarios/tools/17-shell-operations.toml",
+        "internal/codingagent/tools/tools_test.go",
+        "internal/codingagent/tools/failure_details_test.go#TestBuiltinFailureDetails",
+        "coding/cli/rpc_tool_persistence_test.go#TestRPCEmptyReadTextPersistsAndReplays",
+        "internal/codingagent/tools/read_structured_upstream_test.go#TestReadStructuredContent",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go",
+        "internal/codingagent/tools/edit_window_test.go",
+        "internal/codingagent/tools/find_ls_limit_test.go"
+      ],
+      "rationale": "All 109 cases are ported: the previous pin's through the cited tests, and the cases the leap added through grep_ripgrep_context_test.go (rg context events, the match limit on proof of one more match, a lone CR, folder globs relative to path; Pi 8da141c2a, 6bf2ab9bb), edit_window_test.go (line endings of untouched lines; Pi d448c51e2) and find_ls_limit_test.go (result and entry limits)."
     },
     {
       "path": "packages/coding-agent/test/tree-selector.test.ts",
@@ -7409,8 +7490,13 @@
     },
     {
       "path": "packages/coding-agent/test/truncate-surrogates.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c165767efbc7af1221714cf6098fbc8d722e78afbd606640a6a9b258bfce477b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c165767efbc7af1221714cf6098fbc8d722e78afbd606640a6a9b258bfce477b",
+      "evidence": [
+        "internal/jsstring/slice_pair_test.go",
+        "internal/codingagent/tools/grep_test.go#TestTruncateLine"
+      ],
+      "rationale": "All 4 cases are ported (Pi 9e870f6f0): truncateLine drops an emoji the cut would split and keeps one that ends at the limit (TestTruncateLine), and sliceHead and sliceTail never split a pair and match slice without surrogates (slice_pair_test.go). D252 records that a pair the cut would split is dropped whole."
     },
     {
       "path": "packages/coding-agent/test/truncate-to-width.test.ts",
