@@ -76,6 +76,21 @@ func (w *wsConn) closeWith(code int, reason string) {
 	w.cond.Signal()
 }
 
+// release ends a socket whose reader is done: what is queued behind a close frame is written first (the peer has a moment
+// to answer it), then the connection and the writer go.
+func (w *wsConn) release() {
+	w.mu.Lock()
+	closing := w.closing && !w.dead
+	w.mu.Unlock()
+	if closing {
+		select {
+		case <-w.done:
+		case <-time.After(5 * time.Second):
+		}
+	}
+	w.terminate()
+}
+
 // terminate drops the connection at once (`WebSocket.terminate`).
 func (w *wsConn) terminate() {
 	w.mu.Lock()
