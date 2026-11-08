@@ -48,6 +48,7 @@ func ListenForLoopbackSignIn(ctx context.Context, options ListenForLoopbackSignI
 	if port == nil && stored != nil {
 		if registered := RegisteredRedirectURLs(stored.ClientInformation); len(registered) > 0 {
 			if u, err := ParseURL(registered[0]); err == nil {
+				//portlint:allow numbers u.Port is the serialized port of a parsed URL: at most five decimal digits, or empty (loopback.ts)
 				if p, err := strconv.Atoi(u.Port); err == nil && p != 0 {
 					port = &p
 				}

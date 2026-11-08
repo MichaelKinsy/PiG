@@ -3307,18 +3307,6 @@ snippet = "port := int(*aux.CallbackPort)"
 
 [[hit]]
 check = "numbers"
-file = "coding/extension/mcp_servers.go"
-func = "validateOAuth"
-snippet = "if err := json.Unmarshal(v, &n); err != nil || len(v) == 0 || v[0] == '\"' || n != float64(int(n)) || n < 1 || n > 65535 {"
-
-[[hit]]
-check = "numbers"
-file = "coding/extension/mcp_servers.go"
-func = "validateOAuth"
-snippet = "port, hasPort = int(n), true"
-
-[[hit]]
-check = "numbers"
 file = "coding/mcpext/cli.go"
 func = "mcpCLI.login"
 snippet = "delay := time.Duration(timeoutMs * float64(time.Millisecond))"
@@ -3337,27 +3325,9 @@ snippet = "perServer = min(maxServerDescriptionChars, (MaxServersSectionChars-si
 
 [[hit]]
 check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "newCallbackSettings"
-snippet = "p, _ := strconv.Atoi(u.Port)"
-
-[[hit]]
-check = "numbers"
-file = "coding/mcpext/oauth.go"
-func = "SignInMcpServer"
-snippet = "if p, err := strconv.Atoi(u.Port); err == nil && p != 0 {"
-
-[[hit]]
-check = "numbers"
 file = "coding/mcpext/runtime.go"
 func = "Connection.Timeout"
 snippet = "return time.Duration(seconds * float64(time.Second))"
-
-[[hit]]
-check = "numbers"
-file = "coding/mcpext/tools.go"
-func = "LimitMcpContent"
-snippet = "tokens := (truncation.TotalBytes + 3) / 4"
 
 [[hit]]
 check = "numbers"
@@ -4812,12 +4782,6 @@ snippet = "return encoded[0:8] + \"-\" + encoded[8:12] + \"-\" + encoded[12:16] 
 
 [[hit]]
 check = "utf16units"
-file = "codemode/declarations.go"
-func = "resolveRef"
-snippet = "for segment := range strings.SplitSeq(ref[2:], \"/\") {"
-
-[[hit]]
-check = "utf16units"
 file = "codemode/source.go"
 func = "ParseCodemodeSource"
 snippet = "options, err := parseOptions(jsstring.Trim(trimmed[len(CodemodeOptionsPrefix):]))"
@@ -4851,24 +4815,6 @@ check = "utf16units"
 file = "coding/mcpext/runtime.go"
 func = "expandHome"
 snippet = "return filepath.Join(home, value[2:])"
-
-[[hit]]
-check = "utf16units"
-file = "coding/mcpext/tools.go"
-func = "CreateMcpToolName"
-snippet = "if len(name) <= maxToolNameLength && (isTaken == nil || !isTaken(name)) {"
-
-[[hit]]
-check = "utf16units"
-file = "coding/mcpext/tools.go"
-func = "CreateMcpToolName"
-snippet = "hash := hex.EncodeToString(digest[:])[:8]"
-
-[[hit]]
-check = "utf16units"
-file = "coding/mcpext/tools.go"
-func = "CreateMcpToolName"
-snippet = "return name[:min(len(name), maxToolNameLength-len(hash)-1)] + \"_\" + hash"
 
 [[hit]]
 check = "utf16units"

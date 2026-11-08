@@ -68,6 +68,7 @@ func (b *FileAuthStorageBackend) WithLock(fn func(current string, exists bool) (
 // never leaves a torn credential file. Pi's writeFileSync keeps the mode of a file that exists and creates a new one private (0600); so does this.
 func writeFileAtomic(path string, data []byte) (err error) {
 	mode := os.FileMode(0o600)
+	//perf:ok one stat per credential write, which already syncs a file
 	if info, statErr := os.Stat(path); statErr == nil {
 		mode = info.Mode().Perm()
 	}
