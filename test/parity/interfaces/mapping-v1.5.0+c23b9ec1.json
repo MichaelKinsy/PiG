@@ -104473,7 +104473,7 @@
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
         "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatPingsASilentLinkAfter15sAndClosesItAfter30sWithoutAnAnswerReferencesGoLoading"
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatAnswersEachPingWithAPongAtOnceTwoSidesPingingAtOnceBothAnswer"
       ]
     },
     {
@@ -104814,9 +104814,9 @@
         "call:chord/next/store/expression.go#And"
       ],
       "evidence": [
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
       ]
     },
     {
@@ -104836,9 +104836,9 @@
         "call:chord/next/store/expression.go#And"
       ],
       "evidence": [
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
       ]
     },
     {
@@ -105079,7 +105079,7 @@
         "public-api:chord/next/host/host_ctx.go#Ctx.Principal"
       ],
       "evidence": [
-        "test:chord/nextnode/app/owner_upstream_test.go#TestAnOwnerTheAppChoosesSignsTheOwnerLinkAndTheOwnerTokenFileInAsThatPrincipal"
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
       ]
     },
     {
@@ -105635,9 +105635,9 @@
         "call:chord/next/store/expression.go#Eq"
       ],
       "evidence": [
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
       ]
     },
     {
@@ -105657,9 +105657,9 @@
         "call:chord/next/store/expression.go#Eq"
       ],
       "evidence": [
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
       ]
     },
     {
@@ -105897,13 +105897,23 @@
     },
     {
       "id": "pkg:chord/.#Factory",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c563242e68a57ff92c3aaec31a20bbc3f6a6b91790ed9563afcd1dc9741b455b"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c563242e68a57ff92c3aaec31a20bbc3f6a6b91790ed9563afcd1dc9741b455b",
+      "rationale": "Pi packages/chord/src/host/attempt.ts:181 Factory (Pi 1.5.0+c23b9ec1): Factory\u003cC, P\u003e is a conditional function type: (params, principal, self) for a remote type and (params, self) for one with empty params, computed from the contract (keyof ShapeOf\u003cC\u003e[\"params\"] extends never ? ...); Go has the two forms as the aliases host.LocalFactory and host.RemoteFactory (host/host_attempt.go:60-72), which the host's type switch tells apart. Designed out as a type-level conditional. Exercised by TestHoldGC (chord/next/host/remote_hold_test.go).",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#LocalFactory",
+        "chord/next/host/host_attempt.go#RemoteFactory"
+      ]
     },
     {
       "id": "pkg:chord/.#Factory::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5db4cab3adc5fd342cabba9b94dd175d13bacc91be25469240fa8658c2fd0e1c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:5db4cab3adc5fd342cabba9b94dd175d13bacc91be25469240fa8658c2fd0e1c",
+      "rationale": "Pi packages/chord/src/host/attempt.ts:181 Factory::call:0 (Pi 1.5.0+c23b9ec1): Factory\u003cC, P\u003e is a conditional function type: (params, principal, self) for a remote type and (params, self) for one with empty params, computed from the contract (keyof ShapeOf\u003cC\u003e[\"params\"] extends never ? ...); Go has the two forms as the aliases host.LocalFactory and host.RemoteFactory (host/host_attempt.go:60-72), which the host's type switch tells apart. Designed out as a type-level conditional. Exercised by TestHoldGC (chord/next/host/remote_hold_test.go).",
+      "pigTargets": [
+        "chord/next/host/host_attempt.go#LocalFactory",
+        "chord/next/host/host_attempt.go#RemoteFactory"
+      ]
     },
     {
       "id": "pkg:chord/.#FailureCause",
@@ -106293,8 +106303,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol",
-        "test:chord/next/host/host_documents_host_test.go#TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeoutStillAdoptsBeforeTheObjectEndsTheStoreStaysUsable",
-        "test:chord/next/host/host_example_06_test.go#TestExample06Natives"
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLineOnAHost"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106316,8 +106326,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol",
-        "test:chord/next/host/host_documents_host_test.go#TestTransactionPersistedDocumentsAHandlersCommitHeldInTheSQLPastCloseTimeoutStillAdoptsBeforeTheObjectEndsTheStoreStaysUsable",
-        "test:chord/next/host/host_example_06_test.go#TestExample06Natives"
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLineOnAHost"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106532,8 +106542,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot",
-        "test:chord/next/host/host_old_work_test.go#TestOldWorkARootGivenTheMethodsCtxWithoutItsSignalIsOldWorkOneWithoutItIsNewWork"
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
+        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106555,8 +106565,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot",
-        "test:chord/next/host/host_old_work_test.go#TestOldWorkARootGivenTheMethodsCtxWithoutItsSignalIsOldWorkOneWithoutItIsNewWork"
+        "test:chord/next/host/host_documents_cancel_test.go#TestDocumentsTransactionsTheirContextsEndCancelledAreReportedBesidesRejectingAChangeStartedInARootAndNotAwaitedItsFnSettledFirst",
+        "test:chord/next/host/host_example_30_test.go#TestExample30HostRoot"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -107053,13 +107063,23 @@
     },
     {
       "id": "pkg:chord/.#isChordError",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cc3ffdbb54724cfaed11e8311373ec9b7d703ea3b53a440c53fcb95abda4868d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:cc3ffdbb54724cfaed11e8311373ec9b7d703ea3b53a440c53fcb95abda4868d",
+      "rationale": "Pi packages/chord/src/data/errors.ts isChordError (Pi 1.5.0+c23b9ec1): `isChordError(error, code?)` is one function whose optional second parameter picks between two questions (is it a ChordError; is it one with this code). Go has no optional parameter, so the function is two: data.IsChordError(err) and data.IsChordErrorCode(err, code) (data/errors.go); the ledger's name rule bound the chord v1 isChordError of the same name, which is not this function. Designed out as an overload folded into two Go functions. Go: chord/next/data/errors.go#IsChordError. Exercised by TestErrorHelpers (chord/next/data/errors_test.go).",
+      "pigTargets": [
+        "chord/next/data/errors.go#IsChordError",
+        "chord/next/data/errors.go#IsChordErrorCode"
+      ]
     },
     {
       "id": "pkg:chord/.#isChordError::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e3c87000cd61b9ea60193db1a86fb21749450ac99732c4c8b2736f825c90dc7e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e3c87000cd61b9ea60193db1a86fb21749450ac99732c4c8b2736f825c90dc7e",
+      "rationale": "Pi packages/chord/src/data/errors.ts isChordError::call:0 (Pi 1.5.0+c23b9ec1): `isChordError(error, code?)` answers for any ChordError and, with a code, for that code only; the optional second parameter picks between the two questions. Go has no optional parameter, so the call is two functions of data/errors.go: IsChordError(err) and IsChordErrorCode(err, code). Designed out as an overload folded into two Go functions. Go: chord/next/data/errors.go#IsChordError. Exercised by TestErrorHelpers (chord/next/data/errors_test.go).",
+      "pigTargets": [
+        "chord/next/data/errors.go#IsChordError",
+        "chord/next/data/errors.go#IsChordErrorCode"
+      ]
     },
     {
       "id": "pkg:chord/.#isNull",
@@ -111925,8 +111945,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/definition_test.go#TestDefineStateTakesARestrictedNameOnly",
-        "test:chord/next/documents/documents_test.go#TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing",
-        "test:chord/next/documents/documents_test.go#TestKeyedDocumentsAreAbsentUntilWrittenGetKeysAndRetireByKey"
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
+        "test:chord/next/documents/documents_telemetry_test.go#TestTransactionsTheirContextsEndCancelledAreReportedForACallersCancellationWhileTheChangeWaitsOnTheLine"
       ]
     },
     {
@@ -111996,8 +112016,26 @@
     },
     {
       "id": "pkg:chord/.#Step",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e28a7bd08524c1e0d2e0e7d19102c7bddc9fcc9923b786ba3b5eb5c4c38f8d76"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e28a7bd08524c1e0d2e0e7d19102c7bddc9fcc9923b786ba3b5eb5c4c38f8d76",
+      "rationale": "Derived by the interface gap detector: Step is Go chord/next/store/step.go#Step (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/step.go#Step"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/adapter.go#OwnerTable.Get"
+      ],
+      "evidence": [
+        "test:chord/next/store/catalog_test.go#TestCatalog",
+        "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/store_test.go#TestStore"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/.#Step::construct:0",
@@ -112167,8 +112205,23 @@
     },
     {
       "id": "pkg:chord/.#Step::property:rows",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b284e4fa21a06f80f94b2b3c03d685a7f8cf3c5d172cedd3878d0e8e13858240"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b284e4fa21a06f80f94b2b3c03d685a7f8cf3c5d172cedd3878d0e8e13858240",
+      "rationale": "Derived by the interface gap detector: Step::property:rows is Go chord/next/store/step.go#Step.Rows (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/step.go#Step.Rows"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/store.go#ChordStore.admittedStep"
+      ],
+      "evidence": [
+        "reach:chord/next/store/store.go#ChordStore.admittedStep"
+      ]
     },
     {
       "id": "pkg:chord/.#Step::property:run",
@@ -114109,28 +114162,48 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f29ad200d41465ff3080463acab6a5f11a2e1cb24132e9e8873a331bc19d1507"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f29ad200d41465ff3080463acab6a5f11a2e1cb24132e9e8873a331bc19d1507",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:7 WebSocketLike (Pi 1.5.0+c23b9ec1): the DOM WebSocket's part a link uses. Go's link.WebSocketLike is that part under Go's rules: readyState is ReadyState(), the settable binaryType is SetBinaryType, and the addEventListener/removeEventListener pair is one AddEventListener that returns its own removal (Go funcs are not comparable, so a listener cannot be removed by identity); each member's record is its own row. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:addEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4c88cb6eb023cffb09331119ef7ce8457c29aaad21956c8e6d3121ef6ad9275f"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4c88cb6eb023cffb09331119ef7ce8457c29aaad21956c8e6d3121ef6ad9275f",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:14 WebSocketLike::property:addEventListener (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:addEventListener::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:14 WebSocketLike::property:addEventListener::call:0 (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:addEventListener::call:message",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:14 WebSocketLike::property:addEventListener::call:message (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:binaryType",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:da8364f5f7321de1a5f1caf27a9882e64ab8a4435824c659a53d1ae0fd6a826c"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:da8364f5f7321de1a5f1caf27a9882e64ab8a4435824c659a53d1ae0fd6a826c",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:10 WebSocketLike::property:binaryType (Pi 1.5.0+c23b9ec1): binaryType is a settable string property of the browser WebSocket that the link sets to \"arraybuffer\"; Go has no settable properties on an interface, so WebSocketLike.SetBinaryType(binaryType string) is the setter (link/websocket.go:23). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.SetBinaryType"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:close",
@@ -114194,18 +114267,30 @@
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1bbb6176df6faaa8eabd8112dca196633d3713fa1bd71e79ac7613e83a9025f3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:1bbb6176df6faaa8eabd8112dca196633d3713fa1bd71e79ac7613e83a9025f3",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:16 WebSocketLike::property:removeEventListener (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b51f6b72aa600e3afaf79fc2cb0371b27de700a04bf45a6962a6f3c365ec1751",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:16 WebSocketLike::property:removeEventListener::call:0 (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:removeEventListener::call:message",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ba9872349aaefec17347d7b1ab1b9145b796936a1431fc2d817575af5a332828",
+      "rationale": "Pi packages/chord/src/link/websocket.ts:16 WebSocketLike::property:removeEventListener::call:message (Pi 1.5.0+c23b9ec1): the DOM pair addEventListener(event, listener) / removeEventListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/.#WebSocketLike::property:send",
@@ -114499,9 +114584,9 @@
         "public-api:chord/nextnode/app/files.go#Files"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
         "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_example_test.go#TestExample65Files"
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing"
       ]
     },
     {
@@ -114542,9 +114627,9 @@
         "public-api:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
         "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_example_test.go#TestExample65Files"
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing"
       ]
     },
     {
@@ -114564,9 +114649,9 @@
         "public-api:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
         "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_example_test.go#TestExample65Files"
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing"
       ]
     },
     {
@@ -114687,13 +114772,45 @@
     },
     {
       "id": "pkg:chord/app#App::property:close",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:857c6cc04d7f06b229c637f4364eada529cc15dfff1940d45931a4c8aa5f19b9",
+      "rationale": "Derived by the interface gap detector: App::property:close is Go chord/nextnode/app/app.go#App.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#App.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/app.go#App.Close"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/app#App::property:close::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dd1140ca0b327cdd5f41bc1b9810f9ffa44d096d8c1261b15b28ea9774b1b48e",
+      "rationale": "Derived by the interface gap detector: App::property:close::call:0 is Go chord/nextnode/app/app.go#App.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/nextnode/app/app.go#App.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:chord/nextnode/app/app.go#App.Close"
+      ],
+      "evidence": [
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/app#App::property:dataDir",
@@ -114789,7 +114906,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
       ]
     },
     {
@@ -114832,7 +114949,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
       ]
     },
     {
@@ -115003,9 +115120,9 @@
         "public-api:chord/nextnode/app/files.go#Files"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
         "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_example_test.go#TestExample65Files"
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing"
       ]
     },
     {
@@ -115046,9 +115163,9 @@
         "public-api:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
         "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_example_test.go#TestExample65Files"
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing"
       ]
     },
     {
@@ -115068,9 +115185,9 @@
         "public-api:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_export_test.go#TestAppRoundTripsAWorkersDocumentsAndTablesAndRefusesAnExistingAddressAndAnotherApp",
         "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_example_test.go#TestExample65Files"
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing"
       ]
     },
     {
@@ -115825,9 +115942,9 @@
         "call:chord/context/chordctx.go#WithTelemetry"
       ],
       "evidence": [
-        "test:durable/harness/harness_continue_test.go#TestContinue",
-        "test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit",
-        "test:durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryInheritsOmittedOrUndefinedTaskTracesAndStoresNoCarrierForAnExplicitRoot"
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
+        "test:durable/harness/harness_continue_test.go#TestContinue"
       ]
     },
     {
@@ -115847,9 +115964,9 @@
         "call:chord/context/chordctx.go#WithTelemetry"
       ],
       "evidence": [
-        "test:durable/harness/harness_continue_test.go#TestContinue",
-        "test:durable/harness/harness_submit_in_commit_test.go#TestSubmitInsideTheCallersCommit",
-        "test:durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryInheritsOmittedOrUndefinedTaskTracesAndStoresNoCarrierForAnExplicitRoot"
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
+        "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
+        "test:durable/harness/harness_continue_test.go#TestContinue"
       ]
     },
     {
@@ -117929,8 +118046,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/http/http_test.go#TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntime",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesSignTheInviteeInAsTheChosenPrincipalOnceOnlyTheOwnerInvites"
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer",
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginSignsInUnderAPickedNameAsAFreshUserEachLoginItsOwn"
       ]
     },
     {
@@ -118545,7 +118662,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
         "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses",
-        "test:chord/nextnode/app/invite_upstream_test.go#TestInvitesAcceptTheOwnerTheAppChoseAndRefuseAnotherUser"
+        "test:chord/nextnode/app/ephemeral_upstream_test.go#TestEphemeralLoginEndsItsSessionsWithTheServer"
       ]
     },
     {
@@ -119735,8 +119852,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_baseinputs_test.go#TestBaseInputsHashBytesWithSHA256AndRecordAFilesBytesAsItReadsThem",
-        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent",
-        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFollowsAnAncestorOfARecordedFileMovedAwayAndItsSubtreeMadeAgainEditRevert"
+        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestARecordedBaseAfterTheCloseWatchesNothing",
+        "test:chord/nextnode/plugins/plugins_watcher_base_test.go#TestTheBaseMarkFindsAnEditMadeBetweenABaseBuildAndItsWatchWithNoLaterEvent"
       ]
     },
     {
@@ -119846,9 +119963,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Build"
       ],
       "evidence": [
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
       ]
     },
     {
@@ -119905,9 +120022,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
         "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ]
     },
     {
@@ -119927,9 +120044,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
         "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ]
     },
     {
@@ -120127,9 +120244,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallDependencies"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample37PluginImports",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes"
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample38WatchAndRollout"
       ]
     },
     {
@@ -120438,9 +120555,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
         "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures"
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120461,9 +120578,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Build"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
         "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample36PluginFailures"
+        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120484,9 +120601,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
         "test:chord/nextnode/plugins/plugins_node_lifecycle_test.go#TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost"
       ]
     },
     {
@@ -120506,9 +120623,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#Plugins.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_cssmodules_test.go#TestPluginsBuildsShareOneEvaluatorProcessAndCloseEndsIt",
         "test:chord/nextnode/plugins/plugins_node_lifecycle_test.go#TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost"
       ]
     },
     {
@@ -120911,9 +121028,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallPlugin"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOtherRemovesNothingOfItSol",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryWhoseTopIsAPluginIntoRootRepositoryAtATagAndInstallsItsDependencies"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginClonesARepositoryOfSeveralPluginsItsSubdirectoriesPinnedToACommit"
       ]
     },
     {
@@ -120935,7 +121052,7 @@
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
-        "test:chord/nextnode/app/app_changes_test.go#TestAppMarksBaseForAChangeOfBasesFilesAndDirectories"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppInstallsAPluginFromGitIntoTheUsersRootApplyingChangesLoadsIt"
       ]
     },
     {
@@ -120961,8 +121078,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesBuildsTheDirtyPluginsAndRollsThemOutToTheServer",
-        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth",
-        "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample35PluginsLoadEditMarkBuildRollOut"
+        "test:chord/nextnode/app/app_changes_test.go#TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed",
+        "test:chord/nextnode/plugins/plugins_endtoend_test.go#TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth"
       ]
     },
     {
@@ -120999,7 +121116,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121022,7 +121139,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginCollectsUntilNoNewRegistryAppearsAnObjectLiveAfterTheFirstCollectionContributesTooSol"
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -121094,6 +121211,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
       ]
     },
@@ -121115,6 +121233,7 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
+        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
       ]
     },
@@ -121666,13 +121785,46 @@
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabase",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:61e29b78e022a7a97db6f94d2c872a2e4a623ae0c9d25e1f55c00f548226eeea"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:61e29b78e022a7a97db6f94d2c872a2e4a623ae0c9d25e1f55c00f548226eeea",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase is Go chord/sqlite/node/node.go#NodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
+        "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabase::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7196d2229a2fb928c745527e3f53d54eaca2fd7ab7cd4410ac6708c155d3006a",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabase::construct:0 is Go chord/sqlite/node/node.go#NewNodeSqliteDatabase (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/statement_cache_test.go#TestNodeSqliteStatementCache"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabase::property:all",
@@ -121994,13 +122146,45 @@
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteDatabaseOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:65b0bcdda95490c9b782abccb00524bea69fec264dce484e26722051fb0cb403"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:65b0bcdda95490c9b782abccb00524bea69fec264dce484e26722051fb0cb403",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabaseOptions is Go chord/sqlite/node/node.go#NodeSqliteDatabaseOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteDatabaseOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
+        "test:chord/next/store/catalog_test.go#TestCatalog"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/node#NodeSqliteMode",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:387c484ac66e3ddf99ac21fa288a7bb395f8444d27cfafe0da2583c95d9407f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:387c484ac66e3ddf99ac21fa288a7bb395f8444d27cfafe0da2583c95d9407f4",
+      "rationale": "Derived by the interface gap detector: NodeSqliteMode is Go chord/sqlite/node/node.go#NodeSqliteMode (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/sqlite/node/node.go#NodeSqliteMode"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/sqlite/node/node.go#NewNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt"
+      ]
     },
     {
       "id": "pkg:chord/sqlite/node#openNodeSqliteDatabase",
@@ -127305,9 +127489,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
-        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127328,9 +127512,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
-        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -127713,9 +127897,9 @@
         "public-api:chord/nextnode/workers/workers_workers.go#WorkersError"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
-        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
       ]
     },
     {
@@ -127735,9 +127919,9 @@
         "call:chord/nextnode/workers/workers_workers.go#CreateWorkers"
       ],
       "evidence": [
+        "test:chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseABrokenEntryRejectsCreateWorkersNothingIsRoutedTheKindCanBeRoutedAgain",
         "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayARunningWorkersLostLinkABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceItsHoldersGetANewWorkerASecondWithinAMinuteFailsTheAddress",
-        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor",
-        "test:chord/nextnode/workers/workers_rollout_blocked_unix_test.go#TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildExits"
+        "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceALostLinkItsHolderGetsANewWorkerFor"
       ]
     },
     {
@@ -244317,13 +244501,47 @@
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteDatabaseOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d034b602317a1d4686c710de7cf68dbb707dd874270b80987cb99ebe668b7d24",
+      "rationale": "Derived by the interface gap detector: NodeSqliteDatabaseOptions is Go durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteDatabaseOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteDatabase"
+      ],
+      "evidence": [
+        "test:chord/sqlite/node/read_only_upstream_test.go#TestReadOnlyConnectionsReadAFileAnotherConnectionWritesAndNeverWriteIt",
+        "test:chord/sqlite/node/connection_defaults_test.go#TestNodeSqliteConfiguresConnectionDefaultsAndAcceptsExplicitSettings",
+        "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/node#NodeSqliteStorageOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:357ec1b884dd0a9b2496cfe8f7a7039445b080312cf5fc5d3be845940557494d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:357ec1b884dd0a9b2496cfe8f7a7039445b080312cf5fc5d3be845940557494d",
+      "rationale": "Derived by the interface gap detector: NodeSqliteStorageOptions is Go durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/node/node.go#NodeSqliteStorageOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/node/node.go#OpenNodeSqliteStorage"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipDerivesMarksACrashLeftUnappliedBelowACancelledOwnerAtOpen",
+        "test:durable/examples/background_subagents_example_test.go#TestExample22SubagentBackground",
+        "test:durable/examples/lifecycle_examples_test.go#TestExample30ReloadAndRestart"
+      ]
     },
     {
       "id": "pkg:durable/storage/sqlite/node#openNodeSqliteDatabase",
