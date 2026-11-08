@@ -8563,8 +8563,19 @@
     },
     {
       "path": "packages/mcp/test/auth-provider.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:642139b950877d9c93db725fda23820dc478619f1c217b0fe87530ddaa3682f5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:642139b950877d9c93db725fda23820dc478619f1c217b0fe87530ddaa3682f5",
+      "evidence": [
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesARejectedToken",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderLeavesAPendingSignInUsableWhenTheRefreshFails",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderDoesNotRegisterAClientToRefresh",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderDropsARejectedClientAndItsTokensButKeepsThePendingSignIn",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderKeepsAClientStoredWhileTheRejectedRefreshRan",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderKeepsTheTokensAndThePendingSignInAfterAServerError",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderKeepsTheTokensAndThePendingSignInAfterANetworkError",
+        "mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesTheTokensOfADocumentThatListsOnlyTheRedirectURIPassed"
+      ],
+      "rationale": "Pi main bb266bf35 createMcpAuthProvider: one refresh across requests under the store lock; ported in mcp/oauth/auth_provider.go."
     },
     {
       "path": "packages/mcp/test/client.test.ts",
@@ -8580,8 +8591,18 @@
     },
     {
       "path": "packages/mcp/test/config.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ad75a745a42d2cf7aaa78559a247516d57c07419dbd2b35f939c077420247bca"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ad75a745a42d2cf7aaa78559a247516d57c07419dbd2b35f939c077420247bca",
+      "evidence": [
+        "mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven",
+        "mcp/config_pi_test.go#TestValidateMcpServerConfigPicksTheTransportFromTypeURLAndCommand",
+        "mcp/config_pi_test.go#TestValidateMcpServerConfigReportsInvalidNamesAndFields",
+        "mcp/config_pi_test.go#TestValidateMcpServerConfigChecksOAuthSettings",
+        "mcp/config_pi_test.go#TestValidateMcpServerConfigAllowsCimdOnlyWithTheApplicationsCheckOfTheCallback",
+        "mcp/config_pi_test.go#TestValidateMcpServerConfigKeepsUnknownFieldsForTheCallerAfterTheSharedFieldsAreValid",
+        "mcp/config_pi_test.go#TestIsMcpServerOverrideIsTrueForEntriesWithoutCommandURLOrType"
+      ],
+      "rationale": "Pi main 76c040a2a config.ts validation, ported in internal/mcpshared/config.go (re-exported by mcp/config.go); the validator reports the shared fields before the exposure and auth checks (D372)."
     },
     {
       "path": "packages/mcp/test/content.test.ts",
@@ -8595,53 +8616,234 @@
     },
     {
       "path": "packages/mcp/test/input-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0a3adf85d9a213df1e49bee7beef106a348470a62443ff218fdb719cb5877059"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0a3adf85d9a213df1e49bee7beef106a348470a62443ff218fdb719cb5877059",
+      "evidence": [
+        "mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
+        "mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
+      ],
+      "rationale": "Pi main 76c040a2a normalizeMcpInputSchema, ported in mcp/input_schema.go."
     },
     {
       "path": "packages/mcp/test/lines.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2086d09de7e36ff9ca56241ecd3ea5c39fc00d7f23078ff70476514d4962cd91"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2086d09de7e36ff9ca56241ecd3ea5c39fc00d7f23078ff70476514d4962cd91",
+      "evidence": [
+        "mcp/lines_pi_test.go#TestLineReaderDeliversAMessageSplitAcrossManyChunks",
+        "mcp/lines_pi_test.go#TestLineReaderHandlesMultiByteCharactersCRLFBlankLinesAndSeveralMessagesPerChunkAtAnySplit",
+        "mcp/lines_pi_test.go#TestLineReaderDropsAnOversizedMessageAndKeepsReadingTheNextOne",
+        "mcp/lines_pi_test.go#TestLineReaderReportsAMessageWithoutItsNewlineAtTheEnd",
+        "mcp/stdio_splitter_test.go#TestStdioTransportDeliversALargeMessageSpanningManyReads",
+        "mcp/stdio_splitter_test.go#TestStdioSplitterLargeMessageScalesLinearly",
+        "mcp/stdio_splitter_test.go#TestStdioSplitterChunkingEquivalence",
+        "mcp/stdio_splitter_test.go#TestSSESplitterChunkingEquivalence"
+      ],
+      "rationale": "Pi main c158fa2ee and f6278a472 JsonRpcLineReader, ported in mcp/lines.go; the Buffer.concat counting case is pinned by the linear-scan test."
     },
     {
       "path": "packages/mcp/test/loopback.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2ef4e965b1939780d5b0d53b9ea84960d946104cb29306438b4b32f68ac124d1"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2ef4e965b1939780d5b0d53b9ea84960d946104cb29306438b4b32f68ac124d1",
+      "evidence": [
+        "mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer",
+        "mcp/oauth/loopback_pi_test.go#TestLoopbackSignInRejectsAResponseOnAnotherRedirectPath",
+        "mcp/oauth/loopback_pi_test.go#TestLoopbackSignInTakesAPastedRedirectURLWhileWaitingForTheCallback",
+        "mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCancelsTheWaitAndAnEmptyPasteCancelsToo"
+      ],
+      "rationale": "Pi main bb266bf35 loopback sign-in, ported in mcp/oauth/loopback.go."
     },
     {
       "path": "packages/mcp/test/naming.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6d072ca5aa991556bf13342eecbc3b3c1c9c8382618925c51737021225848a61"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6d072ca5aa991556bf13342eecbc3b3c1c9c8382618925c51737021225848a61",
+      "evidence": [
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet",
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool",
+        "mcp/naming_pi_test.go#TestCreateMcpToolNameAddsTheHashSuffixWhenTheSanitizedNameIsTaken",
+        "mcp/naming_pi_test.go#TestMcpNamespaceIsMcpServerWithDashReplacedByUnderscore"
+      ],
+      "rationale": "Pi main 76c040a2a createMcpToolName and mcpNamespace, ported in internal/mcpshared/naming.go."
     },
     {
       "path": "packages/mcp/test/oauth.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e145e6ec13011c87c97736ad02408a225adce9ac5ff90b1ac8f059c0cc4a4f90"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e145e6ec13011c87c97736ad02408a225adce9ac5ff90b1ac8f059c0cc4a4f90",
+      "evidence": [
+        "mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthBindsPersistedCredentialsToTheExactMCPServerURL",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthRegistersWithAnApplicationTypeDerivedFromTheRedirectURIsUnlessOneIsSet",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthRejectsAuthorizationMetadataWhoseIssuerDoesNotMatchDiscovery",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthUsesAConfiguredAuthorizationServerMetadataDocumentAsIs",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthExchangesACodeOnlyWhenItsIssParameterNamesTheAuthorizationServer",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthIssMismatchWithoutMetadataHasNoExpectedIssuer",
+        "mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault",
+        "mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage",
+        "mcp/oauth/oauth_test.go#TestRefreshAuthorizationKeepsTheOldRefreshTokenWhenTheServerDoesNotRotateIt",
+        "mcp/oauth/oauth_test.go#TestTokenRequestsRefuseNonLoopbackHTTPEndpoints",
+        "mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
+        "mcp/oauth/oauth_test.go#TestMcpOAuthProviderIsNotPoisonedByACancelledCall",
+        "mcp/oauth/oauth_test.go#TestStartAuthorizationKeepsUpstreamParameterOrder",
+        "mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne",
+        "mcp/oauth/oauth_test.go#TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen",
+        "mcp/oauth/oauth_test.go#TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go#TestMCPOAuthRejectsNonHTTPAuthorizationEndpointsWhichThePlatformURLHandlerWouldLaunch",
+        "mcp/oauth/oauth_test.go#TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/oauth/oauth_test.go#TestAuthorizeMcpDropsTheVerifierAfterTheExchange",
+        "mcp/oauth/behavior_test.go#TestOAuthErrorMessagesAreTheOnesErrorsTSBuilds",
+        "mcp/oauth/behavior_test.go#TestOAuthCallbackServerAnswersEachAuthorizationResponseLikeCallbackTS",
+        "mcp/oauth/behavior_test.go#TestOAuthCallbackServerRenderedPagesAreHTMLAndNotCached",
+        "mcp/oauth/behavior_test.go#TestMcpOAuthProviderInvalidateCredentialsDropsOnlyTheNamedState",
+        "mcp/oauth/behavior_test.go#TestOAuthCallbackServerPlainTextShowsMarkupAsTextNotAsAPage",
+        "mcp/oauth/flow_behavior_test.go#TestStartAuthorizationSendsTheS256ChallengeOfTheReturnedVerifier",
+        "mcp/oauth/flow_behavior_test.go#TestTokenRequestsAuthenticateTheClientWithTheMethodTheServerPolicySelects",
+        "mcp/oauth/provider_hooks_test.go#TestMCPOAuthTokenRequestUsesTheProvidersAddClientAuthentication",
+        "mcp/oauth/provider_hooks_test.go#TestMCPOAuthUsesTheProvidersClientMetadataDocumentInsteadOfRegistering",
+        "mcp/oauth/provider_hooks_test.go#TestMCPOAuthAddClientAuthenticationReceivesMetadataAndItsErrorStopsTheRequest",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderStateIsStableRandomHexUntilAllCredentialsAreInvalidated",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderCodeVerifierRoundTripsAndFailsWhenNoneIsStored",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderInvalidatesOnlyTheNamedCredentialKind",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDiscoveryStateRoundTrips",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderConfiguredClientWinsAndIgnoresSavedRegistrations",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderDefaultsClientMetadataFromTheRedirectURL",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderRedirectsThroughTheConfiguredHook",
+        "mcp/oauth/provider_state_test.go#TestMcpOAuthProviderForwardsTheClientMetadataDocumentCallback",
+        "mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays",
+        "mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerOptionsShapeTheRedirectURL",
+        "mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerDeliversCodeStateAndIssToTheWait",
+        "mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses",
+        "mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerNamesTheRedirectMixUpAndReturnsTheContextCause",
+        "mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot",
+        "mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack",
+        "mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata",
+        "mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFallsBackToTheServerOriginWithoutResourceMetadata",
+        "mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoUsesAConfiguredMetadataDocumentAndSkipsIssuerValidationOnRequest"
+      ],
+      "rationale": "Pi main 63ea042ce (callback server closes unused connections, D370) and bb266bf35 (client settings, refresh-only and redirect-URI options of the flow), on top of the earlier cases."
     },
     {
       "path": "packages/mcp/test/output-limit.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7b8b4d97a6919bbdbdea9294d49d071ef69b42dcc8a4d1abd71bdff0b69e1266"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7b8b4d97a6919bbdbdea9294d49d071ef69b42dcc8a4d1abd71bdff0b69e1266",
+      "evidence": [
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentReturnsContentWithinTheLimitAsItIsWithoutSaving",
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages",
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentReportsAFailedSaveAndNamesNoFileWithoutASaver",
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentCutsMultiByteTextOnlyAtCharacterBoundaries",
+        "mcp/output_limit_pi_test.go#TestLimitMcpContentRoundsTheOriginalTokenCountUp",
+        "mcp/truncate_middle_test.go#TestTruncateMiddle"
+      ],
+      "rationale": "Pi main 76c040a2a limitMcpContent, ported in mcp/output_limit.go."
     },
     {
       "path": "packages/mcp/test/pipe.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dd9999f2aa1acb109208dff5630ba49c91e720e95beea7f465996fa02ef0e19a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dd9999f2aa1acb109208dff5630ba49c91e720e95beea7f465996fa02ef0e19a",
+      "evidence": [
+        "mcp/pipe_pi_test.go#TestPipeTransportJoinsMessagesSplitAcrossChunksAndSplitsSeveralMessagesInOneChunk",
+        "mcp/pipe_pi_test.go#TestPipeTransportStripsATrailingCarriageReturnAndSkipsBlankLines",
+        "mcp/pipe_pi_test.go#TestPipeTransportReportsInvalidMessagesAndKeepsReading",
+        "mcp/pipe_pi_test.go#TestPipeTransportDropsMessagesOverMaxMessageBytesCompleteOrNot",
+        "mcp/pipe_pi_test.go#TestPipeTransportKeepsABoundedStderrTailAndPassesEveryChunkToOnStderr",
+        "mcp/pipe_pi_test.go#TestPipeTransportWritesEachMessageAsOneLine",
+        "mcp/pipe_pi_test.go#TestPipeTransportReportsAnIncompleteMessageWhenTheProgramExitsThenCloses",
+        "mcp/pipe_pi_test.go#TestPipeTransportReportsAFailedExitItDidNotCauseThenCloses",
+        "mcp/pipe_pi_test.go#TestPipeTransportRejectsSendAfterCloseAndAfterTheProgramEnded",
+        "mcp/pipe_pi_test.go#TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go#TestPipeTransportShutsDownOnceWhenClosedTwice",
+        "mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go#TestPipeTransportRejectsStartWhenOpenFails",
+        "mcp/pipe_pi_test.go#TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go#TestPipeTransportWithARealProgramRunsInitializeToolsListAndToolsCall"
+      ],
+      "rationale": "Pi main c158fa2ee PipeTransport, ported in mcp/pipe.go."
     },
     {
       "path": "packages/mcp/test/sign-in.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3780d67bad75f30e4661aee275b1c64b5a5b61c8473c97c779514ca0eb85499c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3780d67bad75f30e4661aee275b1c64b5a5b61c8473c97c779514ca0eb85499c",
+      "evidence": [
+        "mcp/oauth/sign_in_pi_test.go#TestSignInCompletesInASecondCallWithTheSameStoreAndAPersistedRedirect",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesTheStoredTokensInsteadOfRedirecting",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesUnderTheStoresRefreshLock",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInRefusesToCompleteWithAnotherRedirectURIThanTheAuthorizationRequest",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInGivesEverySignInAFreshStateAndRefusesToCompleteASupersededOne",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInRefusesAResponseWithAnotherState",
+        "mcp/oauth/sign_in_pi_test.go#TestStoredClientRefreshesFromAnotherRedirectURI",
+        "mcp/oauth/sign_in_pi_test.go#TestStoredClientKeepsTheClientForABrowserStepOnItsRedirectURI",
+        "mcp/oauth/sign_in_pi_test.go#TestStoredClientIsDroppedWithItsTokensForABrowserStepOnAnotherRedirectURI",
+        "mcp/oauth/sign_in_pi_test.go#TestStoredClientRegisteredByDCRIsNotRefreshedWhenCimdReplacesIt",
+        "mcp/oauth/sign_in_pi_test.go#TestStoredClientAsksForTheGrantedScopePlusTheChallengedOneOnAStepUpWithoutRefreshing",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsUsesADocumentWhenTheServerSupportsThemAndTheDocumentsListTheRedirectURI",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsUsesADocumentAndRedirectURISpecificToTheMCPServerWithoutTheIssParameter",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsAppendsTheServerSpecificPathWithoutDoublingATrailingSlash",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsRegistersDynamicallyWhenTheServerDoesNotSupportDocuments",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsRegistersDynamicallyWhenTheDocumentsDoNotListTheRedirectURI",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsRegistersDynamicallyWithoutDocumentsOrWithAClientName",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsFailWithCimdWhenTheServerDoesNotSupportDocuments",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsFailWithCimdWhenTheDocumentsDoNotListTheRedirectURI",
+        "mcp/oauth/sign_in_pi_test.go#TestCancellationCancelsAStartWhoseRequestDoesNotAnswer",
+        "mcp/oauth/sign_in_pi_test.go#TestCancellationCancelsACompletionWhoseTokenRequestDoesNotAnswer",
+        "mcp/oauth/sign_in_pi_test.go#TestCancellationFailsAtOnceWithAnEndedContext",
+        "mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsListingOnlyAnHTTPSRouteRefreshTheTokensOfADocument",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong",
+        "mcp/oauth/sign_in_pi_test.go#TestSignInFailsWhenTheRefreshLockFailsForAnotherReason",
+        "mcp/oauth/sign_in_pi_test.go#TestCancellationCancelsAtOnceWhileAnotherProcessHoldsTheRefreshLockAndRefreshesNothing"
+      ],
+      "rationale": "Pi main bb266bf35 startMcpSignIn and completeMcpSignIn, ported in mcp/oauth/sign_in.go."
     },
     {
       "path": "packages/mcp/test/stdio.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cff5796f378d6c4d7ecede7c6387a1e4a0318430ca6d746359501e78e19c023f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cff5796f378d6c4d7ecede7c6387a1e4a0318430ca6d746359501e78e19c023f",
+      "evidence": [
+        "mcp/stdio_test.go#TestStdioTransportConnectsToANewlineDelimitedMCPServerAndCapturesStderr",
+        "mcp/stdio_unix_test.go#TestStdioTransportKillsAServerThatIgnoresShutdownIncludingItsChildren",
+        "mcp/stdio_unix_test.go#TestStdioTransportKillsChildrenStillHoldingThePipesAfterTheServerProcessExited",
+        "mcp/stdio_unix_test.go#TestStdioTransportTerminatesTheChildrenOfAServerThatExitsOnStdinClose",
+        "mcp/stdio_unix_test.go#TestStdioTransportSendsSIGTERMAfterTheStdinGracePeriod",
+        "mcp/stdio_splitter_test.go#TestStdioTransportDeliversALargeMessageSpanningManyReads",
+        "mcp/stdio_splitter_test.go#TestStdioSplitterLargeMessageScalesLinearly",
+        "mcp/stdio_splitter_test.go#TestStdioSplitterChunkingEquivalence",
+        "mcp/stdio_splitter_test.go#TestSSESplitterChunkingEquivalence"
+      ],
+      "rationale": "Pi main f6278a472: the stdio transport reads through the linear line reader (mcp/lines.go)."
     },
     {
       "path": "packages/mcp/test/streamable-http.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9cae7d41c0df3040a9aa342867a1a8f403231ae0195f606ab010ba4af95e2670"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9cae7d41c0df3040a9aa342867a1a8f403231ae0195f606ab010ba4af95e2670",
+      "evidence": [
+        "mcp/streamable_http_test.go#TestConsumeSSEStreamParsesChunkedCRLFEventsCommentsIDsAndMultilineData",
+        "mcp/streamable_http_test.go#TestConsumeSSEStreamRejectsEventsWhoseDataLinesExceedTheLimitWithoutABlankLine",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportHandlesJSONAndSSEResponsesWithSessionAndProtocolHeaders",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAuthenticationFailures",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsOnlyTheRequestWhoseSSEStreamBreaks",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportOpensTheGETStreamAfterInitializationAndSendsLastEventIDOnlyWhenResuming",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportResumesAResponseStreamTheServerClosedBeforeAnswering",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportFailsARequestWhoseResponseStreamEndsWithoutAnAnswer",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportReconnectsTheGETStreamAfterItDrops",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportRejectsARequestTheServerAcceptsWithoutAResponse",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportIncludesTheResponseBodyInHTTPErrors",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportHandsUnauthorizedAndInsufficientScopeResponsesToTheAuthProviderWithTheRejectedToken",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportRoutesEveryRequestThroughTheFetchInUse",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportClassifiesAnExpiredEstablishedSession",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportWritesTheGETStreamRequestBeforeTheInitializedNotificationReturns",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportClosesTheSessionWithTheLastRequestsTokenWithoutAskingTheAuthProvider",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportSkipsAnSSEEventWhoseDataIsJavaScriptWhitespace",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportSetProtocolVersionChangesTheHeaderOfLaterRequests",
+        "mcp/streamable_http_test.go#TestStreamableHTTPTransportSendsTheProtocolVersionSetOnIt",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPDecodesJSONResponsesSplitInsideABOMAndAMultiByteCharacter",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPReadsOnlyAnExcerptOfHTTPErrorBodiesAndCancelsTheRest",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPRejectsAnOversizedJSONReplyWithoutWaitingForTheRestOfTheBody",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAnErrorBodyThatFailsMidReadIsEmpty",
+        "mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPClosesAnSSEResponseWhoseEventExceedsTheLimit",
+        "mcp/sse_cr_pi_test.go#TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks",
+        "mcp/sse_cr_pi_test.go#TestConsumeSSEStreamDispatchesCRTerminatedEventsWhileTheStreamStaysOpen"
+      ],
+      "rationale": "Pi main f40984747: a failed SSE response is closed; the body cap and excerpt cases are unchanged."
     },
     {
       "path": "packages/schema/test/builders.test.ts",

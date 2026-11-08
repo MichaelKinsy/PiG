@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/mcp"
+	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
@@ -35,7 +35,7 @@ func (r *ExtensionRuntime) RegisterMcpServer(extensionPath, name string, config 
 	}
 	// Names that differ only in `-` and `_` would share a namespace.
 	for _, server := range r.mcpServers.List() {
-		if server.Name != name && mcp.McpNamespace(server.Name) == mcp.McpNamespace(name) {
+		if server.Name != name && mcpshared.McpNamespace(server.Name) == mcpshared.McpNamespace(name) {
 			return fmt.Errorf(`MCP server "%s" conflicts with registered server "%s"`, name, server.Name)
 		}
 	}

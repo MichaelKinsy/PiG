@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -186,8 +187,15 @@ func (t *PipeTransport) Close() error {
 	case <-timer.C:
 	}
 	pipe.Close()
-	<-exited
-	return nil
+	// Pi awaits `exited` after the kill; Go bounds the wait by the same time, so a pipe that never reports the exit cannot hold Close forever.
+	kill := time.NewTimer(timeout)
+	defer kill.Stop()
+	select {
+	case <-exited:
+		return nil
+	case <-kill.C:
+		return fmt.Errorf("MCP program did not exit within %v after it was killed", timeout)
+	}
 }
 
 // exit is the program ended: an error unless Close caused it, then the unfinished message, then the close.
