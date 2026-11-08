@@ -83,6 +83,7 @@ const maxUnread = 64 * 1024 * 1024
 func RequireSandboxNode(version string) error {
 	var parts [3]int
 	for i, part := range strings.SplitN(version, ".", 3) {
+		//portlint:allow numbers the parts are the digits of `process.versions.node` split on dots (digits only; a failure leaves 0, as Number(part) || 0)
 		parts[i], _ = strconv.Atoi(part)
 	}
 	major, minor, patch := parts[0], parts[1], parts[2]
