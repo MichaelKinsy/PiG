@@ -272,6 +272,13 @@ func Extension() *sdk.Extension {
 		cfg.Factory = "new-extension"
 		write(name+".lisp", fmt.Sprintf(`(defpackage %[1]q (:use "COMMON-LISP"))
 (in-package %[1]q)
+;; SBCL on Windows has no sb-unix:unix-kill (a missing symbol is a reader error that fails the build), so it ends itself with TerminateProcess on its own pseudo handle.
+(defun hard-kill ()
+  #-win32 (sb-unix:unix-kill (sb-unix:unix-getpid) 9)
+  #+win32 (sb-alien:alien-funcall
+           (sb-alien:extern-alien "TerminateProcess" (function sb-alien:int sb-alien:system-area-pointer sb-alien:unsigned-int))
+           (sb-alien:alien-funcall (sb-alien:extern-alien "GetCurrentProcess" (function sb-alien:system-area-pointer)))
+           9))
 (defun new-extension ()
   (let ((e (pig:make-extension %[1]q)))
     (pig:command e "ping" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-notify ctx "pong-%[1]s" "info")))
@@ -283,7 +290,7 @@ func Extension() *sdk.Extension {
                                   (finish-output *error-output*)
                                   nil))
     (pig:command e "exit" "" (lambda (ctx args) (declare (ignore ctx args)) (sb-ext:exit :code 3 :abort t)))
-    (pig:command e "kill" "" (lambda (ctx args) (declare (ignore ctx args)) (sb-unix:unix-kill (sb-unix:unix-getpid) 9)))
+    (pig:command e "kill" "" (lambda (ctx args) (declare (ignore ctx args)) (hard-kill)))
     e))
 `, name))
 	}
