@@ -203,8 +203,8 @@ func TestAppAppliesChangesOneAfterAnotherSoTheNewestBuildStaysDeployed(t *testin
 	untilText(t, served, "v3")
 }
 
-// `Base` names files and directories whose change marks `base` (the app's own code changed: restart), not a rewrite with the same
-// bytes (the watcher compares base files by hash).
+// `Base` names files and directories whose change marks `base` (the app's own code changed: restart), not a rewrite with the
+// same bytes (Pi's app.test.ts; its cases for a worker kind's base files wait for the worker base, T11).
 func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 	for _, name := range []string{"api/v1.ts", "start.ts"} {
 		t.Run(name, func(t *testing.T) {
@@ -225,11 +225,17 @@ func TestAppMarksBaseForAChangeOfBasesFilesAndDirectories(t *testing.T) {
 				t.Fatal("base is marked at start")
 			}
 			changed := filepath.Join(dir, name)
-			// A rewrite with the same bytes marks nothing (Pi waits 200 ms for a mark to show).
-			if err := os.WriteFile(changed, []byte("export {};"), 0o644); err != nil {
+			// A rewrite with the same bytes marks nothing (Pi compares base files by hash). The barrier is a plugin edit: the
+			// watcher handles events in order, so once it shows the plugin dirty it has seen the rewrite too.
+			same, err := os.ReadFile(changed)
+			if err != nil {
 				t.Fatal(err)
 			}
-			<-time.After(200 * time.Millisecond)
+			if err := os.WriteFile(changed, same, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			editEcho(t, s.root, "barrier")
+			untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
 			if s.app.Plugins.Marks().Base {
 				t.Fatal("base is marked by a rewrite with the same bytes")
 			}

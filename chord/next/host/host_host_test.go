@@ -2102,7 +2102,7 @@ func TestHostStoreReportsStorageFailedOnceAndClosesTheHostTheAppStillClosesTheSt
 	errs := &hostErrors{}
 	host := newHost(t, HostOptions{Store: st, OnError: errs.push})
 	mustLoad(t)(host.Load(nil, background))
-	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
+	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 	// A failed `COMMIT`: an unknown outcome (D4).
 	fail("COMMIT")
 	for range 2 {

@@ -179,6 +179,8 @@ type object struct {
 	mu        sync.Mutex
 	failures  []*data.ChordError
 	reports   []state.BatchError
+	// cancelled are the causes of the transactions reported `transaction_cancelled`.
+	cancelled []error
 	// onFail runs inside Fail (a host fails the live attempt, whose token it seals).
 	onFail func(err *data.ChordError)
 }
@@ -234,6 +236,21 @@ func (o *object) Fail(err *data.ChordError) {
 	if hook != nil {
 		hook(err)
 	}
+}
+
+// TransactionCancelled is the host's `transaction_cancelled` report of a transaction that did not commit while its
+// context was cancelled.
+func (o *object) TransactionCancelled(cause error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.cancelled = append(o.cancelled, cause)
+}
+
+// Cancelled is the causes reported `transaction_cancelled`.
+func (o *object) Cancelled() []error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return append([]error{}, o.cancelled...)
 }
 
 // Failures is the live failures the documents reported.
