@@ -1178,6 +1178,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bda636e](#bf-bda636e) | The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or… | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
@@ -17657,6 +17658,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a00dbe6901` (2026-10-13), `bd3e8ab24b` (2026-10-13)
 - **Tests:** `ai/device_code_poll_oracle_test.go::TestDeviceCodePollDeadlineRoundsTheProductLikePi`, `ai/oauth_expiry_arithmetic_test.go::TestBuiltinOAuthExpiryUsesJavaScriptArithmetic`, `ai/openai_codex_http_error_test.go::TestCodexHTTPErrorResetMinutesRoundTheProductFirst`, `internal/codingagent/cache_warmer_test.go::TestCacheWarmingExpectedSavingsRoundsTheProductLikePi`, `internal/codingagent/pig_egg3d_test.go::TestPig3dFlightHomeOffsetsRoundLikePi`, `internal/codingagent/radius_login_oracle_test.go::TestRadiusLoginMenuRendersLikePi`
 - **Release note:** On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`, passed to extensions and compared with the $0.05 threshold), the "Sign in with Radius" shimmer and the 3D easter egg's blocks flying home match Pi: each product is rounded before it is added, as JavaScript does. Before, they could differ from Pi in the last digit, which changed some shimmer colors.
+
+### BF-bda636e
+
+**The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or by its silence limit: it moves them into the runtime poller while it runs, which sets O_NONBLOCK on the open file descriptions a parent shell or a wrapper also holds, and only the normal return gave the mode back.
+- **Root cause:** The poller duplicate of stdin and stdout shares the open file description with the original descriptors and every other holder (a parent shell, a wrapper, a stderr redirected into stdout), so Serve made them non-blocking for all of them. The deferred restore did not run on the os.Exit of the SIGTERM and silence exits; both now restore first. The restore closes the duplicate before it flips the mode, through the original descriptor, so a reader parked in the duplicate never sees the change. A thread-panic message to a stderr that shares a full stdout pipe answered EAGAIN and was lost; it now waits for room as Pi's eprintln does.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bda636eb5c` (2026-11-08)
+- **Tests:** `env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller`, `env/daemon/pollable_unix_test.go::TestWriteStderrWaitsOnAFullPipe`, `env/daemon_stdio_mode_test.go::TestDaemonGivesBackBlockingStdioOnEveryExit`, `env/main_test.go::TestMain`
+- **Release note:** The pi-env daemon left its stdin and stdout non-blocking for whoever shared them when it ended by SIGTERM or by its silence limit: it moves them into the runtime poller while it runs, which sets O_NONBLOCK on the open file descriptions a parent shell or a wrapper also holds, and only the normal return gave the mode back. Every exit does now, and a thread-panic message written to a stderr that shares a full stdout pipe waits for room instead of being lost.
 
 ### BF-bdb7ad8
 
