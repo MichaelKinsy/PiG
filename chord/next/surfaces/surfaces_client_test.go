@@ -122,6 +122,8 @@ type clientSetup struct {
 	outdated int
 	sockets  []socket
 	base     string
+	// connected counts the Connected states the client reported.
+	connected int
 }
 
 func (s *clientSetup) fetchedNow() []string {
@@ -233,6 +235,13 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 			base := s.base
 			return &base, nil
 		},
+		OnConnection: func(state ConnectionState) {
+			if state == Connected {
+				s.mu.Lock()
+				s.connected++
+				s.mu.Unlock()
+			}
+		},
 		Outdated:    func() { s.mu.Lock(); s.outdated++; s.mu.Unlock() },
 		Styles:      opt.styles,
 		Environment: env,
@@ -242,6 +251,9 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		t.Fatal(err)
 	}
 	s.client = client
+	// A client is set up once its link is up: a Connected state that arrives later re-applies the newest set (Pi's `reconnected`),
+	// which a test publishing meanwhile cannot tell from its own update.
+	until(t, func() bool { s.mu.Lock(); defer s.mu.Unlock(); return s.connected >= 1 })
 	return s
 }
 
