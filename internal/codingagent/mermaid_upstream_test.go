@@ -121,17 +121,25 @@ func TestMermaidRenderingUpstream(t *testing.T) {
 		lacks(t, out, `dropped, expected a link: "?"`)
 	})
 	// .upstream/current/packages/coding-agent/test/mermaid.test.ts:155
-	t.Run("respects rendering modes and skips thinking blocks", func(t *testing.T) {
+	t.Run("respects rendering modes and skips thinking blocks and non-transcript surfaces", func(t *testing.T) {
 		md := "```mermaid\nflowchart LR\n  A --> B\n```"
 		for _, tc := range []struct {
 			mode      string
 			streaming bool
 			kind      extension.MarkdownMessageType
-		}{{"off", false, extension.MarkdownMessageAssistant}, {"final", true, extension.MarkdownMessageAssistant}, {"streaming", false, extension.MarkdownMessageAssistantThinking}} {
+		}{
+			{"off", false, extension.MarkdownMessageAssistant},
+			{"final", true, extension.MarkdownMessageAssistant},
+			{"streaming", false, extension.MarkdownMessageAssistantThinking},
+			{"final", false, extension.MarkdownMessageType("custom")},
+			{"final", false, extension.MarkdownMessageType("changelog")},
+		} {
 			if out := transform(md, tc.mode, tc.streaming, 100, tc.kind, nil); out != md {
 				t.Fatalf("%+v changed source: %q", tc, out)
 			}
 		}
 		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageAssistant, nil), "```mermaid")
+		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageUser, nil), "```mermaid")
+		lacks(t, transform(md, "final", false, 100, extension.MarkdownMessageType("summary"), nil), "```mermaid")
 	})
 }
