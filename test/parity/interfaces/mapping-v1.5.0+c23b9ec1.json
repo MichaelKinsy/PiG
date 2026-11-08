@@ -264063,7 +264063,7 @@
       "id": "pkg:mcp/.#McpTransportSendOptions",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c1e4349c41f3a04a36de85a82829b7dcc8dd355f581b09da90c4fc956aac3263",
-      "rationale": "Pi mcp/src/transports/transport.ts:9-16 McpTransportSendOptions is the options bag of McpTransport.send whose only member is the AbortSignal `signal`. By rule S1 an options bag whose only member is a signal is the Go call's leading context.Context, so Go has no type for it: Transport.Send(ctx, message) and OrderedSender.SendOrdered(ctx, message, placed) (mcp/transport.go) take the signal as ctx, and StreamableHTTPTransport.Send hands it to authorizedFetch, which does not dispatch once it has ended (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds, TestStreamableHTTPTransportDoesNotRetryRequestsThatWereCancelledWhileAuthorizationWasRecovering). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim).",
+      "rationale": "Pi mcp/src/transports/transport.ts:9-16 McpTransportSendOptions is the options bag of McpTransport.send whose only member is the AbortSignal `signal`. By rule S1 an options bag whose only member is a signal is the Go call's leading context.Context, so Go has no type for it: Transport.Send(ctx, message) and OrderedSender.SendOrdered(ctx, message, placed) (mcp/transport.go) take the signal as ctx, and StreamableHTTPTransport.Send hands it to authorizedFetch, which does not dispatch once it has ended (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds, TestStreamableHTTPTransportDoesNotRetryRequestsThatWereCancelledWhileAuthorizationWasRecovering). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim). Intention check (probe: read Pi transports/transport.ts:9-24, where the options bag has the single member `signal` that stops dispatch after the sender stops waiting; Transport.Send's context is that signal, pinned by the transport tests).",
       "pigTargets": [
         "mcp/transport.go#Transport.Send"
       ]
@@ -264072,7 +264072,7 @@
       "id": "pkg:mcp/.#McpTransportSendOptions::property:signal",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "McpTransportSendOptions.signal is the ctx argument of Transport.Send and OrderedSender.SendOrdered (rule S1; see pkg:mcp/.#McpTransportSendOptions): it ends once the sender no longer waits for a reply, and the HTTP transport does not dispatch after that (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim).",
+      "rationale": "McpTransportSendOptions.signal is the ctx argument of Transport.Send and OrderedSender.SendOrdered (rule S1; see pkg:mcp/.#McpTransportSendOptions): it ends once the sender no longer waits for a reply, and the HTTP transport does not dispatch after that (TestStreamableHTTPTransportSendDoesNotDispatchOnceItsContextEnds). Designed out by the tern lead's directive (chord-strict-120 Round 3: Send takes context.Context, no shim). Intention check (probe: read Pi transports/transport.ts:9-24, where the options bag has the single member `signal` that stops dispatch after the sender stops waiting; Transport.Send's context is that signal, pinned by the transport tests).",
       "pigTargets": [
         "mcp/transport.go#Transport.Send"
       ]
@@ -270158,9 +270158,9 @@
         "call:mcp/oauth/errors.go#NewMcpRefreshLockBusyError"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong",
-        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName"
       ]
     },
     {
@@ -270180,6 +270180,7 @@
         "call:mcp/oauth/errors.go#NewMcpRefreshLockBusyError"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/sign_in_pi_test.go#TestSignInGoesToTheBrowserStepWhenAnotherProcessHoldsTheRefreshLockForTooLong"
       ]
     },
@@ -270209,6 +270210,7 @@
         "call:mcp/oauth/errors.go#McpRefreshLockBusyError.Error"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -270230,6 +270232,7 @@
         "call:mcp/oauth/errors.go#McpRefreshLockBusyError.Name"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -270260,16 +270263,16 @@
         "call:mcp/oauth/loopback.go#WaitForLoopbackSignIn"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName",
         "test:mcp/oauth/loopback_trim_test.go#TestWaitForLoopbackSignInCancelsOnAJavaScriptBlankAnswer",
-        "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
-        "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpRefreshLockBusyErrorIsTheBusyLockErrorWithPisMessageAndName"
       ]
     },
     {
       "id": "pkg:mcp/oauth#McpSignInCancelledError::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:338952f312c7f037dace82ce8ec5b7861fdf29eaffcb7bd720dd15135a96c58a",
-      "rationale": "Derived by the interface gap detector: McpSignInCancelledError::construct:0 is Go mcp/oauth/sign_in.go#NewMcpSignInCancelledError (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: McpSignInCancelledError::construct:0 is Go mcp/oauth/sign_in.go#NewMcpSignInCancelledError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "mcp/oauth/sign_in.go#NewMcpSignInCancelledError"
       ],
@@ -270282,7 +270285,7 @@
         "call:mcp/oauth/sign_in.go#NewMcpSignInCancelledError"
       ],
       "evidence": [
-        "reach:mcp/oauth/sign_in.go#NewMcpSignInCancelledError"
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName"
       ]
     },
     {
@@ -270311,6 +270314,7 @@
         "call:mcp/oauth/sign_in.go#McpSignInCancelledError.Error"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -270332,6 +270336,7 @@
         "call:mcp/oauth/sign_in.go#McpSignInCancelledError.Name"
       ],
       "evidence": [
+        "test:mcp/oauth/proof_core_test.go#TestNewMcpSignInCancelledErrorIsTheCancelledErrorWithPisMessageAndName",
         "test:mcp/oauth/error_constructors_upstream_test.go#TestOAuthErrorConstructorsMatchErrorsTs",
         "test:mcp/oauth/errors_class_test.go#TestOAuthErrorClassesCarryTheirNameAndMessage"
       ]
@@ -274854,7 +274859,7 @@
       "id": "pkg:schema/.#CoercingValidator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:f88eacd057705de17759d989769b674dd0cf9a1c37bba88fe22c07fcf5bc7e77",
-      "rationale": "Pi packages/schema/src/validator.ts:58 CoercingValidator::construct:0 (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:58 CoercingValidator::construct:0 (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): CoercingValidator is a class that inherits Validator's constructor `new CoercingValidator(schema, options, check)`, which compile() alone calls when `options.coerce === true` (validator.ts:24-26); Go has no constructor on a struct type with unexported fields: CompileCoercing(schema, options) (*CoercingValidator, error) builds it (schema/validator.go:86-92) and returns the compile throw as the error, so there is no NewCoercingValidator and no second way to make one. Designed out as a Go language mechanic. Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). Intention check (probe: grepped Pi for `new CoercingValidator(` and found only validator.ts:25-26 inside compile(); Go's schema/validator.go.CompileCoercing is that one call site, pinned by TestCoerceUpstream).",
       "pigTargets": [
         "schema/validator.go#CompileCoercing"
       ]
@@ -275154,7 +275159,7 @@
       "id": "pkg:schema/.#CompileOptions::property:coerce",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:3af09d79b0c8ee00ffdb590b413c2e47c852f10b7e5f0d294c2c496f12e5d120",
-      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go).",
+      "rationale": "Pi packages/schema/src/types.ts:24 CompileOptions::property:coerce (Pi 1.5.0, unchanged from 1.4.0+b556cfe5): `coerce?: boolean` is a run-time flag that adds `coerce()` and `parse()` to the validator compile() returns; its static effect, the CoercingValidator return type of the overload (validator.ts:14-17), cannot follow a field's value in Go, and an option that changed what Compile returns at run time would make Coerce and Parse methods that can be missing. The Go form is the distinct type: CompileCoercing(schema, options) returns *CoercingValidator (schema/validator.go:86), CompileOptions has no Coerce field (schema/types.go:29-38), and Compile never coerces. Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go). Owner approved 2026-11-02 (Pi 1.5.0 packages/schema/src/validator.ts:14-26, unchanged from 1.4.0+b556cfe5; CompileCoercing is a separate type, CoercingValidator, where Pi overloads compile by the coerce option). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go) and TestCoerceMatchesPi (schema/coerce_oracle_test.go). Intention check (probe: read Pi validator.ts:14-26 and types.ts:23-24, where options.coerce === true only selects the class; CompileCoercing is that selection, pinned by TestCoerceUpstream).",
       "pigTargets": [
         "schema/validator.go#CompileCoercing",
         "schema/types.go#CompileOptions"
@@ -275754,7 +275759,7 @@
       "id": "pkg:schema/.#ParseResult",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:bba05fa9efb31f2588fa52fb40297b1946ab4ef3613864f27fa35617df4aa8e9",
-      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.0): ParseResult\u003cT\u003e = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\").",
+      "rationale": "Pi packages/schema/src/types.ts:34 ParseResult (Pi 1.5.0): ParseResult\u003cT\u003e = { ok: true; value: T } | { ok: false; errors: ValidationError[] } is a discriminated union whose members differ by the literal type of `ok` and the generic T; Go has neither, so ParseResult is one struct { OK bool; Value any; Errors []ValidationError } (schema/types.go:61-65), as Value is the coerced value when OK and Errors the errors of the coerced value otherwise (the other member is zero). Designed out as a Go language mechanic (discriminated union as a struct; T is the JSON value, any). Exercised by TestCoerceUpstream (schema/coerce_upstream_test.go: \"parse\"). Intention check (probe: read Pi types.ts:34-36 and validator.ts:64-66,84-; Go's struct carries the same two outcomes, pinned by TestCoerceUpstream and TestPiMainValidateChecksWithoutCoercing).",
       "pigTargets": [
         "schema/types.go#ParseResult"
       ]
@@ -275763,7 +275768,7 @@
       "id": "pkg:schema/.#Properties",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
-      "rationale": "Pi packages/schema/src/builders.ts:162 Properties (Pi 1.5.0): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/builders.ts:162 Properties (Pi 1.5.0): Properties = { readonly [name: string]: Schema | Optional } is an object whose own-key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:273-288) that Obj orders as JavaScript's own keys are ordered (array-index names ascending first, then declaration order). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestObjUsesOwnKeyOrder and TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go). Intention check (probe: read Pi builders.ts:202-243, where Object.entries gives the own-key order obj() keeps; Go's ordered slice follows the same rule, pinned by TestObjUsesOwnKeyOrder).",
       "pigTargets": [
         "schema/builders.go#Properties"
       ]
@@ -276112,7 +276117,7 @@
       "id": "pkg:schema/.#Validator::construct:0",
       "disposition": "designed-out",
       "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
-      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.0): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "rationale": "Pi packages/schema/src/validator.ts:39 Validator::construct:0 (Pi 1.5.0): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-24) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go). Intention check (probe: grepped Pi for `new Validator(` and found only validator.ts:25-26 inside compile(); Go's schema/validator.go.Compile is that one call site, pinned by TestErrors).",
       "pigTargets": [
         "schema/validator.go#Compile"
       ]
