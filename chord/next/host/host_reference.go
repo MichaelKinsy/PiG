@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next/host/reference.ts
@@ -145,7 +146,7 @@ type target interface {
 	unhold(holder holder)
 	// call calls a method of the live object for from, bound at version (an older one is mapped, Q10): the admission is
 	// the synchronous part of Pi's async call (in a section), the result settles later, in one.
-	call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult
+	call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult
 	// followed is what a reference of version follows for state member now (decision "References are the only
 	// indirection"): the live instance's member (a replica over a link), or nothing (`loading`, or `failed` with the
 	// cause's error), with the member a reference takes its last value from.
@@ -1053,7 +1054,7 @@ func (b *binding) send(method string, args any, ctx context.Context) *parkedCall
 	}
 	linked := withLinkedAbortSignal(b.calls, ctx)
 	out := newParkedCallResult()
-	goal.call(method, args, linked.context, b.from, b.consumer.Version).then(b.loop, func(value any, err error) {
+	goal.call(method, args, linked.context, chordctx.Telemetry(ctx), b.from, b.consumer.Version).then(b.loop, func(value any, err error) {
 		linked.release()
 		out.settle(value, err)
 	})

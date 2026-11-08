@@ -1015,6 +1015,8 @@ type rawLinkedOptions struct {
 	// Trusted is `trusted: true` on the link: its calls' old-work mark is honoured.
 	Trusted bool
 	Loop    sectionLoop
+	// Telemetry is the server's adapter (Pi's `{ telemetry }`); nil has none.
+	Telemetry telemetry.TelemetryContext
 }
 
 // rawLinkedHost is what `rawLinked` returns: Pi's `{ server, peer, errors }`.
@@ -1034,6 +1036,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 		ReadyTimeout: options.ReadyTimeout,
 		Compression:  options.Compression,
 		OnError:      errs.push,
+		Telemetry:    options.Telemetry,
 		loop:         options.Loop,
 	})
 	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
@@ -1304,7 +1307,7 @@ type rawProviderHost struct {
 func rawProvider(t testing.TB, options rawLinkedOptions) *rawProviderHost {
 	t.Helper()
 	errs := &hostErrors{}
-	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, loop: options.Loop})
+	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, Telemetry: options.Telemetry, loop: options.Loop})
 	mustLoad(t)(client.Load(nil, background))
 	return &rawProviderHost{Client: client, Peer: rawParent(t, client, options.Limits), Errors: errs}
 }
@@ -1502,6 +1505,8 @@ type relayedOptions struct {
 	Limits link.PartLimits
 	// Loop drives all three kinds of host (Pi's fake timers); nil is the real loop.
 	Loop sectionLoop
+	// Telemetry is the telemetry adapter of each host: tab, server, workers.
+	Telemetry struct{ Tab, Server, Worker telemetry.TelemetryContext }
 }
 
 // relay builds Pi's `relayed(options)`: three hosts, a tab connected to a server, and a server routing `Session` to an
@@ -1524,6 +1529,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		RevokedBy:   serverRevoked,
 		Compression: options.ServerCompression,
 		OnError:     result.Errors.Server.push,
+		Telemetry:   options.Telemetry.Server,
 		loop:        options.Loop,
 	})
 	result.Server = server
@@ -1548,6 +1554,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			RevokedBy:   options.RevokedBy,
 			Compression: options.WorkerCompression,
 			OnError:     result.Errors.Worker.push,
+			Telemetry:   options.Telemetry.Worker,
 			loop:        options.Loop,
 		})
 		must(t, host.Connect(b, LinkOptions{Principal: serverPrincipal(), Trusted: options.Trusted, Codec: codec}, ctx))
@@ -1610,7 +1617,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 		}
 		return nil
 	})}}, ctx))
-	tab := newHost(t, HostOptions{Compression: options.TabCompression, OnError: result.Errors.Tab.push, loop: options.Loop})
+	tab := newHost(t, HostOptions{Compression: options.TabCompression, Telemetry: options.Telemetry.Tab, OnError: result.Errors.Tab.push, loop: options.Loop})
 	mustLoad(t)(tab.Load(nil, ctx))
 	a, b := link.MemoryLinkPair()
 	// A worker may be resolving already (a host object of the server started it during its load): its resolve appends to

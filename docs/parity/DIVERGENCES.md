@@ -4089,3 +4089,23 @@ Call-site markers: `chord/nextnode/app/app_bases.go` (`linksAfterTheBases`).
 Evidence: `TestAPagesPluginStylesheetsTryAFailedPluginsScriptAgainAtAReconnectWithItsStylesheetNeverOneWithoutTheOther` (red without the wait: the page reloaded), `TestAppHoldsALinkUntilTheBasesAreBuilt`.
 
 Parity allowance: none needed.
+
+## D605 The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other
+
+What: Pi's server runs its plugins in its own host (`createHost({ address: Server() })` loads them), so the server serves the union of the kit's types and the plugins' from one place. The Go kit's plugins run in a Node subprocess behind the Go server host, which is also addressed `server` (it serves the kit's own remote types: the locale and theme choices, telemetry ingest, the app's Go facets). Both directions are kept so a hold binds on whichever of the two serves the type. Go to Node: `Host.Delegate(kind, RouteOptions, ctx)` is the route of the host's own address kind, consulted only for remote types placed on the host that its published table does not serve: those holds and references go over the delegate (a relayed hold, a remote object, parked while `Resolve` runs, resolved again once after a drop), everything the host serves stays here whatever the state of its object. A hold arriving on the delegate's own link for a type nobody serves is answered `unavailable` (not sent back). The app kit gives the NodeHost the address `server` and delegates to its link instead of accepting it. Node to Go: Pi's `Destination` places every remote type of the NodeHost's own address here, served or not, so a plugin's `self.get(LocaleChoice, {})` would wait `<type> is not served here` for ever. The Node host runs Pi's `Destination` through `node/destination.mjs` (host.ts's import of `./destination.ts` is answered by `resolve.mjs`; Pi's file is vendored as it is): for a remote type placed here that the Go host serves (`Host.Serves`, asked over a synchronous callback, `RuntimeLoad.ParentServes`, kept until the next load or reload) the reference goes over the parent link, where the Go host's own object, whatever its variants and members, binds. Residual difference: a hold over that link acts as the link's principal, the server's (a child cannot claim to be someone else, link §4: `callerOf`), where Pi's one host acts as the plugin object's own principal. So a plugin object's LocaleChoice or ThemeChoice is the server principal's, not the page owner's. Making it the object's principal needs the child's link to name whom a hold acts for, which Pi's protocol allows only from a parent to its child; it is not done here and the test pins today's behaviour.
+
+Why: process boundary (a Node subprocess for the plugins) and the Go server's two hosts (D462). Without the first direction a TypeScript server plugin cannot serve a remote type (`a host without an address serves only local types`, or, with the address, `unavailable`), which every reload row on the server needs; without the second a server plugin cannot hold any type the Go server serves.
+
+Pi bug: none.
+
+Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`.
+
+Owner decision: owner sign-off pending (draft).
+
+Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
+
+Call-site markers: `chord/next/host/host_host.go` (`Delegate`, `Serves`), `chord/nextnode/app/app.go` (`start`), `chord/nextnode/plugins/node/destination.mjs`, `chord/next/host/host_delegate_test.go`.
+
+Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack`, `TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestart...`, `TestDelegateIsRefusedFor...`, `TestDelegateTheClosureRuleReadsTheStagedTable...`, `TestHostServesTheTypesOfItsPublishedTableAndNoOtherName` (`chord/next/host/host_delegate_test.go`), `TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer` (`chord/nextnode/app/app_delegate_test.go`: binds, calls, the principal difference), and the server rows of the reload suite (`chord/nextnode/app/reload_*_test.go`).
+
+Parity allowance: none.

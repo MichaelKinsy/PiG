@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"os"
 	"path/filepath"
@@ -124,9 +125,13 @@ func browserNumber(t testing.TB, b *browsertest.Browser, expression string) floa
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	var value float64
-	if err := b.Evaluate(ctx, expression, &value); err != nil {
+	raw, err := b.Evaluate(ctx, expression)
+	if err != nil {
 		t.Fatal(err)
+	}
+	var value float64
+	if err := json.Unmarshal(raw, &value); err != nil {
+		t.Fatalf("%s: %s (%v)", expression, raw, err)
 	}
 	return value
 }
@@ -136,9 +141,13 @@ func browserStrings(t testing.TB, b *browsertest.Browser, expression string) []s
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	var value []string
-	if err := b.Evaluate(ctx, expression, &value); err != nil {
+	raw, err := b.Evaluate(ctx, expression)
+	if err != nil {
 		t.Fatal(err)
+	}
+	var value []string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		t.Fatalf("%s: %s (%v)", expression, raw, err)
 	}
 	return value
 }
@@ -148,9 +157,29 @@ func browserBool(t testing.TB, b *browsertest.Browser, expression string) bool {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	var value bool
-	if err := b.Evaluate(ctx, expression, &value); err != nil {
+	raw, err := b.Evaluate(ctx, expression)
+	if err != nil {
 		t.Fatal(err)
+	}
+	var value bool
+	if err := json.Unmarshal(raw, &value); err != nil {
+		t.Fatalf("%s: %s (%v)", expression, raw, err)
+	}
+	return value
+}
+
+// browserStringTable is expression's value (an array of arrays of strings) in the page.
+func browserStringTable(t testing.TB, b *browsertest.Browser, expression string) [][]string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	raw, err := b.Evaluate(ctx, expression)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var value [][]string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		t.Fatalf("%s: %s (%v)", expression, raw, err)
 	}
 	return value
 }

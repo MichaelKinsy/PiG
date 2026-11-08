@@ -33,6 +33,9 @@ const ENTRIES = [
 ];
 /** Pi's test fixtures the Go tests build base bundles from (paths under packages/chord/test), copied beside the sources. */
 const FIXTURES = [
+	"node/fixtures/reload/entry.ts",
+	"node/fixtures/reload/main.ts",
+	"node/fixtures/reload/web-api.ts",
 	"node/fixtures/tui/api.ts",
 	"node/fixtures/tui/escapes.ts",
 	"node/fixtures/tui/main.ts",

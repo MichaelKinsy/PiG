@@ -1523,6 +1523,45 @@
       ]
     },
     {
+      "id": "BF-0a8ecd3",
+      "title": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller…",
+      "symptom": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering.",
+      "rootCause": "Go code that reads a singleton's value from a job's goroutine (p2's environment-restart and sharing-archive jobs) raced the object's own commits and its seal on close; the red test fails under -race without the change. The benchmarks measure a read from a goroutine and from inside a section.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering. \u003c!-- fix: chord-registry-value-section --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "714e251284",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "a79074ec58",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "0a8ecd3702",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "d80cb241f7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_registry_value_test.go::TestRegistryValueReadsRaceFreeWhileAContributionChanges",
+        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges",
+        "chord/next/host/remote_hold_gate_test.go::TestReloadARecordedFactoryMayPinAKeyOnItsInertReference",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay",
+        "chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop"
+      ]
+    },
+    {
       "id": "BF-0aa31c4",
       "title": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node…",
       "symptom": "Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node extension runtime, under both the `@earendil-works` and the legacy `@mariozechner` scope (Pi 22dc6c26, #11156).",
@@ -21135,27 +21174,6 @@
       ]
     },
     {
-      "id": "BF-6c74cb8",
-      "title": "fix(chord): a late kill of a finished evaluation never lands on the next one",
-      "symptom": "fix(chord): a late kill of a finished evaluation never lands on the next one",
-      "rootCause": "A kill now counts only while its ask is live (a guard taken by the kill and by the end of the ask); a process killed during the ask is ended before ask returns, so the next evaluation starts another.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "6c74cb8a4c",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne"
-      ]
-    },
-    {
       "id": "BF-6c7b377",
       "title": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…",
       "symptom": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the PiG-only selectors",
@@ -24623,6 +24641,27 @@
       ],
       "tests": [
         "internal/codingagent/session_load_oracle_test.go::TestLoadEntriesFromFileMatchesPiOnCorruptedFiles"
+      ]
+    },
+    {
+      "id": "BF-8022d7a",
+      "title": "fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver…",
+      "symptom": "fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver (any-trap)",
+      "rootCause": "The sandbox's header is decoded into raw fields, each read as the type its message kind needs (safeInteger, stringField, bridgeRequest, jsString); Browser.Evaluate returns the page value's JSON and the tests decode it into their own types. A header field beyond a float64 in an unrelated field no longer fails the whole header, as Pi's JSON.parse does not.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8022d7a16d",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/tui/tui_pipe_test.go::TestReadingTheSandboxsHeaderChecksEachFieldAsPiDoes"
       ]
     },
     {
@@ -32444,6 +32483,86 @@
       ]
     },
     {
+      "id": "BF-D600",
+      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "a program cannot be held in memory as Pi's bundle is, so the snapshot is a file made at the build, not at the first fork: it keeps what Pi's test pins (\"a worker started after an edit of the entry's imported source runs the code the base was built with\"). There is no module graph to bundle, no Node compile cache for a compiled executable, and no esbuild error to report: the Go build error is an entry that cannot be started or copied.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D600",
+      "removeWhen": "PiG's worker is a Node entry again.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "70b2b7bf42",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "23978e4efb",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "981a62878f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "d6646c05d7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D605",
+      "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
+      "symptom": "none.",
+      "rootCause": "process boundary (a Node subprocess for the plugins) and the Go server's two hosts (D462). Without the first direction a TypeScript server plugin cannot serve a remote type (`a host without an address serves only local types`, or, with the address, `unavailable`), which every reload row on the server needs; without the second a server plugin cannot hold any type the Go server serves.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D605",
+      "removeWhen": "never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "612e5b6ab7",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "6871fcf20e",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "70b2b7bf42",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "23978e4efb",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "595c3b4930",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "981a62878f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_delegate_test.go::TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack",
+        "chord/next/host/host_delegate_test.go::TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt",
+        "chord/next/host/host_delegate_test.go::TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched",
+        "chord/next/host/host_delegate_test.go::TestHostServesTheTypesOfItsPublishedTableAndNoOtherName",
+        "chord/nextnode/app/app_delegate_test.go::TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -34836,25 +34955,6 @@
         "env/daemon_wire_exec_oracle_test.go::TestDaemonExecMatchesPisDaemon",
         "env/daemon_wire_exec_oracle_test.go::TestDaemonWatchMatchesPisDaemon"
       ]
-    },
-    {
-      "id": "BF-aec5a31",
-      "title": "fix(chord): a chmod of a recorded base file is compared like a write",
-      "symptom": "fix(chord): a chmod of a recorded base file is compared like a write",
-      "rootCause": "Pi passes every event of a recorded file to mark, so a file made unreadable differs and one readable again with its bytes clears. baseEvent returned on a Chmod before it looked at the file. A Chmod still renews nothing on the way to base code (the Create, Remove and Rename mask).",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "aec5a318db",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
     },
     {
       "id": "BF-af1fe1a",
@@ -41728,6 +41828,106 @@
       ]
     },
     {
+      "id": "BF-d80cb24",
+      "title": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does…",
+      "symptom": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes.",
+      "rootCause": "Go code that reads a singleton's value from a job's goroutine (p2's environment-restart and sharing-archive jobs) raced the object's own commits and its seal on close; the red test fails under -race without the change. The benchmarks measure a read from a goroutine and from inside a section.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes. \u003c!-- fix: chord-singleton-value --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "714e251284",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "9ea6021b5f",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d892104fad",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d80cb241f7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/data/failure_test.go::TestWaitingCauseKeepsAVersionRefusal",
+        "chord/next/host/host_adapted_test.go::TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues",
+        "chord/next/host/host_adapted_test.go::TestReloadAnOlderConsumersFirstReadDuringAParkedRestartMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive",
+        "chord/next/host/host_ctx_test.go::TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
+        "chord/next/host/host_example_63_test.go::TestExample63OptimisticAnswers",
+        "chord/next/host/host_example_64_test.go::TestExample64OldWork",
+        "chord/next/host/host_object_reload_test.go::TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCodeMigratesWhatItWrote",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
+        "chord/next/host/host_object_reload_test.go::TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart",
+        "chord/next/host/host_object_reload_test.go::TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDrainBoundDrainTimeoutTheOldAttemptSealedItsCommitRefused",
+        "chord/next/host/host_object_reload_test.go::TestReloadDrainBoundCutsACallStillRunningAtReloadDrainTimeoutReleasedReportsDrainTimeoutThenTheNewCodeServes",
+        "chord/next/host/host_object_reload_test.go::TestReloadDrainBoundIsAtMostCloseTimeout",
+        "chord/next/host/host_object_reload_test.go::TestReloadFatesRestartsALiveObjectItsDocumentsKeptNewCodeForNewCalls",
+        "chord/next/host/host_object_reload_test.go::TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReasonReloadThenOpensTheNewOnes",
+        "chord/next/host/host_object_reload_test.go::TestReloadGCCollectsARestartsOldAttemptAndItsClosuresOnceItEnded",
+        "chord/next/host/host_object_reload_test.go::TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheNewFactoryRunsAfter",
+        "chord/next/host/host_object_reload_test.go::TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShowsTheObjectLiveAgainNewCallsWait",
+        "chord/next/host/host_object_reload_test.go::TestReloadTwoReloadsInARowTheSecondDoesNotWaitForTheFirstsOldCallWhichFinishesOnItsOldCodeTheLastCodeServes",
+        "chord/next/host/host_old_work_test.go::TestAsRemoteOldWorkHasNoAttemptOfThisHostInItsChainAReloadCycleCannotPassThroughAnotherHostsDrain",
+        "chord/next/host/host_old_work_test.go::TestAsRemoteOldWorkIsOldWorkWhileCountedWhateverChainItHad",
+        "chord/next/host/host_old_work_test.go::TestChainAttemptsCollectsEachAttemptOnceDrainingOrNot",
+        "chord/next/host/host_old_work_test.go::TestOldWorkACallRoutedToAnOldAttemptAfterItsDrainBeganJoinsTheDrainItIsNotCutAtTheSeal",
+        "chord/next/host/host_old_work_test.go::TestOldWorkAChainOfThreeTheWorkReachesAnObjectWhoseNewAttemptNeedsTheDependentWhichNeedsTheProvider",
+        "chord/next/host/host_old_work_test.go::TestOldWorkAProvidersRunningCallReachesItsDependentThroughCtxGetWhileBothRestartNoStall",
+        "chord/next/host/host_old_work_test.go::TestOldWorkARootGivenTheMethodsCtxWithoutItsSignalIsOldWorkOneWithoutItIsNewWork",
+        "chord/next/host/host_old_work_test.go::TestOldWorkAskingForAVersionTheNewCodeDroppedWithNoOldAttemptServingItFailsAtOnce",
+        "chord/next/host/host_old_work_test.go::TestOldWorkBothVersionsRaisedWithAcceptsOldWorksGetterAtTheOldVersionBindsTheDependentsOpenOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkCreatingAnObjectThatDidNotExistItStartsOnTheNewCodeAndBindsTheProvidersOpenOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkMutualDrainsTheProvidersCallReachesTheDependentWhileTheDependentsCallReachesTheProvider",
+        "chord/next/host/host_old_work_test.go::TestOldWorkOfFindsADrainingAttemptAnywhereUpTheCallChain",
+        "chord/next/host/host_old_work_test.go::TestOldWorkOfWalksNoChainWhileTheHostHasNoOldWorkOpenNoCostOutsideReloads",
+        "chord/next/host/host_old_work_test.go::TestOldWorkReEntryWorkDependentTheProviderAgainRunsOnTheProvidersOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkSelfReEntryWorkCtxGetOfItsOwnObjectRunsOnItsOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestOldWorkTheReloadRaisesTheProvidersVersionAndTheDependentsNewCodeNeedsItTheWorkRunsOnTheDependentsOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleACutWaitKeepsNeitherItsTargetNorTheOldAttemptItRanOn",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleAWaitOfOldWorkFailsAtOnceWhenOldWorkCreatesAnObjectWhoseNewCodeNeedsTheProvidersRaisedContract",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleAnOpenersGateWaitLeavesNoWaitEdgeOnceItEndedNorKeepsTheOldAttempt",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleDoesNotFailAWaitWhoseTargetWaitsOnAnotherObjectsDrainOnlyNoCycleThroughThisWork",
+        "chord/next/host/host_old_work_test.go::TestReloadCycleFailsOnceALaterWaitClosesTheCycleTheNewAttemptsOpenerCallsTheProviderOldWorkWaitsOn",
+        "chord/next/host/host_readiness_test.go::TestReadinessCountsARequestFailedOnThisHostAsReadyTheReloadReportsItAsWhatTheSuccessorWaitsFor",
+        "chord/next/host/host_readiness_test.go::TestReadinessDoesNotWaitForRegistryRequestsTheOldAttemptsContributionsKeepThemUntilItsSeal",
+        "chord/next/host/host_readiness_test.go::TestReadinessKeepsItsBindingsOutOfPresenceListsTheyAreNoConsumersOfTheirOwn",
+        "chord/next/host/host_readiness_test.go::TestReadinessMemoryIsCollectedWithItsBindingsOnceTheRestartsSuccessorIsLive",
+        "chord/next/host/host_readiness_test.go::TestReadinessReleaseEndsAWaitStillRunningReadyResolvesAtOnce",
+        "chord/next/host/host_readiness_test.go::TestReadinessReleaseLetsGoOfItsBindingsAnObjectHeldOnlyByThemEnds",
+        "chord/next/host/host_readiness_test.go::TestReadinessResolvesAtItsBoundWhenARequestNeverGetsReady",
+        "chord/next/host/host_readiness_test.go::TestReadinessShowsARequestsFailureAndNoneOnceTheRequestRecovered",
+        "chord/next/host/host_readiness_test.go::TestReadinessWaitsForARequestStillLoadingAndResolvesOnceItIsLive",
+        "chord/next/host/host_readiness_test.go::TestReadinessWaitsForNothingBeforeItStartedTheRequestsBindOnlyOnceEveryFateStarted",
+        "chord/next/host/host_readiness_test.go::TestReadinessWaitsUpToItsBoundForARequestAnotherHostRefusesForItsVersionThatHostsReloadHealsIt",
+        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges",
+        "chord/next/host/jobs_records_test.go::TestRecordsJobsAcrossAReloadAnOlderInMemoryRunIsCutAtTheRestartsSealItsFinishRunsOnTheNewCodeMappedForwardsOnce",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsABackCallFromTheDependentOnTheServerRunsOnTheWorkerProvidersOpenOldAttempt",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsABackCallFromTheDependentOnTheWorkerRunsOnTheServerProvidersOpenOldAttempt",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsTheProvidersVersionRaisedWhichTheDependentsNewCodeNeedsTheWorkRunsOnTheDependentsOldAttempt",
+        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsTheSameWithTheDependentsHostReloadedFirstItsReadinessWaitsOutTheOtherHostsVersionRefusal",
+        "chord/next/host/remote_hold_gate_test.go::TestCallsOverALinkWhileARestartWaitsACallArrivingWhileTheOldAttemptDrainsAndTheSuccessorsRequestOpensWaitsForTheNewCodeNeverNotReady",
+        "chord/next/host/remote_hold_reload_test.go::TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsEndBindsSafely",
+        "chord/next/host/remote_provider_test.go::TestProviderAnswerAfterItsState",
+        "chord/next/host/remote_provider_test.go::TestProviderOldWorkFromAnotherHost",
+        "chord/next/host/remote_relay_test.go::TestRelayForwardACallsOldWorkFlagFromATrustedDownstreamLinkOnlyAPageCannotClaimOldWork",
+        "chord/next/host/remote_relay_test.go::TestRelayForwardsAWorkersResultAfterTheStateTheRelaysOwnObjectsKeepWaitingForTheTabEveryAckReachesItsSender",
+        "chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop"
+      ]
+    },
+    {
       "id": "BF-d8357e2",
       "title": "Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi`…",
       "symptom": "Cache warmer pure functions against live Pi: new `TestCacheWarmerPureFunctionsMatchPi` (`internal/codingagent/cache_warmer_format_oracle_test.go`; `getCacheWarmingDelayMs`, `getPromptCacheTtlMs`, `isReplayable`, `formatCacheWarmingStatus`, `formatCacheWarmingUsage`; 6,000 inputs under three process `PI_CACHE_RETENTION` values; TTLs around the 10 s margin, tier values 0/fractional, empty request env falling through to the process one, adaptive vs budget thinking, every status state with rounding-boundary probabilities and dollars).",
@@ -45653,6 +45853,27 @@
       ]
     },
     {
+      "id": "BF-e3b5d44",
+      "title": "fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close",
+      "symptom": "fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close",
+      "rootCause": "Ports Pi's 'a worker started after an edit of the entry's imported source runs the code the component was created with'.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e3b5d44443",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheComponentWasCreatedWith"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
@@ -46066,6 +46287,25 @@
       "tests": [
         "chord/next/data/validator_test.go::TestFailedChecks"
       ]
+    },
+    {
+      "id": "BF-e5d242d",
+      "title": "fix(chord/nextnode/workers): check the base copy's source close",
+      "symptom": "fix(chord/nextnode/workers): check the base copy's source close",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e5d242d8a4",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e5f9fdd",
@@ -52850,6 +53090,16 @@
       "id": "D540",
       "title": "The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for",
       "entry": "BF-D540"
+    },
+    {
+      "id": "D600",
+      "title": "A Go worker's base is a private copy of its own executable, not an esbuild bundle: no bundle, no…",
+      "entry": "BF-D600"
+    },
+    {
+      "id": "D605",
+      "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
+      "entry": "BF-D605"
     }
   ],
   "exemptCommits": {
