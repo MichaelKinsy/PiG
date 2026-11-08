@@ -230,7 +230,7 @@ func (r *remoteObject) dropped(*data.ChordError) {
 
 // call calls a method of the bound variant over the link; one outside it fails `invalid/member`. Only a live object is
 // called: bound on an open link. The result settles as the call over the link does.
-func (r *remoteObject) call(method string, args any, ctx context.Context, _ caller, _ int) *parkedCallResult {
+func (r *remoteObject) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, _ caller, _ int) *parkedCallResult {
 	result := newParkedCallResult()
 	bound, held := r.bound, r.held
 	methodData, ok := bound.methods.Get(method)
@@ -240,7 +240,6 @@ func (r *remoteObject) call(method string, args any, ctx context.Context, _ call
 	}
 	// Arguments are checked by the provider.
 	index := slices.Index(bound.names.Methods, method)
-	parent := chordctx.Telemetry(ctx)
 	if chordtelemetry.Untraced(parent) {
 		held.side.call(held.id, index, methodData, args, ctx).then(r.host.loop(), result.settle)
 		return result

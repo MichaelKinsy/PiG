@@ -8,7 +8,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
@@ -632,3 +635,44 @@ func TestWhatAPeerSendsCapsAnObjectsLabelItsClientChosenParamsKeyAt256Characters
 }
 
 var _ = data.CodeAborted
+
+// Pi provider.ts #call/#run passes the carrier's parent to attempt.call separately from the link's context (attempt.ts
+// 876-884): a type served `untraced` gets no method span and its handler's ctx keeps the link's context, so nothing the
+// handler does (ctx.trace, a local call to a traced type) is recorded under the caller's carrier.
+var quietOverALink = mustContract(contracts.Remote("app.quiet", contracts.RemoteDeclaration{
+	Version:     1,
+	Params:      contracts.Params{},
+	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
+		Methods: []contracts.MethodEntry{contracts.Meth("work", contracts.NewMethod())},
+	})},
+}))
+
+func TestAnUntracedTypeOverALinkRecordsNothingUnderTheCallersCarrier(t *testing.T) {
+	recorder := telemetry.NewInMemoryTelemetryContext()
+	s := rawLinked(t, func(h FacetHost) error {
+		return h.Serve(quietOverALink, func(_ *delta.JsonObject, _ data.Principal, _ Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{},
+				Methods: map[string]contracts.MethodFunction{
+					"work": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						return ctx.(Ctx).Trace("app.inner", nil, func(Ctx) (any, error) { return nil, nil })
+					},
+				},
+			}}, nil
+		}, ServeOptions{Untraced: true})
+	}, rawLinkedOptions{Telemetry: recorder})
+	provHold(t, s.Peer, 0, specOf(quietOverALink), jsonObject())
+	s.Peer.Next("bound")
+	var carrier telemetry.TelemetryCarrier
+	must(t, recorder.StartSpan(telemetry.SpanOptions{Name: "caller"}, func(span telemetry.TelemetrySpan) error {
+		carrier = recorder.Inject(span)
+		return nil
+	}))
+	work := wireNames(t, quietOverALink, "main").Methods["work"]
+	s.Peer.Send(&link.CallMessage{Call: 0, Hold: 0, Method: work, Trace: carrier})
+	s.Peer.Next("result")
+	if names := spanNames(recorder); slices.Contains(names, "app.inner") || slices.Contains(names, "chord.method") {
+		t.Fatalf("spans = %v, want none but caller (Pi: the untraced handler's ctx is the link's, untraced)", names)
+	}
+}

@@ -151,6 +151,9 @@ func (open *OpenSpan) EndWith(err error, category string, ctx context.Context) {
 // Capped returns text as a span attribute: its first 256 characters (UTF-16 units, as upstream's slice).
 func Capped(text string) string { return truncate(text, attributeLength) }
 
+// Message returns text as a span event's message: its first MaxMessage characters (Pi's MAX_MESSAGE).
+func Message(text string) string { return truncate(text, MaxMessage) }
+
 // HostAttribute is the `chord.host` attribute of the spans of a host at address: its key, `client` without one; capped.
 func HostAttribute(address *contracts.Address) string {
 	if address == nil {

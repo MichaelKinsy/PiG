@@ -36,8 +36,10 @@ type DocumentsOwner interface {
 	// Fail fails the live object `broken` with error (a document the code cannot read, slice 6a §1.4); ignored when it
 	// is not live.
 	Fail(err *data.ChordError)
-	// Telemetry is the host's telemetry adapter: commit durations go to its metrics.
+	// Telemetry is the host's telemetry adapter: its commits are recorded when it records.
 	Telemetry() telemetry.TelemetryContext
+	// Metrics are the host's instruments (made once per adapter): commit durations go to them.
+	Metrics() *chordtelemetry.Instruments
 	// Do runs work as one section of the host's serialization: it does not block, and is inline when the caller is in
 	// a section already.
 	Do(work func())
@@ -344,7 +346,7 @@ func (d *Documents) recordCommit(tx *Transaction, duration float64, ctx context.
 			telemetry.Attr("rows", float64(rows)), telemetry.Attr("duration", duration),
 		})
 	}
-	chordtelemetry.Metrics(d.owner.Telemetry().Metrics()).Histogram("chord.commit.duration").Record(duration, nil, chordctx.Telemetry(ctx))
+	d.owner.Metrics().Histogram("chord.commit.duration").Record(duration, nil, nil)
 }
 
 // Fence seals token (the seal fence): its transactions are refused from now on, and the one holding the line is

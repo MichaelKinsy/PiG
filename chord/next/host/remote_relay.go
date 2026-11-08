@@ -40,6 +40,8 @@ type relayedHold struct {
 	// trace is the carrier of its first upstream hold: the relay span's, or the arriving one as it came when this host
 	// records nothing; a re-hold's span links to it.
 	trace map[string]string
+	// traceOrder is the order of trace's keys while it is the arriving carrier (nil: the relay span's, written sorted).
+	traceOrder []string
 	// holds is how many times it was held upstream.
 	holds int
 }
@@ -52,15 +54,15 @@ func newRelayedHold(id int, downstream *providerSide, request holdRequest, from 
 	if bytes, ok := request.Params.(link.Bytes); ok {
 		request.Params = link.Bytes(append([]byte(nil), bytes...))
 	}
-	trace := request.Trace
-	request.Trace = nil
-	h := &relayedHold{id: id, downstream: downstream, request: request, from: from, path: via, trace: trace}
+	trace, order := request.Trace, request.TraceOrder
+	request.Trace, request.TraceOrder = nil, nil
+	h := &relayedHold{id: id, downstream: downstream, request: request, from: from, path: via, trace: trace, traceOrder: order}
 	adapter := downstream.link.host.telemetry
 	if !chordtelemetry.Untraced(adapter) {
 		h.relaying = chordtelemetry.NewOpenSpan(chordtelemetry.ParentOf(trace, adapter), "chord.relay", h.attributes("hold"))
 		// Upstream the hold carries the relay's span (a relay that records nothing passes the carrier on as it came).
 		if carrier := chordtelemetry.CarrierOf(h.relaying.Span()); carrier != nil {
-			h.trace = carrier
+			h.trace, h.traceOrder = carrier, nil
 		}
 	}
 	return h
@@ -87,20 +89,20 @@ func (h *relayedHold) span() telemetry.TelemetrySpan {
 
 // holdTrace is the carrier of this upstream hold: the first one's; a re-hold after an upstream drop is a fresh
 // `chord.relay` root linked to the first (none when this host records nothing), never the first's again (review L1).
-func (h *relayedHold) holdTrace(l *hostLink) map[string]string {
+func (h *relayedHold) holdTrace(l *hostLink) (map[string]string, []string) {
 	first := h.holds == 0
 	h.holds++
 	if first {
-		return h.trace
+		return h.trace, h.traceOrder
 	}
 	adapter := l.host.telemetry
 	if h.trace == nil || chordtelemetry.Untraced(adapter) {
-		return nil
+		return nil, nil
 	}
 	again := chordtelemetry.NewOpenSpan(adapter, "chord.relay", h.attributes("hold"), telemetry.SpanLink{Context: chordtelemetry.ParentOf(h.trace, adapter)})
 	carrier := chordtelemetry.CarrierOf(again.Span())
 	again.SetOutcome("ok")
-	return carrier
+	return carrier, nil
 }
 
 // relayed: it was held upstream, failed or dropped first: its `chord.relay` span ends with outcome.
@@ -152,7 +154,7 @@ func (h *relayedHold) attach(l *hostLink) {
 	origin := h.downstream.relayTo(l)
 	h.upstream = &relayedUpstream{link: l, origin: origin}
 	principal, incarnation := actingFor(l, h.from)
-	trace := h.holdTrace(l)
+	trace, traceOrder := h.holdTrace(l)
 	l.send(&link.HoldMessage{
 		Origin:      link.Some(origin),
 		Hold:        h.id,
@@ -166,6 +168,7 @@ func (h *relayedHold) attach(l *hostLink) {
 		Principal:   principal,
 		Incarnation: incarnation,
 		Trace:       trace,
+		TraceOrder:  traceOrder,
 	})
 	h.relayed("ok", nil)
 }

@@ -919,7 +919,7 @@ func (a *attempt) stateMembers() []stateMember {
 // admitted to the drain before it runs. Either rejects the caller at once; the handler runs on, its transactions refused,
 // and the drain waits for it. Its `ctx.get` references are released when it settles. The admission is this section's; the
 // result settles later.
-func (a *attempt) call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
+func (a *attempt) call(method string, args any, ctx context.Context, parent telemetry.TelemetrySpan, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	if ctx.Err() != nil {
 		result.settle(nil, context.Cause(ctx))
@@ -959,7 +959,7 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	}
 	// Its span only when something records (§30: nothing else is made per call).
 	var span *chordtelemetry.OpenSpan
-	if parent := chordctx.Telemetry(ctx); entry.traced && !chordtelemetry.Untraced(parent) {
+	if entry.traced && !chordtelemetry.Untraced(parent) {
 		span = a.methodSpan(parent, method, acting, ctx)
 		callContext = chordctx.WithTelemetry(callContext, span.Span())
 	}
