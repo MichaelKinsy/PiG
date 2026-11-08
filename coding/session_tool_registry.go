@@ -590,7 +590,7 @@ func WithBeforeSessionStart(fn func(context.Context) error) ReloadOption {
 // and session_start with reason reload, then the resources its resources_discover handlers contribute. A failure before the new runner exists
 // leaves the old one stale, as Pi does.
 func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
-	// pig divergence (D242): Pi c3b938e3e rejects a reload while the session is running or compacting, before session_shutdown or any
+	// Pi c3b938e3e rejects a reload while the session is running or compacting, before session_shutdown or any
 	// runner invalidation, so a running extension tool keeps its context (Pi 1.5.0 reloads and the tool fails with a stale-context error).
 	if s.IsStreaming() {
 		return errors.New("Wait for the current response to finish before reloading.")

@@ -11,23 +11,23 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue", "test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream", "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicStrictToolSchemas"]
+rationale = "a758f3ae4 adds Anthropic message threads (ai/anthropic_threads.go), 4c992154d keeps the underlying cause in connection error messages (ai/errors.go WithCauseDetail), 4a6a58eb5 keeps root $defs in non-strict tool schemas; each has its upstream cases ported."
 
 [[files]]
 path = "packages/ai/src/api/azure-openai-responses.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"]
+rationale = "0f4d5e960 omits prompt_cache_key when compat.promptCacheKeyMode is \"disabled\"; Azure shares the Responses request builder (ai/openai_responses.go), which reads the mode, and the policy test covers it."
 
 [[files]]
 path = "packages/ai/src/api/bedrock-converse-stream.lazy.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "da95cd79c and 5c6ce2b32 change the lazy Bedrock loader for code-split Node bundles; Go links the Bedrock provider statically (ai/providers/bedrock), so there is no loader."
 
 [[files]]
 path = "packages/ai/src/api/lazy.ts"
@@ -39,65 +39,65 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/api/openai-codex-responses.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_codex_retry_backoff_release_test.go#TestCodexSSERetryBackoffReleasesTheCallerContext"]
+rationale = "90b42bca6 removes the abort listener after the SSE retry backoff."
 
 [[files]]
 path = "packages/ai/src/api/openai-completions.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_completions_non_null_assistant_content_upstream_test.go#TestRequiresNonNullAssistantContentSendsEmptyStringWithoutInsertingAnAssistantMessage", "test:ai/openai_prompt_cache_upstream_test.go#TestOpenAICompletionsPromptCacheUpstream", "test:ai/openai_test.go#TestOpenAICompletionsEmptyTools"]
+rationale = "14b804d80 adds requiresNonNullAssistantContent, 0f4d5e960 adds promptCacheKeyMode and 7a6bd5a97 omits the empty tools array for tool history unless requiresToolsWithToolHistory; the revert pair 5bdf988b7 and 7fd1ee050 (tool call id shortening) nets to no change."
 
 [[files]]
 path = "packages/ai/src/api/openai-responses.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatHeadersUpstream", "test:ai/openai_responses_prompt_cache_upstream_test.go#TestOpenAIResponsesPromptCacheKeyPolicyUpstream"]
+rationale = "c5d397835 sends session-id instead of session_id and 0f4d5e960 adds promptCacheKeyMode."
 
 [[files]]
 path = "packages/ai/src/api/simple-options.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue", "test:ai/clamp_max_tokens_test.go"]
+rationale = "a758f3ae4 carries disableContinuation through the simple options (ai SimpleStreamOptions.DisableContinuation) and 0a4fad548 leaves room for the OpenRouter input overcount when clamping max tokens (D238)."
 
 [[files]]
 path = "packages/ai/src/auth/oauth/load.ts"
 change = "modified"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "5c6ce2b32 resolves variable lazy imports against the module URL so Pi's code-split Node bundles load; Go links every OAuth provider statically (ai/oauth_registry.go), so there is no lazy import to resolve."
 
 [[files]]
 path = "packages/ai/src/env-api-keys.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/auth_env_keys_test.go"]
+rationale = "3e4f87265 maps qwen-token-plan-individual-cn to QWEN_TOKEN_PLAN_CN_API_KEY (ai/auth_env_keys.go)."
 
 [[files]]
 path = "packages/ai/src/lazy-bedrock-provider.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "da95cd79c adds a lazy Bedrock provider loader for code-split Node bundles; Go links Bedrock statically."
 
 [[files]]
 path = "packages/ai/src/lazy-oauth.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "da95cd79c adds a lazy OAuth flow loader for code-split Node bundles; Go links the OAuth flows statically."
 
 [[files]]
 path = "packages/ai/src/models.generated.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:cmd/gen-models/catalog_matches_pi_test.go#TestCatalogGenerationMatchesPi", "test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels"]
+rationale = "The generated catalog follows the pin (make model-catalogs; Qwen Token Plan Individual CN, glm-5.3, Azure GPT-6 windows, Copilot Microsoft-Decision-1); fixtures and golden are re-recorded at c23b9ec1."
 
 [[files]]
 path = "packages/ai/src/models.ts"
@@ -109,65 +109,65 @@ rationale = ""
 [[files]]
 path = "packages/ai/src/providers/all.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog"]
+rationale = "3e4f87265 registers qwen-token-plan-individual-cn (ai/builtin_providers.go)."
 
 [[files]]
 path = "packages/ai/src/providers/compat-schema.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "requiresNonNullAssistantContent, requiresToolsWithToolHistory, promptCacheKeyMode (completions, responses, provider), supportsMessageThreads and the session-id wording are in configschema/compat_a.go and compat_b.go; every export is byte-compared with the file at the pin."
 
 [[files]]
 path = "packages/ai/src/providers/github-copilot.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream"]
+rationale = "0ec20e157 adds the Microsoft-Decision-1 classifier (ai/github_copilot_filter.go)."
 
 [[files]]
 path = "packages/ai/src/providers/openai-codex.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/api_key_providers_test.go"]
+rationale = "36142c1c7 removes the \"(legacy)\" marker from the OpenAI Codex provider name (ai/provider_names.go)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual-cn.models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels"]
+rationale = "The Individual CN model shard is the generated catalog (ai/models_generated.go)."
 
 [[files]]
 path = "packages/ai/src/providers/qwen-token-plan-individual-cn.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go#TestQwenTokenPlanIndividualCnExposesExactlyDocumentedTextModels", "test:ai/auth_env_keys_test.go"]
+rationale = "ai/provider_constructors.go QwenTokenPlanIndividualCnProvider."
 
 [[files]]
 path = "packages/ai/src/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog", "test:ai/anthropic_message_threads_test.go#TestAnthropicMessageThreadsCreateThenContinue"]
+rationale = "3e4f87265 adds the KnownProvider literal and a758f3ae4 adds StreamOptions.disableContinuation and the supportsMessageThreads compat field (ai/types.go)."
 
 [[files]]
 path = "packages/ai/src/utils/error-body.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/error_body_cause_upstream_test.go#TestConnectionErrorCauseDetailUpstream"]
+rationale = "4c992154d: ai/errors.go WithCauseDetail (cause depth 5)."
 
 [[files]]
 path = "packages/ai/src/utils/retry.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_test.go#TestIsRetryableAssistantErrorClassification"]
+rationale = "566344046 makes the gateway wording \"cut short after the reply had begun\" retryable (ai/assistant_retry.go)."
 
 [[files]]
 path = "packages/chord/src/cell.ts"
@@ -3631,16 +3631,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/packagemanager/package_update_result_test.go#TestGitUpdateReportsTheChangedCommitAsAResultEvent"]
+rationale = "Pi 342514bdf (#11707): a Git update reports the commit it moved from and to as a result event, and an npm update reports the version change. Ported in internal/packagemanager/package_update_operations.go; the test drives a Git update and checks the event."
 
 [[files]]
 path = "packages/coding-agent/src/core/prompt-templates.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/prompt_templates_quotes_test.go#TestParsePromptArgsQuoting", "test:internal/codingagent/upstream_prompt_templates_test.go#TestUpstreamPromptTemplatesArguments"]
+rationale = "Pi 96667f342 (#11873) keeps an apostrophe inside a word in prompt template arguments and treats an unclosed quote as literal text. Ported in prompt_templates.go; the quoting table covers both and the upstream argument cases still pass."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
@@ -3680,16 +3680,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/edit_window_test.go#TestGenerateEditDiffMatchesTheWholeFileDiffAndPatchWhenLinesAreDistinct", "test:internal/codingagent/tools/edit_window_test.go#TestGenerateEditDiffProducesAPatchThatAppliesWhenLinesRepeat", "test:internal/codingagent/tools/edit_window_test.go#TestGenerateEditDiffOfASmallChangeInA20MBFileAllocatesLittle"]
+rationale = "Pi d448c51e2 (#11751) computes the diff and the patch in windows around the replacements. Ported as edit_diff_window.go; the cases compare the windowed diff and patch with the whole-file ones for distinct and repeated lines and bound the allocations of a small change in a 20 MB file."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/edit_window_test.go#TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged", "test:internal/codingagent/tools/edit_window_test.go#TestEditToolWritesTheLineEndingOfTheLineAnEditStartsIn"]
+rationale = "Pi d448c51e2 (#11751): the edit tool computes its diff before writing, so a diff failure leaves the file unchanged, and writes the replacements into the original text so the lines an edit does not touch keep their line endings. Ported in edit.go and edit_diff.go (applyReplacementsToOriginal); the tests drive the tool with a failing diff and with mixed CRLF, LF and lone CR files."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
@@ -3701,9 +3701,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/grep_ripgrep_context_test.go#TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext", "test:internal/codingagent/tools/grep_ripgrep_context_test.go#TestGrepKeepsCountingMatchesPastTheByteCap", "test:internal/codingagent/tools/grep_ripgrep_context_test.go#TestGrepReadsEventLinesLongerThanTheReadBuffer", "test:internal/codingagent/tools/grep_event_test.go#TestGrepEventParserMatchesEncodingJSON", "test:internal/codingagent/tools/grep_event_test.go#FuzzGrepEventParserMatchesEncodingJSON"]
+rationale = "Pi 8da141c2a (#11705, #9276, #11423) takes the context lines from ripgrep's own context events, reports the match limit only on proof of one more match and keeps a lone CR in a line; 6bf2ab9bb (#11895, #11807) runs a directory search inside the search path so a glob is rooted there. Ported in grep.go; GrepOperations.ReadFile is gone, as Pi's. The event loop allocates nothing per event: grep_event.go scans rg's JSON lines in place (checked against encoding/json and fuzzed), rows are built in a reused buffer and rows past the 50KB cap are only measured, so TestScalingTools holds grep's allocations constant as the context grows."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
@@ -3715,16 +3715,16 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm", "test:internal/codingagent/tools/read_streaming_test.go#TestReadStreamingKeepsMemoryBoundedForA200MBLine", "test:internal/codingagent/tools/read_streaming_fuzz_test.go#FuzzReadStreamingMatchesTheWholeFileAlgorithm"]
+rationale = "Pi 3a7bb6f48 (#11750) reads a text file through ops.createReadStream and keeps only the lines head truncation can show. Ported as ReadOperations.CreateReadStream, readLocalFile (one open file: the access check, the image sniff and the stream) and readStreamedTextResult/selectLinesFromStream (read_stream.go), which count every line, store the lines that can show and measure the rest. The ported read-streaming cases run against the whole-file algorithm for chunk sizes 1 and 4096, a 200 MB line stays under a 64 MB heap, and a fuzz target compares arbitrary bytes, chunk sizes, offsets and limits with the whole-file reference. The selector decodes a chunk's selected lines in one pass, stores whole lines in one write and counts the lines past the caps without a pass per line, so a 140 KB read costs 24 allocations (BenchmarkReadToolExecute), as it did before the stream."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/truncate.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/jsstring/slice_pair_test.go#TestSliceHeadAndTailNeverSplitAPair", "test:internal/codingagent/tools/grep_test.go#TestTruncateLine"]
+rationale = "Pi 9e870f6f0 keeps a surrogate pair whole when truncateLine, sliceHead and sliceTail cut: ported in jsstring.SliceHead/SliceTail and TruncateLine (grep's measured rows follow the same cut, D252). truncateMiddle moved to the mcp package in the leap; FollowMcp owns its oracle."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/execute.ts"
@@ -3848,9 +3848,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/diff_render_test.go#TestRenderDiffPreservesIndentation", "test:tui/diff_render_test.go#TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion"]
+rationale = "Pi dca1f5552 (#9274) separates the whitespace both changed lines start with before the word diff, so indentation is kept and shared indentation is not highlighted as an insertion. Ported in tui/diff_render.go."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"
@@ -3925,9 +3925,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/package_progress_warning_test.go#TestUpdateSummaryPrint", "test:internal/packagemanager/package_update_result_test.go#TestUpdatedPackageMessage"]
+rationale = "Pi 342514bdf (#11707) and 806cdd68e (#11711): pig update lists the packages it updated with their version changes. Ported in coding/cli/package_commands.go and package_progress.go."
 
 [[files]]
 path = "packages/coding-agent/src/utils/changelog.ts"
@@ -3939,9 +3939,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/utils/image-resize.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "designed-out"
+evidence = ["test:internal/imageprocessing/resize_worker_teardown_test.go#TestSerialResizesLeaveNoWorkerRunning"]
+rationale = "Pi 1f7c685b (#10695) resolves a resize only after its worker thread has finished terminating. Go resizes in the calling goroutine and starts no worker, so there is nothing to terminate; the test runs serial resizes and checks that the goroutine count is the same after each."
 
 [[files]]
 path = "packages/coding-agent/src/utils/terminal-question.ts"
@@ -4422,135 +4422,135 @@ rationale = "Type-only change (the Context import path); Go has no counterpart f
 [[files]]
 path = "packages/mcp/src/config.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/config_pi_test.go#TestValidateMcpServerConfigAcceptsStdioAndHTTPEntriesAndKeepsThemAsGiven", "test:mcp/config_pi_test.go#TestValidateMcpServerConfigPicksTheTransportFromTypeURLAndCommand", "test:mcp/config_pi_test.go#TestValidateMcpServerConfigReportsInvalidNamesAndFields"]
+rationale = "Pi main 76c040a2a moves the mcpServers validation into the mcp package. Ported as internal/mcpshared/config.go (ValidateMcpServerConfig, IsMcpServerOverride), re-exported by mcp/config.go because coding/extension validates entries in a pig_strip_mcp build that links neither mcp nor mcp/oauth. The shared fields are checked before the exposure and auth checks, as Pi at the pin."
 
 [[files]]
 path = "packages/mcp/src/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet"]
+rationale = "The barrel export gains config, naming, input-schema, output-limit and the pipe transport; Go has no barrel exports: the exports are the mcp package (mcp/config.go, naming.go, input_schema.go, output_limit.go, pipe.go)."
 
 [[files]]
 path = "packages/mcp/src/input-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing", "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"]
+rationale = "Pi main 76c040a2a normalizeMcpInputSchema, ported as mcp/input_schema.go."
 
 [[files]]
 path = "packages/mcp/src/naming.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/naming_pi_test.go#TestCreateMcpToolNameJoinsServerAndToolAndReplacesCharactersOutsideTheAllowedSet", "test:mcp/naming_pi_test.go#TestCreateMcpToolNameShortensNamesOver64CharactersWithAHashOfServerAndTool", "test:mcp/naming_pi_test.go#TestCreateMcpToolNameAddsTheHashSuffixWhenTheSanitizedNameIsTaken"]
+rationale = "Pi main 76c040a2a createMcpToolName and mcpNamespace, ported as internal/mcpshared/naming.go (re-exported by mcp/naming.go); extension.McpNamespace and mcpext.CreateMcpToolName are gone, their callers use these."
 
 [[files]]
 path = "packages/mcp/src/oauth/auth-provider.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderRefreshesARejectedToken", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderLeavesAPendingSignInUsableWhenTheRefreshFails", "test:mcp/oauth/auth_provider_pi_test.go#TestAuthProviderDoesNotRegisterAClientToRefresh"]
+rationale = "Pi main bb266bf35 createMcpAuthProvider, ported as mcp/oauth/auth_provider.go (CreateMcpAuthProvider, RefreshStoredTokens)."
 
 [[files]]
 path = "packages/mcp/src/oauth/callback.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPlainTextByDefault", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerPagesRendersPagesThroughRenderPage", "test:mcp/oauth/oauth_test.go#TestOAuthCallbackServerRejectsAResponseOnAnotherPathThanTheExpectedOne"]
+rationale = "Pi main 63ea042ce closes remaining connections when the callback server closes: Go closes the connections that never sent a request and leaves the others to Shutdown (a wait after Close also fails at once, and a wait that ends with its context frees its state)."
 
 [[files]]
 path = "packages/mcp/src/oauth/client-settings.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestStoredClientRefreshesFromAnotherRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestStoredClientKeepsTheClientForABrowserStepOnItsRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestStoredClientIsDroppedWithItsTokensForABrowserStepOnAnotherRedirectURI"]
+rationale = "Pi main bb266bf35 client settings and Client ID Metadata Document selection, ported as mcp/oauth/client_settings.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/discovery.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataTriesThePathAwareURLThenTheRoot", "test:mcp/oauth/discovery_info_test.go#TestDiscoverProtectedResourceMetadataUsesAnExplicitURLWithoutFallingBack", "test:mcp/oauth/discovery_info_test.go#TestDiscoverOAuthServerInfoFollowsTheFirstAuthorizationServerOfTheResourceMetadata"]
+rationale = "Pi main bb266bf35 adds the discovery options the sign-in uses; behavior pinned by the discovery tests."
 
 [[files]]
 path = "packages/mcp/src/oauth/errors.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope"]
+rationale = "Pi main adds McpRefreshLockBusyError; ported in mcp/oauth/errors.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/flow.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/oauth_test.go#TestMCPOAuthDiscoversRegistersAuthorizesWithPKCEAndRefreshesOn401", "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate", "test:mcp/oauth/oauth_test.go#TestMCPOAuthAsksForAuthorizationInsteadOfRefreshingWhenTheServerNeedsMoreScope"]
+rationale = "Pi main bb266bf35 adds the RefreshOnly and AuthorizationRedirectURL options to the flow; ported in mcp/oauth/flow.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/index.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestSignInCompletesInASecondCallWithTheSameStoreAndAPersistedRedirect"]
+rationale = "The barrel export gains the sign-in, loopback, client-settings and auth-provider modules; Go has no barrel exports: the exports are the mcp/oauth package."
 
 [[files]]
 path = "packages/mcp/src/oauth/loopback.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInCompletesThroughTheLoopbackCallbackServer", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInRejectsAResponseOnAnotherRedirectPath", "test:mcp/oauth/loopback_pi_test.go#TestLoopbackSignInTakesAPastedRedirectURLWhileWaitingForTheCallback"]
+rationale = "Pi main bb266bf35 loopback sign-in, ported as mcp/oauth/loopback.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/sign-in.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestSignInCompletesInASecondCallWithTheSameStoreAndAPersistedRedirect", "test:mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesTheStoredTokensInsteadOfRedirecting", "test:mcp/oauth/sign_in_pi_test.go#TestSignInRefreshesUnderTheStoresRefreshLock", "test:mcp/oauth/sign_in_pi_test.go#TestSignInRefusesToCompleteWithAnotherRedirectURIThanTheAuthorizationRequest"]
+rationale = "Pi main bb266bf35 startMcpSignIn and completeMcpSignIn, ported as mcp/oauth/sign_in.go."
 
 [[files]]
 path = "packages/mcp/src/oauth/types.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsUsesADocumentWhenTheServerSupportsThemAndTheDocumentsListTheRedirectURI", "test:mcp/oauth/sign_in_pi_test.go#TestMetadataDocumentsUsesADocumentAndRedirectURISpecificToTheMCPServerWithoutTheIssParameter"]
+rationale = "Pi main bb266bf35 type additions (client settings, sign-in types); ported in mcp/oauth/types.go and client_settings.go."
 
 [[files]]
 path = "packages/mcp/src/output-limit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/output_limit_pi_test.go#TestLimitMcpContentReturnsContentWithinTheLimitAsItIsWithoutSaving", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentCutsTheMiddleOfLongerTextSavesTheFullTextAndKeepsImages", "test:mcp/output_limit_pi_test.go#TestLimitMcpContentReportsAFailedSaveAndNamesNoFileWithoutASaver"]
+rationale = "Pi main 76c040a2a limitMcpContent, ported as mcp/output_limit.go; TruncateMiddle moved with it."
 
 [[files]]
 path = "packages/mcp/src/transports/lines.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/lines_pi_test.go#TestLineReaderDeliversAMessageSplitAcrossManyChunks", "test:mcp/lines_pi_test.go#TestLineReaderHandlesMultiByteCharactersCRLFBlankLinesAndSeveralMessagesPerChunkAtAnySplit", "test:mcp/lines_pi_test.go#TestLineReaderDropsAnOversizedMessageAndKeepsReadingTheNextOne"]
+rationale = "Pi main c158fa2ee and f6278a472 JsonRpcLineReader, ported as mcp/lines.go."
 
 [[files]]
 path = "packages/mcp/src/transports/pipe.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/pipe_pi_test.go#TestPipeTransportJoinsMessagesSplitAcrossChunksAndSplitsSeveralMessagesInOneChunk", "test:mcp/pipe_pi_test.go#TestPipeTransportStripsATrailingCarriageReturnAndSkipsBlankLines", "test:mcp/pipe_pi_test.go#TestPipeTransportReportsInvalidMessagesAndKeepsReading", "test:mcp/pipe_pi_test.go#TestPipeTransportDropsMessagesOverMaxMessageBytesCompleteOrNot"]
+rationale = "Pi main c158fa2ee PipeTransport, ported as mcp/pipe.go."
 
 [[files]]
 path = "packages/mcp/src/transports/stdio.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/stdio_splitter_test.go#TestStdioTransportDeliversALargeMessageSpanningManyReads", "test:mcp/stdio_splitter_test.go#TestStdioSplitterLargeMessageScalesLinearly", "test:mcp/stdio_splitter_test.go#TestStdioSplitterChunkingEquivalence"]
+rationale = "Pi main f6278a472: the stdio transport reads through the line reader (mcp/lines.go)."
 
 [[files]]
 path = "packages/mcp/src/transports/streamable-http.ts"
 change = "modified"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:mcp/sse_cr_pi_test.go#TestConsumeSSEStreamRecognizesCRLFAndCRLineEndingsIncludingCRLFSplitAcrossChunks", "test:mcp/streamable_http_body_cap_pi_test.go#TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses"]
+rationale = "Pi main f40984747: a failed SSE response is closed (mcp/streamable_http.go)."
 
 [[files]]
 path = "packages/schema/src/builders.ts"

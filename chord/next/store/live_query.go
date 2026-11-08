@@ -27,7 +27,7 @@ import (
 //   - A limit is an int64: Pi's check that it is a safe integer is the positive check alone.
 //   - The runs are decoded rows as JSON objects in column order (Pi's rows are the table's row objects); numbers are float64.
 //   - Pi's `QueryRefresh` takes LiveQuery instances; here it takes QueryRunner, the two methods it calls (Rerun, Adopt), so a
-//     test stands in for a query as Pi's casts a stub.
+//     test stands in for a query as Pi's casts a fake.
 //   - A LiveQuery's state is guarded by a mutex: Load runs off the host's sections, Rerun in the store's commit step, and
 //     Adopt, Deliver, Detach and the reads in sections.
 //   - Async contract: Pi's `load` and `rerun` are async; here they block and return `(value, error)`. `rerun` never throws

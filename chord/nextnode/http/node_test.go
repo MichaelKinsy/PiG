@@ -115,8 +115,8 @@ func TestMountingConvertsWithTheListenersChecksNeverPanickingBadTargetsUserinfoT
 	server := serving(t, []plugin{echoPlugin}, servedOptions{noListen: true})
 	own := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		converted := NodeRequestOf(r)
-		if converted.Refused != nil {
-			w.WriteHeader(converted.Refused.Status)
+		if converted.Kind == NodeRequestRefused {
+			w.WriteHeader(int(converted.Status))
 			return
 		}
 		response := server.http.Fetch(converted.Request, converted.Connection)
@@ -236,12 +236,12 @@ func TestNodeRequestRefusesWhatTheListenerRefuses(t *testing.T) {
 		{"TRACK", request("TRACK", "/who", "127.0.0.1:1"), 501},
 	} {
 		converted := NodeRequestOf(each.request)
-		if converted.Refused == nil || converted.Refused.Status != each.status {
+		if converted.Kind != NodeRequestRefused || int(converted.Status) != each.status {
 			t.Fatalf("%s: %+v, want refused %d", each.name, converted, each.status)
 		}
 	}
 	converted := NodeRequestOf(request("GET", "/a/../who?x=1", "127.0.0.1:8788"))
-	if converted.Refused != nil || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
+	if converted.Kind != NodeRequestRequest || converted.Request.URL.Path != "/who" || converted.Request.URL.RawQuery != "x=1" || converted.Request.Header.Get("Host") != "127.0.0.1:8788" {
 		t.Fatalf("converted = %+v", converted)
 	}
 }
@@ -272,4 +272,53 @@ func TestWebRequestsAreServedFromTheListenerWhetherTheRouteReadsTheHeadersTheBod
 		t.Fatalf("answers = %q, %q, %q, want \"/plain\", \"t\", \"a\"", plain, read, posted)
 	}
 	server.close()
+}
+
+// Pi's NodeIncoming.cancelled (node.ts:119-140, node.test.ts:84): a request an app mounts on its own server aborts when the client
+// goes, and not before. NodeRequestOf takes the one request: its context ends with the client, which is Pi's `res`-finished check
+// without a second argument.
+func TestMountedRequestContextEndsWhenTheClientGoesAndNotBefore(t *testing.T) {
+	alive := make(chan bool, 1)
+	ended := make(chan bool, 1)
+	own := httptest.NewServer(nethttp.HandlerFunc(func(_ nethttp.ResponseWriter, r *nethttp.Request) {
+		converted := NodeRequestOf(r)
+		if converted.Kind != NodeRequestRequest {
+			t.Errorf("converted = %+v", converted)
+			alive <- false
+			ended <- false
+			return
+		}
+		ctx := converted.Request.Context()
+		alive <- ctx.Err() == nil
+		select {
+		case <-ctx.Done():
+			ended <- true
+		case <-time.After(within):
+			ended <- false
+		}
+	}))
+	defer own.Close()
+	clientCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	request, err := nethttp.NewRequestWithContext(clientCtx, "GET", own.URL+"/who", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		if response, err := nethttp.DefaultClient.Do(request); err == nil {
+			_ = response.Body.Close()
+		}
+	}()
+	if !<-alive {
+		t.Fatal("the request's context was done before the client went")
+	}
+	select {
+	case <-ended:
+		t.Fatal("the request's context ended while the client was still there")
+	case <-time.After(100 * time.Millisecond):
+	}
+	cancel()
+	if !<-ended {
+		t.Fatal("the request's context did not end when the client went")
+	}
 }

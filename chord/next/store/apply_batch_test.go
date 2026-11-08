@@ -32,7 +32,7 @@ var batchCounts = func() (v1, v2 *TableDefinition) {
 	if err != nil {
 		panic(err)
 	}
-	v2, err = EvolveTable(v1, func(t *TableEditor) *TableEditor {
+	v2, err = EvolveTable(v1, func(t *TableEditor) TableTailEditor {
 		return t.Add("extra", Int(contracts.Default(0))).DropIndex("by_tag")
 	})
 	if err != nil {

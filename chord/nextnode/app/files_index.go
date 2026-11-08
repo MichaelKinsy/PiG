@@ -283,10 +283,10 @@ type FilesIndex struct {
 	Summary *documents.Keyed
 	// Usage is the bytes of every blob on disk.
 	Usage   *documents.Singleton
-	files   *store.TableHandle
-	folders *store.TableHandle
-	blobs   *store.TableHandle
-	marks   *store.TableHandle
+	files   store.Table
+	folders store.Table
+	blobs   store.Table
+	marks   store.Table
 	self    host.StoreSelf
 }
 
@@ -818,7 +818,7 @@ func under(column *store.ColumnRef, path string) store.Condition {
 }
 
 // rowsOf reads every row of q.
-func rowsOf(handle *store.TableHandle, q *store.Query, ctx context.Context) ([]store.Row, error) {
+func rowsOf(handle store.Table, q *store.Query, ctx context.Context) ([]store.Row, error) {
 	rows := handle.Rows(ctx, q)
 	defer rows.Close()
 	var all []store.Row

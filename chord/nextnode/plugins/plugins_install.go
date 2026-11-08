@@ -441,6 +441,7 @@ func unpack(name, version, dir string, ctx context.Context, options InstallOptio
 // name instead, which that destructuring cannot read; this reads the first member of an object the same way, so one
 // install works with either npm.
 func packedTarball(output, what string) (string, error) {
+	// pig divergence (D501): an object keyed by package name (npm 12's `pack --json`) is read as the list is; Pi's destructuring rejects it.
 	value, err := delta.DecodeJson([]byte(output))
 	if err != nil {
 		return "", err

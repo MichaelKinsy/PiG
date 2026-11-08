@@ -448,10 +448,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | _(downstream: Python SDK bridge)_ | `extensions/sdk-py/...` | 🔀 D19 |
 | `packages/coding-agent/src/core/tools/bash.ts` | `internal/codingagent/tools/bash.go + internal/codingagent/tools/bash_operations.go + internal/codingagent/tools/shell_tool.go`, `coding/extension/bash_operations.go`, `coding/extension/events.go`, `coding/extension/tool_inputs.go`, `internal/codingagent/tools/tools.go`, `internal/codingagent/tools/tool_definition.go` | ✅ |
 | `packages/coding-agent/src/core/tools/output-accumulator.ts` | `internal/codingagent/tools/output_accumulator.go + truncate.go` | ✅ |
-| `packages/coding-agent/src/core/tools/read.ts` | `internal/codingagent/tools/read.go + internal/codingagent/tools/context_cwd.go`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/tool_inputs.go` | ✅ |
+| `packages/coding-agent/src/core/tools/read.ts` | `internal/codingagent/tools/read.go + internal/codingagent/tools/read_stream.go (selectLinesFromStream: one decoded pass per chunk, whole lines stored in one write) + internal/codingagent/tools/context_cwd.go`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/tool_inputs.go` | ✅ |
 | `packages/coding-agent/src/core/tools/write.ts` | `internal/codingagent/tools/write.go (WriteOperations; mutation_queue_upstream_test.go)`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/tool_inputs.go` | ✅ |
 | `packages/coding-agent/src/core/tools/edit.ts` | `internal/codingagent/tools/edit.go (EditOperations; mutation_queue_upstream_test.go)`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `internal/codingagent/tools/details.go`, `coding/extension/tool_inputs.go` | ✅ |
-| `packages/coding-agent/src/core/tools/grep.ts` | `internal/codingagent/tools/grep.go`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/tool_inputs.go` | ✅ |
+| `packages/coding-agent/src/core/tools/grep.ts` | `internal/codingagent/tools/grep.go + internal/codingagent/tools/grep_event.go (rg --json event scanner that allocates nothing per event) + internal/codingagent/tools/grep_head.go (head-first output join)`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/tool_inputs.go` | ✅ |
 | `packages/coding-agent/src/core/tools/find.ts` | `internal/codingagent/tools/find.go (FindOperations and root-relativization tests; native Windows validation pending)`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/find_tool_input.go` | ✅ |
 | `packages/coding-agent/src/core/tools/ls.ts` | `internal/codingagent/tools/ls.go`, `internal/codingagent/tools/tools.go`, `coding/tool_definitions.go`, `coding/extension/events.go`, `coding/extension/tool_inputs.go` | ✅ |
 | `packages/coding-agent/src/core/tools/edit-diff.ts` | `internal/codingagent/tools/edit_diff.go + unified_patch.go (GenerateUnifiedPatch) + diff_string.go (GenerateDiffString); coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs (vendored Node diff helpers)`, `internal/codingagent/tools/edit_preview.go` | ✅ |
@@ -696,16 +696,16 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/mcp/src/transports/stdio.ts` | `mcp/stdio.go; mcp/stdio_unix.go; mcp/stdio_windows.go` | ✅ |
 | `packages/mcp/src/transports/streamable-http.ts` | `mcp/streamable_http.go; mcp/sse.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
 | `packages/mcp/src/transports/transport.ts` | `mcp/transport.go` (Send(ctx) carries McpTransportSendOptions.signal as its context) | ✅ |
-| `packages/mcp/src/config.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/input-schema.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/naming.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/oauth/auth-provider.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/oauth/client-settings.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/oauth/loopback.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/oauth/sign-in.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/output-limit.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/transports/lines.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
-| `packages/mcp/src/transports/pipe.ts` | `(not started: Pi main c23b9ec1, no Go counterpart yet)` | ⬜ |
+| `packages/mcp/src/config.ts` | `internal/mcpshared/config.go (re-exported by mcp/config.go: coding/extension validates entries in a pig_strip_mcp build, which links neither mcp nor mcp/oauth)` | ✅ |
+| `packages/mcp/src/input-schema.ts` | `mcp/input_schema.go` | ✅ |
+| `packages/mcp/src/naming.ts` | `internal/mcpshared/naming.go (re-exported by mcp/naming.go, for the same reason)` | ✅ |
+| `packages/mcp/src/oauth/auth-provider.ts` | `mcp/oauth/auth_provider.go` | ✅ |
+| `packages/mcp/src/oauth/client-settings.ts` | `mcp/oauth/client_settings.go` | ✅ |
+| `packages/mcp/src/oauth/loopback.ts` | `mcp/oauth/loopback.go` | ✅ |
+| `packages/mcp/src/oauth/sign-in.ts` | `mcp/oauth/sign_in.go` | ✅ |
+| `packages/mcp/src/output-limit.ts` | `mcp/output_limit.go` | ✅ |
+| `packages/mcp/src/transports/lines.ts` | `mcp/lines.go` | ✅ |
+| `packages/mcp/src/transports/pipe.ts` | `mcp/pipe.go` | ✅ |
 
 ## `packages/codemode/src/`
 
@@ -1235,10 +1235,10 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | Upstream | PiG | Status |
 |---|---|---|
 | `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
-| `packages/schema/src/builders.ts` | `schema/builders.go (Recursive; unsafe and the bigint builder are designed out: unsafe only types a schema, and Go has no bigint value; Pi main af79b0c3d)` | ✅ |
-| `packages/schema/src/checks.ts` | `schema/checks.go (a number is finite; Equal is deepEqual; the leaf codes of Pi main 20c637b1a that object and array loops run inline are a JavaScript closure-call optimization with no observable effect, designed out: Go's closures keep their one shape and TestPiMainLeafChecksAgreeWithTheStandaloneCheck ports the test that pins the results; bigint and undefined checks have no Go value)` | ✅ |
-| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}); the base of an unindexed node goes through baseFor; a number is finite; the bigint and undefined conversions have no Go value)` | ✅ |
-| `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
+| `packages/schema/src/builders.ts` | `schema/builders.go (Recursive, BigInt, whose bounds are *big.Int, and Unsafe, which returns the schema it is given or `{}`; only the static types are designed out; Pi main af79b0c3d)` | ✅ |
+| `packages/schema/src/checks.ts` | `schema/checks.go (a number is finite; Equal is deepEqual; the four changes of Pi main 20c637b1a are JavaScript closure-call and V8 inline-cache optimizations with no observable effect, designed out: (1) leaf codes with arguments (const, a small enum, a type mask, number bounds, string length, pattern) that object and array loops run inline instead of calling the check; (2) `typeCheck` for several types as one bitmask test; (3) `anyOf` of bare-type branches as one mask test (`maskedAnyCheck`); (4) the closed-object lookup that starts at the entry after the last match. Go's closures keep their one shape, and `typeCheck`, `anyCheck` and `declaredObject` give the same answers as each of the four: TestPiMainLeafChecksAgreeWithTheStandaloneCheck (the standalone check, a property, an open property and an item agree) and TestPiMainClosedObjectFindsPropertiesInAnyOrder port the tests that pin them; the bigint and undefined type checks, the number keywords of either kind and a required property holding undefined are ported (Pi main af79b0c3d: *big.Int and schema.Undefined))` | ✅ |
+| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}); the base of an unindexed node goes through baseFor; a number is finite; a bigint is a *big.Int and undefined is schema.Undefined: `convertType`'s `bigint` and `undefined` cases, `tryBigInt`, `tryUndefined` and the bigint and undefined branches of `tryString`, `tryNumber`, `tryBoolean`, `tryNull`, `convertLiteral` and `matchesType`; Pi main af79b0c3d)` | ✅ |
+| `packages/schema/src/compiler.ts` | `schema/compiler.go (the number group takes a bigint type and bounds of either kind)` | ✅ |
 | `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
 | `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |
 | `packages/schema/src/formats/typebox/date.ts` | `schema/formats/typebox_date.go` | ✅ |

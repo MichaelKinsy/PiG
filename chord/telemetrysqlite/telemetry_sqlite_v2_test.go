@@ -119,7 +119,7 @@ func TestMigratesAStoreOfVersion1ToMicrosecondsItsRowsKept(t *testing.T) {
 	}
 	trace, err := recorder.GetTrace("old:1")
 	check(t, err)
-	if trace == nil || trace.Spans[0].StartedMs != 1000 || trace.Spans[0].EndedMs != 1002.5 {
+	if trace == nil || len(trace.Spans) != 1 || trace.Spans[0].StartedMs != 1000 || trace.Spans[0].EndedMs != 1002.5 {
 		t.Fatalf("trace = %+v", trace)
 	}
 	check(t, recorder.Close())
@@ -142,7 +142,7 @@ func TestWritesIngestedSpansAndMetricRowsWithItsOwnNeverReplacingAStoredSpan(t *
 		IntervalMs: 10_000, Name: "hits", Kind: telemetry.TelemetryMetricKindCounter,
 		Attributes: telemetry.SpanAttributes{telemetry.Attr("b", 1.0), telemetry.Attr("a", 2.0)}, Count: 2, Sum: 6, Min: 2, Max: 4,
 	}
-	if queued := f.telemetry.Ingest(Batch{Spans: []telemetry.StoredSpan{span, impostor}, Metrics: []telemetry.StoredMetric{metric}}); queued != 2 {
+	if queued := f.telemetry.Ingest(TelemetryBatch{Spans: []telemetry.StoredSpan{span, impostor}, Metrics: []telemetry.StoredMetric{metric}}); queued != 2 {
 		t.Fatalf("queued = %d", queued)
 	}
 	f.flush()

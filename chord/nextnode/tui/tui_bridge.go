@@ -24,10 +24,49 @@ type BridgeStart struct {
 	Locales []string
 }
 
+// BridgeRequestKind is the literal union of a request's `kind`.
+type BridgeRequestKind string
+
+const (
+	BridgeRequestFetch  BridgeRequestKind = "fetch"
+	BridgeRequestBase   BridgeRequestKind = "base"
+	BridgeRequestCopy   BridgeRequestKind = "copy"
+	BridgeRequestOpen   BridgeRequestKind = "open"
+	BridgeRequestAttach BridgeRequestKind = "attach"
+)
+
+// SandboxMessageKind is the literal union of a sandbox message's `kind`.
+type SandboxMessageKind string
+
+const (
+	SandboxWrite       SandboxMessageKind = "write"
+	SandboxSocketOpen  SandboxMessageKind = "socket_open"
+	SandboxSocketSend  SandboxMessageKind = "socket_send"
+	SandboxSocketClose SandboxMessageKind = "socket_close"
+	SandboxRequest     SandboxMessageKind = "request"
+	SandboxOutdated    SandboxMessageKind = "outdated"
+	SandboxFailed      SandboxMessageKind = "failed"
+	SandboxExit        SandboxMessageKind = "exit"
+)
+
+// LauncherMessageKind is the literal union of a launcher message's `kind`.
+type LauncherMessageKind string
+
+const (
+	LauncherInput         LauncherMessageKind = "input"
+	LauncherResize        LauncherMessageKind = "resize"
+	LauncherSocketOpened  LauncherMessageKind = "socket_opened"
+	LauncherSocketMessage LauncherMessageKind = "socket_message"
+	LauncherSocketClosed  LauncherMessageKind = "socket_closed"
+	LauncherReply         LauncherMessageKind = "reply"
+	LauncherAttached      LauncherMessageKind = "attached"
+	LauncherRefused       LauncherMessageKind = "refused"
+)
+
 // BridgeRequest is a request of the sandbox the launcher answers: Kind "fetch" (Path), "base", "copy" (Text), "open" (URL) or
 // "attach" (Path: a file of the machine the user names).
 type BridgeRequest struct {
-	Kind string
+	Kind BridgeRequestKind
 	Path string
 	Text string
 	URL  string
@@ -38,7 +77,7 @@ type BridgeRequest struct {
 // one), "failed" (the base bundle failed to start: Message; the launcher shows none of the sandbox's own output) or "exit"
 // (Code).
 type SandboxMessage struct {
-	Kind    string
+	Kind    SandboxMessageKind
 	Data    string
 	Socket  int
 	Bytes   []byte
@@ -52,7 +91,7 @@ type SandboxMessage struct {
 // "socket_message" (Socket, Bytes), "socket_closed" (Socket), "reply" (ID, Value), "attached" (ID, Name, Bytes: an attach
 // request's answer, the file the user confirmed) or "refused" (ID, Message).
 type LauncherMessage struct {
-	Kind    string
+	Kind    LauncherMessageKind
 	Data    string
 	Columns int
 	Rows    int

@@ -4,14 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // pi: packages/chord/test/surfaces/messages.test.ts
-// The cases of "defineMessages types every catalog by the first" are compile-time (`@ts-expect-error`) and have no Go
-// form (doc.go, D450).
+// The cases of "defineMessages types every catalog by the first" are compile-time (`@ts-expect-error`); their intention is ported
+// as run-time declaration and call checks (TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst, TestMessageRefuses...).
 
 func count(plural, one string) MessageFunc {
 	return func(lang *Language, args ...any) (string, error) {
@@ -146,6 +150,19 @@ func TestRendersThePluginsOwnCatalogOfTheLanguageValuesAndFunctions(t *testing.T
 	}
 }
 
+// A message's value is a text or a function of its arguments (`MessageValue`, messages.ts:16): both kinds render.
+func TestAMessageValueIsATextOrAFunctionOfItsArgumentsBothRender(t *testing.T) {
+	var text MessageValue = "Neue Notiz"
+	var function MessageValue = count("Notizen", "1 Notiz")
+	kinds := mustMessages(t, "kinds", LocaleCatalog{"de", Catalog{"text": text, "function": function}})
+	if got := mustT(t, kinds.In(nil), "text"); got != "Neue Notiz" {
+		t.Errorf("text = %q", got)
+	}
+	if got := mustT(t, kinds.In(nil), "function", 1.0); got != "1 Notiz" {
+		t.Errorf("function = %q", got)
+	}
+}
+
 func TestPrefersTheHostsContributedCatalogFallingBackKeyByKeyDownTheChainReported(t *testing.T) {
 	var reports []MessagesReport
 	brazil := languageOf(t, "pt-BR", &reports, Translation{Namespace: "notes", Locale: "pt-BR", Messages: Catalog{"newNote": "Nova anotação"}})
@@ -227,6 +244,47 @@ func TestBuildsDataAndRendersItInTheViewersLanguage(t *testing.T) {
 	}
 	if got := notes.Render(saved); got != `Saved "Plan" at 10:00` {
 		t.Errorf("plain = %q", got)
+	}
+}
+
+// messages.test.ts › messages as data › builds typed data for the keys whose arguments are data: Pi's `@ts-expect-error a Date is no
+// data: it would not cross a link` is compile-time; here a message as data crosses a link only through MessageSchema, whose params
+// are strings, numbers, booleans and null (messages.ts:28, `MessageParam`).
+func TestAMessageAsDataCrossesALinkOnlyWithJSONScalarParams(t *testing.T) {
+	validator, err := schema.Compile(MessageSchema.Node, schema.CompileOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(params []any) bool {
+		t.Helper()
+		ok, err := validator.Check(delta.JsonObjectOf("namespace", "notes", "key", "saved", "params", params))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ok
+	}
+	saved := notesMessages(t).Message("saved", "Plan", "2026-11-03T10:00:00Z")
+	if !check(saved.Params) {
+		t.Errorf("params %v of a built message did not pass the schema", saved.Params)
+	}
+	if !check([]any{"a", 1.0, true, nil}) {
+		t.Error("a string, a number, a boolean and null did not pass")
+	}
+	if check([]any{delta.JsonObjectOf("when", "now")}) || check([]any{[]any{"a"}}) {
+		t.Error("an object or an array param passed: it would not be a MessageParam")
+	}
+}
+
+// messages.test.ts › messages as data › builds typed data for the keys whose arguments are data: Pi's `@ts-expect-error a wrong
+// argument` (`notes.message("count", "2")`, MessageArgs of the key's function, messages.ts:25) is compile-time; the Go way is the
+// error a JavaScript message would throw: a MessageFunc whose arguments do not fit returns it from T, and Render shows the key.
+func TestAMessageFunctionWhoseArgumentsDoNotFitReturnsTheErrorAThrowWouldBe(t *testing.T) {
+	notes := notesMessages(t)
+	if text, err := notes.T("count", "2"); err == nil {
+		t.Fatalf("t(count, %q) = %q, want the error of an argument that is no number", "2", text)
+	}
+	if got := notes.Render(notes.Message("count", "2")); got != "count" {
+		t.Errorf("render of a message whose argument does not fit = %q, want its key", got)
 	}
 }
 
@@ -333,5 +391,52 @@ func TestANestedRenderInAnotherLanguageLeavesTheOuterRenderInItsOwnEvenWhenTheNe
 	}
 	if text, err := outer.In(de).T("after"); err != nil || text != inDe {
 		t.Fatalf("a later render in de = %q, %v, want %q", text, err, inDe)
+	}
+}
+
+// Intention of packages/chord/test/surfaces/messages.test.ts:51-61 ("types every catalog by the first", @ts-expect-error): a catalog
+// that lacks a key of the first, has a key the first lacks, or has a text where the first has a function is a declaration
+// mistake. Pi stops it at compile time (CatalogShape); PiG stops it where the catalogs are declared.
+func TestDefineMessagesRefusesACatalogThatDoesNotMatchTheFirst(t *testing.T) {
+	fn := MessageFunc(func(_ *Language, args ...any) (string, error) { return fmt.Sprint(args...), nil })
+	for name, c := range map[string]struct {
+		other Catalog
+		want  string
+	}{
+		"missing key": {Catalog{"a": "A", "b": fn}, `lacks the key "c"`},
+		"extra key":   {Catalog{"a": "A", "b": fn, "c": "C", "d": "D"}, `has the key "d" the first lacks`},
+		"kind":        {Catalog{"a": "A", "b": "B", "c": "C"}, `key "b"`},
+	} {
+		_, err := DefineMessages("typed", LocaleCatalog{"en", Catalog{"a": "A", "b": fn, "c": "C"}}, LocaleCatalog{"de", c.other})
+		if err == nil || !strings.Contains(err.Error(), c.want) || !strings.Contains(err.Error(), "de") {
+			t.Errorf("%s: error = %v, want one naming %q", name, err, c.want)
+		}
+	}
+	if _, err := DefineMessages("typed", LocaleCatalog{"en", Catalog{"a": "A", "b": fn}}, LocaleCatalog{"de", Catalog{"a": "A", "b": fn}}); err != nil {
+		t.Errorf("matching catalogs: %v", err)
+	}
+}
+
+// Intention of messages.test.ts:178-189 (DataKeys, @ts-expect-error): `message` builds data only for a key of the catalog and
+// arguments that are plain data, since a message crosses a link; a time.Time would not. Pi stops it at compile time; PiG panics
+// at the call, as a constructor does where TypeScript rejects the call.
+func TestMessageRefusesAnUnknownKeyAndArgumentsThatAreNoData(t *testing.T) {
+	notes := notesMessages(t)
+	for name, call := range map[string]func(){
+		"unknown key": func() { notes.Message("svaed") },
+		"a time":      func() { notes.Message("when", time.Now()) },
+		"a struct":    func() { notes.Message("count", struct{ N int }{2}) },
+	} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("%s: Message did not panic", name)
+				}
+			}()
+			call()
+		}()
+	}
+	if got := notes.Message("count", 2, nil, true); len(got.Params) != 3 {
+		t.Errorf("data params = %v", got.Params)
 	}
 }

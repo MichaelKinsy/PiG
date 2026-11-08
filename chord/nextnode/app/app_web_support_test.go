@@ -87,7 +87,7 @@ func webBrowserApp(t testing.TB, entry string, port int, files map[string]map[st
 		withWeb(entry, false)(o)
 		// The web kind keeps React and the tests' web API as host packages: the page provides them (the fixture's entry).
 		last := &o.Kinds[len(o.Kinds)-1]
-		last.Packages = plugins.HostPackages{"react": "", "react/jsx-runtime": "", "@test/app/v1/web": surfacesFixture(t, "web", "api.ts")}
+		last.Kind.Packages = plugins.HostPackages{"react": "", "react/jsx-runtime": "", "@test/app/v1/web": surfacesFixture(t, "web", "api.ts")}
 		o.Web.Page = browserPage
 		// The vendored sources are the packages' `source` condition (as the terminal's tests).
 		o.Web.Conditions = []string{"source"}

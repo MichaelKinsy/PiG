@@ -168,14 +168,12 @@ func sessionsFacet(cookieSecret string, ephemeral *EphemeralSessions) host.Facet
 			change := func(ctx context.Context, fn func(sessions *delta.Object)) {
 				// Not awaited by authentication: the request goes on; a write that fails is made again by a later request.
 				detached := context.WithoutCancel(ctx)
-				sessionWrites.Add(1)
-				go func() {
-					defer sessionWrites.Done()
+				sessionWrites.Go(func() {
 					_, _ = document.Change(detached, func(draft *delta.Object) (any, error) {
 						fn(draft.Object("sessions"))
 						return nil, nil
 					})
-				}()
+				})
 			}
 			// authenticate is the principal of token, or nil; it touches or lazily removes the persisted session it names.
 			authenticate := func(token string, ctx context.Context) data.Principal {
@@ -222,7 +220,7 @@ func sessionsFacet(cookieSecret string, ephemeral *EphemeralSessions) host.Facet
 			}
 			store := self.(host.StoreSelf)
 			store.Contribute(registries.Registry[any, any](chordhttp.Authenticators), chordhttp.Authenticator(
-				func(request chordhttp.HttpRequest, ctx context.Context) (data.Principal, error) {
+				func(ctx context.Context, request chordhttp.HttpRequest) (data.Principal, error) {
 					token, ok := bearerToken(request)
 					if !ok {
 						token, ok = chordhttp.ReadCookie(request, SessionCookie, cookieSecret)

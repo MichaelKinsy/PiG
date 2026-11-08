@@ -395,9 +395,9 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
     (unless (hash-table-p result)
       (error 'host-call-error :message "host reply to getSystemPromptOptions is not an object" :code "invalid_reply"))
     result))
-(defun ctx-get-model-info (ctx)
-  (let ((result (call-result ctx "getModelInfo")))
-    (and (hash-table-p result) (let ((id (jget result "id"))) (and (stringp id) (plusp (length id)))) result)))
+(defun model-info-result (result)
+  (and (hash-table-p result) (let ((id (jget result "id"))) (and (stringp id) (plusp (length id)))) result))
+(defun host-model-info (ctx) (model-info-result (call-result ctx "getModelInfo")))
 (defun ctx-get-model-auth (ctx provider-id model-id)
   (call-result ctx "getModelAuth" (obj "provider" provider-id "modelId" model-id)))
 (defun ctx-get-scoped-models (ctx) (or (call-result ctx "getScopedModels" (obj)) (vector)))
@@ -416,7 +416,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   (sleep seconds)
   nil)
 (defun ctx-project-trusted-p (ctx) (eq (reply-field ctx "isProjectTrusted" "trusted") t))
-(defun ctx-get-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
+(defun host-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
 (defun ctx-get-leaf-id (ctx) (optional-string-field ctx "getLeafID" "leafId"))
 (defun ctx-get-all-themes (ctx) (reply-field ctx "ui.getAllThemes" "themes"))
 (defun ctx-get-theme (ctx name)
@@ -450,7 +450,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 
 ;;; session manager reads --------------------------------------------------------
 
-(defstruct (session-manager (:constructor make-session-manager (ctx))) ctx)
+(defstruct (session-manager (:constructor make-session-manager (ctx))) ctx (replicated t))
 
 (defun ctx-session-manager (ctx) (make-session-manager ctx))
 
@@ -459,9 +459,6 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 
 (defun session-get-cwd (m) (session-read m "getCwd"))
 (defun session-get-session-dir (m) (session-read m "getSessionDir"))
-(defun session-get-session-id (m) (session-read m "getSessionId"))
-(defun session-get-session-file (m) (session-read m "getSessionFile"))
-(defun session-get-session-name (m) (session-read m "getSessionName"))
 (defun session-get-leaf-id (m) (session-read m "getLeafId"))
 (defun session-get-header (m) (session-read m "getHeader"))
 (defun session-get-leaf-entry (m) (session-read m "getLeafEntry"))
@@ -632,7 +629,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   "Call HANDLER, with the new terminal width, after each resize. Rows sent with the footer or header carry the width they were
 laid out for, so after a resize they stay hidden until the extension sends rows for the new width: this is that trigger.
 Handlers run one at a time, in the order the widths arrived, on a worker thread (never the thread that reads the host); a handler
-that signals is reported on stderr and does not stop the others. Returns the unsubscribe function."
+that signals is reported in the extension's log and does not stop the others. Returns the unsubscribe function."
   (let* ((ext (ctx-extension ctx))
          (id (sb-thread:with-mutex ((extension-state-lock ext))
                (let ((id (incf (extension-width-subscriber-id ext))))
@@ -652,7 +649,7 @@ that signals is reported on stderr and does not stop the others. Returns the uns
                  (pop (extension-width-jobs ext)))))
       (dolist (handler (cdr job))
         (handler-case (funcall handler (car job))
-          (error (e) (format *error-output* "~A: width change handler failed: ~A~%" (extension-name ext) e)))))))
+          (error (e) (diagnose "~A: width change handler failed: ~A~%" (extension-name ext) e)))))))
 
 (defun dispatch-width-change (ext width)
   "Queue WIDTH for the handlers subscribed now."

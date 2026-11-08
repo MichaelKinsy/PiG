@@ -1,0 +1,3 @@
+### Fixed
+
+- A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language. The highlighter restarted from a state of the earlier block that only matched the text before its resume point, and highlight.js reads past that point, so the new block could take a state it does not hold: python, bash, SQL, Kotlin and about 70 other languages showed it, and JavaScript and TypeScript would have with the resumable highlighting of the same release. <!-- fix: e38ea7c9db -->

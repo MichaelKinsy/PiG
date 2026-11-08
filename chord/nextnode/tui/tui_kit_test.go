@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -93,9 +94,9 @@ func tuiApp(t testing.TB, text string) started {
 		Name: "chord-test", DataDir: filepath.Join(base, "data"), Root: root,
 		Listen: &chordhttp.ListenAddress{Host: "127.0.0.1", Port: 0},
 		API:    app.AppAPI{Name: "@test/app", Versions: []string{"v1"}, Modules: plugins.HostPackages{"@test/app/v1": api}},
-		Kinds: []app.AppKind{
-			{Name: "server", Platform: plugins.PlatformNode},
-			{Name: "tui", Platform: plugins.PlatformNode, Packages: plugins.HostPackages{"@test/app/v1/tui": tuiAPI}},
+		Kinds: []app.AppKindEntry{
+			{Name: "server", Kind: app.AppKind{Platform: plugins.PlatformNode}},
+			{Name: "tui", Kind: app.AppKind{Platform: plugins.PlatformNode, Packages: plugins.HostPackages{"@test/app/v1/tui": tuiAPI}}},
 		},
 		Principal: app.AppPrincipals{Server: delta.JsonObjectOf("kind", "server"), Owner: delta.JsonObjectOf("kind", "owner")},
 		Tui:       &app.AppTui{Entry: fixture(t, "tui", "main.ts"), Conditions: []string{"source"}},
@@ -125,9 +126,7 @@ func started2(a *app.App, port int, root string) started {
 func writePlugin(t testing.TB, root, dir, name string, files map[string]string) {
 	t.Helper()
 	all := map[string]string{"package.json": fmt.Sprintf(`{"name":%q,"private":true,"type":"module"}`, name)}
-	for file, text := range files {
-		all[file] = text
-	}
+	maps.Copy(all, files)
 	for file, text := range all {
 		path := filepath.Join(root, dir, file)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -198,8 +197,9 @@ type launched struct {
 func launch(t testing.TB, port int, credentials TerminalCredentials) *launched {
 	t.Helper()
 	terminal := newPipeTerminal()
+	input, output := streamsOf(terminal)
 	options := TerminalOptions{
-		URL: "http://127.0.0.1:" + strconv.Itoa(port), Credentials: credentials, Terminal: terminal, Colors: "truecolor", Node: tuiNode(t),
+		URL: "http://127.0.0.1:" + strconv.Itoa(port), Credentials: credentials, Input: input, Output: output, Colors: "truecolor", Node: tuiNode(t),
 		Opener: func(target string) error {
 			_, _ = terminal.output.Write([]byte("(opener " + target + ")\r\n"))
 			return nil
@@ -345,7 +345,7 @@ func noGoroutinesOf(t testing.TB, markers ...string) {
 		buf := make([]byte, 1<<20)
 		buf = buf[:runtime.Stack(buf, true)]
 		var leaked []string
-		for _, stack := range strings.Split(string(buf), "\n\n") {
+		for stack := range strings.SplitSeq(string(buf), "\n\n") {
 			if slices.ContainsFunc(markers, func(marker string) bool { return strings.Contains(stack, marker) }) &&
 				!strings.Contains(stack, "testing.tRunner") && !strings.Contains(stack, "runtime.Stack") {
 				leaked = append(leaked, stack)

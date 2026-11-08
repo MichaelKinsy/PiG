@@ -196,6 +196,7 @@ func TestRetryWakesReplaceAndStop(t *testing.T) {
 
 // Own test: one observer follows every source of a declaration, including the same source twice, and stop leaves nothing
 // followed.
+// Cites packages/chord/src/host/attempt.ts:118 (Self.retryOn over watchable sources).
 func TestRetryWakesTheSameSourceTwice(t *testing.T) {
 	e := newModelsEnv(t)
 	wakes := &retryWakes{}
@@ -311,6 +312,7 @@ func TestRetryOnRetriesAFailedObjectABrokenOpenWhenASourceGetsANewValueTheWatche
 }
 
 // "does nothing while the object is parked failed { waiting }: its dependencies decide (dependency model §3.8)".
+// Cites packages/chord/src/host/attempt.ts:118 (Self.retryOn over watchable sources).
 func TestRetryOnDoesNothingWhileTheObjectIsParkedFailedWaitingItsDependenciesDecide(t *testing.T) {
 	missing := mustContract(contracts.Local("app.missing", contracts.LocalDeclaration{Members: []contracts.LocalEntry{}, Params: contracts.Params{}, Version: 1}))
 	var factories atomic.Int32
@@ -394,6 +396,7 @@ func TestRetryOnRemembersAWakeWhileItActivatesThatAttemptFailingIsRetriedAtOnce(
 }
 
 // "ignores wakes while live".
+// Cites packages/chord/src/host/attempt.ts:118 (Self.retryOn over watchable sources).
 func TestRetryOnIgnoresWakesWhileLive(t *testing.T) {
 	var opens atomic.Int32
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -420,6 +423,7 @@ func TestRetryOnIgnoresWakesWhileLive(t *testing.T) {
 }
 
 // "refuses sources that end with an attempt: a reference's member, its own writable, `ref.state`".
+// Cites packages/chord/src/host/attempt.ts:118 (Self.retryOn over watchable sources).
 func TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritableRefState(t *testing.T) {
 	other := mustContract(contracts.Local("app.other", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
@@ -483,6 +487,7 @@ func TestRetryOnAreTheObjectsAFailedObjectThatEndsReleasesThemAndIsCollectedWhil
 }
 
 // "does not wake an object by its own contributions leaving (it failed live: no retry without backoff)".
+// Cites packages/chord/src/host/attempt.ts:118 (Self.retryOn over watchable sources).
 func TestRetryOnDoesNotWakeAnObjectByItsOwnContributionsLeavingItFailedLiveNoRetryWithoutBackoff(t *testing.T) {
 	contributor := mustContract(contracts.Local("app.contributor", contracts.LocalDeclaration{Members: []contracts.LocalEntry{}, Params: contracts.Params{}, Version: 1}))
 	var mu sync.Mutex

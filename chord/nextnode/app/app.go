@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
@@ -66,6 +68,16 @@ func mustHostKind(name string, props ...contracts.Property) *contracts.HostKind 
 	return kind
 }
 
+// AppPlugins are the plugins of a running app, for its "apply changes" control and its installs.
+type AppPlugins struct {
+	// State is the marks (`dirty`, `install`, `set`, `base`): what the app's button shows.
+	State chord.Watchable[delta.JsonValue]
+	// Install installs plugins from git or npm into the user's root (slice 12's `installPlugin`) and returns their names.
+	Install func(ctx context.Context, source plugins.PluginSource) ([]string, error)
+	// Component is the plugins component itself.
+	Component *plugins.Plugins
+}
+
 // AppAPI is the app's API (slice 12): its package name, the versions it provides (newest first) and this process's modules of them by
 // specifier (`@acme/app/v3`, `@acme/app/v3/server`).
 type AppAPI struct {
@@ -74,12 +86,18 @@ type AppAPI struct {
 	Modules  plugins.HostPackages
 }
 
-// AppKind is a facet kind of the app: its name, where its builds run, and the packages besides the API its plugins share (`react`).
+// AppKind is a facet kind of the app: where its builds run, and the packages besides the API its plugins share (`react`).
 // Its API modules are named by convention: `<api>/<version>` and `<api>/<version>/<kind>` for every version.
 type AppKind struct {
-	Name     string
 	Platform plugins.Platform
 	Packages plugins.HostPackages
+}
+
+// AppKindEntry is one entry of upstream's `kinds` record: the kind's name, the record's key, and its AppKind. A record keeps its keys
+// in insertion order and a Go map does not, so the kinds are a slice of entries in the order the app gave them.
+type AppKindEntry struct {
+	Name string
+	Kind AppKind
 }
 
 // AppWorkerKind is a worker kind: a host kind of the app and how its workers start (the workers component's options).
@@ -186,7 +204,7 @@ type AppOptions struct {
 	Listen *chordhttp.ListenAddress
 	API    AppAPI
 	// Kinds are the app's facet kinds, in order: `server` and each worker kind's facet kind among them.
-	Kinds     []AppKind
+	Kinds     []AppKindEntry
 	Principal AppPrincipals
 	// Workers are the worker kinds; none: a server with clients only. They need Principal.Worker.
 	Workers []AppWorkerKind
@@ -319,8 +337,8 @@ type App struct {
 	HTTP *chordhttp.HttpComponent
 	// Workers are the workers components, by host kind name.
 	Workers map[string]*workers.Workers
-	// Plugins is the plugins component, for the app's "apply changes" control: its marks and its rollouts.
-	Plugins *plugins.Plugins
+	// Plugins is the plugins of the running app, for its "apply changes" control and its installs.
+	Plugins AppPlugins
 	// Node is the server's plugins' host (the NodeHost the server host accepted the link of).
 	Node *plugins.NodeHost
 	// DataDir is the data directory.
@@ -367,6 +385,11 @@ func StartServer(options AppOptions, ctx context.Context) (*App, error) {
 	if len(options.Workers) > 0 && options.Principal.Worker == nil {
 		return nil, errors.New("startServer: worker kinds need principal.worker")
 	}
+	for _, kind := range options.Workers {
+		if kind.Authorize == nil || kind.Start == nil {
+			return nil, fmt.Errorf("startServer: worker kind %q needs Authorize and Start", workerKindName(kind))
+		}
+	}
 	dataDir := options.DataDir
 	if dataDir == "" {
 		dataDir = DefaultDataDir(options.Name)
@@ -392,10 +415,10 @@ func (a *App) report(kind AppErrorKind, err any) {
 	}
 }
 
-// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`):
+// serverExecutable is the path of the server's own executable, to compare like a base file (Pi's `nodeBaseInputs(process.argv[1])`, workers.NodeBaseInputs):
 // not one under the Go build cache (the analog of an entry under `node_modules`: a test runner, `go run`), and one that cannot be
 // read is reported as `server_scan` and left out.
-func (a *App) serverExecutable() (string, bool) {
+func (a *App) serverExecutable() (plugins.BaseInputs, bool) {
 	lookup := a.options.executable
 	if lookup == nil {
 		lookup = os.Executable
@@ -404,27 +427,25 @@ func (a *App) serverExecutable() (string, bool) {
 	if err == nil {
 		exe, err = filepath.Abs(exe)
 	}
-	if err == nil {
-		var info os.FileInfo
-		if info, err = os.Stat(exe); err == nil && !info.Mode().IsRegular() {
-			err = fmt.Errorf("%s is not a regular file", exe)
+	// A program of the Go build cache is not compared (and not read): its bytes are no one's code.
+	if err == nil && inGoBuildCache(exe) {
+		if _, statErr := os.Stat(exe); statErr == nil {
+			return nil, false
 		}
 	}
+	var inputs plugins.BaseInputs
 	if err == nil {
-		// Readable now: the watcher hashes it, and its failure would come as a plugins error instead.
-		var file *os.File
-		if file, err = os.Open(exe); err == nil {
-			err = file.Close()
-		}
+		// Readable now; the record is handed on, the watcher does not hash it again.
+		inputs, err = workers.NodeBaseInputs(exe, nil)
 	}
 	if err != nil {
 		a.reportLate(AppErrorServerScan, fmt.Errorf("the server's executable cannot be read: %w", err), "")
-		return "", false
+		return nil, false
 	}
 	if inGoBuildCache(exe) {
-		return "", false
+		return nil, false
 	}
-	return exe, true
+	return inputs, true
 }
 
 // inGoBuildCache is whether path lies under a work directory `go run` and `go test` build their programs in: `go-build` and the
@@ -477,9 +498,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	kinds := make([]plugins.KindDefinition, len(options.Kinds))
+	kinds := make([]plugins.KindEntry, len(options.Kinds))
 	for i, kind := range options.Kinds {
-		kinds[i] = plugins.KindDefinition{Name: kind.Name, Platform: kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}
+		kinds[i] = plugins.KindEntry{Name: kind.Name, Definition: plugins.KindDefinition{Platform: kind.Kind.Platform, HostPackages: hostPackagesOf(options.API, kind)}}
 	}
 	base := make([]string, len(options.Base))
 	for i, path := range options.Base {
@@ -489,14 +510,19 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	// The web surface serves a browser build's assets under its prefix (Pi's `publicPath: ${WEB_PREFIX}assets/`).
 	assetsPath := nodesurfaces.WebPrefix + "assets/"
-	a.Plugins = plugins.CreatePlugins(plugins.PluginsOptions{
+	component := plugins.CreatePlugins(plugins.PluginsOptions{
 		Roots: []plugins.PluginRoot{{Path: root, Required: true}, {Path: opened.layout.Plugins}}, Kinds: kinds, Install: options.Install, Base: base,
 		Api:        &plugins.AppApi{Name: options.API.Name, Versions: options.API.Versions},
 		PublicPath: &assetsPath,
 		OnError:    func(err plugins.PluginsError) { a.report(AppErrorPlugins, err) }, Node: options.Node,
 	}, ctx)
-	a.build, a.rollout = a.Plugins.Build, a.Plugins.Rollout
-	workerHosts := &workerHosts{keys: map[string]string{}}
+	a.Plugins = AppPlugins{
+		State:     component.State(),
+		Install:   a.installPlugin,
+		Component: component,
+	}
+	a.build, a.rollout = component.Build, component.Rollout
+	workerHosts := &workerHosts{keys: map[string]string{}, principals: map[string]string{}}
 	link := &OwnerLink{}
 	owner := options.Principal.Owner
 	themeChoice, err := surfaces.ThemeChoiceFacet()
@@ -511,12 +537,14 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if len(options.API.Versions) > 0 {
 		version = options.API.Versions[0]
 	}
+	// pig divergence (D460): the kit's facets are Go core facets on the server's Go host, beside the plugins' Node host; Pi loads them into the one host that loads the plugins.
 	core := []host.HostFacet{
 		{Name: "chord.http", Facet: a.HTTP.Facet()},
 		{Name: "chord.app.info", Facet: AppInfoFacet(AppInfoValues{DataDir: opened.layout.DataDir, Name: options.Name, Version: version, Owner: owner})},
 		{Name: "chord.app.sessions", Facet: sessions.Facet},
 		{Name: "chord.app.owner", Facet: OwnerFacet(link, owner)},
 		{Name: "chord.app.pairing", Facet: PairingFacet(NewPairings(PairingLimits{MaxPending: limits.PendingPairings, PerAddress: limits.PairingsPerAddress}), owner)},
+		// pig divergence (D461): Files is a Go facet the plugins' NodeHost cannot get (the bridge refuses its keyed member); Pi's plugins `self.get(Files, {})`.
 		{Name: "chord.app.files", Facet: FilesFacet(filepath.Join(opened.layout.Server, "files"), options.Files, limits.Uploads)},
 		{Name: "chord.themes", Facet: surfaces.ThemesFacet()},
 		{Name: "chord.themes.choice", Facet: themeChoice},
@@ -562,7 +590,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}, ctx); err != nil {
 		return err
 	}
-	for _, each := range surfacesOf(h, options, a.Plugins) {
+	for _, each := range surfacesOf(h, options, a.Plugins.Component) {
 		a.surfaces = append(a.surfaces, each)
 		core = append(core, each.facets...)
 		switch each.name {
@@ -579,30 +607,27 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := failedPlugins(report); err != nil {
 		return err
 	}
-	var serverKind *AppKind
+	var serverKind *AppKindEntry
 	for i := range options.Kinds {
 		if options.Kinds[i].Name == "server" {
 			serverKind = &options.Kinds[i]
 		}
 	}
 	modules := plugins.HostPackages{}
-	for name, path := range options.API.Modules {
-		modules[name] = path
-	}
+	maps.Copy(modules, options.API.Modules)
 	if serverKind != nil {
-		for name, path := range serverKind.Packages {
-			modules[name] = path
-		}
+		maps.Copy(modules, serverKind.Kind.Packages)
 	}
 	// The server host's own store is the kit's; the plugins' is another file (two chord stores cannot share one).
 	pluginsStore := filepath.Join(opened.layout.Server, "plugins.sqlite")
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
-	node, _, err := a.Plugins.Load(plugins.PluginsLoad{
+	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
 		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
-		Store: &plugins.StoreOptions{Path: pluginsStore},
+		PrincipalAttributes: options.PrincipalAttributes,
+		Store:               &plugins.StoreOptions{Path: pluginsStore},
 		// The delegation the other way: what the Go server host serves (the choices, the telemetry ingest, the app's Go facets) is
 		// bound there when a plugin holds it, as Pi's one server host binds it (D605).
 		ParentServes: h.Serves,
@@ -639,16 +664,45 @@ func failedPlugins(report host.LoadReport) error {
 	return fmt.Errorf("plugin %q failed to load: %w", first.Plugin, first.Error)
 }
 
-// workerHosts is the address key of each worker by its principal's key: the principal its link stamps on its telemetry batches.
+// workerKindName is the name of a worker kind for a message (its host kind may be missing in a bad option).
+func workerKindName(kind AppWorkerKind) string {
+	if kind.Kind == nil {
+		return ""
+	}
+	return kind.Kind.Kind
+}
+
+// workerHosts is the address key of each worker by its principal's key: the principal its link stamps on its telemetry batches. An
+// entry ends with its address (forget): Pi's map keeps them for the process's life, which grows with every address ever started.
 type workerHosts struct {
-	mu   sync.Mutex
-	keys map[string]string
+	mu sync.Mutex
+	// keys is the address key by principal key; principals is the principal key each address key made, to find it again.
+	keys       map[string]string
+	principals map[string]string
 }
 
 func (w *workerHosts) set(principalKey, address string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if previous, ok := w.principals[address]; ok && previous != principalKey && w.keys[previous] == address {
+		delete(w.keys, previous)
+	}
 	w.keys[principalKey] = address
+	w.principals[address] = principalKey
+}
+
+// forget drops the entry the address made, unless another address took its principal key since.
+func (w *workerHosts) forget(address string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	principalKey, ok := w.principals[address]
+	if !ok {
+		return
+	}
+	delete(w.principals, address)
+	if w.keys[principalKey] == address {
+		delete(w.keys, principalKey)
+	}
 }
 
 func (w *workerHosts) get(principalKey string) (string, bool) {
@@ -715,6 +769,7 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 	if err != nil {
 		return openedServer{}, err
 	}
+	// pig divergence (D462): the server's Go host has a store of its own (store.sqlite); the plugins' NodeHost has another (plugins.sqlite); Pi's one host has one.
 	chordStore, err := store.OpenStore(store.SqliteBackend(database), ctx, store.StoreOptions{})
 	if err != nil {
 		return openedServer{}, err
@@ -723,12 +778,12 @@ func openServer(path string, ctx context.Context) (opened openedServer, err erro
 }
 
 // hostPackagesOf is the host packages of kind: the API's shared and per-kind module of every version, and its packages.
-func hostPackagesOf(api AppAPI, kind AppKind) []string {
+func hostPackagesOf(api AppAPI, kind AppKindEntry) []string {
 	var packages []string
 	for _, version := range api.Versions {
 		packages = append(packages, api.Name+"/"+version, api.Name+"/"+version+"/"+kind.Name)
 	}
-	for name := range kind.Packages {
+	for name := range kind.Kind.Packages {
 		packages = append(packages, name)
 	}
 	return packages
@@ -771,9 +826,10 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 		Lock: func(address contracts.Address) (string, error) {
 			return workerLock(options.Name, dataDir, address), nil
 		},
-		IdleMs:  idle,
-		Plugins: a.Plugins,
-		OnError: func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
+		IdleMs:    idle,
+		Plugins:   a.Plugins.Component,
+		OnError:   func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
+		Forgotten: func(address contracts.Address) { hosts.forget(address.Key) },
 	}, ctx)
 }
 
@@ -796,10 +852,10 @@ func linkHost(listened string, port int) string {
 	return name + ":" + strconv.Itoa(port)
 }
 
-// InstallPlugin installs plugins from git or npm into the user's root and returns their names (Pi's `app.plugins.install`, which binds
+// installPlugin is AppPlugins.Install: it installs plugins from git or npm into the user's root and returns their names (it binds
 // the user's root where Plugins.InstallPlugin takes any root); applying changes loads them.
-func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([]string, error) {
-	return a.Plugins.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
+func (a *App) installPlugin(ctx context.Context, source plugins.PluginSource) ([]string, error) {
+	return a.Plugins.Component.InstallPlugin(source, filepath.Join(a.DataDir, "plugins"), ctx)
 }
 
 // ApplyChanges builds the dirty plugins and rolls them out: the server, every worker kind, then the web and terminal surfaces;
@@ -807,11 +863,11 @@ func (a *App) InstallPlugin(source plugins.PluginSource, ctx context.Context) ([
 func (a *App) ApplyChanges(ctx context.Context) (plugins.RolloutResult, error) {
 	a.applyMu.Lock()
 	defer a.applyMu.Unlock()
-	built, err := a.build(a.Plugins.Marks().Dirty, ctx)
+	built, err := a.build(a.Plugins.Component.Marks().Dirty, ctx)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
-	server, err := a.Plugins.Step("server", a.Node)
+	server, err := a.Plugins.Component.Step("server", a.Node)
 	if err != nil {
 		return plugins.RolloutResult{}, err
 	}
@@ -842,18 +898,14 @@ func (a *App) manifest(address contracts.Address) ArchiveManifest {
 }
 
 // running is whether the worker at address runs.
-func running(found *workers.Workers, address contracts.Address) (bool, error) {
-	value, err := found.State().Value()
-	if err != nil {
-		return false, err
-	}
-	object, _ := value.(*delta.JsonObject)
+func running(found *workers.Workers, address contracts.Address) bool {
+	object, _ := found.State().Value().(*delta.JsonObject)
 	entry, _ := object.Value(address.Key).(*delta.JsonObject)
 	if entry == nil {
-		return false, nil
+		return false
 	}
 	status, _ := entry.Value("status").(string)
-	return status == string(workers.WorkerRunning), nil
+	return status == string(workers.WorkerRunning)
 }
 
 // ExportData writes the data the worker at address created (its store and finished files) as an archive at path, stopping nothing: a
@@ -871,11 +923,7 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 	}
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
-		isRunning, err := running(found, address)
-		if err != nil {
-			return err
-		}
-		if isRunning {
+		if running(found, address) {
 			return a.exportRunning(address, manifest, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)
@@ -976,8 +1024,8 @@ func (a *App) Close(ctx context.Context) error {
 			errs = append(errs, a.Host.Close(ctx))
 		}
 		errs = append(errs, a.store.Close(ctx))
-		if a.Plugins != nil {
-			a.Plugins.Close()
+		if a.Plugins.Component != nil {
+			a.Plugins.Component.Close()
 		}
 		errs = append(errs, a.lock.Release())
 		a.closed = errors.Join(errs...)

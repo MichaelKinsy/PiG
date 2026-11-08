@@ -628,6 +628,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/anthropic-message-threads.test.ts",
+      "upstreamTestHash": "sha256:c3c9855ef1f514fe9246f75f7a9acec233b6a6b7cad68c228bee9dc80d43a18b",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/anthropic-mid-conversation-effort.test.ts",
       "upstreamTestHash": "sha256:41c4e19ce197243044d203cfb7e2e0de6b5f185121ab9ae2806bc9b9af402767",
       "area": "providers",
@@ -882,6 +891,15 @@
     {
       "path": "packages/ai/test/cache-retention.test.ts",
       "upstreamTestHash": "sha256:12c858b08949b9e939c833e8a7ea0a2668d2f12f4b31d16071ab581d41cc4044",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/clamp-max-tokens.test.ts",
+      "upstreamTestHash": "sha256:df80896bb514f1dfc0f4b4f3bb16027dc1b746741345597e666b09239f93691e",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -1492,6 +1510,15 @@
       "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
     },
     {
+      "path": "packages/ai/test/openai-completions-non-null-assistant-content.test.ts",
+      "upstreamTestHash": "sha256:ab06a46cee61291d8793a1b904cc201f902b09dc5ec19efef7e9e4fe2da25f05",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
       "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
       "upstreamTestHash": "sha256:276535dc7e725b031e734fd3595cb644e1728a7e12520e0bf0aa8274c7fe8a01",
       "area": "providers",
@@ -1674,6 +1701,15 @@
     {
       "path": "packages/ai/test/openai-responses-partial-json-cleanup.test.ts",
       "upstreamTestHash": "sha256:ad44bf0cb7726e895b13b64e59070579a2a42ab84df0c6cc6117376bcf7ad7e9",
+      "area": "providers",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Selected Provider catalog, credentials, request conversion, streaming, replay, or error handling."
+    },
+    {
+      "path": "packages/ai/test/openai-responses-prompt-cache.test.ts",
+      "upstreamTestHash": "sha256:17de0ec9bf7c1fabd7882e6a0522684c785142c811c040111e3eb06243164827",
       "area": "providers",
       "tags": [
         "hot-path"
@@ -4442,6 +4478,15 @@
       "rationale": "Production-path review at Pi e7a0df27: Startup in a deleted working directory: the CLI reports it instead of crashing (Pi 88ffcdc7)."
     },
     {
+      "path": "packages/coding-agent/test/diff.test.ts",
+      "upstreamTestHash": "sha256:c7d4921060edff6016a81e959a847d7ab8b1e226c160375e66c80477d8ebb52b",
+      "area": "tui",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: Rendering of an edit tool diff in the transcript keeps the indentation of changed lines (Pi dca1f5552)."
+    },
+    {
       "path": "packages/coding-agent/test/documentation.test.ts",
       "upstreamTestHash": "sha256:a20d582ad69450e941006f5ed0f091da55d72546bac5aa36fe6cbfa32cfa70a6",
       "area": "cli",
@@ -4449,6 +4494,24 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
+      "path": "packages/coding-agent/test/edit-diff-window.test.ts",
+      "upstreamTestHash": "sha256:ace73451ee80dc7d71d64e3e1d0b3203d9ad433869069ad335d0001d20c6ff53",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: The edit tool computes the diff and patch of a change in windows around it (Pi d448c51e2): the returned diff of a coding turn that edits a file."
+    },
+    {
+      "path": "packages/coding-agent/test/edit-tool-diff-before-write.test.ts",
+      "upstreamTestHash": "sha256:a6b90da624e7ddae6bff8593b597264f27427321f708a4642e3acad76c775c17",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: The edit tool computes its diff before it writes (Pi d448c51e2): a diff failure leaves the file unchanged."
     },
     {
       "path": "packages/coding-agent/test/edit-tool-legacy-input.test.ts",
@@ -4746,6 +4809,15 @@
         "hot-path"
       ],
       "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+    },
+    {
+      "path": "packages/coding-agent/test/image-resize-worker-teardown.test.ts",
+      "upstreamTestHash": "sha256:10455714557bd1f8f83782a2bbe32eb65c807b5d3004521cad5d7f24b28a20e8",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: Resizing an image a read returns: a resize does not return while something it started still runs (Pi 1f7c685b8)."
     },
     {
       "path": "packages/coding-agent/test/initial-message.test.ts",
@@ -5292,6 +5364,15 @@
         "hot-path"
       ],
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
+    },
+    {
+      "path": "packages/coding-agent/test/read-streaming.test.ts",
+      "upstreamTestHash": "sha256:0cfc40a0f2899ce8193af328bdfbe0992ac135d39dc6b43438c8400667ffb7a5",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: The read tool reads a text file as a stream and returns the lines it can show: the output, truncation details and memory of a coding turn that reads a file (Pi 3a7bb6f48)."
     },
     {
       "path": "packages/coding-agent/test/references.test.ts",
@@ -5882,6 +5963,15 @@
       "rationale": "Session context, persistence, turn lifecycle, compaction, or recovery."
     },
     {
+      "path": "packages/coding-agent/test/suite/regressions/11451-thinking-level-after-tree-navigation.test.ts",
+      "upstreamTestHash": "sha256:897ab0ea229d7f90613eadc2f2ec4aa628fa1c7bd49a28880d057595bb492001",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: The live thinking level is recorded on the new branch after tree navigation (Pi 7860ff528)."
+    },
+    {
       "path": "packages/coding-agent/test/suite/regressions/11520-sdk-summary-oauth-auth.test.ts",
       "upstreamTestHash": "sha256:0b7ea193c558f0ab6963829116594003a9c37e9db987400627d98c5c0e49b80e",
       "area": "sessions",
@@ -6431,6 +6521,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/suite/regressions/8092-extension-realpath-jiti.test.ts",
+      "upstreamTestHash": "sha256:faadf855f4a763e36834a1a8e3f5763ca3c76682140c3fc24af7daeb5149fb73",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: An extension entry is realpath'd before the node import, so an extension in a pnpm virtual store loads (Pi e6865ec7e)."
+    },
+    {
       "path": "packages/coding-agent/test/suite/regressions/8237-node-sea-extension-loading.test.ts",
       "upstreamTestHash": "sha256:21cb3ab08f4c5e54b338cf004cdbc335964318647cc2d88c247f234e91af1720",
       "area": "extensions",
@@ -6465,6 +6564,15 @@
         "hot-path"
       ],
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/8409-aborted-tool-auth-setup.test.ts",
+      "upstreamTestHash": "sha256:80e979de273c970c01a1a2a2a08eb3e48adc1268f798934730ef4d65542ca4ce",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: The turn after an aborted tool ends as aborted when the auth setup sees an aborted signal (Pi f3a64af07)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/8423-extension-factory-failure.test.ts",
@@ -6537,6 +6645,15 @@
         "hot-path"
       ],
       "rationale": "Tool admission, arguments, execution, cancellation, or returned output on coding turns."
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/9154-prompt-during-tree-navigation.test.ts",
+      "upstreamTestHash": "sha256:3cdab06ca9ec5c19b4bd863b90ef04b7b0f604a60f3d5468330c17b84ac87fdb",
+      "area": "sessions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: A prompt during tree navigation and navigation during a prompt are rejected or allowed as Pi does (Pi 8a3e163b0)."
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/9178-tree-during-compaction.test.ts",
@@ -6814,6 +6931,15 @@
       "area": "sessions",
       "tags": [],
       "rationale": "Explicit example extension or Worker-only adapter; not a Stock native text-session mechanism. Retain the underlying test disposition."
+    },
+    {
+      "path": "packages/coding-agent/test/truncate-surrogates.test.ts",
+      "upstreamTestHash": "sha256:c165767efbc7af1221714cf6098fbc8d722e78afbd606640a6a9b258bfce477b",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi c23b9ec1: Tool output truncation (grep line cut, head and tail slices) never splits a surrogate pair (Pi 9e870f6f0)."
     },
     {
       "path": "packages/coding-agent/test/truncate-to-width.test.ts",
@@ -7957,7 +8083,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go"
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders › carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
+      "designedOutCases": [
+        "builders › carry the static type of valid values"
+      ]
     },
     {
       "path": "packages/schema/test/coerce-typebox.test.ts",
@@ -7980,6 +8109,15 @@
     {
       "path": "packages/schema/test/conformance.test.ts",
       "upstreamTestHash": "sha256:c8a4ff57f6a93a380b9ac1020ad6fc1cb8ce1805657fd4b761ede18340f3fcf0",
+      "area": "tools",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Production-path review at Pi 1.5.0: schema.Compile and CompileCoercing are the tool-argument validator of the Go product (cmd/pig links schema, schema/formats, schema/formats/internal/idna and schema/internal/ecmaregex): ai/validate.go (toolArgumentValidators) compiles every tool schema, reached through ai.ValidateToolArguments from agent/tool_execution.go, durable/harness/tool.go, durable/codemode/call.go and durable/core/driver/session.go; durable/harness/structured_output.go, chord/host/schema.go, chord/host/wire.go and chord/next/data/validator.go also call schema.Compile."
+    },
+    {
+      "path": "packages/schema/test/equal.test.ts",
+      "upstreamTestHash": "sha256:591a1a7a347f537bcf9fb5fedae96455eacd85eb20bda0a415ff4de5353768f3",
       "area": "tools",
       "tags": [
         "hot-path"
@@ -8189,7 +8327,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation. SCRUTINIZED:approved by the owner (2026-11-01): Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and releases it on FinishStreaming, Invalidate and a theme or grammar change; reviewed, no lifetime bug."
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",

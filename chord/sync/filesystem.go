@@ -206,7 +206,7 @@ func (remote *FileSystemSyncRemote) Sessions(ctx context.Context, _ *string) (Se
 	return SessionChanges{Sessions: sessions, Cursor: "", More: false}, nil
 }
 
-func (remote *FileSystemSyncRemote) PutMeta(ctx context.Context, sessionID string, meta *delta.JsonObject) error {
+func (remote *FileSystemSyncRemote) PutMeta(ctx context.Context, sessionID string, meta *JsonObject) error {
 	text, err := jsstring.MarshalJSON(meta)
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func (remote *FileSystemSyncRemote) PutMeta(ctx context.Context, sessionID strin
 	return remote.write(ctx, sessionID, nil, "meta.json", once(text))
 }
 
-func (remote *FileSystemSyncRemote) GetMeta(ctx context.Context, sessionID string) (*delta.JsonObject, error) {
+func (remote *FileSystemSyncRemote) GetMeta(ctx context.Context, sessionID string) (*JsonObject, error) {
 	bytes, err := remote.read(ctx, sessionID, "meta.json")
 	if err != nil || bytes == nil {
 		return nil, err
@@ -290,7 +290,7 @@ func (remote *FileSystemSyncRemote) stream(ctx context.Context, sessionID string
 	if err != nil {
 		return nil, err
 	}
-	reader, err := remote.fs.OpenBinaryReader(ctx, path)
+	reader, err := remote.fs.OpenBinaryReader(ctx, path, nil)
 	if IsNotFound(err) {
 		return nil, nil
 	}

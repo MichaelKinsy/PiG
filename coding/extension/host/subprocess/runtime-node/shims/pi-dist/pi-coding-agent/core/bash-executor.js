@@ -19,6 +19,7 @@ import { DEFAULT_MAX_BYTES, truncateTail } from "./tools/truncate.js";
 export async function executeBashWithOperations(command, cwd, operations, options) {
     const outputChunks = [];
     let outputBytes = 0;
+    let discardedOutput = false;
     const maxOutputBytes = DEFAULT_MAX_BYTES * 2;
     let tempFilePath;
     let tempFileStream;
@@ -54,6 +55,7 @@ export async function executeBashWithOperations(command, cwd, operations, option
         while (outputBytes > maxOutputBytes && outputChunks.length > 1) {
             const removed = outputChunks.shift();
             outputBytes -= removed.length;
+            discardedOutput = true;
         }
         // Stream to callback
         if (options?.onChunk) {
@@ -94,7 +96,7 @@ export async function executeBashWithOperations(command, cwd, operations, option
         output: truncationResult.truncated ? truncationResult.content : fullOutput,
         exitCode: cancelled ? undefined : (exitCode ?? undefined),
         cancelled,
-        truncated: truncationResult.truncated,
+        truncated: discardedOutput || truncationResult.truncated,
         fullOutputPath: tempFilePath,
     };
 }

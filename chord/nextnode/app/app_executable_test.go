@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -62,7 +63,7 @@ func TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCl
 		o.processStart = func() time.Time { return began }
 	})
 	<-s.app.BaseWatched()
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked at start")
 	}
 	if v2 := program.build("v2"); bytes.Equal(v1, v2) {
@@ -81,11 +82,12 @@ func TestAppComparesTheServersOwnCodeFromItsExecutableWithNoBaseGivenMarkedAndCl
 func TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "no-such-server")
 	s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return missing, nil } })
+	s.errors.expect()
 	<-s.app.BaseWatched()
 	if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 		t.Fatalf("reported %v, want [server_scan]", got)
 	}
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked")
 	}
 }
@@ -123,7 +125,7 @@ func TestAppDoesNotCompareAnExecutableUnderTheGoBuildCache(t *testing.T) {
 	}
 	editEcho(t, s.root, "barrier")
 	untilMarks(t, s.app, "the barrier edit", func(m plugins.PluginsState) bool { return len(m.Dirty) == 1 })
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked by an edit of an executable under the go-build cache")
 	}
 	if got := s.errors.kinds(); len(got) != 0 {
@@ -146,6 +148,7 @@ func TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened(t *testing.T)
 	for name, path := range cases {
 		t.Run(name, func(t *testing.T) {
 			s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return path, nil } })
+			s.errors.expect()
 			<-s.app.BaseWatched()
 			if got := s.errors.kinds(); len(got) != 1 || got[0] != AppErrorServerScan {
 				t.Fatalf("reported %v, want [server_scan]", got)
@@ -178,7 +181,7 @@ func startWithExecutable(t *testing.T, modified, began time.Time) started {
 func TestAppMarksAnExecutableEditedAfterTheProcessStartedBeforeItWasRead(t *testing.T) {
 	// The mtime is now (the file was just written), the process started an hour ago; the ctime is now too.
 	s := startWithExecutable(t, time.Now(), time.Now().Add(-time.Hour))
-	if !s.app.Plugins.Marks().Base {
+	if !s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is not marked for an executable edited since the process started")
 	}
 }
@@ -189,7 +192,27 @@ func TestAppMarksAnExecutableEditedAfterTheProcessStartedBeforeItWasRead(t *test
 func TestAppDoesNotMarkAnExecutableStampedInTheFutureComparedByItsBytes(t *testing.T) {
 	// mtime tomorrow, process started in an hour (so the ctime, now, is before the start too): neither timestamp is in range.
 	s := startWithExecutable(t, time.Now().Add(24*time.Hour), time.Now().Add(time.Hour))
-	if s.app.Plugins.Marks().Base {
+	if s.app.Plugins.Component.Marks().Base {
 		t.Fatal("base is marked for an executable stamped in the future")
+	}
+}
+
+// A program under the go-build cache is skipped before it is read: one the process cannot read is not the server's code that cannot
+// be read, so nothing is reported for it (the skip needs no bytes).
+func TestAppSkipsAGoBuildProgramBeforeReadingIt(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("the file's mode does not keep this user from reading it")
+	}
+	built := filepath.Join(t.TempDir(), "go-build123", "b001", "server")
+	if err := os.MkdirAll(filepath.Dir(built), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(built, []byte("v1"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	s := startTestApp(t, nil, func(o *AppOptions) { o.executable = func() (string, error) { return built, nil } })
+	<-s.app.BaseWatched()
+	if got := s.errors.kinds(); len(got) != 0 {
+		t.Fatalf("reported %v, want nothing for a go-build program", got)
 	}
 }

@@ -13,11 +13,12 @@ package schema
 //
 // Every pass is copy-on-write: an object or array is copied only when one of its members changes, so an unchanged value comes back as the same reference and the input is never modified. All passes walk the same keywords for members: `properties`, then `patternProperties`, then `additionalProperties` for keys neither names; tuple items by `prefixItems` (or a draft-7 `items` array), the rest by `items`. Draft 7's `additionalItems` is not coerced.
 //
-// Go has no `undefined` and no bigint, so the places where Pi reads them have no counterpart: a member is absent or it has a value, and the bigint branches of the conversion helpers cannot be reached.
+// Pi's `undefined` is Undefined and its bigint a *big.Int (see value.go). A member holding Undefined is present, and counts as absent to the conversion (Pi's `value[key] === undefined` skip); a conversion that produces undefined, as a JSON null does for `{ "type": "undefined" }`, leaves the member in place holding it, and JSON.stringify leaves it out.
 
 import (
 	"maps"
 	"math"
+	"math/big"
 	"reflect"
 	"slices"
 	"strconv"
@@ -368,6 +369,8 @@ const (
 	kindString
 	kindObject
 	kindArray
+	kindBigInt
+	kindUndefined
 )
 
 // identityOf is the key of value. mergeZeros selects SameValueZero (the comparison of a Map key: +0 and -0 are one key) over Object.is (the stack's comparison); NaN is one key in both.
@@ -388,6 +391,10 @@ func identityOf(value any, mergeZeros bool) valueKey {
 		return valueKey{kind: kindObject, ptr: reflect.ValueOf(x).UnsafePointer()}
 	case []any:
 		return valueKey{kind: kindArray, n: len(x), ptr: arrayPointer(x)}
+	case *big.Int:
+		return valueKey{kind: kindBigInt, s: x.String()}
+	case UndefinedType:
+		return valueKey{kind: kindUndefined}
 	}
 	if n, ok := asNumber(value); ok {
 		switch {
@@ -645,6 +652,11 @@ func identical(a, b any) bool {
 	case string:
 		y, ok := b.(string)
 		return ok && x == y
+	case *big.Int:
+		y, ok := b.(*big.Int)
+		return ok && x.Cmp(y) == 0
+	case UndefinedType:
+		return isUndefined(b)
 	case *Object:
 		y, ok := b.(*Object)
 		return ok && x == y
@@ -825,6 +837,17 @@ func (r *run) convertNode(info *nodeInfo, b string, value any) any {
 		if tryNull(value) {
 			return nil
 		}
+	case "bigint":
+		if isBigInt(value) {
+			return value
+		}
+		if i, ok := tryBigInt(value); ok {
+			return i
+		}
+	case "undefined":
+		if tryUndefined(value) {
+			return Undefined
+		}
 	case "array":
 		return r.convertArray(info, b, value)
 	case "object":
@@ -927,6 +950,10 @@ func (r *run) convertObject(info *nodeInfo, base string, value any) any {
 	keys := r.pushKeys(object)
 	for _, key := range keys {
 		original, _ := object.get(key)
+		// An undefined property counts as absent.
+		if isUndefined(original) {
+			continue
+		}
 		next := original
 		property, matched := m.property(key)
 		if matched {
@@ -1078,6 +1105,10 @@ func matchesType(value any, name string) bool {
 		return ok
 	case "null":
 		return value == nil
+	case "bigint":
+		return isBigInt(value)
+	case "undefined":
+		return isUndefined(value)
 	case "array":
 		_, ok := value.([]any)
 		return ok
@@ -1174,6 +1205,10 @@ func convertLiteral(literal, value any) any {
 		if b, ok := tryBoolean(value); ok && b == want {
 			return b
 		}
+	case *big.Int:
+		if i, ok := tryBigInt(value); ok && i.Cmp(want) == 0 {
+			return i
+		}
 	default:
 		if want, isNumber := asNumber(literal); isNumber {
 			if n, ok := tryNumber(value); ok && n == want {
@@ -1192,6 +1227,10 @@ func tryString(value any) (string, bool) {
 		return strconv.FormatBool(x), true
 	case string:
 		return x, true
+	case *big.Int:
+		return x.String(), true
+	case UndefinedType:
+		return "", true
 	}
 	if n, ok := asNumber(value); ok && isFinite(n) {
 		return jsnumber.String(n), true
@@ -1199,10 +1238,19 @@ func tryString(value any) (string, bool) {
 	return "", false
 }
 
+// maxSafeInteger is Number.MAX_SAFE_INTEGER, 2**53 - 1.
+const maxSafeInteger = 1<<53 - 1
+
 func tryNumber(value any) (float64, bool) {
 	switch x := value.(type) {
-	case nil:
+	case nil, UndefinedType:
 		return 0, true
+	case *big.Int:
+		// MIN_BIGINT <= value <= MAX_BIGINT, the safe integers.
+		if x.IsInt64() && x.Int64() >= -maxSafeInteger && x.Int64() <= maxSafeInteger {
+			return float64(x.Int64()), true
+		}
+		return 0, false
 	case bool:
 		if x {
 			return 1, true
@@ -1230,27 +1278,51 @@ func tryNumberOfString(value string) (float64, bool) {
 	return safeBigInt(value)
 }
 
-// safeBigInt is TypeBox's TryBigInt of a string, as a number when it is a safe integer: `12n`, `12.5` (truncated) or `12`.
-func safeBigInt(value string) (float64, bool) {
-	text, negative := value, false
-	if rest, ok := strings.CutPrefix(text, "-"); ok {
+// bigIntText is TypeBox's TryBigInt of a string as the digits of its integer and its sign: `12n`, `12.5` (truncated) or `12`, with an optional minus sign and no leading zero (coerce.ts bigIntOfString's three patterns).
+func bigIntText(value string) (digits string, negative, ok bool) {
+	text := value
+	if rest, cut := strings.CutPrefix(text, "-"); cut {
 		text, negative = rest, true
 	}
-	var digits string
 	switch {
 	case strings.HasSuffix(text, "n"):
 		digits = text[:len(text)-1]
 	case strings.Contains(text, "."):
 		whole, fraction, _ := strings.Cut(text, ".")
 		if fraction == "" || !asciiDigits(fraction) {
-			return 0, false
+			return "", false, false
 		}
 		digits = whole
 	default:
 		digits = text
 	}
+	if !canonicalInteger(digits) {
+		return "", false, false
+	}
+	return digits, negative, true
+}
+
+// bigIntOfString is coerce.ts bigIntOfString.
+func bigIntOfString(value string) (*big.Int, bool) {
+	digits, negative, ok := bigIntText(value)
+	if !ok {
+		return nil, false
+	}
+	i, ok := new(big.Int).SetString(digits, 10)
+	if !ok {
+		return nil, false
+	}
+	if negative {
+		i.Neg(i)
+	}
+	return i, true
+}
+
+// safeBigInt is TypeBox's TryBigInt of a string, as a number when it is a safe integer: `12n`, `12.5` (truncated) or `12`.
+func safeBigInt(value string) (float64, bool) {
+	digits, negative, ok := bigIntText(value)
 	//portlint:allow utf16units digits passed canonicalInteger, so it is ASCII and its byte length is its code-unit length; 16 digits or fewer, and at most 9007199254740991, is coerce.ts tryNumber's big <= MAX_BIGINT && big >= MIN_BIGINT with MAX_BIGINT = BigInt(Number.MAX_SAFE_INTEGER)
-	if !canonicalInteger(digits) || len(digits) > 16 || len(digits) == 16 && digits > "9007199254740991" {
+	if !ok || len(digits) > 16 || len(digits) == 16 && digits > "9007199254740991" {
 		return 0, false
 	}
 	//portlint:allow numbers digits is 1 to 16 ASCII digits without a leading zero (checked above), so ParseUint is BigInt(digits) of coerce.ts bigIntOfString and cannot overflow; its 53-bit size is MAX_SAFE_INTEGER, which the length check above already enforces
@@ -1262,6 +1334,53 @@ func safeBigInt(value string) (float64, bool) {
 		return -float64(magnitude), true
 	}
 	return float64(magnitude), true
+}
+
+// tryBigInt is TypeBox's TryBigInt: booleans to 1n and 0n, numbers truncated, null and undefined to 0n, bigint-like strings.
+func tryBigInt(value any) (*big.Int, bool) {
+	switch x := value.(type) {
+	case *big.Int:
+		return x, true
+	case bool:
+		if x {
+			return big.NewInt(1), true
+		}
+		return new(big.Int), true
+	case nil, UndefinedType:
+		return new(big.Int), true
+	case string:
+		if i, ok := bigIntOfString(x); ok {
+			return i, true
+		}
+		switch {
+		case jsstring.LowerEquals(x, "false"):
+			return new(big.Int), true
+		case jsstring.LowerEquals(x, "true"):
+			return big.NewInt(1), true
+		}
+		return nil, false
+	}
+	if n, ok := asNumber(value); ok && isFinite(n) {
+		i, _ := new(big.Float).SetFloat64(math.Trunc(n)).Int(nil)
+		return i, true
+	}
+	return nil, false
+}
+
+// tryUndefined is TypeBox's TryUndefined: 0n, false, 0, null, `"undefined"`, `"null"`, `""` and `"0"` convert to undefined.
+func tryUndefined(value any) bool {
+	switch x := value.(type) {
+	case nil, UndefinedType:
+		return true
+	case bool:
+		return !x
+	case *big.Int:
+		return x.Sign() == 0
+	case string:
+		return x == "" || x == "0" || jsstring.LowerEquals(x, "undefined") || jsstring.LowerEquals(x, "null")
+	}
+	n, ok := asNumber(value)
+	return ok && n == 0
 }
 
 // canonicalInteger matches `0|[1-9]\d*`.
@@ -1280,8 +1399,16 @@ func asciiDigits(text string) bool {
 
 func tryBoolean(value any) (bool, bool) {
 	switch x := value.(type) {
-	case nil:
+	case nil, UndefinedType:
 		return false, true
+	case *big.Int:
+		switch {
+		case x.Sign() == 0:
+			return false, true
+		case x.IsInt64() && x.Int64() == 1:
+			return true, true
+		}
+		return false, false
 	case bool:
 		return x, true
 	case string:
@@ -1307,8 +1434,10 @@ func tryBoolean(value any) (bool, bool) {
 // tryNull reports whether value converts to null.
 func tryNull(value any) bool {
 	switch x := value.(type) {
-	case nil:
+	case nil, UndefinedType:
 		return true
+	case *big.Int:
+		return x.Sign() == 0
 	case bool:
 		return !x
 	case string:

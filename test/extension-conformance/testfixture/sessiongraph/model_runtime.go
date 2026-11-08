@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -196,7 +197,10 @@ func modelRuntimeScript(ctx sdk.Context, args map[string]any) map[string]any {
 	r["login"] = map[string]any{"credential": plain(credential), "prompts": seen, "events": events2, "listed": listed(), "status": plain(ok(rt.GetProviderAuthStatus("openai")))}
 	check(rt.Logout("openai"))
 	r["login"].(map[string]any)["afterLogout"] = listed()
+	check(rt.SettleCredentialWrites())
+	r["settled"] = true
 	r["stored"] = ok(readJSONFile(auth))
+	r["pending"] = settlePendingProbe(rt, auth)
 	return r
 }
 
@@ -214,4 +218,32 @@ func readJSONFile(path string) (any, error) {
 	}
 	var out any
 	return out, json.Unmarshal(data, &out)
+}
+
+// settlePendingProbe holds auth.json's lock so that a login's credential write is in flight, calls SettleCredentialWrites with the lock released 1.5 s later, and reports the stored key the moment it returns.
+func settlePendingProbe(rt *sdk.ModelRuntime, auth string) map[string]any {
+	lock := auth + ".lock"
+	check(os.Mkdir(lock, 0o755))
+	loggedIn := make(chan bool, 1)
+	go func() {
+		_, err := rt.Login("openai", "api_key", sdk.AuthInteraction{
+			Prompt: func(map[string]any) (string, error) { return "sk-pending", nil },
+			Notify: func(map[string]any) error { return nil },
+		}, nil)
+		loggedIn <- err == nil
+	}()
+	time.Sleep(800 * time.Millisecond)
+	go func() { time.Sleep(1500 * time.Millisecond); _ = os.Remove(lock) }()
+	start := time.Now()
+	check(rt.SettleCredentialWrites())
+	waited := time.Since(start) >= time.Second
+	var key any
+	if stored, _ := ok(readJSONFile(auth)).(map[string]any); stored != nil {
+		if entry, _ := stored["openai"].(map[string]any); entry != nil {
+			key = entry["key"]
+		}
+	}
+	login := <-loggedIn
+	check(rt.Logout("openai"))
+	return map[string]any{"keyAtSettle": key, "waited": waited, "login": login}
 }

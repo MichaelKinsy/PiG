@@ -13,6 +13,13 @@ export function num(options = {}) {
 export function int(options = {}) {
     return { type: "integer", ...options };
 }
+/**
+ * A bigint within optional bounds (`{ type: "bigint" }`, as TypeBox's `Type.BigInt`): an extension of JSON Schema for
+ * values that never pass through JSON, such as 64-bit integers a Parquet reader decodes.
+ */
+export function bigint(options = {}) {
+    return { type: "bigint", ...options };
+}
 /** A boolean. */
 export function bool(options = {}) {
     return { type: "boolean", ...options };
@@ -55,6 +62,27 @@ export function tuple(items, options = {}) {
 /** An object with string keys and values of `value` (a record). */
 export function map(value, options = {}) {
     return { type: "object", additionalProperties: value, ...options };
+}
+/**
+ * `schema` typed as accepting `T`, for values the builders cannot express (a type checked elsewhere, a schema from
+ * another system). The schema is returned as it is: nothing checks that its values are `T`.
+ */
+export function unsafe(schema = {}) {
+    // The brand is type-level only; asserting it is what this builder is for.
+    return schema;
+}
+/**
+ * A schema that contains itself, as a tree's children are trees: `build` receives a reference to the schema it
+ * returns. TypeScript cannot infer a recursive type from the builders, so `T` is given:
+ * `recursive<Tree>("Tree", (tree) => obj({ name: str(), children: arr(tree) }))`. `id` becomes the schema's `$id`
+ * and the target of the reference, so it must be unique among the recursive schemas within one schema.
+ *
+ * The counterpart of TypeBox's `Type.Cyclic` + `Type.Ref`, with other JSON: an `$id` on the schema instead of `$defs`
+ * and a root `$ref`. It validates the same values. The JSON differs only where a schema is published, and its type is
+ * written once instead of inferred, which a recursive schema (a file tree) needs only once.
+ */
+export function recursive(id, build) {
+    return { ...build({ $ref: id }), $id: id };
 }
 /** A Uint8Array with optional length bounds (an extension of JSON Schema for values that never pass through JSON). */
 export function bytes(options = {}) {

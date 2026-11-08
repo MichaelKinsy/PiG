@@ -139,6 +139,28 @@
       ]
     },
     {
+      "id": "BF-00d9a1f",
+      "title": "fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an…",
+      "symptom": "fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an extension provider's setup failure under an aborted signal is aborted",
+      "rootCause": "- selectLinesFromStream takes its 64 KB chunk buffer from a sync.Pool, so a read of a small file no longer allocates 64 KB; BenchmarkReadToolExecuteSmallFile is the common case the 140 KB benchmark could not show. - TestGrepAllocationsDoNotGrowWithContext: grep at context 2 and 200 over one fixture must differ by at most 25 allocations (measured 142 and 148); it skips without ripgrep. - The read fuzz also compares the streamed read with the production whole-file path (readTextResult) and takes any int32 offset and limit with a fraction, so negative and fractional ranges and the edge of the streamed range are read too. - The abort test no longer sleeps. - provider_stream.go: the failure path…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "00d9a1f01b",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_context_allocs_test.go::TestGrepAllocationsDoNotGrowWithContext",
+        "internal/codingagent/tools/read_streaming_fuzz_test.go::FuzzReadStreamingMatchesTheWholeFileAlgorithm"
+      ]
+    },
+    {
       "id": "BF-016a19a",
       "title": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…",
       "symptom": "The derive's watchers used to receive the non-JSON frame without any report.",
@@ -503,6 +525,25 @@
       ]
     },
     {
+      "id": "BF-03fa91c",
+      "title": "chord: fix the principalAttributes wiring and import groups",
+      "symptom": "chord: fix the principalAttributes wiring and import groups",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "03fa91c5d2",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-040088e",
       "title": "`ai.CloudflareStreams` drops the deferred fetch and cancel operations of the API it wraps, as Pi's…",
       "symptom": "It passed them through without materializing the Cloudflare endpoint placeholders.",
@@ -577,7 +618,6 @@
           "date": "2026-11-07"
         }
       ],
-      "commitsFrom": "release note",
       "tests": [
         "chord/next/documents/documents_telemetry_test.go::TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
         "chord/next/documents/documents_telemetry_test.go::TestCommitsInTelemetryRecordADocumentsOpsAndDurationAsAnEventOfItsContextsSpanAndItsDurationMetric",
@@ -1526,38 +1566,22 @@
       "id": "BF-0a8ecd3",
       "title": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller…",
       "symptom": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering.",
-      "rootCause": "Go code that reads a singleton's value from a job's goroutine (p2's environment-restart and sharing-archive jobs) raced the object's own commits and its seal on close; the red test fails under -race without the change. The benchmarks measure a read from a goroutine and from inside a section.",
-      "rootCauseSource": "commit",
+      "rootCause": "",
+      "rootCauseSource": "",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering. \u003c!-- fix: chord-registry-value-section --\u003e",
+      "releaseNote": "A Chord registry value source reads its composition in a section of the host's loop (inline when the caller is in one): `Value`, `Start` and `Current` from another goroutine (a native's open callback, a request) no longer race a contribution added as an object goes live or a waiter registering.",
       "origin": "release note",
       "commits": [
         {
-          "hash": "714e251284",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "a79074ec58",
-          "date": "2026-11-07"
-        },
-        {
           "hash": "0a8ecd3702",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "d80cb241f7",
           "date": "2026-11-08"
         }
       ],
       "tests": [
         "chord/next/host/host_registry_value_test.go::TestRegistryValueReadsRaceFreeWhileAContributionChanges",
-        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges",
-        "chord/next/host/remote_hold_gate_test.go::TestReloadARecordedFactoryMayPinAKeyOnItsInertReference",
-        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind",
-        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbindThroughARelay",
         "chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop"
       ]
     },
@@ -1930,6 +1954,27 @@
       "tests": [
         "coding/session_bash_persistence_upstream_test.go::TestUpstreamBashEscapeSequencesSplitAcrossChunks",
         "internal/codingagent/tools/sanitize_split_ansi_test.go::TestExecuteBashWithOperationsFlushesPendingANSIAtExit"
+      ]
+    },
+    {
+      "id": "BF-0c44f84",
+      "title": "fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check",
+      "symptom": "fix(chord): the base watches are renewed when the directory is another one, as Pi's identity check",
+      "rootCause": "Pi renews the watches under an entry on the way to base code only when its identity (inode and birth time) differs from the one it had when watched. PiG renewed on every create, remove or rename, so a directory moved away and back was compared again and an edit made through a hardlink, which no watch sees, was found; and a create event of a directory that arrived after the watcher had anchored it renewed it. identityOf is statx (ino, btime) on Linux, lstat (ino, birthtimespec) on darwin and freebsd, the file index and creation time on Windows. Where a system has no birth time Go's syscall package gives (other unixes) the inode alone. A watch that fsnotify drops with the move (kqueue) is put…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0c44f84f21",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry"
       ]
     },
     {
@@ -3841,6 +3886,29 @@
       "tests": []
     },
     {
+      "id": "BF-1aaf60f",
+      "title": "Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start…",
+      "symptom": "Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.",
+      "rootCause": "Port of Pi (#9274). The whitespace both lines start with is separated before the word diff.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Rendered diffs keep the indentation shared by a removed and an added line when text is inserted at the start of the line.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1aaf60fd8e",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "tui/diff_render_test.go::TestRenderDiffDoesNotHighlightSharedIndentationAsAnInsertion",
+        "tui/diff_render_test.go::TestRenderDiffPreservesIndentation"
+      ]
+    },
+    {
       "id": "BF-1b5540a",
       "title": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an…",
       "symptom": "`client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an `error`); the connection fails with a `DisconnectedError` carrying it.",
@@ -4797,6 +4865,29 @@
         "internal/pilock/eperm_retry_test.go::TestSettingsAndTrustLockDoNotRetryWindowsEPERM",
         "internal/pilock/legacy_test.go::TestLegacyWriterThenConcurrentDirectoryWriters",
         "internal/pilock/mkdir_classification_test.go::TestAcquireRetriesOnlyWindowsEPERMAmongNonEEXISTMkdirErrors"
+      ]
+    },
+    {
+      "id": "BF-2173cc1",
+      "title": "A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`)…",
+      "symptom": "A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`) after an `await` read back a session log without the entry it had just written (`ctx.sessionManager.getEntries()` still ended in the earlier entry), and the replicated log later lost all but one entry, where Pi's in-process log shows every write to the next read.",
+      "rootCause": "The runtime applied the host's state push for a write after the push for the next write, because the receive loop that held the first push (handed to it while it waited, or taken from its queue) is unable to read it during the synchronous call that follows an `await`.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's handler that wrote the session (`pi.setSessionName`, `pi.setLabel`, `pi.sendMessage`) after an `await` read back a session log without the entry it had just written (`ctx.sessionManager.getEntries()` still ended in the earlier entry), and the replicated log later lost all but one entry, where Pi's in-process log shows every write to the next read. Every handler of an extension that registers `pi.onLoaded` is such a handler: its requests first await the loaded handlers. The runtime applied the host's state push for a write after the push for the next write, because the receive loop that held the first push (handed to it while it waited, or taken from its queue) is unable to read it during the synchronous call that follows an `await`. The runtime now applies the state in the order the host sent it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2173cc13ed",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/replicated_accessors_test.go::TestNodeReplicatedWritesReadBackAfterAwait",
+        "test/extension-conformance/replicated_accessors_test.go::TestReplicatedAccessorsReadYourWritesAcrossSDKs"
       ]
     },
     {
@@ -6729,15 +6820,15 @@
     },
     {
       "id": "BF-2d3121b",
-      "title": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed…",
-      "symptom": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text.",
+      "title": "A connection failure with no status or body keeps its cause in the error message, for example `Connection…",
+      "symptom": "A connection failure with no status or body keeps its cause in the error message, for example `Connection error.: connect ECONNREFUSED 127.0.0.1:8080` on `openai-completions`, `openai-responses` and `anthropic-messages` (`fetch failed: connect ECONNREFUSED ...` elsewhere), instead of only the generic text.",
       "rootCause": "Ports earendil-works/pi (#11783) and 56634404 (#11885). A connection failure with no status or body appends the deepest cause (for a failed fetch, Node's connect ECONNREFUSED text) to its message; Anthropic errors do the same. The gateway wording \"cut short after the reply had begun\" is retryable.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A connection failure with no status or body keeps its cause in the error message, for example `fetch failed: connect ECONNREFUSED 127.0.0.1:8080`, instead of only the generic text.",
+      "releaseNote": "A connection failure with no status or body keeps its cause in the error message, for example `Connection error.: connect ECONNREFUSED 127.0.0.1:8080` on `openai-completions`, `openai-responses` and `anthropic-messages` (`fetch failed: connect ECONNREFUSED ...` elsewhere), instead of only the generic text.",
       "origin": "release note",
       "commits": [
         {
@@ -6761,6 +6852,29 @@
       "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "A gateway's `cut short after the reply had begun` stream error is retried like other dropped streams.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2d3121b71c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_test.go::TestIsRetryableAssistantErrorClassification",
+        "ai/error_body_cause_upstream_test.go::TestConnectionErrorCauseDetailUpstream"
+      ]
+    },
+    {
+      "id": "BF-2d3121b-3",
+      "title": "Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25…",
+      "symptom": "Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25, 6000) with `fetch failed: bad port`, as Node's fetch does.",
+      "rootCause": "Ports earendil-works/pi (#11783) and 56634404 (#11885). A connection failure with no status or body appends the deepest cause (for a failed fetch, Node's connect ECONNREFUSED text) to its message; Anthropic errors do the same. The gateway wording \"cut short after the reply had begun\" is retryable.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Requests through the built-in HTTP client refuse the ports the Fetch standard blocks (for example 1, 25, 6000) with `fetch failed: bad port`, as Node's fetch does.",
       "origin": "release note",
       "commits": [
         {
@@ -6865,6 +6979,28 @@
       "tests": [
         "internal/codingagent/config_upstream_test.go::TestConfiguredSelfUpdateParityProbe",
         "internal/codingagent/prompts/system_prompt_upstream_test.go::TestUpstreamSystemPrompt"
+      ]
+    },
+    {
+      "id": "BF-2e8dcc1",
+      "title": "A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op)…",
+      "symptom": "A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it.",
+      "rootCause": "A synchronous host call that settles while the runtime is still handling the ready frame (the xref hello that follows it) applied the state_update the host had pushed after the ready frame at once (applyQueuedStateUpdates), and the ready frame's own, older state then replaced it. The state the host pushed when a TUI frontend bound its UI (hasUI) was lost, ctx.ui was the no-op UI, and a widget set by a tool never reached the host: TestSetWidgetRendererAcrossSDKs timed out for the isolated and packed Node cells.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension loaded in a TUI could lose `ctx.ui` (every widget, status and footer call became a no-op) when the host's state update reached it while it was handling the ready frame, because the update applied before the older state of the ready frame, which then replaced it. The queued update is now applied only after the ready state.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2e8dcc1eea",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/host_surface_test.go::TestSetWidgetRendererAcrossSDKs"
       ]
     },
     {
@@ -7175,6 +7311,26 @@
         {
           "hash": "30e47f4408",
           "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-30e4a98",
+      "title": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's…",
+      "symptom": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Node extension runtime now serves Pi's `ModelRuntime.settleCredentialWrites` and pi-ai's `setBedrockProviderLoader`, and the Go, Rust, Python and Lisp SDKs gain `SettleCredentialWrites`/`settle_credential_writes`/`runtime-settle-credential-writes`, so an extension can wait for a started OAuth refresh to be saved before it exits.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "30e4a9808d",
+          "date": "2026-11-08"
         }
       ],
       "tests": []
@@ -8434,6 +8590,27 @@
       ]
     },
     {
+      "id": "BF-35b06f4",
+      "title": "fix(tools): the grep event scanner reads an escaped member name as the name it spells; the fuzz target skips…",
+      "symptom": "fix(tools): the grep event scanner reads an escaped member name as the name it spells; the fuzz target skips names that differ only by case",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "35b06f4155",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_event_test.go::FuzzGrepEventParserMatchesEncodingJSON"
+      ]
+    },
+    {
       "id": "BF-35be5ca",
       "title": "A key bound to two editor actions now performs the action Pi performs",
       "symptom": "A key bound to two editor actions now performs the action Pi performs.",
@@ -8634,9 +8811,7 @@
         }
       ],
       "tests": [
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextDoesNotLoadTheMatchedFile",
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextOfUnreadableFile",
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit"
+        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextDoesNotLoadTheMatchedFile"
       ]
     },
     {
@@ -8838,6 +9013,30 @@
         "internal/packagemanager/package_updates_test.go::TestEnsureConfiguredPackagesInstalledTreatsProjectDeltaAsInherited",
         "internal/packagemanager/package_updates_test.go::TestIsPinnedNpm",
         "internal/packagemanager/package_updates_test.go::TestParseNpmSpec"
+      ]
+    },
+    {
+      "id": "BF-3868dd5",
+      "title": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a…",
+      "symptom": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "MCP messages nested more than 10,000 levels deep (a tool `inputSchema`, `_meta` or `structuredContent` of a server that nests that far) are now read the way Pi reads them with `JSON.parse`, instead of being refused by Go's JSON decoder.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3868dd514e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "mcp/deepjson_test.go::TestParseWireMessageKeepsACallResultNested12000LevelsDeep",
+        "mcp/deepjson_test.go::TestParseWireMessageKeepsAToolSchemaNested12000LevelsDeep",
+        "mcp/deepjson_test.go::TestParseWireMessageRejectsMalformedTextNested12000LevelsDeep"
       ]
     },
     {
@@ -9127,43 +9326,25 @@
     },
     {
       "id": "BF-3b49d43",
-      "title": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is…",
-      "symptom": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.",
+      "title": "fix(chord): calls crossing a failed or a fresh bound are answered by what their consumer knows",
+      "symptom": "fix(chord): calls crossing a failed or a fresh bound are answered by what their consumer knows",
       "rootCause": "Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.",
       "rootCauseSource": "commit",
       "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Chord: a call that crosses a `failed` or a removal on the wire (sent before its consumer learnt of it) is answered with the cause its consumer was told (a removal's `unavailable`, a version refusal's `contract_mismatch`, a live failure's error), never `not_ready`.",
-      "origin": "release note",
+      "origin": "commit",
       "commits": [
         {
           "hash": "3b49d43239",
           "date": "2026-11-07"
         }
       ],
-      "tests": []
-    },
-    {
-      "id": "BF-3b49d43-2",
-      "title": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged…",
-      "symptom": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).",
-      "rootCause": "Ports the two provider-side reload fixes of Pi: a call that crossed a failed or a removal on the wire gets the cause its consumer was told, not not_ready; a call sent with the indexes of a binding whose newer bound the consumer has not acknowledged yet is decoded by that binding's names, counted by the provider's own bound and state messages. The page-side fixes (script fetch retry, applyChanges serial) and the kit's timeouts and base marks are the T10/T11/T8 ports.",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Chord: a call sent by the method indexes of a binding whose newer `bound` its consumer has not acknowledged yet is decoded by the names that binding had (another variant's indexes name other methods; one the new variant lacks fails `invalid/member`).",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "3b49d43239",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": []
+      "tests": [
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsCrossingAFailedOrABoundOnTheWire",
+        "chord/next/host/remote_hold_kept_test.go::TestHoldCallsInFlightAcrossALoadingUnbind"
+      ]
     },
     {
       "id": "BF-3b696c8",
@@ -9335,6 +9516,36 @@
         "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
         "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
         "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
+      "id": "BF-3b9c7da",
+      "title": "The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR…",
+      "symptom": "The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR endings, and computes its diff and patch before writing, around the changes only, so a diff failure leaves the file unchanged.",
+      "rootCause": "Port of Pi (#11751). Replacements are spliced into the original text, the diff and patch are computed in windows around the replacements before the file is written. Ports edit-diff-window and edit-tool-diff-before-write tests and the line-ending cases of tools.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The edit tool keeps the line endings of the lines it does not touch in files with mixed CRLF, LF or lone CR endings, and computes its diff and patch before writing, around the changes only, so a diff failure leaves the file unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9c7daf85",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/edit_window_test.go::TestApplyReplacementsToOriginalDoesNotMergeAnInsertedCRWithAKeptLineFeed",
+        "internal/codingagent/tools/edit_window_test.go::TestApplyReplacementsToOriginalNormalizesToTheDiffedContentForRandomMixedLineEndings",
+        "internal/codingagent/tools/edit_window_test.go::TestEditToolComputesTheDiffBeforeWritingSoADiffFailureLeavesTheFileUnchanged",
+        "internal/codingagent/tools/edit_window_test.go::TestEditToolDoesNotMergeAKeptLoneCRWithALineFeedAfterIt",
+        "internal/codingagent/tools/edit_window_test.go::TestEditToolWritesTheLineEndingOfTheLineAnEditStartsIn",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffHandlesAReplacementOfManyLines",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffMatchesTheWholeFileDiffAndPatchWhenLinesAreDistinct",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffOfASmallChangeInA20MBFileAllocatesLittle",
+        "internal/codingagent/tools/edit_window_test.go::TestGenerateEditDiffProducesAPatchThatAppliesWhenLinesRepeat"
       ]
     },
     {
@@ -9787,6 +9998,25 @@
       ]
     },
     {
+      "id": "BF-3f0d3ae",
+      "title": "fix(configschema): the OpenAI Responses session-affinity description names session-id (Pi)",
+      "symptom": "fix(configschema): the OpenAI Responses session-affinity description names session-id (Pi)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "3f0d3ae73f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-3f82770",
       "title": "A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no…",
       "symptom": "A terminal write that fails for a reason other than a lost terminal while the keyboard protocol is on no longer hangs the exit: the terminal restore does not wait for the output lock the failing write holds, so the terminal is handed back and the process exits 1 as Pi's uncaught-exception handler does (#397).",
@@ -10132,6 +10362,25 @@
       ]
     },
     {
+      "id": "BF-4117a5a",
+      "title": "fix(extensions): skip the pending-state flush for a reply with no managed extension",
+      "symptom": "fix(extensions): skip the pending-state flush for a reply with no managed extension",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4117a5ac52",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-411a8cb",
       "title": "Background runs of pi-subagents (and other helpers an extension starts as a detached Node process) complete…",
       "symptom": "Background runs of pi-subagents (and other helpers an extension starts as a detached Node process) complete under PiG.",
@@ -10152,6 +10401,31 @@
       "commitsFrom": "release note",
       "tests": [
         "test/docs-drift/commands_test.go::TestDocumentedPigCommandsAreValid"
+      ]
+    },
+    {
+      "id": "BF-41226f3",
+      "title": "Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and…",
+      "symptom": "Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and accept a backslash-escaped quote inside a quoted argument.",
+      "rootCause": "Port of Pi (#11873).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Prompt template arguments keep apostrophes inside words, treat a quote with no closing match as text, and accept a backslash-escaped quote inside a quoted argument.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41226f3eea",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/prompt_templates_oracle_test.go::TestPromptArgumentHandlingMatchesPi",
+        "internal/codingagent/prompt_templates_quotes_test.go::TestParsePromptArgsQuoting",
+        "internal/codingagent/prompt_templates_test.go::TestParsePromptArgs",
+        "internal/codingagent/upstream_prompt_templates_test.go::TestUpstreamPromptTemplatesArguments"
       ]
     },
     {
@@ -12068,7 +12342,6 @@
       ],
       "tests": [
         "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
-        "chord/nextnode/app/app_bases_test.go::TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
         "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
         "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
@@ -12105,7 +12378,6 @@
       ],
       "tests": [
         "chord/nextnode/app/app_surfaces_test.go::TestAppAppliesChangesToTheServerThenTheWebAndTheTerminalSurfacesEachWithItsOwnPlugins",
-        "chord/nextnode/app/app_bases_test.go::TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
         "chord/nextnode/app/app_surfaces_test.go::TestAppMarksBaseForAChangeOfTheWebSurfacesBaseBundleInputs",
         "chord/nextnode/app/app_surfaces_test.go::TestAppRunsTheWebAndTheTerminalSurfacesWithTheirOwnBaseBundles",
         "chord/nextnode/app/app_surfaces_test.go::TestWebSurfaceAnswersTheCurrentBaseHashPubliclyAndRefusesThePageAndFilesToARequestWithoutASession",
@@ -12561,6 +12833,27 @@
       "tests": [
         "internal/codingagent/model_registry_availability_refresh_gaps_test.go::TestRefreshModelRuntimeHonoursNetworkForceErrorsAndRegistrationCover",
         "tui/tool_execution_test.go::TestErrorResultStaysCollapsedUntilExpanded"
+      ]
+    },
+    {
+      "id": "BF-4d357dd",
+      "title": "fix(coding): grep reports the match limit when the match past it falls in the trailing context",
+      "symptom": "fix(coding): grep reports the match limit when the match past it falls in the trailing context",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4d357dda4d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/details_wire_test.go::TestBuiltinToolResultDetailsWire"
       ]
     },
     {
@@ -13499,6 +13792,126 @@
       ]
     },
     {
+      "id": "BF-5291c92",
+      "title": "A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store…",
+      "symptom": "A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store (`kit.sqlite`) keeps its commit queue from before the plugins' store (`store.sqlite`) is copied, SQLite copies that file at one instant, and both archives are written from those.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A running worker's data export (`HostData.exportTo`) holds both of its stores at one point: the kit's store (`kit.sqlite`) keeps its commit queue from before the plugins' store (`store.sqlite`) is copied, SQLite copies that file at one instant, and both archives are written from those. It packed `store.sqlite` through a second handle and `kit.sqlite` after it, holding neither, so a write between the two showed in one archive only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
+      "id": "BF-5291c92-2",
+      "title": "`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at…",
+      "symptom": "`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at the first worker start.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at the first worker start.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
+      "id": "BF-5291c92-3",
+      "title": "A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes",
+      "symptom": "A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
+      "id": "BF-5291c92-4",
+      "title": "The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends…",
+      "symptom": "The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.",
+      "rootCause": "Item 1: HostDataFacet packed store.sqlite through a second handle opened while the NodeHost held it, then kit.sqlite, holding neither. PackRunning takes the kit store's commit queue first (the first part of its export), then has SQLite copy the plugins' file at one instant (VACUUM INTO over a read-only connection) and exports the copy, so both archives are one point while the NodeHost's writes go on. data_export_test.go writes both stores (a coupled tick writer and an independent plugins writer) during 8 exports: each archive holds exactly the rows its manifest counts, and the plugins' ticks are the kit's or one more. It fails with the snapshot removed and with the kit held after the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened",
+        "chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared",
+        "chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport",
+        "chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything",
+        "chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver",
+        "chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds",
+        "chord/nextnode/workers/workers_workers_test.go::TestForgottenRunsOnceWhenTheAddressHasNothingLeftNotWhileItsWorkerRuns"
+      ]
+    },
+    {
       "id": "BF-530bf3e",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -13994,6 +14407,36 @@
       "tests": []
     },
     {
+      "id": "BF-54eb030",
+      "title": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal",
+      "symptom": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal.",
+      "rootCause": "Since the host forwards an extension's stderr as Pi's console does, the Go SDK's recovered-panic report with its goroutine stack, Rust's default panic message for a caught handler panic and the Python, Lisp and Node reports of a failed handler or host call overprinted the interactive frame, where Pi reports a throwing handler as one line and writes no stack.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal. Since the host forwards an extension's stderr as Pi's console does, the Go SDK's recovered-panic report with its goroutine stack, Rust's default panic message for a caught handler panic and the Python, Lisp and Node reports of a failed handler or host call overprinted the interactive frame, where Pi reports a throwing handler as one line and writes no stack. Every SDK now appends them to the extension's log (`PIG_EXT_LOG`, the file the host's load and crash diagnostics read), bounded at 1 MiB per process, and writes to stderr only when no host started it. What the extension's own code writes to stdout and stderr still reaches the terminal.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "54eb0309c7",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/ext_log_test.go::TestExtLogHostWritesDoNotOverwriteAnSDKAppend",
+        "coding/extension/host/subprocess/ext_log_test.go::TestFusedExtLogIsExportedAndRemoved",
+        "coding/extension/host/subprocess/ext_log_test.go::TestNodeRuntimeDiagnosticsGoToTheExtensionLog",
+        "coding/extension/host/subprocess/ext_log_test.go::TestWithExtLogReplacesAnInheritedEntry",
+        "extensions/sdk-py/tests/test_diagnostic.py",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticLogIsBounded",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticsFallBackToStderr",
+        "extensions/sdk/diagnostic_test.go::TestDiagnosticsGoToTheExtensionLogAndNotStderr",
+        "test/extension-conformance/sdk_diagnostics_test.go::TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog"
+      ]
+    },
+    {
       "id": "BF-55573f4",
       "title": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
       "symptom": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
@@ -14011,6 +14454,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-563f896",
+      "title": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool…",
+      "symptom": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool call, ends as aborted instead of as an error.",
+      "rootCause": "lazy.ts reports signal?.aborted ? \"aborted\" : \"error\". forwardLazySetup, the Models dispatch setup errors, ModelRuntime.start's prepare and auth-abort failures and failedStream now follow the request context instead of reporting error for a cancelled request.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model request that is cancelled while its setup runs, for example the request after an abort during a tool call, ends as aborted instead of as an error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "563f896e3f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "ai/lazy_setup_error_order_test.go::TestModelsSetupErrorListsErrorMessageBeforeTimestamp",
+        "ai/provider_streams_test.go::TestLazyAPISetupOrderingCancellationAndLoadFailure",
+        "coding/model_runtime_setup_abort_upstream_test.go::TestRequestCancelledBeforeItsProviderStartsIsAnAbortedPiSetupError",
+        "coding/model_runtime_typed_review_test.go::TestModelRuntimeNonChatRejectionIsAbortedUnderCancellation"
+      ]
     },
     {
       "id": "BF-5654e71",
@@ -14811,6 +15279,31 @@
       ]
     },
     {
+      "id": "BF-59c1814",
+      "title": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with…",
+      "symptom": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL after SIGTERM no longer leaves the PiG binary running: the harness entry cannot forward SIGKILL, so a small watchdog it starts kills the binary when the entry dies.",
+      "rootCause": "The entry is a wrapper around the PiG binary and cannot forward SIGKILL, so an aborted subagent whose binary trapped or was slow on SIGTERM was orphaned. A watchdog (the entry run again with PIG_HARNESS_WATCHDOG) holds a pipe the entry owns and kills the binary when it closes, only if the process still has the binary's start time; the entry stands it down on the binary's exit. The embedded runtime pack and digest are regenerated, and a host test runs the entry from the packed and isolated runtimes.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Pi extension that starts the harness again (`process.execPath process.argv[1] ...`) and ends it with SIGKILL after SIGTERM no longer leaves the PiG binary running: the harness entry cannot forward SIGKILL, so a small watchdog it starts kills the binary when the entry dies. Signal forwarding, stdio and exit status are unchanged. Windows ends the binary by pid alone and is untested.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59c181494e",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/harness_cli_kill_host_test.go::TestHarnessEntryKillAcrossIsolationModes",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKeepsBinaryExitStatus",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessEntryKillEndsItsBinary",
+        "coding/extension/host/subprocess/harness_cli_kill_test.go::TestHarnessWatchdogIgnoresGoneBinary"
+      ]
+    },
+    {
       "id": "BF-59e2efb",
       "title": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then…",
       "symptom": "A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then restored between its upgrade's router check and its keep stayed open, though Pi ends it when the removal arrives.",
@@ -15413,6 +15906,32 @@
       "tests": [
         "tui/login_dialog_device_code_test.go::TestLoginURLsOpenOnlyHTTPSignInURLs",
         "tui/login_dialog_device_code_test.go::TestLoginURLsReplaceControlCharactersInURLsThatAreNotWebURLs"
+      ]
+    },
+    {
+      "id": "BF-5d04c3c",
+      "title": "fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's",
+      "symptom": "fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's",
+      "rootCause": "Pi runs esbuild's mapping module in a vm context and spreads its default export. PiG read esbuild's object literal with a parser of its own, which failed on a template literal, kept a __proto__ class, kept esbuild's order of integer-like keys, and escaped U+2028 and U+2029. The module (CommonJS, as Pi builds it) now runs in a Node subprocess of the Node that hosts the plugins, the same Script, spread and JSON.stringify, and the facet's module embeds that text. One process per facet build with a CSS module, ended with the build; its reads are bounded by ctx and NodeOptions.ReadyTimeout, and a ctx that ends it aborts the build. ScopeCSSModule takes the Node options and ctx; ScopedCSS.Classes…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5d04c3c06c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::FuzzScopeCSSModuleMatchesNode",
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorKillsAProcessThatDoesNotAnswer",
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn",
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases",
+        "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase",
+        "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleStartsANodeOfItsOwnForTheOneModule"
       ]
     },
     {
@@ -20164,6 +20683,37 @@
       ]
     },
     {
+      "id": "BF-68fd735",
+      "title": "grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only…",
+      "symptom": "grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only when another match exists, keeps a lone CR inside a line, and matches a glob relative to the searched directory.",
+      "rootCause": "Port of Pi (#11705) and (#11895). Context comes from rg --context events, a limit notice needs proof of one more match, a lone CR stays in a line, and a directory search runs inside the search path. GrepOperations.ReadFile is removed; the extension host ignores a readFile member as Pi does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "grep takes its context lines from ripgrep instead of reading each matched file, reports the match limit only when another match exists, keeps a lone CR inside a line, and matches a glob relative to the searched directory.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "68fd735480",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepAcceptsAHugeContextValue",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepDecodesUTF16FilesWithContext",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepDoesNotReportTheMatchLimitWhenExactlyLimitMatchesExist",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepKeepsALoneCRInsideALineAndStripsCRLFTerminators",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepKeepsCountingMatchesPastTheByteCap",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepPrintsOverlappingContextOnceAndKeepsTheLastMatchsTrailingContext",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepReportsTruncationWhenStoredOutputEndsExactlyAtTheByteCap",
+        "internal/codingagent/tools/grep_ripgrep_context_test.go::TestGrepResolvesFolderGlobsRelativeToPath",
+        "internal/codingagent/tools/read_grep_operations_test.go::TestGrepToolUsesTheConfiguredOperations",
+        "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
       "id": "BF-69297a1",
       "title": "fix(chord/nextnode/http): a response is flushed before its request finishes",
       "symptom": "fix(chord/nextnode/http): a response is flushed before its request finishes",
@@ -21174,6 +21724,27 @@
       ]
     },
     {
+      "id": "BF-6c74cb8",
+      "title": "fix(chord): a late kill of a finished evaluation never lands on the next one",
+      "symptom": "fix(chord): a late kill of a finished evaluation never lands on the next one",
+      "rootCause": "A kill now counts only while its ask is live (a guard taken by the kill and by the end of the ask); a process killed during the ask is ended before ask returns, so the next evaluation starts another.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6c74cb8a4c",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorALateKillOfAnEvaluationDoesNotHitTheNextOne"
+      ]
+    },
+    {
       "id": "BF-6c7b377",
       "title": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the…",
       "symptom": "fix(tui): page the editor autocomplete by the row limit the open menu was built with; narrow D155 to the PiG-only selectors",
@@ -21559,6 +22130,31 @@
       ]
     },
     {
+      "id": "BF-6e789bb",
+      "title": "A host call that read a change of the model, session id or name between the change and its report to the…",
+      "symptom": "A host call that read a change of the model, session id or name between the change and its report to the extensions, and the first `watchSessionLog` read of a replaced Session, could reply ahead of the state that names it.",
+      "rootCause": "A change of the model, session id or name is visible to a host call before its owner reports it (Host.hostStateChanged raises the epoch after the change), so a call that read the change could reply ahead of the state that names it. The Session now brackets each such change (ObserveReplicatedStateScope: before the change is visible, and after the report), the extension host counts the open brackets (hostStateInflight, bound through UIBridge.HostStateChanging and HostStateSettled in both modes), and a reply flushes the state first while one is open, as one does when an epoch is pending.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A host call that read a change of the model, session id or name between the change and its report to the extensions, and the first `watchSessionLog` read of a replaced Session, could reply ahead of the state that names it. The Session now brackets each such change, and the host flushes its state before every reply while one is in flight, and under the cursor lock for `watchSessionLog`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6e789bbd91",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_state_push_test.go::TestAReplyFlushesTheStateWhileAChangeIsInFlight",
+        "coding/extension/host/subprocess/host_state_push_test.go::TestAWatchSessionLogReplyFlushesUnderItsCursorLock",
+        "coding/session_replicated_state_test.go::TestSessionBracketsEveryChangeOfIdentityState",
+        "test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanAChangeInFlightAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-6ea3ba8",
       "title": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and…",
       "symptom": "`pig status` now gives a skill without a `description` the health `not loaded: description is required`, and a theme with an unknown color role or another schema error an `invalid:` health, with a warning for each.",
@@ -21769,8 +22365,8 @@
       "id": "BF-6fdf59f",
       "title": "On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot…",
       "symptom": "On macOS (kqueue), the watches of a base directory moved away and back are put back, and a watch that cannot be put on one entry (a protected or vanished one in a watched directory) no longer stops every watch.",
-      "rootCause": "Go's syscall.Stat_t has Birthtimespec on NetBSD and X__st_birthtim on OpenBSD. The macOS packages unit now runs the plugins watcher's base and identity tests, which exercise the lstat birthtimespec identity and the kqueue watches that end with a renamed directory.",
-      "rootCauseSource": "commit",
+      "rootCause": "",
+      "rootCauseSource": "",
       "userImpact": "An operation failed or was rejected",
       "platform": "macOS",
       "class": "own",
@@ -21779,23 +22375,11 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "018a05add9",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "0c44f84f21",
-          "date": "2026-11-07"
-        },
-        {
           "hash": "6fdf59fc08",
           "date": "2026-11-07"
         }
       ],
-      "tests": [
-        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry",
-        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne",
-        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName"
-      ]
+      "tests": []
     },
     {
       "id": "BF-7008884",
@@ -23045,6 +23629,47 @@
       ]
     },
     {
+      "id": "BF-75dd64c",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "75dd64c840",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-760ab0d",
+      "title": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls…",
+      "symptom": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls (a write and an append of one note) could register in the other order in a Go, Rust, Python or Lisp extension, where Pi registers them in call order.",
+      "rootCause": "Two tool calls of one parallel batch that reach withFileMutationQueue after different numbers of host round trips (a write and an append of one note) registered in the order the calls reached the host. In Pi both prefixes run to the queue in call order, a getter being no await. The host and SDK delivered the order they were given, so the divergence is the one D187 records for a native handler's host calls: a native SDK's scheduler decides who arrives first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls (a write and an append of one note) could register in the other order in a Go, Rust, Python or Lisp extension, where Pi registers them in call order. Each SDK's context now has the ordered form, `Context.WithFileMutationQueue` (Go), `ctx.with_file_mutation_queue` (Rust, Python), `pig:ctx-with-file-mutation-queue` (Lisp) and `ctx.withFileMutationQueue` (Node): the host registers the call after the extension tools before it in its batch (D187). The free `withFileMutationQueue` is unchanged and registers in the order the calls reach the host.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "760ab0dcf4",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/mutation_order_test.go::TestFileMutationOrderOfTheContextFormAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-761f5a2",
       "title": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory",
       "symptom": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory.",
@@ -24207,48 +24832,18 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "0c44f84f21",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "5ad490089f",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "5d04c3c06c",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "67275ef312",
-          "date": "2026-11-07"
-        },
-        {
           "hash": "7e42a6a5f6",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "d4ef260d38",
           "date": "2026-11-07"
         }
       ],
       "tests": [
-        "chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesTheWHATWGDecodersMaximalSubpartReplacements",
-        "chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesWhatNodesTextDecoderGivesForEveryShortSequenceAndRandomOnes",
         "chord/nextnode/plugins/plugins_cssmodules_node_test.go::FuzzScopeCSSModuleMatchesNode",
         "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorEndsAnEvaluationWithItsContextAndGoesOnWithTheNext",
         "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorKillsAProcessThatDoesNotAnswer",
         "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorRefusesAfterCloseAndEndsItsProcess",
         "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn",
-        "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestScopeCSSModuleGivesWhatNodeGivesForEsbuildsMappingModuleOverGeneratedCases",
-        "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestCSSModuleGoldensAreTheGeneratorsCases",
         "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase",
-        "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleStartsANodeOfItsOwnForTheOneModule",
-        "chord/nextnode/plugins/plugins_cssmodules_test.go::TestEsbuildBuildEndsTheNodeSubprocessThatReadsCSSModuleMappings",
-        "chord/nextnode/plugins/plugins_cssmodules_test.go::TestEsbuildBuildReadsACSSModuleAsUTF8LikeTextDecoderInvalidBytesAreU_FFFDBeforeScoping",
-        "chord/nextnode/plugins/plugins_cssmodules_test.go::TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem",
-        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry",
-        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkDoesNotRenewTheWatchesOfADirectoryMovedAwayAndBackWhichIsTheSameOne",
-        "chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkRenewsTheWatchesOfADirectoryReplacedByAnotherOfTheSameName"
+        "chord/nextnode/plugins/plugins_cssmodules_test.go::TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem"
       ]
     },
     {
@@ -26307,7 +26902,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit",
         "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
       ]
     },
@@ -26992,6 +27586,102 @@
       ]
     },
     {
+      "id": "BF-8d46bf8",
+      "title": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state…",
+      "symptom": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A sign-in wait that ends with its context no longer leaves its state pending, so a retry with the same state works, and a wait begun after the callback server closed fails at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-2",
+      "title": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential…",
+      "symptom": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`mcp-auth.json` is replaced through a temporary file and a rename, so a crash cannot leave a torn credential file, and the PKCE verifier is dropped once its code exchange succeeded.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
+      "id": "BF-8d46bf8-3",
+      "title": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per…",
+      "symptom": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "rootCause": "Callback server: a wait that ends with its context frees its state and a wait after Close fails at once (D370). ResolveSchemaRefJSON reads the schema once instead of parsing per segment; fuzz and benchmark added. mcp-auth.json is replaced through a temp file and rename. The PKCE verifier is dropped after the exchange (D373). Tool naming and config validation live in internal/mcpshared so a pig_strip_mcp build does not link mcp. PipeTransport.Close bounds the wait after the kill; the splitter drops an oversized buffer when idle.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per path segment.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8d46bf82b6",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "codemode/resolve_ref_fuzz_test.go::FuzzResolveSchemaRefJSON",
+        "coding/mcpext/storage_test.go::TestFileAuthStorageBackendWritesAtomicallyAndKeepsTheFileMode",
+        "mcp/lines_fuzz_test.go::FuzzLineReaderFraming",
+        "mcp/oauth/goroutines_test.go::TestOAuthCallbackServerLeavesNoGoroutineBehindAfterClose",
+        "mcp/oauth/oauth_test.go::TestAuthorizeMcpStopsWhenItsContextEndsWithoutFallingBackToARedirect",
+        "mcp/oauth/oauth_test.go::TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate",
+        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerFreesTheStateOfAWaitThatEndsWithItsContext",
+        "mcp/pipe_pi_test.go::TestPipeTransportClosesStdinAndDoesNotKillAProgramThatExitsInTime",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramOnlyAfterCloseTimeoutMs",
+        "mcp/pipe_pi_test.go::TestPipeTransportKillsAProgramThatFinishedStartingAfterClose",
+        "mcp/pipe_pi_test.go::TestPipeTransportLeavesNoGoroutineBehindAfterClose"
+      ]
+    },
+    {
       "id": "BF-8d6fb83",
       "title": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links…",
       "symptom": "A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text.",
@@ -27117,6 +27807,30 @@
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml",
         "test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml"
+      ]
+    },
+    {
+      "id": "BF-8f241ca",
+      "title": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on…",
+      "symptom": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.",
+      "rootCause": "Probing the pinned pi-ai (1.5.0+) with Node-hosted servers, undici's cause reaches the message by when the peer acts: - a reset after the request was read: `Connection error.: read ECONNRESET` on all three APIs and the SDK, 6/6; - a close (FIN), before or after the request: `Connection error.: other side closed (UND_ERR_SOCKET)`, 12/12; - a reset on accept: `connect ECONNRESET \u003caddr\u003e`, `write ECONNRESET` or both, by timing (a Go-hosted server gives mostly `write`). Go's dial returns before a reset on accept lands, so the reset arrived at the request's write or read and lost its detail, and a close before the headers (EOF) had none. nodeConnectionFailure now names a write or read reset…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f241ca2fd",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
+        "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset",
+        "ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage"
       ]
     },
     {
@@ -29823,6 +30537,43 @@
       ]
     },
     {
+      "id": "BF-967def6",
+      "title": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for…",
+      "symptom": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for a bigint parameter and `null` for an undefined one validate, as TypeBox converted them.",
+      "rootCause": "A JSON null converts to undefined and a string, number or boolean to a bigint for {\"type\":\"undefined\"} and {\"type\":\"bigint\"}, as TypeBox's Value.Convert does. A bigint is a *big.Int and undefined is schema.Undefined: the checks take them (number keywords of either kind, a required property holding undefined when its schema takes it), the explainer names them, and BigInt(options...) builds the schema.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `\"42\"` or `42` for a bigint parameter and `null` for an undefined one validate, as TypeBox converted them. The arguments' JSON writes a bigint as `\"42n\"`, as Pi's validation probes do, and leaves out an undefined member. Follows Pi main af79b0c3d.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "967def653d",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "schema/coerce_base_internal_test.go::TestCoercerBaseOfAnUnreachedNodeFollowsItsID",
+        "schema/pi_main_bigint_upstream_test.go::TestBigIntAndUndefinedAreValuesOfTheChecks",
+        "schema/pi_main_bigint_upstream_test.go::TestCoerceReadsNaNAndInfinityAsNoNumberInATypeArray",
+        "schema/pi_main_bigint_upstream_test.go::TestCoerceToABigIntOrUndefinedThroughUnionsAndTypeArrays",
+        "schema/pi_main_bigint_upstream_test.go::TestExplainsBigIntsAgainstBoundsOfEitherKind",
+        "schema/pi_main_bigint_upstream_test.go::TestOptionalAndRequiredNullsOfAnUndefinedProperty",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainBuildsABigIntWithBounds",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksARequiredPropertySetToUndefinedBySchema",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksMultipleOfOfBigIntsExactly",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksTypeBoxBigIntWithItsBounds",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainChecksTypeBoxUndefined",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainConvertsToABigIntLikeTypeBox",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainConvertsToUndefinedLikeTypeBox",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainEqualOfUndefined",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainTreatsAPropertySetToUndefinedAsAbsent",
+        "schema/pi_main_bigint_upstream_test.go::TestPiMainValueConvertWithBigIntAndUndefined"
+      ]
+    },
+    {
       "id": "BF-9721c48",
       "title": "An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border…",
       "symptom": "An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border color, like the working status, as in Pi 1.2.0; it used to keep the accent spinner and muted label.",
@@ -31238,39 +31989,6 @@
       ]
     },
     {
-      "id": "BF-D151",
-      "title": "`grep` with context reads a window of each matched file (Pi #9276)",
-      "symptom": "memory use of a `grep` call follows the context size, not the file size. A custom `GrepOperations.ReadFile` still returns the whole text, but only the current file is kept. A custom `GrepOperations` without `ReadFile` streams the local file.",
-      "rootCause": "with `context: 2` over a directory of 100 MB logs, Pi holds each matched file several times over (read string, split array) and exhausts the heap (Pi #9276). Pi has no fix. The output is the same: the window splits lines as `getFileLines` does, keeps the first `GrepMaxLineLength + 1` code points of a line (the rest cannot reach the output), and still prints overlapping context blocks for nearby matches.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D151",
-      "piIssue": "https://github.com/earendil-works/pi/issues/9276",
-      "removeWhen": "Pi stops loading whole files for grep context.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "2a78d0efdf",
-          "date": "2026-10-09"
-        },
-        {
-          "hash": "644b3e0a2a",
-          "date": "2026-10-09"
-        },
-        {
-          "hash": "e98c8af606",
-          "date": "2026-10-09"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepContextDoesNotLoadTheMatchedFile",
-        "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit"
-      ]
-    },
-    {
       "id": "BF-D153",
       "title": "The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)",
       "symptom": "PiG prints `line is 58.6KB`; Pi prints `line is 0B`. Output without a trailing newline is the same in both.",
@@ -31826,65 +32544,6 @@
       ]
     },
     {
-      "id": "BF-D242",
-      "title": "Reload is rejected while the session is running or compacting",
-      "symptom": "1.5.0 has the TUI's entry checks only in the TUI, not in the core reload method (#9221).",
-      "rootCause": "An extension command (`ctx.reload()` in print or RPC mode) or an SDK caller could reload during a running extension tool. Reload invalidated the tool's runner, the tool's next `ctx` use threw a stale-context error, and the failed tool result entered session history.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D242",
-      "removeWhen": "the pinned Pi release contains c3b938e3e. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "0f8bc0f0de",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "bfe1b032a7",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive",
-        "coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting",
-        "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios"
-      ]
-    },
-    {
-      "id": "BF-D246",
-      "title": "OpenAI Responses sends session-id, not session_id",
-      "symptom": "1.5.0 sends `session_id` on Responses (#11639).",
-      "rootCause": "Proxies such as nginx with `underscores_in_headers off` drop an underscored header silently and Envoy can be configured to reject it, so cache affinity was lost.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D246",
-      "removeWhen": "the pinned Pi release contains c5d397835. Then the call-site marker and this record go, and the schema description follows the pin.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "bf094afb3e",
-          "date": "2026-11-05"
-        },
-        {
-          "hash": "bfe1b032a7",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "ai/cache_affinity_e2e_upstream_test.go::TestOpenAIResponsesCacheAffinityE2EUpstream",
-        "ai/openai_completions_session_affinity_upstream_test.go::TestOpenAICompletionsSessionAffinityHeadersFollowThePiCompat",
-        "ai/openai_responses_compat_upstream_test.go::TestOpenAIResponsesCompatHeadersUpstream",
-        "ai/xai_responses_upstream_test.go::TestXAIResponsesRequestUpstream"
-      ]
-    },
-    {
       "id": "BF-D249",
       "title": "Images in queued steering and follow-up messages are resized when the message is delivered",
       "symptom": "A steering or follow-up message with images, queued while the agent is busy, is sent to the model and saved in the session file at its original size, so a 1200x9000 PNG is replayed on every later request.",
@@ -32284,124 +32943,6 @@
       "tests": []
     },
     {
-      "id": "BF-D350",
-      "title": "OpenCode Zen and Go Claude models send per-message effort",
-      "symptom": "1.5.0 omits both for OpenCode Claude models.",
-      "rootCause": "OpenCode serves these Claude models over an Anthropic-messages endpoint that needs the per-message effort and the drop_block binding to keep thinking blocks coherent across turns.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D350",
-      "removeWhen": "the pinned Pi release contains 9ee7586a9. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "cmd/gen-models/catalog_matches_pi_test.go::TestCatalogGenerationMatchesPi",
-        "cmd/gen-models/opencode_model_generation_test.go::TestOpencodeModelGeneration"
-      ]
-    },
-    {
-      "id": "BF-D351",
-      "title": "Anthropic non-strict tool schemas keep root $defs",
-      "symptom": "1.5.0 drops root `$defs` in non-strict mode.",
-      "rootCause": "A `$ref` into a removed `$defs` makes Anthropic reject the tool definition.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D351",
-      "removeWhen": "the pinned Pi release contains 4a6a58eb. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
-        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas"
-      ]
-    },
-    {
-      "id": "BF-D352",
-      "title": "Anthropic message threads",
-      "symptom": "Not a Pi bug: a feature ahead of the pin.",
-      "rootCause": "Smaller requests and cache continuity on long Anthropic sessions.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D352",
-      "removeWhen": "the pinned Pi release contains a758f3ae4. Then the call-site marker and this record go.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "c21b1370e5",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_message_threads_test.go::TestAnthropicMessageThreadsCreateThenContinue"
-      ]
-    },
-    {
-      "id": "BF-D370",
-      "title": "The OAuth callback server drops connections that have not sent a request when it closes",
-      "symptom": "1.5.0 waits for the browser to drop the socket, for minutes.",
-      "rootCause": "Go's `Shutdown` waits up to 5 s for a connection that never sent a request, so `/mcp login` stalled up to the 2 s bound.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D370",
-      "removeWhen": "the pinned Pi release contains 63ea042ce and PiG's close matches it.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "d852965a33",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "mcp/oauth/oauth_test.go::TestOAuthCallbackServerClosesWhileTheBrowserKeepsAnUnusedConnectionOpen"
-      ]
-    },
-    {
-      "id": "BF-D371",
-      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
-      "symptom": "1.5.0 throws `URI malformed` out of every codemode run.",
-      "rootCause": "One MCP tool with such a ref failed every codemode run.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D371",
-      "removeWhen": "the pinned Pi release contains 6d3e342b2.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "d852965a33",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "codemode/declarations_test.go::TestMalformedRefPercentEncodingRendersAsUnknown",
-        "coding/extension/builtin/codemode/tool_refs_pi_test.go::TestDescribeOutputSummarizesFieldsBehindLocalSchemaReferences"
-      ]
-    },
-    {
       "id": "BF-D430",
       "title": "Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking…",
       "symptom": "none.",
@@ -32454,6 +32995,257 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-D460",
+      "title": "The app kit's facets are Go core facets beside the plugins' Node host",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the plugin runtime is Node; the facets are Go because the kit is a Go port. Moving them to the Node host would port the kit to JS; serving HostData from Go needs the Go relay to answer for its child's address, which a chord host does not do.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D460",
+      "removeWhen": "the plugins' host and the kit's facets run in one process (the plugin runtime is not a subprocess), or a chord host can answer for its child's address so `HostData` needs no JavaScript module.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bdaa14582e",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D461",
+      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the plugins' proxy facets (`plugins/node/proxy.mjs`) forward state members and methods to the Go object; a JS keyed member must be a keyed document handle or a reference's keyed member, and the proxy has neither for an object on another host. Pi has the kit and the plugins in one host, so `self.get(Files, {})` works there.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D461",
+      "removeWhen": "the plugin bridge forwards a contract with a keyed member (a keyed-handle proxy between hosts), or the plugins run in the kit's host.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "d803ffa239",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D462",
+      "title": "The server and each worker have two stores, not one",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "the node-evaluator design (`docs/plan/chord-plugins-node-evaluator.md` §store): the Go store is an in-process engine and a store is not shared over the link; sharing one sqlite file between two engines would corrupt the id allocator.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D462",
+      "removeWhen": "the plugins run in the server's (or worker's) own host process with one store, or one store file can be shared by two hosts.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "bdaa14582e",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "d803ffa239",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "5291c9268f",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-D464",
+      "title": "FormatNumber and FormatTime take closed option types and return errors (P1-3)",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D464",
+      "removeWhen": "Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "17136820e9",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode",
+        "chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode",
+        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber",
+        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime",
+        "chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle"
+      ]
+    },
+    {
+      "id": "BF-D465",
+      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D465",
+      "removeWhen": "never for the `time.Time` parameter (it is the Go form of a `Date`); the zone-data difference goes when Go's tzdata and the pinned Node's ICU zone data agree.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0950d13d68",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_root_test.go::TestFormatTimeShowsTheInstantInTheProcessZone"
+      ]
+    },
+    {
+      "id": "BF-D466",
+      "title": "No per-language formatter cache",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D466",
+      "removeWhen": "never: Go has no formatter object to cache; it goes if a format stops being a table lookup.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "0950d13d68",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "17136820e9",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_root_test.go::TestFormatsAllocateOnlyTheResultForCanonicalTags"
+      ]
+    },
+    {
+      "id": "BF-D501",
+      "title": "`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print",
+      "symptom": "With npm 12 Pi's `installPlugin` fails on the object output; to be filed upstream with the repro (`npm pack --json` of any package under npm 12).",
+      "rootCause": "a plugin install that fails on a current npm for a reason of output shape only is worse than Pi's behavior and costs nothing to avoid; the list form, the empty-output errors and the `filename` read are Pi's.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D501",
+      "removeWhen": "Pi's install reads the object form.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_install_test.go::TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints"
+      ]
+    },
+    {
+      "id": "BF-D520",
+      "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
+      "symptom": "none.",
+      "rootCause": "Go's dial returns before the peer's reset arrives and the request write goes into the socket buffer, so the reset surfaces on the response read. PiG cannot tell the two apart without guessing from timing, and the reset after the request is the failure a real server produces, so it keeps Node's text for that case.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D520",
+      "removeWhen": "PiG can tell a reset on accept from a reset after the request (for example by recording whether the request body was written before the reset reached the connection), or Pi stops reporting the connect.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "403a475ba7",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
+        "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset"
+      ]
     },
     {
       "id": "BF-D540",
@@ -32513,7 +33305,42 @@
           "date": "2026-11-08"
         }
       ],
-      "tests": []
+      "tests": [
+        "chord/nextnode/app/app_changes_test.go::TestAppMarksBaseForAChangeOfAWorkerKindsEntryNotForARewriteWithTheSameBytes",
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseABrokenEntryFailsItsBuildAndEveryStartWorkerFailedThePublicStartErrorNothingForks",
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs",
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith",
+        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose"
+      ]
+    },
+    {
+      "id": "BF-D601",
+      "title": "The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…",
+      "symptom": "Not a Pi bug.",
+      "rootCause": "these modules run in the user's browser (DOM, `window`, React) or in a JavaScript context the launcher starts (the app's terminal code and the plugins' registered scripts are evaluated there). A Go process cannot be that runtime, so there is nothing to port; the faithful form is the file itself. Behavior equals Pi's because the code is Pi's.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D601",
+      "removeWhen": "PiG runs the browser page or the terminal sandbox from Go-authored code.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "9ca9bbb711",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "1c0169d935",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_web_browser_test.go::TestReactBindingsHoldWhileMountedReRenderOnChangeReleaseOnUnmount",
+        "chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick",
+        "chord/nextnode/surfaces/surfaces_react_test.go::TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWatchable"
+      ]
     },
     {
       "id": "BF-D604",
@@ -32765,6 +33592,35 @@
         "internal/nativeplatform/clipboard_x11_display_linux_test.go::TestX11DisplayTransportPrefixes",
         "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
         "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes"
+      ]
+    },
+    {
+      "id": "BF-a16d8b4",
+      "title": "The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the…",
+      "symptom": "The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the session name and the session file, which cost a round trip each (about 55 µs in the Go SDK); they now read the host's state snapshot, as the Node runtime does.",
+      "rootCause": "The host sends the whole model object and session.sessionId in every ready state and state_update, and the Node runtime answers ctx.model and ctx.sessionManager.getSessionId() from them. The SDKs replicated only the model id and provider, so GetModelInfo, GetSessionID and the session manager's getSessionId cost a host round trip per read (two per LLM call and one per prompt in the LangSmith port).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go, Rust, Python and Lisp SDKs asked the host on every read of the model object, the session id, the session name and the session file, which cost a round trip each (about 55 µs in the Go SDK); they now read the host's state snapshot, as the Node runtime does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a16d8b4900",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_replicated_reads.py",
+        "extensions/sdk/replicated_model_session_test.go::TestModelObjectAndSessionIDAreReadFromTheStateSnapshots",
+        "extensions/sdk/replicated_model_session_test.go::TestReadsBeforeTheFirstSnapshotAskTheHost",
+        "extensions/sdk/replicated_model_session_test.go::TestReplacementContextReadsAskTheHost",
+        "extensions/sdk/replicated_model_session_test.go::TestReplicatedModelInfoIsPrivateToTheCaller",
+        "extensions/sdk/replicated_model_session_test.go::TestReplicatedModelThatDoesNotDecodeIsAnError",
+        "extensions/sdk/replicated_model_session_test.go::TestReplicatedReadsOfAStaleContextReturnTheStaleMessage",
+        "test/extension-conformance/replica_reads_test.go::TestReplicatedReadsAreLocalAcrossSDKs"
       ]
     },
     {
@@ -33126,6 +33982,28 @@
         "ai/openai_empty_tool_call_test.go::TestOpenAICompletionsEmptyToolCallDoesNotWedgeReplay",
         "ai/unreplayable_tool_call_test.go::TestReplayOmitsUnreplayableToolCallsOnEveryProviderPath",
         "ai/unreplayable_tool_call_test.go::TestStreamedToolCallsWithoutIDGetDistinctIDsAcrossTurns"
+      ]
+    },
+    {
+      "id": "BF-a397ee9",
+      "title": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer…",
+      "symptom": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.",
+      "rootCause": "A stop and continue (Ctrl+Z, fg) during the API key prompt resumes inside the termios ioctl, which macOS reports as EINTR; readSecret called x/term directly, so the prompt ended with 'interrupted system call' where Node's setRawMode retries. coding/cli/auth_terminal.go reached the repository after the per-call-site EINTR audit (TestTerminalSyscallsThatCanSleepRetryEINTR), which flagged both calls.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Stopping and continuing `pig` (Ctrl+Z, then `fg`) while it asks for an API key at the login prompt no longer ends the prompt with `interrupted system call` on macOS: the prompt enters and leaves raw mode through the same retrying calls as the main screen, as Node's `setRawMode` retries the call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a397ee91ed",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/terminal_syscall_eintr_audit_test.go::TestTerminalSyscallsThatCanSleepRetryEINTR"
       ]
     },
     {
@@ -34981,6 +35859,25 @@
       ]
     },
     {
+      "id": "BF-aec5a31",
+      "title": "fix(chord): a chmod of a recorded base file is compared like a write",
+      "symptom": "fix(chord): a chmod of a recorded base file is compared like a write",
+      "rootCause": "Pi passes every event of a recorded file to mark, so a file made unreadable differs and one readable again with its bytes clears. baseEvent returned on a Chmod before it looked at the file. A Chmod still renews nothing on the way to base code (the Create, Remove and Rename mask).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "aec5a318db",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-af1fe1a",
       "title": "Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the…",
       "symptom": "Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the default, extends a non-empty `enabledModels` scope, keeps scope keys for model IDs that start with their provider, and checks Anthropic subscription auth after the switch.",
@@ -35401,6 +36298,29 @@
       ]
     },
     {
+      "id": "BF-b0ab4cd",
+      "title": "Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives…",
+      "symptom": "Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives it causes run on the loop and never race the batch; a Set inside a section is the plain call.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a `Writable.Set` from outside a section of its owner's loop enters one, so its commit and the derives it causes run on the loop and never race the batch; a Set inside a section is the plain call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b0ab4cd256",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_writable_section_test.go::TestWritableSetInASectionNests",
+        "chord/next/host/host_writable_section_test.go::TestWritableSetOffTheLoopRunsItsCommitOnTheLoop"
+      ]
+    },
+    {
       "id": "BF-b1642ac",
       "title": "fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear…",
       "symptom": "fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear time",
@@ -35655,6 +36575,54 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-b3b5ae8",
+      "title": "After an extension's own `registerProvider`, `unregisterProvider`, `registerVirtualModel`…",
+      "symptom": "After an extension's own `registerProvider`, `unregisterProvider`, `registerVirtualModel`, `unregisterVirtualModel` or `refreshModelRegistry`, the next read of the model returned the previous model object in the Go SDK and the Node runtime, where Pi refreshes the Session's model before the call returns.",
+      "rootCause": "A registry write (registerProvider, unregisterProvider, the virtual-model calls, refreshModelRegistry) refreshes the Session's model before it returns in Pi, and a reader that learns a host change from a host call cannot then read an older value. The replicated model object, session id, name and file broke both:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After an extension's own `registerProvider`, `unregisterProvider`, `registerVirtualModel`, `unregisterVirtualModel` or `refreshModelRegistry`, the next read of the model returned the previous model object in the Go SDK and the Node runtime, where Pi refreshes the Session's model before the call returns. The host now sends its state before the reply of those calls, the Go SDK waits for it, and the Node runtime refreshes its model from its registry view.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b3b5ae8b6f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush",
+        "test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanTheStateItFollowsAcrossSDKs",
+        "test/extension-conformance/replica_causality_test.go::TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-b3b5ae8-2",
+      "title": "A reader that learned a host change through a host call, for example the usage a new model or session moves…",
+      "symptom": "A reader that learned a host change through a host call, for example the usage a new model or session moves, could read an older replicated model, session id, name or file afterwards, because the host's own state push is asynchronous.",
+      "rootCause": "A reader that learned a host change through a host call, for example the usage a new model or session moves, could read an older replicated model, session id, name or file afterwards, because the host's own state push is asynchronous.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A reader that learned a host change through a host call, for example the usage a new model or session moves, could read an older replicated model, session id, name or file afterwards, because the host's own state push is asynchronous. The host now pushes before any call result while a change has not reached the extension, the Go SDK waits for the state that precedes each result, and the Node runtime applies the queued state before it settles a synchronous call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b3b5ae8b6f",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush",
+        "test/extension-conformance/replica_causality_test.go::TestAHostReplyIsNeverOlderThanTheStateItFollowsAcrossSDKs",
+        "test/extension-conformance/replica_causality_test.go::TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs"
+      ]
     },
     {
       "id": "BF-b430c7a",
@@ -36453,6 +37421,34 @@
       ]
     },
     {
+      "id": "BF-b8a8fe5",
+      "title": "A prompt can no longer start while tree navigation or a branch summary is running, tree navigation is refused…",
+      "symptom": "A prompt can no longer start while tree navigation or a branch summary is running, tree navigation is refused while a prompt is in its input hooks, and the live thinking level is recorded on the branch before each prompt so a resume after /tree restores it.",
+      "rootCause": "Port of Pi (#9155) and (#11888). Ports regression suites 9154 and 11451.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt can no longer start while tree navigation or a branch summary is running, tree navigation is refused while a prompt is in its input hooks, and the live thinking level is recorded on the branch before each prompt so a resume after /tree restores it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b8a8fe5551",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationIsAllowedAfterAPromptIsHandledOrRejectedDuringPreflight",
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationIsRejectedDuringAnAwaitedInputHook",
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationStartedFromSessionTreeKeepsItsOwnState",
+        "coding/session_tree_prompt_overlap_test.go::TestNavigationStaysBlockedWhenAnotherPromptFinishesPreflightFirst",
+        "coding/session_tree_prompt_overlap_test.go::TestPromptIsRejectedWhileBranchSummarizationIsInProgress",
+        "coding/session_tree_prompt_overlap_test.go::TestThinkingLevelIsRecordedOnTheNewBranchBeforeTheNextPrompt",
+        "coding/session_tree_prompt_overlap_test.go::TestThinkingLevelThatOnlyDiffersFromTheBranchByClampingIsNotRecorded"
+      ]
+    },
+    {
       "id": "BF-b8b83db",
       "title": "fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop",
       "symptom": "fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop",
@@ -36780,6 +37776,34 @@
       "tests": [
         "ai/js_date_parse_random_oracle_test.go::TestDateParseHeaderMatchesNodeOnRandomBytes",
         "ai/js_date_parse_random_oracle_test.go::TestDateParseMatchesNodeOnRandomStrings"
+      ]
+    },
+    {
+      "id": "BF-bb1c920",
+      "title": "A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and…",
+      "symptom": "A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and `console.error` do, in print, JSON, RPC and interactive mode: stderr always on stderr, stdout on stderr in the headless modes (in one pipe, so the two keep the order the extension wrote them) and on stdout in interactive mode.",
+      "rootCause": "Pi runs an extension in its own process: console.error writes stderr, and console.log writes stdout in interactive mode and stderr in print, json and rpc mode (main.ts takeOverStdout); Pi intercepts neither stream in interactive mode. Only Node extensions got that: a Go, Rust, Python or Lisp extension's stderr went to a log file removed unless a load failure named it, and its stdout to /dev/null, so a console.error-style notice (Posthorse's automatic-rollover failure report) never reached the user.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension's `stdout` and `stderr` now reach the terminal as Pi's `console.log` and `console.error` do, in print, JSON, RPC and interactive mode: stderr always on stderr, stdout on stderr in the headless modes (in one pipe, so the two keep the order the extension wrote them) and on stdout in interactive mode. Only Node extensions did before: the others' stderr went to a log file removed unless a load failure named it, so a notice such as Posthorse's automatic-rollover failure report never reached the user. A packed runner's failure cause is still read from the log: the host flushes the output pipe before it reads.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb1c920e97",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/console_output_test.go::TestConsolePipeFlushAfterFinishReturns",
+        "coding/extension/host/subprocess/console_output_test.go::TestConsolePipeFlushReachesWhatTheProcessWrote",
+        "coding/extension/host/subprocess/console_output_test.go::TestConsolePipeForwardsEveryByteAroundMarkers",
+        "coding/extension/host/subprocess/console_output_test.go::TestExtensionConsoleSurvivesAnUnwritableTerminal",
+        "coding/extension/host/subprocess/console_output_test.go::TestExtensionHeadlessConsoleUsesOneOrderedPipe",
+        "coding/extension/host/subprocess/console_output_test.go::TestExtensionOutputReachesTheTerminalInPiOrder",
+        "test/extension-conformance/console_output_test.go::TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK"
       ]
     },
     {
@@ -37125,20 +38149,14 @@
       "title": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…",
       "symptom": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.",
       "rootCause": "",
-      "rootCauseSource": "divergence record",
+      "rootCauseSource": "",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D247",
-      "removeWhen": "the pin reaches a Pi release containing 7a53c310a.",
+      "class": "own",
       "fixedIn": "Unreleased",
       "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.0's order (Pi #9124, D247).",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "00d787634a",
-          "date": "2026-11-05"
-        },
         {
           "hash": "694685ee71",
           "date": "2026-11-05"
@@ -37153,8 +38171,6 @@
         }
       ],
       "tests": [
-        "coding/cli/print_signal_exit_test.go::TestPrintModeJSONSignalStopsOutputAndPersistence",
-        "coding/cli/print_signal_exit_test.go::TestPrintModeSignalDisposalRunsLikePisEventLoop",
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
       ]
     },
@@ -37668,6 +38684,28 @@
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskClose",
         "durable/harness/tool_nested_test.go::TestANestedCallKeepsTheCallersArgumentOrder",
         "durable/harness/tool_nested_test.go::TestANestedCallSlotShowsTheArgumentsItRunsWith"
+      ]
+    },
+    {
+      "id": "BF-c129008",
+      "title": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after…",
+      "symptom": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.",
+      "rootCause": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Registering a native provider did not refresh the Session's active model from the registry, as Pi does after `registerNativeProvider`; the registry's observers are now told, and the Node runtime refreshes its model view too.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c1290084cb",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/native_provider_observers_test.go::TestRegisterNativeProviderReportsToTheRegistryObservers"
       ]
     },
     {
@@ -38546,6 +39584,35 @@
       "tests": [
         "internal/codingagent/assistant_block_async_race_test.go::TestAssistantBlockAsyncMarkdownCompletionLeavesTheBlockToTheOwnerLoop",
         "tui/assistant_message_async_test.go::TestAssistantMessageAsyncCompletionMarksBlockDirty"
+      ]
+    },
+    {
+      "id": "BF-c5edfc4",
+      "title": "The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so…",
+      "symptom": "The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so a one-line read of a very large file no longer costs the file's size, and an abort stops the read.",
+      "rootCause": "Port of Pi (#11750). ReadOperations gains an optional CreateReadStream; the text path counts every line and keeps only the lines head truncation can show, so memory no longer follows the file size. Ports test/read-streaming.test.ts.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The read tool streams a text file instead of loading it whole: only the lines it can show stay in memory, so a one-line read of a very large file no longer costs the file's size, and an abort stops the read.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c5edfc4dbc",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingDecodesChunkSplitCharactersAndInvalidUTF8LikeBufferToString",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingGivesTheSameOutputAsTheWholeFileAlgorithm",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingKeepsDetailsKeyOrder",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingKeepsMemoryBoundedForA200MBLine",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingReadsALocalFileUpToItsSizeWhenOpened",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingReadsLocalFilesThroughTheDefaultStream",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingStopsConsumingTheStreamWhenAborted",
+        "internal/codingagent/tools/read_streaming_test.go::TestReadStreamingUsesReadFileWithoutCreateReadStreamAndForFractionalOrNegativeRanges"
       ]
     },
     {
@@ -41327,6 +42394,28 @@
       ]
     },
     {
+      "id": "BF-d4ef260",
+      "title": "fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped",
+      "symptom": "fix(chord): a CSS module is decoded as UTF-8 like TextDecoder before it is scoped",
+      "rootCause": "build.ts hands scopeCssModule new TextDecoder().decode(contents): a byte that is not UTF-8 is U+FFFD, one per maximal subpart, and a leading byte order mark goes. decodeUTF8 is that decoder; checked against Node's over every byte string of up to three bytes from 26 telling bytes and 3000 random ones.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d4ef260d38",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesTheWHATWGDecodersMaximalSubpartReplacements",
+        "chord/nextnode/plugins/plugins_cssmodules_decode_test.go::TestDecodeUTF8GivesWhatNodesTextDecoderGivesForEveryShortSequenceAndRandomOnes"
+      ]
+    },
+    {
       "id": "BF-d50ec25",
       "title": "The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the…",
       "symptom": "The TypeScript extension runtime no longer depends on Node-only behaviour: its entry modules do not await the admission loop at top level (Bun never reaches `beforeExit` while an entry module's top-level await is pending, so the quit drain after RPC input ended hung), it hooks `v8.Serializer.prototype.writeValue` only where the runtime has it, it keeps a native method when the runtime froze built-ins, and it loads its lazy modules through one list that a bundling runtime can serve.",
@@ -41749,28 +42838,6 @@
       ]
     },
     {
-      "id": "BF-d803ffa",
-      "title": "Fix in shipped code",
-      "symptom": "Fix in shipped code",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "d803ffa239",
-          "date": "2026-11-07"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/app/app_test.go::TestAppRefusesASecondServerOnTheSameDataDirectoryThroughASymbolicLink",
-        "chord/nextnode/plugins/plugins_node_bridged_keyed_test.go::TestABridgedFacetRefusesAContractWithAKeyedMember"
-      ]
-    },
-    {
       "id": "BF-d80425c",
       "title": "fix(train): gate repairs after merging train 3 and the ordering stack",
       "symptom": "fix(train): gate repairs after merging train 3 and the ordering stack",
@@ -41861,94 +42928,16 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes. \u003c!-- fix: chord-singleton-value --\u003e",
+      "releaseNote": "A Chord singleton state document's handle reads its value in a section of the host's loop, as its watch does: Go code that reads it from a job's goroutine no longer races the object's own commits and its seal when the host closes.",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "714e251284",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "9ea6021b5f",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "d892104fad",
-          "date": "2026-11-07"
-        },
         {
           "hash": "d80cb241f7",
           "date": "2026-11-08"
         }
       ],
       "tests": [
-        "chord/next/data/failure_test.go::TestWaitingCauseKeepsAVersionRefusal",
-        "chord/next/host/host_adapted_test.go::TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues",
-        "chord/next/host/host_adapted_test.go::TestReloadAnOlderConsumersFirstReadDuringAParkedRestartMapsWithTheProviderWhoseAttemptIsShownUntilTheNewOneGoesLive",
-        "chord/next/host/host_ctx_test.go::TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "chord/next/host/host_example_63_test.go::TestExample63OptimisticAnswers",
-        "chord/next/host/host_example_64_test.go::TestExample64OldWork",
-        "chord/next/host/host_object_reload_test.go::TestReloadAReferenceDetachingFromAParkedRestartsOldAttemptFollowsTheOldInstanceWhileItsCallDrainsThenKeepsItsLastValueWithTheFailureOnce",
-        "chord/next/host/host_object_reload_test.go::TestReloadARestartBindsTheNewAttemptsRequestsBeforeReleasingTheOldOnesADependencyHeldOnlyByItNeverEnds",
-        "chord/next/host/host_object_reload_test.go::TestReloadARestartLetsARunningCallFinishOnTheOldAttemptsHandlesANewCallWaitsAtTheGateForTheNewCode",
-        "chord/next/host/host_object_reload_test.go::TestReloadARestartOldWorkWritesADocumentWhoseVersionTheReloadRaisesTheNewCodeMigratesWhatItWrote",
-        "chord/next/host/host_object_reload_test.go::TestReloadARestartReBindsMembersByNameOneFrameFromTheLastValueAndRebuildsInternalDerives",
-        "chord/next/host/host_object_reload_test.go::TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
-        "chord/next/host/host_object_reload_test.go::TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart",
-        "chord/next/host/host_object_reload_test.go::TestReloadAStuckRoutineCallPastTheDrainAnOldRoutineCallStuckPastTheReloadDrainBoundDrainTimeoutTheOldAttemptSealedItsCommitRefused",
-        "chord/next/host/host_object_reload_test.go::TestReloadDrainBoundCutsACallStillRunningAtReloadDrainTimeoutReleasedReportsDrainTimeoutThenTheNewCodeServes",
-        "chord/next/host/host_object_reload_test.go::TestReloadDrainBoundIsAtMostCloseTimeout",
-        "chord/next/host/host_object_reload_test.go::TestReloadFatesRestartsALiveObjectItsDocumentsKeptNewCodeForNewCalls",
-        "chord/next/host/host_object_reload_test.go::TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReasonReloadThenOpensTheNewOnes",
-        "chord/next/host/host_object_reload_test.go::TestReloadGCCollectsARestartsOldAttemptAndItsClosuresOnceItEnded",
-        "chord/next/host/host_object_reload_test.go::TestReloadOldWorkStartsAJobWritesDocumentsAndTablesAndReadsOnTheOldCodeTheNewFactoryRunsAfter",
-        "chord/next/host/host_object_reload_test.go::TestReloadReadinessShowsAFailedRequestWhileItLastsARequestThatRecoversShowsTheObjectLiveAgainNewCallsWait",
-        "chord/next/host/host_object_reload_test.go::TestReloadTwoReloadsInARowTheSecondDoesNotWaitForTheFirstsOldCallWhichFinishesOnItsOldCodeTheLastCodeServes",
-        "chord/next/host/host_old_work_test.go::TestAsRemoteOldWorkHasNoAttemptOfThisHostInItsChainAReloadCycleCannotPassThroughAnotherHostsDrain",
-        "chord/next/host/host_old_work_test.go::TestAsRemoteOldWorkIsOldWorkWhileCountedWhateverChainItHad",
-        "chord/next/host/host_old_work_test.go::TestChainAttemptsCollectsEachAttemptOnceDrainingOrNot",
-        "chord/next/host/host_old_work_test.go::TestOldWorkACallRoutedToAnOldAttemptAfterItsDrainBeganJoinsTheDrainItIsNotCutAtTheSeal",
-        "chord/next/host/host_old_work_test.go::TestOldWorkAChainOfThreeTheWorkReachesAnObjectWhoseNewAttemptNeedsTheDependentWhichNeedsTheProvider",
-        "chord/next/host/host_old_work_test.go::TestOldWorkAProvidersRunningCallReachesItsDependentThroughCtxGetWhileBothRestartNoStall",
-        "chord/next/host/host_old_work_test.go::TestOldWorkARootGivenTheMethodsCtxWithoutItsSignalIsOldWorkOneWithoutItIsNewWork",
-        "chord/next/host/host_old_work_test.go::TestOldWorkAskingForAVersionTheNewCodeDroppedWithNoOldAttemptServingItFailsAtOnce",
-        "chord/next/host/host_old_work_test.go::TestOldWorkBothVersionsRaisedWithAcceptsOldWorksGetterAtTheOldVersionBindsTheDependentsOpenOldAttempt",
-        "chord/next/host/host_old_work_test.go::TestOldWorkCreatingAnObjectThatDidNotExistItStartsOnTheNewCodeAndBindsTheProvidersOpenOldAttempt",
-        "chord/next/host/host_old_work_test.go::TestOldWorkMutualDrainsTheProvidersCallReachesTheDependentWhileTheDependentsCallReachesTheProvider",
-        "chord/next/host/host_old_work_test.go::TestOldWorkOfFindsADrainingAttemptAnywhereUpTheCallChain",
-        "chord/next/host/host_old_work_test.go::TestOldWorkOfWalksNoChainWhileTheHostHasNoOldWorkOpenNoCostOutsideReloads",
-        "chord/next/host/host_old_work_test.go::TestOldWorkReEntryWorkDependentTheProviderAgainRunsOnTheProvidersOldAttempt",
-        "chord/next/host/host_old_work_test.go::TestOldWorkSelfReEntryWorkCtxGetOfItsOwnObjectRunsOnItsOldAttempt",
-        "chord/next/host/host_old_work_test.go::TestOldWorkTheReloadRaisesTheProvidersVersionAndTheDependentsNewCodeNeedsItTheWorkRunsOnTheDependentsOldAttempt",
-        "chord/next/host/host_old_work_test.go::TestReloadCycleACutWaitKeepsNeitherItsTargetNorTheOldAttemptItRanOn",
-        "chord/next/host/host_old_work_test.go::TestReloadCycleAWaitOfOldWorkFailsAtOnceWhenOldWorkCreatesAnObjectWhoseNewCodeNeedsTheProvidersRaisedContract",
-        "chord/next/host/host_old_work_test.go::TestReloadCycleAnOpenersGateWaitLeavesNoWaitEdgeOnceItEndedNorKeepsTheOldAttempt",
-        "chord/next/host/host_old_work_test.go::TestReloadCycleDoesNotFailAWaitWhoseTargetWaitsOnAnotherObjectsDrainOnlyNoCycleThroughThisWork",
-        "chord/next/host/host_old_work_test.go::TestReloadCycleFailsOnceALaterWaitClosesTheCycleTheNewAttemptsOpenerCallsTheProviderOldWorkWaitsOn",
-        "chord/next/host/host_readiness_test.go::TestReadinessCountsARequestFailedOnThisHostAsReadyTheReloadReportsItAsWhatTheSuccessorWaitsFor",
-        "chord/next/host/host_readiness_test.go::TestReadinessDoesNotWaitForRegistryRequestsTheOldAttemptsContributionsKeepThemUntilItsSeal",
-        "chord/next/host/host_readiness_test.go::TestReadinessKeepsItsBindingsOutOfPresenceListsTheyAreNoConsumersOfTheirOwn",
-        "chord/next/host/host_readiness_test.go::TestReadinessMemoryIsCollectedWithItsBindingsOnceTheRestartsSuccessorIsLive",
-        "chord/next/host/host_readiness_test.go::TestReadinessReleaseEndsAWaitStillRunningReadyResolvesAtOnce",
-        "chord/next/host/host_readiness_test.go::TestReadinessReleaseLetsGoOfItsBindingsAnObjectHeldOnlyByThemEnds",
-        "chord/next/host/host_readiness_test.go::TestReadinessResolvesAtItsBoundWhenARequestNeverGetsReady",
-        "chord/next/host/host_readiness_test.go::TestReadinessShowsARequestsFailureAndNoneOnceTheRequestRecovered",
-        "chord/next/host/host_readiness_test.go::TestReadinessWaitsForARequestStillLoadingAndResolvesOnceItIsLive",
-        "chord/next/host/host_readiness_test.go::TestReadinessWaitsForNothingBeforeItStartedTheRequestsBindOnlyOnceEveryFateStarted",
-        "chord/next/host/host_readiness_test.go::TestReadinessWaitsUpToItsBoundForARequestAnotherHostRefusesForItsVersionThatHostsReloadHealsIt",
-        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges",
-        "chord/next/host/jobs_records_test.go::TestRecordsJobsAcrossAReloadAnOlderInMemoryRunIsCutAtTheRestartsSealItsFinishRunsOnTheNewCodeMappedForwardsOnce",
-        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsABackCallFromTheDependentOnTheServerRunsOnTheWorkerProvidersOpenOldAttempt",
-        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsABackCallFromTheDependentOnTheWorkerRunsOnTheServerProvidersOpenOldAttempt",
-        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsTheProvidersVersionRaisedWhichTheDependentsNewCodeNeedsTheWorkRunsOnTheDependentsOldAttempt",
-        "chord/next/host/remote_consumer_test.go::TestOldWorkAcrossHostsTheSameWithTheDependentsHostReloadedFirstItsReadinessWaitsOutTheOtherHostsVersionRefusal",
-        "chord/next/host/remote_hold_gate_test.go::TestCallsOverALinkWhileARestartWaitsACallArrivingWhileTheOldAttemptDrainsAndTheSuccessorsRequestOpensWaitsForTheNewCodeNeverNotReady",
-        "chord/next/host/remote_hold_reload_test.go::TestHoldWaitingForAWindowSlotWhoseSlotFreesBetweenTheOldAttemptsSealAndItsEndBindsSafely",
-        "chord/next/host/remote_provider_test.go::TestProviderAnswerAfterItsState",
-        "chord/next/host/remote_provider_test.go::TestProviderOldWorkFromAnotherHost",
-        "chord/next/host/remote_relay_test.go::TestRelayForwardACallsOldWorkFlagFromATrustedDownstreamLinkOnlyAPageCannotClaimOldWork",
-        "chord/next/host/remote_relay_test.go::TestRelayForwardsAWorkersResultAfterTheStateTheRelaysOwnObjectsKeepWaitingForTheTabEveryAckReachesItsSender",
-        "chord/next/state/batch_assert_outside_own_test.go::TestAssertOutsideFromACallersGoroutineWaitsForTheCommitRunningOnTheLoop"
+        "chord/next/host/host_singleton_value_test.go::TestSingletonValueReadFromGoroutinesDoesNotRaceTheObjectsChanges"
       ]
     },
     {
@@ -44630,6 +45619,32 @@
       ]
     },
     {
+      "id": "BF-dd2f4cb",
+      "title": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does…",
+      "symptom": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does, and as the six-character escape inside a tool call's arguments.",
+      "rootCause": "The Go SDK holds an unpaired surrogate as WTF-8, which utf8 decoding read as three invalid bytes: eight unpaired surrogates sized 6 tokens where Pi's estimateTokens gives 2, and a tool call argument holding one counted 3 characters where JSON.stringify writes its six-character escape. utf16Length and jsonQuotedLength now read the three bytes as the one unit (six characters in JSON).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does, and as the six-character escape inside a tool call's arguments. A message with eight unpaired surrogates sized 6 tokens where Pi gives 2, and one inside a tool call argument sized less than Pi's `JSON.stringify` length. The Python and Lisp SDKs were right and now have the same table of Pi's numbers; the Rust SDK cannot receive such a string.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dd2f4cb404",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/compaction_estimate_test.go::TestEstimateTokensMatchesPiOnLoneSurrogatesAstralAndCombiningMarks",
+        "extensions/sdk/compaction_estimate_test.go::TestEstimateTokensOfADecodedMessageWithLoneSurrogates",
+        "extensions/sdk/compaction_utf16_test.go::TestUTF16LengthIsTheUTF16LengthOfTheUnits",
+        "extensions/sdk/compaction_utf16_test.go::TestUTF16LengthOfRandomTextsMatchesTheUTF16LengthOfTheUnits",
+        "test/extension-conformance/compaction_usage_test.go::TestConformance_CompactionUsageHelpersAgreeAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-ddd4772",
       "title": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
       "symptom": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
@@ -45877,6 +46892,29 @@
       ]
     },
     {
+      "id": "BF-e38ea7c",
+      "title": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its…",
+      "symptom": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language.",
+      "rootCause": "hlFindResume matched a stored state on the text up to the resume point alone. The run's decisions before that point read past it, up to the end of the code of that run, so a block that began with the same text and then differed (a file rewritten with its last lines changed, an edit, a truncation, another fence with the same beginning) resumed with decisions the new text does not make. Streaming only appends, and every resume of an append is kept.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A code block that begins like an earlier streamed block and then differs, such as a file rewritten with its last lines changed or a second fence that repeats the start of the first, is highlighted as a whole run highlights it, in every language. The highlighter restarted from a state of the earlier block that only matched the text before its resume point, and highlight.js reads past that point, so the new block could take a state it does not hold: python, bash, SQL, Kotlin and about 70 other languages showed it, and JavaScript and TypeScript would have with the resumable highlighting of the same release.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e38ea7c9db",
+          "date": "2026-11-08"
+        }
+      ],
+      "tests": [
+        "tui/highlight_resume_blocks_test.go::TestResumeStateDoesNotServeCodeThatOnlySharesItsPrefix",
+        "tui/highlight_resume_blocks_test.go::TestStreamedHighlightIsAWholeRunAcrossBlocksAndEdits"
+      ]
+    },
+    {
       "id": "BF-e3b5d44",
       "title": "fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close",
       "symptom": "fix(chord/nextnode/workers): a worker forks a private copy of the entry made at creation, removed on close",
@@ -45893,9 +46931,7 @@
           "date": "2026-11-08"
         }
       ],
-      "tests": [
-        "chord/nextnode/workers/workers_workers_test.go::TestTheWorkerBaseAWorkerStartedAfterAnEditOfTheEntrysExecutableRunsTheCodeTheBaseWasBuiltWith"
-      ]
+      "tests": []
     },
     {
       "id": "BF-e3f39b7",
@@ -46001,6 +47037,33 @@
       "tests": [
         "internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi",
         "tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains"
+      ]
+    },
+    {
+      "id": "BF-e4b9bd5",
+      "title": "A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between…",
+      "symptom": "A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between requests, or a handler after `waitForIdle`, `compact` or `navigateTree`, read a stale usage where Pi reads it live.",
+      "rootCause": "Pi computes ctx.getContextUsage() live from the branch. The Node runtime answered it from the snapshot of its last dispatch, so a timer between requests, or a handler after waitForIdle, compact or navigateTree, read a stale value, and the host scanned the branch on every state push to feed it. The Node runtime now asks the host like every SDK, and StatePayload no longer carries the usage (protocol, host, runtime, tests, generated pack and digest, surface matrix wire names).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between requests, or a handler after `waitForIdle`, `compact` or `navigateTree`, read a stale usage where Pi reads it live. It now asks the host, like the Go, Rust, Python and Lisp SDKs, and the host no longer scans the session branch for the usage on every state push.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e4b9bd554e",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_presence_test.go::TestContextUsageWirePreservesAbsenceAndNull",
+        "coding/extension/host/subprocess/state_test.go::TestStatePayload_RoundTrip",
+        "extensions/sdk/replicated_session_name_file_test.go::TestSessionLeafIsStillAHostCall",
+        "extensions/sdk/replicated_session_name_file_test.go::TestSessionNameAndFileAreReadFromTheStateSnapshots",
+        "extensions/sdk/replicated_session_name_file_test.go::TestSessionNameAndFileFallbacks",
+        "test/extension-conformance/replica_reads_test.go::TestReplicatedReadsAreLocalAcrossSDKs"
       ]
     },
     {
@@ -47348,6 +48411,29 @@
       ]
     },
     {
+      "id": "BF-ec1e0b6",
+      "title": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the…",
+      "symptom": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update.",
+      "rootCause": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the SDK's own report of a panicking callback, stopped the extension from serving any further request, because the callback ran on the message loop inside the state update that changed the branch and the call waited for that update. The callbacks now run on a worker, one change at a time in the order the branch changed, so a callback can call the host as it can in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec1e0b68ca",
+          "date": "2026-11-07"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/footer_branch_worker_test.go::TestFooterBranchCallbackMayMakeHostCalls",
+        "extensions/sdk/footer_branch_worker_test.go::TestFooterBranchCallbacksRunInOrder"
+      ]
+    },
+    {
       "id": "BF-ec2080a",
       "title": "A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes…",
       "symptom": "The component kept reporting focus until its next key arrived.",
@@ -48151,10 +49237,7 @@
       "rootCauseSource": "divergence record",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D144",
-      "piIssue": "https://github.com/earendil-works/pi/issues/10697",
-      "removeWhen": "Pi includes `error.cause` in the message of a transport failure.",
+      "class": "own",
       "fixedIn": "0.5.0",
       "releaseNote": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).",
       "origin": "release note",
@@ -52687,11 +53770,6 @@
       "entry": "BF-0225a43"
     },
     {
-      "id": "D144",
-      "title": "A dropped response stream keeps its cause in the error message (Pi #10697)",
-      "entry": "BF-f07d033"
-    },
-    {
       "id": "D145",
       "title": "Nested Errors keep their name and message in codemode output (Pi #10650)",
       "entry": "BF-35e46b1"
@@ -52712,11 +53790,6 @@
       "id": "D150",
       "title": "`--no-stdin` skips the startup read of piped stdin (Pi #10415)",
       "entry": "BF-D150"
-    },
-    {
-      "id": "D151",
-      "title": "`grep` with context reads a window of each matched file (Pi #9276)",
-      "entry": "BF-D151"
     },
     {
       "id": "D153",
@@ -52944,11 +54017,6 @@
       "entry": "BF-D241"
     },
     {
-      "id": "D242",
-      "title": "Reload is rejected while the session is running or compacting",
-      "entry": "BF-D242"
-    },
-    {
       "id": "D243",
       "title": "A bash or PowerShell timeout after the shell already exited reports the shell's exit code",
       "entry": "BF-3fe717a"
@@ -52962,16 +54030,6 @@
       "id": "D245",
       "title": "The last-seen changelog version is read as its leading major.minor.patch; an unreadable one shows nothing and…",
       "entry": "BF-3b696c8"
-    },
-    {
-      "id": "D246",
-      "title": "OpenAI Responses sends session-id, not session_id",
-      "entry": "BF-D246"
-    },
-    {
-      "id": "D247",
-      "title": "Quit settles the interrupted run before session_shutdown and disposal",
-      "entry": "BF-bd8849d"
     },
     {
       "id": "D248",
@@ -53089,31 +54147,6 @@
       "entry": "BF-D312"
     },
     {
-      "id": "D350",
-      "title": "OpenCode Zen and Go Claude models send per-message effort",
-      "entry": "BF-D350"
-    },
-    {
-      "id": "D351",
-      "title": "Anthropic non-strict tool schemas keep root $defs",
-      "entry": "BF-D351"
-    },
-    {
-      "id": "D352",
-      "title": "Anthropic message threads",
-      "entry": "BF-D352"
-    },
-    {
-      "id": "D370",
-      "title": "The OAuth callback server drops connections that have not sent a request when it closes",
-      "entry": "BF-D370"
-    },
-    {
-      "id": "D371",
-      "title": "Tool search and codemode follow local schema refs; a malformed `$ref` renders as `unknown`",
-      "entry": "BF-D371"
-    },
-    {
       "id": "D430",
       "title": "Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking…",
       "entry": "BF-D430"
@@ -53124,12 +54157,52 @@
       "entry": "BF-D431"
     },
     {
+      "id": "D460",
+      "title": "The app kit's facets are Go core facets beside the plugins' Node host",
+      "entry": "BF-D460"
+    },
+    {
+      "id": "D461",
+      "title": "`Files` and `FilesFolder` are not reachable from TypeScript plugins",
+      "entry": "BF-D461"
+    },
+    {
+      "id": "D462",
+      "title": "The server and each worker have two stores, not one",
+      "entry": "BF-D462"
+    },
+    {
+      "id": "D464",
+      "title": "FormatNumber and FormatTime take closed option types and return errors (P1-3)",
+      "entry": "BF-D464"
+    },
+    {
+      "id": "D465",
+      "title": "FormatTime takes a time.Time, not `Date | number | string`",
+      "entry": "BF-D465"
+    },
+    {
+      "id": "D466",
+      "title": "No per-language formatter cache",
+      "entry": "BF-D466"
+    },
+    {
+      "id": "D501",
+      "title": "`npm pack --json` printing an object (npm 12) is read like the list npm 10 and 11 print",
+      "entry": "BF-D501"
+    },
+    {
       "id": "D502",
       "title": "`TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go…"
     },
     {
       "id": "D503",
       "title": "`TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript…"
+    },
+    {
+      "id": "D520",
+      "title": "A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect",
+      "entry": "BF-D520"
     },
     {
       "id": "D540",
@@ -53142,6 +54215,11 @@
       "entry": "BF-D600"
     },
     {
+      "id": "D601",
+      "title": "The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript…",
+      "entry": "BF-D601"
+    },
+    {
       "id": "D604",
       "title": "A link's upgrade waits for the bases to be built (Pi's links connect at once)",
       "entry": "BF-D604"
@@ -53150,6 +54228,14 @@
       "id": "D605",
       "title": "The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other",
       "entry": "BF-D605"
+    },
+    {
+      "id": "D607",
+      "title": "The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime…"
+    },
+    {
+      "id": "D608",
+      "title": "A client surface is built after the server's listen: `NewWebSurface`/`NewTuiSurface` return at once and…"
     }
   ],
   "exemptCommits": {

@@ -310,6 +310,12 @@ func TestFollowAttachIsTypedByItsAttachment(t *testing.T) {
 	}
 }
 
+// Compile-time form of follow.test.ts › types › infers the value type from the attachment, without a type argument
+// (expectTypeOf(a).toEqualTypeOf<Watchable<Count>>()): self.Follow takes a FollowAttach of delta.JsonValue and returns a
+// Watchable of delta.JsonValue, so a caller names no type argument and the result needs no assertion. The declaration
+// fails to compile when either side of Follow changes type.
+var _ func(Self, FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue] = Self.Follow
+
 // Own test, mirrors follow.test.ts › calls › inside a running batch: one frame per commit, and a derive over two views
 // computes once with both.
 func TestFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoViewsComputesOnceWithBoth(t *testing.T) {

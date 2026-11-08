@@ -16,10 +16,10 @@ import (
 type ingested struct {
 	telemetry.TelemetryContext
 	mu      sync.Mutex
-	batches []telemetryingest.Batch
+	batches []telemetryingest.TelemetryBatch
 }
 
-func (i *ingested) Ingest(batch telemetryingest.Batch) int {
+func (i *ingested) Ingest(batch telemetryingest.TelemetryBatch) int {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.batches = append(i.batches, batch)

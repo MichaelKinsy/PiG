@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -49,8 +51,9 @@ func apiModules() AppAPI {
 	return AppAPI{Name: "@test/app", Versions: []string{"v1"}, Modules: plugins.HostPackages{"@test/app/v1": path}}
 }
 
-func testKinds() []AppKind {
-	return []AppKind{{Name: "server", Platform: plugins.PlatformNode}, {Name: "worker", Platform: plugins.PlatformNode}, {Name: "teamworker", Platform: plugins.PlatformNode}}
+func testKinds() []AppKindEntry {
+	node := AppKind{Platform: plugins.PlatformNode}
+	return []AppKindEntry{{Name: "server", Kind: node}, {Name: "worker", Kind: node}, {Name: "teamworker", Kind: node}}
 }
 
 // workerOptions are the fixture worker's: StartWorker with the tests' API.
@@ -83,6 +86,22 @@ func testWorker(t testing.TB, kind *contracts.HostKind, facet string) AppWorkerK
 type appErrors struct {
 	mu   sync.Mutex
 	list []AppError
+	// expected is set by a test that causes the app to report errors.
+	expected bool
+}
+
+// expect says the test makes the app report errors: its end does not require there to be none.
+func (e *appErrors) expect() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.expected = true
+}
+
+// all is what the app reported so far.
+func (e *appErrors) all() []AppError {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return slices.Clone(e.list)
 }
 
 func (e *appErrors) add(err AppError) {
@@ -162,6 +181,19 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 		noGoroutinesOf(t, "chord/nextnode/app.", "chord/nextnode/http.", "chord/nextnode/workers.", "chord/nextnode/plugins.")
 	})
 	t.Cleanup(func() { _ = app.Close(background) })
+	// Runs before the close: a started app that ran its test reported nothing. An app the test closed itself is not asked: a close
+	// reports what it ends (a call in flight, a hold that could not resolve), as the reload rows with a link in flight have it.
+	t.Cleanup(func() {
+		if app.closing.Load() {
+			return
+		}
+		errs.mu.Lock()
+		expected := errs.expected
+		errs.mu.Unlock()
+		if got := errs.all(); len(got) != 0 && !expected {
+			t.Errorf("the app reported errors: %v", got)
+		}
+	})
 	var port int
 	_, _ = fmt.Sscanf(app.OwnerLink(), "http://127.0.0.1:%d/", &port)
 	return started{app: app, errors: errs, dataDir: options.DataDir, root: options.Root, port: port}
@@ -171,9 +203,7 @@ func startUnbuilt(t testing.TB, plugins map[string]map[string]string, edit func(
 func writePlugin(t testing.TB, root, dir, name string, files map[string]string) {
 	t.Helper()
 	all := map[string]string{"package.json": fmt.Sprintf(`{"name":%q,"private":true,"type":"module"}`, name)}
-	for file, text := range files {
-		all[file] = text
-	}
+	maps.Copy(all, files)
 	for file, text := range all {
 		path := filepath.Join(root, dir, file)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

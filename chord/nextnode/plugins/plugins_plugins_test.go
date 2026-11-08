@@ -97,12 +97,12 @@ func (c *pcComponent) quiet(t *testing.T) {
 }
 
 // pcKinds is the fixtures' app's kinds (support.ts's `kindsOf`).
-func pcKinds(modules []string) []KindDefinition {
+func pcKinds(modules []string) []KindEntry {
 	packages := append(slices.Clone(pcHostPackages), modules...)
-	return []KindDefinition{
-		{Name: "server", Platform: PlatformNode, HostPackages: packages},
-		{Name: "worker", Platform: PlatformNode, HostPackages: packages},
-		{Name: "web", Platform: PlatformBrowser, HostPackages: packages},
+	return []KindEntry{
+		{Name: "server", Definition: KindDefinition{Platform: PlatformNode, HostPackages: packages}},
+		{Name: "worker", Definition: KindDefinition{Platform: PlatformNode, HostPackages: packages}},
+		{Name: "web", Definition: KindDefinition{Platform: PlatformBrowser, HostPackages: packages}},
 	}
 }
 
@@ -513,7 +513,7 @@ func TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostS
 	pcWrite(t, root, "a", "worker.ts", "// a\n")
 	c.waitMarks(t, "dirty a", pcDirty("@test/a"))
 	var none []string
-	stopped := []RolloutHost{{Kind: RolloutStopped, Host: "session|S1", Stopped: true}}
+	stopped := []RolloutHost{{Kind: RolloutStopped, Host: "session|S1"}}
 	c.rollout(t, []RolloutStep{pcStep("workers", &none, pcOutcome{hosts: stopped})}, c.build(t, "@test/a"))
 	if marks := c.Marks(); len(marks.Dirty) != 0 {
 		t.Fatalf("dirty = %v, want none", marks.Dirty)

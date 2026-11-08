@@ -1990,6 +1990,22 @@ func TestSourceProps(t *testing.T) {
 	}
 }
 
+// TestSourcePropsPreferTheRowsOwnTypeAlias: a type alias the row's package declares (chord's Theme) is not read as a same-named
+// class of another package, whose members its indexed accesses (Theme["mode"]) would then be judged against.
+func TestSourcePropsPreferTheRowsOwnTypeAlias(t *testing.T) {
+	own := "{ mode: \"dark\" | \"light\" }"
+	class := &upstreamEntry{ID: "pkg:coding-agent/.#Theme", Name: "Theme", Kind: "class"}
+	member := &upstreamEntry{ID: "pkg:coding-agent/.#Theme::property:foreign", Name: "foreign", Role: "property", ParentID: class.ID, Shape: shape{Name: "foreign", Type: "string"}}
+	d := &detector{l: &ledger{entries: []*upstreamEntry{class, member}, children: map[string][]*upstreamEntry{class.ID: {member}}},
+		aliases: aliasTable{"p": {"Theme": &own}}}
+	if got := d.propShapes("q", "Theme"); len(got) != 1 || got[0].Name != "foreign" {
+		t.Fatalf("a package without the alias reads the class, got %+v", got)
+	}
+	if got := d.propShapes("p", "Theme"); len(got) != 0 {
+		t.Errorf("p's own alias Theme has the members of the other package's class: %+v", got)
+	}
+}
+
 // TestConditionalTypes: T20 splits a conditional type at its top level and judges both non-never branches; `infer R` binds R to
 // the checked type.
 func TestConditionalTypes(t *testing.T) {

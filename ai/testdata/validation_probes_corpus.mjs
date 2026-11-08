@@ -2,7 +2,7 @@
 // usage: node --disable-warning=ExperimentalWarning validation_probes_corpus.mjs <repo root> > validation-probes.json
 // Pi's test file runs unchanged: `vitest` and the validation module are replaced by recorders, and TypeBox (the oracle install in internal/typebox/testdata/npm)
 // builds the schemas, which are recorded as the JSON text a tool declaration carries. Each row is one `expect(outcome(...)).toBe(expected)` of the file.
-// Regenerate with the mirror at the Pi commit the port tracks (.upstream/current at b556cfe5 or later).
+// Regenerate with the mirror at the Pi commit the port tracks (.upstream/current at c23b9ec1 or later).
 import module from "node:module";
 import { pathToFileURL } from "node:url";
 

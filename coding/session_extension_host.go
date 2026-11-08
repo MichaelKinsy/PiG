@@ -496,9 +496,11 @@ func WatchHostState(bridge *subprocess.UIBridge, session *Session) func() {
 		return func() {}
 	}
 	stopSession := session.ObserveReplicatedState(bridge.HostStateChanged)
+	stopScope := session.ObserveReplicatedStateScope(bridge.HostStateChanging, bridge.HostStateSettled)
 	stopTheme := tui.ObserveActiveTheme(bridge.HostStateChanged)
 	return func() {
 		stopSession()
+		stopScope()
 		stopTheme()
 	}
 }

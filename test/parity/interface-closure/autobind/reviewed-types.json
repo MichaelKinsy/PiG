@@ -203,13 +203,357 @@
     "go": "ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace",
     "reason": "Pi replace(text): {delta: string | undefined, arguments} takes the provider's complete text and returns the missing piece when it continues the text so far, else undefined. Go Replace(text) (delta string, hasDelta bool, arguments JsonObject, order schemaObjectOrder) returns hasDelta false where Pi returns an undefined delta, and the member order beside the arguments."
   },
+  "pkg:chord/.#AcceptsTable": {
+    "go": "chord/next/contracts/accepts.go#AcceptsTable",
+    "reason": "Pi chord/src/contracts/accepts.ts:29 AcceptsTable<C> = AcceptsOf<ShapeOf<C>> is a mapped type over the contract's older versions, computed at compile time. Go's contracts.AcceptsTable is the same table as data: the ordered entries keyed by the version number as text, each a VersionMappings of the mappings its later edits require (accepts.go header); the key set a contract's history allows is checked where the table is bound (BindProvider), as Pi's bindProvider does (chord/src/data/args.ts:48). Locked by TestAcceptsStateMappings, TestAcceptsMethodMappings, TestAcceptsVersions and TestAcceptsKeyedMappings (chord/next/contracts/accepts_test.go)."
+  },
+  "pkg:chord/.#Address": {
+    "go": "chord/next/contracts/host_kind.go#Address",
+    "reason": "Pi chord/src/contracts/host-kind.ts:12 Address<K> types `kind` as K[\"kind\"] and `params` as ParamsOfKind<K>, both computed from the host kind's type parameters. Go's contracts.Address has the same three members, Kind string, Params *delta.JsonObject and Key string (host_kind.go), the kind's literal and the params' static types being compile-time only. Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
+  },
+  "pkg:chord/.#ArchiveManifest": {
+    "go": "chord/next/store/archive.go#ManifestPart",
+    "reason": "Pi chord/src/store/archive.ts:30 ArchiveManifest is the object type { kind: \"manifest\", format, schema, lastSeq, nextId } (the `.` entry publishes this one; node/app/archive.ts declares another ArchiveManifest, which is the pkg:chord/app row). Go's store.ManifestPart carries the same fields (Format, Schema, LastSeq, NextID) and its StoreWriteKind() is \"manifest\" (archive.go). Locked by the export cases of TestStore and TestJsonl (chord/next/store)."
+  },
+  "pkg:chord/.#CHORD_TELEMETRY_SCHEMA": {
+    "go": "chord/next/telemetry/schema.go#Schema",
+    "reason": "Pi chord/src/telemetry.ts:118 CHORD_TELEMETRY_SCHEMA = defineTelemetrySchema({...}) lets TypeScript infer the schema's exact literal type (it feeds ChordSpan and ChordMetrics inference, which Go designs out); upstream performs no runtime validation. PiG carries the same data as the serializable *telemetry.TelemetrySchemaDefinition built by DefineTelemetrySchema (spans, events, attributes and metrics by name), as for the reviewed pkg:ai/.#AI_TELEMETRY_SCHEMA. Locked by TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics (chord/next/telemetry/telemetry_upstream_test.go)."
+  },
+  "pkg:chord/.#ChordError": {
+    "go": "chord/next/data/errors.go#ChordError",
+    "reason": "Pi chord/src/data/errors.ts:71 ChordError = ChordErrorClass & ChordErrorJson intersects the class (message, cause, stack) with the tagged union of code/reason/details. Go's data.ChordError is one struct with Code, Reason, Message, Details (HasDetails marks an absent one) and Cause, and Error()/Unwrap(); the code/reason pairing the union checks at compile time is checked by ChordErrorFromJson at run time, as Pi's runtime does (errors.go ChordErrorInit comment). Locked by TestChordError and TestErrorHelpers (chord/next/data/errors_test.go)."
+  },
+  "pkg:chord/.#ChordErrorCode": {
+    "go": "chord/next/data/errors.go#ChordErrorCode",
+    "reason": "Pi chord/src/data/errors.ts:27 ChordErrorCode = keyof typeof CHORD_ERROR_REASONS is the set of the table's keys. Go's data.ChordErrorCode is a string type with a constant per key (CodeInvalid, CodeForbidden, ...) and ChordErrorCodes() lists them in the table's order; TestProtocolTable (chord/next/data/errors_test.go) pins the table."
+  },
+  "pkg:chord/.#ChordErrorReason": {
+    "go": "chord/next/data/errors.go#ChordErrorReason",
+    "reason": "Pi chord/src/data/errors.ts:29 ChordErrorReason<C> = (typeof CHORD_ERROR_REASONS)[C][number] is the reasons the table allows a code. Go's data.ChordErrorReason is a string type with a constant per reason (ReasonArgs, ...; the empty reason is upstream's undefined) and ChordErrorReasons(code) lists those a code allows; ChordErrorFromJson refuses a reason the code does not allow, as Pi's chordErrorFromJson does. Locked by TestProtocolTable and TestChordError (chord/next/data/errors_test.go)."
+  },
+  "pkg:chord/.#ClientOptions": {
+    "go": "chord/next/surfaces/surfaces_client.go#ClientOptions",
+    "reason": "Pi chord/src/surfaces/client.ts:39 ClientOptions<P>.scripts is a ScriptsContract, a type alias of the kind's scripts object contract. Go's ClientOptions.Scripts is the *contracts.Contract that object is; every other member agrees (Promise callbacks take the client's context and block: the forced differences recorded in surfaces_client.go). Locked by surfaces_client_test.go (TestLoadsTheInitialScriptsWithTheCoreFacets)."
+  },
+  "pkg:chord/.#ColumnRefs": {
+    "go": "chord/next/store/expression.go#ColumnRefs",
+    "reason": "Pi chord/src/store/query.ts:14 ColumnRefs<C> maps each column of C to its typed ColumnRef. Go's store.ColumnRefs maps each column name to its ColumnRef (an Expression of operator ExprCol), the column's value type being a Go type parameter or any of the operand. Locked by TestExample20Tables (chord/next/host/host_example_20_test.go)."
+  },
+  "pkg:chord/.#Contract::property:kind": {
+    "go": "chord/next/contracts/contract.go#Contract.Kind",
+    "reason": "Pi chord/src/contracts/contract.ts:27 Contract.kind is typed S[\"kind\"], the contract shape's literal. Go's contracts.Contract.Kind is the Kind string type (local or remote) the declaration set; the literal type is compile-time only. Locked by TestContractHandles (chord/next/contracts/contract_test.go)."
+  },
+  "pkg:chord/.#Contract::property:name": {
+    "go": "chord/next/contracts/contract.go#Contract.Name",
+    "reason": "Pi chord/src/contracts/contract.ts:28 Contract.name is typed S[\"name\"], the contract shape's literal name. Go's contracts.Contract.Name is the string the declaration gave; the literal type is compile-time only. Locked by TestContractHandles (chord/next/contracts/contract_test.go)."
+  },
+  "pkg:chord/.#Ctx::property:get::call:0": {
+    "go": "chord/next/host/host_ctx.go#Ctx.Get",
+    "reason": "Pi chord/src/host/ctx.ts:24 Ctx.get<C>(Type, params: ParamsOf<C>, options?) types params from the contract's params shape. Go's Ctx.Get(Type, params any, options GetOptions) takes the params untyped and the host checks them against the contract (Normalize, as Pi's get does at run time); the Promise is the blocking return (*Reference, error). Locked by host_ctx_test.go and the examples that get through a ctx."
+  },
+  "pkg:chord/.#FacetHost::property:references::call:0": {
+    "go": "chord/next/host/host_facet.go#FacetHost.References",
+    "reason": "Pi chord/src/host/facet.ts:26 references(Type) returns Watchable<readonly Presence<C, P>[]>, a JSON watchable of the presence list. Go's FacetHost.References returns state.SourceHandle, the JSON watchable handle layers hold (Value() (JsonValue, error) for a getter that may throw, Watch(ctx) (WatchHandle, error) for the Promise; state/doc.go). Locked by TestSetUpReturnsServedEntriesAndContributionsInOrderByKind and the presence tests."
+  },
+  "pkg:chord/.#FacetHost::property:serve::call:0": {
+    "go": "chord/next/host/host_facet.go#FacetHost.Serve",
+    "reason": "Pi chord/src/host/facet.ts:19 serve<C>(Type, factory: Factory<C, P>, options?) types the factory by a conditional type on the contract's params. Go's Serve takes the implementation as any and the host's type switch accepts a LocalFactory or RemoteFactory (host_facet.go; the Factory rows record the two forms). Locked by TestSetUpReturnsServedEntriesAndContributionsInOrderByKind (chord/next/host/host_facet_test.go)."
+  },
+  "pkg:chord/.#FacetSelf::property:contribute::call:0": {
+    "go": "chord/next/host/host_facet.go#FacetSelf.Contribute",
+    "reason": "Pi chord/src/host/facet.ts:54 contribute<C>(R, value: Contribution<C>) takes a value, a Watchable or a NativeWatchable. Go has no union: Contribute takes the value as any and the registry classifies it at run time (registries.ContributionKind), as the reviewed pkg:chord/.#Contribution row records. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
+  },
+  "pkg:chord/.#Held": {
+    "go": "chord/next/host/host_reference.go#Held",
+    "reason": "Pi chord/src/host/reference.ts:42 Held<C> is a Reference whose variant is also undefined until its first binding (a conditional type on the contract kind; documents/persistence.ts declares an unrelated Held for held ops, which the detector cannot tell apart by name). Go's host.Held is an alias of Reference, whose Variant is unbound until its first binding (host_reference.go). Locked by TestHoldGC (chord/next/host/remote_hold_test.go)."
+  },
+  "pkg:chord/.#Host::property:activity": {
+    "go": "chord/next/host/host_host.go#Host.Activity",
+    "reason": "Pi chord/src/host/host.ts:354 Host.activity is a Watchable<ActivityCounts>, a JSON watchable. Go's Host.Activity() returns state.SourceHandle, the JSON watchable handle (Value() (JsonValue, error), Watch(ctx) (WatchHandle, error); state/doc.go). Locked by TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot (chord/next/host/host_activity_test.go)."
+  },
+  "pkg:chord/.#Host::property:get::call:0": {
+    "go": "chord/next/host/host_host.go#Host.Get",
+    "reason": "Pi chord/src/host/host.ts:304 get<C>(Type, params: ParamsOf<C>, context, options?) types params from the contract's params shape. Go's Host.Get(ctx, Type, params any, options) takes them untyped and checks them at run time against the contract; the Promise is the blocking return. Locked by host_attempt_test.go and the examples."
+  },
+  "pkg:chord/.#Host::property:hold::call:0": {
+    "go": "chord/next/host/host_host.go#Host.Hold",
+    "reason": "Pi chord/src/host/host.ts:312 hold<C>(Type, params: ParamsOf<C>, context, options?) types params from the contract's params shape. Go's Host.Hold(ctx, Type, params any, options) takes them untyped and checks them at run time. Locked by TestHoldGC (chord/next/host/remote_hold_test.go)."
+  },
+  "pkg:chord/.#Host::property:references::call:0": {
+    "go": "chord/next/host/host_host.go#Host.References",
+    "reason": "Pi chord/src/host/host.ts:349 references(Type) returns Watchable<readonly Presence<C, P>[]>, a JSON watchable. Go's Host.References returns state.SourceHandle (Value() (JsonValue, error), Watch(ctx) (WatchHandle, error); state/doc.go). Locked by host_presence_test.go and host_activity_test.go."
+  },
+  "pkg:chord/.#Host::property:registry::call:0": {
+    "go": "chord/next/host/host_host.go#Host.Registry",
+    "reason": "Pi chord/src/host/host.ts:361 registry(R, context, options?) resolves to RegistryValue<V>, the composed value as a watchable-bearing record. Go's Host.Registry returns *registries.RegistryValueSource, the source that carries that value (Value, Watch); the Promise is the blocking return. Locked by TestExample29Registries (chord/next/host/host_example_29_test.go)."
+  },
+  "pkg:chord/.#HostKind::call:0": {
+    "go": "chord/next/contracts/host_kind.go#HostKind.Address",
+    "reason": "Pi chord/src/contracts/host-kind.ts:19 HostKind<N, P> is callable: its call takes the params as the rest tuple `[params?: Record<never, never>]` when the kind has no params, else `[params: {[F in keyof P]: Static<P[F]>}]`, and returns Address<HostKind<N, P>>. Go has no callable struct, so the call is the method HostKind.Address(values *delta.JsonObject) Address (nil for a kind without params), which builds the kind, params and key (host_kind.go; the typed tuple is compile-time only; params are checked where the address is routed, as in Pi). Locked by TestHostKinds (chord/next/contracts/host_kind_test.go)."
+  },
+  "pkg:chord/.#JobAccepts": {
+    "go": "chord/next/host/jobs_definition.go#JobAccepts",
+    "reason": "Pi packages/chord/src/jobs/definition.ts:43 JobAccepts<A, R> is {[version: number]: {args: (old: never) => Static<A>; result: (old: never) => Static<R>}}: per older version, its args and result mappings forwards. `never` is the argument type of an adapter whose old shape is the older definition's, which TypeScript cannot name; Go has no never parameter, so JobAdapter.Args and Result take the older value as `any` and return the current one with an error (jobs_definition.go JobAccepts map[int]JobAdapter). DefineJob checks the adapters at declaration like Pi's checkJobAccepts (TestDefineJobChecksAcceptsAtDeclaration, chord/next/host/jobs_definition_test.go) and a persisted run stored under an older version runs them (jobs_persisted_test.go)."
+  },
+  "pkg:chord/.#JobHandle::property:running": {
+    "go": "chord/next/host/jobs_job.go#JobHandle.Running",
+    "reason": "Pi packages/chord/src/jobs/job.ts:40 `readonly running: Watchable<readonly RunningEntry<A, S>[]>` is a Chord watchable of the unsettled runs. Go's Watchable is not a type but the state package's source handle: state.SourceHandle is what every Watchable member of a contract implementation, a derive source or an `on` source takes (host.JSONSource, documents.KeySource), and JobHandle.Running returns it (jobs_job.go). TestRunningHasOneEntryPerUnsettledRunInStartOrderTaggedByPhaseAKeyWhenGiven (chord/next/host/jobs_job_runs_test.go) reads it."
+  },
+  "pkg:chord/.#JsonObject": {
+    "go": "chord/next/documents/definition.go#JsonObject",
+    "reason": "Pi declares JsonObject twice under the name the index publishes: documents/definition.ts:14 `{ [key: string]: JsonValue }` (the row's declaration) and sync/remote.ts:8 `{ [key: string]: unknown }`, so the detector cannot pick one by name. The row is the documents one: the JSON object a document holds, which Go has as documents.JsonObject = delta.JsonObject (documents/definition.go:25), the insertion-ordered JSON object every document, draft and row of Chord uses. The sync one belongs to the sync entrypoint, not to this row."
+  },
+  "pkg:chord/.#KeyedHandle::property:at::call:0": {
+    "go": "chord/next/documents/handles.go#KeyedHandle.At",
+    "reason": "Pi documents/handles.ts `at(key: string): Watchable<T | undefined>` is, in the factory only, the document at key as a watchable (a state member, a derive source, an `on` source). Watchable is Go's state source handle: KeyedHandle.At returns *documents.KeySource, which implements state.SourceHandle and so has every member of a Chord watchable; the error return is Pi's throw outside the factory."
+  },
+  "pkg:chord/.#KeyedHandle::property:change::call:0": {
+    "go": "chord/next/documents/handles.go#KeyedHandle.Change",
+    "reason": "Pi documents/handles.ts `change<R>(key: string, fn: (draft: Draft<T>) => R, context: Context): Promise<R>`: Draft<T> is the recording Proxy over the document, a type-level mechanic Go designs out (pkg:chord/.#Draft); Go passes the mutable view the delta package defines for it, *delta.Object, whose Get and Set record the same ops (chord/delta handles.go), and the Promise is a blocking call with the context first (AGENTS.md async rule). Exercised through the transaction and handle tests in chord/next/documents."
+  },
+  "pkg:chord/.#KeyedHandle::property:keys::call:0": {
+    "go": "chord/next/documents/handles.go#KeyedHandle.Keys",
+    "reason": "Pi documents/handles.ts `keys(context: Context): Iterable<string>` returns the keys of the present documents in code point order. Go has no Iterable: documents.KeyIterator is the lazy walk of the keyed slot (Next(ctx) returns the next key, whether there is one, and the error a read can fail with), and Keys returns it with the context first."
+  },
+  "pkg:chord/.#LinkOptions": {
+    "go": "chord/next/host/host_host.go#LinkOptions",
+    "reason": "Pi publishes two types named LinkOptions: host/host.ts:236 `{principal, trusted?, codec?, limits?}` (the row's declaration, what `host.link` takes) and node/http/upgrades.ts:26 `{limits?, maxPayload?}` (the HTTP socket's), so the detector cannot pick one by name. The row is the host's; its Go form is host.LinkOptions {Principal, Trusted, Codec, Limits} (host_host.go), the same four members. The HTTP one is nextnode/http.LinkOptions (upgrades.go:51)."
+  },
+  "pkg:chord/.#MessageValue": {
+    "go": "chord/next/surfaces/surfaces_messages.go#MessageValue",
+    "reason": "Pi packages/chord/src/surfaces/messages.ts:16 `MessageValue = string | ((...args: never[]) => string)`: a text, or a function of its arguments returning one. Go has no unions, so surfaces.MessageValue is `any` holding a string or a MessageFunc (a function of the language and its arguments returning the text and the error a JavaScript message would throw; D450), which DefineMessages checks (surfaces_messages.go)."
+  },
+  "pkg:chord/.#OwnerTable::property:get::call:0": {
+    "go": "chord/next/store/adapter.go#OwnerTable.Get",
+    "reason": "Pi store/adapter.ts OwnerTable.get(executor: Pick<SqliteExecutor, \"get\">, params): Promise<DecodedRow | undefined> takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call with the context first."
+  },
+  "pkg:chord/.#OwnerTable::property:select::call:0": {
+    "go": "chord/next/store/adapter.go#OwnerTable.Select",
+    "reason": "Pi store/adapter.ts OwnerTable.select(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call with the context first."
+  },
+  "pkg:chord/.#PageOptions": {
+    "go": "chord/next/store/table_handle.go#PageOptions",
+    "reason": "Pi publishes two types named PageOptions: store/table-handle.ts:20 `{ after?: string }` (the row's declaration, a table page's cursor) and web/page.ts:30 `PageOptions<P>` (the web page's), so the detector cannot pick one by name. The row is the store's; its Go form is store.PageOptions {After *string} (table_handle.go), nil being Pi's undefined. The web page's belongs to the web entrypoint, not to this row."
+  },
+  "pkg:chord/.#Presence": {
+    "go": "chord/next/host/host_presence.go#Presence",
+    "reason": "Pi host/presence.ts:17 Presence<C, P> = {params: ParamsOf<C>; principal?: P; incarnation: string}: one hold's entry of the list `host.references` publishes. ParamsOf<C> is the mapped type over the contract's declared params (type-level); Go's host.Presence carries them as `Params any`, the principal as data.Principal (nil is Pi's absent) and the incarnation as a string, and the list publishes each as the JSON object {params, principal?, incarnation} (host_presence.go). Exercised by host_presence_test.go."
+  },
+  "pkg:chord/.#RegistryAccepts": {
+    "go": "chord/next/registries/registry.go#RegistryAccepts",
+    "reason": "Pi registries/registry.ts:49 RegistryAccepts<C, V> is {[version: number]: {contribution?: (old: never) => C; value?: (current: V) => unknown}}: per older version, how its contribution maps forwards and its value back. `never` is the old contribution's type, which TypeScript cannot name; Go has no never parameter, so RegistryAccept's Contribution takes the older value as `any` (registries.RegistryAccepts[C, V] map[int]RegistryAccept[C, V]). Exercised by registries/record_test.go and host_registry_readers_test.go."
+  },
+  "pkg:chord/.#RoutineDeclarations::property:on::call:0": {
+    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
+    "reason": "Pi host/routines.ts `on<T>(source: Watchable<T>, fn: OnHandler<T>)`: Watchable is Go's JSON state source: RoutineDeclarations.On takes host.JSONSource, the state.SourceHandle of JSON watchables (a state member, a derive, a keyed document's At), and the handler OnHandler[delta.JsonValue]; the generic T is a type-level parameter. Exercised by TestExample18Routines (chord/next/host/host_examples_test.go) and host_routines_test.go."
+  },
+  "pkg:chord/.#RunState::property:change::call:0": {
+    "go": "chord/next/host/jobs_job.go#RunState.Change",
+    "reason": "Pi jobs/job.ts RunState.change<T>(fn: (draft: Draft<S>) => T, context: Context, options?): Promise<T>: Draft<S> is the recording Proxy over the state document, a type-level mechanic Go designs out (pkg:chord/.#Draft); Go passes the mutable view the delta package defines for it, *delta.Object, and the options as ChangeOptions; the Promise is a blocking call with the context first (jobs_job.go)."
+  },
+  "pkg:chord/.#ScriptsContract": {
+    "go": "chord/next/surfaces/surfaces_scripts.go#ScriptsContract",
+    "reason": "Pi packages/chord/src/surfaces/scripts.ts:43 `type ScriptsContract = typeof WebScripts | typeof TuiScripts` is the type of the two scripts contracts, each a remote contract made by scriptsContract(name); Go's WebScripts and TuiScripts are both *contracts.Contract (surfaces_scripts.go), so `type ScriptsContract = *contracts.Contract` is the union of their types, and ClientOptions.Scripts (Pi's `scripts: ScriptsContract`) has it. Exercised by TestLoadsTheInitialScriptsWithTheCoreFacets (chord/next/surfaces/surfaces_client_test.go: the client starts with Scripts: WebScripts)."
+  },
+  "pkg:chord/.#Self::property:derive::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Derive",
+    "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
+  },
+  "pkg:chord/.#Self::property:get::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Get",
+    "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
+  },
+  "pkg:chord/.#Self::property:on::call:0": {
+    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
+    "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
+  },
+  "pkg:chord/.#Self::property:registry::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Registry",
+    "reason": "Pi `registry<R>(registry: R): RegistryValue<R>` returns the typed value of a registry; Go's Self.Registry(registry registries.Registry[any, any]) returns *registries.RegistryValueSource, the struct that carries the registry's value and its watch (every member of Pi's RegistryValue); the value's type is its dynamic type, as Go generics cannot compute RegistryValue<R> from the registry. Exercised by TestTheDependencyCheckOfRegistryValues (chord/next/host/host_dependencies_test.go)."
+  },
+  "pkg:chord/.#Self::property:state::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.State",
+    "reason": "Pi `state<D>(definition: D): HandleOf<D>` is a conditional type returning the handle of the declared document kind (SingletonHandle or KeyedHandle); Go cannot compute the return from the definition's type, so Self.State(definition documents.AnyDefinition) any returns the *documents.SingletonHandle or *documents.KeyedHandle of the definition, which the caller asserts. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/host/host_keyed_watchable_test.go)."
+  },
+  "pkg:chord/.#SingletonHandle::property:change::call:0": {
+    "go": "chord/next/documents/handles.go#SingletonHandle.Change",
+    "reason": "Pi `change(fn: (draft: Draft<T>) => void)` hands the callback a `Draft<T>` (a readonly-stripping mapped type, designed out as type level: pkg:chord/.#Draft); Go's Change takes a func(draft *delta.Object) whose *delta.Object is the transaction-scoped mutable view over the document (Get/Set), the same draft handle Draft returns. Exercised by TestTransactionsGiveTheSameDraftForTheSameDocument (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#StagedWrite": {
+    "go": "chord/next/store/step.go#StagedWrite",
+    "reason": "Pi's StagedWrite is the object type `{ readonly order: WriteOrder; apply(step): Promise<readonly StoreWrite[]> }`; a Go interface has methods, not data members, so `order` is the method StageOrder() WriteOrder (named so because implementers embed a record whose field is Order) and `apply` is Apply(step *Step) ([]StoreWrite, error) (the Promise is Go's second result, AGENTS.md async rule). Exercised by TestTableChanges (chord/next/store/table_writes_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:contribute::call:0": {
+    "go": "chord/next/host/host_attempt.go#StoreSelf.Contribute",
+    "reason": "Pi `contribute<R>(registry: R, value: C | Watchable<C> | NativeWatchable<C>)` is a union of a plain value, a Chord watchable and a native one; Go's Contribute(registry, value any) takes the value as any and decides among the three as contributionOf does at run time (a Chord watchable and a native one are followed, any other value stays plain). Exercised by TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue (chord/next/host/host_members_test.go) and TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns (chord/next/host/host_facet_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:derive::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Derive",
+    "reason": "Pi packages/chord/src/host/attempt.ts `derive<const S extends readonly Watchable<unknown>[], R>(sources: S, compute: (values: {readonly [I in keyof S]: S[I] extends Watchable<infer V> ? V : never}) => R)` types the values tuple from the sources' tuple type; that mapped type is a compile-time computation Go generics cannot express. Go's Self.Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) takes the sources as a slice of watchables or natives (each unwrapped by unwrapMember, host_attempt.go) and passes compute their values in order, as Pi's runtime does; the computed type is carried by the values' dynamic types. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition (chord/next/host/host_members_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:get::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Get",
+    "reason": "Pi `get<C extends Contract>(type: C, params: {[F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]>}): Reference<C>` computes the params object's shape from the contract's declared params; a mapped type over a type parameter that Go generics cannot express. Go's Self.Get(typ *contracts.Contract, params *delta.JsonObject) takes the params as the JSON object, which the attempt checks against the contract's declared params at run time (checkedParams, the same refusals as Pi's runtime check: unknown, missing and mistyped fields) before it binds. Exercised by TestHostGetChecksParamsWithL1 (chord/next/host/host_host_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:on::call:0": {
+    "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
+    "reason": "Pi `on(source: Watchable<S>, handler)` takes a Chord watchable; Go's RoutineDeclarations.On takes a host.JSONSource, the interface a Chord watchable of JSON implements (Value and Watch, plus the unwrap the host reads), so every Chord watchable Pi accepts is accepted. Exercised by TestExample18Routines (chord/next/host/host_example_18_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:registry::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.Registry",
+    "reason": "Pi `registry<R>(registry: R): RegistryValue<R>` returns the typed value of a registry; Go's Self.Registry(registry registries.Registry[any, any]) returns *registries.RegistryValueSource, the struct that carries the registry's value and its watch (every member of Pi's RegistryValue); the value's type is its dynamic type, as Go generics cannot compute RegistryValue<R> from the registry. Exercised by TestTheDependencyCheckOfRegistryValues (chord/next/host/host_dependencies_test.go)."
+  },
+  "pkg:chord/.#StoreSelf::property:state::call:0": {
+    "go": "chord/next/host/host_attempt.go#Self.State",
+    "reason": "Pi `state<D>(definition: D): HandleOf<D>` is a conditional type returning the handle of the declared document kind (SingletonHandle or KeyedHandle); Go cannot compute the return from the definition's type, so Self.State(definition documents.AnyDefinition) any returns the *documents.SingletonHandle or *documents.KeyedHandle of the definition, which the caller asserts. Exercised by TestExample03Derives (chord/next/host/host_example_03_test.go) and TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/host/host_keyed_watchable_test.go)."
+  },
+  "pkg:chord/.#Table::property:get::call:0": {
+    "go": "chord/next/store/table_handle.go#Table.Get",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Table.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/.#Table::property:rows::call:0": {
+    "go": "chord/next/store/table_handle.go#Table.Rows",
+    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Table.Rows (*store.RowsIterator) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/.#TableDefinition::property:record": {
+    "go": "chord/next/store/table.go#TableDefinition.Record",
+    "reason": "Pi `record: { readonly [name: string]: ColumnRecord }` is an object whose key order is observable; Go maps are unordered, so store.ColumnRecords is the ordered list of the same name/record pairs (store/columns.go) that fingerprints and archives read in declaration order. Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#TableDefinition::property:refs": {
+    "go": "chord/next/store/table.go#TableDefinition.Refs",
+    "reason": "Pi `refs: { readonly [column: string]: ColumnRef<unknown, ColumnType> }` is an index-signature object read by column name; Go has no index signature, so store.ColumnRefs is the ordered list of the same column/ref pairs with a lookup by name (store/query.go). Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#TableDefinition::property:schemas": {
+    "go": "chord/next/store/table.go#TableDefinition.Schemas",
+    "reason": "Pi `schemas: Columns` is `{ [name: string]: ColumnSchema }`, an object whose key order is observable (the declared order); Go has no insertion-ordered map, so TableDefinition.Schemas is the declared-order []ColumnProp of the same name/schema pairs (store/columns.go:39). Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#TableOptions": {
+    "go": "chord/next/store/table.go#TableOptions",
+    "reason": "Pi TableOptions<C, K> = { columns: C; key: K; indexes? ... } where `key` is typed by a mapped type over the columns (the non-optional str or int ones); Go's TableOptions has Columns []ColumnProp, Key []string and Indexes, and DefineTable checks at run time that each key column exists, is not opt and is a str or int (the checks the mapped type states). Exercised by TestDefineTable (chord/next/store/table_test.go)."
+  },
+  "pkg:chord/.#Tx::property:delete::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Delete",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Delete takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionDeleteTheRowWhenTheTransactionCommits (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:deleteWhere::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.DeleteWhere",
+    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.DeleteWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:draft::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Draft",
+    "reason": "Pi's two overloads draft(handle: SingletonHandle<T>) and draft(handle: KeyedHandle<T>, key) are a type-level split; Go's Draft(handle any, key ...string) takes the *SingletonHandle or *KeyedHandle and refuses any other value and a key given to a singleton (or missing for a keyed handle). Exercised by TestTransactionsRejectADraftOfAHandleATransactionCannotUseInsteadOfThrowing and TestTransactionsGiveTheSameDraftForTheSameDocument (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#Tx::property:get::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Get",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Get takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:retire::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Retire",
+    "reason": "As Tx.draft: Pi's two overloads of retire (singleton; keyed with a key) are a type-level split; Go's Retire(handle any, key ...string) takes the *SingletonHandle or *KeyedHandle. Exercised by TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFailsTheOwnerBrokenAsAReadWouldAndKeepsIt (chord/next/host/host_keyed_slot_host_test.go)."
+  },
+  "pkg:chord/.#Tx::property:rows::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Rows",
+    "reason": "Pi `rows(...)` returns an `AsyncIterable<RowOf<C>>` / `Iterable` of rows read a page of ROWS_PAGE at a time; Go has no iterable protocol, so Tx.Rows (*documents.TxRows) returns an iterator (Next(ctx) (row, ok, err) and Close) that fetches a page only when the previous one was read, as the AsyncIterable does (AGENTS.md async rule). Exercised by TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet (chord/next/documents/transaction_test.go)."
+  },
+  "pkg:chord/.#Tx::property:update::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.Update",
+    "reason": "Pi `key: KeyOf<C, K>` is a mapped type over the table's key columns ({ readonly [P in K[number]]: ValueOf<C[P]> }, or the one value of a single-column key), a computation over type parameters that Go generics cannot express; Go's Tx.Update takes the key as any: the one column's value, or a map or Row of the key columns, and the table's row codec (TableDefinition.Rows.Key, run by the handle) refuses a missing, extra or mistyped key column at run time as Pi's runtime check does. Exercised by TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#Tx::property:updateWhere::call:0": {
+    "go": "chord/next/documents/transaction.go#Tx.UpdateWhere",
+    "reason": "Pi `where: (row: ColumnRefs<C>) => Condition` is a callback over the table's typed column refs; Go's Tx.UpdateWhere takes where as any, a func(store.ColumnRefs) store.Condition or a Condition already built, and the table changes compile it at run time against the table's columns (store.TableChanges), refusing any other value. Exercised by TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets (chord/next/documents/transaction_writes_test.go)."
+  },
+  "pkg:chord/.#add::call:0": {
+    "go": "chord/next/store/expression.go#Add",
+    "reason": "Pi chord/src/store/expression.ts:163 add(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Add(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+  },
+  "pkg:chord/.#coalesce::call:0": {
+    "go": "chord/next/store/expression.go#Coalesce",
+    "reason": "Pi chord/src/store/expression.ts:193 coalesce(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Coalesce(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+  },
+  "pkg:chord/.#concat::call:0": {
+    "go": "chord/next/store/expression.go#Concat",
+    "reason": "Pi chord/src/store/expression.ts:183 concat(a, b) takes operands that are an Expression or a plain value (a TypeScript union Operand<T, K> = Expression<T, K> | T). Go has no unions: store.Concat(a, b any) takes either and the expression compiler classifies each operand at run time (an *Expression or a Go value of the column type). Locked by TestEvolveEdits and TestExample20Tables."
+  },
+  "pkg:chord/.#findDocument::call:0": {
+    "go": "chord/next/store/engine.go#FindDocument",
+    "reason": "Pi chord/src/store/engine.ts:300 findDocument(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocument takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore (chord/next/store/store_test.go); FindDocumentEntry's own read is covered by TestEngineEntries (chord/next/store/engine_test.go, fix/chord-gaps-root-b)."
+  },
+  "pkg:chord/.#findDocumentEntry::call:0": {
+    "go": "chord/next/store/engine.go#FindDocumentEntry",
+    "reason": "Pi chord/src/store/engine.ts:345 findDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, address, at) needs only the executor's `get`. Go's store.FindDocumentEntry takes the unexported rowGetter interface that is that one method (Get(sql, params...) (SqliteRow, error)); the executors of the store satisfy it. Locked by TestStore (chord/next/store/store_test.go); FindDocumentEntry's own read is covered by TestEngineEntries (chord/next/store/engine_test.go, fix/chord-gaps-root-b)."
+  },
+  "pkg:chord/.#forbidden::call:0": {
+    "go": "chord/next/data/errors.go#Forbidden",
+    "reason": "Pi chord/src/data/errors.ts:117 forbidden(message, details?) returns Extract<ChordError, {code: \"forbidden\"}>, the ChordError narrowed to its forbidden member at compile time. Go's data.Forbidden(message, details...) returns *data.ChordError with Code CodeForbidden and no reason, the narrowing being the Code field. Locked by TestErrorHelpers (chord/next/data/errors_test.go)."
+  },
+  "pkg:chord/.#inArray::call:0": {
+    "go": "chord/next/store/expression.go#InArray",
+    "reason": "Pi store/expression.ts:133 inArray<T extends Scalar>(column: ColumnRef<T, ScalarType>, values: readonly T[]): Condition takes the values as an array of T, the column's scalar type. Go has no generic function over the column's type (the ColumnRef's type arguments are phantom, pkg:chord/next ColumnRef rows), so store.InArray(column *ColumnRef, values any) takes the values as a slice, which the evaluator and the SQL compiler check against the column at run time (expression.go; expression_test.go and evaluate_test.go)."
+  },
+  "pkg:chord/.#invalid::call:0": {
+    "go": "chord/next/data/errors.go#Invalid",
+    "reason": "Pi data/errors.ts:104 invalid(reason, message, details?) returns Extract<ChordError, {code: \"invalid\"}>, the ChordError union narrowed to its invalid variant (a type-level Extract over the tagged union). Go has the one *data.ChordError struct with a Code (data.Invalid sets it to invalid and takes the reason, message and optional details), so the narrowed type is the struct a caller reads with its Code (CodeInvalid)."
+  },
+  "pkg:chord/.#listDocumentEntries::call:0": {
+    "go": "chord/next/store/engine.go#ListDocumentEntries",
+    "reason": "Pi store/engine.ts listDocumentEntries(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineEntries, chord/next/store/engine_test.go: entries of a scope by id, live now or at a point with retired_at, from a cursor, by kind, up to a limit)."
+  },
+  "pkg:chord/.#listDocuments::call:0": {
+    "go": "chord/next/store/engine.go#ListDocuments",
+    "reason": "Pi store/engine.ts listDocuments(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: a rewindable record listed at a point and not listed once retired)."
+  },
+  "pkg:chord/.#loadContent::call:0": {
+    "go": "chord/next/store/engine.go#LoadContent",
+    "reason": "Pi store/engine.ts loadContent(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (LoadDocument is LoadContent plus its record, so TestEngineHistoryRules in chord/next/store/engine_test.go loads through it; no test calls it apart from LoadDocument)."
+  },
+  "pkg:chord/.#loadDocument::call:0": {
+    "go": "chord/next/store/engine.go#LoadDocument",
+    "reason": "Pi store/engine.ts loadDocument(executor: Pick<SqliteExecutor, \"all\">, ...) takes the one method of the executor a list read needs. Go's rowLister is that Pick as an interface (store/engine.go: All(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: a rewindable record loaded at every point of its lifetime)."
+  },
+  "pkg:chord/.#max::call:0": {
+    "go": "chord/next/store/expression.go#Max",
+    "reason": "Pi store/expression.ts max<K extends \"int\" | \"num\">(a: Operand<number, K>, b: Operand<number, K>): Expression<number, K> is the larger of two operands; an Operand is `Expression<number, K> | number` (a union, with K a phantom type parameter). Go has no unions or phantom parameters, so store.Max(a, b any) takes each operand as an *Expression or a number and builds the same expression node (expression.go), which the evaluator checks (expression_test.go, evaluate_test.go)."
+  },
+  "pkg:chord/.#min::call:0": {
+    "go": "chord/next/store/expression.go#Min",
+    "reason": "Pi store/expression.ts min<K extends \"int\" | \"num\">(a: Operand<number, K>, b: Operand<number, K>): Expression<number, K> is the smaller of two operands; an Operand is `Expression<number, K> | number` (a union, with K a phantom type parameter). Go has no unions or phantom parameters, so store.Min(a, b any) takes each operand as an *Expression or a number and builds the same expression node (expression.go), which the evaluator checks (expression_test.go, evaluate_test.go)."
+  },
+  "pkg:chord/.#oneOf::call:0": {
+    "go": "chord/next/contracts/schema.go#OneOf",
+    "reason": "Pi contracts/schema.ts:119 oneOf<const V extends Literal[]>(...values: V): LiteralsSchema<V[number]> returns a LiteralsSchema, an interface that narrows Schema to the union of the literals' types (type-level: its runtime value is {anyOf: lits}). Go's OneOf[V Literal](values ...V) returns the contracts.Schema whose Node is the same anyOf of literal schemas, one per value in order (schema.go), the literal type being the generic parameter. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
+  },
+  "pkg:chord/.#opt::call:0": {
+    "go": "chord/next/store/columns.go#Opt",
+    "reason": "Pi store/columns.ts opt<S extends ColumnSchema>(schema: S): Optional<S> wraps a column in an Optional (a nullable column). Go has no wrapper object (pkg:chord/.#Optional is designed out: the optional schema is the wrapped schema with its Optional flag set), so store.Opt(ColumnSchema) returns the ColumnSchema with the flag set, which is every member Optional has (store/columns.go; columns_test.go)."
+  },
+  "pkg:chord/.#readDocument::call:0": {
+    "go": "chord/next/store/engine.go#ReadDocument",
+    "reason": "Pi store/engine.ts readDocument(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineHistoryRules, chord/next/store/engine_test.go: an adapter's retirement reads record 10 by id in its step through it, and TestEngineEntries does the same)."
+  },
+  "pkg:chord/.#readDocumentEntry::call:0": {
+    "go": "chord/next/store/engine.go#ReadDocumentEntry",
+    "reason": "Pi store/engine.ts readDocumentEntry(executor: Pick<SqliteExecutor, \"get\">, id) takes the one method of the executor a read needs. Go's rowGetter is that Pick as an interface (store/engine.go: Get(sql, params...)), which every sqlite executor satisfies; the Promise is a blocking call (TestEngineEntries, chord/next/store/engine_test.go: an entry by id, live or retired, with its owner, namespace and history; none for an absent id)."
+  },
+  "pkg:chord/.#replacePrefix::call:0": {
+    "go": "chord/next/store/expression.go#ReplacePrefix",
+    "reason": "Pi store/expression.ts:188 replacePrefix(value: Operand<string, \"str\">, from: string, to: string): Expression<string, \"str\"> takes its value as an Operand, `Expression<string, \"str\"> | string`, a union. Go has no unions, so store.ReplacePrefix(value any, from, to string) takes an *Expression or a string and builds the same expression node (expression.go), which the evaluator checks (expression_test.go, evaluate_test.go)."
+  },
+  "pkg:chord/.#sub::call:0": {
+    "go": "chord/next/store/expression.go#Sub",
+    "reason": "Pi `sub(a: Operand<number, \"int\">, b: ...)` takes an Expression or a number (Operand<T, K> = Expression<T, K> | T); Go's Sub(a, b any) takes an *Expression or a Go number and refuses any other value when the expression is compiled (compileOperand). Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
+  },
+  "pkg:chord/.#when::call:0": {
+    "go": "chord/next/store/expression.go#When",
+    "reason": "Pi `when(condition, a: Operand<T, K>, b)` takes an Expression or a plain value (Operand<T, K> = Expression<T, K> | T); Go's When(condition Condition, a, b any) takes an *Expression or a Go value and compiles each by its dynamic type. Exercised by TestCompilingConditions (chord/next/store/expression_test.go)."
+  },
   "pkg:chord/app#AppApi": {
-      "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
-      "reason": "Pi 1.5.0+c23b9ec1 app/index.ts re-exports plugins/build.ts:31 AppApi = { name, versions }: the same Go plugins.AppApi (plugins_build.go) the app's AppOptions.Api takes."
+    "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
+    "reason": "Pi 1.5.0+c23b9ec1 app/index.ts re-exports plugins/build.ts:31 AppApi = { name, versions }: the same Go plugins.AppApi (plugins_build.go) the app's AppOptions.Api takes."
   },
   "pkg:chord/app#ArchiveManifest": {
-      "go": "chord/nextnode/app/archive.go#ArchiveManifest",
-      "reason": "Pi 1.5.0+c23b9ec1 app/archive.ts:22 ArchiveManifest is the manifest an archive says about itself: Go app.ArchiveManifest (archive.go) has its format, app, api and address (ArchiveAddress), written and read by PackStore/UnpackStore (archive_test.go, archive.test.ts cases)."
+    "go": "chord/nextnode/app/archive.go#ArchiveManifest",
+    "reason": "Pi 1.5.0+c23b9ec1 app/archive.ts:22 ArchiveManifest is the manifest an archive says about itself: Go app.ArchiveManifest (archive.go) has its format, app, api and address (ArchiveAddress), written and read by PackStore/UnpackStore (archive_test.go, archive.test.ts cases)."
   },
   "pkg:chord/context#ContextKey::property:token": {
     "go": "chord/context/chordctx.go#Key.Token",
@@ -231,17 +575,69 @@
     "go": "chord/delta/handles.go#AppendText",
     "reason": "Pi appendText<T extends object>(draft: Draft<T>, key: StringKeys<T>, text: string): void appends to the string at draft[key]. Draft<T> is the Proxy view of a change's root and StringKeys<T> a mapped type over T's string-valued keys, both compile-time mechanics. Go has no generic functions over a draft, so AppendText(draft *Object, key, text string) error takes the change's draft object and returns the TypeError of appendText as an error; TestAppendTextRecordsAnAppendOpAndTheAppendedValue and TestAppendTextRejectsWhatACallerCanGetWrong assert it."
   },
+  "pkg:chord/http#HttpContribution": {
+    "go": "chord/nextnode/http/router.go#HttpContribution",
+    "reason": "Pi packages/chord/src/node/http/router.ts:67-90 HttpContribution = { routes?: Readonly<Record<string, HttpRoute | HttpRouteOptions>>; sockets?: Readonly<Record<string, HttpSocket | HttpSocketOptions>>; wraps?, maxPayload?, hosts?, framers?, relays?, csp?, scripts? }. Go's HttpContribution (chord/nextnode/http/router.go) has one field per member: Routes and Sockets are ordered slices of two-field entries (HttpRouteEntry{Key, Route HttpRouteOptions}, HttpSocketEntry{Pattern, Socket HttpSocketOptions}) because a TypeScript object keeps its keys' order, which decides the conflict reports and the first-by-plugin-name winner, and a Go map does not; the union `HttpRoute | HttpRouteOptions` is HttpRouteOptions because a bare function is an options object with every option off (RouteFunc and SocketFunc make that entry), so a Go value holds either form of Pi's union as the one it normalizes to (Pi's compose does the same: router.ts:183 `typeof route === \"function\" ? { handler: route } : route`, :206 for sockets); hosts and framers are []string, csp ordered CspEntry{Directive, Sources} pairs. TestRouterPatternsAndPrecedence, TestRouterConflicts, TestRouterWraps and TestRouterHostsAndSockets (chord/nextnode/http/router_test.go) port router.test.ts, composing a contribution of every member."
+  },
+  "pkg:chord/http#HttpRequest::property:body::call:0": {
+    "go": "chord/nextnode/http/request.go#HttpRequest.Body",
+    "reason": "Pi packages/chord/src/node/http/request.ts:33 body(limit?: number): AsyncIterable<Uint8Array> is an async generator whose `for await` reads one chunk at a time and may throw (HttpFailure 413 past the limit, 400 when the stream is cut short, an Error when read twice: request.ts:108-132). Go's range-over-func iterator has no throwing form, so Body(limit ...int) returns iter.Seq2[[]byte, error]: each chunk is yielded with a nil error, and a failure is yielded once as (nil, err) and ends the sequence, which is what the throw out of the `for await` is. The optional limit is the variadic argument. TestBodiesParseJSONWithinItsLimitMalformedIs400LargerIs413 (chord/nextnode/http/request_test.go) ports request.test.ts's body cases: bytes within the limit, a chunked upload past it 413."
+  },
+  "pkg:chord/http#LinkOptions": {
+    "go": "chord/nextnode/http/upgrades.go#LinkOptions",
+    "reason": "Pi packages/chord/src/node/http/upgrades.ts:26 LinkOptions = { limits?: PartLimits; maxPayload?: number } is the per-socket options of the links endpoint; host/host.ts:236 declares another LinkOptions<P> (the host's accept/connect options), so the name is declared twice in the pinned sources and no rule picks the alias body. The Go type of this row is http.LinkOptions (chord/nextnode/http/upgrades.go), whose Limits and MaxPayload are the two members (MaxPayload 0 is the 1 MiB default); host.LinkOptions is the other declaration's port. TestTheLinksEndpointTakesFramesOfAtMost1MiBUnlessLinksOptionsSaysOtherwise (chord/nextnode/http/upgrades_test.go: a links.options that sets maxPayload, a frame past it) asserts it."
+  },
+  "pkg:chord/http#LinksOptions": {
+    "go": "chord/nextnode/http/http.go#LinksOptions",
+    "reason": "Pi packages/chord/src/node/http/http.ts:60-69 LinksOptions = { path: string; options?: LinkOptions | ((request: HttpRequest, principal: Principal) => LinkOptions); opened?: (request, principal) => (() => void) | undefined }. The union of a value and a function that returns it is two Go fields of one struct (chord/nextnode/http/http.go): Options (a LinkOptions, the zero one the default) and OptionsFunc (func(request HttpRequest, principal data.Principal) (LinkOptions, error), the error being a throw: reported hook_failed, the upgrade refused 403); OptionsFunc is read when set, else Options. Go has no sum of a value and a function, and a field per arm is how the zero value says which one is absent. opened is Opened with the same request and principal and a returned closer, an error for a throw. TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket, TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403 and TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses (chord/nextnode/http/upgrades_test.go) assert each arm."
+  },
+  "pkg:chord/http#Router": {
+    "go": "chord/nextnode/http/router.go#Router",
+    "reason": "Pi packages/chord/src/node/http/router.ts:92-114 Router = { route(method, path): RouteMatch | \"bad_path\" | undefined; socket(path): SocketMatch | \"bad_path\" | undefined; hosts, framers: ReadonlySet<string>; relays; csp: ReadonlyMap<string, readonly string[]>; scripts; socketHandlers: ReadonlySet<HttpSocket> }. The three-state result of route and socket is two Go results: Route(method, path) (*RouteMatch, Lookup) and Socket(path) (*SocketMatch, Lookup), Lookup being Found, NoMatch (Pi's undefined) or BadPath (Pi's \"bad_path\"): Go has no union of a value and string literals, and the match is nil unless Lookup is Found. The Sets are insertion-ordered values ([]string, a map for socketHandlers whose keys are *HttpSocket pointers: a function has no identity), the Map is the CspEntry slice. TestRouterPatternsAndPrecedence and TestRouterHostsAndSockets (chord/nextnode/http/router_test.go) port the route and socket lookups of router.test.ts."
+  },
   "pkg:chord/output#Progress::property:stop::call:0": {
     "go": "chord/output/output.go#Progress.Stop",
     "reason": "Pi chord/src/output.ts:364-370 async stop(): Promise<PromiseWithResolvers<void>[]> sets stopped, disarms the timer, awaits the in-flight commit and splices out the waiters. Go has no Promise or PromiseWithResolvers: Stop() blocks until the in-flight commit ends (<-inFlight) and returns []*ProgressWaiter, whose Resolve/Reject are the resolvers the final commit settles. TestProgress 'stops: waits for the commit in flight and hands back waiters no commit covered yet' (chord/output/output_test.go) ports the Pi stop case."
   },
   "pkg:chord/plugins#AppApi": {
-      "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
-      "reason": "Pi 1.5.0+c23b9ec1 plugins/build.ts:31 AppApi = { readonly name: string; readonly versions: readonly string[] }: Go plugins.AppApi has the fields Name and Versions (plugins_build.go) and BuildFacet, CreatePlugins and TestPlugin take it as Pi's do (plugins_build_test.go, build.test.ts cases about the app's API)."
+    "go": "chord/nextnode/plugins/plugins_build.go#AppApi",
+    "reason": "Pi 1.5.0+c23b9ec1 plugins/build.ts:31 AppApi = { readonly name: string; readonly versions: readonly string[] }: Go plugins.AppApi has the fields Name and Versions (plugins_build.go) and BuildFacet, CreatePlugins and TestPlugin take it as Pi's do (plugins_build_test.go, build.test.ts cases about the app's API)."
   },
   "pkg:chord/plugins#PluginRoot": {
-      "go": "chord/nextnode/plugins/plugins_discover.go#PluginRoot",
-      "reason": "Pi 1.5.0+c23b9ec1 plugins/discover.ts PluginRoot = string | { readonly path: string; readonly required?: boolean }: a root is a path, or a path marked required. Go has no unions: plugins.PluginRoot is the one struct of the object form (Path, Required) and the string form is PluginRoot{Path: path} (plugins_discover.go). TestDiscoverPlugins* and TestCreatePluginsRequiredRoot* read both forms' behavior (a required root's failing plugin rejects the load)."
+    "go": "chord/nextnode/plugins/plugins_discover.go#PluginRoot",
+    "reason": "Pi 1.5.0+c23b9ec1 plugins/discover.ts PluginRoot = string | { readonly path: string; readonly required?: boolean }: a root is a path, or a path marked required. Go has no unions: plugins.PluginRoot is the one struct of the object form (Path, Required) and the string form is PluginRoot{Path: path} (plugins_discover.go). TestDiscoverPlugins* and TestCreatePluginsRequiredRoot* read both forms' behavior (a required root's failing plugin rejects the load)."
+  },
+  "pkg:chord/sync#JsonObject": {
+    "go": "chord/sync/remote.go#JsonObject",
+    "reason": "Pi chord/src/sync/remote.ts:8 `export type JsonObject = { [key: string]: unknown }` is the host's session description (SessionSummary.meta, putMeta, getMeta). A same-named alias in chord/src/documents/definition.ts:14 (`{ [key: string]: JsonValue }`) makes the name ambiguous for the alias table, so no rule reads the body. Go spells the object as the ordered JSON object of Chord's delta package, aliased as sync.JsonObject (remote.go), the type PutMeta takes and GetMeta returns; TestHostPieces (sync_test.go) writes and reads it through SessionSyncStore."
+  },
+  "pkg:chord/sync#LogFormatError::construct:0": {
+    "go": "chord/sync/lines.go#NewLogFormatError",
+    "reason": "Pi chord/src/sync/lines.ts:14-19 `new LogFormatError(message, options?: ErrorOptions)` passes options to Error, whose only member is `cause`. Go has no ErrorOptions bag: NewLogFormatError(message string, cause error) takes the cause itself (nil for none) and LogFormatError.Unwrap returns it, as Error.cause is read. TestNewLogFormatErrorCarriesItsMessageAndCause (chord/sync/lines_test.go) and every DecodeLogLine failure assert it."
+  },
+  "pkg:chord/sync#SyncFileSystem::property:appendFile::call:0": {
+    "go": "chord/sync/files.go#SyncFileSystem.AppendFile",
+    "reason": "Pi chord/src/sync/files.ts:33 `appendFile(path, content: string | Uint8Array, context)` takes text or bytes and a file holds bytes either way: Pi's Node implementation writes a string as its UTF-8 bytes (chord/test/sync/node-files.ts). Go has no union of string and bytes, so SyncFileSystem.AppendFile(ctx, path, content []byte) takes the bytes: a caller with text passes []byte(text), the same UTF-8 content. chord/sync/filesystem.go writes bodies and state as bytes through it and TestSyncingASessionBetweenDevices and TestHostPieces (sync_test.go) write and read through osFiles."
+  },
+  "pkg:chord/sync#SyncFileSystem::property:writeFile::call:0": {
+    "go": "chord/sync/files.go#SyncFileSystem.WriteFile",
+    "reason": "Pi chord/src/sync/files.ts:31 `writeFile(path, content: string | Uint8Array, context)` takes text or bytes and a file holds bytes either way: Pi's Node implementation writes a string as its UTF-8 bytes (chord/test/sync/node-files.ts). Go has no union of string and bytes, so SyncFileSystem.WriteFile(ctx, path, content []byte) takes the bytes: a caller with text passes []byte(text), the same UTF-8 content. chord/sync/filesystem.go writes bodies and state as bytes through it and TestSyncingASessionBetweenDevices and TestHostPieces (sync_test.go) write and read through osFiles."
+  },
+  "pkg:chord/tui#TuiScope::property:hold::call:0": {
+    "go": "chord/next/tui/tui_scope.go#TuiScope.Hold",
+    "reason": "Pi packages/chord/src/tui/scope.ts hold<C extends Contract>(Type: C, params: ParamsOf<C>): Held<C> types params by a mapped type over the contract's params shape (ParamsOf, TypeScript's compile-time computation). Go has no such type, so Hold takes the contract and params as any and the host validates params against the contract at run time (host.Hold returns the invalid-params error); the result is the host's *Reference (Held). TestScopeHoldsFollowsAndCallsChangedOnEveryChangeReleasingEverythingAtDispose holds with Notes and reads the state."
+  },
+  "pkg:chord/tui#TuiScope::property:messages::call:0": {
+    "go": "chord/next/tui/tui_scope.go#TuiScope.Messages",
+    "reason": "Pi scope.ts messages<M extends Messages>(messages): Translator<M> returns a call signature (key, ...args) typed by MessageArgs<M[K]>, which Go cannot declare; Go returns *BoundMessages whose T(key, args...) and Render(MessageData) are that translator and its render, rendering in the host's language at each call. The tests of tui_scope_test.go call it."
+  },
+  "pkg:chord/tui/launcher#TerminalOptions": {
+    "go": "chord/nextnode/tui/tui_launcher.go#TerminalOptions",
+    "reason": "Pi launcher.ts TerminalOptions.input is Node's Readable (with optional setRawMode and isTTY) and output a Writable (with optional columns and rows): Go has the same members as Input io.Reader and Output io.Writer, the optional ones found by interface (SetRawMode(bool) error and IsTTY() bool on the input; Columns(), Rows() and OnResize(func()) func() on the output, which stands for the stream's \"resize\" event), the process's stdin and stdout when nil. The other fields are Pi's (URL, Credentials, Colors, Mode, Locales, Opener) plus Node and Client, which Go's launcher takes where Pi reads process.env and the global fetch. TestLauncher... in tui_kit_upstream_test.go start the launcher through Input and Output (streamsOf)."
+  },
+  "pkg:chord/tui/launcher#terminalFile::call:0": {
+    "go": "chord/nextnode/tui/tui_launcher.go#TerminalFile",
+    "reason": "Pi launcher.ts terminalFile(path: unknown, server: URL) takes what the sandbox's request carried (unknown: anything) and throws unless it is a string naming a terminal file. Go's pipe has already checked that a fetch or attach request carries a string path (bridgeRequest), so TerminalFile takes a string and the server as its URL text, and returns the same pathname or the same error; the launcher's tests (TestTerminalFile in tui_launcher_test.go) cover the refusals."
   },
   "pkg:codemode/.#CodemodeSandboxOptions::property:wasm": {
     "go": "codemode/types.go#SandboxOptions.Wasm",

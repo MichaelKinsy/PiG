@@ -43,6 +43,8 @@ type CoreFacet struct {
 	Module string
 }
 
+// pig divergence (D607): Pi's load takes a Host, core PluginFacets and module values; this takes the options of the subprocess host's start.
+//
 // RuntimeLoad is what PluginRuntime.Load takes.
 type RuntimeLoad struct {
 	Kind string
@@ -103,6 +105,9 @@ type RuntimeLoad struct {
 	// principal object it holds (as Pi's host does, and never memoized), when a revocation reaches it (NodeHost.Revoke, or a Go
 	// host's own `Revoke` over a route to this host). A returned error is Pi's throw. Nil: nothing revokes.
 	RevokedBy host.RevokedBy[delta.JsonValue]
+	// PrincipalAttributes is who a span was for (`createHost`'s `principalAttributes`): the subprocess host calls it synchronously
+	// (as PrincipalKey) for the principal of a span it records. Nil: the host's own (`chord.principal`).
+	PrincipalAttributes func(principal data.Principal) telemetry.SpanAttributes
 	// Bridged are the app's own facets that are loaded on a Go host and serve local types the plugins use: each is a facet
 	// of the plugins' closure on the subprocess host, a proxy that serves the same contracts and forwards to the Go host's
 	// own objects (BridgedFacet), so a plugin that needs such a type binds to it, and Pi's closure rule and reload rules

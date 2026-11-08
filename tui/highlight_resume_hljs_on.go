@@ -15,10 +15,11 @@ import (
 // hlResumeMax bounds the blocks that keep a resume state, so a few blocks streaming at once each resume.
 const hlResumeMax = 4
 
-// hlResume is the resume state of the code last highlighted for a block: code[:len(prefix)] is the text before the resume point, lines the complete output lines before it, and partial the output of the line the point is on, up to the point.
+// hlResume is the resume state of the code last highlighted for a block: seen is the whole code of that run, code[:len(prefix)] the text before the resume point, lines the complete output lines before it, and partial the output of the line the point is on, up to the point. The run's decisions before the point read past it, up to the end of seen, so the point holds only for code that starts with seen.
 type hlResume struct {
 	lang       string
 	theme      *Theme
+	seen       string
 	prefix     string
 	lines      []string
 	partial    string
@@ -68,6 +69,7 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([
 		hlStoreResume(hlResume{
 			lang:       lang,
 			theme:      t,
+			seen:       code,
 			prefix:     code[:point.Byte],
 			lines:      lines[:complete:complete],
 			partial:    headText[strings.LastIndexByte(headText, '\n')+1:],
@@ -77,12 +79,12 @@ func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([
 	return lines, true
 }
 
-// hlFindResume is the state with the longest prefix of code for the block, or the zero state, and the generation of the loaded languages it was found under.
+// hlFindResume is the state with the longest prefix of code for the block among those whose whole code code starts with, or the zero state, and the generation of the loaded languages it was found under.
 func hlFindResume(code, lang string, t *Theme) (found hlResume, generation int) {
 	hlMu.Lock()
 	defer hlMu.Unlock()
 	for _, r := range hlResumes {
-		if r.lang == lang && r.theme == t && len(r.prefix) > len(found.prefix) && strings.HasPrefix(code, r.prefix) {
+		if r.lang == lang && r.theme == t && len(r.prefix) > len(found.prefix) && strings.HasPrefix(code, r.seen) {
 			found = r
 		}
 	}

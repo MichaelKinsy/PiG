@@ -57,12 +57,10 @@ func TestWritableSetOffTheLoopRunsItsCommitOnTheLoop(t *testing.T) {
 	const sets = 50
 	var wg sync.WaitGroup
 	for i := 1; i <= sets; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			// The test's goroutine is in no section, as a native's opener.
 			must(t, writable.Set(float64(i)))
-		}()
+		})
 	}
 	wg.Wait()
 	mu.Lock()

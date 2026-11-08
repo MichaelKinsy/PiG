@@ -29,7 +29,7 @@ func qDefine(t testing.TB, name string, options TableOptions) *TableDefinition {
 }
 
 // qEvolve is EvolveTable, failing the test on its error.
-func qEvolve(t testing.TB, previous *TableDefinition, edit func(e *TableEditor) *TableEditor) *TableDefinition {
+func qEvolve(t testing.TB, previous *TableDefinition, edit func(e *TableEditor) TableTailEditor) *TableDefinition {
 	t.Helper()
 	definition, err := EvolveTable(previous, edit)
 	if err != nil {

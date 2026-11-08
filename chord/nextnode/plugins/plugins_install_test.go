@@ -421,11 +421,9 @@ func TestInstallPluginClaimsItsDirectoryFirstOfTwoConcurrentInstallsOneWinsTheOt
 	var group sync.WaitGroup
 	errs := make([]error, 2)
 	for i := range errs {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			_, errs[i] = InstallPlugin(PluginSource{Git: repository.url, Ref: "v1"}, root, background, options)
-		}()
+		})
 	}
 	group.Wait()
 	failed := []error{}
@@ -500,5 +498,36 @@ func TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated(t *testing.T
 	}
 	if names := listing(t, root); len(names) != 0 {
 		t.Fatalf("root = %v", names)
+	}
+}
+
+// D501: Pi reads `const [tarball] = JSON.parse(output)`, the list npm 10 and 11 print; npm 12 prints an object keyed by package name,
+// which PiG reads by its first member. Everything else is Pi's: its errors for an empty list, a null or primitive member, a name that
+// is no string, and for output that is no JSON value of those shapes.
+func TestPackedTarballReadsTheListNpm10And11PrintAndTheObjectNpm12Prints(t *testing.T) {
+	for name, tc := range map[string]struct{ output, want, wantError string }{
+		"list (npm 10, 11)":       {output: `[{"filename":"acme-1.0.0.tgz","size":3}]`, want: "acme-1.0.0.tgz"},
+		"first of a list":         {output: `[{"filename":"a.tgz"},{"filename":"b.tgz"}]`, want: "a.tgz"},
+		"object by name (npm 12)": {output: `{"acme":{"filename":"acme-1.0.0.tgz","size":3}}`, want: "acme-1.0.0.tgz"},
+		"first of an object":      {output: `{"acme":{"filename":"a.tgz"},"other":{"filename":"b.tgz"}}`, want: "a.tgz"},
+		"empty list":              {output: `[]`, wantError: "what: packed nothing"},
+		"empty object":            {output: `{}`, wantError: "what: packed nothing"},
+		"null member":             {output: `[null]`, wantError: "Cannot read properties of null (reading 'filename')"},
+		"primitive member":        {output: `{"acme":3}`, wantError: "Cannot read properties of a primitive (reading 'filename')"},
+		"no filename":             {output: `[{"size":3}]`, wantError: `The "path" argument must be of type string`},
+		"a string":                {output: `"acme.tgz"`, wantError: "npm's output is not a list of packed tarballs"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := packedTarball(tc.output, "what")
+			if tc.wantError != "" {
+				if err == nil || err.Error() != tc.wantError {
+					t.Fatalf("error = %v, want %q", err, tc.wantError)
+				}
+				return
+			}
+			if err != nil || got != tc.want {
+				t.Fatalf("packedTarball = %q, %v, want %q", got, err, tc.want)
+			}
+		})
 	}
 }

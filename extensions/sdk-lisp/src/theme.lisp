@@ -217,7 +217,7 @@ snapshot is taken with the palette, so a handler that runs after a later change 
 HANDLER, (lambda (theme)), receives the theme of the change it is delivered for: a snapshot of CTX-THEME as it was when the palette came in,
 so a handler that runs after the host changed the theme again still sees the palette it was called for (CTX-THEME itself stays live).
 Handlers run on a worker thread, one at a time in the order the changes arrived, never on the thread that reads the host's replies, so a
-handler can make a blocking host call; one that signals is reported on stderr and does not stop the others. Returns the idempotent
+handler can make a blocking host call; one that signals is reported in the extension's log and does not stop the others. Returns the idempotent
 unsubscribe function. A palette equal to the one before is not a change."
   (unless (functionp handler) (error 'type-error :datum handler :expected-type 'function))
   (kit-feed-subscribe (kit-state-theme-feed (kit-state (ctx-extension ctx))) handler))

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -166,9 +167,7 @@ func (s started) edit(t testing.TB, dir string, files map[string]string, alsoDir
 func writePluginAtomically(t testing.TB, root, dir, name string, files map[string]string) {
 	t.Helper()
 	all := map[string]string{"package.json": fmt.Sprintf(`{"name":%q,"private":true,"type":"module"}`, name)}
-	for file, text := range files {
-		all[file] = text
-	}
+	maps.Copy(all, files)
 	staging := filepath.Join(filepath.Dir(root), "staging")
 	if err := os.MkdirAll(staging, 0o755); err != nil {
 		t.Fatal(err)
@@ -222,7 +221,7 @@ func (s started) removeAndApply(t testing.TB, dir string) plugins.RolloutResult 
 }
 
 // dirty is whether plugin dir is still marked dirty.
-func (s started) dirty() []string { return s.app.Plugins.Marks().Dirty }
+func (s started) dirty() []string { return s.app.Plugins.Component.Marks().Dirty }
 
 // rolloutFailures are the plugins a rollout's hosts kept on their old code, as `<step>/<host>: <plugin>`, and hosts that failed.
 func rolloutFailures(result plugins.RolloutResult) []string {

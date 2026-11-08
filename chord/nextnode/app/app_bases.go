@@ -102,7 +102,7 @@ func (a *App) startBases(bases []baseBuild) {
 					a.reportLate(AppErrorBaseBuild, err, each.name)
 					return
 				}
-				compared.add(a.Plugins.WatchBaseCompared(inputs))
+				compared.add(a.Plugins.Component.WatchBaseCompared(inputs))
 			})
 		}
 		builds.Wait()
@@ -120,31 +120,30 @@ func (a *App) watchBaseCode(compared *comparisons) {
 	if a.isClosing() {
 		return
 	}
-	exe, ok := a.serverExecutable()
+	inputs, ok := a.serverExecutable()
 	if a.isClosing() {
 		return
 	}
 	if ok {
-		compared.add(a.Plugins.WatchBaseCompared(a.editedSinceStart(exe)))
+		compared.add(a.Plugins.Component.WatchBaseCompared(a.editedSinceStart(inputs)))
 	}
 	compared.wait()
 }
 
-// editedSinceStart is the record of the file at path: its hash, or one no bytes have when it changed since this process started (its
+// editedSinceStart is the record of the file inputs names (NodeBaseInputs'): its hash, or one no bytes have when it changed since this process started (its
 // mtime or ctime after the start): the process may run other bytes than the ones read now, so its first comparison marks `base`
 // (until a restart: the bytes the process runs are unknown). Conservative: a metadata-only change (ctime) marks too. Per timestamp:
 // one later than now (plus futureSlack) is no edit since the start (a file stamped in the future, by a skewed clock or an archive,
 // would mark every start until that time); a file neither of whose timestamps is in range keeps its hash, compared by content
 // alone.
-func (a *App) editedSinceStart(path string) plugins.BaseInputs {
+func (a *App) editedSinceStart(inputs plugins.BaseInputs) plugins.BaseInputs {
+	var path, hash string
+	for each, text := range inputs {
+		path, hash = each, text
+	}
 	started := processStart
 	if a.options.processStart != nil {
 		started = a.options.processStart()
-	}
-	hash, readable := plugins.HashFile(path)
-	if !readable {
-		// Gone since it was checked: its first comparison finds it so.
-		return plugins.BaseInputs{path: ""}
 	}
 	if info, err := os.Stat(path); err == nil {
 		latest := time.Now().Add(futureSlack) //portlint:allow clock Pi's `Date.now() + FUTURE_SLACK_MS` of editedSinceStart: a file's timestamps are wall-clock, and the tests set AppOptions.processStart instead
@@ -181,6 +180,8 @@ func (a *App) baseBuilds() []baseBuild {
 // reconnecting to a restarted server) would hold the scripts object's empty set, and its base is none the page runs (it reloads).
 // Pi's client has that window too; its build is quicker than a Go server's, which starts the plugins' Node. A request the server
 // closes meanwhile is refused. The options are the zero ones the links endpoint gave every socket.
+//
+// pig divergence (D604): Pi's links connect at once; here an upgrade waits for the bases.
 func (a *App) linksAfterTheBases(chordhttp.HttpRequest, data.Principal) (chordhttp.LinkOptions, error) {
 	select {
 	case <-a.basesBuilt:

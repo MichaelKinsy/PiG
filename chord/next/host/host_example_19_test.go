@@ -22,6 +22,7 @@ import (
 
 // --- 19-jobs.ts ----------------------------------------------------------------------------------------------------
 
+// Cites packages/chord/src/host/attempt.ts:142 (Self.job: a job declared in the factory).
 func TestExample19Jobs(t *testing.T) {
 	shellState := exDefineState("example.shell.state", documents.StateOptions{
 		Schema:  exObj(exProp("output", exStr())),

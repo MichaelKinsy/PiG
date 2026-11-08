@@ -488,7 +488,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		previous := session.ExtensionRunner()
 		if err := session.Reload(ctx); err != nil {
 			// A reload that failed after session_shutdown left the old runner stale; its extension processes reject later calls with its message too.
-			// pig divergence (D242): a reload refused while the session runs or compacts (Pi c3b938e3e) touched nothing, so the running tool's context stays live.
+			// a reload refused while the session runs or compacts (Pi c3b938e3e) touched nothing, so the running tool's context stays live.
 			if extensionHost := session.ExtensionHost(); extensionHost != nil && previous != nil && previous.IsStale() && session.ExtensionRunner() == previous {
 				extensionHost.Invalidate(previous.StaleMessage())
 			}
