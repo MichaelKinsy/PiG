@@ -60,6 +60,12 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 	p2test.UseTerminalDaemon(t)
 	fixture := p2test.StartFixture(t, hosts.ServerOptions{AllowedHosts: []string{"share.test"}})
 	t.Cleanup(func() { shutdownTerminalHost(t, fixture.DataDir) })
+	// The e2e binary links the code mode plugin, which on (its default) leaves `tool_search` uninstalled: the model reaches the
+	// tool through it only with code mode off. The worker applies the setting asynchronously: the first search goes until it
+	// is found.
+	if err := os.WriteFile(fixture.DataDir+"/settings.json", []byte(`{"codemode":false}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	workspace, err := realpathOf(fixture.Workspace)
 	if err != nil {
 		t.Fatal(err)
@@ -146,7 +152,16 @@ func TestTheAgentsTerminalToolOnTheSessionsSharedTerminals(t *testing.T) {
 	}
 
 	t.Run("tool_search loads the tool; a window opens, takes keys and reads its output", func(t *testing.T) {
-		found := succeeds(`tool_search {"query":"terminal tmux windows"}`, chat)
+		var found string
+		for attempt := 0; attempt < 20; attempt++ {
+			if attempt > 0 {
+				time.Sleep(200 * time.Millisecond)
+			}
+			result := call(`tool_search {"query":"terminal tmux windows"}`, chat)
+			if found = resultText(result); result.Value("isError") != true {
+				break
+			}
+		}
 		if !strings.Contains(found, "- terminal: ") {
 			t.Fatalf("tool_search: %s", found)
 		}
